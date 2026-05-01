@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
+import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
+import { useWorkspaceTabs } from "@/stores/workspace-tabs";
 import type { Workspace } from "@agent-spaces/shared";
 
-export default function WorkspacePage() {
-  const params = useParams<{ id: string }>();
+export default function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { openTab, activeId } = useWorkspaceTabs();
 
   useEffect(() => {
     fetch(`/api/workspaces/${params.id}`)
@@ -17,9 +21,18 @@ export default function WorkspacePage() {
         if (!r.ok) throw new Error("Not found");
         return r.json();
       })
-      .then(setWorkspace)
+      .then((ws) => {
+        setWorkspace(ws);
+        openTab({ id: ws.id, name: ws.name });
+      })
       .catch((e) => setError(e.message));
-  }, [params.id]);
+  }, [params.id, openTab]);
+
+  useEffect(() => {
+    if (activeId && activeId !== params.id) {
+      router.push(`/workspace/${activeId}`);
+    }
+  }, [activeId, params.id, router]);
 
   if (error) {
     return (
@@ -40,5 +53,12 @@ export default function WorkspacePage() {
     );
   }
 
-  return <WorkspaceShell workspaceId={workspace.id} />;
+  return (
+    <div className="h-screen w-screen flex flex-col">
+      <WorkspaceTabs />
+      <div className="flex-1 overflow-hidden">
+        <WorkspaceShell workspaceId={workspace.id} />
+      </div>
+    </div>
+  );
 }
