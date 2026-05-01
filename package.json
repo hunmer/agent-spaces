@@ -1,0 +1,18 @@
+{
+  "name": "agent-spaces",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @agent-spaces/server dev\" \"pnpm --filter @agent-spaces/web dev\"",
+    "build": "pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build && pnpm --filter @agent-spaces/web build",
+    "lint": "pnpm -r lint",
+    "clean": "rm -rf packages/*/dist packages/*/.next"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

@@ -102,8 +102,29 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 1 is complete; Phase 2 Architecture Definition is next. |
-| Where am I going? | Define architecture, MVP scope, backend plan, frontend plan, and verification plan. |
-| What's the goal? | Create an actionable implementation plan for the PRD-defined local multi-agent collaborative coding workspace. |
-| What have I learned? | See `findings.md` for PRD requirements, supplied library candidates, decisions, risks, and open questions. |
-| What have I done? | Created `task_plan.md`, `findings.md`, and `progress.md` from `PRD.md`, then added supplemental technology links. |
+| Where am I? | M1 complete, ready for M2 |
+| Where am I going? | M2: Workspace + File System (CRUD, file tree, Monaco Editor, .agentspace) |
+| What's the goal? | Build the multi-agent collaborative coding workspace, milestone by milestone |
+| What have I learned? | FlexLayout v0.9 uses flat global attributes (tabSetEnableTabStrip etc), not nested config objects. Next.js 16 + Turbopack works with flexlayout-react via transpilePackages. |
+| What have I done? | M1: monorepo scaffold, shared types, Express server with workspace CRUD, Next.js + FlexLayout shell, basic routing |
+
+### M1 Implementation (2026-05-01)
+- **Status:** complete
+- Actions taken:
+  - 创建 pnpm monorepo 根配置 (package.json, pnpm-workspace.yaml, tsconfig.base.json, .gitignore, .npmrc)
+  - 创建 @agent-spaces/shared 包 (7 个类型文件, 编译通过)
+  - 创建 @agent-spaces/server 包 (Express + WebSocket, workspace CRUD API, JSON 持久化)
+  - 创建 @agent-spaces/web 包 (Next.js 16 + TailwindCSS + shadcn/ui + FlexLayout + Zustand)
+  - 实现首页 (workspace 列表 + 创建表单)
+  - 实现 workspace 页面 (FlexLayout shell: 左面板 Channels/Issues, 右面板 Editor/Chat/IssueDetail, 底部 dock Terminal/Git)
+  - 配置 Next.js rewrites 代理 API 到后端 (避免跨域)
+  - 验证全栈启动: server health OK, web 首页渲染, workspace CRUD 正常
+- Files created:
+  - 根: package.json, pnpm-workspace.yaml, tsconfig.base.json, .gitignore, .npmrc
+  - packages/shared/: package.json, tsconfig.json, src/index.ts, src/types/*.ts (7 files)
+  - packages/server/: package.json, tsconfig.json, src/app.ts, src/routes/workspace.ts, src/services/workspace.ts, src/storage/json-store.ts, src/storage/workspace-store.ts
+  - packages/web/: package.json (Next.js 16), next.config.ts, src/app/page.tsx, src/app/layout.tsx, src/app/workspace/[id]/page.tsx, src/components/layout/workspace-shell.tsx
+- Errors:
+  - FlexLayout v0.9 global 属性用扁平结构 (tabSetEnableTabStrip), 不是嵌套对象 (tabSetConfig: { enableTabStrip })
+  - pnpm filter 不识别 web 包名直到改名为 @agent-spaces/web
+  - pnpm add 默认安装到运行目录而非 filter 指定的包
