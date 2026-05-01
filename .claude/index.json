@@ -1,0 +1,165 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-05-02T01:07:33+08:00",
+  "project": {
+    "name": "agent-spaces",
+    "type": "pnpm-monorepo",
+    "language": "TypeScript",
+    "description": "多 Agent 协同编程平台"
+  },
+  "modules": [
+    {
+      "name": "shared",
+      "path": "packages/shared",
+      "packageId": "@agent-spaces/shared",
+      "language": "TypeScript",
+      "role": "前后端共享类型定义",
+      "entry": "src/index.ts",
+      "types": [
+        "Workspace", "AgentConfig", "CreateWorkspaceInput",
+        "Issue", "IssueStatus", "CreateIssueInput",
+        "Task", "TaskStatus", "TaskResult",
+        "AgentSession", "AgentSessionStatus",
+        "Channel", "Message", "Attachment",
+        "FileNode",
+        "GitFileStatus", "GitStatusResult", "GitLogEntry", "GitDiffResult",
+        "WSEvent", "ClientEventMap", "ServerEventMap"
+      ],
+      "api": [],
+      "tests": [],
+      "importantPaths": [
+        "packages/shared/src/index.ts",
+        "packages/shared/src/types/events.ts"
+      ],
+      "claudeMd": "packages/shared/CLAUDE.md",
+      "coverage": {
+        "scanned": 9,
+        "total": 9,
+        "percentage": 100,
+        "gaps": []
+      }
+    },
+    {
+      "name": "server",
+      "path": "packages/server",
+      "packageId": "@agent-spaces/server",
+      "language": "TypeScript",
+      "role": "Express REST API + WebSocket + Agent 编排 + PTY + Git",
+      "entry": "src/app.ts",
+      "types": [],
+      "api": [
+        "GET /api/health",
+        "GET|POST /api/workspaces",
+        "GET|PUT|DELETE /api/workspaces/:id",
+        "GET /api/workspaces/:id/files/tree",
+        "GET|PUT /api/workspaces/:id/files/content",
+        "GET|POST /api/workspaces/:id/channels",
+        "GET|POST /api/workspaces/:id/channels/:channelId/messages",
+        "GET|POST /api/workspaces/:id/issues",
+        "GET|PUT /api/workspaces/:id/issues/:issueId",
+        "POST /api/workspaces/:id/issues/:issueId/start",
+        "GET|POST /api/workspaces/:id/agents/start",
+        "POST /api/workspaces/:id/agents/:agentId/stop",
+        "GET /api/workspaces/:id/agents",
+        "GET /api/workspaces/:id/tasks",
+        "POST /api/workspaces/:id/tasks/:taskId/retry",
+        "POST /api/workspaces/:id/tasks/:taskId/cancel",
+        "GET /api/workspaces/:id/git/status",
+        "GET /api/workspaces/:id/git/diff",
+        "GET /api/workspaces/:id/git/log"
+      ],
+      "wsEvents": {
+        "clientToServer": [
+          "terminal.create", "terminal.input", "terminal.resize", "terminal.close",
+          "channel.message", "agent.start", "agent.stop"
+        ],
+        "serverToClient": [
+          "connected",
+          "terminal.created", "terminal.output", "terminal.closed",
+          "channel.message", "channel.updated",
+          "agent.started", "agent.status_changed", "agent.output", "agent.completed", "agent.error",
+          "issue.created", "issue.updated", "issue.status_changed",
+          "task.created", "task.updated", "task.status_changed", "task.output"
+        ]
+      },
+      "tests": [],
+      "importantPaths": [
+        "packages/server/src/app.ts",
+        "packages/server/src/agents/scheduler-agent.ts",
+        "packages/server/src/agents/planner-agent.ts",
+        "packages/server/src/agents/reviewer-agent.ts",
+        "packages/server/src/hooks/agent-hooks.ts",
+        "packages/server/src/adapters/agent-runtime.ts",
+        "packages/server/src/adapters/git.ts",
+        "packages/server/src/ws/handler.ts",
+        "packages/server/src/ws/connection-manager.ts",
+        "packages/server/src/storage/json-store.ts"
+      ],
+      "claudeMd": "packages/server/CLAUDE.md",
+      "coverage": {
+        "scanned": 27,
+        "total": 27,
+        "percentage": 100,
+        "gaps": []
+      }
+    },
+    {
+      "name": "web",
+      "path": "packages/web",
+      "packageId": "@agent-spaces/web",
+      "language": "TypeScript/TSX",
+      "role": "Next.js 前端 SPA（IDE 布局 + 编辑器 + 终端 + 聊天 + Git）",
+      "entry": "src/app/layout.tsx",
+      "types": [],
+      "api": [],
+      "tests": [],
+      "importantPaths": [
+        "packages/web/src/app/page.tsx",
+        "packages/web/src/app/workspace/[id]/page.tsx",
+        "packages/web/src/components/layout/workspace-shell.tsx",
+        "packages/web/src/components/editor/editor-panel.tsx",
+        "packages/web/src/components/terminal/terminal-panel.tsx",
+        "packages/web/src/components/chat/chat-panel.tsx",
+        "packages/web/src/components/git/git-panel.tsx",
+        "packages/web/src/stores/editor.ts",
+        "packages/web/src/stores/terminal.ts",
+        "packages/web/src/stores/channel.ts",
+        "packages/web/src/lib/ws.ts",
+        "packages/web/next.config.ts"
+      ],
+      "claudeMd": "packages/web/CLAUDE.md",
+      "coverage": {
+        "scanned": 23,
+        "total": 23,
+        "percentage": 100,
+        "gaps": []
+      }
+    }
+  ],
+  "rootFiles": [
+    "package.json",
+    "tsconfig.base.json",
+    ".gitignore",
+    "PRD.md",
+    "task_plan.md",
+    "findings.md",
+    "progress.md"
+  ],
+  "scanCoverage": {
+    "totalSourceFiles": 83,
+    "scannedFiles": 83,
+    "coveragePercentage": 100,
+    "ignoredDirectories": [
+      "node_modules",
+      ".next",
+      "dist",
+      ".git",
+      ".agent-spaces-data"
+    ],
+    "truncated": false
+  },
+  "nextSteps": {
+    "description": "全部模块已完整扫描，无缺口",
+    "recommendedPaths": []
+  }
+}
