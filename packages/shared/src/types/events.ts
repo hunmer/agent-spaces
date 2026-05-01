@@ -37,6 +37,46 @@ export interface TerminalClosedPayload {
   exitCode?: number;
 }
 
+// ---- Agent Events ----
+
+export interface AgentStatusChangedPayload {
+  agentId: string;
+  from: string;
+  to: string;
+}
+
+export interface AgentOutputPayload {
+  agentId: string;
+  data: string;
+}
+
+export interface AgentCompletedPayload {
+  agentId: string;
+  result?: import('./task.js').TaskResult;
+  error?: string;
+}
+
+// ---- Issue Events ----
+
+export interface IssueStatusChangedPayload {
+  issueId: string;
+  from: string;
+  to: string;
+}
+
+// ---- Task Events ----
+
+export interface TaskStatusChangedPayload {
+  taskId: string;
+  from: string;
+  to: string;
+}
+
+export interface TaskOutputPayload {
+  taskId: string;
+  data: string;
+}
+
 // ---- Client → Server Event Map ----
 
 export type ClientEventMap = {
@@ -45,6 +85,8 @@ export type ClientEventMap = {
   'terminal.resize': TerminalResizePayload;
   'terminal.close': TerminalClosePayload;
   'channel.message': { channelId: string; content: string; type?: string };
+  'agent.start': { workspaceId: string; role: string; issueId?: string };
+  'agent.stop': { agentId: string };
 };
 
 // ---- Server → Client Event Map ----
@@ -56,6 +98,18 @@ export type ServerEventMap = {
   'terminal.closed': TerminalClosedPayload;
   'channel.message': import('./channel.js').Message;
   'channel.updated': import('./channel.js').Channel;
+  'agent.started': import('./agent.js').AgentSession;
+  'agent.status_changed': AgentStatusChangedPayload;
+  'agent.output': AgentOutputPayload;
+  'agent.completed': AgentCompletedPayload;
+  'agent.error': { agentId: string; error: string };
+  'issue.created': import('./issue.js').Issue;
+  'issue.updated': import('./issue.js').Issue;
+  'issue.status_changed': IssueStatusChangedPayload;
+  'task.created': import('./task.js').Task;
+  'task.updated': import('./task.js').Task;
+  'task.status_changed': TaskStatusChangedPayload;
+  'task.output': TaskOutputPayload;
 };
 
 export type ClientEventName = keyof ClientEventMap;

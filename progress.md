@@ -102,11 +102,11 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | M1 complete, ready for M2 |
-| Where am I going? | M2: Workspace + File System (CRUD, file tree, Monaco Editor, .agentspace) |
+| Where am I? | M5 complete, ready for M6 |
+| Where am I going? | M6: Issue + Task Management (UI panels, state machine, CRUD) |
 | What's the goal? | Build the multi-agent collaborative coding workspace, milestone by milestone |
-| What have I learned? | FlexLayout v0.9 uses flat global attributes (tabSetEnableTabStrip etc), not nested config objects. Next.js 16 + Turbopack works with flexlayout-react via transpilePackages. |
-| What have I done? | M1: monorepo scaffold, shared types, Express server with workspace CRUD, Next.js + FlexLayout shell, basic routing |
+| What have I learned? | Agent orchestration chain: Scheduler → Planner → Executor → Reviewer, connected via hooks. Mock runtime simulates execution for MVP. |
+| What have I done? | M5: agent system core — storage, services, 4 agent roles, hook chain, WS events, REST routes |
 
 ### M1 Implementation (2026-05-01)
 - **Status:** complete
@@ -236,3 +236,44 @@
 - Errors:
   - Express Router mergeParams 不推断父路由参数类型 → 用 Request<Params> 泛型
   - ws.on() 返回值类型不匹配 useEffect cleanup → 包装为 () => unsub()
+
+### M5 Implementation (2026-05-02)
+- **Status:** complete
+- Actions taken:
+  - 扩展 shared events 类型 (agent/issue/task WS events)
+  - 创建 JSON 存储层 (agent-store, issue-store, task-store)
+  - 创建 Agent/Issue/Task services (CRUD + lifecycle + status transitions)
+  - 创建 Agent runtime adapter (MockAgentRuntime for MVP)
+  - 创建 Agent roles:
+    - Scheduler: 10s 周期检查未完成 issue, 自动唤醒 Planner
+    - Planner: 接收 issue → 创建 tasks → 分配 Executor
+    - Executor: mock 执行 task → hook 触发 reviewer
+    - Reviewer: mock 审核 → approve/changes_requested → 更新 issue 状态
+  - 创建 Hook 系统 (executor complete → reviewer chain)
+  - 创建 Issue/Agent REST routes
+  - 集成到 app.ts 和 WS handler (WS 连接时自动启动 scheduler)
+- Files created:
+  - packages/shared/src/types/events.ts (扩展 agent/issue/task 事件)
+  - packages/server/src/storage/agent-store.ts
+  - packages/server/src/storage/issue-store.ts
+  - packages/server/src/storage/task-store.ts
+  - packages/server/src/services/agent.ts
+  - packages/server/src/services/issue.ts
+  - packages/server/src/services/task.ts
+  - packages/server/src/adapters/agent-runtime.ts
+  - packages/server/src/agents/agent-context.ts
+  - packages/server/src/agents/scheduler-agent.ts
+  - packages/server/src/agents/planner-agent.ts
+  - packages/server/src/agents/reviewer-agent.ts
+  - packages/server/src/hooks/agent-hooks.ts
+  - packages/server/src/routes/agent.ts
+  - packages/server/src/routes/issue.ts
+- Files modified:
+  - packages/server/src/app.ts (added issue + agent routes)
+  - packages/server/src/ws/handler.ts (added agent handlers + scheduler auto-start)
+- Verification:
+  - TypeScript: server type-check clean
+  - Server startup: OK
+  - Issue CRUD: create OK, list OK
+  - Agent session: create OK, list OK
+  - Health endpoint: OK

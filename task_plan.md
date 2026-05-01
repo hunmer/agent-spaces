@@ -4,7 +4,7 @@
 Build the multi-agent collaborative coding workspace, milestone by milestone.
 
 ## Current Phase
-M4 Complete — Ready for M5
+M5 Complete — Ready for M6
 
 ## Phases
 
@@ -22,6 +22,16 @@ M4 Complete — Ready for M5
 
 ### M4: Channel + Message
 - Status: complete
+
+### M5: Agent System (Core)
+- Status: complete
+- Sub-phases:
+  - [x] M5.1: Shared types + Storage (agent/issue/task stores)
+  - [x] M5.2: Agent/Issue/Task services + Agent routes
+  - [x] M5.3: Agent runtime adapter (mock implementation)
+  - [x] M5.4: Agent roles (Scheduler, Planner, Executor, Reviewer)
+  - [x] M5.5: Hook system (executor→planner→reviewer chain)
+  - [x] M5.6: WS events + app.ts integration
 
 ## Key Questions
 (See findings.md for full list)

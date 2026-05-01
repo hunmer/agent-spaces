@@ -4,10 +4,35 @@ import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
+import { startScheduler } from '../agents/scheduler-agent.js';
+import * as agentService from '../services/agent.js';
+import { runPlanner } from '../agents/planner-agent.js';
+import type { AgentContext } from '../agents/agent-context.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
 const handlers = new Map<string, EventHandler>();
+
+// Track which workspaces have schedulers running
+const activeSchedulers = new Set<string>();
+
+function ensureScheduler(workspaceId: string, ctx: AgentContext) {
+  if (!activeSchedulers.has(workspaceId)) {
+    activeSchedulers.add(workspaceId);
+    startScheduler(workspaceId, ctx);
+    console.log(`[ws] scheduler started for workspace ${workspaceId}`);
+  }
+}
+
+function makeContext(workspaceId: string): AgentContext {
+  return {
+    workspaceId,
+    broadcast: (event, data) => broadcastToWorkspace(workspaceId, event, data),
+    getSession: (sessionId) => agentService.getById(workspaceId, sessionId),
+    updateSessionStatus: (sessionId, status, extra) =>
+      agentService.updateStatus(workspaceId, sessionId, status, extra),
+  };
+}
 
 export function registerHandler(event: string, handler: EventHandler) {
   handlers.set(event, handler);
@@ -15,6 +40,9 @@ export function registerHandler(event: string, handler: EventHandler) {
 
 export function handleConnection(ws: WebSocket, workspaceId: string) {
   addConnection(ws, workspaceId);
+
+  const ctx = makeContext(workspaceId);
+  ensureScheduler(workspaceId, ctx);
 
   ws.send(JSON.stringify({
     event: 'connected',
@@ -59,6 +87,28 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   if (!getChannel(workspaceId, channelId)) return;
   const message = createMessage(workspaceId, channelId, { senderId: 'user', content, type: type as any });
   broadcastToWorkspace(workspaceId, 'channel.message', message);
+});
+
+// Register agent handlers
+registerHandler('agent.start', (_ws, workspaceId, data) => {
+  const { role, issueId } = data as { role: string; issueId?: string };
+  const ctx = makeContext(workspaceId);
+
+  if (role === 'planner' && issueId) {
+    runPlanner(workspaceId, issueId, ctx).catch((err) => {
+      console.error(`[ws] planner error:`, err);
+    });
+  }
+});
+
+registerHandler('agent.stop', (_ws, workspaceId, data) => {
+  const { agentId } = data as { agentId: string };
+  agentService.complete(workspaceId, agentId);
+  broadcastToWorkspace(workspaceId, 'agent.status_changed', {
+    agentId,
+    from: 'active',
+    to: 'completed',
+  });
 });
 
 export { broadcastToWorkspace };

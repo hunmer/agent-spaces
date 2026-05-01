@@ -5,7 +5,10 @@ import { WebSocketServer } from 'ws';
 import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
 import channelRouter from './routes/channel.js';
+import issueRouter from './routes/issue.js';
+import agentRouter from './routes/agent.js';
 import { handleConnection } from './ws/handler.js';
+import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
@@ -20,6 +23,8 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/workspaces', workspaceRouter);
 app.use('/api/workspaces/:id/files', fileRouter);
 app.use('/api/workspaces/:id/channels', channelRouter);
+app.use('/api/workspaces/:id/issues', issueRouter);
+app.use('/api/workspaces/:id/agents', agentRouter);
 
 const server = createServer(app);
 
@@ -41,3 +46,6 @@ server.listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`);
   console.log(`[server] websocket on ws://localhost:${PORT}/ws?workspaceId=...`);
 });
+
+// Start scheduler for all workspaces (lazy: started on first WS connection)
+export { startScheduler, stopScheduler };
