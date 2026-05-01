@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { Layout, Model, TabNode, IJsonModel } from "flexlayout-react";
 import "flexlayout-react/style/light.css";
+import { EditorPanel } from "@/components/editor/editor-panel";
 
 const defaultJson: IJsonModel = {
   global: {
@@ -57,7 +58,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
         case "issue-list":
           return <Placeholder name="Issues" />;
         case "editor":
-          return <Placeholder name="Code Editor" />;
+          return <EditorPanel workspaceId={workspaceId} />;
         case "chat":
           return <Placeholder name="Chat" />;
         case "issue-detail":

@@ -4,3 +4,4 @@ export * from './task.js';
 export * from './agent.js';
 export * from './channel.js';
 export * from './events.js';
+export * from './file.js';

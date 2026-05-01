@@ -128,3 +128,40 @@
   - FlexLayout v0.9 global 属性用扁平结构 (tabSetEnableTabStrip), 不是嵌套对象 (tabSetConfig: { enableTabStrip })
   - pnpm filter 不识别 web 包名直到改名为 @agent-spaces/web
   - pnpm add 默认安装到运行目录而非 filter 指定的包
+
+### M2 Implementation (2026-05-01)
+- **Status:** complete
+- Actions taken:
+  - 创建文件系统后端 API (file service + file routes + 注册到 app.ts)
+  - `GET /api/workspaces/:id/files/tree` — 递归目录列表
+  - `GET /api/workspaces/:id/files/content?path=` — 读取文件内容
+  - `PUT /api/workspaces/:id/files/content` — 写入文件内容
+  - 添加 `FileNode` 类型到 @agent-spaces/shared
+  - .agentspace 自动初始化 (skills/, agents/, tasks/, cache/, logs/, claude.md)
+  - 创建 editor store (Zustand: 文件树加载、文件打开/保存/关闭、内容修改)
+  - 创建 FileTree 组件 (递归树、文件夹展开/收起、文件点击)
+  - 创建 EditorTabs 组件 (多文件 tab 切换、修改标记、关闭)
+  - 创建 CodeEditor 组件 (Monaco Editor 集成、语言检测、Cmd+S 保存)
+  - 创建 EditorPanel 组件 (FileTree + CodeEditor 组合)
+  - 集成 EditorPanel 到 FlexLayout workspace-shell
+- Files created:
+  - packages/shared/src/types/file.ts
+  - packages/server/src/services/file.ts
+  - packages/server/src/routes/file.ts
+  - packages/web/src/stores/editor.ts
+  - packages/web/src/components/editor/file-tree.tsx
+  - packages/web/src/components/editor/editor-tabs.tsx
+  - packages/web/src/components/editor/code-editor.tsx
+  - packages/web/src/components/editor/editor-panel.tsx
+- Files modified:
+  - packages/shared/src/types/index.ts (added file re-export)
+  - packages/server/src/app.ts (added file routes, increased json limit)
+  - packages/server/src/services/workspace.ts (added agentspace init)
+  - packages/web/src/components/layout/workspace-shell.tsx (Editor panel → EditorPanel)
+- Verification:
+  - Server health: OK
+  - File tree API: returns correct directory structure
+  - File content read: reads file content correctly
+  - File content write: writes and persists to disk
+  - .agentspace: creates all subdirectories and claude.md
+  - TypeScript: all packages type-check clean
