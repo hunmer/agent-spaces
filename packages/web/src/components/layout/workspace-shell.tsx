@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions } from "flexlayout-react";
 import "flexlayout-react/style/light.css";
 import { EditorPanel } from "@/components/editor/editor-panel";
+import { CodeEditor } from "@/components/editor/code-editor";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
 import { ChannelList } from "@/components/chat/channel-list";
 import { ChatPanel } from "@/components/chat/chat-panel";
@@ -13,6 +14,7 @@ import { GitPanel } from "@/components/git/git-panel";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
+import { useEditorStore } from "@/stores/editor";
 import type { Issue, Task } from "@agent-spaces/shared";
 
 const defaultJson: IJsonModel = {
@@ -46,6 +48,7 @@ const defaultJson: IJsonModel = {
         type: "tabset",
         weight: 0.75,
         children: [
+          { type: "tab", name: "Code Editor", component: "code-editor", id: "code-editor" },
           { type: "tab", name: "Chat", component: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
         ],
@@ -62,6 +65,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
   const issueStore = useIssueStore();
   const taskStore = useTaskStore();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
+  const activeFilePath = useEditorStore((s) => s.activeFilePath);
   const [model] = useState(() => Model.fromJson(defaultJson));
 
   // 点击 issue 时自动切换到 Issue Detail tab
@@ -73,6 +77,16 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
       }
     }
   }, [activeIssueId, model]);
+
+  // 打开文件时自动切换到 Code Editor tab
+  useEffect(() => {
+    if (activeFilePath) {
+      const node = model.getNodeById("code-editor");
+      if (node && node instanceof TabNode) {
+        model.doAction(Actions.selectTab(node.getId()));
+      }
+    }
+  }, [activeFilePath, model]);
 
   useEffect(() => {
     const ws = getWS(workspaceId);
@@ -104,6 +118,8 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
           return <IssueList workspaceId={workspaceId} />;
         case "editor":
           return <EditorPanel workspaceId={workspaceId} />;
+        case "code-editor":
+          return <CodeEditor workspaceId={workspaceId} />;
         case "chat":
           return <ChatPanel workspaceId={workspaceId} />;
         case "issue-detail":

@@ -29,6 +29,7 @@ export type Route = {
     title: string;
     link: string;
     icon?: React.ReactNode;
+    onClick?: () => void;
   }[];
 };
 
@@ -81,7 +82,17 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           key={`${route.id}-${subRoute.title}`}
                           className="h-auto"
                         >
-                          <SidebarMenuSubButton render={<Link href={subRoute.link} prefetch={true} className="flex items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />}>{subRoute.title}</SidebarMenuSubButton>
+                          <SidebarMenuSubButton
+                          render={
+                            subRoute.onClick
+                              ? <button
+                                  type="button"
+                                  onClick={subRoute.onClick}
+                                  className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                                />
+                              : <Link href={subRoute.link} prefetch={true} className="flex items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
+                          }
+                        >{subRoute.title}</SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>

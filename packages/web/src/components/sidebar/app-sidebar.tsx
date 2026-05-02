@@ -15,8 +15,10 @@ import {
   Home,
   FolderOpen,
   Settings,
+  Bot,
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
+import { AgentDialog } from "@/components/sidebar/agent-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
@@ -57,6 +59,7 @@ export function DashboardSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/workspaces")
@@ -90,6 +93,7 @@ export function DashboardSidebar() {
       link: "#",
       subs: [
         { title: "General", link: "#" },
+        { title: "Agents", link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
         { title: "Webhooks", link: "#" },
         { title: "Custom Fields", link: "#" },
       ],
@@ -135,6 +139,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <TeamSwitcher teams={teams} />
       </SidebarFooter>
+      <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
     </Sidebar>
   );
 }
