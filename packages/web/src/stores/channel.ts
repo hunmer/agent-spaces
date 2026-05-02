@@ -9,6 +9,7 @@ interface ChannelStore {
 
   loadChannels: (workspaceId: string) => Promise<void>;
   createChannel: (workspaceId: string, name: string, type?: Channel['type']) => Promise<void>;
+  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members'>>) => Promise<void>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   sendMessage: (workspaceId: string, channelId: string, content: string) => void;
@@ -34,6 +35,16 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     });
     const channel: Channel = await res.json();
     set((s) => ({ channels: [...s.channels, channel] }));
+  },
+
+  updateChannel: async (workspaceId, channelId, data) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const updated: Channel = await res.json();
+    set((s) => ({ channels: s.channels.map((c) => (c.id === channelId ? updated : c)) }));
   },
 
   setActiveChannel: (id) => set({ activeChannelId: id }),

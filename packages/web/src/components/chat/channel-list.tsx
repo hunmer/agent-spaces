@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useChannelStore } from '@/stores/channel';
 import { Hash, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ChannelDialog } from './channel-dialog';
+
+import type { Channel } from '@agent-spaces/shared';
 
 interface ChannelListProps {
   workspaceId: string;
@@ -12,21 +15,21 @@ interface ChannelListProps {
 
 export function ChannelList({ workspaceId }: ChannelListProps) {
   const { channels, activeChannelId, loadChannels, createChannel, setActiveChannel } = useChannelStore();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     loadChannels(workspaceId);
   }, [workspaceId, loadChannels]);
 
-  const handleCreate = () => {
-    const name = prompt('Channel name:');
-    if (name?.trim()) createChannel(workspaceId, name.trim());
+  const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
+    await createChannel(workspaceId, data.name, data.type);
   };
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b">
         <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Channels</span>
-        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleCreate}>
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setDialogOpen(true)}>
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -45,6 +48,13 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
           </button>
         ))}
       </div>
+
+      <ChannelDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        workspaceId={workspaceId}
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 }

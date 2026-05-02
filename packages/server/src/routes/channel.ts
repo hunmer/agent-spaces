@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { listChannels, createChannel, getChannel } from '../services/channel.js';
+import { listChannels, createChannel, getChannel, updateChannel } from '../services/channel.js';
 import { listMessages, createMessage } from '../services/message.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
 
@@ -22,6 +22,16 @@ router.post('/', (req: Request<ChannelParams>, res: Response) => {
   const channel = createChannel(req.params.id, { name, type: type || 'general', members });
   broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   res.status(201).json(channel);
+});
+
+// PUT /api/workspaces/:id/channels/:channelId
+router.put('/:channelId', (req: Request<ChannelParams>, res: Response) => {
+  const { id, channelId } = req.params;
+  const { name, type, members } = req.body;
+  const channel = updateChannel(id, channelId!, { name, type, members });
+  if (!channel) { res.status(404).json({ error: 'channel not found' }); return; }
+  broadcastToWorkspace(id, 'channel.updated', channel);
+  res.json(channel);
 });
 
 // GET /api/workspaces/:id/channels/:channelId/messages
