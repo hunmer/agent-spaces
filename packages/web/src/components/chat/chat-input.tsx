@@ -26,7 +26,7 @@ import {
   IconWand,
   IconWorld,
 } from "@tabler/icons-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -56,6 +56,10 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
   const [selectedAgent, setSelectedAgent] = useState("Agent");
   const [selectedPerformance, setSelectedPerformance] = useState("High");
   const [autoMode, setAutoMode] = useState(false);
+  const isProcessingRef = useRef(isProcessing);
+  isProcessingRef.current = isProcessing;
+  const onSendRef = useRef(onSend);
+  onSendRef.current = onSend;
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
     noClick: true,
@@ -131,11 +135,11 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
             const hasPopup = document.querySelector('.suggestion-menu');
             if (hasPopup) return false;
             event.preventDefault();
-            if (!editor || isProcessing) return true;
+            if (!editor || isProcessingRef.current) return true;
             const text = editor.getText().trim();
             if (!text) return true;
             const mentions = collectMentionIds(editor.getJSON());
-            onSend(editor.getHTML(), mentions);
+            onSendRef.current(editor.getHTML(), mentions);
             editor.commands.clearContent();
             return true;
           }
@@ -144,7 +148,7 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
       },
       content: "",
     },
-    [mentionExtension, slashExtension, channelName, onSend],
+    [mentionExtension, slashExtension, channelName],
   );
 
   const handleSubmit = useCallback(() => {
@@ -156,7 +160,10 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
     editor.commands.clearContent();
   }, [editor, onSend]);
 
-  const canSubmit = !!editor?.getText().trim();
+  const canSubmit = useEditorState({
+    editor,
+    selector: (ctx) => !!ctx.editor?.getText().trim(),
+  });
 
   const chatActions = (
     <>

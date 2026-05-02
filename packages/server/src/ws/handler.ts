@@ -157,7 +157,7 @@ async function runMentionedAgent(
     });
 
     const reply = updateMessage(workspaceId, channelId, pending.id, {
-      content: result.success ? result.summary : result.error || result.summary,
+      content: result.success ? result.output.join('\n') : result.error || result.output.join('\n'),
       type: 'text',
       status: result.success ? 'completed' : 'error',
     });
