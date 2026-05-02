@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +21,7 @@ import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { TeamSwitcher } from "@/components/sidebar/team-switcher";
+import type { Workspace } from "@agent-spaces/shared";
 
 const sampleNotifications = [
   {
@@ -45,32 +47,6 @@ const sampleNotifications = [
   },
 ];
 
-const dashboardRoutes: Route[] = [
-  {
-    id: "home",
-    title: "Home",
-    icon: <Home className="size-4" />,
-    link: "#",
-  },
-  {
-    id: "workspaces",
-    title: "Workspaces",
-    icon: <FolderOpen className="size-4" />,
-    link: "/",
-  },
-  {
-    id: "settings",
-    title: "Settings",
-    icon: <Settings className="size-4" />,
-    link: "#",
-    subs: [
-      { title: "General", link: "#" },
-      { title: "Webhooks", link: "#" },
-      { title: "Custom Fields", link: "#" },
-    ],
-  },
-];
-
 const teams = [
   { id: "1", name: "Alpha Inc.", logo: Logo, plan: "Free" },
   { id: "2", name: "Beta Corp.", logo: Logo, plan: "Free" },
@@ -80,6 +56,45 @@ const teams = [
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+
+  useEffect(() => {
+    fetch("/api/workspaces")
+      .then((r) => r.json())
+      .then(setWorkspaces)
+      .catch(() => {});
+  }, []);
+
+  const dashboardRoutes: Route[] = useMemo(() => [
+    {
+      id: "home",
+      title: "Home",
+      icon: <Home className="size-4" />,
+      link: "/",
+    },
+    {
+      id: "workspaces",
+      title: "Workspaces",
+      icon: <FolderOpen className="size-4" />,
+      link: "/",
+      subs: workspaces.map((ws) => ({
+        title: ws.name,
+        link: `/workspace/${ws.id}`,
+        icon: <FolderOpen className="size-4" />,
+      })),
+    },
+    {
+      id: "settings",
+      title: "Settings",
+      icon: <Settings className="size-4" />,
+      link: "#",
+      subs: [
+        { title: "General", link: "#" },
+        { title: "Webhooks", link: "#" },
+        { title: "Custom Fields", link: "#" },
+      ],
+    },
+  ], [workspaces]);
 
   return (
     <Sidebar variant="floating" collapsible="icon">

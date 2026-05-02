@@ -120,15 +120,6 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
           </div>
         )}
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border bg-[#181e25]">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <p className="text-sm text-white/50">
-            Agent Spaces — Local Multi-Agent Collaborative Coding Platform
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
