@@ -15,6 +15,7 @@ import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
 import { useEditorStore } from "@/stores/editor";
+import { useChannelStore } from "@/stores/channel";
 import type { Issue, Task } from "@agent-spaces/shared";
 
 const defaultJson: IJsonModel = {
@@ -49,7 +50,7 @@ const defaultJson: IJsonModel = {
         weight: 0.75,
         children: [
           { type: "tab", name: "Code Editor", component: "code-editor", id: "code-editor" },
-          { type: "tab", name: "Chat", component: "chat" },
+          { type: "tab", name: "Chat", component: "chat", id: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
         ],
       },
@@ -66,6 +67,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
   const taskStore = useTaskStore();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
   const activeFilePath = useEditorStore((s) => s.activeFilePath);
+  const activeChannelId = useChannelStore((s) => s.activeChannelId);
   const [model] = useState(() => Model.fromJson(defaultJson));
 
   // 点击 issue 时自动切换到 Issue Detail tab
@@ -77,6 +79,16 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
       }
     }
   }, [activeIssueId, model]);
+
+  // 选中 channel 时自动切换到 Chat tab
+  useEffect(() => {
+    if (activeChannelId) {
+      const node = model.getNodeById("chat");
+      if (node && node instanceof TabNode) {
+        model.doAction(Actions.selectTab(node.getId()));
+      }
+    }
+  }, [activeChannelId, model]);
 
   // 打开文件时自动切换到 Code Editor tab
   useEffect(() => {

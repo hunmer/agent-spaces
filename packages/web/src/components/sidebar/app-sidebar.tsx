@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -57,7 +58,9 @@ const teams = [
 
 export function DashboardSidebar() {
   const { state } = useSidebar();
+  const pathname = usePathname();
   const isCollapsed = state === "collapsed";
+  const isWorkspace = pathname.startsWith("/workspace/");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
 
@@ -98,10 +101,14 @@ export function DashboardSidebar() {
         { title: "Custom Fields", link: "#" },
       ],
     },
-  ], [workspaces]);
+  ], [workspaces, setAgentDialogOpen]);
 
   return (
-    <Sidebar variant="floating" collapsible="icon">
+    <Sidebar
+      variant="floating"
+      collapsible="icon"
+      className={cn(isWorkspace && "bg-[#f2f3f5]")}
+    >
       <SidebarHeader
         className={cn(
           "flex rounded-xl border border-border bg-card mx-2 mt-2 px-3 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
@@ -114,7 +121,7 @@ export function DashboardSidebar() {
           <Logo className="h-8 w-8" />
           {!isCollapsed && (
             <span className="font-semibold text-black dark:text-white">
-              Acme
+              Spaces
             </span>
           )}
         </a>

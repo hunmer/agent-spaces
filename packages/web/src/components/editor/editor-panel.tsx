@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
-import { FileTree } from "./file-tree";
+import { useEffect, useState } from "react";
+import { FileTree, FileTreeFolder, FileTreeFile } from "./file-tree";
 import { useEditorStore } from "@/stores/editor";
+import type { FileNode } from "@agent-spaces/shared";
 import { RefreshCw } from "lucide-react";
+
+function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
+  return nodes.map((node) =>
+    node.type === "directory" ? (
+      <FileTreeFolder key={node.path} path={node.path} name={node.name}>
+        {node.children && <FileTreeNodes nodes={node.children} />}
+      </FileTreeFolder>
+    ) : (
+      <FileTreeFile key={node.path} path={node.path} name={node.name} />
+    ),
+  );
+}
 
 interface EditorPanelProps {
   workspaceId: string;
@@ -11,6 +24,7 @@ interface EditorPanelProps {
 
 export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const { tree, treeLoading, loadTree, openFile } = useEditorStore();
+  const [selectedPath, setSelectedPath] = useState<string>();
 
   useEffect(() => {
     loadTree(workspaceId);
@@ -35,10 +49,14 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           </div>
         )}
         <FileTree
-          nodes={tree}
-          workspaceId={workspaceId}
-          onFileSelect={(path) => openFile(workspaceId, path)}
-        />
+          selectedPath={selectedPath}
+          onFileSelect={(path) => {
+            setSelectedPath(path);
+            openFile(workspaceId, path);
+          }}
+        >
+          <FileTreeNodes nodes={tree} />
+        </FileTree>
       </div>
     </div>
   );
