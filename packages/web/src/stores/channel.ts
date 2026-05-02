@@ -12,11 +12,11 @@ interface ChannelStore {
   updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members'>>) => Promise<void>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
-  sendMessage: (workspaceId: string, channelId: string, content: string) => void;
+  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[]) => void;
   addMessage: (channelId: string, message: Message) => void;
 }
 
-export const useChannelStore = create<ChannelStore>((set, get) => ({
+export const useChannelStore = create<ChannelStore>((set) => ({
   channels: [],
   activeChannelId: null,
   messages: {},
@@ -55,9 +55,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }));
   },
 
-  sendMessage: (workspaceId, channelId, content) => {
+  sendMessage: (workspaceId, channelId, content, mentions = []) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content });
+    ws.send('channel.message', { channelId, content, mentions });
   },
 
   addMessage: (channelId, message) => {

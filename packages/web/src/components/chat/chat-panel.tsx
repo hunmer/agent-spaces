@@ -15,7 +15,7 @@ import { MemberCard } from './member-card';
 import { MemberInfoDialog } from './member-info-dialog';
 import { AddMemberDialog } from './add-member-dialog';
 
-import type { Channel } from '@agent-spaces/shared';
+import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
 const channelTypeStatus: Record<Channel['type'], { label: string; status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
   general: { label: 'General', status: 'online' },
@@ -35,10 +35,12 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const [memberInfoOpen, setMemberInfoOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState('');
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [agents, setAgents] = useState<AgentConfig[]>([]);
 
   // 收集候选成员：所有频道成员去重 + workspace agents，排除当前频道已有成员
   const channel = channels.find((c) => c.id === activeChannelId);
-  const allMembers = [...new Set(channels.flatMap((c) => c.members))];
+  const agentNames = agents.filter((agent) => agent.enabled !== false).map((agent) => agent.name || agent.role);
+  const allMembers = [...new Set([...channels.flatMap((c) => c.members), ...agentNames])];
   const candidateMembers = channel ? allMembers.filter((m) => !channel.members.includes(m)) : [];
   const memberChannels = (name: string) => channels.filter((c) => c.members.includes(name)).map((c) => c.name);
   const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
@@ -48,11 +50,26 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }, [activeChannelId, workspaceId, loadMessages]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+        return res.json() as Promise<AgentConfig[]>;
+      })
+      .then(setAgents)
+      .catch((err) => {
+        if (err.name !== 'AbortError') setAgents([]);
+      });
+
+    return () => controller.abort();
+  }, [workspaceId]);
+
+  useEffect(() => {
     const ws = getWS(workspaceId);
     const unsub = ws.on('channel.message', (data: unknown) => {
       const msg = data as { channelId: string; id: string };
       if (msg.channelId === activeChannelId) {
-        addMessage(msg.channelId, data as any);
+        addMessage(msg.channelId, data as Message);
       }
     });
     return () => { unsub(); };
@@ -62,9 +79,9 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgs.length]);
 
-  const handleSend = useCallback((content: string) => {
+  const handleSend = useCallback((content: string, mentions: string[]) => {
     if (!activeChannelId) return;
-    sendMessage(workspaceId, activeChannelId, content);
+    sendMessage(workspaceId, activeChannelId, content, mentions);
   }, [workspaceId, activeChannelId, sendMessage]);
 
   if (!channel) {
@@ -112,7 +129,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         </div>
 
         {/* Input */}
-        <ChatInput channelName={channel.name} onSend={handleSend} />
+        <ChatInput channelName={channel.name} agents={agents} onSend={handleSend} />
       </div>
 
       {/* 右侧：信息面板 */}

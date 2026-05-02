@@ -14,6 +14,7 @@ export interface Message {
   senderRole?: string;
   content: string;
   type: 'text' | 'mention' | 'attachment' | 'code_ref' | 'file_ref';
+  status?: 'pending' | 'streaming' | 'completed' | 'error';
   attachments?: Attachment[];
   codeRef?: { file: string; range: [number, number] };
   createdAt: string;

@@ -28,7 +28,7 @@ export function listMessages(workspaceId: string, channelId: string, opts: Messa
 export function createMessage(
   workspaceId: string,
   channelId: string,
-  data: { senderId: string; content: string; type?: Message['type'] },
+  data: { senderId: string; content: string; type?: Message['type']; senderRole?: string; status?: Message['status'] },
 ): Message {
   const path = messageFilePath(workspaceId, channelId);
   const messages = readJsonFile<Message[]>(path) || [];
@@ -36,8 +36,10 @@ export function createMessage(
     id: uuid(),
     channelId,
     senderId: data.senderId,
+    senderRole: data.senderRole,
     content: data.content,
     type: data.type || 'text',
+    status: data.status,
     createdAt: new Date().toISOString(),
   };
   messages.push(message);

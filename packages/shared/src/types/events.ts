@@ -84,7 +84,7 @@ export type ClientEventMap = {
   'terminal.input': TerminalInputPayload;
   'terminal.resize': TerminalResizePayload;
   'terminal.close': TerminalClosePayload;
-  'channel.message': { channelId: string; content: string; type?: string };
+  'channel.message': { channelId: string; content: string; type?: string; mentions?: string[] };
   'agent.start': { workspaceId: string; role: string; issueId?: string };
   'agent.stop': { agentId: string };
 };

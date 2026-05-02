@@ -32,26 +32,36 @@ import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
-import { Extension } from "@tiptap/core";
+import { Extension, type Editor, type JSONContent } from "@tiptap/core";
 import Suggestion from "@tiptap/suggestion";
-import tippy from "tippy.js";
+import tippy, { type Instance } from "tippy.js";
 import { useDropzone } from "react-dropzone";
 
-import { USERS } from "@/lib/users";
 import { COMMANDS } from "@/lib/commands";
 import { SuggestionList } from "@/components/composer/suggestion-list";
+import type { AgentConfig } from "@agent-spaces/shared";
+
+type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled">;
+type EditorRange = { from: number; to: number };
+type SuggestionRendererProps = {
+  editor: Editor;
+  clientRect?: (() => DOMRect | null) | null;
+  items: Array<Record<string, unknown>>;
+  command: (item: Record<string, unknown>) => void;
+};
 
 interface ChatInputProps {
   channelName: string;
-  onSend: (message: string) => void;
+  agents: MentionedAgent[];
+  onSend: (message: string, mentions: string[]) => void;
 }
 
 function createSuggestionRenderer() {
   let component: ReactRenderer | null = null;
-  let popup: any = null;
+  let popup: Instance[] | null = null;
 
   return {
-    onStart(props: any) {
+    onStart(props: SuggestionRendererProps) {
       component = new ReactRenderer(SuggestionList, {
         props,
         editor: props.editor,
@@ -67,15 +77,15 @@ function createSuggestionRenderer() {
         placement: "bottom-start",
       });
     },
-    onUpdate(props: any) {
+    onUpdate(props: SuggestionRendererProps) {
       component?.updateProps(props);
       if (popup?.[0] && props.clientRect) {
         popup[0].setProps({ getReferenceClientRect: props.clientRect });
       }
     },
-    onKeyDown(props: any) {
+    onKeyDown(props: { event: KeyboardEvent }) {
       if (component?.ref && typeof component.ref === 'object' && 'onKeyDown' in component.ref) {
-        return (component.ref as any).onKeyDown(props);
+        return (component.ref as { onKeyDown: (props: { event: KeyboardEvent }) => boolean }).onKeyDown(props);
       }
       return false;
     },
@@ -108,8 +118,8 @@ function createSlashExtension(openFilePicker: () => void) {
             range,
             props,
           }: {
-            editor: any;
-            range: { from: number; to: number };
+            editor: Editor;
+            range: EditorRange;
             props: { id: string; title: string; description: string };
           }) => {
             editor.chain().focus().deleteRange(range).run();
@@ -143,7 +153,7 @@ function createSlashExtension(openFilePicker: () => void) {
   });
 }
 
-export function ChatInput({ channelName, onSend }: ChatInputProps) {
+export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
   const [selectedModel, setSelectedModel] = useState("Local");
   const [selectedAgent, setSelectedAgent] = useState("Agent");
   const [selectedPerformance, setSelectedPerformance] = useState("High");
@@ -164,14 +174,15 @@ export function ChatInput({ channelName, onSend }: ChatInputProps) {
           char: "@",
           items: ({ query }: { query: string }) => {
             const keyword = query.toLowerCase();
-            return USERS.filter((user) =>
-              `${user.name} ${user.email}`.toLowerCase().includes(keyword)
+            return agents.filter((agent) =>
+              agent.enabled !== false &&
+              `${agent.name} ${agent.role} ${agent.description || ""}`.toLowerCase().includes(keyword)
             )
               .slice(0, 6)
-              .map((user) => ({
-                id: user.id,
-                label: user.name,
-                email: user.email,
+              .map((agent) => ({
+                id: agent.id,
+                label: agent.name || agent.role,
+                description: `${agent.role}${agent.description ? ` · ${agent.description}` : ""}`,
               }));
           },
           command: ({
@@ -179,9 +190,9 @@ export function ChatInput({ channelName, onSend }: ChatInputProps) {
             range,
             props,
           }: {
-            editor: any;
-            range: { from: number; to: number };
-            props: Record<string, any>;
+            editor: Editor;
+            range: EditorRange;
+            props: Record<string, unknown>;
           }) => {
             editor
               .chain()
@@ -192,7 +203,7 @@ export function ChatInput({ channelName, onSend }: ChatInputProps) {
           render: () => createSuggestionRenderer(),
         },
       }),
-    []
+    [agents]
   );
 
   const slashExtension = useMemo(
@@ -232,7 +243,8 @@ export function ChatInput({ channelName, onSend }: ChatInputProps) {
     if (!editor) return;
     const text = editor.getText().trim();
     if (!text) return;
-    onSend(editor.getHTML());
+    const mentions = collectMentionIds(editor.getJSON());
+    onSend(editor.getHTML(), mentions);
     editor.commands.clearContent();
   };
 
@@ -349,4 +361,19 @@ export function ChatInput({ channelName, onSend }: ChatInputProps) {
       </div>
     </div>
   );
+}
+
+function collectMentionIds(node: JSONContent): string[] {
+  const ids = new Set<string>();
+  const walk = (current: JSONContent) => {
+    if (!current) return;
+    if (current.type === "mention" && typeof current.attrs?.id === "string") {
+      ids.add(current.attrs.id);
+    }
+    if (Array.isArray(current.content)) {
+      for (const child of current.content) walk(child);
+    }
+  };
+  walk(node);
+  return [...ids];
 }
