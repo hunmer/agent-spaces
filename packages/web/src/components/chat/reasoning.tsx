@@ -172,23 +172,3 @@ export const ReasoningContent = memo(({ className, children, ...props }: Reasoni
 Reasoning.displayName = "Reasoning"
 ReasoningTrigger.displayName = "ReasoningTrigger"
 ReasoningContent.displayName = "ReasoningContent"
-
-/** Demo component for preview */
-export default function ReasoningDemo() {
-  return (
-    <div className="w-full max-w-2xl p-6">
-      <Reasoning defaultOpen={true} duration={12}>
-        <ReasoningTrigger />
-        <ReasoningContent>
-          Let me think through this step by step... First, I need to consider the user&apos;s
-          requirements. They want a solution that is both efficient and maintainable. Looking at the
-          codebase, I can see several potential approaches: 1. **Refactor the existing module** -
-          This would minimize disruption 2. **Create a new abstraction layer** - More work but
-          cleaner long-term 3. **Use a library solution** - Fastest but adds a dependency After
-          weighing the tradeoffs, I believe option 2 provides the best balance of maintainability
-          and performance.
-        </ReasoningContent>
-      </Reasoning>
-    </div>
-  )
-}

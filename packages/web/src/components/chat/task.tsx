@@ -62,34 +62,3 @@ export const TaskContent = ({ children, className, ...props }: TaskContentProps)
     <div className="mt-4 space-y-2 border-muted border-l-2 pl-4">{children}</div>
   </CollapsibleContent>
 )
-
-/** Demo component for preview */
-export default function TaskDemo() {
-  return (
-    <div className="p-6" style={{ height: "200px" }}>
-      <Task className="w-full">
-        <TaskTrigger title="Found project files" />
-        <TaskContent>
-          <TaskItem>Searching "app/page.tsx, components structure"</TaskItem>
-          <TaskItem>
-            <span className="inline-flex items-center gap-1">
-              Read{" "}
-              <TaskItemFile>
-                <span>page.tsx</span>
-              </TaskItemFile>
-            </span>
-          </TaskItem>
-          <TaskItem>Scanning 52 files</TaskItem>
-          <TaskItem>
-            <span className="inline-flex items-center gap-1">
-              Reading files{" "}
-              <TaskItemFile>
-                <span>layout.tsx</span>
-              </TaskItemFile>
-            </span>
-          </TaskItem>
-        </TaskContent>
-      </Task>
-    </div>
-  )
-}

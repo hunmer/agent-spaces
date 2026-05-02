@@ -250,16 +250,3 @@ export const TerminalContent = ({ className, children, ...props }: TerminalConte
 function stripAnsi(value: string): string {
   return value.replace(/\u001b\[[0-9;]*m/g, "")
 }
-
-/** Demo component for preview */
-export default function TerminalDemo() {
-  const [output, setOutput] = useState(
-    "\x1b[32m✓\x1b[0m Compiled successfully in 1.2s\n\x1b[34m→\x1b[0m Building pages...\n\x1b[33m⚠\x1b[0m Warning: Large bundle size detected\n\x1b[32m✓\x1b[0m Generated 24 static pages\n\x1b[32m✓\x1b[0m Build completed",
-  )
-
-  return (
-    <div className="flex w-full max-w-2xl flex-col gap-4 p-4">
-      <Terminal output={output} isStreaming={false} onClear={() => setOutput("")} />
-    </div>
-  )
-}

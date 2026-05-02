@@ -85,23 +85,3 @@ export const Loader = ({ className, size = 16, ...props }: LoaderProps) => (
     <LoaderIcon size={size} />
   </div>
 )
-
-/** Demo component for preview */
-export default function LoaderDemo() {
-  return (
-    <div className="flex flex-col items-center justify-center gap-6 p-8">
-      <div className="flex items-center gap-4">
-        <Loader size={16} />
-        <span className="text-sm text-muted-foreground">Default (16px)</span>
-      </div>
-      <div className="flex items-center gap-4">
-        <Loader size={24} />
-        <span className="text-sm text-muted-foreground">Medium (24px)</span>
-      </div>
-      <div className="flex items-center gap-4">
-        <Loader size={32} />
-        <span className="text-sm text-muted-foreground">Large (32px)</span>
-      </div>
-    </div>
-  )
-}

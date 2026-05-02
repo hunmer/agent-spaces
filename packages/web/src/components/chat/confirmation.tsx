@@ -155,32 +155,3 @@ export type ConfirmationActionProps = ComponentProps<typeof Button>
 export const ConfirmationAction = (props: ConfirmationActionProps) => (
   <Button className="h-8 px-3 text-sm" type="button" {...props} />
 )
-
-/** Demo component for preview */
-export default function ConfirmationDemo() {
-  return (
-    <div className="w-full max-w-2xl p-6">
-      <Confirmation approval={{ id: "demo-1" }} state="approval-requested">
-        <ConfirmationTitle>
-          <ConfirmationRequest>
-            This tool wants to delete the file{" "}
-            <code className="inline rounded bg-muted px-1.5 py-0.5 text-sm">/tmp/example.txt</code>.
-            Do you approve this action?
-          </ConfirmationRequest>
-          <ConfirmationAccepted>
-            <CheckIcon className="size-4 text-green-600 dark:text-green-400" />
-            <span>You approved this tool execution</span>
-          </ConfirmationAccepted>
-          <ConfirmationRejected>
-            <XIcon className="size-4 text-destructive" />
-            <span>You rejected this tool execution</span>
-          </ConfirmationRejected>
-        </ConfirmationTitle>
-        <ConfirmationActions>
-          <ConfirmationAction variant="outline">Reject</ConfirmationAction>
-          <ConfirmationAction variant="default">Approve</ConfirmationAction>
-        </ConfirmationActions>
-      </Confirmation>
-    </div>
-  )
-}

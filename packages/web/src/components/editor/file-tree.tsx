@@ -233,28 +233,3 @@ export const FileTreeActions = ({ className, children, ...props }: FileTreeActio
     {children}
   </div>
 )
-
-/** Demo component for preview */
-export default function FileTreeDemo() {
-  const [selected, setSelected] = useState<string>()
-
-  return (
-    <div className="w-full max-w-xs p-4">
-      <FileTree
-        defaultExpanded={new Set(["src", "src/components"])}
-        selectedPath={selected}
-        onFileSelect={setSelected}
-      >
-        <FileTreeFolder path="src" name="src">
-          <FileTreeFolder path="src/components" name="components">
-            <FileTreeFile path="src/components/Button.tsx" name="Button.tsx" />
-            <FileTreeFile path="src/components/Card.tsx" name="Card.tsx" />
-          </FileTreeFolder>
-          <FileTreeFile path="src/index.ts" name="index.ts" />
-        </FileTreeFolder>
-        <FileTreeFile path="package.json" name="package.json" />
-        <FileTreeFile path="README.md" name="README.md" />
-      </FileTree>
-    </div>
-  )
-}
