@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useIssueStore } from '@/stores/issue';
 import { useTaskStore } from '@/stores/task';
+import { useChannelStore } from '@/stores/channel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,7 +20,8 @@ import { ComposerShell } from '@/components/composer/composer-shell';
 import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
 import { createSlashExtension } from '@/components/composer/create-slash-extension';
 import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
-import type { IssueStatus, TaskStatus, AgentConfig } from '@agent-spaces/shared';
+import type { IssueStatus, TaskStatus, AgentConfig, Message } from '@agent-spaces/shared';
+import { getWS } from '@/lib/ws';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
   draft: 'Draft',
@@ -65,44 +67,6 @@ const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-interface MockComment {
-  id: string;
-  senderId: string;
-  senderRole?: string;
-  content: string;
-  createdAt: string;
-}
-
-const MOCK_COMMENTS: MockComment[] = [
-  {
-    id: 'c1',
-    senderId: 'user',
-    content: '这个议题需要优先处理，涉及核心功能模块。',
-    createdAt: '2026-05-02T10:30:00Z',
-  },
-  {
-    id: 'c2',
-    senderId: 'Planner',
-    senderRole: 'planner',
-    content: '已分析完成，建议拆分为 3 个子任务：\n\n1. 数据模型重构\n2. API 接口适配\n3. 前端组件更新',
-    createdAt: '2026-05-02T10:35:00Z',
-  },
-  {
-    id: 'c3',
-    senderId: 'Executor',
-    senderRole: 'executor',
-    content: '子任务 1 已完成，正在处理子任务 2。预计 30 分钟内完成。',
-    createdAt: '2026-05-02T10:45:00Z',
-  },
-  {
-    id: 'c4',
-    senderId: 'Reviewer',
-    senderRole: 'reviewer',
-    content: '代码审查通过，建议合并。',
-    createdAt: '2026-05-02T11:00:00Z',
-  },
-];
-
 interface IssueDetailProps {
   workspaceId: string;
 }
@@ -110,7 +74,7 @@ interface IssueDetailProps {
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask } = useTaskStore();
-  const [comments, setComments] = useState<MockComment[]>(MOCK_COMMENTS);
+  const { messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage } = useChannelStore();
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [infoOpen, setInfoOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
@@ -121,8 +85,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   useEffect(() => {
     if (issue) {
       loadTasks(workspaceId, issue.id);
+      loadMessages(workspaceId, issue.channelId);
     }
-  }, [issue, workspaceId, loadTasks]);
+  }, [issue, workspaceId, loadTasks, loadMessages]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,6 +102,31 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       });
     return () => controller.abort();
   }, [workspaceId]);
+
+  useEffect(() => {
+    if (!issue) return;
+    const ws = getWS(workspaceId);
+    const channelId = issue.channelId;
+    const unsub = ws.on('channel.message', (data: unknown) => {
+      const msg = data as { channelId: string };
+      if (msg.channelId === channelId) addMessage(channelId, data as Message);
+    });
+    const unsubUpdate = ws.on('channel.message.updated', (data: unknown) => {
+      const msg = data as { channelId: string };
+      if (msg.channelId === channelId) updateMessage(channelId, data as Message);
+    });
+    const unsubDelete = ws.on('channel.message.deleted', (data: unknown) => {
+      const msg = data as { channelId: string; messageId: string };
+      if (msg.channelId === channelId) deleteMessage(channelId, msg.messageId);
+    });
+    const unsubCleared = ws.on('channel.messages.cleared', (data: unknown) => {
+      const msg = data as { channelId: string };
+      if (msg.channelId === channelId) {
+        useChannelStore.setState((s) => ({ messages: { ...s.messages, [channelId]: [] } }));
+      }
+    });
+    return () => { unsub(); unsubUpdate(); unsubDelete(); unsubCleared(); };
+  }, [issue, workspaceId, addMessage, updateMessage, deleteMessage]);
 
   const mentionExtension = useMemo(
     () =>
@@ -194,20 +184,15 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   });
 
   const handleSendComment = useCallback(() => {
-    if (!editor) return;
+    if (!editor || !issue) return;
     const text = editor.getText().trim();
     if (!text) return;
-    setComments(prev => [...prev, {
-      id: `c${Date.now()}`,
-      senderId: 'user',
-      content: text,
-      createdAt: new Date().toISOString(),
-    }]);
+    sendMessage(workspaceId, issue.channelId, text);
     editor.commands.clearContent();
     setTimeout(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }, 50);
-  }, [editor]);
+  }, [editor, issue, workspaceId, sendMessage]);
 
   const canSubmit = !!editor?.getText().trim();
 
@@ -220,6 +205,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }
 
   const issueTasks = tasks.filter((t) => t.issueId === issue.id);
+  const channelMessages = messages[issue.channelId] ?? [];
   const members = issue.members ?? [];
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
   const memberIds = new Set(members);
@@ -354,7 +340,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
           {/* Comments */}
           <div className="px-4 pt-2 pb-4 border-t">
-            <h3 className="text-sm font-medium mb-3">Comments ({comments.length})</h3>
+            <h3 className="text-sm font-medium mb-3">Comments ({channelMessages.length})</h3>
             {issue.description && (
               <div className="pb-3 border-b">
                 <div className="flex items-start gap-2.5">
@@ -376,7 +362,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </div>
             )}
 
-            {comments.map((c) => (
+            {channelMessages.map((c) => (
               <div key={c.id} className="py-3 border-b last:border-b-0">
                 <div className="flex items-start gap-2.5">
                   <div className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-medium shrink-0 ${

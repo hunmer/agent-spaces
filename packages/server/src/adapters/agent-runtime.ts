@@ -48,7 +48,12 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
   async execute(prompt: string, workingDir: string, options?: AgentRunOptions): Promise<AgentRunResult> {
     this.abortController = new AbortController();
     const output: string[] = [];
-    output.push(`Running open-agent-sdk in ${workingDir || process.cwd()}`);
+    const cwd = workingDir || process.cwd();
+    const startTime = Date.now();
+    const d = (msg: string) => console.log(`[agent] ${msg}`);
+
+    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'default'} model=${this.config.model ?? 'default'} baseURL=${this.config.baseURL ?? 'default'} permissionMode=${this.config.permissionMode ?? 'bypassPermissions'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.tools?.join(',') ?? 'all'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
       this.agent = createAgent({
@@ -56,7 +61,7 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
         model: this.config.model,
         apiKey: this.config.apiKey,
         baseURL: this.config.baseURL,
-        cwd: workingDir || process.cwd(),
+        cwd,
         maxTurns: options?.maxTurns,
         allowedTools: options?.tools,
         additionalDirectories: options?.sandboxDirs,
@@ -64,28 +69,25 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
         abortController: this.abortController,
       });
 
+      d('agent created, sending prompt...');
       const result = await this.agent.prompt(prompt);
-      const tokenCount = result.usage.input_tokens + result.usage.output_tokens;
+      const elapsed = Date.now() - startTime;
+      const inputTokens = result.usage.input_tokens;
+      const outputTokens = result.usage.output_tokens;
+      const cacheRead = (result.usage as Record<string, unknown>).cache_read_input_tokens ?? 0;
+      const cacheCreation = (result.usage as Record<string, unknown>).cache_creation_input_tokens ?? 0;
+
       output.push(result.text);
-      output.push(`Turns: ${result.num_turns}, Tokens: ${tokenCount}`);
+      d(`done ${elapsed}ms | turns=${result.num_turns} tokens=${inputTokens + outputTokens} (in=${inputTokens} out=${outputTokens})${Number(cacheRead) > 0 || Number(cacheCreation) > 0 ? ` cache=(read=${cacheRead},create=${cacheCreation})` : ''}`);
 
-      return {
-        success: true,
-        summary: summarizeResult(result.text),
-        artifacts: [],
-        output,
-      };
+      return { success: true, summary: summarizeResult(result.text), artifacts: [], output };
     } catch (err) {
+      const elapsed = Date.now() - startTime;
       const message = err instanceof Error ? err.message : String(err);
-      output.push(`Error: ${message}`);
+      d(`failed ${elapsed}ms | ${message}`);
+      if (err instanceof Error && err.stack) console.error(err.stack);
 
-      return {
-        success: false,
-        summary: 'Agent execution failed',
-        artifacts: [],
-        error: message,
-        output,
-      };
+      return { success: false, summary: 'Agent execution failed', artifacts: [], error: message, output };
     } finally {
       await this.agent?.close();
       this.agent = null;

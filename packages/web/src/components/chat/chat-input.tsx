@@ -26,8 +26,8 @@ import {
   IconWand,
   IconWorld,
 } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
-import { useEditor } from "@tiptap/react";
+import { useCallback, useMemo, useState } from "react";
+import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
@@ -47,9 +47,11 @@ interface ChatInputProps {
   channelName: string;
   agents: MentionedAgent[];
   onSend: (message: string, mentions: string[]) => void;
+  isProcessing?: boolean;
+  onStop?: () => void;
 }
 
-export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
+export function ChatInput({ channelName, agents, onSend, isProcessing = false, onStop }: ChatInputProps) {
   const [selectedModel, setSelectedModel] = useState("Local");
   const [selectedAgent, setSelectedAgent] = useState("Agent");
   const [selectedPerformance, setSelectedPerformance] = useState("High");
@@ -103,8 +105,10 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
   );
 
   const slashExtension = useMemo(
-    () => createSlashExtension(openFilePicker),
-    [openFilePicker]
+    () => createSlashExtension(() => {
+      document.querySelector<HTMLInputElement>("[data-chat-file-input]")?.click();
+    }),
+    []
   );
 
   const editor = useEditor(
@@ -127,7 +131,12 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
             const hasPopup = document.querySelector('.suggestion-menu');
             if (hasPopup) return false;
             event.preventDefault();
-            handleSubmit();
+            if (!editor || isProcessing) return true;
+            const text = editor.getText().trim();
+            if (!text) return true;
+            const mentions = collectMentionIds(editor.getJSON());
+            onSend(editor.getHTML(), mentions);
+            editor.commands.clearContent();
             return true;
           }
           return false;
@@ -135,17 +144,17 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
       },
       content: "",
     },
-    [mentionExtension, slashExtension, channelName],
+    [mentionExtension, slashExtension, channelName, onSend],
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!editor) return;
     const text = editor.getText().trim();
     if (!text) return;
     const mentions = collectMentionIds(editor.getJSON());
     onSend(editor.getHTML(), mentions);
     editor.commands.clearContent();
-  };
+  }, [editor, onSend]);
 
   const canSubmit = !!editor?.getText().trim();
 
@@ -196,9 +205,11 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
         editor={editor}
         canSubmit={canSubmit}
         onSubmit={handleSubmit}
+        onStop={onStop}
+        isProcessing={isProcessing}
         actions={chatActions}
         dropzoneProps={getRootProps()}
-        hiddenInput={<input {...getInputProps()} />}
+        hiddenInput={<input {...getInputProps()} data-chat-file-input="" />}
       />
 
       <div className="flex items-center gap-0 pt-2">

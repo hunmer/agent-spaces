@@ -3,6 +3,7 @@ export interface Channel {
   workspaceId: string;
   name: string;
   type: 'general' | 'issue' | 'agent';
+  issueId?: string;
   members: string[];
   createdAt: string;
 }

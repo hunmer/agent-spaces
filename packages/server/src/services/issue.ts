@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import type { Issue, IssueStatus, CreateIssueInput } from '@agent-spaces/shared';
 import { listIssues, getIssue, createIssue, updateIssue, deleteIssue } from '../storage/issue-store.js';
+import * as channelService from '../services/channel.js';
 
 export function list(workspaceId: string, status?: IssueStatus): Issue[] {
   const all = listIssues(workspaceId);
@@ -13,9 +14,16 @@ export function getById(workspaceId: string, issueId: string): Issue | null {
 
 export function create(workspaceId: string, input: CreateIssueInput): Issue {
   const now = new Date().toISOString();
+  const issueId = uuid();
+  const channel = channelService.createChannel(workspaceId, {
+    name: input.title,
+    type: 'issue',
+    members: ['user'],
+  });
   const issue: Issue = {
-    id: uuid(),
+    id: issueId,
     workspaceId,
+    channelId: channel.id,
     title: input.title,
     description: input.description,
     status: 'draft',
@@ -25,6 +33,7 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     createdAt: now,
     updatedAt: now,
   };
+  channelService.updateChannel(workspaceId, channel.id, { name: input.title });
   createIssue(issue);
   return issue;
 }

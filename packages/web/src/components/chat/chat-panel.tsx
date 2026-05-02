@@ -7,7 +7,7 @@ import { MessageItem } from './message-item';
 import { ChatInput } from './chat-input';
 import { Button } from '@/components/ui/button';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { PanelRightOpen, PanelRightClose, Trash2 } from 'lucide-react';
+import { PanelRightOpen, PanelRightClose, Trash2, StopCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { ChannelInfoPanel } from './channel-info-panel';
@@ -117,6 +117,15 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     sendMessage(workspaceId, activeChannelId, content, mentions);
   }, [workspaceId, activeChannelId, sendMessage]);
 
+  const isProcessing = msgs.length > 0
+    && ['pending', 'streaming'].includes(msgs[msgs.length - 1].status ?? '');
+
+  const handleStop = useCallback(() => {
+    if (!activeChannelId) return;
+    const ws = getWS(workspaceId);
+    ws.send('channel.stop', { channelId: activeChannelId });
+  }, [workspaceId, activeChannelId]);
+
   const handleEditMessage = useCallback((msg: Message) => {
     setEditContent(msg.content);
     setEditingMsg(msg);
@@ -196,7 +205,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         </div>
 
         {/* Input */}
-        <ChatInput channelName={channel.name} agents={mentionAgents} onSend={handleSend} />
+        <ChatInput channelName={channel.name} agents={mentionAgents} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
       </div>
 
       {/* 右侧：信息面板 */}
