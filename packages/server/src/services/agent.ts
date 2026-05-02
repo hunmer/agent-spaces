@@ -15,6 +15,15 @@ export interface AgentConnectionTestResult {
   success: boolean;
   message: string;
   status?: number;
+  debug: {
+    provider?: string;
+    apiBase?: string;
+    requestUrl?: string;
+    model?: string;
+    hasApiKey: boolean;
+    apiKeyPreview?: string;
+    responseBody?: string;
+  };
 }
 
 export function listPresets(workspaceId: string): AgentConfig[] | null {
@@ -34,38 +43,74 @@ export async function testConnection(
   const apiKey = data.apiKey?.trim();
   const model = data.modelId?.trim();
   const provider = data.modelProvider || inferProvider(apiBase);
+  const debug: AgentConnectionTestResult['debug'] = {
+    provider,
+    apiBase,
+    model,
+    hasApiKey: Boolean(apiKey),
+    apiKeyPreview: maskApiKey(apiKey),
+  };
 
-  if (!apiBase) return { success: false, message: 'apiBase is required' };
-  if (!apiKey) return { success: false, message: 'apiKey is required' };
-  if (!model) return { success: false, message: 'modelId is required' };
+  if (!apiBase) return { success: false, message: 'apiBase is required', debug };
+  if (!apiKey) return { success: false, message: 'apiKey is required', debug };
+  if (!model) return { success: false, message: 'modelId is required', debug };
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
-    const response =
+    const requestUrl =
       provider === 'anthropic-messages'
-        ? await testAnthropicConnection(apiBase, apiKey, model, controller.signal)
-        : await testOpenAIConnection(apiBase, apiKey, model, controller.signal);
+        ? joinUrl(apiBase, '/messages')
+        : joinUrl(apiBase, '/chat/completions');
+    debug.requestUrl = requestUrl;
+
+    console.info('[agent:test-connection] request', debug);
+
+    const response = await (
+      provider === 'anthropic-messages'
+        ? testAnthropicConnection(requestUrl, apiKey, model, controller.signal)
+        : testOpenAIConnection(requestUrl, apiKey, model, controller.signal)
+    );
 
     if (!response.ok) {
+      const { message, body } = await readErrorMessage(response);
+      debug.responseBody = body;
+      console.warn('[agent:test-connection] failed', {
+        ...debug,
+        status: response.status,
+        message,
+      });
       return {
         success: false,
         status: response.status,
-        message: await readErrorMessage(response),
+        message,
+        debug,
       };
     }
+
+    console.info('[agent:test-connection] succeeded', {
+      ...debug,
+      status: response.status,
+    });
 
     return {
       success: true,
       status: response.status,
       message: 'Connection test succeeded',
+      debug,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const resultMessage = message === 'This operation was aborted' ? 'Connection test timed out' : message;
+    console.error('[agent:test-connection] error', {
+      ...debug,
+      message: resultMessage,
+    });
     return {
       success: false,
-      message: message === 'This operation was aborted' ? 'Connection test timed out' : message,
+      message: resultMessage,
+      debug,
     };
   } finally {
     clearTimeout(timeout);
@@ -73,12 +118,12 @@ export async function testConnection(
 }
 
 async function testOpenAIConnection(
-  apiBase: string,
+  requestUrl: string,
   apiKey: string,
   model: string,
   signal: AbortSignal,
 ): Promise<Response> {
-  return fetch(joinUrl(apiBase, '/chat/completions'), {
+  return fetch(requestUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -95,12 +140,12 @@ async function testOpenAIConnection(
 }
 
 async function testAnthropicConnection(
-  apiBase: string,
+  requestUrl: string,
   apiKey: string,
   model: string,
   signal: AbortSignal,
 ): Promise<Response> {
-  return fetch(joinUrl(apiBase, '/messages'), {
+  return fetch(requestUrl, {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
@@ -125,16 +170,30 @@ function joinUrl(base: string, path: string): string {
   return `${base.replace(/\/+$/, '')}${path}`;
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
-  const text = await response.text();
-  if (!text) return `Connection test failed with status ${response.status}`;
+function maskApiKey(apiKey?: string): string | undefined {
+  if (!apiKey) return undefined;
+  if (apiKey.length <= 8) return `${apiKey.slice(0, 2)}***`;
+  return `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}`;
+}
+
+async function readErrorMessage(response: Response): Promise<{ message: string; body: string }> {
+  const body = await response.text();
+  if (!body) {
+    return {
+      message: `Connection test failed with status ${response.status}`,
+      body: '',
+    };
+  }
 
   try {
-    const json = JSON.parse(text) as { error?: { message?: string } | string; message?: string };
-    if (typeof json.error === 'string') return json.error;
-    return json.error?.message || json.message || text;
+    const json = JSON.parse(body) as { error?: { message?: string } | string; message?: string };
+    const message =
+      typeof json.error === 'string'
+        ? json.error
+        : json.error?.message || json.message || body;
+    return { message, body: body.slice(0, 2000) };
   } catch {
-    return text;
+    return { message: body, body: body.slice(0, 2000) };
   }
 }
 

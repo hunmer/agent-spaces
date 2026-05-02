@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { AgentConfig } from "@agent-spaces/shared";
 import {
   Dialog,
@@ -51,6 +51,19 @@ type AgentPreset = AgentConfig & {
   temperature: number;
   maxTokens: number;
 };
+
+interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  debug?: {
+    provider?: string;
+    apiBase?: string;
+    requestUrl?: string;
+    model?: string;
+    status?: number;
+    responseBody?: string;
+  };
+}
 
 type AgentRole = AgentConfig["role"];
 
@@ -181,7 +194,7 @@ export function AgentDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -264,10 +277,11 @@ export function AgentDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editDraft),
       });
-      const data = await res.json() as { success?: boolean; message?: string; error?: string };
+      const data = await res.json() as ConnectionTestResult & { error?: string };
       setTestResult({
         success: Boolean(data.success),
         message: data.message || data.error || "Connection test failed",
+        debug: data.debug ? { ...data.debug, status: res.status } : { status: res.status },
       });
     } catch (err) {
       setTestResult({
@@ -496,7 +510,7 @@ function AgentDetail({
 }: {
   agent: AgentPreset;
   testing: boolean;
-  testResult: { success: boolean; message: string } | null;
+  testResult: ConnectionTestResult | null;
   onChange: <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => void;
   onAddToArray: (key: "mcps" | "skills", value: string) => void;
   onRemoveFromArray: (key: "mcps" | "skills", index: number) => void;
@@ -608,6 +622,17 @@ function AgentDetail({
             )}
           >
             {testResult.message}
+            {testResult.debug && (
+              <div className="mt-2 space-y-1 font-mono text-[10px] opacity-80">
+                {testResult.debug.status && <div>status: {testResult.debug.status}</div>}
+                {testResult.debug.provider && <div>provider: {testResult.debug.provider}</div>}
+                {testResult.debug.requestUrl && <div>url: {testResult.debug.requestUrl}</div>}
+                {testResult.debug.model && <div>model: {testResult.debug.model}</div>}
+                {testResult.debug.responseBody && (
+                  <div className="max-h-20 overflow-auto whitespace-pre-wrap">body: {testResult.debug.responseBody}</div>
+                )}
+              </div>
+            )}
           </div>
         )}
         <FieldGroup label="Model">

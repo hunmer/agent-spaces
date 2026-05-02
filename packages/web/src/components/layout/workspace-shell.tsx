@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Layout, Model, TabNode, IJsonModel, Actions } from "flexlayout-react";
+import { Layout, Model, TabNode, IJsonModel, Actions, IRenderTabValues } from "flexlayout-react";
 import "flexlayout-react/style/light.css";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch } from "lucide-react";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
@@ -18,10 +19,22 @@ import { useEditorStore } from "@/stores/editor";
 import { useChannelStore } from "@/stores/channel";
 import type { Issue, Task } from "@agent-spaces/shared";
 
+const tabIcons: Record<string, React.ReactNode> = {
+  "channel-list": <Hash size={16} />,
+  "issue-list": <ListChecks size={16} />,
+  "editor": <FolderOpen size={16} />,
+  "code-editor": <Code2 size={16} />,
+  "chat": <MessageSquare size={16} />,
+  "issue-detail": <FileText size={16} />,
+  "terminal": <TerminalSquare size={16} />,
+  "git": <GitBranch size={16} />,
+};
+
 const defaultJson: IJsonModel = {
   global: {
     tabSetEnableTabStrip: true,
     borderEnableDrop: true,
+    tabEnableClose: false,
   },
   borders: [
     {
@@ -147,9 +160,21 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
     [workspaceId],
   );
 
+  const onRenderTab = useCallback((node: TabNode, renderValues: IRenderTabValues) => {
+    const comp = node.getComponent();
+    const icon = tabIcons[comp];
+    if (icon) {
+      renderValues.content = (
+        <span title={node.getName()} className="flex items-center justify-center">
+          {icon}
+        </span>
+      );
+    }
+  }, []);
+
   return (
     <div className="h-full w-full">
-      <Layout model={model} factory={factory} />
+      <Layout model={model} factory={factory} onRenderTab={onRenderTab} />
     </div>
   );
 }
