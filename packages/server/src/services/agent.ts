@@ -417,12 +417,27 @@ export function getAllowedTools(mcps?: AgentConfig['mcps']): string[] | undefine
   return Object.keys(servers);
 }
 
+export function getMcpServers(mcps?: AgentConfig['mcps']): Record<string, unknown> | undefined {
+  if (!mcps) return undefined;
+  const servers = (mcps as { mcpServers?: unknown }).mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return undefined;
+  return servers as Record<string, unknown>;
+}
+
+export function getAgentConfigDir(workspaceId: string, preset: AgentConfig): string | undefined {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return undefined;
+  const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
+  ensureWorkspaceAgentCopy(preset, ws.agentspaceDir);
+  return workspaceAgentDir;
+}
+
 export function resolveWorkingDir(workspaceId: string, preset: AgentConfig): string {
   if (preset.workingDir?.trim()) return preset.workingDir;
   const ws = getWorkspace(workspaceId);
   if (!ws) return process.cwd();
   const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
-  ensureDir(workspaceAgentDir);
+  ensureWorkspaceAgentCopy(preset, ws.agentspaceDir);
   return workspaceAgentDir;
 }
 
@@ -499,6 +514,13 @@ function writeWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): vo
   };
   ensureDir(workspaceAgentDir);
   writeFileSync(join(workspaceAgentDir, 'agent.json'), JSON.stringify(workspacePreset, null, 2), 'utf-8');
+}
+
+function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): void {
+  const workspaceAgentDir = getWorkspaceAgentDir(agentspaceDir, preset.id);
+  const requiredFiles = ['agent.json', 'mcp.json'];
+  if (requiredFiles.every((file) => existsSync(join(workspaceAgentDir, file)))) return;
+  writeWorkspaceAgentCopy(preset, agentspaceDir);
 }
 
 function readAgentTemplate(agentId: string): AgentConfig | null {

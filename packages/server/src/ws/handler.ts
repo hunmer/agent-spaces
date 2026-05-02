@@ -139,6 +139,9 @@ async function runMentionedAgent(
     const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 6,
       tools: agentService.getAllowedTools(preset.mcps),
+      mcpServers: agentService.getMcpServers(preset.mcps),
+      skills: preset.skills,
+      configDir: agentService.getAgentConfigDir(workspaceId, preset),
       sandboxDirs: preset.sandboxDirs,
     });
 

@@ -16,6 +16,9 @@ export interface AgentRuntime {
 export interface AgentRunOptions {
   maxTurns?: number;
   tools?: string[];
+  mcpServers?: Record<string, unknown>;
+  skills?: string[];
+  configDir?: string;
   sandboxDirs?: string[];
 }
 

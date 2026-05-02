@@ -1,5 +1,8 @@
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { extname } from 'node:path';
+import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { Options, PermissionMode, Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { McpServerConfig, Options, PermissionMode, Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import type {
   AgentRunOptions,
   AgentRunResult,
@@ -25,8 +28,11 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const startTime = Date.now();
     const d = (msg: string) => console.log(`[claude-code] ${msg}`);
     const permissionMode = normalizePermissionMode(this.config.permissionMode);
+    const agentDir = options?.configDir;
+    const configDir = agentDir ? join(agentDir, '.claude') : undefined;
+    if (configDir) prepareConfigDir(configDir, agentDir);
 
-    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.tools?.join(',') ?? 'claude_code'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.tools?.join(',') ?? 'claude_code'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${options?.skills?.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
@@ -36,11 +42,14 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         maxTurns: options?.maxTurns,
         allowedTools: options?.tools,
         tools: { type: 'preset', preset: 'claude_code' },
+        mcpServers: normalizeMcpServers(options?.mcpServers),
+        skills: normalizeSkillNames(options?.skills),
+        settingSources: [],
         additionalDirectories: options?.sandboxDirs,
         permissionMode,
         allowDangerouslySkipPermissions: permissionMode === 'bypassPermissions' ? true : undefined,
         abortController: this.abortController,
-        env: buildEnv(this.config),
+        env: buildEnv(this.config, configDir),
         stderr: (data) => {
           const line = data.trim();
           if (line) d(`stderr: ${line}`);
@@ -111,13 +120,42 @@ export class ClaudeCodeRuntime implements AgentRuntime {
   }
 }
 
-function buildEnv(config: AgentRuntimeConfig): Record<string, string | undefined> {
+function buildEnv(config: AgentRuntimeConfig, configDir?: string): Record<string, string | undefined> {
   return {
     ...process.env,
+    CLAUDE_CONFIG_DIR: configDir || process.env.CLAUDE_CONFIG_DIR,
     ANTHROPIC_API_KEY: config.apiKey || process.env.ANTHROPIC_API_KEY,
     ANTHROPIC_BASE_URL: config.baseURL || process.env.ANTHROPIC_BASE_URL,
     CLAUDE_AGENT_SDK_CLIENT_APP: process.env.CLAUDE_AGENT_SDK_CLIENT_APP || 'agent-spaces/server',
   };
+}
+
+function normalizeMcpServers(servers?: Record<string, unknown>): Record<string, McpServerConfig> | undefined {
+  if (!servers || Object.keys(servers).length === 0) return undefined;
+  return servers as Record<string, McpServerConfig>;
+}
+
+function normalizeSkillNames(skills?: string[]): string[] {
+  if (!Array.isArray(skills)) return [];
+  return skills
+    .map((skill) => skill.trim().replace(/\.md$/i, ''))
+    .filter(Boolean);
+}
+
+function prepareConfigDir(configDir: string, agentDir?: string): void {
+  mkdirSync(configDir, { recursive: true });
+  if (!agentDir) return;
+
+  const sourceSkillsDir = join(agentDir, 'skills');
+  const targetSkillsDir = join(configDir, 'skills');
+  rmSync(targetSkillsDir, { recursive: true, force: true });
+  mkdirSync(targetSkillsDir, { recursive: true });
+
+  if (!existsSync(sourceSkillsDir)) return;
+  for (const file of readdirSync(sourceSkillsDir)) {
+    if (extname(file).toLowerCase() !== '.md') continue;
+    copyFileSync(join(sourceSkillsDir, file), join(targetSkillsDir, file));
+  }
 }
 
 function normalizePermissionMode(permissionMode?: AgentRuntimeConfig['permissionMode']): PermissionMode {
