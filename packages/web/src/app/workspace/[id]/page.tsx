@@ -16,7 +16,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
   const { openTab, activeId } = useWorkspaceTabs();
 
   useEffect(() => {
-    fetch(`/api/workspaces/${params.id}`)
+    fetch(`/api/workspaces/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
         return r.json();
@@ -26,13 +26,13 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
         openTab({ id: ws.id, name: ws.name });
       })
       .catch((e) => setError(e.message));
-  }, [params.id, openTab]);
+  }, [id, openTab]);
 
   useEffect(() => {
-    if (activeId && activeId !== params.id) {
+    if (activeId && activeId !== id) {
       router.push(`/workspace/${activeId}`);
     }
-  }, [activeId, params.id, router]);
+  }, [activeId, id, router]);
 
   if (error) {
     return (
