@@ -86,6 +86,10 @@ const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>
   { value: "openai-responses", label: "OpenAI Responses API" },
   { value: "gemini-generate-content", label: "Gemini Native generateContent" },
 ];
+const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; label: string }> = [
+  { value: "open-agent-sdk", label: "Open Agent SDK" },
+  { value: "claude-code", label: "Claude Code" },
+];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
 
 function defaultMcpConfig(names: string[]): McpDraft {
@@ -103,6 +107,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Scheduler",
     role: "scheduler",
     description: "任务调度者，负责任务分发和协调",
+    runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
@@ -120,6 +125,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Planner",
     role: "planner",
     description: "策划者，负责分解任务和制定计划",
+    runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-opus-4-7",
     apiBase: "",
@@ -137,6 +143,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Executor",
     role: "executor",
     description: "执行者，负责代码编写和修改",
+    runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
@@ -154,6 +161,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Reviewer",
     role: "reviewer",
     description: "审核者，负责代码审查和质量把关",
+    runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-opus-4-7",
     apiBase: "",
@@ -171,6 +179,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Custom Agent",
     role: "custom",
     description: "",
+    runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "",
     apiBase: "",
@@ -190,6 +199,7 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     ...agent,
     name: agent.name || "New Agent",
     description: agent.description || "",
+    runtimeKind: agent.runtimeKind || "open-agent-sdk",
     modelProvider: agent.modelProvider || "anthropic-messages",
     modelId: agent.modelId || "claude-sonnet-4-6",
     apiBase: agent.apiBase || "",
@@ -240,6 +250,7 @@ function newEmptyAgent(): AgentPreset {
     name: "",
     role: "executor",
     description: "",
+    runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "",
     apiBase: "",
@@ -684,6 +695,16 @@ function AgentDetail({
         </FieldGroup>
         <FieldGroup label="Description">
           <Input value={agent.description} onChange={(e) => onChange("description", e.target.value)} />
+        </FieldGroup>
+        <FieldGroup label="Agent Runtime">
+          <SearchSelect
+            value={agent.runtimeKind}
+            onChange={(v) => onChange("runtimeKind", v as NonNullable<AgentConfig["runtimeKind"]>)}
+            options={RUNTIME_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+            placeholder="Select agent runtime..."
+            searchPlaceholder="Search agent runtime..."
+            allowCustom={false}
+          />
         </FieldGroup>
       </Section>
 

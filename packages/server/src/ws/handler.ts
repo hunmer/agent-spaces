@@ -129,6 +129,7 @@ async function runMentionedAgent(
 
   try {
     const runtime = createAgentRuntime({
+      kind: preset.runtimeKind,
       provider: preset.modelProvider,
       model: preset.modelId,
       apiKey: preset.apiKey,

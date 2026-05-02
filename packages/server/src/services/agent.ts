@@ -13,6 +13,7 @@ import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 
 const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
+const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code'];
 
 type SkillInput = string | { name?: string; content?: string };
 type McpConfig = Record<string, unknown>;
@@ -347,6 +348,9 @@ export function createPreset(
     name: data.name?.trim() || 'New Agent',
     role: data.role && VALID_ROLES.includes(data.role) ? data.role : 'executor',
     description: data.description || '',
+    runtimeKind: data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
+      ? data.runtimeKind
+      : 'open-agent-sdk',
     modelProvider: data.modelProvider,
     modelId: data.modelId || 'claude-sonnet-4-6',
     apiBase: data.apiBase || '',
@@ -384,11 +388,15 @@ export function updatePreset(
 
   const existing = ws.agents[index];
   const role = data.role && VALID_ROLES.includes(data.role) ? data.role : existing.role;
+  const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
+    ? data.runtimeKind
+    : existing.runtimeKind || 'open-agent-sdk';
   const updated: AgentConfig = {
     ...existing,
     ...data,
     id: existing.id,
     role,
+    runtimeKind,
     name: data.name?.trim() || existing.name || 'New Agent',
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),

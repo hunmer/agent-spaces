@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "timestamp": "2026-05-02T01:07:33+08:00",
+  "version": "1.1.0",
+  "timestamp": "2026-05-02T23:43:41+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo",
@@ -23,18 +23,22 @@
         "Channel", "Message", "Attachment",
         "FileNode",
         "GitFileStatus", "GitStatusResult", "GitLogEntry", "GitDiffResult",
-        "WSEvent", "ClientEventMap", "ServerEventMap"
+        "WSEvent", "ClientEventMap", "ServerEventMap",
+        "LLMModel", "LLMProvider"
       ],
       "api": [],
       "tests": [],
       "importantPaths": [
         "packages/shared/src/index.ts",
-        "packages/shared/src/types/events.ts"
+        "packages/shared/src/types/events.ts",
+        "packages/shared/src/types/workspace.ts",
+        "packages/shared/src/types/agent.ts",
+        "packages/shared/src/types/llm.ts"
       ],
       "claudeMd": "packages/shared/CLAUDE.md",
       "coverage": {
-        "scanned": 9,
-        "total": 9,
+        "scanned": 11,
+        "total": 11,
         "percentage": 100,
         "gaps": []
       }
@@ -44,7 +48,7 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + Agent 编排 + PTY + Git",
+      "role": "Express REST API + WebSocket + Agent 编排 + PTY + Git + LLM 管理 + Agent Preset",
       "entry": "src/app.ts",
       "types": [],
       "api": [
@@ -58,15 +62,25 @@
         "GET|POST /api/workspaces/:id/issues",
         "GET|PUT /api/workspaces/:id/issues/:issueId",
         "POST /api/workspaces/:id/issues/:issueId/start",
-        "GET|POST /api/workspaces/:id/agents/start",
-        "POST /api/workspaces/:id/agents/:agentId/stop",
+        "GET|POST /api/workspaces/:id/agents/presets",
+        "POST /api/workspaces/:id/agents/presets/test-connection",
+        "PUT|DELETE /api/workspaces/:id/agents/presets/:presetId",
+        "GET /api/workspaces/:id/agent-templates",
+        "POST /api/workspaces/:id/agents/from-templates",
         "GET /api/workspaces/:id/agents",
+        "POST /api/workspaces/:id/agents/start",
+        "POST /api/workspaces/:id/agents/:agentId/stop",
         "GET /api/workspaces/:id/tasks",
+        "GET /api/workspaces/:id/tasks/:taskId",
         "POST /api/workspaces/:id/tasks/:taskId/retry",
         "POST /api/workspaces/:id/tasks/:taskId/cancel",
         "GET /api/workspaces/:id/git/status",
         "GET /api/workspaces/:id/git/diff",
-        "GET /api/workspaces/:id/git/log"
+        "GET /api/workspaces/:id/git/log",
+        "GET|POST /api/models",
+        "PUT|DELETE /api/models/:id",
+        "GET|POST /api/providers",
+        "PUT|DELETE /api/providers/:id"
       ],
       "wsEvents": {
         "clientToServer": [
@@ -76,29 +90,55 @@
         "serverToClient": [
           "connected",
           "terminal.created", "terminal.output", "terminal.closed",
-          "channel.message", "channel.updated",
-          "agent.started", "agent.status_changed", "agent.output", "agent.completed", "agent.error",
+          "channel.message", "channel.message.updated", "channel.message.deleted",
+          "channel.messages.cleared", "channel.updated",
+          "agent.started", "agent.status_changed", "agent.output",
+          "agent.completed", "agent.error",
           "issue.created", "issue.updated", "issue.status_changed",
           "task.created", "task.updated", "task.status_changed", "task.output"
         ]
       },
+      "agentRuntimes": [
+        {
+          "name": "OpenAgentSdkRuntime",
+          "kind": "open-agent-sdk",
+          "sdk": "@codeany/open-agent-sdk",
+          "file": "src/adapters/open-agent-sdk-runtime.ts"
+        },
+        {
+          "name": "ClaudeCodeRuntime",
+          "kind": "claude-code",
+          "sdk": "@anthropic-ai/claude-agent-sdk",
+          "file": "src/adapters/claude-code-runtime.ts"
+        }
+      ],
       "tests": [],
       "importantPaths": [
         "packages/server/src/app.ts",
         "packages/server/src/agents/scheduler-agent.ts",
         "packages/server/src/agents/planner-agent.ts",
         "packages/server/src/agents/reviewer-agent.ts",
+        "packages/server/src/agents/agent-context.ts",
         "packages/server/src/hooks/agent-hooks.ts",
         "packages/server/src/adapters/agent-runtime.ts",
+        "packages/server/src/adapters/agent-runtime-types.ts",
+        "packages/server/src/adapters/open-agent-sdk-runtime.ts",
+        "packages/server/src/adapters/claude-code-runtime.ts",
         "packages/server/src/adapters/git.ts",
         "packages/server/src/ws/handler.ts",
         "packages/server/src/ws/connection-manager.ts",
-        "packages/server/src/storage/json-store.ts"
+        "packages/server/src/ws/terminal-handler.ts",
+        "packages/server/src/storage/json-store.ts",
+        "packages/server/src/storage/llm-store.ts",
+        "packages/server/src/services/agent.ts",
+        "packages/server/src/services/workspace.ts",
+        "packages/server/src/routes/agent.ts",
+        "packages/server/src/routes/llm.ts"
       ],
       "claudeMd": "packages/server/CLAUDE.md",
       "coverage": {
-        "scanned": 27,
-        "total": 27,
+        "scanned": 37,
+        "total": 37,
         "percentage": 100,
         "gaps": []
       }
@@ -108,47 +148,85 @@
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（IDE 布局 + 编辑器 + 终端 + 聊天 + Git）",
+      "role": "Next.js 前端 SPA（IDE 布局 + 编辑器 + 终端 + TipTap 聊天 + Git + Agent 管理）",
       "entry": "src/app/layout.tsx",
       "types": [],
       "api": [],
       "tests": [],
       "importantPaths": [
         "packages/web/src/app/page.tsx",
+        "packages/web/src/app/layout.tsx",
         "packages/web/src/app/workspace/[id]/page.tsx",
+        "packages/web/src/app/api/upload/route.ts",
         "packages/web/src/components/layout/workspace-shell.tsx",
+        "packages/web/src/components/layout/workspace-tabs.tsx",
         "packages/web/src/components/editor/editor-panel.tsx",
         "packages/web/src/components/terminal/terminal-panel.tsx",
         "packages/web/src/components/chat/chat-panel.tsx",
+        "packages/web/src/components/chat/chat-input.tsx",
+        "packages/web/src/components/composer/composer-editor.tsx",
+        "packages/web/src/components/sidebar/app-sidebar.tsx",
+        "packages/web/src/components/sidebar/agent-dialog.tsx",
+        "packages/web/src/components/sidebar/models-dialog.tsx",
+        "packages/web/src/components/sidebar/providers-dialog.tsx",
         "packages/web/src/components/git/git-panel.tsx",
+        "packages/web/src/components/home/home-page.tsx",
+        "packages/web/src/components/workspace/workspace-dialog.tsx",
         "packages/web/src/stores/editor.ts",
         "packages/web/src/stores/terminal.ts",
         "packages/web/src/stores/channel.ts",
+        "packages/web/src/stores/issue.ts",
+        "packages/web/src/stores/task.ts",
+        "packages/web/src/stores/git.ts",
         "packages/web/src/lib/ws.ts",
-        "packages/web/next.config.ts"
+        "packages/web/src/lib/agent-members.ts",
+        "packages/web/next.config.ts",
+        "packages/web/DESIGN.md",
+        "packages/web/AGENTS.md"
       ],
       "claudeMd": "packages/web/CLAUDE.md",
       "coverage": {
-        "scanned": 23,
-        "total": 23,
-        "percentage": 100,
-        "gaps": []
+        "scanned": 90,
+        "total": 95,
+        "percentage": 95,
+        "gaps": [
+          "packages/web/src/app/timeline-component-05/page.tsx（辅助页面，未读取）",
+          "packages/web/src/app/dashboard-shell-01/page.tsx（辅助页面，未读取）",
+          "packages/web/src/components/shadcn-studio/blocks/（7个参考组件块，未逐一读取）",
+          "packages/web/src/components/timeline/（版本时间线组件，未逐一读取）"
+        ]
       }
+    }
+  ],
+  "docs": [
+    {
+      "path": "docs/agent-lifecycle.md",
+      "description": "Agent Preset 创建、更新、工作空间导入、运行时工作目录行为的详细文档"
+    },
+    {
+      "path": "PRD.md",
+      "description": "产品需求文档"
+    },
+    {
+      "path": "packages/web/DESIGN.md",
+      "description": "UI 设计规范（MiniMax 风格参考）"
+    },
+    {
+      "path": "packages/web/AGENTS.md",
+      "description": "Next.js 16 Breaking Changes 提示"
     }
   ],
   "rootFiles": [
     "package.json",
-    "tsconfig.base.json",
+    "pnpm-workspace.yaml",
     ".gitignore",
     "PRD.md",
-    "task_plan.md",
-    "findings.md",
-    "progress.md"
+    "CLAUDE.md"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 83,
-    "scannedFiles": 83,
-    "coveragePercentage": 100,
+    "totalSourceFiles": 143,
+    "scannedFiles": 138,
+    "coveragePercentage": 97,
     "ignoredDirectories": [
       "node_modules",
       ".next",
@@ -156,10 +234,13 @@
       ".git",
       ".agent-spaces-data"
     ],
-    "truncated": false
+    "truncated": false,
+    "gapDetails": [
+      "web 模块有 5 个辅助/参考页面未读取（timeline-component-05, dashboard-shell-01, shadcn-studio blocks）",
+      "这些为 UI 参考组件，非核心功能路径"
+    ]
   },
   "nextSteps": {
-    "description": "全部模块已完整扫描，无缺口",
-    "recommendedPaths": []
+    "description": "全部核心模块已完整扫描，web 模块有少量 UI 参考组件未深读",
   }
 }

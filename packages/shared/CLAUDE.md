@@ -25,14 +25,30 @@
 | `types/channel.ts` | `Channel`, `Message`, `Attachment` | 频道与消息模型 |
 | `types/file.ts` | `FileNode` | 文件树节点（递归结构） |
 | `types/git.ts` | `GitFileStatus`, `GitStatusResult`, `GitLogEntry`, `GitDiffResult` | Git 操作结果类型 |
+| `types/llm.ts` | `LLMModel`, `LLMProvider` | LLM 模型与供应商配置 |
+
+### AgentConfig 详情
+
+`AgentConfig` 是 Agent 预设的核心类型，包含：
+- `role`: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'custom'
+- `runtimeKind`: 'open-agent-sdk' | 'claude-code'（运行时类型选择）
+- `modelProvider`: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'gemini-generate-content'
+- `modelId`: 模型 ID（如 `claude-sonnet-4-6`）
+- `apiBase` / `apiKey`: API 端点与密钥
+- `mcps`: MCP 服务器配置（JSON 对象，`{ mcpServers: { "server-name": {} } }`）
+- `skills`: 技能 markdown 文件名列表
+- `sandboxDirs`: 沙箱目录列表
+- `systemPrompt`: 系统提示词
+- `temperature` / `maxTokens`: 生成参数
+- `enabled`: 是否启用
 
 ### WebSocket 事件类型
 
 | 类型文件 | 导出类型 | 说明 |
 |----------|----------|------|
 | `types/events.ts` | `WSEvent<T>` | WebSocket 事件基础结构 |
-| `types/events.ts` | `ClientEventMap` | 客户端->服务端事件映射（5 个事件） |
-| `types/events.ts` | `ServerEventMap` | 服务端->客户端事件映射（16 个事件） |
+| `types/events.ts` | `ClientEventMap` | 客户端->服务端事件映射（7 个事件） |
+| `types/events.ts` | `ServerEventMap` | 服务端->客户端事件映射（20 个事件） |
 | `types/events.ts` | `Terminal*Payload` | 终端事件载荷（6 个类型） |
 | `types/events.ts` | `Agent*Payload` | Agent 状态/输出/完成事件载荷 |
 | `types/events.ts` | `Issue/Task*Payload` | 议题/任务状态变更事件载荷 |
@@ -74,18 +90,20 @@ packages/shared/
     index.ts                    # 汇总导出
     types/
       index.ts                  # 类型汇总导出
-      workspace.ts              # Workspace + AgentConfig
+      workspace.ts              # Workspace + AgentConfig + CreateWorkspaceInput
       issue.ts                  # Issue + IssueStatus
       task.ts                   # Task + TaskStatus + TaskResult
       agent.ts                  # AgentSession + AgentSessionStatus
       channel.ts                # Channel + Message + Attachment
       file.ts                   # FileNode
       git.ts                    # Git 操作结果类型
-      events.ts                 # WebSocket 事件契约
+      events.ts                 # WebSocket 事件契约（7个客户端事件 + 20个服务端事件）
+      llm.ts                    # LLMModel + LLMProvider
 ```
 
 ## 变更记录 (Changelog)
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-05-02T23:43:41 | 增量更新 | 补充 llm.ts 类型、AgentConfig 详细字段、WebSocket 事件数量更新（7 客户端 + 20 服务端） |
 | 2026-05-02T01:07:33 | 初始化 | init-architect 首次扫描生成 |

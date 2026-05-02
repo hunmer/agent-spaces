@@ -15,6 +15,7 @@ export interface AgentConfig {
   name: string;
   role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'custom';
   description?: string;
+  runtimeKind?: 'open-agent-sdk' | 'claude-code';
   modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'gemini-generate-content';
   modelId?: string;
   apiBase?: string;
