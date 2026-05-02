@@ -64,6 +64,11 @@ function getCodeInfo(element: HTMLElement) {
 
 export function DevInspector() {
   const [active, setActive] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -92,6 +97,7 @@ export function DevInspector() {
   }, [active]);
 
   if (process.env.NODE_ENV !== "development") return null;
+  if (!mounted) return null;
 
   return (
     <>

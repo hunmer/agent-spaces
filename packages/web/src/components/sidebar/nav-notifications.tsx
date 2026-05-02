@@ -9,6 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { BellIcon } from "lucide-react";
 
@@ -29,7 +30,9 @@ export function NotificationsPopover({
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" aria-label="Open notifications" />}><BellIcon className="size-5" /></DropdownMenuTrigger>
       <DropdownMenuContent side="right" className="w-80 my-6">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         {notifications.map(({ id, avatar, fallback, text, time }) => (
           <DropdownMenuItem key={id} className="flex items-start gap-3">

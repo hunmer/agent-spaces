@@ -303,7 +303,7 @@
 }
 
 /* Border bar tabs — same pill treatment */
-.flexlayout__border_tab_button {
+.flexlayout__border_button {
   border-radius: 9999px;
   padding: 4px 12px;
   margin: 2px 3px;
@@ -312,17 +312,17 @@
   transition: background-color 0.15s, color 0.15s;
 }
 
-.flexlayout__border_tab_button--selected {
+.flexlayout__border_button--selected {
   background-color: #1456f0 !important;
   color: #ffffff !important;
 }
 
-.flexlayout__border_tab_button--unselected {
+.flexlayout__border_button--unselected {
   background-color: rgba(0, 0, 0, 0.05) !important;
   color: #45515e !important;
 }
 
-.flexlayout__border_tab_button--unselected:hover {
+.flexlayout__border_button--unselected:hover {
   background-color: rgba(0, 0, 0, 0.08) !important;
   color: #222222 !important;
 }
@@ -347,16 +347,16 @@
   background-color: #1e1f2b;
 }
 
-.dark .flexlayout__border_tab_button--selected {
+.dark .flexlayout__border_button--selected {
   background-color: #3b82f6 !important;
 }
 
-.dark .flexlayout__border_tab_button--unselected {
+.dark .flexlayout__border_button--unselected {
   background-color: rgba(255, 255, 255, 0.06) !important;
   color: #8b8fa3 !important;
 }
 
-.dark .flexlayout__border_tab_button--unselected:hover {
+.dark .flexlayout__border_button--unselected:hover {
   background-color: rgba(255, 255, 255, 0.1) !important;
   color: #e5e7eb !important;
 }
