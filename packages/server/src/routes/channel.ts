@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { listChannels, createChannel, getChannel, updateChannel } from '../services/channel.js';
+import { listChannels, createChannel, getChannel, updateChannel, deleteChannel } from '../services/channel.js';
 import { listMessages, createMessage, updateMessage, deleteMessage } from '../services/message.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
 
@@ -32,6 +32,15 @@ router.put('/:channelId', (req: Request<ChannelParams>, res: Response) => {
   if (!channel) { res.status(404).json({ error: 'channel not found' }); return; }
   broadcastToWorkspace(id, 'channel.updated', channel);
   res.json(channel);
+});
+
+// DELETE /api/workspaces/:id/channels/:channelId
+router.delete('/:channelId', (req: Request<ChannelParams>, res: Response) => {
+  const { id, channelId } = req.params;
+  const ok = deleteChannel(id, channelId!);
+  if (!ok) { res.status(404).json({ error: 'channel not found' }); return; }
+  broadcastToWorkspace(id, 'channel.deleted', { channelId });
+  res.status(204).end();
 });
 
 // GET /api/workspaces/:id/channels/:channelId/messages

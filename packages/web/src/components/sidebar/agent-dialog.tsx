@@ -187,6 +187,26 @@ function newAgentDraft(role: AgentRole): AgentPreset {
   };
 }
 
+function newEmptyAgent(): AgentPreset {
+  return {
+    id: `draft-empty-${Date.now()}`,
+    name: "",
+    role: "executor",
+    description: "",
+    modelProvider: "anthropic-messages",
+    modelId: "",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "",
+    mcps: [],
+    skills: [],
+    systemPrompt: "",
+    temperature: 0.3,
+    maxTokens: 4096,
+    enabled: true,
+  };
+}
+
 function isDraftAgent(agent: AgentPreset) {
   return agent.id.startsWith("draft-");
 }
@@ -305,13 +325,13 @@ export function AgentDialog({
     }
   };
 
-  const handleAddAgent = (role: AgentRole) => {
+  const handleAddAgent = (role: AgentRole | "empty") => {
     if (!workspaceId) {
       setError("Open a workspace before adding agent presets");
       return;
     }
 
-    const draft = newAgentDraft(role);
+    const draft = role === "empty" ? newEmptyAgent() : newAgentDraft(role);
     setError(null);
     setSelectedAgent(draft);
     setEditDraft({ ...draft });
@@ -363,7 +383,7 @@ export function AgentDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleBack(); onOpenChange(o); }}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b px-5 py-4">
+        <div className="flex items-center gap-3 border-b px-5 pr-12 py-4">
           {selectedAgent ? (
             <Button variant="ghost" size="icon-sm" onClick={handleBack}>
               <ArrowLeft className="size-4" />
@@ -396,6 +416,13 @@ export function AgentDialog({
               />
               <DropdownMenuContent side="bottom" align="end" className="w-44">
                 <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onClick={() => handleAddAgent("empty")}
+                  >
+                    <span className="size-2 rounded-full bg-muted" />
+                    <span>Empty</span>
+                  </DropdownMenuItem>
                   {ROLE_OPTIONS.map((role) => (
                     <DropdownMenuItem
                       key={role}

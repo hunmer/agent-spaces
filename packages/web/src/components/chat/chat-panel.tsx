@@ -6,14 +6,11 @@ import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
 import { ChatInput } from './chat-input';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { PanelRightOpen, PanelRightClose, Hash, Bot, AlertCircle, Info, Users, Pencil, UserPlus } from 'lucide-react';
-import { ChannelDialog } from './channel-dialog';
-import { MemberCard } from './member-card';
-import { MemberInfoDialog } from './member-info-dialog';
-import { AddMemberDialog } from './add-member-dialog';
+import { PanelRightOpen, PanelRightClose, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { ChannelInfoPanel } from './channel-info-panel';
 
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
@@ -28,21 +25,15 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
-  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage, updateChannel } = useChannelStore();
+  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [memberInfoOpen, setMemberInfoOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState('');
-  const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
+  const [editingMsg, setEditingMsg] = useState<Message | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
 
-  // 收集候选成员：所有频道成员去重 + workspace agents，排除当前频道已有成员
   const channel = channels.find((c) => c.id === activeChannelId);
-  const agentNames = agents.filter((agent) => agent.enabled !== false).map((agent) => agent.name || agent.role);
-  const allMembers = [...new Set([...channels.flatMap((c) => c.members), ...agentNames])];
-  const candidateMembers = channel ? allMembers.filter((m) => !channel.members.includes(m)) : [];
-  const memberChannels = (name: string) => channels.filter((c) => c.members.includes(name)).map((c) => c.name);
   const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
 
   useEffect(() => {
@@ -100,22 +91,35 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     sendMessage(workspaceId, activeChannelId, content, mentions);
   }, [workspaceId, activeChannelId, sendMessage]);
 
-  const handleEditMessage = useCallback(async (msg: Message) => {
-    const newContent = prompt('编辑消息', msg.content);
-    if (!newContent || newContent === msg.content) return;
-    await fetch(`/api/workspaces/${workspaceId}/channels/${msg.channelId}/messages/${msg.id}`, {
+  const handleEditMessage = useCallback((msg: Message) => {
+    setEditContent(msg.content);
+    setEditingMsg(msg);
+  }, []);
+
+  const submitEdit = useCallback(async () => {
+    if (!editingMsg || !editContent.trim() || editContent === editingMsg.content) {
+      setEditingMsg(null);
+      return;
+    }
+    await fetch(`/api/workspaces/${workspaceId}/channels/${editingMsg.channelId}/messages/${editingMsg.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: newContent }),
+      body: JSON.stringify({ content: editContent }),
     });
-  }, [workspaceId]);
+    setEditingMsg(null);
+  }, [workspaceId, editingMsg, editContent]);
 
-  const handleDeleteMessage = useCallback(async (msg: Message) => {
-    if (!confirm('确认删除这条消息？')) return;
-    await fetch(`/api/workspaces/${workspaceId}/channels/${msg.channelId}/messages/${msg.id}`, {
+  const handleDeleteMessage = useCallback((msg: Message) => {
+    setDeletingMsg(msg);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!deletingMsg) return;
+    await fetch(`/api/workspaces/${workspaceId}/channels/${deletingMsg.channelId}/messages/${deletingMsg.id}`, {
       method: 'DELETE',
     });
-  }, [workspaceId]);
+    setDeletingMsg(null);
+  }, [workspaceId, deletingMsg]);
 
   if (!channel) {
     return (
@@ -126,10 +130,6 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }
 
   const typeConf = channelTypeStatus[channel.type];
-
-  const handleAddMembers = (newMembers: string[]) => {
-    updateChannel(workspaceId, channel.id, { members: [...channel.members, ...newMembers] });
-  };
 
   return (
     <div className="flex h-full">
@@ -167,94 +167,49 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
       {/* 右侧：信息面板 */}
       {infoOpen && (
-        <div className="w-72 border-l flex flex-col">
-          <Tabs defaultValue="info" className="flex flex-col flex-1">
-            <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0">
-              <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-                <Info className="size-3.5" />频道信息
-              </TabsTrigger>
-              <TabsTrigger value="members" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-                <Users className="size-3.5" />成员
-              </TabsTrigger>
-            </TabsList>
-            <ScrollArea className="flex-1">
-              <TabsContent value="info" className="p-4 mt-0 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-10 rounded-lg bg-muted">
-                    {channel.type === 'agent' ? <Bot className="size-5 text-muted-foreground" /> :
-                     channel.type === 'issue' ? <AlertCircle className="size-5 text-muted-foreground" /> :
-                     <Hash className="size-5 text-muted-foreground" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">#{channel.name}</p>
-                    <p className="text-xs text-muted-foreground">类型：{typeConf.label}</p>
-                  </div>
-                  <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
-                    <Pencil className="size-3.5" />
-                  </Button>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">频道 ID</span>
-                    <span className="font-mono text-xs">{channel.id.slice(0, 8)}...</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">成员数</span>
-                    <span>{channel.members.length}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">创建时间</span>
-                    <span>{new Date(channel.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="members" className="p-4 mt-0 space-y-1">
-                {channel.members.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-4 text-center">暂无成员</p>
-                )}
-                {channel.members.map((member) => (
-                  <MemberCard
-                    key={member}
-                    name={member}
-                    onClick={() => { setSelectedMember(member); setMemberInfoOpen(true); }}
-                  />
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full mt-2 text-xs text-muted-foreground"
-                  onClick={() => setAddMemberOpen(true)}
-                >
-                  <UserPlus className="size-3.5 mr-1" />添加成员
-                </Button>
-              </TabsContent>
-            </ScrollArea>
-          </Tabs>
-        </div>
+        <ChannelInfoPanel
+          workspaceId={workspaceId}
+          channel={channel}
+          agents={agents}
+          allChannels={channels}
+        />
       )}
 
-      <ChannelDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        workspaceId={workspaceId}
-        channel={channel}
-        onSubmit={(data) => updateChannel(workspaceId, channel.id, data)}
-      />
+      {/* 编辑消息 Dialog */}
+      <Dialog open={!!editingMsg} onOpenChange={(open) => { if (!open) setEditingMsg(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑消息</DialogTitle>
+            <DialogDescription>修改消息内容后点击保存。</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={4}
+            className="min-h-20"
+          />
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+            <Button onClick={submitEdit}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <MemberInfoDialog
-        open={memberInfoOpen}
-        onOpenChange={setMemberInfoOpen}
-        memberName={selectedMember}
-        channels={memberChannels(selectedMember)}
-      />
-
-      <AddMemberDialog
-        open={addMemberOpen}
-        onOpenChange={setAddMemberOpen}
-        candidates={candidateMembers}
-        onAdd={handleAddMembers}
-      />
+      {/* 删除确认 Dialog */}
+      <Dialog open={!!deletingMsg} onOpenChange={(open) => { if (!open) setDeletingMsg(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除消息</DialogTitle>
+            <DialogDescription>确认删除这条消息？此操作不可撤销。</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+            <Button variant="destructive" onClick={confirmDelete}>
+              <Trash2 className="size-3.5" />删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -16,6 +16,7 @@ interface ChannelStore {
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
   deleteMessage: (channelId: string, messageId: string) => void;
+  deleteChannel: (workspaceId: string, channelId: string) => Promise<void>;
 }
 
 export const useChannelStore = create<ChannelStore>((set) => ({
@@ -89,5 +90,18 @@ export const useChannelStore = create<ChannelStore>((set) => ({
         [channelId]: (s.messages[channelId] || []).filter((item) => item.id !== messageId),
       },
     }));
+  },
+
+  deleteChannel: async (workspaceId, channelId) => {
+    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, { method: 'DELETE' });
+    set((s) => {
+      const channels = s.channels.filter((c) => c.id !== channelId);
+      const { [channelId]: _, ...rest } = s.messages;
+      return {
+        channels,
+        activeChannelId: s.activeChannelId === channelId ? (channels[0]?.id ?? null) : s.activeChannelId,
+        messages: rest,
+      };
+    });
   },
 }));

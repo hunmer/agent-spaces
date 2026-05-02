@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { join } from 'node:path';
 import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from '../storage/json-store.js';
+import { rmSync } from 'node:fs';
 import type { Channel } from '@agent-spaces/shared';
 
 function workspaceDir(workspaceId: string) {
@@ -48,6 +49,17 @@ export function updateChannel(workspaceId: string, channelId: string, data: Part
   if (data.members !== undefined) channels[idx].members = data.members;
   writeJsonFile(channelsPath(workspaceId), channels);
   return channels[idx];
+}
+
+export function deleteChannel(workspaceId: string, channelId: string): boolean {
+  const channels = listChannels(workspaceId);
+  const idx = channels.findIndex((c) => c.id === channelId);
+  if (idx === -1) return false;
+  channels.splice(idx, 1);
+  writeJsonFile(channelsPath(workspaceId), channels);
+  const channelDir = join(workspaceDir(workspaceId), 'channels', channelId);
+  rmSync(channelDir, { recursive: true, force: true });
+  return true;
 }
 
 export function ensureGeneralChannel(workspaceId: string): void {
