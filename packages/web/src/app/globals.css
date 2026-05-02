@@ -513,19 +513,31 @@
 
 .suggestion-menu {
   width: 320px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: white;
+  background: var(--popover);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
   overflow: hidden;
 }
 
+/* tippy override for suggestion popup */
+.tippy-box:has(.suggestion-menu) {
+  background: transparent;
+  box-shadow: none;
+}
+.tippy-box:has(.suggestion-menu) .tippy-content {
+  padding: 0;
+}
+.tippy-box:has(.suggestion-menu) .tippy-arrow {
+  display: none;
+}
+
 .suggestion-header {
   padding: 10px 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   font-size: 12px;
-  color: #64748b;
-  background: #f8fafc;
+  color: var(--muted-foreground);
+  background: var(--muted);
 }
 
 .suggestion-list {
@@ -543,17 +555,17 @@
 
 .suggestion-item:hover,
 .suggestion-item[data-selected='true'] {
-  background: #eff6ff;
+  background: var(--accent);
 }
 
 .suggestion-title {
   font-size: 14px;
-  color: #0f172a;
+  color: var(--foreground);
 }
 
 .suggestion-desc {
   font-size: 12px;
-  color: #64748b;
+  color: var(--muted-foreground);
 }
 
 .modal-overlay {

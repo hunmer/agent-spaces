@@ -8,7 +8,7 @@ export class WorkspaceWS {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
 
-  constructor(private workspaceId: string) {
+  constructor(readonly workspaceId: string) {
     const port = process.env.NEXT_PUBLIC_WS_PORT || '3100';
     this.url = `ws://localhost:${port}/ws?workspaceId=${workspaceId}`;
   }
@@ -68,6 +68,10 @@ export class WorkspaceWS {
 let instance: WorkspaceWS | null = null;
 
 export function getWS(workspaceId: string): WorkspaceWS {
+  if (instance && instance.workspaceId !== workspaceId) {
+    instance.disconnect();
+    instance = null;
+  }
   if (!instance) {
     instance = new WorkspaceWS(workspaceId);
     instance.connect();

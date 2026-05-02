@@ -96,7 +96,8 @@ export const useChannelStore = create<ChannelStore>((set) => ({
     await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, { method: 'DELETE' });
     set((s) => {
       const channels = s.channels.filter((c) => c.id !== channelId);
-      const { [channelId]: _, ...rest } = s.messages;
+      const rest = { ...s.messages };
+      delete rest[channelId];
       return {
         channels,
         activeChannelId: s.activeChannelId === channelId ? (channels[0]?.id ?? null) : s.activeChannelId,

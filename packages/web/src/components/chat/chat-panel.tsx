@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useChannelStore } from '@/stores/channel';
 import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
@@ -35,6 +35,20 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   const channel = channels.find((c) => c.id === activeChannelId);
   const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
+
+  const mentionAgents = useMemo(() => {
+    const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+    if (!channel) return enabledAgents;
+
+    const memberNames = new Set(channel.members.filter((member) => member !== 'user'));
+    if (memberNames.size === 0) return enabledAgents;
+
+    const channelAgents = enabledAgents.filter((agent) =>
+      memberNames.has(agent.id) || memberNames.has(agent.name || agent.role) || memberNames.has(agent.role),
+    );
+
+    return channelAgents.length > 0 ? channelAgents : enabledAgents;
+  }, [channel, agents]);
 
   useEffect(() => {
     if (activeChannelId) loadMessages(workspaceId, activeChannelId);
@@ -162,7 +176,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         </div>
 
         {/* Input */}
-        <ChatInput channelName={channel.name} agents={agents} onSend={handleSend} />
+        <ChatInput channelName={channel.name} agents={mentionAgents} onSend={handleSend} />
       </div>
 
       {/* 右侧：信息面板 */}

@@ -5,6 +5,7 @@ import { DevInspector } from "@/components/dev-inspector";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import "flexlayout-react/style/light.css";
+import "tippy.js/dist/tippy.css";
 import "./globals.css";
 
 const dmSans = DM_Sans({

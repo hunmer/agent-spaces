@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { WSEvent, ClientEventName } from '@agent-spaces/shared';
+import type { AgentConfig, WSEvent, ClientEventName } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage } from '../services/message.js';
@@ -94,7 +94,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   const message = createMessage(workspaceId, channelId, { senderId: 'user', content, type: type as any });
   broadcastToWorkspace(workspaceId, 'channel.message', message);
 
-  const agentIds = [...new Set((mentions || []).filter(Boolean))];
+  const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
   for (const agentId of agentIds) {
     void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content));
   }
@@ -106,7 +106,7 @@ async function runMentionedAgent(
   agentConfigId: string,
   prompt: string,
 ) {
-  const preset = agentService.listPresets(workspaceId)?.find((agent) => agent.id === agentConfigId);
+  const preset = findMentionedAgentPreset(workspaceId, agentConfigId);
   if (!preset || preset.enabled === false) return;
 
   const session = agentService.create(workspaceId, preset.role, preset.id);
@@ -175,6 +175,18 @@ async function runMentionedAgent(
   }
 }
 
+function findMentionedAgentPreset(workspaceId: string, mention: string): AgentConfig | undefined {
+  const normalizedMention = mention.trim().toLowerCase();
+  return agentService.listPresets(workspaceId)?.find((agent) => {
+    const name = agent.name?.trim().toLowerCase();
+    return (
+      agent.id === mention ||
+      name === normalizedMention ||
+      agent.role.toLowerCase() === normalizedMention
+    );
+  });
+}
+
 function buildAgentPrompt(systemPrompt: string | undefined, userPrompt: string): string {
   const trimmedSystemPrompt = systemPrompt?.trim();
   if (!trimmedSystemPrompt) return userPrompt;
@@ -191,6 +203,27 @@ function stripHtml(content: string): string {
     .replace(/&gt;/g, '>')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function extractMentionIds(content: string): string[] {
+  const ids = new Set<string>();
+  const mentionPattern = /<span[^>]*data-type=["']mention["'][^>]*>/gi;
+  for (const match of content.matchAll(mentionPattern)) {
+    const id = match[0].match(/\sdata-id=["']([^"']+)["']/i)?.[1];
+    const label = match[0].match(/\sdata-label=["']([^"']+)["']/i)?.[1];
+    if (id) ids.add(decodeHtml(id));
+    else if (label) ids.add(decodeHtml(label));
+  }
+  return [...ids];
+}
+
+function decodeHtml(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
 }
 
 // Register agent handlers
