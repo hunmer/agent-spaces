@@ -5,7 +5,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/components/theme-provider';
 import { getWS } from '@/lib/ws';
 
 const TERM_THEMES = {

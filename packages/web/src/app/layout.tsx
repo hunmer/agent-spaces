@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
 import { DevInspector } from "@/components/dev-inspector";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
