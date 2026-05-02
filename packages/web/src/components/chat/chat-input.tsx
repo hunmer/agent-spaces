@@ -26,7 +26,7 @@ import {
   IconWand,
   IconWorld,
 } from "@tabler/icons-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -57,9 +57,26 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
   const [selectedPerformance, setSelectedPerformance] = useState("High");
   const [autoMode, setAutoMode] = useState(false);
   const isProcessingRef = useRef(isProcessing);
-  isProcessingRef.current = isProcessing;
   const onSendRef = useRef(onSend);
-  onSendRef.current = onSend;
+  const editorRef = useRef<Editor | null>(null);
+
+  useEffect(() => {
+    isProcessingRef.current = isProcessing;
+  }, [isProcessing]);
+
+  useEffect(() => {
+    onSendRef.current = onSend;
+  }, [onSend]);
+
+  const submitCurrentMessage = useCallback(() => {
+    const currentEditor = editorRef.current;
+    if (!currentEditor || isProcessingRef.current) return;
+    const text = currentEditor.getText().trim();
+    if (!text) return;
+    const mentions = collectMentionIds(currentEditor.getJSON());
+    onSendRef.current(currentEditor.getHTML(), mentions);
+    currentEditor.commands.clearContent();
+  }, []);
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
     noClick: true,
@@ -130,17 +147,12 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
         attributes: {
           class: "tiptap tiptap-chat",
         },
-        handleKeyDown: (view, event) => {
+        handleKeyDown: (_view, event) => {
           if (event.key === "Enter" && !event.shiftKey) {
             const hasPopup = document.querySelector('.suggestion-menu');
             if (hasPopup) return false;
             event.preventDefault();
-            if (!editor || isProcessingRef.current) return true;
-            const text = editor.getText().trim();
-            if (!text) return true;
-            const mentions = collectMentionIds(editor.getJSON());
-            onSendRef.current(editor.getHTML(), mentions);
-            editor.commands.clearContent();
+            submitCurrentMessage();
             return true;
           }
           return false;
@@ -148,17 +160,16 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
       },
       content: "",
     },
-    [mentionExtension, slashExtension, channelName],
+    [mentionExtension, slashExtension, channelName, submitCurrentMessage],
   );
 
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+
   const handleSubmit = useCallback(() => {
-    if (!editor) return;
-    const text = editor.getText().trim();
-    if (!text) return;
-    const mentions = collectMentionIds(editor.getJSON());
-    onSend(editor.getHTML(), mentions);
-    editor.commands.clearContent();
-  }, [editor, onSend]);
+    submitCurrentMessage();
+  }, [submitCurrentMessage]);
 
   const canSubmit = useEditorState({
     editor,

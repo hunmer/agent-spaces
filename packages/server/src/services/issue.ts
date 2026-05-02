@@ -3,13 +3,27 @@ import type { Issue, IssueStatus, CreateIssueInput } from '@agent-spaces/shared'
 import { listIssues, getIssue, createIssue, updateIssue, deleteIssue } from '../storage/issue-store.js';
 import * as channelService from '../services/channel.js';
 
+function ensureChannel(workspaceId: string, issue: Issue): void {
+  if (issue.channelId) return;
+  const channel = channelService.createChannel(workspaceId, {
+    name: issue.title,
+    type: 'issue',
+    members: ['user'],
+  });
+  issue.channelId = channel.id;
+  updateIssue(issue);
+}
+
 export function list(workspaceId: string, status?: IssueStatus): Issue[] {
   const all = listIssues(workspaceId);
+  for (const issue of all) ensureChannel(workspaceId, issue);
   return status ? all.filter((i) => i.status === status) : all;
 }
 
 export function getById(workspaceId: string, issueId: string): Issue | null {
-  return getIssue(workspaceId, issueId);
+  const issue = getIssue(workspaceId, issueId);
+  if (issue) ensureChannel(workspaceId, issue);
+  return issue;
 }
 
 export function create(workspaceId: string, input: CreateIssueInput): Issue {

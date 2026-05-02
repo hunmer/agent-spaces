@@ -85,7 +85,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   useEffect(() => {
     if (issue) {
       loadTasks(workspaceId, issue.id);
-      loadMessages(workspaceId, issue.channelId);
+      if (issue.channelId) loadMessages(workspaceId, issue.channelId);
     }
   }, [issue, workspaceId, loadTasks, loadMessages]);
 
@@ -104,7 +104,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }, [workspaceId]);
 
   useEffect(() => {
-    if (!issue) return;
+    if (!issue?.channelId) return;
     const ws = getWS(workspaceId);
     const channelId = issue.channelId;
     const unsub = ws.on('channel.message', (data: unknown) => {
@@ -184,7 +184,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   });
 
   const handleSendComment = useCallback(() => {
-    if (!editor || !issue) return;
+    if (!editor || !issue?.channelId) return;
     const text = editor.getText().trim();
     if (!text) return;
     sendMessage(workspaceId, issue.channelId, text);
@@ -205,7 +205,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }
 
   const issueTasks = tasks.filter((t) => t.issueId === issue.id);
-  const channelMessages = messages[issue.channelId] ?? [];
+  const channelMessages = Array.isArray(messages[issue.channelId]) ? messages[issue.channelId] : [];
   const members = issue.members ?? [];
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
   const memberIds = new Set(members);
