@@ -19,7 +19,6 @@ import {
   Bot,
   Pencil,
   Trash2,
-  Plus,
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -132,13 +131,8 @@ export function DashboardSidebar() {
       title: "Workspaces",
       icon: <FolderOpen className="size-4" />,
       link: "/",
-      headerMenuItems: [
-        {
-          label: "Add",
-          icon: <Plus className="size-3.5" />,
-          onClick: openCreateDialog,
-        },
-      ],
+      onAdd: openCreateDialog,
+      addLabel: "Add Workspace",
       subs: workspaces.map((ws) => ({
         title: ws.name,
         link: `/workspace/${ws.id}`,

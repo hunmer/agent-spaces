@@ -21,7 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
@@ -39,19 +39,14 @@ export type SubMenuItem = {
   }[];
 };
 
-export type HeaderMenuItem = {
-  label: string;
-  icon?: React.ReactNode;
-  onClick: () => void;
-};
-
 export type Route = {
   id: string;
   title: string;
   icon?: React.ReactNode;
   link: string;
   subs?: SubMenuItem[];
-  headerMenuItems?: HeaderMenuItem[];
+  addLabel?: string;
+  onAdd?: () => void;
 };
 
 export default function DashboardNavigation({ routes }: { routes: Route[] }) {
@@ -64,8 +59,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
       {routes.map((route) => {
         const isOpen = !isCollapsed && openSet.has(route.id);
         const hasSubRoutes = !!route.subs?.length;
-        const hasHeaderMenu = !!route.headerMenuItems?.length;
-        const useCollapsible = hasSubRoutes || hasHeaderMenu;
+        const useCollapsible = hasSubRoutes || !!route.onAdd;
 
         return (
           <SidebarMenuItem key={route.id}>
@@ -92,23 +86,6 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                                               <span className="ml-2 flex-1 text-sm font-medium">
                                                 {route.title}
                                               </span>
-                                            )}{!isCollapsed && hasHeaderMenu && (
-                                              <DropdownMenu>
-                                                <DropdownMenuTrigger
-                                                  className="flex items-center justify-center rounded-md p-0.5 opacity-0 group-hover/hdr:opacity-100 hover:bg-sidebar-accent transition-opacity cursor-pointer"
-                                                  onClick={(e) => e.stopPropagation()}
-                                                >
-                                                  <MoreHorizontal className="size-3.5 text-muted-foreground" />
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" side="right">
-                                                  {route.headerMenuItems!.map((item) => (
-                                                    <DropdownMenuItem key={item.label} onClick={item.onClick}>
-                                                      {item.icon}
-                                                      {item.label}
-                                                    </DropdownMenuItem>
-                                                  ))}
-                                                </DropdownMenuContent>
-                                              </DropdownMenu>
                                             )}{!isCollapsed && hasSubRoutes && (
                                               <span>
                                                 {isOpen ? (
@@ -121,7 +98,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
 
                 {!isCollapsed && (
                   <CollapsibleContent>
-                    <SidebarMenuSub className="my-1 ml-3.5 ">
+                    <SidebarMenuSub className="my-1 ml-3.5">
                       {route.subs?.map((subRoute) => (
                         <SidebarMenuSubItem
                           key={`${route.id}-${subRoute.title}`}
@@ -165,6 +142,18 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           </div>
                         </SidebarMenuSubItem>
                       ))}
+                      {route.onAdd && (
+                        <SidebarMenuSubItem>
+                          <button
+                            type="button"
+                            onClick={route.onAdd}
+                            className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                          >
+                            <Plus className="size-3.5" />
+                            {route.addLabel ?? "Add Workspace"}
+                          </button>
+                        </SidebarMenuSubItem>
+                      )}
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 )}

@@ -37,10 +37,10 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
 
   // 收集候选成员：所有频道成员去重 + workspace agents，排除当前频道已有成员
-  const allMembers = [...new Set(channels.flatMap((c) => c.members))];
-  const candidateMembers = allMembers.filter((m) => !channel.members.includes(m));
-  const memberChannels = (name: string) => channels.filter((c) => c.members.includes(name)).map((c) => c.name);
   const channel = channels.find((c) => c.id === activeChannelId);
+  const allMembers = [...new Set(channels.flatMap((c) => c.members))];
+  const candidateMembers = channel ? allMembers.filter((m) => !channel.members.includes(m)) : [];
+  const memberChannels = (name: string) => channels.filter((c) => c.members.includes(name)).map((c) => c.name);
   const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
 
   useEffect(() => {
@@ -76,6 +76,10 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }
 
   const typeConf = channelTypeStatus[channel.type];
+
+  const handleAddMembers = (newMembers: string[]) => {
+    updateChannel(workspaceId, channel.id, { members: [...channel.members, ...newMembers] });
+  };
 
   return (
     <div className="flex h-full">
@@ -199,9 +203,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         open={addMemberOpen}
         onOpenChange={setAddMemberOpen}
         candidates={candidateMembers}
-        onAdd={(newMembers) => updateChannel(workspaceId, channel.id, {
-          members: [...channel.members, ...newMembers],
-        })}
+        onAdd={handleAddMembers}
       />
     </div>
   );

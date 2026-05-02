@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, IRenderTabValues } from "flexlayout-react";
-import "flexlayout-react/style/light.css";
 import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch } from "lucide-react";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
