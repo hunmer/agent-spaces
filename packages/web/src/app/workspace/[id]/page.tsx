@@ -1,19 +1,15 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
 import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
-import { useWorkspaceTabs } from "@/stores/workspace-tabs";
 import type { Workspace } from "@agent-spaces/shared";
 
 export default function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { openTab, activeId } = useWorkspaceTabs();
 
   useEffect(() => {
     fetch(`/api/workspaces/${id}`)
@@ -21,18 +17,9 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
         if (!r.ok) throw new Error("Not found");
         return r.json();
       })
-      .then((ws) => {
-        setWorkspace(ws);
-        openTab({ id: ws.id, name: ws.name });
-      })
+      .then(setWorkspace)
       .catch((e) => setError(e.message));
-  }, [id, openTab]);
-
-  useEffect(() => {
-    if (activeId && activeId !== id) {
-      router.push(`/workspace/${activeId}`);
-    }
-  }, [activeId, id, router]);
+  }, [id]);
 
   if (error) {
     return (

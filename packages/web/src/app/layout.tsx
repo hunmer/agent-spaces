@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { DevInspector } from "@/components/dev-inspector";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import "./globals.css";
 
@@ -42,9 +42,9 @@ export default function RootLayout({
         <DevInspector />
         <SidebarProvider>
           <DashboardSidebar />
-          <main className="flex-1 overflow-hidden">
+          <SidebarInset>
             {children}
-          </main>
+          </SidebarInset>
         </SidebarProvider>
       </body>
     </html>
