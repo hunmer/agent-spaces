@@ -8,6 +8,22 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  webpack(config, { dev, isServer }) {
+    if (dev && !isServer) {
+      config.module.rules.push({
+        test: /\.[jt]sx?$/,
+        include: path.join(projectRoot, "src"),
+        enforce: "pre",
+        use: [
+          {
+            loader: path.join(projectRoot, "inspect-source-loader.cjs"),
+          },
+        ],
+      });
+    }
+
+    return config;
+  },
   async rewrites() {
     return [
       {
