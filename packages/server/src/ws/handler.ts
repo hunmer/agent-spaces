@@ -6,6 +6,7 @@ import { createMessage, updateMessage, listMessages } from '../services/message.
 import { getChannel } from '../services/channel.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
+import * as wsService from '../services/workspace.js';
 import { runPlanner } from '../agents/planner-agent.js';
 import type { AgentContext } from '../agents/agent-context.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
@@ -175,9 +176,11 @@ async function runMentionedAgent(
       baseURL: preset.apiBase,
     });
     const history = listMessages(workspaceId, channelId, { limit: 20 });
+    const workspace = wsService.getById(workspaceId);
     const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history, {
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
+      boundDirs: workspace?.boundDirs,
     }), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 6,
       mcpServers,
@@ -381,19 +384,23 @@ function buildAgentPrompt(
   systemPrompt: string | undefined,
   userPrompt: string,
   history: Message[] = [],
-  runtimeConfig?: { mcpServers: string[]; skills: string[] },
+  runtimeConfig?: { mcpServers: string[]; skills: string[]; boundDirs?: string[] },
 ): string {
   const parts: string[] = [];
   const trimmedSystemPrompt = systemPrompt?.trim();
   if (trimmedSystemPrompt) parts.push(trimmedSystemPrompt);
 
   if (runtimeConfig) {
-    parts.push([
+    const configLines = [
       'Agent runtime configuration:',
       `- MCP servers configured for this agent: ${runtimeConfig.mcpServers.length ? runtimeConfig.mcpServers.join(', ') : 'none'}`,
       `- Skills configured for this agent: ${runtimeConfig.skills.length ? runtimeConfig.skills.join(', ') : 'none'}`,
-      'When asked what MCP servers or skills you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.',
-    ].join('\n'));
+    ];
+    if (runtimeConfig.boundDirs?.length) {
+      configLines.push(`- Code directories (boundDirs): ${runtimeConfig.boundDirs.join(', ')}`);
+    }
+    configLines.push('When asked what MCP servers or skills you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.');
+    parts.push(configLines.join('\n'));
   }
 
   if (history.length > 0) {
