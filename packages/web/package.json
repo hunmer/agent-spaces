@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -27,6 +27,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@react-dev-inspector/babel-plugin": "^2.0.1",
+    "@react-dev-inspector/middleware": "^2.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
