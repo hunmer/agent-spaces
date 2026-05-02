@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useIssueStore } from '@/stores/issue';
 import { useTaskStore } from '@/stores/task';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Play, RotateCcw, XCircle, Send, User } from 'lucide-react';
+import { Play, RotateCcw, XCircle, User, Clock, GitBranch } from 'lucide-react';
+import { useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import { ComposerShell } from '@/components/composer/composer-shell';
 import type { IssueStatus, TaskStatus } from '@agent-spaces/shared';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
@@ -98,7 +101,6 @@ interface IssueDetailProps {
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask } = useTaskStore();
-  const [comment, setComment] = useState('');
   const [comments, setComments] = useState<MockComment[]>(MOCK_COMMENTS);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -110,19 +112,43 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     }
   }, [issue, workspaceId, loadTasks]);
 
-  const handleSendComment = () => {
-    if (!comment.trim()) return;
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder: 'Write a comment...' }),
+    ],
+    editorProps: {
+      attributes: { class: 'tiptap tiptap-chat' },
+      handleKeyDown: (_view, event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          handleSendComment();
+          return true;
+        }
+        return false;
+      },
+    },
+    content: '',
+  });
+
+  const handleSendComment = useCallback(() => {
+    if (!editor) return;
+    const text = editor.getText().trim();
+    if (!text) return;
     setComments(prev => [...prev, {
       id: `c${Date.now()}`,
       senderId: 'user',
-      content: comment.trim(),
+      content: text,
       createdAt: new Date().toISOString(),
     }]);
-    setComment('');
+    editor.commands.clearContent();
     setTimeout(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }, 50);
-  };
+  }, [editor]);
+
+  const canSubmit = !!editor?.getText().trim();
 
   if (!issue) {
     return (
@@ -136,31 +162,50 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {/* Header */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
+        <div className="p-4 pb-3 border-b">
+          <div className="flex items-center gap-2 mb-1">
             <h2 className="text-lg font-semibold flex-1">{issue.title}</h2>
             <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
               {ISSUE_STATUS_LABEL[issue.status]}
             </Badge>
           </div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Created {new Date(issue.createdAt).toLocaleDateString()}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Updated {new Date(issue.updatedAt).toLocaleDateString()}
+            </span>
+            {issue.branch && (
+              <span className="flex items-center gap-1">
+                <GitBranch className="h-3 w-3" />
+                {issue.branch}
+              </span>
+            )}
+            {issue.prUrl && (
+              <span>PR: {issue.prUrl}</span>
+            )}
+          </div>
           {issue.description && (
-            <p className="text-sm text-muted-foreground">{issue.description}</p>
+            <p className="text-sm text-muted-foreground mt-2">{issue.description}</p>
           )}
-          <div className="flex gap-2">
-            {issue.status === 'draft' && (
+          {issue.status === 'draft' && (
+            <div className="mt-2">
               <Button size="sm" variant="outline" onClick={() => startIssue(workspaceId, issue.id)}>
                 <Play className="h-3 w-3 mr-1" />
                 Start
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Tasks */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">
+        <div className="p-4 pb-2">
+          <h3 className="text-sm font-medium mb-2">
             Tasks ({issueTasks.length})
           </h3>
           {issueTasks.length === 0 ? (
@@ -203,7 +248,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         </div>
 
         {/* Comments */}
-        <div className="space-y-0 pt-2 border-t">
+        <div className="px-4 pt-2 pb-4 border-t">
           <h3 className="text-sm font-medium mb-3">Comments ({comments.length})</h3>
           {issue.description && (
             <div className="pb-3 border-b">
@@ -258,45 +303,15 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             </div>
           ))}
         </div>
-
-        {/* Metadata */}
-        <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
-          <div>Created: {new Date(issue.createdAt).toLocaleString()}</div>
-          <div>Updated: {new Date(issue.updatedAt).toLocaleString()}</div>
-          {issue.branch && <div>Branch: {issue.branch}</div>}
-          {issue.prUrl && <div>PR: {issue.prUrl}</div>}
-        </div>
       </div>
 
       {/* Comment input */}
-      <div className="border-t p-3">
-        <div className="bg-background border border-border rounded-xl overflow-hidden">
-          <Textarea
-            placeholder="Write a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendComment();
-              }
-            }}
-            rows={2}
-            className="border-0 resize-none text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
-          />
-          <div className="flex items-center justify-end px-2 pb-1.5">
-            <Button
-              size="sm"
-              disabled={!comment.trim()}
-              onClick={handleSendComment}
-              className="h-7 rounded-full text-xs"
-            >
-              <Send className="h-3 w-3 mr-1" />
-              Comment
-            </Button>
-          </div>
-        </div>
-      </div>
+      <ComposerShell
+        editor={editor}
+        canSubmit={canSubmit}
+        onSubmit={handleSendComment}
+        className="border-t px-3 py-2"
+      />
     </div>
   );
 }

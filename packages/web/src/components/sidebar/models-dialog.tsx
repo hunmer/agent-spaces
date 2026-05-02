@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { LLMModel } from "@agent-spaces/shared";
+import type { LLMModel, LLMProvider } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,6 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-
-const PROVIDERS = ["Anthropic", "OpenAI", "Google", "DeepSeek", "Meta", "Mistral", "Other"];
 
 const CAP_BADGES: Record<string, { label: string; cls: string }> = {
   vision: { label: "Vision", cls: "bg-blue-500/10 text-blue-600 border-blue-200" },
@@ -46,6 +44,7 @@ export function ModelsDialog({
   initialProvider?: string;
 }) {
   const [models, setModels] = useState<LLMModel[]>([]);
+  const [providers, setProviders] = useState<LLMProvider[]>([]);
   const [selected, setSelected] = useState<LLMModel | null>(null);
   const [draft, setDraft] = useState<Partial<LLMModel> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,9 +55,14 @@ export function ModelsDialog({
     if (!open) return;
     setLoading(true);
     setError(null);
-    fetch("/api/models")
-      .then(r => r.json())
-      .then((data: LLMModel[]) => setModels(data))
+    Promise.all([
+      fetch("/api/models").then(r => r.json()),
+      fetch("/api/providers").then(r => r.json()),
+    ])
+      .then(([models, prov]: [LLMModel[], LLMProvider[]]) => {
+        setModels(models);
+        setProviders(prov);
+      })
       .catch(() => setError("Failed to load models"))
       .finally(() => setLoading(false));
   }, [open]);
@@ -167,9 +171,9 @@ export function ModelsDialog({
           {loading ? (
             <div className="py-12 text-center text-sm text-muted-foreground">Loading models...</div>
           ) : draft ? (
-            <ModelForm draft={draft} onChange={updateDraft} />
+            <ModelForm draft={draft} providerNames={providers.map(p => p.name)} onChange={updateDraft} />
           ) : (
-            <ModelList groups={groups} onEdit={handleEdit} onDelete={handleDelete} />
+            <ModelList groups={groups} providerNames={providers.map(p => p.name)} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </div>
 
@@ -188,15 +192,25 @@ export function ModelsDialog({
 
 function ModelList({
   groups,
+  providerNames,
   onEdit,
   onDelete,
 }: {
   groups: Record<string, LLMModel[]>;
+  providerNames: string[];
   onEdit: (m: LLMModel) => void;
   onDelete: (id: string) => void;
 }) {
-  const order = ["Anthropic", "OpenAI", "Google", "DeepSeek", "Meta", "Mistral", "Other"];
-  const sorted = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b) || a.localeCompare(b));
+  const order = providerNames.length > 0 ? providerNames : ["Other"];
+  const sorted = Object.keys(groups).sort((a, b) => {
+    const ai = order.indexOf(a);
+    const bi = order.indexOf(b);
+    // known providers first (sorted by their order), unknown ones last
+    if (ai >= 0 && bi >= 0) return ai - bi;
+    if (ai >= 0) return -1;
+    if (bi >= 0) return 1;
+    return a.localeCompare(b);
+  });
 
   return (
     <div className="flex flex-col p-4 gap-4">
@@ -251,11 +265,14 @@ function ModelList({
 
 function ModelForm({
   draft,
+  providerNames,
   onChange,
 }: {
   draft: Partial<LLMModel>;
+  providerNames: string[];
   onChange: (key: string, value: unknown) => void;
 }) {
+  const options = providerNames.length > 0 ? providerNames : ["Other"];
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">
@@ -275,7 +292,7 @@ function ModelForm({
             onChange={e => onChange("provider", e.target.value)}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
           >
-            {PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+            {options.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
       </div>

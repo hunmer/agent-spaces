@@ -22,13 +22,12 @@ import {
   IconPlus,
   IconProgress,
   IconRobot,
-  IconSend,
   IconUser,
   IconWand,
   IconWorld,
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
-import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
+import { ReactRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
@@ -39,6 +38,7 @@ import { useDropzone } from "react-dropzone";
 
 import { COMMANDS } from "@/lib/commands";
 import { SuggestionList } from "@/components/composer/suggestion-list";
+import { ComposerShell } from "@/components/composer/composer-shell";
 import type { AgentConfig } from "@agent-spaces/shared";
 
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled">;
@@ -250,66 +250,57 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
 
   const canSubmit = !!editor?.getText().trim();
 
+  const chatActions = (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent" />}><IconPlus className="size-3" /></DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5">
+          <DropdownMenuGroup className="space-y-1">
+            <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={openFilePicker}>
+              <IconPaperclip size={16} className="opacity-60" />
+              Attach Files
+            </DropdownMenuItem>
+            <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
+              <IconCode size={16} className="opacity-60" />
+              Code Interpreter
+            </DropdownMenuItem>
+            <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
+              <IconWorld size={16} className="opacity-60" />
+              Web Search
+            </DropdownMenuItem>
+            <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
+              <IconHistory size={16} className="opacity-60" />
+              Chat History
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setAutoMode(!autoMode)}
+        className={cn("h-7 px-2 rounded-full border border-border hover:bg-accent", {
+          "bg-primary/10 text-primary border-primary/30": autoMode,
+          "text-muted-foreground": !autoMode,
+        })}
+      >
+        <IconWand className="size-3" />
+        <span className="text-xs">Auto</span>
+      </Button>
+    </>
+  );
+
   return (
     <div className="border-t px-4 py-2">
-      <div className="bg-background border border-border rounded-2xl overflow-hidden" {...getRootProps()}>
-        <input {...getInputProps()} />
-
-        <div className="px-3 pt-3 pb-2 grow">
-          <EditorContent editor={editor} />
-        </div>
-
-        <div className="mb-2 px-2 flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent" />}><IconPlus className="size-3" /></DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5">
-                <DropdownMenuGroup className="space-y-1">
-                  <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={openFilePicker}>
-                    <IconPaperclip size={16} className="opacity-60" />
-                    Attach Files
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
-                    <IconCode size={16} className="opacity-60" />
-                    Code Interpreter
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
-                    <IconWorld size={16} className="opacity-60" />
-                    Web Search
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
-                    <IconHistory size={16} className="opacity-60" />
-                    Chat History
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setAutoMode(!autoMode)}
-              className={cn("h-7 px-2 rounded-full border border-border hover:bg-accent", {
-                "bg-primary/10 text-primary border-primary/30": autoMode,
-                "text-muted-foreground": !autoMode,
-              })}
-            >
-              <IconWand className="size-3" />
-              <span className="text-xs">Auto</span>
-            </Button>
-          </div>
-
-          <div>
-            <Button
-              disabled={!canSubmit}
-              className="size-7 p-0 rounded-full bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={handleSubmit}
-            >
-              <IconSend className="size-3 fill-primary" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <ComposerShell
+        editor={editor}
+        canSubmit={canSubmit}
+        onSubmit={handleSubmit}
+        actions={chatActions}
+        dropzoneProps={getRootProps()}
+        hiddenInput={<input {...getInputProps()} />}
+      />
 
       <div className="flex items-center gap-0 pt-2">
         <DropdownMenu>
