@@ -6,8 +6,9 @@ import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
 import { ChatInput, type ChatInputHandle } from './chat-input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { PanelRightOpen, PanelRightClose, Trash2 } from 'lucide-react';
+import { HelpCircleIcon, PanelRightOpen, PanelRightClose, SendIcon, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
@@ -24,6 +25,13 @@ const channelTypeStatus: Record<Channel['type'], { label: string; status: 'onlin
 };
 
 const MAX_VISIBLE = 4;
+
+type PendingQuestion = {
+  messageId: string;
+  questionId: string;
+  question: string;
+  choices: string[];
+};
 
 function ChannelMemberAvatars({ members }: { members: string[] }) {
   const visible = members.filter((m) => m !== 'user').slice(0, MAX_VISIBLE);
@@ -53,7 +61,11 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const chatInputRef = useRef<ChatInputHandle>(null);
 
   const channel = channels.find((c) => c.id === activeChannelId);
-  const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
+  const msgs = useMemo(
+    () => activeChannelId ? (messages[activeChannelId] || []) : [],
+    [activeChannelId, messages],
+  );
+  const pendingQuestion = useMemo(() => findPendingQuestion(msgs), [msgs]);
 
   const mentionAgents = useMemo(() => {
     const enabledAgents = agents.filter((agent) => agent.enabled !== false);
@@ -144,7 +156,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }, [workspaceId, activeChannelId, sendMessage]);
 
   const isProcessing = msgs.length > 0
-    && ['pending', 'streaming'].includes(msgs[msgs.length - 1].status ?? '');
+    && ['pending', 'streaming', 'waiting_for_user'].includes(msgs[msgs.length - 1].status ?? '');
 
   const handleStop = useCallback(() => {
     if (!activeChannelId) return;
@@ -182,6 +194,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     if (msgs.length === 0) return { label: '空闲中', status: 'degraded' as const };
     const last = msgs[msgs.length - 1];
     const s = last.status;
+    if (s === 'waiting_for_user') return { label: '等待用户确定', status: 'degraded' as const };
     if (s === 'streaming' || s === 'pending') return { label: '运行中', status: 'maintenance' as const };
     if (s === 'completed') return { label: '成功', status: 'online' as const };
     if (s === 'error') return { label: '失败', status: 'offline' as const };
@@ -230,6 +243,20 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         </div>
 
         {/* Input */}
+        {pendingQuestion ? (
+          <PendingQuestionPanel
+            question={pendingQuestion}
+            onAnswer={(answer) => {
+              const ws = getWS(workspaceId);
+              ws.send('channel.answer_question', {
+                channelId: channel.id,
+                messageId: pendingQuestion.messageId,
+                questionId: pendingQuestion.questionId,
+                answer,
+              });
+            }}
+          />
+        ) : null}
         <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
       </div>
 
@@ -277,6 +304,89 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function findPendingQuestion(messages: Message[]): PendingQuestion | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.status !== 'waiting_for_user') continue;
+    const part = message.parts?.find((item) => item.type === 'ask_user_question' && item.status !== 'answered');
+    if (!part || part.type !== 'ask_user_question') continue;
+    return {
+      messageId: message.id,
+      questionId: part.id,
+      question: part.question,
+      choices: part.choices ?? [],
+    };
+  }
+  return null;
+}
+
+function PendingQuestionPanel({
+  question,
+  onAnswer,
+}: {
+  question: PendingQuestion;
+  onAnswer: (answer: string) => void;
+}) {
+  const [draft, setDraft] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = (answer: string) => {
+    const trimmed = answer.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    onAnswer(trimmed);
+    setDraft('');
+  };
+
+  return (
+    <div className="border-t bg-background px-4 py-3">
+      <div className="rounded-md border bg-muted/30 p-3">
+        <div className="flex items-start gap-2">
+          <HelpCircleIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="text-sm font-medium">{question.question}</div>
+            {question.choices.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {question.choices.map((choice) => (
+                  <Button
+                    key={choice}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={submitting}
+                    onClick={() => submit(choice)}
+                    className="h-8"
+                  >
+                    {choice}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            <form
+              className="flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submit(draft);
+              }}
+            >
+              <Input
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                disabled={submitting}
+                className="h-8 text-sm"
+                placeholder="输入回答..."
+              />
+              <Button type="submit" size="icon-sm" disabled={!draft.trim() || submitting}>
+                <SendIcon className="size-3.5" />
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

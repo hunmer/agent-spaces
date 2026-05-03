@@ -21,12 +21,27 @@ const handlers = new Map<string, EventHandler>();
 // Track which workspaces have schedulers running
 const activeSchedulers = new Set<string>();
 const activeChannelRuns = new Map<string, Map<string, ActiveChannelRun>>();
+const pendingQuestionRuns = new Map<string, PendingQuestionRun>();
 
 interface ActiveChannelRun {
   agentId: string;
+  agentConfigId: string;
   messageId: string;
   runtime: AgentRuntime;
   stopped?: boolean;
+}
+
+interface PendingAskUserQuestion {
+  id: string;
+  toolUseId?: string;
+  question: string;
+  choices: string[];
+  answer?: string;
+}
+
+interface PendingQuestionRun {
+  agentConfigId: string;
+  question: string;
 }
 
 function ensureScheduler(workspaceId: string, ctx: AgentContext) {
@@ -124,6 +139,47 @@ registerHandler('channel.stop', (_ws, workspaceId, data) => {
   stopChannelRuns(workspaceId, channelId);
 });
 
+registerHandler('channel.answer_question', (_ws, workspaceId, data) => {
+  const { channelId, messageId, questionId, answer } = data as {
+    channelId?: string;
+    messageId?: string;
+    questionId?: string;
+    answer?: string;
+  };
+  const trimmed = answer?.trim();
+  if (!channelId || !messageId || !questionId || !trimmed) return;
+
+  const message = listMessages(workspaceId, channelId).find((item) => item.id === messageId);
+  if (!message) return;
+
+  const updatedParts = message.parts?.map((part) => {
+    if (part.type !== 'ask_user_question' || part.id !== questionId) return part;
+    return { ...part, status: 'answered' as const, answer: trimmed };
+  });
+  const updated = updateMessage(workspaceId, channelId, messageId, {
+    status: 'streaming',
+    parts: updatedParts,
+  });
+  if (updated) broadcastToWorkspace(workspaceId, 'channel.message.updated', updated);
+
+  const key = questionRunKey(workspaceId, channelId, messageId, questionId);
+  const pending = pendingQuestionRuns.get(key);
+  pendingQuestionRuns.delete(key);
+  if (!pending) return;
+
+  void runMentionedAgent(
+    workspaceId,
+    channelId,
+    pending.agentConfigId,
+    [
+      'The user answered your previous question.',
+      `Question: ${pending.question}`,
+      `Answer: ${trimmed}`,
+      'Continue from this answer and complete the original task.',
+    ].join('\n'),
+  );
+});
+
 async function runMentionedAgent(
   workspaceId: string,
   channelId: string,
@@ -181,12 +237,14 @@ async function runMentionedAgent(
     });
     activeRun = {
       agentId: session.id,
+      agentConfigId,
       messageId: pending.id,
       runtime,
     };
     trackChannelRun(workspaceId, channelId, activeRun);
     const history = listMessages(workspaceId, channelId, { limit: 20 });
     const liveOutput: string[] = [];
+    const askUserQuestions: PendingAskUserQuestion[] = [];
     const toolDetails = new Map<string, ToolDetail>();
     const toolUseDetailIds = new Map<string, string>();
     let lastLiveUpdate = 0;
@@ -205,13 +263,15 @@ async function runMentionedAgent(
         skills,
         output: liveOutput,
         toolDetails,
+        askUserQuestions,
         success: true,
       });
       if (parts.length === 0) return;
 
+      const status = askUserQuestions.some((question) => !question.answer) ? 'waiting_for_user' : 'streaming';
       const live = updateMessage(workspaceId, channelId, pending.id, {
         content: liveOutput.join('\n') || pending.content,
-        status: 'streaming',
+        status,
         parts,
         metadata: {
           ...pending.metadata,
@@ -232,6 +292,16 @@ async function runMentionedAgent(
       sandboxDirs: preset.sandboxDirs,
       onEvent: (event) => {
         if (event.type === 'tool_use') {
+          if (event.name === 'AskUserQuestion') {
+            const question = parseAskUserQuestion(event.id, event.input);
+            askUserQuestions.push(question);
+            pendingQuestionRuns.set(questionRunKey(workspaceId, channelId, pending.id, question.id), {
+              agentConfigId,
+              question: question.question,
+            });
+            broadcastLiveParts(true);
+            return;
+          }
           // Intercept TodoWrite to persist todos to channel
           if (event.name === 'TodoWrite' && event.input && typeof event.input === 'object') {
             const input = event.input as { todos?: unknown[] };
@@ -266,6 +336,10 @@ async function runMentionedAgent(
           return;
         }
         if (event.type === 'tool_result') {
+          const askedQuestion = event.toolUseId
+            ? askUserQuestions.find((question) => question.toolUseId === event.toolUseId)
+            : undefined;
+          if (askedQuestion) return;
           const detail = findToolDetailForResult(event.toolUseId, event.result, toolUseDetailIds, toolDetails, workspace?.boundDirs?.[0]);
           if (detail) {
             detail.output = event.result;
@@ -302,6 +376,36 @@ async function runMentionedAgent(
     });
 
     const displayOutput = liveOutput.length > 0 ? liveOutput : result.output;
+    if (!result.success && askUserQuestions.some((question) => !question.answer) && isAskUserQuestionError(result.error || displayOutput.join('\n'))) {
+      const waiting = updateMessage(workspaceId, channelId, pending.id, {
+        content: liveOutput.join('\n') || pending.content,
+        type: 'text',
+        status: 'waiting_for_user',
+        metadata: {
+          agentSessionId: session.id,
+          runtime: preset.runtimeKind,
+          model: preset.modelId,
+          summary: 'Waiting for user answer',
+          duration: Date.now() - startTime,
+        },
+        parts: buildAgentMessageParts({
+          sessionId: session.id,
+          workspaceRoot: workspace?.boundDirs?.[0],
+          presetName: preset.name || preset.role,
+          role: preset.role,
+          model: preset.modelId,
+          systemPrompt: preset.systemPrompt,
+          mcpServers: Object.keys(mcpServers ?? {}),
+          skills,
+          output: liveOutput,
+          toolDetails,
+          askUserQuestions,
+          success: true,
+        }),
+      });
+      if (waiting) broadcastToWorkspace(workspaceId, 'channel.message.updated', waiting);
+      return;
+    }
     const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: result.success ? displayOutput.join('\n') : result.error || displayOutput.join('\n'),
       type: 'text',
@@ -324,6 +428,7 @@ async function runMentionedAgent(
         skills,
         output: displayOutput,
         toolDetails,
+        askUserQuestions,
         success: result.success,
         error: result.error,
       }),
@@ -355,6 +460,7 @@ async function runMentionedAgent(
         skills,
         output: [error],
         toolDetails: new Map(),
+        askUserQuestions: [],
         success: false,
         error,
       }),
@@ -430,7 +536,7 @@ export function markInactiveChannelRunsStopped(workspaceId: string, channelId: s
 
   const stopped: Message[] = [];
   for (const message of listMessages(workspaceId, channelId)) {
-    if (message.status !== 'pending' && message.status !== 'streaming') continue;
+    if (message.status !== 'pending' && message.status !== 'streaming' && message.status !== 'waiting_for_user') continue;
     const updated = updateMessage(workspaceId, channelId, message.id, {
       content: message.content || 'Stopped by user',
       status: 'error',
@@ -460,6 +566,7 @@ function buildAgentMessageParts(input: {
   skills: string[];
   output: string[];
   toolDetails?: Map<string, ToolDetail>;
+  askUserQuestions?: PendingAskUserQuestion[];
   success: boolean;
   error?: string;
 }): MessagePart[] {
@@ -485,6 +592,17 @@ function buildAgentMessageParts(input: {
     parts.push(subagent);
   }
 
+  for (const question of input.askUserQuestions ?? []) {
+    parts.push({
+      id: question.id,
+      type: 'ask_user_question',
+      question: question.question,
+      choices: question.choices,
+      status: question.answer ? 'answered' : 'requested',
+      answer: question.answer,
+      toolUseId: question.toolUseId,
+    });
+  }
 
   if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
     parts.push({
@@ -848,6 +966,39 @@ function buildToolDetailId(id: string, line: string): string {
     hash = ((hash << 5) - hash + key.charCodeAt(index)) | 0;
   }
   return `tool-${Math.abs(hash).toString(36)}`;
+}
+
+function questionRunKey(workspaceId: string, channelId: string, messageId: string, questionId: string): string {
+  return `${workspaceId}:${channelId}:${messageId}:${questionId}`;
+}
+
+function parseAskUserQuestion(toolUseId: string, input: unknown): PendingAskUserQuestion {
+  const record = input && typeof input === 'object' ? input as Record<string, unknown> : {};
+  const rawQuestions = Array.isArray(record.questions) ? record.questions : [];
+  const first = rawQuestions.find((item) => item && typeof item === 'object') as Record<string, unknown> | undefined;
+  const question = typeof first?.question === 'string' && first.question.trim()
+    ? first.question.trim()
+    : '请选择一个选项：';
+  const options = Array.isArray(first?.options) ? first.options : [];
+  const choices = options
+    .map((option) => {
+      if (typeof option === 'string') return option;
+      if (!option || typeof option !== 'object') return '';
+      const value = option as Record<string, unknown>;
+      return typeof value.label === 'string' ? value.label : '';
+    })
+    .filter(Boolean);
+
+  return {
+    id: `ask-user-${toolUseId}`,
+    toolUseId,
+    question,
+    choices,
+  };
+}
+
+function isAskUserQuestionError(error: string): boolean {
+  return /Answer questions\?/i.test(error);
 }
 
 function extractUsage(lines: string[]): MessageTokenUsage {

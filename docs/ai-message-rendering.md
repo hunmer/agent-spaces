@@ -239,6 +239,7 @@ GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:de
 
 - `pending`：消息已创建但还没开始产生内容
 - `streaming`：agent 正在运行并可能持续更新 parts
+- `waiting_for_user`：agent 调用了 `AskUserQuestion` 并等待用户在输入框上方确认选项或填写回答
 - `completed`：agent 成功完成
 - `error`：agent 失败
 

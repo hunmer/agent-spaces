@@ -29,7 +29,7 @@ export interface Message {
   senderRole?: string;
   content: string;
   type: 'text' | 'mention' | 'attachment' | 'code_ref' | 'file_ref';
-  status?: 'pending' | 'streaming' | 'completed' | 'error';
+  status?: 'pending' | 'streaming' | 'waiting_for_user' | 'completed' | 'error';
   attachments?: Attachment[];
   parts?: MessagePart[];
   metadata?: MessageMetadata;
@@ -53,7 +53,7 @@ export type MessagePart =
   | { id: string; type: 'confirmation'; title: string; description?: string; approval?: MessageApproval }
   | { id: string; type: 'context'; usedTokens: number; maxTokens: number; modelId?: string; usage?: MessageTokenUsage }
   | { id: string; type: 'subagent'; name: string; model?: string; instructions?: string; tools?: MessageTool[] }
-  | { id: string; type: 'ask_user_question'; question: string; choices?: string[]; status?: 'requested' | 'answered'; answer?: string };
+  | { id: string; type: 'ask_user_question'; question: string; choices?: string[]; status?: 'requested' | 'answered'; answer?: string; toolUseId?: string };
 
 export interface MessageChain {
   id: string;

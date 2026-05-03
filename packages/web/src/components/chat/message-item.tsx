@@ -31,7 +31,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
   const [copied, setCopied] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
 
-  const isStreaming = message.status === 'streaming' || message.status === 'pending';
+  const isStreaming = message.status === 'streaming' || message.status === 'pending' || message.status === 'waiting_for_user';
   const [elapsed, setElapsed] = useState(() =>
     message.metadata?.duration ?? 0
   );

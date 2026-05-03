@@ -92,7 +92,7 @@ export const useChannelStore = create<ChannelStore>((set) => ({
       messages: {
         ...s.messages,
         [channelId]: (s.messages[channelId] || []).map((message) =>
-          message.status === 'pending' || message.status === 'streaming'
+          message.status === 'pending' || message.status === 'streaming' || message.status === 'waiting_for_user'
             ? { ...message, status: 'error', content: message.content || 'Stopped by user' }
             : message,
         ),
