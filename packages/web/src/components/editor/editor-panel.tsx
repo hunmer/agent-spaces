@@ -5,15 +5,16 @@ import { FileTree, FileTreeFolder, FileTreeFile } from "./file-tree";
 import { useEditorStore } from "@/stores/editor";
 import type { FileNode } from "@agent-spaces/shared";
 import { RefreshCw } from "lucide-react";
+import { FileIconImg, FolderIconImg } from "./file-icon";
 
 function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   return nodes.map((node) =>
     node.type === "directory" ? (
-      <FileTreeFolder key={node.path} path={node.path} name={node.name}>
+      <FileTreeFolder key={node.path} path={node.path} name={node.name} folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}>
         {node.children && <FileTreeNodes nodes={node.children} />}
       </FileTreeFolder>
     ) : (
-      <FileTreeFile key={node.path} path={node.path} name={node.name} />
+      <FileTreeFile key={node.path} path={node.path} name={node.name} icon={<FileIconImg name={node.name} />} />
     ),
   );
 }
