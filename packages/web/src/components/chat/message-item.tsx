@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check, Clock } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
+import { useAgentStore } from '@/stores/agent';
 import { MemberInfoDialog } from './member-info-dialog';
 import { MessageParts } from './message-parts';
 
@@ -16,6 +17,15 @@ interface MessageItemProps {
 
 export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageItemProps) {
   const isUser = message.senderId === 'user';
+  const agents = useAgentStore((s) => s.agents);
+  const ensure = useAgentStore((s) => s.ensure);
+  const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
+
+  useEffect(() => {
+    if (!isUser && workspaceId) ensure(workspaceId);
+  }, [isUser, workspaceId, ensure]);
+
+  const senderName = isUser ? 'You' : (agent?.name || message.senderId);
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -50,14 +60,14 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
     <div className={`group flex gap-2 px-3 py-1.5 ${isUser ? 'flex-row-reverse' : ''}`}>
       <AgentIcon
         agentId={isUser ? undefined : message.senderId}
-        name={isUser ? 'You' : undefined}
+        name={senderName}
         onClick={() => setMemberDialogOpen(true)}
         className="size-7 rounded-full"
       />
       <div className={`flex flex-col min-w-0 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">
-            {isUser ? 'You' : message.senderId}
+            {senderName}
           </span>
           {message.senderRole && (
             <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">

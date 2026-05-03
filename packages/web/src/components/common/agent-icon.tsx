@@ -17,9 +17,7 @@ export function getProviderIconUrl(modelProvider?: string): string {
 }
 
 export interface AgentIconProps {
-  /** Agent ID — will auto-resolve avatarUrl/modelProvider from store */
   agentId?: string;
-  /** Display name (fallback to agent.name if agentId given) */
   name?: string;
   avatarUrl?: string;
   modelProvider?: string;
@@ -33,12 +31,10 @@ export function AgentIcon({ agentId, name, avatarUrl, modelProvider, className, 
   const ensure = useAgentStore((s) => s.ensure);
 
   useEffect(() => {
-    if ((agentId || name) && workspaceId) ensure(workspaceId);
-  }, [agentId, name, workspaceId, ensure]);
+    if (agentId && workspaceId) ensure(workspaceId);
+  }, [agentId, workspaceId, ensure]);
 
-  const agent = agentId
-    ? agents.find((a) => a.id === agentId)
-    : name ? agents.find((a) => a.name === name || a.role === name) : undefined;
+  const agent = agentId ? agents.find((a) => a.id === agentId) : undefined;
   const displayName = name || agent?.name || agentId || '?';
   const resolvedAvatarUrl = avatarUrl ?? agent?.avatarUrl;
   const resolvedProvider = modelProvider ?? agent?.modelProvider;

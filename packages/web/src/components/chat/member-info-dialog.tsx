@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { MessageSquare, UserMinus } from 'lucide-react';
 import { useChannelStore } from '@/stores/channel';
+import { useAgentStore } from '@/stores/agent';
 import { AgentIcon } from '@/components/common/agent-icon';
 
 interface MemberInfoDialogProps {
@@ -25,6 +26,9 @@ interface MemberInfoDialogProps {
 export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, channelId, workspaceId, channels = [] }: MemberInfoDialogProps) {
   const [removing, setRemoving] = useState(false);
   const { channels: allChannels, updateChannel } = useChannelStore();
+  const agents = useAgentStore((s) => s.agents);
+  const agent = memberName !== 'user' ? agents.find((a) => a.id === memberName) : undefined;
+  const resolvedName = displayName || agent?.name || memberName;
 
   const channel = allChannels.find((c) => c.id === channelId);
   const isMember = channel?.members.includes(memberName);
@@ -52,12 +56,12 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
         <div className="flex items-center gap-3 pt-2">
           <AgentIcon
             agentId={memberName !== 'user' ? memberName : undefined}
-            name={displayName || memberName}
+            name={resolvedName}
             className="size-12 rounded-full"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{displayName || memberName}</p>
-            <p className="text-xs text-muted-foreground">{memberName === 'user' ? '成员' : memberName}</p>
+            <p className="text-sm font-medium truncate">{resolvedName}</p>
+            <p className="text-xs text-muted-foreground">{memberName === 'user' ? '成员' : (agent?.role || memberName)}</p>
           </div>
         </div>
         {channels.length > 0 && (

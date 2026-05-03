@@ -148,7 +148,7 @@ async function runMentionedAgent(
   const workspace = wsService.getById(workspaceId);
   const startTime = Date.now();
   const pending = createMessage(workspaceId, channelId, {
-    senderId: preset.name || preset.role,
+    senderId: preset.id,
     senderRole: preset.role,
     content: 'Agent is processing...',
     type: 'text',
@@ -852,7 +852,7 @@ function buildAgentPrompt(
   if (history.length > 0) {
     parts.push('Conversation history:');
     for (const msg of history) {
-      const role = msg.senderId === 'user' ? 'User' : (msg.senderRole || msg.senderId);
+      const role = msg.senderId === 'user' ? 'User' : (msg.senderRole || 'Agent');
       parts.push(`[${role}]: ${stripHtml(msg.content)}`);
     }
   }

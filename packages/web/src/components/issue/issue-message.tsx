@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { User, Pencil, Copy, Trash2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AgentIcon } from '@/components/common/agent-icon';
+import { useAgentStore } from '@/stores/agent';
 import type { Message } from '@agent-spaces/shared';
 
 interface IssueMessageProps {
@@ -18,6 +20,15 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isUser = message.senderId === 'user';
+  const agents = useAgentStore((s) => s.agents);
+  const ensure = useAgentStore((s) => s.ensure);
+  const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
+
+  useEffect(() => {
+    if (!isUser && workspaceId) ensure(workspaceId);
+  }, [isUser, workspaceId, ensure]);
+
+  const senderName = isUser ? 'You' : (agent?.name || message.senderId);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -57,14 +68,14 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
   return (
     <div className="py-3 border-b last:border-b-0 group">
       <div className="flex items-start gap-2.5">
-        <div className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-medium shrink-0 ${
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-        }`}>
-          {isUser ? <User className="h-3.5 w-3.5" /> : message.senderId[0]}
-        </div>
+        <AgentIcon
+          agentId={isUser ? undefined : message.senderId}
+          name={senderName}
+          className="size-7 rounded-full"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium">{isUser ? 'You' : message.senderId}</span>
+            <span className="text-xs font-medium">{senderName}</span>
             {message.senderRole && (
               <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
                 {message.senderRole}
