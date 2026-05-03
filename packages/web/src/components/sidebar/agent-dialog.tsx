@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { AgentConfig, LLMModel, LLMProvider } from "@agent-spaces/shared";
+import { AgentIcon } from "@/components/common/agent-icon";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +38,6 @@ import {
   MessageSquare,
   Sliders,
   Upload,
-  ImageIcon,
 } from "lucide-react";
 
 type McpDraft = Record<string, unknown>;
@@ -93,20 +93,6 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "claude-code", label: "Claude Code" },
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
-
-const PROVIDER_ICON_MAP: Record<string, string> = {
-  "anthropic-messages": "anthropic",
-  "openai-chat-completions": "openai",
-  "openai-responses": "openai",
-  "gemini-generate-content": "gemini",
-};
-
-function getProviderIconUrl(agent: { avatarUrl?: string; modelProvider?: string; apiBase?: string }): string {
-  if (agent.avatarUrl) return agent.avatarUrl;
-  const iconName = PROVIDER_ICON_MAP[agent.modelProvider ?? ""];
-  if (iconName) return `/static/provider-icons/${iconName}.svg`;
-  return "";
-}
 
 function defaultMcpConfig(names: string[]): McpDraft {
   return {
@@ -589,21 +575,18 @@ function AgentList({
 }) {
   return (
     <div className="flex flex-col p-2">
-      {agents.map((agent) => {
-        const iconUrl = getProviderIconUrl(agent);
-        return (
+      {agents.map((agent) => (
         <div
           key={agent.id}
           className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
           onClick={() => onSelect(agent)}
         >
-          <div className={cn("flex size-8 items-center justify-center rounded-lg overflow-hidden", iconUrl ? "bg-transparent" : ROLE_COLORS[agent.role] ?? "bg-muted")}>
-            {iconUrl ? (
-              <img src={iconUrl} alt={agent.name} className="size-full object-cover rounded-lg" />
-            ) : (
-              <Bot className="size-4" />
-            )}
-          </div>
+          <AgentIcon
+            name={agent.name}
+            avatarUrl={agent.avatarUrl}
+            modelProvider={agent.modelProvider}
+            className="size-8"
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">{agent.name}</span>
@@ -623,8 +606,7 @@ function AgentList({
             <Trash2 className="size-3 text-destructive" />
           </Button>
         </div>
-        );
-      })}
+      ))}
       {agents.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Bot className="size-10 mb-2 opacity-30" />
@@ -711,18 +693,12 @@ function AgentDetail({
       <Section icon={<MessageSquare className="size-3.5" />} title="Basic">
         <div className="flex items-start gap-4">
           <div className="flex flex-col items-center gap-1.5">
-            <div className={cn("size-16 rounded-xl overflow-hidden border border-input flex items-center justify-center", agent.avatarUrl ? "" : "bg-muted")}>
-              {agent.avatarUrl ? (
-                <img src={agent.avatarUrl} alt={agent.name} className="size-full object-cover" />
-              ) : (() => {
-                const iconUrl = getProviderIconUrl(agent);
-                return iconUrl ? (
-                  <img src={iconUrl} alt="" className="size-10 object-contain" />
-                ) : (
-                  <ImageIcon className="size-6 text-muted-foreground" />
-                );
-              })()}
-            </div>
+            <AgentIcon
+              name={agent.name}
+              avatarUrl={agent.avatarUrl}
+              modelProvider={agent.modelProvider}
+              className="size-16 rounded-xl border border-input"
+            />
             <label className="text-[10px] text-primary cursor-pointer hover:underline">
               Upload
               <input

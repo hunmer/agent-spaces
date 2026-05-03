@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarGroup } from '@/components/ui/avatar';
+import { AvatarGroup } from '@/components/ui/avatar';
+import { AgentIcon } from '@/components/common/agent-icon';
 import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus } from 'lucide-react';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
@@ -268,9 +269,12 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 <span className="flex items-center gap-1">
                   <AvatarGroup>
                     {members.slice(0, 4).map((member) => (
-                      <Avatar key={member} size="sm">
-                        <AvatarFallback>{getMemberDisplayName(enabledAgents, member)[0]}</AvatarFallback>
-                      </Avatar>
+                      <AgentIcon
+                        key={member}
+                        agentId={member !== 'user' ? member : undefined}
+                        name={getMemberDisplayName(enabledAgents, member)}
+                        className="size-6 rounded-full"
+                      />
                     ))}
                   </AvatarGroup>
                   <span>{members.length} member{members.length !== 1 ? 's' : ''}</span>
@@ -465,9 +469,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               <TabsContent value="members" className="p-4 mt-0 space-y-1">
                 {members.map((member) => (
                   <div key={member} className="flex items-center gap-2 py-1.5">
-                    <Avatar size="sm">
-                      <AvatarFallback>{getMemberDisplayName(enabledAgents, member)[0]}</AvatarFallback>
-                    </Avatar>
+                    <AgentIcon
+                      agentId={member !== 'user' ? member : undefined}
+                      name={getMemberDisplayName(enabledAgents, member)}
+                      className="size-6 rounded-full"
+                    />
                     <div className="min-w-0">
                       <p className="text-sm truncate">{getMemberDisplayName(enabledAgents, member)}</p>
                       <p className="text-xs text-muted-foreground truncate">{member}</p>

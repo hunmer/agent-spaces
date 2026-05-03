@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UserPlus, Check, X } from 'lucide-react';
+import { AgentIcon } from '@/components/common/agent-icon';
 
 export interface AddMemberCandidate {
   id: string;
@@ -79,8 +80,15 @@ export function AddMemberDialog({ open, onOpenChange, candidates, onAdd }: AddMe
                 onClick={() => toggle(candidate.id)}
                 className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left text-sm transition-colors"
               >
-                <div className={`flex items-center justify-center size-5 rounded border ${selected.has(candidate.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-input'}`}>
-                  {selected.has(candidate.id) && <Check className="size-3" />}
+                <div className="flex items-center gap-2">
+                  <AgentIcon
+                    agentId={candidate.id !== 'user' ? candidate.id : undefined}
+                    name={candidate.label}
+                    className="size-6 rounded-full"
+                  />
+                  <div className={`flex items-center justify-center size-4 rounded border ${selected.has(candidate.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-input'}`}>
+                    {selected.has(candidate.id) && <Check className="size-2.5" />}
+                  </div>
                 </div>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{candidate.label}</span>

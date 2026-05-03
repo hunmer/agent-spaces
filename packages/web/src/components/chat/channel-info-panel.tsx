@@ -110,6 +110,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
               <MemberCard
                 key={member}
                 name={getMemberDisplayName(enabledAgents, member)}
+                agentId={member !== 'user' ? member : undefined}
                 description={member !== 'user' ? member : undefined}
                 onClick={() => { setSelectedMember(member); setMemberInfoOpen(true); }}
               />

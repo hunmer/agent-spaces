@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check, Clock } from 'lucide-react';
+import { AgentIcon } from '@/components/common/agent-icon';
 import { MemberInfoDialog } from './member-info-dialog';
 import { MessageParts } from './message-parts';
 
@@ -11,26 +12,6 @@ interface MessageItemProps {
   workspaceId: string;
   onEdit?: (message: Message) => void;
   onDelete?: (message: Message) => void;
-}
-
-function getInitial(name: string) {
-  return name.charAt(0).toUpperCase();
-}
-
-function Avatar({ senderId, onClick }: { senderId: string; onClick?: () => void }) {
-  const isUser = senderId === 'user';
-  const initial = isUser ? 'U' : getInitial(senderId);
-
-  return (
-    <div
-      onClick={onClick}
-      className={`flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold select-none cursor-pointer hover:opacity-80 transition-opacity ${
-        isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-      }`}
-    >
-      {initial}
-    </div>
-  );
 }
 
 export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageItemProps) {
@@ -67,7 +48,12 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
 
   return (
     <div className={`group flex gap-2 px-3 py-1.5 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <Avatar senderId={message.senderId} onClick={() => setMemberDialogOpen(true)} />
+      <AgentIcon
+        agentId={isUser ? undefined : message.senderId}
+        name={isUser ? 'You' : undefined}
+        onClick={() => setMemberDialogOpen(true)}
+        className="size-7 rounded-full"
+      />
       <div className={`flex flex-col min-w-0 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">

@@ -8,8 +8,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { User, MessageSquare, UserMinus } from 'lucide-react';
+import { MessageSquare, UserMinus } from 'lucide-react';
 import { useChannelStore } from '@/stores/channel';
+import { AgentIcon } from '@/components/common/agent-icon';
 
 interface MemberInfoDialogProps {
   open: boolean;
@@ -49,9 +50,11 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
           <DialogDescription />
         </DialogHeader>
         <div className="flex items-center gap-3 pt-2">
-          <div className="flex items-center justify-center size-12 rounded-full bg-muted text-lg font-medium">
-            {(displayName || memberName)[0]?.toUpperCase() || <User className="size-5 text-muted-foreground" />}
-          </div>
+          <AgentIcon
+            agentId={memberName !== 'user' ? memberName : undefined}
+            name={displayName || memberName}
+            className="size-12 rounded-full"
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{displayName || memberName}</p>
             <p className="text-xs text-muted-foreground">{memberName === 'user' ? '成员' : memberName}</p>
