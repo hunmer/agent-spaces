@@ -123,36 +123,38 @@ export const FileTreeFolder = ({
   return (
     <FileTreeFolderContext.Provider value={{ path, name, isExpanded }}>
       <Collapsible onOpenChange={() => togglePath(path)} open={isExpanded}>
-        <div className={cn("group/folder relative", className)} role="treeitem" tabIndex={0} {...props}>
-          <CollapsibleTrigger
-            className={cn(
-              "flex w-full items-center gap-1 rounded px-2 py-1 pr-16 text-left transition-colors hover:bg-muted/50",
-              isSelected && "bg-muted",
-            )}
-            onClick={() => onFileSelect?.(path)}
-          >
-            <ChevronRightIcon
+        <div className={className} role="treeitem" tabIndex={0} {...props}>
+          <div className="group/folder relative">
+            <CollapsibleTrigger
               className={cn(
-                "size-4 shrink-0 text-muted-foreground transition-transform",
-                isExpanded && "rotate-90",
+                "flex w-full items-center gap-1 rounded px-2 py-1 pr-16 text-left transition-colors hover:bg-muted/50",
+                isSelected && "bg-muted",
               )}
-            />
-            <FileTreeIcon>
-              {isExpanded ? (
-                <FolderOpenIcon className="size-4 text-blue-500" />
-              ) : (
-                <FolderIcon className="size-4 text-blue-500" />
-              )}
-            </FileTreeIcon>
-            <FileTreeName>{name}</FileTreeName>
-          </CollapsibleTrigger>
-          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
-            <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title="Reveal in Finder">
-              <ExternalLink className="size-3 text-muted-foreground" />
-            </button>
-            <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title="Delete">
-              <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
-            </button>
+              onClick={() => onFileSelect?.(path)}
+            >
+              <ChevronRightIcon
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform",
+                  isExpanded && "rotate-90",
+                )}
+              />
+              <FileTreeIcon>
+                {isExpanded ? (
+                  <FolderOpenIcon className="size-4 text-blue-500" />
+                ) : (
+                  <FolderIcon className="size-4 text-blue-500" />
+                )}
+              </FileTreeIcon>
+              <FileTreeName>{name}</FileTreeName>
+            </CollapsibleTrigger>
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
+              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title="Reveal in Finder">
+                <ExternalLink className="size-3 text-muted-foreground" />
+              </button>
+              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title="Delete">
+                <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+              </button>
+            </div>
           </div>
           <CollapsibleContent>
             <div className="ml-4 border-l pl-2">{children}</div>
