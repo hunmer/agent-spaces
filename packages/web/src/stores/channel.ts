@@ -15,6 +15,7 @@ interface ChannelStore {
   sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments']) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
+  stopProcessingMessages: (channelId: string) => void;
   deleteMessage: (channelId: string, messageId: string) => void;
   clearMessages: (workspaceId: string, channelId: string) => Promise<void>;
   deleteChannel: (workspaceId: string, channelId: string) => Promise<void>;
@@ -81,6 +82,19 @@ export const useChannelStore = create<ChannelStore>((set) => ({
         ...s.messages,
         [channelId]: (s.messages[channelId] || []).map((item) =>
           item.id === message.id ? message : item,
+        ),
+      },
+    }));
+  },
+
+  stopProcessingMessages: (channelId) => {
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [channelId]: (s.messages[channelId] || []).map((message) =>
+          message.status === 'pending' || message.status === 'streaming'
+            ? { ...message, status: 'error', content: message.content || 'Stopped by user' }
+            : message,
         ),
       },
     }));

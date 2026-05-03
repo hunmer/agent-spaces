@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { listChannels, createChannel, getChannel, updateChannel, deleteChannel } from '../services/channel.js';
 import { listMessages, createMessage, updateMessage, deleteMessage, clearMessages } from '../services/message.js';
-import { broadcastToWorkspace } from '../ws/handler.js';
+import { broadcastToWorkspace, hasActiveChannelRuns, markInactiveChannelRunsStopped } from '../ws/handler.js';
 import { getToolDetail } from '../services/tool-detail.js';
 
 const router = Router({ mergeParams: true });
@@ -49,6 +49,9 @@ router.get('/:channelId/messages', (req: Request<ChannelParams>, res: Response) 
   const { id, channelId } = req.params;
   const { limit, before } = req.query;
   if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
+  if (!hasActiveChannelRuns(id, channelId!)) {
+    markInactiveChannelRunsStopped(id, channelId!);
+  }
   res.json(listMessages(id, channelId!, { limit: limit ? Number(limit) : undefined, before: before as string | undefined }));
 });
 

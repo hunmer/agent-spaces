@@ -355,7 +355,10 @@ function untrackChannelRun(workspaceId: string, channelId: string, agentId: stri
 
 function stopChannelRuns(workspaceId: string, channelId: string): void {
   const runs = activeChannelRuns.get(channelRunKey(workspaceId, channelId));
-  if (!runs || runs.size === 0) return;
+  if (!runs || runs.size === 0) {
+    markInactiveChannelRunsStopped(workspaceId, channelId);
+    return;
+  }
 
   for (const run of runs.values()) {
     run.stopped = true;
@@ -385,6 +388,34 @@ function stopChannelRuns(workspaceId: string, channelId: string): void {
     });
     if (message) broadcastToWorkspace(workspaceId, 'channel.message.updated', message);
   }
+}
+
+export function hasActiveChannelRuns(workspaceId: string, channelId: string): boolean {
+  return Boolean(activeChannelRuns.get(channelRunKey(workspaceId, channelId))?.size);
+}
+
+export function markInactiveChannelRunsStopped(workspaceId: string, channelId: string): Message[] {
+  if (hasActiveChannelRuns(workspaceId, channelId)) return [];
+
+  const stopped: Message[] = [];
+  for (const message of listMessages(workspaceId, channelId)) {
+    if (message.status !== 'pending' && message.status !== 'streaming') continue;
+    const updated = updateMessage(workspaceId, channelId, message.id, {
+      content: message.content || 'Stopped by user',
+      status: 'error',
+      parts: message.parts?.map((part) => {
+        if ('status' in part && part.status === 'streaming') {
+          return { ...part, status: 'completed' as const };
+        }
+        return part;
+      }),
+    });
+    if (updated) {
+      stopped.push(updated);
+      broadcastToWorkspace(workspaceId, 'channel.message.updated', updated);
+    }
+  }
+  return stopped;
 }
 
 function buildAgentMessageParts(input: {

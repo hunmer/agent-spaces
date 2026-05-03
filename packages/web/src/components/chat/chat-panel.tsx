@@ -25,7 +25,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
-  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage, clearMessages } = useChannelStore();
+  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
@@ -120,9 +120,10 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   const handleStop = useCallback(() => {
     if (!activeChannelId) return;
+    stopProcessingMessages(activeChannelId);
     const ws = getWS(workspaceId);
     ws.send('channel.stop', { channelId: activeChannelId });
-  }, [workspaceId, activeChannelId]);
+  }, [workspaceId, activeChannelId, stopProcessingMessages]);
 
   const handleEditMessage = useCallback((msg: Message) => {
     const plainText = /<[a-z][\s\S]*>/i.test(msg.content) ? msg.content.replace(/<[^>]*>/g, '') : msg.content;
@@ -151,12 +152,12 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   const typeConf = (() => {
     const base = channelTypeStatus[channel.type];
-    if (msgs.length === 0) return base;
+    if (msgs.length === 0) return { label: '空闲中', status: 'degraded' as const };
     const last = msgs[msgs.length - 1];
     const s = last.status;
     if (s === 'streaming' || s === 'pending') return { label: '运行中', status: 'maintenance' as const };
-    if (s === 'completed' || s === 'succeeded') return { label: '成功', status: 'online' as const };
-    if (s === 'failed' || s === 'error') return { label: '失败', status: 'offline' as const };
+    if (s === 'completed') return { label: '成功', status: 'online' as const };
+    if (s === 'error') return { label: '失败', status: 'offline' as const };
     return base;
   })();
 
