@@ -27,6 +27,8 @@ type Team = {
 
 export function TeamSwitcher({ teams }: { teams: Team[] }) {
   const { isMobile } = useSidebar();
+  const [userAvatarUrl, setUserAvatarUrl] = React.useState<string | null>(null);
+  React.useEffect(() => { setUserAvatarUrl(localStorage.getItem("userAvatarUrl")); }, []);
   const [activeTeam, setActiveTeam] = React.useState(teams[0]);
 
   if (!activeTeam) return null;
@@ -37,8 +39,12 @@ export function TeamSwitcher({ teams }: { teams: Team[] }) {
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" />}><div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-background text-foreground">
-                                  <Logo className="size-4" />
+          <DropdownMenuTrigger render={<SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" />}><div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-background text-foreground">
+                                  {userAvatarUrl ? (
+                                    <img src={userAvatarUrl} alt="User" className="size-full object-cover" />
+                                  ) : (
+                                    <Logo className="size-4" />
+                                  )}
                                 </div><div className="grid flex-1 text-left text-sm leading-tight">
                                   <span className="truncate font-semibold">
                                     {activeTeam.name}
