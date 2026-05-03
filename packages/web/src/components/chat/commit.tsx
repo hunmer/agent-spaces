@@ -24,7 +24,7 @@ import { type ComponentProps, type HTMLAttributes, useEffect, useRef, useState }
  */
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTriggerAsChild } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 
 export type CommitProps = ComponentProps<typeof Collapsible>
@@ -35,10 +35,10 @@ export const Commit = ({ className, children, ...props }: CommitProps) => (
   </Collapsible>
 )
 
-export type CommitHeaderProps = ComponentProps<typeof CollapsibleTrigger>
+export type CommitHeaderProps = ComponentProps<typeof CollapsibleTriggerAsChild>
 
 export const CommitHeader = ({ className, children, ...props }: CommitHeaderProps) => (
-  <CollapsibleTrigger asChild {...props}>
+  <CollapsibleTriggerAsChild {...props}>
     <div
       className={cn(
         "group flex cursor-pointer items-center justify-between gap-4 p-3 text-left transition-colors hover:opacity-80",
@@ -47,7 +47,7 @@ export const CommitHeader = ({ className, children, ...props }: CommitHeaderProp
     >
       {children}
     </div>
-  </CollapsibleTrigger>
+  </CollapsibleTriggerAsChild>
 )
 
 export type CommitHashProps = HTMLAttributes<HTMLSpanElement>

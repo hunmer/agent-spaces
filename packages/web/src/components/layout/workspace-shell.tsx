@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Layout, Model, TabNode, IJsonModel, Actions, IRenderTabValues } from "flexlayout-react";
+import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues } from "flexlayout-react";
 import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch, FileDiff, GitCommitHorizontal, Network } from "lucide-react";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
@@ -170,7 +170,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
     [workspaceId],
   );
 
-  const onRenderTab = useCallback((node: TabNode, renderValues: IRenderTabValues) => {
+  const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const comp = node.getComponent();
     const icon = comp ? tabIcons[comp] : undefined;
     if (icon) {

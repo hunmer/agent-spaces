@@ -17,6 +17,7 @@ export interface AgentConfig {
   description?: string;
   runtimeKind?: 'open-agent-sdk' | 'claude-code';
   modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'gemini-generate-content';
+  providerName?: string;
   modelId?: string;
   apiBase?: string;
   apiKey?: string;

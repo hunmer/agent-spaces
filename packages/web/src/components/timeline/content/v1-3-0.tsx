@@ -25,7 +25,7 @@ const V1_3_0_Content = () => {
           alt='Component Sync Demo'
           className='rounded-[10px]'
         />
-        <Accordion type='multiple' className='-mt-4 mb-0 w-full' defaultValue={['item-1']}>
+        <Accordion className='-mt-4 mb-0 w-full' defaultValue={['item-1']}>
           <AccordionItem value='item-1'>
             <AccordionTrigger className='hover:no-underline [&>svg]:size-6'>
               <Badge className='h-6 rounded-sm border-none bg-green-600/10 text-green-600 focus-visible:ring-green-600/20 focus-visible:outline-none dark:bg-green-400/10 dark:text-green-400 dark:focus-visible:ring-green-400/40 [a&]:hover:bg-green-600/5 dark:[a&]:hover:bg-green-400/5'>

@@ -150,7 +150,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 description: `${agent.role}${agent.description ? ` · ${agent.description}` : ''}`,
               }));
           },
-          command: ({ editor, range, props }: { editor: Editor; range: { from: number; to: number }; props: Record<string, unknown> }) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          command: ({ editor, range, props }: any) => {
             editor.chain().focus().insertContentAt(range, [{ type: 'mention', attrs: props }]).run();
           },
           render: () => createSuggestionRenderer(),
