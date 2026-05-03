@@ -10,6 +10,7 @@ import type { ComponentProps, ReactNode } from "react"
 import { createContext, memo, useCallback, useContext, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Loader } from "@/components/ui/loader"
 import { cn } from "@/lib/utils"
 
 interface ChainOfThoughtContextValue {
@@ -66,10 +67,12 @@ export const ChainOfThought = memo(
   },
 )
 
-export type ChainOfThoughtHeaderProps = ComponentProps<typeof CollapsibleTrigger>
+export type ChainOfThoughtHeaderProps = ComponentProps<typeof CollapsibleTrigger> & {
+  loading?: boolean
+}
 
 export const ChainOfThoughtHeader = memo(
-  ({ className, children, ...props }: ChainOfThoughtHeaderProps) => {
+  ({ className, children, loading, ...props }: ChainOfThoughtHeaderProps) => {
     const { isOpen, setIsOpen } = useChainOfThought()
 
     return (
@@ -81,7 +84,7 @@ export const ChainOfThoughtHeader = memo(
           )}
           {...props}
         >
-          <BrainIcon className="size-4" />
+          {loading ? <Loader size={16} /> : <BrainIcon className="size-4" />}
           <span className="flex-1 text-left">{children ?? "Chain of Thought"}</span>
           <ChevronDownIcon
             className={cn("size-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")}

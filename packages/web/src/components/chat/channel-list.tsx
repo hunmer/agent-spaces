@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useChannelStore } from '@/stores/channel';
-import { Bot, Hash, Plus } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -11,10 +11,10 @@ import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
-const typeBadge: Record<Channel['type'], { label: string; className: string }> = {
-  general: { label: 'General', className: 'bg-muted text-muted-foreground' },
-  issue: { label: 'Issue', className: 'bg-amber-500/15 text-amber-600' },
-  agent: { label: 'Agent', className: 'bg-blue-500/15 text-blue-600' },
+const typeBadge: Record<Channel['type'], { label: string; className: string; icon: typeof Hash }> = {
+  general: { label: 'General', className: 'bg-muted text-muted-foreground', icon: Hash },
+  issue: { label: 'Issue', className: 'bg-amber-500/15 text-amber-600', icon: AlertCircle },
+  agent: { label: 'Agent', className: 'bg-blue-500/15 text-blue-600', icon: MessageCircle },
 };
 
 function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Message['status'] } | null {
@@ -87,7 +87,10 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                 activeChannelId === ch.id && 'bg-accent text-accent-foreground',
               )}
             >
-              <Hash className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
+              {(() => {
+                const Icon = badge.icon;
+                return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />;
+              })()}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="truncate font-medium text-[13px]">{ch.name}</span>

@@ -77,6 +77,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const editorRef = useRef<Editor | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submittingRef = useRef(false);
+  const restoredChannelRef = useRef<string | null>(null);
 
   const { saveDraft, clearDraft, updateChannel } = useChannelStore();
   const pinnedMentionId = channel.pinnedMentionId;
@@ -293,10 +294,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       content: "",
       onUpdate: ({ editor }) => {
         const ids = collectMentionIds(editor.getJSON());
-        setMentionedAgentIds(ids);
+        setMentionedAgentIds((prev) => {
+          if (prev.length === ids.length && prev.every((id, i) => id === ids[i])) return prev;
+          return ids;
+        });
         scheduleDraftSave(editor.getHTML());
       },
       onCreate: ({ editor }) => {
+        if (restoredChannelRef.current === channelId) {
+          setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+          return;
+        }
+        restoredChannelRef.current = channelId;
+
         const draft = channel.draft;
         const pinnedId = channel.pinnedMentionId;
 
