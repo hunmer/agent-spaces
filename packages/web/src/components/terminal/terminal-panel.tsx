@@ -1,10 +1,30 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, ChevronDown, X } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useTerminalStore } from '@/stores/terminal';
 import { getWS } from '@/lib/ws';
 import { TerminalInstance } from './terminal-instance';
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
+
+const SHELL_OPTIONS = isMac
+  ? [
+      { value: '/bin/zsh', label: 'zsh' },
+      { value: '/bin/bash', label: 'bash' },
+    ]
+  : [
+      { value: 'cmd.exe', label: 'CMD' },
+      { value: 'powershell.exe', label: 'PowerShell' },
+    ];
+
+const DEFAULT_SHELL = SHELL_OPTIONS[0];
+
+function getShellLabel(shell?: string) {
+  if (!shell) return DEFAULT_SHELL.label;
+  return SHELL_OPTIONS.find((s) => s.value === shell)?.label ?? shell;
+}
 
 interface TerminalPanelProps {
   workspaceId: string;
@@ -16,13 +36,10 @@ export function TerminalPanel({ workspaceId }: TerminalPanelProps) {
   useEffect(() => {
     const ws = getWS(workspaceId);
     init(ws);
-    // Auto-create first terminal
     if (sessions.length === 0) {
       createSession();
     }
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const activeSession = sessions.find((s) => s.id === activeId);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -38,8 +55,8 @@ export function TerminalPanel({ workspaceId }: TerminalPanelProps) {
                 : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             }`}
           >
-            <span className="font-mono">$</span>
-            <span>Terminal {sessions.indexOf(session) + 1}</span>
+            <span className="font-mono text-[10px] opacity-60">{getShellLabel(session.shell)}</span>
+            <span>{sessions.indexOf(session) + 1}</span>
             <span
               onClick={(e) => { e.stopPropagation(); removeSession(session.id); }}
               className="ml-1 hover:text-destructive cursor-pointer"
@@ -48,13 +65,30 @@ export function TerminalPanel({ workspaceId }: TerminalPanelProps) {
             </span>
           </button>
         ))}
-        <button
-          onClick={createSession}
-          className="flex items-center justify-center w-6 h-6 text-muted-foreground hover:text-foreground transition-colors"
-          title="New Terminal"
-        >
-          <Plus size={14} />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                className="flex items-center gap-0.5 h-6 px-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                title="New Terminal"
+              >
+                <Plus size={14} />
+                <ChevronDown size={10} />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="start" className="min-w-[120px]">
+            {SHELL_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                onClick={() => createSession(opt.value)}
+                className="text-xs"
+              >
+                {opt.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Terminal content */}

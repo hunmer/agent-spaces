@@ -22,8 +22,9 @@ export function handleTerminalEvent(
         (id, exitCode) => {
           broadcastToWorkspace(workspaceId, 'terminal.closed', { sessionId: id, exitCode });
         },
+        payload.shell,
       );
-      broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd });
+      broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell: payload.shell });
       break;
     }
     case 'terminal.input': {

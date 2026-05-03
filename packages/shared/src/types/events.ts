@@ -10,6 +10,7 @@ export interface WSEvent<T = unknown> {
 export interface TerminalCreatePayload {
   sessionId: string;
   cwd?: string;
+  shell?: string;
 }
 
 export interface TerminalInputPayload {

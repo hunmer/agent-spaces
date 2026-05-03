@@ -4,6 +4,7 @@ import type { WorkspaceWS } from '@/lib/ws';
 export interface TerminalSession {
   id: string;
   cwd: string;
+  shell?: string;
 }
 
 interface TerminalState {
@@ -13,7 +14,7 @@ interface TerminalState {
   _initialized: boolean;
 
   init: (ws: WorkspaceWS) => void;
-  createSession: () => void;
+  createSession: (shell?: string) => void;
   setActive: (id: string) => void;
   removeSession: (id: string) => void;
   sendInput: (id: string, data: string) => void;
@@ -31,11 +32,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     if (state._initialized && state.ws === ws) return;
     set({ ws, _initialized: true });
     ws.on('terminal.created', (data) => {
-      const { sessionId, cwd } = data as { sessionId: string; cwd: string };
+      const { sessionId, cwd, shell } = data as { sessionId: string; cwd: string; shell?: string };
       set((s) => {
         if (s.sessions.some((t) => t.id === sessionId)) return s;
         return {
-          sessions: [...s.sessions, { id: sessionId, cwd }],
+          sessions: [...s.sessions, { id: sessionId, cwd, shell }],
           activeId: sessionId,
         };
       });
@@ -52,9 +53,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     });
   },
 
-  createSession: () => {
+  createSession: (shell?: string) => {
     const { ws } = get();
-    ws?.send('terminal.create', { sessionId: crypto.randomUUID() });
+    ws?.send('terminal.create', { sessionId: crypto.randomUUID(), shell });
   },
 
   setActive: (id) => set({ activeId: id }),

@@ -15,10 +15,11 @@ export function createSession(
   cwd: string,
   onOutput: (sessionId: string, data: string) => void,
   onExit: (sessionId: string, exitCode: number) => void,
+  shell?: string,
 ): string {
   const id = uuid();
-  const shell = process.env.SHELL || '/bin/zsh';
-  const ptyProcess = pty.spawn(shell, [], {
+  const resolvedShell = shell || process.env.SHELL || '/bin/zsh';
+  const ptyProcess = pty.spawn(resolvedShell, [], {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,
