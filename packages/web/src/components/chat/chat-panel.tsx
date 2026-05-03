@@ -149,7 +149,16 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     );
   }
 
-  const typeConf = channelTypeStatus[channel.type];
+  const typeConf = (() => {
+    const base = channelTypeStatus[channel.type];
+    if (msgs.length === 0) return base;
+    const last = msgs[msgs.length - 1];
+    const s = last.status;
+    if (s === 'streaming' || s === 'pending') return { label: '运行中', status: 'maintenance' as const };
+    if (s === 'completed' || s === 'succeeded') return { label: '成功', status: 'online' as const };
+    if (s === 'failed' || s === 'error') return { label: '失败', status: 'offline' as const };
+    return base;
+  })();
 
   return (
     <div className="flex h-full">

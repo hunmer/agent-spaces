@@ -10,6 +10,7 @@ import * as wsService from '../services/workspace.js';
 import { runPlanner } from '../agents/planner-agent.js';
 import type { AgentContext } from '../agents/agent-context.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
+import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { saveToolDetails } from '../services/tool-detail.js';
 import type { ToolDetail } from '../services/tool-detail.js';
 
@@ -19,6 +20,14 @@ const handlers = new Map<string, EventHandler>();
 
 // Track which workspaces have schedulers running
 const activeSchedulers = new Set<string>();
+const activeChannelRuns = new Map<string, Map<string, ActiveChannelRun>>();
+
+interface ActiveChannelRun {
+  agentId: string;
+  messageId: string;
+  runtime: AgentRuntime;
+  stopped?: boolean;
+}
 
 function ensureScheduler(workspaceId: string, ctx: AgentContext) {
   if (!activeSchedulers.has(workspaceId)) {
@@ -109,6 +118,12 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   }
 });
 
+registerHandler('channel.stop', (_ws, workspaceId, data) => {
+  const { channelId } = data as { channelId?: string };
+  if (!channelId) return;
+  stopChannelRuns(workspaceId, channelId);
+});
+
 async function runMentionedAgent(
   workspaceId: string,
   channelId: string,
@@ -153,6 +168,7 @@ async function runMentionedAgent(
   });
   broadcastToWorkspace(workspaceId, 'channel.message', pending);
 
+  let activeRun: ActiveChannelRun | undefined;
   try {
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind,
@@ -161,6 +177,12 @@ async function runMentionedAgent(
       apiKey: preset.apiKey,
       baseURL: preset.apiBase,
     });
+    activeRun = {
+      agentId: session.id,
+      messageId: pending.id,
+      runtime,
+    };
+    trackChannelRun(workspaceId, channelId, activeRun);
     const history = listMessages(workspaceId, channelId, { limit: 20 });
     const liveOutput: string[] = [];
     const toolDetails = new Map<string, ToolDetail>();
@@ -235,6 +257,7 @@ async function runMentionedAgent(
       },
     });
     broadcastLiveParts(true);
+    if (activeRun.stopped) return;
 
     if (liveOutput.length === 0) {
       for (const line of result.output) {
@@ -282,6 +305,7 @@ async function runMentionedAgent(
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   } catch (err) {
+    if (activeRun?.stopped) return;
     const error = err instanceof Error ? err.message : String(err);
     agentService.complete(workspaceId, session.id, error);
     broadcastToWorkspace(workspaceId, 'agent.error', { agentId: session.id, error });
@@ -305,6 +329,61 @@ async function runMentionedAgent(
       }),
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
+  } finally {
+    untrackChannelRun(workspaceId, channelId, session.id);
+  }
+}
+
+function channelRunKey(workspaceId: string, channelId: string): string {
+  return `${workspaceId}:${channelId}`;
+}
+
+function trackChannelRun(workspaceId: string, channelId: string, run: ActiveChannelRun): void {
+  const key = channelRunKey(workspaceId, channelId);
+  const runs = activeChannelRuns.get(key) ?? new Map<string, ActiveChannelRun>();
+  runs.set(run.agentId, run);
+  activeChannelRuns.set(key, runs);
+}
+
+function untrackChannelRun(workspaceId: string, channelId: string, agentId: string): void {
+  const key = channelRunKey(workspaceId, channelId);
+  const runs = activeChannelRuns.get(key);
+  if (!runs) return;
+  runs.delete(agentId);
+  if (runs.size === 0) activeChannelRuns.delete(key);
+}
+
+function stopChannelRuns(workspaceId: string, channelId: string): void {
+  const runs = activeChannelRuns.get(channelRunKey(workspaceId, channelId));
+  if (!runs || runs.size === 0) return;
+
+  for (const run of runs.values()) {
+    run.stopped = true;
+    run.runtime.stop();
+    agentService.complete(workspaceId, run.agentId, 'Stopped by user');
+    broadcastToWorkspace(workspaceId, 'agent.status_changed', {
+      agentId: run.agentId,
+      from: 'active',
+      to: 'crashed',
+    });
+    broadcastToWorkspace(workspaceId, 'agent.error', {
+      agentId: run.agentId,
+      error: 'Stopped by user',
+    });
+
+    const message = updateMessage(workspaceId, channelId, run.messageId, {
+      content: 'Stopped by user',
+      status: 'error',
+      parts: [
+        {
+          id: `terminal-stopped-${run.agentId}`,
+          type: 'terminal',
+          output: 'Stopped by user',
+          status: 'error',
+        },
+      ],
+    });
+    if (message) broadcastToWorkspace(workspaceId, 'channel.message.updated', message);
   }
 }
 
@@ -342,9 +421,6 @@ function buildAgentMessageParts(input: {
     parts.push(subagent);
   }
 
-  for (const terminal of extractTerminalBlocks(lines, input.sessionId)) {
-    parts.push(terminal);
-  }
 
   if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
     parts.push({
@@ -632,22 +708,6 @@ function extractUsage(lines: string[]): MessageTokenUsage {
     if (total) usage.totalTokens = Number(total.replace(/,/g, ''));
   }
   return usage;
-}
-
-function extractTerminalBlocks(lines: string[], sessionId: string): MessagePart[] {
-  return lines
-    .map((line, index): MessagePart | null => {
-      const match = line.match(/^(?:Tool:\s*)?(?:Bash|Shell|Command):?\s*(.*)$/i);
-      if (!match) return null;
-      return {
-        id: `terminal-${sessionId}-${index}`,
-        type: 'terminal',
-        command: match[1],
-        output: line,
-        status: 'completed',
-      };
-    })
-    .filter((part): part is MessagePart => Boolean(part));
 }
 
 function extractSubagentBlocks(lines: string[], sessionId: string): MessagePart[] {

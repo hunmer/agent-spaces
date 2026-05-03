@@ -123,7 +123,6 @@ chain 构造和工具调用解析集中在：
 - 如果 runtime 重复追加同一段最终结论，后端会按内容归一化去重，避免 chain 最后一条 AI message 和最终 Markdown 重复。
 - 普通工具调用会被压缩成精简摘要，例如 `Read timer.js`、`Update 2 todos`、`Run command`，不会直接展示原始 JSON 参数。
 - Read/Edit/Write 等文件工具会把 workspace 内绝对路径归一为相对路径；前端点击文件路径时调用 `useEditorStore.openFile(workspaceId, path)`，从而在 editor tabs 中打开文件。
-- `Tool: Bash ...` 会额外进入 `terminal` part，前端用 `terminal.tsx` 展示。
 - `Tool: Task ...` 会进入 `subagent` part，前端用 `subagent.tsx` 展示。
 - 非工具行如果不是最终结论，会作为 chain 内 AI message step；最终结论才作为 `text` part 展示在 chain 下方。
 

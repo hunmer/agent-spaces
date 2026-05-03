@@ -381,6 +381,16 @@ function ToolDetailView({
   toolName?: string
   filePath?: string
 }) {
+  if (/^(Bash|Shell|Command)$/i.test(toolName ?? "")) {
+    const command = extractCommandFromInput(detail.input)
+    const output = typeof detail.output === "string" ? detail.output : JSON.stringify(detail.output ?? "", null, 2)
+    return (
+      <Terminal
+        output={command ? `$ ${command}\n${output}` : output}
+      />
+    )
+  }
+
   const editDiff = buildEditDiff(detail.input, detail.output, filePath)
   if (editDiff && /^(Edit|MultiEdit)$/i.test(toolName ?? "")) {
     return (
@@ -412,6 +422,13 @@ function ToolDetailView({
       ))}
     </div>
   )
+}
+
+function extractCommandFromInput(input: unknown): string | undefined {
+  if (!input || typeof input !== "object") return typeof input === "string" ? input : undefined
+  const record = input as Record<string, unknown>
+  const cmd = record.command ?? record.Command
+  return typeof cmd === "string" ? cmd : undefined
 }
 
 function buildDetailSections(detail: ToolDetailData) {
