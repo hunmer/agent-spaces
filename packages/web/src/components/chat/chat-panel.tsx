@@ -10,6 +10,7 @@ import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-bad
 import { PanelRightOpen, PanelRightClose, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ChannelInfoPanel } from './channel-info-panel';
+import { MessageNavigator } from './message-navigator';
 import { findAgentById } from '@/lib/agent-members';
 
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
@@ -98,11 +99,20 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         }));
       }
     });
+    const unsubChannelUpdated = ws.on('channel.updated', (data: unknown) => {
+      const ch = data as { id: string };
+      if (ch.id === activeChannelId) {
+        useChannelStore.setState((s) => ({
+          channels: s.channels.map((c) => (c.id === ch.id ? (data as typeof c) : c)),
+        }));
+      }
+    });
     return () => {
       unsub();
       unsubUpdate();
       unsubDelete();
       unsubCleared();
+      unsubChannelUpdated();
     };
   }, [workspaceId, activeChannelId, addMessage, updateMessage, deleteMessage]);
 
@@ -192,11 +202,14 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 overflow-y-auto py-2 relative">
           {msgs.map((msg) => (
-            <MessageItem key={msg.id} message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
+            <div key={msg.id} id={`msg-${msg.id}`}>
+              <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
+            </div>
           ))}
           <div ref={bottomRef} />
+          <MessageNavigator messages={msgs} />
         </div>
 
         {/* Input */}

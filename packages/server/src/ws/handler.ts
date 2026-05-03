@@ -3,7 +3,7 @@ import type { MessageChain, WSEvent, ClientEventName, Message, MessagePart, Mess
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
-import { getChannel } from '../services/channel.js';
+import { getChannel, updateChannel } from '../services/channel.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
@@ -226,6 +226,21 @@ async function runMentionedAgent(
       sandboxDirs: preset.sandboxDirs,
       onEvent: (event) => {
         if (event.type === 'tool_use') {
+          // Intercept TodoWrite to persist todos to channel
+          if (event.name === 'TodoWrite' && event.input && typeof event.input === 'object') {
+            const input = event.input as { todos?: unknown[] };
+            if (Array.isArray(input.todos)) {
+              const todos = input.todos.map((t: any) => ({
+                id: String(t.id ?? ''),
+                subject: String(t.subject ?? ''),
+                description: t.description ? String(t.description) : undefined,
+                status: (['pending', 'in_progress', 'completed'].includes(t.status) ? t.status : 'pending') as 'pending' | 'in_progress' | 'completed',
+                activeForm: t.activeForm ? String(t.activeForm) : undefined,
+              }));
+              const updated = updateChannel(workspaceId, channelId, { todos });
+              if (updated) broadcastToWorkspace(workspaceId, 'channel.updated', updated);
+            }
+          }
           const detailId = buildToolDetailId(event.id, event.line);
           toolUseDetailIds.set(event.id, detailId);
           toolDetails.set(detailId, {

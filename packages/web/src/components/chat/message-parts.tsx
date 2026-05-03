@@ -110,7 +110,7 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
     case "chain":
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
-          <ChainOfThoughtHeader loading={message.status === "pending"}>{part.chains.length} chain {part.chains.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
+          <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{part.chains.length} chain {part.chains.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
           <ChainOfThoughtContent>
             {part.chains.map((chain) => {
               const completed = chain.status === "completed"

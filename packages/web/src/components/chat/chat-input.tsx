@@ -11,8 +11,11 @@ import {
 import { cn } from "@/lib/utils";
 import {
   IconChevronDown,
+  IconCircleCheck,
+  IconCircleDashed,
   IconCode,
   IconHistory,
+  IconLoader2,
   IconPaperclip,
   IconPin,
   IconPinFilled,
@@ -36,7 +39,7 @@ import { useDropzone } from "react-dropzone";
 import { ComposerShell } from "@/components/composer/composer-shell";
 import { createSuggestionRenderer } from "@/components/composer/create-suggestion-renderer";
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
-import type { AgentConfig, Attachment as MessageAttachment, Channel } from "@agent-spaces/shared";
+import type { AgentConfig, Attachment as MessageAttachment, Channel, TodoItem } from "@agent-spaces/shared";
 import { useChannelStore } from "@/stores/channel";
 import {
   Attachment,
@@ -78,6 +81,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submittingRef = useRef(false);
   const restoredChannelRef = useRef<string | null>(null);
+  const agentsRef = useRef(agents);
+  const channelRef = useRef(channel);
 
   const { saveDraft, clearDraft, updateChannel } = useChannelStore();
   const pinnedMentionId = channel.pinnedMentionId;
@@ -110,6 +115,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => {
     onSendRef.current = onSend;
   }, [onSend]);
+
+  useEffect(() => {
+    agentsRef.current = agents;
+  }, [agents]);
+
+  useEffect(() => {
+    channelRef.current = channel;
+  }, [channel]);
 
   // Save draft with debounce
   const scheduleDraftSave = useCallback(
@@ -218,7 +231,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           char: "@",
           items: ({ query }: { query: string }) => {
             const keyword = query.toLowerCase();
-            return agents
+            return agentsRef.current
               .filter(
                 (agent) =>
                   agent.enabled !== false &&
@@ -251,7 +264,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           render: () => createSuggestionRenderer(),
         },
       }),
-    [agents, removeExistingMentions]
+    [removeExistingMentions]
   );
 
   const slashExtension = useMemo(
@@ -300,32 +313,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         });
         scheduleDraftSave(editor.getHTML());
       },
-      onCreate: ({ editor }) => {
-        if (restoredChannelRef.current === channelId) {
-          setMentionedAgentIds(collectMentionIds(editor.getJSON()));
-          return;
-        }
-        restoredChannelRef.current = channelId;
-
-        const draft = channel.draft;
-        const pinnedId = channel.pinnedMentionId;
-
-        if (draft?.content) {
-          editor.commands.setContent(draft.content);
-          setMentionedAgentIds(collectMentionIds(editor.getJSON()));
-        } else if (pinnedId) {
-          const agent = agents.find((a) => a.id === pinnedId);
-          if (agent) {
-            editor.commands.setContent([
-              { type: "mention", attrs: { id: agent.id, label: agent.name || agent.role } },
-              { type: "text", text: " " },
-            ]);
-            setMentionedAgentIds([agent.id]);
-          }
-        } else {
-          setMentionedAgentIds(collectMentionIds(editor.getJSON()));
-        }
-      },
     },
     [mentionExtension, slashExtension, channelName]
   );
@@ -334,11 +321,36 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     editorRef.current = editor;
   }, [editor]);
 
+  useEffect(() => {
+    if (!editor || restoredChannelRef.current === channelId) return;
+    restoredChannelRef.current = channelId;
+
+    if (draftTimerRef.current) {
+      clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = null;
+    }
+
+    const draft = channelRef.current.draft;
+    const pinnedId = channelRef.current.pinnedMentionId;
+    const pinnedAgent = pinnedId ? agentsRef.current.find((agent) => agent.id === pinnedId) : undefined;
+    const content = draft?.content
+      ? draft.content
+      : pinnedAgent
+        ? [
+            { type: "mention", attrs: { id: pinnedAgent.id, label: pinnedAgent.name || pinnedAgent.role } },
+            { type: "text", text: " " },
+          ]
+        : "";
+
+    editor.commands.setContent(content, { emitUpdate: false });
+    setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+  }, [editor, channelId]);
+
   useImperativeHandle(
     ref,
     () => ({
       setContent: (html: string) => {
-        editor?.commands.setContent(html);
+        editor?.commands.setContent(html, { emitUpdate: false });
         editor?.commands.focus("end");
       },
     }),
@@ -563,6 +575,42 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {channel.todos && channel.todos.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+                />
+              }
+            >
+              <IconCircleCheck className="size-3" />
+              <span>Todos {channel.todos.length}</span>
+              <IconChevronDown className="size-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+              <DropdownMenuGroup className="space-y-0.5">
+                {channel.todos.map((todo) => (
+                  <DropdownMenuItem key={todo.id} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
+                    {todo.status === 'completed' ? (
+                      <IconCircleCheck size={14} className="text-green-500 shrink-0" />
+                    ) : todo.status === 'in_progress' ? (
+                      <IconLoader2 size={14} className="text-blue-500 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
+                    ) : (
+                      <IconCircleDashed size={14} className="text-muted-foreground shrink-0" />
+                    )}
+                    <span className={cn("truncate", todo.status === 'completed' && "line-through text-muted-foreground")}>
+                      {todo.subject}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         <div className="flex-1" />
       </div>

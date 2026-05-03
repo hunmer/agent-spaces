@@ -84,8 +84,9 @@ export const ChainOfThoughtHeader = memo(
           )}
           {...props}
         >
-          {loading ? <Loader size={16} /> : <BrainIcon className="size-4" />}
+          <BrainIcon className="size-4" />
           <span className="flex-1 text-left">{children ?? "Chain of Thought"}</span>
+          {loading && <Loader size={14} />}
           <ChevronDownIcon
             className={cn("size-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")}
           />

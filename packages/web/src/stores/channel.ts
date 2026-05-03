@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Channel, Message } from '@agent-spaces/shared';
+import type { Channel, Message, TodoItem } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 
 interface ChannelStore {
@@ -9,7 +9,7 @@ interface ChannelStore {
 
   loadChannels: (workspaceId: string) => Promise<void>;
   createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[]) => Promise<void>;
-  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members' | 'pinnedMentionId' | 'draft'>>) => Promise<void>;
+  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members' | 'pinnedMentionId' | 'draft' | 'todos'>>) => Promise<void>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments']) => void;

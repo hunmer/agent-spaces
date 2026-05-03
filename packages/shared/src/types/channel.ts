@@ -1,3 +1,11 @@
+export interface TodoItem {
+  id: string;
+  subject: string;
+  description?: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm?: string;
+}
+
 export interface Channel {
   id: string;
   workspaceId: string;
@@ -10,6 +18,7 @@ export interface Channel {
     content: string;
     updatedAt: string;
   };
+  todos?: TodoItem[];
   createdAt: string;
 }
 
