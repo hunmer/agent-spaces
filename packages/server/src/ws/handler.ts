@@ -328,7 +328,7 @@ function buildAgentMessageParts(input: {
   const usage = extractUsage(lines);
   const parts: MessagePart[] = [];
 
-  const chainItems = buildChainItems(lines, finalTextIndex, input.workspaceRoot, input.toolDetails);
+  const chainItems = buildChainItems(lines, finalTextIndex, finalText, input.workspaceRoot, input.toolDetails);
 
   if (chainItems.length > 0) {
     parts.push({
@@ -388,6 +388,7 @@ function findFinalTextIndex(lines: string[]): number {
 function buildChainItems(
   lines: string[],
   finalTextIndex: number,
+  finalText: string,
   workspaceRoot?: string,
   toolDetails?: Map<string, ToolDetail>,
 ): MessageTodo[] {
@@ -398,6 +399,7 @@ function buildChainItems(
   for (let index = 0; index < lines.length; index += 1) {
     if (index === finalTextIndex) continue;
     const line = lines[index];
+    if (finalText && isSameMessageText(line, finalText)) continue;
     if (isSubagentToolLine(line)) continue;
     if (isToolLikeLine(line)) {
       items.push(buildToolTodo(line, toolIndex, workspaceRoot, toolDetails));
@@ -417,6 +419,14 @@ function buildChainItems(
   }
 
   return items.slice(0, 40);
+}
+
+function isSameMessageText(left: string, right: string): boolean {
+  return normalizeMessageText(left) === normalizeMessageText(right);
+}
+
+function normalizeMessageText(text: string): string {
+  return text.trim().replace(/\s+/g, ' ');
 }
 
 function summarizeMessageTitle(text: string): string {
@@ -569,7 +579,9 @@ function findToolDetailForResult(
 
   const resultFilePath = extractResultFilePath(result, workspaceRoot);
   if (resultFilePath) {
-    for (const detail of toolDetails.values()) {
+    const details = Array.from(toolDetails.values()).reverse();
+    for (const detail of details) {
+      if (detail.output !== undefined) continue;
       const inputFilePath = extractInputFilePath(detail.input, workspaceRoot);
       if (inputFilePath === resultFilePath) return detail;
     }
