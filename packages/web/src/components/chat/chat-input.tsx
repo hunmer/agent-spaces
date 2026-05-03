@@ -76,6 +76,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const onSendRef = useRef(onSend);
   const editorRef = useRef<Editor | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submittingRef = useRef(false);
 
   const { saveDraft, clearDraft, updateChannel } = useChannelStore();
   const pinnedMentionId = channel.pinnedMentionId;
@@ -126,11 +127,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const submitCurrentMessage = useCallback(async () => {
     const currentEditor = editorRef.current;
-    if (!currentEditor || isProcessingRef.current || submitting) return;
+    if (!currentEditor || isProcessingRef.current || submittingRef.current) return;
     const text = currentEditor.getText().trim();
     if (!text && attachments.length === 0) return;
     const mentions = collectMentionIds(currentEditor.getJSON());
+    submittingRef.current = true;
     setSubmitting(true);
+    // Cancel pending draft save
+    if (draftTimerRef.current) {
+      clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = null;
+    }
     try {
       const uploaded = await Promise.all(attachments.map(uploadAttachment));
       onSendRef.current(text ? currentEditor.getHTML() : "", mentions, uploaded);
@@ -142,9 +149,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       setMentionedAgentIds([]);
       clearDraft(workspaceId, channelId);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [attachments, submitting, workspaceId, channelId, clearDraft]);
+  }, [attachments, workspaceId, channelId, clearDraft]);
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
     noClick: true,
@@ -253,6 +261,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     []
   );
 
+  const submitRef = useRef(submitCurrentMessage);
+  submitRef.current = submitCurrentMessage;
+
   const editor = useEditor(
     {
       immediatelyRender: false,
@@ -273,7 +284,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             const hasPopup = document.querySelector(".suggestion-menu");
             if (hasPopup) return false;
             event.preventDefault();
-            submitCurrentMessage();
+            submitRef.current();
             return true;
           }
           return false;
@@ -286,7 +297,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         scheduleDraftSave(editor.getHTML());
       },
       onCreate: ({ editor }) => {
-        // Restore pinned mention or draft
         const draft = channel.draft;
         const pinnedId = channel.pinnedMentionId;
 
@@ -307,7 +317,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         }
       },
     },
-    [mentionExtension, slashExtension, channelName, submitCurrentMessage]
+    [mentionExtension, slashExtension, channelName]
   );
 
   useEffect(() => {

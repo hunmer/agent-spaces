@@ -117,6 +117,8 @@ export const useChannelStore = create<ChannelStore>((set) => ({
   },
 
   saveDraft: async (workspaceId, channelId, content) => {
+    const current = useChannelStore.getState().channels.find((c) => c.id === channelId);
+    if (current?.draft?.content === content) return;
     const draft = { content, updatedAt: new Date().toISOString() };
     set((s) => ({
       channels: s.channels.map((c) => (c.id === channelId ? { ...c, draft } : c)),

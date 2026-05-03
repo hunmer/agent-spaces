@@ -39,14 +39,14 @@ export interface Attachment {
 export type MessagePart =
   | { id: string; type: 'text'; text: string }
   | { id: string; type: 'reasoning'; text: string; duration?: number; status?: 'streaming' | 'completed' }
-  | { id: string; type: 'todo'; todos: MessageTodo[] }
+  | { id: string; type: 'chain'; chains: MessageChain[] }
   | { id: string; type: 'terminal'; command?: string; output: string; status?: 'streaming' | 'completed' | 'error' }
   | { id: string; type: 'confirmation'; title: string; description?: string; approval?: MessageApproval }
   | { id: string; type: 'context'; usedTokens: number; maxTokens: number; modelId?: string; usage?: MessageTokenUsage }
   | { id: string; type: 'subagent'; name: string; model?: string; instructions?: string; tools?: MessageTool[] }
   | { id: string; type: 'ask_user_question'; question: string; choices?: string[]; status?: 'requested' | 'answered'; answer?: string };
 
-export interface MessageTodo {
+export interface MessageChain {
   id: string;
   title: string;
   description?: string;

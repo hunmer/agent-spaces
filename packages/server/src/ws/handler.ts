@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { MessageTodo, WSEvent, ClientEventName, Message, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
+import type { MessageChain, WSEvent, ClientEventName, Message, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
@@ -333,8 +333,8 @@ function buildAgentMessageParts(input: {
   if (chainItems.length > 0) {
     parts.push({
       id: `chain-${input.sessionId}`,
-      type: 'todo',
-      todos: chainItems,
+      type: 'chain',
+      chains: chainItems,
     });
   }
 
@@ -391,10 +391,10 @@ function buildChainItems(
   finalText: string,
   workspaceRoot?: string,
   toolDetails?: Map<string, ToolDetail>,
-): MessageTodo[] {
+): MessageChain[] {
   let toolIndex = 0;
   let messageIndex = 0;
-  const items: MessageTodo[] = [];
+  const items: MessageChain[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {
     if (index === finalTextIndex) continue;
@@ -447,7 +447,7 @@ function isSubagentToolLine(line: string): boolean {
   return /^Tool:\s*Task\b/i.test(line.trim());
 }
 
-function buildToolTodo(line: string, index: number, workspaceRoot?: string, toolDetails?: Map<string, ToolDetail>): MessageTodo {
+function buildToolTodo(line: string, index: number, workspaceRoot?: string, toolDetails?: Map<string, ToolDetail>): MessageChain {
   const summary = summarizeToolLine(line, workspaceRoot);
   const detailId = findToolDetailId(line, toolDetails);
 

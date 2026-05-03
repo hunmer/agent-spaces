@@ -107,26 +107,26 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
           </ChainOfThoughtContent>
         </ChainOfThought>
       )
-    case "todo":
+    case "chain":
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
-          <ChainOfThoughtHeader>{part.todos.length} chain {part.todos.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
+          <ChainOfThoughtHeader>{part.chains.length} chain {part.chains.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
           <ChainOfThoughtContent>
-            {part.todos.map((todo) => {
-              const completed = todo.status === "completed"
-              if (todo.kind === "message") {
+            {part.chains.map((chain) => {
+              const completed = chain.status === "completed"
+              if (chain.kind === "message") {
                 return (
                   <AiMessageStep
-                    key={todo.id}
-                    text={todo.text ?? todo.title}
+                    key={chain.id}
+                    text={chain.text ?? chain.title}
                     status={completed ? "complete" : "active"}
                   />
                 )
               }
               return (
                 <ToolStep
-                  key={todo.id}
-                  todo={todo}
+                  key={chain.id}
+                  chain={chain}
                   message={message}
                   workspaceId={workspaceId}
                   status={completed ? "complete" : "active"}
@@ -273,12 +273,12 @@ function AiMessageStep({
 }
 
 function ToolStep({
-  todo,
+  chain,
   message,
   workspaceId,
   status,
 }: {
-  todo: Extract<MessagePart, { type: "todo" }>["todos"][number]
+  chain: Extract<MessagePart, { type: "chain" }>["chains"][number]
   message: Message
   workspaceId: string
   status: "complete" | "active"
@@ -290,20 +290,20 @@ function ToolStep({
   const [error, setError] = useState<string | null>(null)
 
   const handleOpenFile = async () => {
-    if (!todo.filePath) return
-    await openFile(workspaceId, todo.filePath)
+    if (!chain.filePath) return
+    await openFile(workspaceId, chain.filePath)
   }
 
   const handleToggleDetail = async () => {
     const nextOpen = !open
     setOpen(nextOpen)
-    if (!nextOpen || detail || loading || !todo.detailId) return
+    if (!nextOpen || detail || loading || !chain.detailId) return
 
     setLoading(true)
     setError(null)
     try {
       const res = await fetch(
-        `/api/workspaces/${workspaceId}/channels/${message.channelId}/messages/${message.id}/tool-details/${todo.detailId}`,
+        `/api/workspaces/${workspaceId}/channels/${message.channelId}/messages/${message.id}/tool-details/${chain.detailId}`,
       )
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json() as ToolDetailData
@@ -320,8 +320,8 @@ function ToolStep({
       icon={status === "complete" ? CheckCircle2Icon : CircleIcon}
       label={
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span>{todo.filePath ? todo.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(todo.filePath))}$`), "") : todo.title}</span>
-          {todo.filePath ? (
+          <span>{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
+          {chain.filePath ? (
             <Button
               type="button"
               variant="ghost"
@@ -330,10 +330,10 @@ function ToolStep({
               onClick={handleOpenFile}
             >
               <FileTextIcon className="size-3" />
-              <span className="max-w-52 truncate">{todo.filePath}</span>
+              <span className="max-w-52 truncate">{chain.filePath}</span>
             </Button>
           ) : null}
-          {todo.detailId ? (
+          {chain.detailId ? (
             <Button
               type="button"
               variant="ghost"
@@ -346,7 +346,7 @@ function ToolStep({
           ) : null}
         </div>
       }
-      description={todo.command}
+      description={chain.command}
       status={status}
     >
       {open ? (
@@ -356,7 +356,7 @@ function ToolStep({
           ) : error ? (
             <div className="rounded-md border bg-muted/40 p-2 text-destructive text-xs">{error}</div>
           ) : detail ? (
-            <ToolDetailView detail={detail} toolName={todo.toolName} filePath={todo.filePath} />
+            <ToolDetailView detail={detail} toolName={chain.toolName} filePath={chain.filePath} />
           ) : (
             <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">No details available.</div>
           )}
