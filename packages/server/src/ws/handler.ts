@@ -164,6 +164,7 @@ async function runMentionedAgent(
     const history = listMessages(workspaceId, channelId, { limit: 20 });
     const liveOutput: string[] = [];
     const toolDetails = new Map<string, ToolDetail>();
+    const toolUseDetailIds = new Map<string, string>();
     let lastLiveUpdate = 0;
     const broadcastLiveParts = (force = false) => {
       const now = Date.now();
@@ -204,6 +205,7 @@ async function runMentionedAgent(
       onEvent: (event) => {
         if (event.type === 'tool_use') {
           const detailId = buildToolDetailId(event.id, event.line);
+          toolUseDetailIds.set(event.id, detailId);
           toolDetails.set(detailId, {
             id: detailId,
             workspaceId,
@@ -215,6 +217,15 @@ async function runMentionedAgent(
             createdAt: new Date().toISOString(),
           });
           saveToolDetails(workspaceId, channelId, Array.from(toolDetails.values()));
+          return;
+        }
+        if (event.type === 'tool_result') {
+          const detail = findToolDetailForResult(event.toolUseId, event.result, toolUseDetailIds, toolDetails, workspace?.boundDirs?.[0]);
+          if (detail) {
+            detail.output = event.result;
+            detail.updatedAt = new Date().toISOString();
+            saveToolDetails(workspaceId, channelId, [detail]);
+          }
           return;
         }
         if (event.type !== 'output') return;
@@ -510,6 +521,48 @@ function findToolDetailId(line: string, toolDetails?: Map<string, ToolDetail>): 
     if (detail.raw === line) return id;
   }
   return undefined;
+}
+
+function findToolDetailForResult(
+  toolUseId: string | undefined,
+  result: unknown,
+  toolUseDetailIds: Map<string, string>,
+  toolDetails: Map<string, ToolDetail>,
+  workspaceRoot?: string,
+): ToolDetail | undefined {
+  const detailId = toolUseId ? toolUseDetailIds.get(toolUseId) : undefined;
+  const byId = detailId ? toolDetails.get(detailId) : undefined;
+  if (byId) return byId;
+
+  const resultFilePath = extractResultFilePath(result, workspaceRoot);
+  if (resultFilePath) {
+    for (const detail of toolDetails.values()) {
+      const inputFilePath = extractInputFilePath(detail.input, workspaceRoot);
+      if (inputFilePath === resultFilePath) return detail;
+    }
+  }
+
+  return Array.from(toolDetails.values()).reverse().find((detail) => detail.output === undefined);
+}
+
+function extractResultFilePath(result: unknown, workspaceRoot?: string): string | undefined {
+  if (!result || typeof result !== 'object') return undefined;
+  const record = result as Record<string, unknown>;
+  const file = record.file;
+  if (file && typeof file === 'object') {
+    const filePath = (file as Record<string, unknown>).filePath;
+    if (typeof filePath === 'string') return toWorkspaceRelativePath(filePath, workspaceRoot);
+  }
+  const filePath = record.filePath;
+  if (typeof filePath === 'string') return toWorkspaceRelativePath(filePath, workspaceRoot);
+  return undefined;
+}
+
+function extractInputFilePath(input: unknown, workspaceRoot?: string): string | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const record = input as Record<string, unknown>;
+  const filePath = record.file_path ?? record.path;
+  return typeof filePath === 'string' ? toWorkspaceRelativePath(filePath, workspaceRoot) : undefined;
 }
 
 function buildToolDetailId(id: string, line: string): string {

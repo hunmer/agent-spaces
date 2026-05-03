@@ -70,6 +70,23 @@
 - Files created/modified:
   - `progress.md`
 
+### Phase 8: Tool Detail Output
+- **Status:** complete
+- Actions taken:
+  - Confirmed Claude runtime logs `tool_use_result` from user messages but does not currently emit it to websocket handler.
+  - Added `tool_result` runtime events using `parent_tool_use_id`.
+  - Persisted tool result output on the matching tool detail record.
+  - Updated lazy detail formatting to show both Input and Output sections.
+  - Re-ran shared/server builds and targeted chat lint.
+- Files created/modified:
+  - `task_plan.md`
+  - `progress.md`
+  - `packages/server/src/adapters/agent-runtime-types.ts`
+  - `packages/server/src/adapters/claude-code-runtime.ts`
+  - `packages/server/src/services/tool-detail.ts`
+  - `packages/server/src/ws/handler.ts`
+  - `packages/web/src/components/chat/message-parts.tsx`
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -77,6 +94,8 @@
 | Shared and server build | `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` | TypeScript compile succeeds after shared type changes | Succeeded | pass |
 | Targeted chat lint | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
 | Targeted chat lint after concise tool UI | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/message-item.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
+| Tool detail output build | `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` | TypeScript compile succeeds | Succeeded | pass |
+| Tool detail output lint | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/message-item.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
 | Full web lint | `pnpm --filter @agent-spaces/web lint` | No lint errors | Failed on existing unrelated lint errors in inspect-source-loader, composer, commit, providers/models dialog, etc. | blocked |
 | Web typecheck | `pnpm --filter @agent-spaces/web exec tsc --noEmit` | No TS errors | Failed on existing unrelated TS errors in dashboard icons, timeline imports, commit/task collapsible typing, etc.; the prior chain-of-thought missing dependency error was fixed. | blocked |
 

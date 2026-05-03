@@ -9,7 +9,9 @@ export interface ToolDetail {
   title: string;
   raw: string;
   input?: unknown;
+  output?: unknown;
   createdAt: string;
+  updatedAt?: string;
 }
 
 function detailFilePath(workspaceId: string, channelId: string): string {

@@ -47,6 +47,13 @@ Complete
 - [x] Document residual risks.
 - **Status:** complete
 
+### Phase 8: Tool Detail Output
+- [x] Emit structured tool result events from Claude runtime.
+- [x] Persist tool result output alongside tool input detail.
+- [x] Render input and output sections in lazy-loaded detail.
+- [x] Verify targeted builds/lint.
+- **Status:** complete
+
 ## Key Questions
 1. Where is queue used? Answer: only `message-parts.tsx` imports it for `todo` parts.
 2. Why does duplicate final text appear? Likely because live stream parts already include final text, then completion rebuilds parts from `result.output`, which can include the same assistant output again.

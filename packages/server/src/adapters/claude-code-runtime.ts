@@ -74,6 +74,10 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         for (const toolUse of extractToolUseEvents(message)) {
           options?.onEvent?.({ type: 'tool_use', ...toolUse });
         }
+        const toolResult = extractToolResultEvent(message);
+        if (toolResult) {
+          options?.onEvent?.({ type: 'tool_result', ...toolResult });
+        }
         const line = formatMessage(message);
         if (line) {
           output.push(line);
@@ -297,6 +301,29 @@ function extractToolUseEvents(message: SDKMessage): Array<{ id: string; name: st
       line: formatToolUse(typedBlock.name, typedBlock.input),
     }];
   });
+}
+
+function extractToolResultEvent(message: SDKMessage): { toolUseId?: string; result: unknown } | null {
+  if (message.type !== 'user') return null;
+  const parentToolUseId = (message as { parent_tool_use_id?: unknown }).parent_tool_use_id;
+  const toolUseId = typeof parentToolUseId === 'string' && parentToolUseId ? parentToolUseId : undefined;
+
+  const directResult = (message as { tool_use_result?: unknown }).tool_use_result;
+  if (directResult !== undefined) {
+    return { toolUseId, result: directResult };
+  }
+
+  const content = (message as { message?: { content?: unknown } }).message?.content;
+  if (Array.isArray(content)) {
+    const toolResultBlock = content.find((block) => {
+      return Boolean(block && typeof block === 'object' && (block as { type?: unknown }).type === 'tool_result');
+    }) as { content?: unknown } | undefined;
+    if (toolResultBlock) {
+      return { toolUseId, result: toolResultBlock.content };
+    }
+  }
+
+  return null;
 }
 
 function logToolDebug(message: SDKMessage, d: (message: string) => void): void {

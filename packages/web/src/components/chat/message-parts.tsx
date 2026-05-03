@@ -261,7 +261,7 @@ function ToolStep({
         `/api/workspaces/${workspaceId}/channels/${message.channelId}/messages/${message.id}/tool-details/${todo.detailId}`,
       )
       if (!res.ok) throw new Error(await res.text())
-      const data = await res.json() as { raw?: string; input?: unknown }
+      const data = await res.json() as { raw?: string; input?: unknown; output?: unknown }
       setDetail(formatToolDetail(data))
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load details.")
@@ -321,11 +321,21 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-function formatToolDetail(detail: { raw?: string; input?: unknown }) {
+function formatToolDetail(detail: { raw?: string; input?: unknown; output?: unknown }) {
+  const sections: string[] = []
   if (detail.input !== undefined) {
-    return JSON.stringify(detail.input, null, 2)
+    sections.push(`Input\n${formatDetailValue(detail.input)}`)
   }
+  if (detail.output !== undefined) {
+    sections.push(`Output\n${formatDetailValue(detail.output)}`)
+  }
+  if (sections.length > 0) return sections.join("\n\n")
   return detail.raw ?? ""
+}
+
+function formatDetailValue(value: unknown) {
+  if (typeof value === "string") return value
+  return JSON.stringify(value, null, 2)
 }
 
 function normalizeApproval(id: string, approval: Extract<MessagePart, { type: "confirmation" }>["approval"]) {
