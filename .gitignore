@@ -6,3 +6,4 @@ dist/
 .env.local
 .DS_Store
 .agent-spaces-data/
+packages/server/public/

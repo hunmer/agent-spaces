@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
         destination: "http://localhost:3100/ws",
       },
       {
-        source: "/public/:path*",
+        source: "/static/:path*",
         destination: "http://localhost:3100/public/:path*",
       },
     ];

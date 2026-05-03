@@ -50,7 +50,7 @@ app.post('/api/upload/avatar', async (req, res) => {
   const avatarsDir = join(__dirname, '..', 'public', 'avatars');
   if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
   await writeFile(join(avatarsDir, name), Buffer.from(base64, 'base64'));
-  res.json({ url: `/public/avatars/${name}` });
+  res.json({ url: `/static/avatars/${name}` });
 });
 
 app.use('/api/workspaces', workspaceRouter);

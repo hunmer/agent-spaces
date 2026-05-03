@@ -104,7 +104,7 @@ const PROVIDER_ICON_MAP: Record<string, string> = {
 function getProviderIconUrl(agent: { avatarUrl?: string; modelProvider?: string; apiBase?: string }): string {
   if (agent.avatarUrl) return agent.avatarUrl;
   const iconName = PROVIDER_ICON_MAP[agent.modelProvider ?? ""];
-  if (iconName) return `/public/provider-icons/${iconName}.svg`;
+  if (iconName) return `/static/provider-icons/${iconName}.svg`;
   return "";
 }
 
