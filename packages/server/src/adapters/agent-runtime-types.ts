@@ -23,10 +23,9 @@ export interface AgentRunOptions {
   onEvent?: (event: AgentRuntimeEvent) => void;
 }
 
-export interface AgentRuntimeEvent {
-  type: 'output';
-  line: string;
-}
+export type AgentRuntimeEvent =
+  | { type: 'output'; line: string }
+  | { type: 'tool_use'; id: string; name: string; input?: unknown; line: string };
 
 export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code';
 

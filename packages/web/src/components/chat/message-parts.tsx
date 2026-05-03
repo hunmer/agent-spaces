@@ -1,9 +1,12 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { CheckCircle2Icon, CircleIcon, MessageSquareTextIcon } from "lucide-react"
+import { CheckCircle2Icon, CircleIcon, FileTextIcon, MessageSquareTextIcon } from "lucide-react"
+import { useState } from "react"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
+import { Button } from "@/components/ui/button"
+import { useEditorStore } from "@/stores/editor"
 import {
   Agent,
   AgentContent,
@@ -52,9 +55,10 @@ import { Terminal } from "./terminal"
 interface MessagePartsProps {
   message: Message
   isUser: boolean
+  workspaceId: string
 }
 
-export function MessageParts({ message, isUser }: MessagePartsProps) {
+export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps) {
   const parts = message.parts ?? []
   const hasTextPart = parts.some((part) => part.type === "text")
 
@@ -63,7 +67,9 @@ export function MessageParts({ message, isUser }: MessagePartsProps) {
       {message.attachments?.length ? (
         <MessageAttachments attachments={message.attachments} isUser={isUser} />
       ) : null}
-      {parts.length > 0 ? parts.map((part) => <MessagePartView key={part.id} part={part} />) : null}
+      {parts.length > 0 ? parts.map((part) => (
+        <MessagePartView key={part.id} part={part} message={message} workspaceId={workspaceId} />
+      )) : null}
       {!hasTextPart && message.content ? (
         isUser ? <UserContent content={message.content} /> : <Markdown content={message.content} />
       ) : null}
@@ -77,7 +83,7 @@ export function MessageParts({ message, isUser }: MessagePartsProps) {
   )
 }
 
-function MessagePartView({ part }: { part: MessagePart }) {
+function MessagePartView({ part, message, workspaceId }: { part: MessagePart; message: Message; workspaceId: string }) {
   switch (part.type) {
     case "text":
       return <Markdown content={part.text} />
@@ -106,11 +112,11 @@ function MessagePartView({ part }: { part: MessagePart }) {
             {part.todos.map((todo) => {
               const completed = todo.status === "completed"
               return (
-                <ChainOfThoughtStep
+                <ToolStep
                   key={todo.id}
-                  icon={completed ? CheckCircle2Icon : CircleIcon}
-                  label={todo.title}
-                  description={todo.description}
+                  todo={todo}
+                  message={message}
+                  workspaceId={workspaceId}
                   status={completed ? "complete" : "active"}
                 />
               )
@@ -219,6 +225,107 @@ function MessagePartView({ part }: { part: MessagePart }) {
     default:
       return null
   }
+}
+
+function ToolStep({
+  todo,
+  message,
+  workspaceId,
+  status,
+}: {
+  todo: Extract<MessagePart, { type: "todo" }>["todos"][number]
+  message: Message
+  workspaceId: string
+  status: "complete" | "active"
+}) {
+  const openFile = useEditorStore((state) => state.openFile)
+  const [open, setOpen] = useState(false)
+  const [detail, setDetail] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleOpenFile = async () => {
+    if (!todo.filePath) return
+    await openFile(workspaceId, todo.filePath)
+  }
+
+  const handleToggleDetail = async () => {
+    const nextOpen = !open
+    setOpen(nextOpen)
+    if (!nextOpen || detail || loading || !todo.detailId) return
+
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(
+        `/api/workspaces/${workspaceId}/channels/${message.channelId}/messages/${message.id}/tool-details/${todo.detailId}`,
+      )
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json() as { raw?: string; input?: unknown }
+      setDetail(formatToolDetail(data))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load details.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <ChainOfThoughtStep
+      icon={status === "complete" ? CheckCircle2Icon : CircleIcon}
+      label={
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span>{todo.filePath ? todo.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(todo.filePath))}$`), "") : todo.title}</span>
+          {todo.filePath ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 max-w-full gap-1 px-1.5 text-xs"
+              onClick={handleOpenFile}
+            >
+              <FileTextIcon className="size-3" />
+              <span className="max-w-52 truncate">{todo.filePath}</span>
+            </Button>
+          ) : null}
+        </div>
+      }
+      description={todo.command}
+      status={status}
+    >
+      {todo.detailId ? (
+        <button
+          type="button"
+          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          onClick={handleToggleDetail}
+        >
+          {open ? "Hide details" : "View details"}
+        </button>
+      ) : null}
+      {open ? (
+        <div className="max-h-72 overflow-auto rounded-md border bg-muted/40 p-2">
+          <pre className="whitespace-pre-wrap break-words text-xs text-muted-foreground">
+            {loading ? "Loading details..." : error ?? detail ?? "No details available."}
+          </pre>
+        </div>
+      ) : null}
+    </ChainOfThoughtStep>
+  )
+}
+
+function fileName(path: string) {
+  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function formatToolDetail(detail: { raw?: string; input?: unknown }) {
+  if (detail.input !== undefined) {
+    return JSON.stringify(detail.input, null, 2)
+  }
+  return detail.raw ?? ""
 }
 
 function normalizeApproval(id: string, approval: Extract<MessagePart, { type: "confirmation" }>["approval"]) {

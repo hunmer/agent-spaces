@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, IRenderTabValues } from "flexlayout-react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch, FileDiff, GitCommitHorizontal, Network } from "lucide-react";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
@@ -18,6 +18,7 @@ import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
 import { useEditorStore } from "@/stores/editor";
 import { useChannelStore } from "@/stores/channel";
+import { useGitStore } from "@/stores/git";
 import type { Issue, Task } from "@agent-spaces/shared";
 
 const tabIcons: Record<string, React.ReactNode> = {
@@ -28,9 +29,9 @@ const tabIcons: Record<string, React.ReactNode> = {
   "chat": <MessageSquare size={16} />,
   "issue-detail": <FileText size={16} />,
   "terminal": <TerminalSquare size={16} />,
-  "git-changes": <GitBranch size={16} />,
-  "git-commits": <GitBranch size={16} />,
-  "git-graph": <GitBranch size={16} />,
+  "git-changes": <FileDiff size={16} />,
+  "git-commits": <GitCommitHorizontal size={16} />,
+  "git-graph": <Network size={16} />,
 };
 
 const defaultJson: IJsonModel = {
@@ -171,7 +172,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
 
   const onRenderTab = useCallback((node: TabNode, renderValues: IRenderTabValues) => {
     const comp = node.getComponent();
-    const icon = tabIcons[comp];
+    const icon = comp ? tabIcons[comp] : undefined;
     if (icon) {
       renderValues.content = (
         <span title={node.getName()} className="flex items-center justify-center">
@@ -181,9 +182,29 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
     }
   }, []);
 
+  const onModelChange = useCallback(
+    (_model: Model, action: { type: string; data: Record<string, any> }) => {
+      if (action.type !== Actions.SELECT_TAB) return;
+      const node = _model.getNodeById(action.data.tabNode);
+      if (!node || !(node instanceof TabNode)) return;
+      const comp = node.getComponent();
+      const git = useGitStore.getState();
+      if (comp === "git-changes") {
+        git.loadStatus(workspaceId);
+        git.loadDiffs(workspaceId);
+      } else if (comp === "git-commits") {
+        git.loadLog(workspaceId);
+      } else if (comp === "git-graph") {
+        git.loadLog(workspaceId);
+        git.loadStatus(workspaceId);
+      }
+    },
+    [workspaceId],
+  );
+
   return (
     <div className="h-full w-full">
-      <Layout model={model} factory={factory} onRenderTab={onRenderTab} />
+      <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
     </div>
   );
 }

@@ -46,6 +46,10 @@ export interface MessageTodo {
   title: string;
   description?: string;
   status?: 'pending' | 'completed';
+  toolName?: string;
+  filePath?: string;
+  command?: string;
+  detailId?: string;
 }
 
 export interface MessageApproval {

@@ -27,3 +27,8 @@ export interface GitDiffResult {
   isNew: boolean;
   isDeleted: boolean;
 }
+
+export interface GitBranch {
+  name: string;
+  current: boolean;
+}

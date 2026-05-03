@@ -1,7 +1,7 @@
 # Task Plan: AI Message Rendering Fix
 
 ## Goal
-Use `chain-of-thought.tsx` for tool/intermediate AI output rendering and prevent the final summary/result text from appearing twice after an agent run completes.
+Use `chain-of-thought.tsx` for concise, useful tool/intermediate AI output rendering; avoid duplicate final output; support lazy tool details and opening referenced files in editor tabs.
 
 ## Current Phase
 Complete
@@ -35,6 +35,18 @@ Complete
 - [x] Summarize changes and verification.
 - **Status:** complete
 
+### Phase 6: Concise Chain Tool UI
+- [x] Discover editor file-opening flow and message detail storage/API options.
+- [x] Add compact tool summaries instead of raw JSON parameters.
+- [x] Make tool detail collapsible and lazy-loadable.
+- [x] Allow file tool links to open files in editor tabs.
+- **Status:** complete
+
+### Phase 7: Verification
+- [x] Run targeted server/client checks.
+- [x] Document residual risks.
+- **Status:** complete
+
 ## Key Questions
 1. Where is queue used? Answer: only `message-parts.tsx` imports it for `todo` parts.
 2. Why does duplicate final text appear? Likely because live stream parts already include final text, then completion rebuilds parts from `result.output`, which can include the same assistant output again.
@@ -52,3 +64,4 @@ Complete
 
 ## Notes
 - User specifically wants each chain to show tool usage including non-summary intermediate AI output.
+- Follow-up request: make tool chain display concise and intuitive, do not show raw JSON by default, support read-file links opening in editor tabs, and lazy-load detailed edit contents via query API.

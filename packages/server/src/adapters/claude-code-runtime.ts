@@ -71,6 +71,9 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       for await (const message of this.activeQuery) {
         logToolDebug(message, d);
+        for (const toolUse of extractToolUseEvents(message)) {
+          options?.onEvent?.({ type: 'tool_use', ...toolUse });
+        }
         const line = formatMessage(message);
         if (line) {
           output.push(line);
@@ -277,6 +280,23 @@ function formatAssistantMessage(content: unknown): string | null {
   });
 
   return parts.length > 0 ? parts.join('\n') : null;
+}
+
+function extractToolUseEvents(message: SDKMessage): Array<{ id: string; name: string; input?: unknown; line: string }> {
+  if (message.type !== 'assistant' || !Array.isArray(message.message.content)) return [];
+
+  return message.message.content.flatMap((block) => {
+    if (!block || typeof block !== 'object') return [];
+    const typedBlock = block as { type?: string; id?: unknown; name?: unknown; input?: unknown };
+    if (typedBlock.type !== 'tool_use' || typeof typedBlock.name !== 'string') return [];
+
+    return [{
+      id: typeof typedBlock.id === 'string' ? typedBlock.id : typedBlock.name,
+      name: typedBlock.name,
+      input: typedBlock.input,
+      line: formatToolUse(typedBlock.name, typedBlock.input),
+    }];
+  });
 }
 
 function logToolDebug(message: SDKMessage, d: (message: string) => void): void {

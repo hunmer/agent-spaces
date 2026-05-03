@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { WSEvent, ClientEventName, Message, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
+import type { MessageTodo, WSEvent, ClientEventName, Message, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
@@ -10,6 +10,8 @@ import * as wsService from '../services/workspace.js';
 import { runPlanner } from '../agents/planner-agent.js';
 import type { AgentContext } from '../agents/agent-context.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
+import { saveToolDetails } from '../services/tool-detail.js';
+import type { ToolDetail } from '../services/tool-detail.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -128,6 +130,7 @@ async function runMentionedAgent(
   const configDir = agentService.getAgentConfigDir(workspaceId, preset);
   const mcpServers = agentService.getMcpServers(preset.mcps);
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
+  const workspace = wsService.getById(workspaceId);
   const pending = createMessage(workspaceId, channelId, {
     senderId: preset.name || preset.role,
     senderRole: preset.role,
@@ -159,8 +162,8 @@ async function runMentionedAgent(
       baseURL: preset.apiBase,
     });
     const history = listMessages(workspaceId, channelId, { limit: 20 });
-    const workspace = wsService.getById(workspaceId);
     const liveOutput: string[] = [];
+    const toolDetails = new Map<string, ToolDetail>();
     let lastLiveUpdate = 0;
     const broadcastLiveParts = (force = false) => {
       const now = Date.now();
@@ -168,6 +171,7 @@ async function runMentionedAgent(
       lastLiveUpdate = now;
       const parts = buildAgentMessageParts({
         sessionId: session.id,
+        workspaceRoot: workspace?.boundDirs?.[0],
         presetName: preset.name || preset.role,
         role: preset.role,
         model: preset.modelId,
@@ -175,6 +179,7 @@ async function runMentionedAgent(
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
         output: liveOutput,
+        toolDetails,
         success: true,
       });
       if (parts.length === 0) return;
@@ -197,6 +202,21 @@ async function runMentionedAgent(
       configDir,
       sandboxDirs: preset.sandboxDirs,
       onEvent: (event) => {
+        if (event.type === 'tool_use') {
+          const detailId = buildToolDetailId(event.id, event.line);
+          toolDetails.set(detailId, {
+            id: detailId,
+            workspaceId,
+            channelId,
+            messageId: pending.id,
+            title: summarizeToolLine(event.line, workspace?.boundDirs?.[0]).title,
+            raw: event.line,
+            input: event.input,
+            createdAt: new Date().toISOString(),
+          });
+          saveToolDetails(workspaceId, channelId, Array.from(toolDetails.values()));
+          return;
+        }
         if (event.type !== 'output') return;
         liveOutput.push(event.line);
         broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.line });
@@ -236,6 +256,7 @@ async function runMentionedAgent(
       },
       parts: buildAgentMessageParts({
         sessionId: session.id,
+        workspaceRoot: workspace?.boundDirs?.[0],
         presetName: preset.name || preset.role,
         role: preset.role,
         model: preset.modelId,
@@ -243,6 +264,7 @@ async function runMentionedAgent(
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
         output: displayOutput,
+        toolDetails,
         success: result.success,
         error: result.error,
       }),
@@ -258,6 +280,7 @@ async function runMentionedAgent(
       status: 'error',
       parts: buildAgentMessageParts({
         sessionId: session.id,
+        workspaceRoot: workspace?.boundDirs?.[0],
         presetName: preset.name || preset.role,
         role: preset.role,
         model: preset.modelId,
@@ -265,6 +288,7 @@ async function runMentionedAgent(
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
         output: [error],
+        toolDetails: new Map(),
         success: false,
         error,
       }),
@@ -275,6 +299,7 @@ async function runMentionedAgent(
 
 function buildAgentMessageParts(input: {
   sessionId: string;
+  workspaceRoot?: string;
   presetName: string;
   role: string;
   model?: string;
@@ -282,6 +307,7 @@ function buildAgentMessageParts(input: {
   mcpServers: string[];
   skills: string[];
   output: string[];
+  toolDetails?: Map<string, ToolDetail>;
   success: boolean;
   error?: string;
 }): MessagePart[] {
@@ -305,11 +331,7 @@ function buildAgentMessageParts(input: {
     const todos = toolLines
       .filter((line) => !isSubagentToolLine(line))
       .slice(0, 20)
-      .map((line, index) => ({
-        id: `tool-${index}`,
-        title: line,
-        status: 'completed' as const,
-      }));
+      .map((line, index) => buildToolTodo(line, index, input.workspaceRoot, input.toolDetails));
 
     if (todos.length > 0) {
       parts.push({
@@ -369,6 +391,134 @@ function isFinalAnswerLine(line: string): boolean {
 
 function isSubagentToolLine(line: string): boolean {
   return /^Tool:\s*Task\b/i.test(line.trim());
+}
+
+function buildToolTodo(line: string, index: number, workspaceRoot?: string, toolDetails?: Map<string, ToolDetail>): MessageTodo {
+  const summary = summarizeToolLine(line, workspaceRoot);
+  const detailId = findToolDetailId(line, toolDetails);
+
+  return {
+    id: `tool-${index}`,
+    title: summary.title,
+    description: summary.description,
+    status: 'completed',
+    toolName: summary.toolName,
+    filePath: summary.filePath,
+    command: summary.command,
+    detailId,
+  };
+}
+
+function summarizeToolLine(line: string, workspaceRoot?: string): {
+  title: string;
+  description?: string;
+  toolName?: string;
+  filePath?: string;
+  command?: string;
+} {
+  const trimmed = line.trim();
+  const toolName = extractToolName(trimmed);
+  const filePath = toWorkspaceRelativePath(
+    extractQuotedField(trimmed, 'file_path') ?? extractQuotedField(trimmed, 'path'),
+    workspaceRoot,
+  );
+  const command = extractQuotedField(trimmed, 'command') ?? extractCommand(trimmed, toolName);
+  const baseName = filePath?.split(/[\\/]/).filter(Boolean).at(-1);
+
+  if (toolName) {
+    if (filePath) {
+      return {
+        title: `${humanizeToolName(toolName)} ${baseName ?? filePath}`,
+        description: filePath,
+        toolName,
+        filePath,
+      };
+    }
+    if (command) {
+      return {
+        title: `${humanizeToolName(toolName)} command`,
+        description: command,
+        toolName,
+        command,
+      };
+    }
+    const todoCount = extractTodoCount(trimmed);
+    if (todoCount !== undefined) {
+      return {
+        title: `Update ${todoCount} ${todoCount === 1 ? 'todo' : 'todos'}`,
+        toolName,
+      };
+    }
+    return {
+      title: humanizeToolName(toolName),
+      toolName,
+    };
+  }
+
+  return { title: trimmed };
+}
+
+function extractToolName(line: string): string | undefined {
+  return line.match(/^Tool:\s*([A-Za-z][\w-]*)\b/)?.[1]
+    ?? line.match(/^([A-Za-z][\w-]*)\s+running\s+\(\d+s\)/)?.[1]
+    ?? line.match(/^([A-Za-z][\w-]*):?\s+/)?.[1];
+}
+
+function humanizeToolName(toolName: string): string {
+  const labels: Record<string, string> = {
+    Read: 'Read',
+    Write: 'Write',
+    Edit: 'Edit',
+    MultiEdit: 'Edit',
+    Bash: 'Run',
+    TodoWrite: 'Update todos',
+    Grep: 'Search',
+    Glob: 'Find files',
+    Task: 'Run subagent',
+  };
+  return labels[toolName] ?? toolName.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+function extractQuotedField(line: string, key: string): string | undefined {
+  const quoted = line.match(new RegExp(`\\b${key}=([\"'])(.*?)\\1`))?.[2];
+  if (quoted) return quoted;
+
+  const json = line.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`))?.[1];
+  return json;
+}
+
+function extractCommand(line: string, toolName?: string): string | undefined {
+  if (!toolName || !/^(Bash|Shell|Command)$/i.test(toolName)) return undefined;
+  const command = line.replace(/^Tool:\s*/i, '').replace(new RegExp(`^${toolName}:?\\s*`, 'i'), '').trim();
+  return command || undefined;
+}
+
+function extractTodoCount(line: string): number | undefined {
+  const matches = line.match(/"content"\s*:/g);
+  return matches?.length;
+}
+
+function toWorkspaceRelativePath(path: string | undefined, workspaceRoot?: string): string | undefined {
+  if (!path) return undefined;
+  if (!workspaceRoot || !path.startsWith(workspaceRoot)) return path;
+  return path.slice(workspaceRoot.length).replace(/^[/\\]/, '');
+}
+
+function findToolDetailId(line: string, toolDetails?: Map<string, ToolDetail>): string | undefined {
+  if (!toolDetails) return undefined;
+  for (const [id, detail] of toolDetails) {
+    if (detail.raw === line) return id;
+  }
+  return undefined;
+}
+
+function buildToolDetailId(id: string, line: string): string {
+  const key = `${id}:${line}`;
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = ((hash << 5) - hash + key.charCodeAt(index)) | 0;
+  }
+  return `tool-${Math.abs(hash).toString(36)}`;
 }
 
 function extractUsage(lines: string[]): MessageTokenUsage {

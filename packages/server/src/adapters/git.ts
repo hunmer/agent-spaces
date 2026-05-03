@@ -145,3 +145,50 @@ export async function gitLog(workspaceId: string, maxCount = 50): Promise<GitLog
     date: entry.date,
   }));
 }
+
+export async function gitCommit(workspaceId: string, message: string): Promise<{ hash: string }> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await git.add('-A');
+  const result = await git.commit(message);
+  return { hash: result.commit };
+}
+
+export async function gitDiscard(workspaceId: string, filePath: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await git.checkout(['--', filePath]);
+}
+
+export async function gitDiscardAll(workspaceId: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await git.checkout(['--', '.']);
+  await git.clean('f', ['-d']);
+}
+
+export async function gitBranches(workspaceId: string): Promise<import('@agent-spaces/shared').GitBranch[]> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  const raw = await git.branch();
+  return raw.all.map(name => ({
+    name,
+    current: name === raw.current,
+  }));
+}
+
+export async function gitCheckout(workspaceId: string, branch: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await git.checkout(branch);
+}

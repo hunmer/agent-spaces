@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { listChannels, createChannel, getChannel, updateChannel, deleteChannel } from '../services/channel.js';
 import { listMessages, createMessage, updateMessage, deleteMessage, clearMessages } from '../services/message.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
+import { getToolDetail } from '../services/tool-detail.js';
 
 const router = Router({ mergeParams: true });
 
@@ -49,6 +50,15 @@ router.get('/:channelId/messages', (req: Request<ChannelParams>, res: Response) 
   const { limit, before } = req.query;
   if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
   res.json(listMessages(id, channelId!, { limit: limit ? Number(limit) : undefined, before: before as string | undefined }));
+});
+
+// GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:detailId
+router.get('/:channelId/messages/:messageId/tool-details/:detailId', (req: Request<ChannelParams & { messageId: string; detailId: string }>, res: Response) => {
+  const { id, channelId, messageId, detailId } = req.params;
+  if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
+  const detail = getToolDetail(id, channelId!, messageId, detailId);
+  if (!detail) { res.status(404).json({ error: 'tool detail not found' }); return; }
+  res.json(detail);
 });
 
 // POST /api/workspaces/:id/channels/:channelId/messages
