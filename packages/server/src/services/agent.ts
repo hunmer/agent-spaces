@@ -13,7 +13,7 @@ import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 
 const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
-const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code'];
+const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex'];
 
 type SkillInput = string | { name?: string; content?: string };
 type McpConfig = Record<string, unknown>;

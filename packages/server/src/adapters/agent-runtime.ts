@@ -4,6 +4,7 @@
 
 import type { AgentRuntime, AgentRuntimeConfig } from './agent-runtime-types.js';
 import { ClaudeCodeRuntime } from './claude-code-runtime.js';
+import { CodexRuntime } from './codex-runtime.js';
 import { OpenAgentSdkRuntime } from './open-agent-sdk-runtime.js';
 
 export type {
@@ -14,6 +15,7 @@ export type {
   AgentRuntimeKind,
 } from './agent-runtime-types.js';
 export { ClaudeCodeRuntime } from './claude-code-runtime.js';
+export { CodexRuntime } from './codex-runtime.js';
 export { OpenAgentSdkRuntime } from './open-agent-sdk-runtime.js';
 
 export function createAgentRuntime(config?: AgentRuntimeConfig): AgentRuntime;
@@ -32,5 +34,7 @@ export function createAgentRuntime(
       return new OpenAgentSdkRuntime(config);
     case 'claude-code':
       return new ClaudeCodeRuntime(config);
+    case 'codex':
+      return new CodexRuntime(config);
   }
 }

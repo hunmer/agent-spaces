@@ -28,7 +28,7 @@ export type AgentRuntimeEvent =
   | { type: 'tool_use'; id: string; name: string; input?: unknown; line: string }
   | { type: 'tool_result'; toolUseId?: string; result: unknown };
 
-export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code';
+export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code' | 'codex';
 
 export interface AgentRuntimeConfig {
   kind?: AgentRuntimeKind;

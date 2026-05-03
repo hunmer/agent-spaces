@@ -91,6 +91,7 @@ const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>
 const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; label: string }> = [
   { value: "open-agent-sdk", label: "Open Agent SDK" },
   { value: "claude-code", label: "Claude Code" },
+  { value: "codex", label: "Codex" },
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
 

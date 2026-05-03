@@ -755,7 +755,7 @@ function summarizeMessageTitle(text: string): string {
 }
 
 function isToolLikeLine(line: string): boolean {
-  return /^(Using|Tool:|Read|Write|Edit|MultiEdit|Bash|Search|Grep|Glob|Todo|Task|Web|Fetch|Claude Code initialized|.+ running \(\d+s\))/i.test(line.trim());
+  return /^(Using|Tool:|Read|Write|Edit|MultiEdit|Bash|Search|Grep|Glob|Todo|Task|Web|Fetch|Claude Code initialized|Codex initialized|.+ running \(\d+s\))/i.test(line.trim());
 }
 
 function isFinalAnswerLine(line: string): boolean {
