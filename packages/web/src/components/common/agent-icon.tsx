@@ -4,22 +4,94 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agent';
 
-export function getProviderIconUrl(providerName?: string): string {
-  if (!providerName) return '';
-  return `/static/provider-icons/${providerName.toLowerCase()}.svg`;
+const APIBASE_ICON_MAP: Array<[RegExp, string]> = [
+  // Google
+  [/generativelanguage\.googleapis\.com/i, 'gemini'],
+  [/aiplatform\.googleapis\.com/i, 'google'],
+  // Anthropic
+  [/api\.anthropic\.com/i, 'anthropic'],
+  // OpenAI
+  [/api\.openai\.com/i, 'openai'],
+  // DeepSeek
+  [/api\.deepseek\.com/i, 'deepseek'],
+  // Zhipu / 智谱
+  [/open\.bigmodel\.cn/i, 'zhipu'],
+  // Moonshot / Kimi
+  [/api\.moonshot\.cn/i, 'kimi'],
+  // Alibaba / Qwen
+  [/dashscope\.aliyuncs\.com/i, 'alibaba'],
+  [/dashscope\.com/i, 'alibaba'],
+  // Baidu / Wenxin
+  [/aip\.baidubce\.com/i, 'baidu'],
+  // ByteDance / Doubao
+  [/ark\.cn-beijing\.volces\.com/i, 'doubao'],
+  [/api\.coze\./i, 'doubao'],
+  // MiniMax
+  [/api\.minimax\.chat/i, 'minimax'],
+  [/api\.minimaxi\.com/i, 'minimax'],
+  // Mistral
+  [/api\.mistral\.ai/i, 'mistral'],
+  // Groq
+  [/api\.groq\.com/i, 'xai'],
+  // xAI
+  [/api\.x\.ai/i, 'xai'],
+  // OpenRouter
+  [/openrouter\.ai/i, 'openrouter'],
+  // SiliconFlow
+  [/api\.siliconflow\.cn/i, 'siliconflow'],
+  // Ollama
+  [/localhost.*11434/i, 'ollama'],
+  [/127\.0\.0\.1.*11434/i, 'ollama'],
+  // Cohere
+  [/api\.cohere\./i, 'cohere'],
+  // HuggingFace
+  [/api-inference\.huggingface\.co/i, 'huggingface'],
+  // Azure
+  [/openai\.azure\.com/i, 'azure'],
+  [/\.openai\.azure\.com/i, 'azure'],
+  // AWS Bedrock
+  [/bedrock-runtime\..*\.amazonaws\.com/i, 'aws'],
+  // Huawei
+  [/api\.huawei\./i, 'huawei'],
+  // Tencent / Hunyuan
+  [/hunyuan\.tencentcloudapi\.com/i, 'tencent'],
+  // Yi
+  [/api\.01\.ai/i, 'yi'],
+  // StepFun
+  [/api\.stepfun\.com/i, 'stepfun'],
+  // Novita
+  [/api\.novita\.ai/i, 'novita'],
+  // NVIDIA
+  [/integrate\.api\.nvidia\.com/i, 'nvidia'],
+  // Cloudflare Workers AI
+  [/api\.cloudflare\.com\/client\/v4\/accounts/i, 'cloudflare'],
+  // Meta
+  [/meta\.llama/i, 'meta'],
+];
+
+function resolveIconName(apiBase?: string): string {
+  if (!apiBase) return '';
+  for (const [pattern, icon] of APIBASE_ICON_MAP) {
+    if (pattern.test(apiBase)) return icon;
+  }
+  return '';
+}
+
+export function getProviderIconUrl(apiBase?: string): string {
+  const iconName = resolveIconName(apiBase);
+  return iconName ? `/static/provider-icons/${iconName}.svg` : '';
 }
 
 export interface AgentIconProps {
   agentId?: string;
   name?: string;
   avatarUrl?: string;
-  modelProvider?: string;
-  providerName?: string;
+  apiBase?: string;
   className?: string;
   onClick?: () => void;
 }
 
-export function AgentIcon({ agentId, name, avatarUrl, modelProvider, providerName, className, onClick }: AgentIconProps) {
+export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClick }: AgentIconProps) {
   const workspaceId = useWorkspaceId();
   const agents = useAgentStore((s) => s.agents);
   const ensure = useAgentStore((s) => s.ensure);
@@ -32,8 +104,8 @@ export function AgentIcon({ agentId, name, avatarUrl, modelProvider, providerNam
   const agent = agentId ? agents.find((a) => a.id === agentId) : undefined;
   const displayName = name || agent?.name || agentId || '?';
   const resolvedAvatarUrl = avatarUrl ?? agent?.avatarUrl;
-  const resolvedProviderName = providerName ?? agent?.providerName;
-  const src = resolvedAvatarUrl || (!imgError ? getProviderIconUrl(resolvedProviderName) : '');
+  const resolvedApiBase = apiBase ?? agent?.apiBase;
+  const src = resolvedAvatarUrl || (!imgError ? getProviderIconUrl(resolvedApiBase) : '');
   const initial = displayName.charAt(0).toUpperCase();
 
   return (

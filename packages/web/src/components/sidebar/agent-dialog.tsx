@@ -48,7 +48,6 @@ type AgentPreset = Omit<AgentConfig, "mcps" | "skills"> & {
   description: string;
   avatarUrl: string;
   modelProvider: NonNullable<AgentConfig["modelProvider"]>;
-  providerName: string;
   modelId: string;
   apiBase: string;
   apiKey: string;
@@ -113,7 +112,6 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
-    providerName: "",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -133,7 +131,6 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
-    providerName: "",
     modelId: "claude-opus-4-7",
     apiBase: "",
     apiKey: "",
@@ -153,7 +150,6 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
-    providerName: "",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -173,7 +169,6 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
-    providerName: "",
     modelId: "claude-opus-4-7",
     apiBase: "",
     apiKey: "",
@@ -193,7 +188,6 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
-    providerName: "",
     modelId: "",
     apiBase: "",
     apiKey: "",
@@ -215,7 +209,6 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     avatarUrl: agent.avatarUrl || "",
     runtimeKind: agent.runtimeKind || "open-agent-sdk",
     modelProvider: agent.modelProvider || "anthropic-messages",
-    providerName: agent.providerName || "",
     modelId: agent.modelId || "claude-sonnet-4-6",
     apiBase: agent.apiBase || "",
     apiKey: agent.apiKey || "",
@@ -268,7 +261,6 @@ function newEmptyAgent(): AgentPreset {
     avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
-    providerName: "",
     modelId: "",
     apiBase: "",
     apiKey: "",
@@ -592,7 +584,7 @@ function AgentList({
           <AgentIcon
             name={agent.name}
             avatarUrl={agent.avatarUrl}
-            providerName={agent.providerName}
+            apiBase={agent.apiBase}
             className="size-8"
           />
           <div className="flex-1 min-w-0">
@@ -665,7 +657,6 @@ function AgentDetail({
     (provider: LLMProvider) => {
       onChange("apiBase", provider.apiBase);
       onChange("apiKey", provider.apiKey);
-      onChange("providerName", provider.name);
       const providerModels = llmModels.filter((m) => m.provider === provider.name);
       setDynamicModelOptions(providerModels.map((m) => ({ value: m.modelId, label: m.name })));
     },
@@ -705,7 +696,7 @@ function AgentDetail({
             <AgentIcon
               name={agent.name}
               avatarUrl={agent.avatarUrl}
-              providerName={agent.providerName}
+              apiBase={agent.apiBase}
               className="size-16 rounded-xl border border-input"
             />
             <label className="text-[10px] text-primary cursor-pointer hover:underline">
