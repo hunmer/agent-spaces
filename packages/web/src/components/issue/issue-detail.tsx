@@ -146,7 +146,7 @@ interface IssueDetailProps {
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
-  const { issues, activeIssueId, startIssue, updateIssue } = useIssueStore();
+  const { issues, activeIssueId, startIssue, updateIssue, deleteIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
@@ -367,6 +367,14 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 onClick={() => setEditOpen(true)}
               >
                 <Pencil className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => { if (issue) deleteIssue(workspaceId, issue.id); }}
+              >
+                <Trash2 className="size-4" />
               </Button>
               <Button
                 variant="ghost"

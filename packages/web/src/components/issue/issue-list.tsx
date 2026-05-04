@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { Plus, CircleDot, Pencil } from 'lucide-react';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { Plus, CircleDot, Pencil, Trash2 } from 'lucide-react';
 import { EditIssueDialog } from './edit-issue-dialog';
 import type { Issue, IssueStatus } from '@agent-spaces/shared';
 
@@ -47,7 +47,7 @@ interface IssueListProps {
 }
 
 export function IssueList({ workspaceId }: IssueListProps) {
-  const { issues, activeIssueId, loading, loadIssues, createIssue, updateIssue, setActiveIssue } = useIssueStore();
+  const { issues, activeIssueId, loading, loadIssues, createIssue, updateIssue, deleteIssue, setActiveIssue } = useIssueStore();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -141,6 +141,11 @@ export function IssueList({ workspaceId }: IssueListProps) {
                   <ContextMenuItem onClick={() => setEditingIssue(issue)}>
                     <Pencil className="size-4 mr-2" />
                     Edit
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem variant="destructive" onClick={() => deleteIssue(workspaceId, issue.id)}>
+                    <Trash2 className="size-4 mr-2" />
+                    Delete
                   </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>

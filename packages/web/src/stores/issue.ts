@@ -21,6 +21,7 @@ interface IssueStore {
   updateIssue: (workspaceId: string, issueId: string, input: UpdateIssueInput) => Promise<void>;
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
   startIssue: (workspaceId: string, issueId: string) => Promise<void>;
+  deleteIssue: (workspaceId: string, issueId: string) => Promise<void>;
 
   // WS handlers
   upsertIssue: (issue: Issue) => void;
@@ -98,6 +99,11 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     });
     const issue: Issue = await res.json();
     get().upsertIssue(issue);
+  },
+
+  deleteIssue: async (workspaceId, issueId) => {
+    await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, { method: 'DELETE' });
+    get().removeIssue(issueId);
   },
 
   upsertIssue: (issue) => {

@@ -59,6 +59,15 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
   res.json(issue);
 });
 
+router.delete('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Response) => {
+  const ok = issueService.remove(req.params.id, req.params.issueId);
+  if (!ok) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+  res.status(204).send();
+});
+
 router.get('/:issueId/comments', (req: Request<{ id: string; issueId: string }>, res: Response) => {
   const issue = issueService.getById(req.params.id, req.params.issueId);
   if (!issue) {
