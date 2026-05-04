@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useIssueStore } from '@/stores/issue';
+import { useChannelStore } from '@/stores/channel';
 import { useTaskStore } from '@/stores/task';
 import { useAgentStore } from '@/stores/agent';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, X } from 'lucide-react';
+import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, MessagesSquare, X } from 'lucide-react';
 import { List, AutoSizer } from 'react-virtualized';
 import type { ListInstance } from 'react-virtualized';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
@@ -292,32 +293,12 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           listRef.current?.scrollToRow(comments.length);
         }, 50);
       });
-  }, [editor, issue, workspaceId]);
+  }, [comments.length, editor, issue, workspaceId]);
 
   const canSubmit = !!editor?.getText().trim();
 
-  if (!issue) {
-    return (
-      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-        Select an issue to view details
-      </div>
-    );
-  }
-
-  const issueTasks = tasks.filter((t) => t.issueId === issue.id);
-  const members = issue.members ?? [];
-  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
-  const memberIds = new Set(members);
-  const candidateMembers = enabledAgents
-    .filter((agent) => !memberIds.has(agent.id))
-    .map((agent) => ({
-      id: agent.id,
-      label: getAgentDisplayName(agent),
-      description: agent.role,
-    }));
-
-
   const handleAddMembers = async (newMembers: string[]) => {
+    if (!issue) return;
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -329,10 +310,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     useIssueStore.getState().upsertIssue(updated);
   };
 
-  const handleDeleteComment = async (commentId: string) => {
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    if (!issue) return;
     await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments/${commentId}`, { method: 'DELETE' });
     setComments((current) => current.filter((comment) => comment.id !== commentId));
-  };
+  }, [issue, workspaceId]);
 
   const handleCommentExpandedChange = useCallback((commentId: string, expanded: boolean) => {
     setExpandedCommentIds((current) => {
@@ -346,7 +328,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
   }, []);
 
-  const handleUpdateComment = async (wsId: string, commentId: string, content: string) => {
+  const handleUpdateComment = useCallback(async (wsId: string, commentId: string, content: string) => {
+    if (!issue) return;
     const res = await fetch(`/api/workspaces/${wsId}/issues/${issue.id}/comments/${commentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -355,9 +338,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!res.ok) return;
     const updated: IssueComment = await res.json();
     setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
-  };
+  }, [issue]);
 
   const handleCreateTask = async () => {
+    if (!issue) return;
     if (!newTaskTitle.trim()) return;
     if (editingTask) {
       await updateTask(workspaceId, editingTask.id, { title: newTaskTitle.trim(), description: newTaskDesc.trim() });
@@ -405,6 +389,26 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     );
   }, [comments, expandedCommentIds, workspaceId, handleDeleteComment, handleUpdateComment, handleCommentExpandedChange]);
 
+  if (!issue) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+        Select an issue to view details
+      </div>
+    );
+  }
+
+  const issueTasks = tasks.filter((t) => t.issueId === issue.id);
+  const members = issue.members ?? [];
+  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+  const memberIds = new Set(members);
+  const candidateMembers = enabledAgents
+    .filter((agent) => !memberIds.has(agent.id))
+    .map((agent) => ({
+      id: agent.id,
+      label: getAgentDisplayName(agent),
+      description: agent.role,
+    }));
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* 左侧：主内容区 */}
@@ -426,10 +430,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => { if (issue) deleteIssue(workspaceId, issue.id); }}
+              title="打开聊天频道"
+              onClick={() => { if (issue?.channelId) useChannelStore.getState().setActiveChannel(issue.channelId); }}
             >
-              <Trash2 className="size-4" />
+              <MessagesSquare className="size-4" />
             </Button>
             <Button
               variant="ghost"
@@ -587,9 +591,17 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     ref={listRef}
                     height={height}
                     width={width}
-                    rowCount={comments.length}
-                    rowHeight={({ index }) => estimateCommentRowHeight(comments[index], width, expandedCommentIds.has(comments[index].id))}
-                    rowRenderer={rowRenderer}
+                    rowCount={comments.length + 1}
+                    rowHeight={({ index }) =>
+                      index === comments.length
+                        ? 80
+                        : estimateCommentRowHeight(comments[index], width, expandedCommentIds.has(comments[index].id))
+                    }
+                    rowRenderer={({ index, key, style }) =>
+                      index === comments.length
+                        ? <div key={key} style={{ ...style, pointerEvents: 'none' }} />
+                        : rowRenderer({ index, key, style })
+                    }
                     overscanRowCount={5}
                   />
                 )}
@@ -628,7 +640,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
       {/* 右侧：信息面板 */}
       {infoOpen && (
-        <div className="w-72 border-l flex flex-col h-full overflow-hidden">
+        <div className="w-72 border-l flex flex-col h-full">
           <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
             <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
               <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
@@ -717,6 +729,16 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </TabsContent>
             </ScrollArea>
           </Tabs>
+          <div className="shrink-0 p-3 border-t">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-destructive hover:text-destructive"
+              onClick={() => { deleteIssue(workspaceId, issue.id); }}
+            >
+              <Trash2 className="size-3.5 mr-1.5" />删除 Issue
+            </Button>
+          </div>
         </div>
       )}
 

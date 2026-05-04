@@ -52,7 +52,7 @@ export async function retryIssue(
 
   const issueTasks = taskService.list(workspaceId, issueId);
   for (const task of issueTasks) {
-    if (task.status !== 'failed' && task.status !== 'cancelled') continue;
+    if (task.status !== 'failed') continue;
     const reset = taskService.resetForRetry(workspaceId, task.id, { resetRetryCount: true });
     if (!reset) continue;
     ctx.broadcast('task.status_changed', { taskId: task.id, from: task.status, to: reset.status });

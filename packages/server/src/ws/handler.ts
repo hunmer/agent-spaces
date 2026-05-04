@@ -55,8 +55,11 @@ interface RunMentionedAgentOptions {
 function ensureScheduler(workspaceId: string, ctx: AgentContext) {
   if (!activeSchedulers.has(workspaceId)) {
     activeSchedulers.add(workspaceId);
-    startScheduler(workspaceId, ctx);
-    console.log(`[ws] scheduler started for workspace ${workspaceId}`);
+    setTimeout(() => {
+      startScheduler(workspaceId, ctx);
+      console.log(`[ws] scheduler started for workspace ${workspaceId}`);
+    }, 10_000);
+    console.log(`[ws] scheduler scheduled for workspace ${workspaceId} in 10000ms`);
   }
 }
 

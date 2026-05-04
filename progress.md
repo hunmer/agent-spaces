@@ -87,3 +87,10 @@ Working tree currently has partial code changes:
 - Updated `docs/issue-agent-automation.md` with retry/recovery flow.
 - Verification: `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build && pnpm --filter @agent-spaces/web build` passed.
 - Verification: `git diff --check` passed.
+
+## Retry Scope Correction
+
+- User clarified issue retry must preserve completed tasks.
+- Confirmed completed `done` tasks were already preserved, but cancelled tasks were also being reset.
+- Tightened issue retry to reset only `failed` tasks; `done`, `pending`, `running`, `waiting_review`, and `cancelled` are left unchanged.
+- Verification: `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` passed.
