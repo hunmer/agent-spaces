@@ -22,6 +22,7 @@ interface ChannelStore {
   deleteMessage: (channelId: string, messageId: string) => void;
   clearMessages: (workspaceId: string, channelId: string) => Promise<void>;
   deleteChannel: (workspaceId: string, channelId: string) => Promise<void>;
+  removeChannelLocal: (channelId: string) => void;
   saveDraft: (workspaceId: string, channelId: string, content: string) => Promise<void>;
   clearDraft: (workspaceId: string, channelId: string) => Promise<void>;
 }
@@ -36,7 +37,7 @@ function getStoredActiveId(workspaceId: string, channels: Channel[]): string | n
   return channels[0]?.id ?? null;
 }
 
-export const useChannelStore = create<ChannelStore>((set) => ({
+export const useChannelStore = create<ChannelStore>((set, get) => ({
   workspaceId: null,
   channels: [],
   activeChannelId: null,
@@ -140,6 +141,10 @@ export const useChannelStore = create<ChannelStore>((set) => ({
 
   deleteChannel: async (workspaceId, channelId) => {
     await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, { method: 'DELETE' });
+    get().removeChannelLocal(channelId);
+  },
+
+  removeChannelLocal: (channelId) => {
     set((s) => {
       const channels = s.channels.filter((c) => c.id !== channelId);
       const rest = { ...s.messages };

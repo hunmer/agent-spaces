@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { Issue, IssueStatus } from '@agent-spaces/shared';
+import { useChannelStore } from './channel';
+import { useTaskStore } from './task';
 
 interface UpdateIssueInput {
   title?: string;
@@ -102,8 +104,21 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
   },
 
   deleteIssue: async (workspaceId, issueId) => {
+    const issue = get().issues.find((i) => i.id === issueId);
     await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, { method: 'DELETE' });
     get().removeIssue(issueId);
+
+    // 同步清理关联的 channel 和 tasks
+    if (issue?.channelId) {
+      const { removeChannelLocal } = useChannelStore.getState();
+      removeChannelLocal(issue.channelId);
+    }
+    const { tasks } = useTaskStore.getState();
+    const relatedTasks = tasks.filter((t) => t.issueId === issueId);
+    if (relatedTasks.length > 0) {
+      const relatedIds = new Set(relatedTasks.map((t) => t.id));
+      useTaskStore.setState((s) => ({ tasks: s.tasks.filter((t) => !relatedIds.has(t.id)) }));
+    }
   },
 
   upsertIssue: (issue) => {

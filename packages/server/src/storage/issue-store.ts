@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { unlink } from 'node:fs/promises';
 import type { Issue } from '@agent-spaces/shared';
 import { getDataDir, ensureDir, readJsonFile, writeJsonFile } from './json-store.js';
 
@@ -43,4 +44,6 @@ export function updateIssue(issue: Issue): void {
 export function deleteIssue(workspaceId: string, issueId: string): void {
   const list = listIssues(workspaceId).filter((i) => i.id !== issueId);
   writeJsonFile(issuesIndex(workspaceId), list);
+
+  unlink(issueFile(workspaceId, issueId)).catch(() => { /* file may already be gone */ });
 }

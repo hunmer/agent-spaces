@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 import type { Issue, IssueStatus, CreateIssueInput } from '@agent-spaces/shared';
 import { listIssues, getIssue, createIssue, updateIssue, deleteIssue } from '../storage/issue-store.js';
 import * as channelService from '../services/channel.js';
+import * as taskService from '../services/task.js';
 
 function ensureChannel(workspaceId: string, issue: Issue): void {
   if (issue.channelId) {
@@ -137,6 +138,18 @@ export function addAgent(workspaceId: string, issueId: string, agentId: string):
 export function remove(workspaceId: string, issueId: string): boolean {
   const issue = getIssue(workspaceId, issueId);
   if (!issue) return false;
+
+  // 删除关联的 tasks
+  const tasks = taskService.list(workspaceId, issueId);
+  for (const task of tasks) {
+    taskService.remove(workspaceId, task.id);
+  }
+
+  // 删除绑定的 channel
+  if (issue.channelId) {
+    channelService.deleteChannel(workspaceId, issue.channelId);
+  }
+
   deleteIssue(workspaceId, issueId);
   return true;
 }

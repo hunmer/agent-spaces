@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { Task } from '@agent-spaces/shared';
-import { getDataDir, ensureDir, readJsonFile, writeJsonFile } from './json-store.js';
+import { getDataDir, ensureDir, readJsonFile, writeJsonFile, deleteFile } from './json-store.js';
 
 function tasksDir(workspaceId: string) {
   return join(getDataDir(), 'workspaces', workspaceId, 'tasks');
@@ -41,6 +41,7 @@ export function updateTask(task: Task): void {
 }
 
 export function deleteTask(workspaceId: string, taskId: string): void {
+  deleteFile(taskFile(workspaceId, taskId));
   const list = listTasks(workspaceId).filter((t) => t.id !== taskId);
   writeJsonFile(tasksIndex(workspaceId), list);
 }

@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
 const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
@@ -19,4 +19,8 @@ export function readJsonFile<T>(filePath: string): T | null {
 export function writeJsonFile<T>(filePath: string, data: T): void {
   ensureDir(dirname(filePath));
   writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+export function deleteFile(filePath: string): void {
+  if (existsSync(filePath)) unlinkSync(filePath);
 }
