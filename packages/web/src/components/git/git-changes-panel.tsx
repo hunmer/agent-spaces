@@ -104,11 +104,12 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const handleCommit = useCallback(async () => {
     if (!commitMsg.trim()) return;
     setCommitting(true);
+    selectFile(null);
     await commit(workspaceId, commitMsg.trim());
     setCommitMsg("");
     setCommitting(false);
     refresh();
-  }, [workspaceId, commitMsg, commit, refresh]);
+  }, [workspaceId, commitMsg, commit, refresh, selectFile]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
