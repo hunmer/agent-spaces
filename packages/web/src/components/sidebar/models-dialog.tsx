@@ -155,7 +155,7 @@ export function ModelsDialog({
             </DialogDescription>
           </DialogHeader>
           {!draft && (
-            <Button variant="outline" size="sm" onClick={handleAdd}>
+            <Button variant="outline" size="sm" onClick={handleAdd} className="mr-6">
               <Plus className="size-3.5" />
               Add
             </Button>
@@ -302,21 +302,24 @@ function ModelForm({
 
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capabilities</div>
-        <div className="flex flex-col gap-2">
-          {(["vision", "reasoning", "embedding"] as const).map(cap => (
-            <label key={cap} className="flex items-center gap-3 rounded-lg border px-3 py-2 cursor-pointer hover:bg-muted/50">
-              <input
-                type="checkbox"
-                checked={Boolean(draft[cap])}
-                onChange={e => onChange(cap, e.target.checked)}
-                className="rounded"
-              />
-              <Badge variant="outline" className={`text-[10px] h-5 px-1.5 pointer-events-none ${CAP_BADGES[cap].cls}`}>
+        <div className="flex items-center gap-1.5">
+          {(["vision", "reasoning", "embedding"] as const).map(cap => {
+            const active = Boolean(draft[cap]);
+            return (
+              <button
+                key={cap}
+                type="button"
+                onClick={() => onChange(cap, !active)}
+                className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors cursor-pointer
+                  ${active
+                    ? CAP_BADGES[cap].cls
+                    : "text-muted-foreground border-input hover:bg-muted/50"
+                  }`}
+              >
                 {CAP_BADGES[cap].label}
-              </Badge>
-              <span className="text-sm">{cap.charAt(0).toUpperCase() + cap.slice(1)}</span>
-            </label>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

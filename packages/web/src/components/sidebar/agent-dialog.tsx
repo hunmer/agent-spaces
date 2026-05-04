@@ -659,7 +659,11 @@ function AgentDetail({
       onChange("apiBase", provider.apiBase);
       onChange("apiKey", provider.apiKey);
       const providerModels = llmModels.filter((m) => m.provider === provider.name);
-      setDynamicModelOptions(providerModels.map((m) => ({ value: m.modelId, label: m.name })));
+      const options = providerModels.map((m) => ({ value: m.modelId, label: m.name }));
+      setDynamicModelOptions(options);
+      if (options.length > 0) {
+        onChange("modelId", options[0].value);
+      }
     },
     [llmModels, onChange],
   );
