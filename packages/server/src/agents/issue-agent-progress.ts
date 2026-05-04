@@ -14,7 +14,12 @@ export function createIssueAgentProgress(
   issue: Issue,
   preset: AgentConfig,
   agentSessionId: string,
-  metadata: { runtime?: string; model?: string },
+  metadata: {
+    runtime?: string;
+    model?: string;
+    taskId?: string;
+    phase?: 'planner' | 'task_creator' | 'executor' | 'reviewer';
+  },
 ): IssueAgentProgress {
   const content = `${preset.name || preset.role} is processing...`;
   const message = messageService.createMessage(workspaceId, issue.channelId, {
@@ -29,6 +34,8 @@ export function createIssueAgentProgress(
       model: metadata.model,
       summary: content,
       duration: 0,
+      taskId: metadata.taskId,
+      phase: metadata.phase,
     },
   });
   broadcastToWorkspace(workspaceId, 'channel.message', message);
@@ -46,6 +53,8 @@ export function createIssueAgentProgress(
       model: metadata.model,
       summary: content,
       duration: 0,
+      taskId: metadata.taskId,
+      phase: metadata.phase,
     },
   });
   if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));

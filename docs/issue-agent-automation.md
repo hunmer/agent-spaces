@@ -211,10 +211,10 @@ scheduleRunnableIssueTasks(workspaceId, issueId, ctx)
 4. 找出满足以下条件的任务：
    - `status === 'pending'`
    - `dependsOnTaskIds` 全部在 done 集合中
-5. 并行启动所有 runnable tasks。
+5. 逐个启动 runnable tasks，并等待每个 task 的 executor 和 reviewer 完成后再进入下一个 task。
 6. 如果没有 runnable task，且所有 task 都 done，则将 issue 更新为 `completed`。
 
-当前并行策略是 `Promise.all(runnable.map(...))`。如果多个 executor 同时写同一工作区，后续可能需要增加并发限制或文件锁。
+当前策略是串行执行同一轮 runnable tasks，避免多个 executor/reviewer 的 issue comment 在时间线上交错，也降低共享工作区写冲突风险。依赖图仍用于判断哪些 task 可以开始；只是实际启动时按顺序执行。
 
 ## Executor 阶段
 
@@ -314,11 +314,22 @@ packages/server/src/agents/issue-agent-progress.ts
    - `agentSessionId`
    - `runtime`
    - `model`
-   - `summary`
-   - `duration`
+- `summary`
+- `duration`
+- `taskId`
+- `phase`
 4. 广播：
    - `channel.message.updated`
    - `issue.updated`
+
+`phase` 当前可能是：
+
+- `planner`
+- `task_creator`
+- `executor`
+- `reviewer`
+
+Executor 和 reviewer 进度 comment 会带同一个 `taskId`，前端可据此显示它们属于同一个 task。
 
 注意：完成 comment 使用完整 output，而不是 runtime summary。summary 可能被 runtime 截断，只适合作为 metadata，不适合作为最终正文。
 

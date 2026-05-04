@@ -42,6 +42,8 @@ export interface IssueComment {
     model?: string;
     summary?: string;
     duration?: number;
+    taskId?: string;
+    phase?: 'planner' | 'task_creator' | 'executor' | 'reviewer';
   };
   createdAt: string;
   updatedAt?: string;

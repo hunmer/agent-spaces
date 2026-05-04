@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2 } from 'lucide-react';
+import { List, AutoSizer, CellMeasurer, CellMeasurerCache } from 'react-virtualized';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
@@ -158,7 +159,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const listRef = useRef<any>(null);
+  const cacheRef = useRef(new CellMeasurerCache({
+    fixedWidth: true,
+    defaultHeight: 100,
+    minHeight: 40,
+  }));
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
@@ -190,6 +197,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
     return () => { unsubIssueUpdated(); };
   }, [issue, workspaceId, loadComments]);
+
+  useEffect(() => {
+    cacheRef.current.clearAll();
+  }, [comments]);
 
   const mentionExtension = useMemo(
     () =>
@@ -262,7 +273,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         setComments((current) => [...current, comment]);
         editor.commands.clearContent();
         setTimeout(() => {
-          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+          listRef.current?.scrollToRow(comments.length);
         }, 50);
       });
   }, [editor, issue, workspaceId]);
@@ -349,175 +360,204 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     await deleteTask(wsId, taskId);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rowRenderer = useCallback(({ index, key, parent, style }: any) => (
+    <CellMeasurer
+      cache={cacheRef.current}
+      columnIndex={0}
+      key={key}
+      parent={parent}
+      rowIndex={index}
+    >
+      <div style={style} className="px-4">
+        <IssueMessage
+          comment={comments[index]}
+          workspaceId={workspaceId}
+          onDelete={handleDeleteComment}
+          onUpdate={handleUpdateComment}
+        />
+      </div>
+    </CellMeasurer>
+  ), [comments, workspaceId, handleDeleteComment, handleUpdateComment]);
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* 左侧：主内容区 */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
-          {/* Header */}
-          <div className="p-4 pb-3 border-b">
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-semibold flex-1">{issue.title}</h2>
-              <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
-                {ISSUE_STATUS_LABEL[issue.status]}
-              </Badge>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive"
-                onClick={() => { if (issue) deleteIssue(workspaceId, issue.id); }}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setInfoOpen(!infoOpen)}
-              >
-                {infoOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
-              </Button>
-            </div>
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-              {/* Members avatars */}
-              {members.length > 0 && (
-                <span className="flex items-center gap-1">
-                  <AvatarGroup>
-                    {members.slice(0, 4).map((member) => (
-                      <AgentIcon
-                        key={member}
-                        agentId={member !== 'user' ? member : undefined}
-                        name={getMemberDisplayName(enabledAgents, member)}
-                        className="size-6 rounded-full"
-                      />
-                    ))}
-                  </AvatarGroup>
-                  <span>{members.length} member{members.length !== 1 ? 's' : ''}</span>
-                </span>
-              )}
+        {/* Header */}
+        <div className="shrink-0 p-4 pb-3 border-b">
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-lg font-semibold flex-1">{issue.title}</h2>
+            <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
+              {ISSUE_STATUS_LABEL[issue.status]}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => { if (issue) deleteIssue(workspaceId, issue.id); }}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setInfoOpen(!infoOpen)}
+            >
+              {infoOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+            </Button>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            {/* Members avatars */}
+            {members.length > 0 && (
               <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Created {new Date(issue.createdAt).toLocaleDateString()}
+                <AvatarGroup>
+                  {members.slice(0, 4).map((member) => (
+                    <AgentIcon
+                      key={member}
+                      agentId={member !== 'user' ? member : undefined}
+                      name={getMemberDisplayName(enabledAgents, member)}
+                      className="size-6 rounded-full"
+                    />
+                  ))}
+                </AvatarGroup>
+                <span>{members.length} member{members.length !== 1 ? 's' : ''}</span>
               </span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Updated {new Date(issue.updatedAt).toLocaleDateString()}
-              </span>
-              {issue.branch && (
-                <span className="flex items-center gap-1">
-                  <GitBranch className="h-3 w-3" />
-                  {issue.branch}
-                </span>
-              )}
-              {issue.prUrl && (
-                <span>PR: {issue.prUrl}</span>
-              )}
-            </div>
-            {issue.description && (
-              <p className="text-sm text-muted-foreground mt-2">{issue.description}</p>
             )}
-            {issue.status === 'draft' && (
-              <div className="mt-2">
-                <Button size="sm" variant="outline" onClick={() => startIssue(workspaceId, issue.id)}>
-                  <Play className="h-3 w-3 mr-1" />
-                  Start
-                </Button>
-              </div>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Created {new Date(issue.createdAt).toLocaleDateString()}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Updated {new Date(issue.updatedAt).toLocaleDateString()}
+            </span>
+            {issue.branch && (
+              <span className="flex items-center gap-1">
+                <GitBranch className="h-3 w-3" />
+                {issue.branch}
+              </span>
+            )}
+            {issue.prUrl && (
+              <span>PR: {issue.prUrl}</span>
             )}
           </div>
-
-          {/* Tasks */}
-          <div className="p-4 pb-2">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium">
-                Tasks ({issueTasks.length})
-              </h3>
-              <Dialog open={taskDialogOpen} onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}>
-                  <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog} />}>
-                    <Plus className="h-4 w-4" />
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{editingTask ? 'Edit Task' : 'Add Task'}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                      <Input
-                        placeholder="Task title"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
-                      />
-                      <Textarea
-                        placeholder="Description (optional)"
-                        value={newTaskDesc}
-                        onChange={(e) => setNewTaskDesc(e.target.value)}
-                        rows={3}
-                      />
-                      <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
-                        {editingTask ? 'Save' : 'Add Task'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+          {issue.description && (
+            <p className="text-sm text-muted-foreground mt-2">{issue.description}</p>
+          )}
+          {issue.status === 'draft' && (
+            <div className="mt-2">
+              <Button size="sm" variant="outline" onClick={() => startIssue(workspaceId, issue.id)}>
+                <Play className="h-3 w-3 mr-1" />
+                Start
+              </Button>
             </div>
-            {issueTasks.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No tasks yet</div>
-            ) : (
-              <div className="space-y-1">
-                {issueTasks.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    workspaceId={workspaceId}
-                    onRetry={retryTask}
-                    onCancel={cancelTask}
-                    onEdit={handleOpenEditDialog}
-                    onDelete={handleDeleteTask}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
-          {/* Comments */}
-          <div className="px-4 pt-2 pb-4 border-t">
-            <h3 className="text-sm font-medium mb-3">Comments ({comments.length})</h3>
-            {issue.description && (
-              <div className="pb-3 border-b">
-                <div className="flex items-start gap-2.5">
-                  <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground shrink-0">
-                    <User className="h-3.5 w-3.5" />
+        {/* Tasks */}
+        <div className="shrink-0 p-4 pb-2 max-h-[180px] overflow-y-auto">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium">
+              Tasks ({issueTasks.length})
+            </h3>
+            <Dialog open={taskDialogOpen} onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}>
+                <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog} />}>
+                  <Plus className="h-4 w-4" />
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingTask ? 'Edit Task' : 'Add Task'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Task title"
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
+                    />
+                    <Textarea
+                      placeholder="Description (optional)"
+                      value={newTaskDesc}
+                      onChange={(e) => setNewTaskDesc(e.target.value)}
+                      rows={3}
+                    />
+                    <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
+                      {editingTask ? 'Save' : 'Add Task'}
+                    </Button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium">Author</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        commented {new Date(issue.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="text-sm bg-muted/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
-                      {issue.description}
-                    </div>
+                </DialogContent>
+              </Dialog>
+          </div>
+          {issueTasks.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No tasks yet</div>
+          ) : (
+            <div className="space-y-1">
+              {issueTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  workspaceId={workspaceId}
+                  onRetry={retryTask}
+                  onCancel={cancelTask}
+                  onEdit={handleOpenEditDialog}
+                  onDelete={handleDeleteTask}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Comments */}
+        <div className="flex-1 min-h-0 flex flex-col border-t">
+          <div className="shrink-0 px-4 pt-2">
+            <h3 className="text-sm font-medium mb-3">Comments ({comments.length})</h3>
+          </div>
+          {issue.description && (
+            <div className="shrink-0 px-4 pb-3 border-b">
+              <div className="flex items-start gap-2.5">
+                <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground shrink-0">
+                  <User className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium">Author</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      commented {new Date(issue.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="text-sm bg-muted/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                    {issue.description}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {comments.map((comment) => (
-              <IssueMessage
-                key={comment.id}
-                comment={comment}
-                workspaceId={workspaceId}
-                onDelete={handleDeleteComment}
-                onUpdate={handleUpdateComment}
-              />
-            ))}
+          <div className="flex-1 min-h-0">
+            {comments.length > 0 ? (
+              <AutoSizer>
+                {({ height, width }) => (
+                  <List
+                    ref={listRef}
+                    height={height}
+                    width={width}
+                    rowCount={comments.length}
+                    rowHeight={cacheRef.current.rowHeight}
+                    deferredMeasurementCache={cacheRef.current}
+                    rowRenderer={rowRenderer}
+                    overscanRowCount={5}
+                  />
+                )}
+              </AutoSizer>
+            ) : null}
           </div>
         </div>
 

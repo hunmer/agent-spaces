@@ -55,6 +55,7 @@ export async function runPlanner(
   const progress = createIssueAgentProgress(workspaceId, plannedIssue, plannerPreset, planner.id, {
     runtime: plannerPreset.runtimeKind,
     model: plannerPreset.modelId,
+    phase: 'planner',
   });
   const tracker = createAgentMessagePartsTracker({
     workspaceId,

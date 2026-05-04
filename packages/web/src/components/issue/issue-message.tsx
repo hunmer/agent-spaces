@@ -31,6 +31,8 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
   const loadMessages = useChannelStore((s) => s.loadMessages);
   const linkedChannelId = comment.metadata?.channelId;
   const linkedMessageId = comment.metadata?.messageId;
+  const phase = comment.metadata?.phase;
+  const taskId = comment.metadata?.taskId;
 
   useEffect(() => {
     if (!isUser && workspaceId) ensure(workspaceId);
@@ -108,6 +110,16 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
             {comment.senderRole && (
               <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
                 {comment.senderRole}
+              </span>
+            )}
+            {phase && (
+              <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                {phase.replace('_', ' ')}
+              </span>
+            )}
+            {taskId && (
+              <span className="text-[10px] font-mono text-muted-foreground">
+                task {taskId.slice(0, 8)}
               </span>
             )}
             <span className="text-[10px] text-muted-foreground">

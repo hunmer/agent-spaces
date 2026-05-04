@@ -95,4 +95,6 @@ export interface MessageMetadata {
   model?: string;
   summary?: string;
   duration?: number;
+  taskId?: string;
+  phase?: 'planner' | 'task_creator' | 'executor' | 'reviewer';
 }

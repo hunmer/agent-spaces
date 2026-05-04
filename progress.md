@@ -53,6 +53,9 @@ Working tree currently has partial code changes:
 - Expanded `ViewCurrentChannelIssue` to return issue, comments, tasks, channel metadata, assignable agents, and valid agent config ids.
 - Added `docs/issue-agent-automation.md` documenting the current issue agent automation flow.
 - Tightened task creator prompt and docs so task generation defaults to coarse-grained deliverables, splitting only for major cross-area or truly independent workstreams.
+- Changed runnable task scheduling from parallel to serial so each executor waits for its reviewer before the next runnable task starts.
+- Added issue comment metadata `phase` and `taskId`; issue comments now display phase/task ownership in the frontend.
+- Added a local `react-virtualized` declaration file to keep the current issue detail virtualization changes type-safe during web build.
 
 ## Last Known Git Status
 

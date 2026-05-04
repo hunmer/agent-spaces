@@ -51,6 +51,8 @@ export async function runReviewer(
   const progress = createIssueAgentProgress(workspaceId, issue, reviewerPreset, reviewer.id, {
     runtime: reviewerPreset.runtimeKind,
     model: reviewerPreset.modelId,
+    taskId,
+    phase: 'reviewer',
   });
 
   // Use runtime to review.

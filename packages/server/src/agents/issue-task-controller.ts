@@ -54,6 +54,7 @@ export async function syncIssueTasksAfterPlanning(
   const progress = createIssueAgentProgress(workspaceId, issue, taskSyncPreset, taskSyncAgent.id, {
     runtime: taskSyncPreset.runtimeKind,
     model: taskSyncPreset.modelId,
+    phase: 'task_creator',
   });
   const runtime = createRuntimeForPreset(taskSyncPreset);
   const result = await runtime.execute(
@@ -121,7 +122,9 @@ export async function scheduleRunnableIssueTasks(
     return;
   }
 
-  await Promise.all(runnable.map((task) => runIssueTask(workspaceId, issueId, task.id, ctx)));
+  for (const task of runnable) {
+    await runIssueTask(workspaceId, issueId, task.id, ctx);
+  }
 }
 
 export async function runIssueTask(
@@ -172,6 +175,8 @@ export async function runIssueTask(
   const progress = createIssueAgentProgress(workspaceId, issue, executorPreset, executor.id, {
     runtime: executorPreset.runtimeKind,
     model: executorPreset.modelId,
+    taskId,
+    phase: 'executor',
   });
   ctx.broadcast('agent.output', { agentId: executor.id, data: `Executing task: ${runningTask.title}` });
   ctx.broadcast('agent.output', {
