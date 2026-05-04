@@ -177,7 +177,7 @@ export function DashboardSidebar() {
     <Sidebar
       variant="floating"
       collapsible="icon"
-      className={cn(isWorkspace && "bg-[#f2f3f5]")}
+      className={cn(isWorkspace && "bg-[#f2f3f5] dark:bg-[#0f1117]")}
     >
       <SidebarHeader
         className={cn(
