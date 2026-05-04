@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, X } from 'lucide-react';
 import { List, AutoSizer } from 'react-virtualized';
 import type { ListInstance } from 'react-virtualized';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
@@ -180,6 +180,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
+  const [composerOpen, setComposerOpen] = useState(false);
   const listRef = useRef<ListInstance | null>(null);
 
   const issue = issues.find((i) => i.id === activeIssueId);
@@ -407,7 +408,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   return (
     <div className="flex h-full overflow-hidden">
       {/* 左侧：主内容区 */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
         {/* Header */}
         <div className="shrink-0 p-4 pb-3 border-b">
           <div className="flex items-center gap-2 mb-1">
@@ -584,13 +585,32 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           </div>
         </div>
 
-        {/* Comment input */}
-        <ComposerShell
-          editor={editor}
-          canSubmit={canSubmit}
-          onSubmit={handleSendComment}
-          className="border-t px-3 py-2"
-        />
+        {/* Floating composer */}
+        {!composerOpen ? (
+          <button
+            onClick={() => setComposerOpen(true)}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all z-10"
+          >
+            <MessageSquare className="size-4" />
+            <span className="text-sm font-medium">评论</span>
+          </button>
+        ) : (
+          <div className="absolute bottom-4 left-4 right-4 z-10 animate-in slide-in-from-bottom-2 duration-200">
+            <div className="relative">
+              <button
+                onClick={() => setComposerOpen(false)}
+                className="absolute -top-2 -right-2 z-20 size-6 rounded-full bg-muted border shadow-sm flex items-center justify-center hover:bg-muted/80 transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+              <ComposerShell
+                editor={editor}
+                canSubmit={canSubmit}
+                onSubmit={handleSendComment}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 右侧：信息面板 */}
@@ -699,6 +719,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           issue={issue}
           open={editOpen}
           onOpenChange={setEditOpen}
+          agents={enabledAgents}
           onSave={async (data) => {
             await updateIssue(workspaceId, issue.id, data);
           }}

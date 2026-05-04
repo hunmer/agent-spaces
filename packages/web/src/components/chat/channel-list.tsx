@@ -66,7 +66,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         return { channels: [...s.channels, ch] };
       });
     });
-    return unsub;
+    return () => { unsub(); };
   }, [workspaceId]);
 
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {

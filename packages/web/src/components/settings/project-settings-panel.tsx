@@ -84,7 +84,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         <div className="space-y-3">
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Info</h4>
 
-          <InfoRow icon={<FolderOpen size={14} />} label="Working Path" value={workspace.boundDirs[0] ?? '-'} />
+          <InfoRow icon={<FolderOpen size={14} />} label="Path" value={workspace.boundDirs[0] ?? '-'} />
 
           <InfoRow icon={<Hash size={14} />} label="Channels" value={String(channels.length)} />
 

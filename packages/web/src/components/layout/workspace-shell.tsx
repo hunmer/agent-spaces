@@ -102,6 +102,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const activeFilePath = useEditorStore((s) => s.activeFilePath);
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
+  const gitStatus = useGitStore((s) => s.status);
   const [model] = useState(() => Model.fromJson(defaultJson));
 
   // 点击 issue 时自动切换到 Issue Detail tab
@@ -133,6 +134,15 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }
     }
   }, [activeFilePath, model]);
+
+  // 加载 git 状态用于底部 tab 显示
+  useEffect(() => {
+    useGitStore.getState().loadStatus(workspaceId);
+    const interval = setInterval(() => {
+      useGitStore.getState().loadStatus(workspaceId);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [workspaceId]);
 
   useEffect(() => {
     const ws = getWS(workspaceId);
@@ -190,14 +200,36 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const comp = node.getComponent();
     const icon = comp ? tabIcons[comp] : undefined;
-    if (icon) {
-      renderValues.content = (
-        <span title={node.getName()} className="flex items-center justify-center">
-          {icon}
+    if (!icon) return;
+
+    let badge: React.ReactNode = null;
+    if (comp === 'git-changes' && gitStatus && !gitStatus.clean) {
+      badge = (
+        <span className="ml-0.5 text-[10px] font-medium text-orange-500 leading-none">
+          {gitStatus.files.length}
+        </span>
+      );
+    } else if (comp === 'git-commits' && gitStatus && gitStatus.ahead > 0) {
+      badge = (
+        <span className="ml-0.5 text-[10px] font-medium text-blue-500 leading-none">
+          ↑{gitStatus.ahead}
+        </span>
+      );
+    } else if (comp === 'git-graph' && gitStatus) {
+      badge = (
+        <span className="ml-0.5 text-[10px] font-medium text-muted-foreground leading-none max-w-[80px] truncate">
+          {gitStatus.branch}
         </span>
       );
     }
-  }, []);
+
+    renderValues.content = (
+      <span title={node.getName()} className="flex items-center justify-center">
+        {icon}
+        {badge}
+      </span>
+    );
+  }, [gitStatus]);
 
   const onModelChange = useCallback(
     (_model: Model, action: { type: string; data: Record<string, any> }) => {

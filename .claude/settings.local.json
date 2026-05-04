@@ -1,11 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "mcp__shadcnVue__get_add_command_for_items"
+      "mcp__shadcnVue__get_add_command_for_items",
+      "mcp__code-review-graph__get_minimal_context_tool"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "code-review-graph"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
