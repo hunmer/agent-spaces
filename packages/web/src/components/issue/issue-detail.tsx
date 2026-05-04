@@ -12,8 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, MessagesSquare, X } from 'lucide-react';
-import { List, AutoSizer } from 'react-virtualized';
-import type { ListInstance } from 'react-virtualized';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
@@ -77,25 +75,6 @@ const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   failed: 'Failed',
   cancelled: 'Cancelled',
 };
-
-const COLLAPSED_COMMENT_CONTENT_HEIGHT = 300;
-const COMMENT_ROW_BASE_HEIGHT = 56;
-const COMMENT_LINE_HEIGHT = 20;
-
-function estimateCommentRowHeight(comment: IssueComment, width: number, expanded: boolean) {
-  const availableTextWidth = Math.max(180, width - 150);
-  const charsPerLine = Math.max(24, Math.floor(availableTextWidth / 7));
-  const lineCount = comment.content
-    .split('\n')
-    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
-  const contentHeight = lineCount * COMMENT_LINE_HEIGHT;
-
-  if (expanded) {
-    return COMMENT_ROW_BASE_HEIGHT + contentHeight + 30;
-  }
-
-  return COMMENT_ROW_BASE_HEIGHT + Math.min(COLLAPSED_COMMENT_CONTENT_HEIGHT, contentHeight);
-}
 
 /* ------------------------------------------------------------------ */
 /*  TaskRow                                                            */
@@ -185,7 +164,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
   const [composerOpen, setComposerOpen] = useState(false);
-  const listRef = useRef<ListInstance | null>(null);
+  const commentsViewportRef = useRef<HTMLDivElement | null>(null);
+  const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
@@ -217,10 +197,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
     return () => { unsubIssueUpdated(); };
   }, [issue, workspaceId, loadComments]);
-
-  useEffect(() => {
-    listRef.current?.recomputeRowHeights();
-  }, [comments, expandedCommentIds]);
 
   const mentionExtension = useMemo(
     () =>
@@ -293,10 +269,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         setComments((current) => [...current, comment]);
         editor.commands.clearContent();
         setTimeout(() => {
-          listRef.current?.scrollToRow(comments.length);
+          commentsViewportRef.current?.scrollTo({
+            top: commentsViewportRef.current.scrollHeight,
+            behavior: 'smooth',
+          });
         }, 50);
       });
-  }, [comments.length, editor, issue, workspaceId]);
+  }, [editor, issue, workspaceId]);
 
   const canSubmit = !!editor?.getText().trim();
 
@@ -343,6 +322,15 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
   }, [issue]);
 
+  const scrollToComment = useCallback((index: number) => {
+    const comment = comments[index];
+    if (!comment) return;
+    commentRefs.current.get(comment.id)?.scrollIntoView({
+      block: 'start',
+      behavior: 'smooth',
+    });
+  }, [comments]);
+
   const handleCreateTask = async () => {
     if (!issue) return;
     if (!newTaskTitle.trim()) return;
@@ -374,23 +362,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const handleDeleteTask = async (wsId: string, taskId: string) => {
     await deleteTask(wsId, taskId);
   };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rowRenderer = useCallback(({ index, key, style }: any) => {
-    const comment = comments[index];
-    return (
-      <div key={key} style={style} className="px-4">
-        <IssueMessage
-          comment={comment}
-          expanded={expandedCommentIds.has(comment.id)}
-          workspaceId={workspaceId}
-          onDelete={handleDeleteComment}
-          onUpdate={handleUpdateComment}
-          onExpandedChange={handleCommentExpandedChange}
-        />
-      </div>
-    );
-  }, [comments, expandedCommentIds, workspaceId, handleDeleteComment, handleUpdateComment, handleCommentExpandedChange]);
 
   if (!issue) {
     return (
@@ -589,28 +560,32 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           <div className="flex-1 min-h-0 relative">
             {comments.length > 0 ? (
               <>
-                <AutoSizer>
-                  {({ height, width }) => (
-                    <List
-                      ref={listRef}
-                      height={height}
-                      width={width}
-                      rowCount={comments.length + 1}
-                      rowHeight={({ index }) =>
-                        index === comments.length
-                          ? 80
-                          : estimateCommentRowHeight(comments[index], width, expandedCommentIds.has(comments[index].id))
-                      }
-                      rowRenderer={({ index, key, style }) =>
-                        index === comments.length
-                          ? <div key={key} style={{ ...style, pointerEvents: 'none' }} />
-                          : rowRenderer({ index, key, style })
-                      }
-                      overscanRowCount={5}
-                    />
-                  )}
-                </AutoSizer>
-                <CommentNavigator comments={comments} onNavigate={(i) => listRef.current?.scrollToRow(i)} />
+                <div ref={commentsViewportRef} className="h-full overflow-y-auto">
+                  {comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      ref={(node) => {
+                        if (node) {
+                          commentRefs.current.set(comment.id, node);
+                        } else {
+                          commentRefs.current.delete(comment.id);
+                        }
+                      }}
+                      className="px-4"
+                    >
+                      <IssueMessage
+                        comment={comment}
+                        expanded={expandedCommentIds.has(comment.id)}
+                        workspaceId={workspaceId}
+                        onDelete={handleDeleteComment}
+                        onUpdate={handleUpdateComment}
+                        onExpandedChange={handleCommentExpandedChange}
+                      />
+                    </div>
+                  ))}
+                  <div className="h-20 pointer-events-none" />
+                </div>
+                <CommentNavigator comments={comments} onNavigate={scrollToComment} />
               </>
             ) : null}
           </div>
