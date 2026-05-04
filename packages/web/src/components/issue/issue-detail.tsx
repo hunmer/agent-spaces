@@ -17,6 +17,7 @@ import type { ListInstance } from 'react-virtualized';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
+import { CommentNavigator } from '@/components/issue/comment-navigator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -585,29 +586,32 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             </div>
           )}
 
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 relative">
             {comments.length > 0 ? (
-              <AutoSizer>
-                {({ height, width }) => (
-                  <List
-                    ref={listRef}
-                    height={height}
-                    width={width}
-                    rowCount={comments.length + 1}
-                    rowHeight={({ index }) =>
-                      index === comments.length
-                        ? 80
-                        : estimateCommentRowHeight(comments[index], width, expandedCommentIds.has(comments[index].id))
-                    }
-                    rowRenderer={({ index, key, style }) =>
-                      index === comments.length
-                        ? <div key={key} style={{ ...style, pointerEvents: 'none' }} />
-                        : rowRenderer({ index, key, style })
-                    }
-                    overscanRowCount={5}
-                  />
-                )}
-              </AutoSizer>
+              <>
+                <AutoSizer>
+                  {({ height, width }) => (
+                    <List
+                      ref={listRef}
+                      height={height}
+                      width={width}
+                      rowCount={comments.length + 1}
+                      rowHeight={({ index }) =>
+                        index === comments.length
+                          ? 80
+                          : estimateCommentRowHeight(comments[index], width, expandedCommentIds.has(comments[index].id))
+                      }
+                      rowRenderer={({ index, key, style }) =>
+                        index === comments.length
+                          ? <div key={key} style={{ ...style, pointerEvents: 'none' }} />
+                          : rowRenderer({ index, key, style })
+                      }
+                      overscanRowCount={5}
+                    />
+                  )}
+                </AutoSizer>
+                <CommentNavigator comments={comments} onNavigate={(i) => listRef.current?.scrollToRow(i)} />
+              </>
             ) : null}
           </div>
         </div>
