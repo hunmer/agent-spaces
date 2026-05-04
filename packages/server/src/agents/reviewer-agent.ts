@@ -37,6 +37,11 @@ export async function runReviewer(
   const reviewer = agentService.getOrCreateSessionForConfig(workspaceId, reviewerPreset);
   ctx.broadcast('agent.started', reviewer);
 
+  const currentTask = taskService.getById(workspaceId, taskId);
+  const reviewingTask = taskService.updateStatus(workspaceId, taskId, 'reviewing', { result: taskResult });
+  ctx.broadcast('task.status_changed', { taskId, from: currentTask?.status ?? 'running', to: 'reviewing' });
+  if (reviewingTask) ctx.broadcast('task.updated', reviewingTask);
+
   const reviewerFromStatus = reviewer.status;
   agentService.updateStatus(workspaceId, reviewer.id, 'active');
   issueService.addAgent(workspaceId, issueId, reviewerPreset.id);
@@ -97,7 +102,7 @@ export async function runReviewer(
 
   if (approved) {
     const doneTask = taskService.updateStatus(workspaceId, taskId, 'done', { result: taskResult });
-    ctx.broadcast('task.status_changed', { taskId, from: 'running', to: 'done' });
+    ctx.broadcast('task.status_changed', { taskId, from: 'reviewing', to: 'done' });
     if (doneTask) ctx.broadcast('task.updated', doneTask);
 
     ctx.broadcast('agent.output', {
@@ -108,7 +113,7 @@ export async function runReviewer(
     const failedTask = taskService.updateStatus(workspaceId, taskId, 'failed', {
       result: { ...taskResult, error: 'Changes requested by reviewer' },
     });
-    ctx.broadcast('task.status_changed', { taskId, from: 'running', to: 'failed' });
+    ctx.broadcast('task.status_changed', { taskId, from: 'reviewing', to: 'failed' });
     if (failedTask) ctx.broadcast('task.updated', failedTask);
 
     const changedIssue = issueService.updateStatus(workspaceId, issueId, 'changes_requested');

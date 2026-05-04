@@ -418,7 +418,7 @@ async function runMentionedAgent(
     broadcastLiveParts(true);
     if (activeRun.stopped) return;
 
-    const displayOutput = liveOutput.length > 0 ? liveOutput : result.output;
+    const displayOutput = mergeRuntimeOutput(liveOutput, result.output);
     if (shouldWaitForUserAnswer(askUserQuestions, result.summary, result.error, displayOutput)) {
       const waitingOutput = stripAskUserQuestionErrorLines(liveOutput);
       const waiting = updateMessage(workspaceId, channelId, pending.id, {
@@ -743,6 +743,16 @@ function normalizeOutputLines(output: string[]): string[] {
   });
 }
 
+function mergeRuntimeOutput(liveOutput: string[], resultOutput: string[]): string[] {
+  if (liveOutput.length === 0) return resultOutput;
+  const finalResult = resultOutput.at(-1)?.trim();
+  if (!finalResult) return liveOutput;
+  if (liveOutput.some((line) => normalizeMessageText(line) === normalizeMessageText(finalResult))) {
+    return liveOutput;
+  }
+  return [...liveOutput, finalResult];
+}
+
 function collapseRepeatedTextBlock(lines: string[]): string[] {
   let next = [...lines];
 
@@ -791,6 +801,23 @@ function buildChainItems(
   let messageIndex = 0;
   const items: MessageChain[] = [];
   const toolDetailMatchCounts = new Map<string, number>();
+  let messageBuffer: string[] = [];
+
+  const flushMessageBuffer = () => {
+    if (messageBuffer.length === 0) return;
+    const text = messageBuffer.join('\n').trim();
+    if (text) {
+      items.push({
+        id: `message-${messageIndex}`,
+        title: summarizeMessageTitle(text),
+        text,
+        kind: 'message',
+        status: 'completed',
+      });
+      messageIndex += 1;
+    }
+    messageBuffer = [];
+  };
 
   for (let index = 0; index < lines.length; index += 1) {
     if (finalTextRange && index >= finalTextRange.start && index <= finalTextRange.end) continue;
@@ -798,21 +825,16 @@ function buildChainItems(
     if (finalText && isSameMessageText(line, finalText)) continue;
     if (isSubagentToolLine(line)) continue;
     if (isToolLikeLine(line)) {
+      flushMessageBuffer();
       items.push(buildToolTodo(line, toolIndex, workspaceRoot, toolDetails, toolDetailMatchCounts));
       toolIndex += 1;
       continue;
     }
     if (isFinalAnswerLine(line)) {
-      items.push({
-        id: `message-${messageIndex}`,
-        title: summarizeMessageTitle(line),
-        text: line,
-        kind: 'message',
-        status: 'completed',
-      });
-      messageIndex += 1;
+      messageBuffer.push(line);
     }
   }
+  flushMessageBuffer();
 
   return items.slice(0, 40);
 }

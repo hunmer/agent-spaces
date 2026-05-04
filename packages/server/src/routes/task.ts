@@ -71,8 +71,8 @@ router.delete('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Re
     res.status(404).json({ error: 'task not found' });
     return;
   }
-  if (task.status === 'running') {
-    res.status(409).json({ error: 'running tasks cannot be deleted' });
+  if (task.status === 'running' || task.status === 'reviewing') {
+    res.status(409).json({ error: 'active tasks cannot be deleted' });
     return;
   }
 

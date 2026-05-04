@@ -233,13 +233,15 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto py-2 relative">
-          {msgs.map((msg) => (
-            <div key={msg.id} id={`msg-${msg.id}`}>
-              <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
-            </div>
-          ))}
-          <div ref={bottomRef} />
+        <div className="flex-1 min-h-0 relative">
+          <div className="h-full overflow-y-auto py-2">
+            {msgs.map((msg) => (
+              <div key={msg.id} id={`msg-${msg.id}`}>
+                <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
           <MessageNavigator messages={msgs} />
         </div>
 

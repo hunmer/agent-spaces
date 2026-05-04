@@ -61,7 +61,7 @@ export function replaceIssueTasks(
   data: Array<{ title: string; description: string; agentConfigId?: string; dependsOnTaskIds?: string[]; sandboxDirs?: string[] }>,
 ): Task[] {
   const existing = list(workspaceId, issueId);
-  const removable = existing.filter((task) => task.status !== 'running');
+  const removable = existing.filter((task) => task.status !== 'running' && task.status !== 'reviewing');
   for (const task of removable) deleteTask(workspaceId, task.id);
 
   return data.map((task) => create(workspaceId, issueId, {
@@ -90,7 +90,8 @@ export function updateStatus(
 }
 
 export function markRunningTasksFailed(workspaceId: string, reason: string): Task[] {
-  const running = list(workspaceId).filter((task) => task.status === 'running' || task.status === 'retrying');
+  const running = list(workspaceId).filter((task) =>
+    task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying');
   return running.map((task) => updateStatus(workspaceId, task.id, 'failed', {
     result: {
       success: false,

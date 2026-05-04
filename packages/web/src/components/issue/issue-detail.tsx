@@ -58,6 +58,7 @@ const ISSUE_STATUS_COLOR: Record<IssueStatus, 'default' | 'secondary' | 'destruc
 const TASK_STATUS_COLOR: Record<TaskStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   pending: 'secondary',
   running: 'default',
+  reviewing: 'outline',
   waiting_review: 'outline',
   retrying: 'outline',
   done: 'secondary',
@@ -68,6 +69,7 @@ const TASK_STATUS_COLOR: Record<TaskStatus, 'default' | 'secondary' | 'destructi
 const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   pending: 'Pending',
   running: 'Running',
+  reviewing: 'Reviewing',
   waiting_review: 'Waiting Review',
   retrying: 'Retrying',
   done: 'Done',
@@ -150,7 +152,7 @@ function TaskRow({
         </Button>
       )}
       {/* Cancel – active tasks */}
-      {(isPending || task.status === 'running' || task.status === 'retrying') && (
+      {(isPending || task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying') && (
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCancel(workspaceId, task.id)}>
           <XCircle className="h-3 w-3" />
         </Button>

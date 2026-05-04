@@ -10,7 +10,7 @@ import { onExecutorComplete } from '../hooks/agent-hooks.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
 
-const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'retrying', 'waiting_review'];
+const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
 
 export interface PlannerTaskSyncInput {
   plannerPreset: AgentConfig;

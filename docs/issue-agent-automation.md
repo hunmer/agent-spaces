@@ -206,6 +206,7 @@ scheduleRunnableIssueTasks(workspaceId, issueId, ctx)
 2. 收集状态为 `done` 的 task id。
 3. 跳过 active 状态任务：
    - `running`
+   - `reviewing`
    - `retrying`
    - `waiting_review`
 4. 找出满足以下条件的任务：

@@ -94,3 +94,12 @@ Working tree currently has partial code changes:
 - Confirmed completed `done` tasks were already preserved, but cancelled tasks were also being reset.
 - Tightened issue retry to reset only `failed` tasks; `done`, `pending`, `running`, `waiting_review`, and `cancelled` are left unchanged.
 - Verification: `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` passed.
+
+## Reviewing Task Status
+
+- Added `reviewing` to shared `TaskStatus`.
+- Reviewer now changes a task to `reviewing` while reviewer runtime is active, then transitions from `reviewing` to `done` or `failed`.
+- Scheduler active task set now includes `reviewing`.
+- Task replacement/deletion/startup recovery treat `reviewing` as active.
+- Issue detail now displays `Reviewing` and exposes active-task cancel control for it.
+- Verification: full shared/server/web build passed and `git diff --check` passed.
