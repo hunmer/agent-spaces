@@ -39,14 +39,15 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
   }
   const { title, description, status, members } = req.body;
   if (title) issue.title = title;
-  if (description) issue.description = description;
+  if (description !== undefined) issue.description = description;
   if (members) issue.members = normalizeIssueMembers(req.params.id, members);
   if (status) {
-    const updated = issueService.updateStatus(req.params.id, req.params.issueId, status);
+    const updated = issueService.updateStatus(req.params.id, req.params.issueId, status, { title: issue.title, description: issue.description });
     res.json(updated);
     return;
   }
-  res.json(issue);
+  const saved = issueService.save(req.params.id, issue);
+  res.json(saved);
 });
 
 router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, res: Response) => {

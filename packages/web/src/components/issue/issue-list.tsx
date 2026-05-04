@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, CircleDot } from 'lucide-react';
-import type { IssueStatus } from '@agent-spaces/shared';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { Plus, CircleDot, Pencil } from 'lucide-react';
+import { EditIssueDialog } from './edit-issue-dialog';
+import type { Issue, IssueStatus } from '@agent-spaces/shared';
 
 const STATUS_LABEL: Record<IssueStatus, string> = {
   draft: 'Draft',
@@ -45,10 +47,11 @@ interface IssueListProps {
 }
 
 export function IssueList({ workspaceId }: IssueListProps) {
-  const { issues, activeIssueId, loading, loadIssues, createIssue, setActiveIssue } = useIssueStore();
+  const { issues, activeIssueId, loading, loadIssues, createIssue, updateIssue, setActiveIssue } = useIssueStore();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
+  const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
 
   useEffect(() => {
     loadIssues(workspaceId);

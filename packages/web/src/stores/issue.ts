@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { Issue, IssueStatus } from '@agent-spaces/shared';
 
+interface UpdateIssueInput {
+  title?: string;
+  description?: string;
+  status?: IssueStatus;
+}
+
 interface IssueStore {
   issues: Issue[];
   activeIssueId: string | null;
@@ -11,6 +17,7 @@ interface IssueStore {
   loadIssues: (workspaceId: string) => Promise<void>;
   createIssue: (workspaceId: string, title: string, description: string) => Promise<void>;
   setActiveIssue: (id: string | null) => void;
+  updateIssue: (workspaceId: string, issueId: string, input: UpdateIssueInput) => Promise<void>;
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
   startIssue: (workspaceId: string, issueId: string) => Promise<void>;
 
@@ -47,6 +54,16 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
   },
 
   setActiveIssue: (id) => set((s) => ({ activeIssueId: id, issueSelectSeq: s.issueSelectSeq + 1 })),
+
+  updateIssue: async (workspaceId, issueId, input) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    const updated: Issue = await res.json();
+    get().upsertIssue(updated);
+  },
 
   updateIssueStatus: async (workspaceId, issueId, status) => {
     await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, {

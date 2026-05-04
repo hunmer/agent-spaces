@@ -226,7 +226,10 @@ async function runMentionedAgent(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
   const { channel, issue } = resolveIssueChannelContext(workspaceId, channelId);
-  const functionTools = createIssueFunctionTools(workspaceId, channel);
+  const functionTools = createIssueFunctionTools(workspaceId, channel, {
+    senderId: preset.id,
+    senderRole: preset.role,
+  });
   const startTime = Date.now();
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
@@ -388,7 +391,13 @@ async function runMentionedAgent(
             const updatedChannel = getChannel(workspaceId, channelId);
             if (updatedChannel) broadcastToWorkspace(workspaceId, 'channel.updated', updatedChannel);
             const updatedIssue = updatedChannel?.issueId ? issueService.getById(workspaceId, updatedChannel.issueId) : null;
-            if (updatedIssue) broadcastToWorkspace(workspaceId, 'issue.updated', updatedIssue);
+            if (updatedIssue) {
+              broadcastToWorkspace(
+                workspaceId,
+                isCreateCurrentChannelIssueTool(detail.raw || detail.title) ? 'issue.created' : 'issue.updated',
+                updatedIssue,
+              );
+            }
           }
           if (detail) {
             detail.output = event.result;
@@ -544,7 +553,11 @@ function resolveIssueChannelContext(
 }
 
 function isAgentSpacesIssueTool(name: string | undefined): boolean {
-  return Boolean(name && /(?:agent-spaces\.)?(?:CreateCurrentChannelIssue|ViewCurrentChannelIssue)/.test(name));
+  return Boolean(name && /(?:agent-spaces\.)?(?:CreateCurrentChannelIssue|ViewCurrentChannelIssue|AddCurrentChannelComment)/.test(name));
+}
+
+function isCreateCurrentChannelIssueTool(name: string | undefined): boolean {
+  return Boolean(name && /(?:agent-spaces\.)?CreateCurrentChannelIssue/.test(name));
 }
 
 function channelRunKey(workspaceId: string, channelId: string): string {
@@ -1201,7 +1214,8 @@ function buildAgentPrompt(
         '- The user is asking for the current channel issue.',
         '- If Agent Spaces channel tools include ViewCurrentChannelIssue, call that function tool first and answer from the tool result.',
         '- Do not use Bash, Glob, Grep, or project files to infer the current channel issue.',
-        '- If no Agent Spaces channel issue tool is configured, say this channel is not bound to an issue or the issue tool is unavailable.',
+        '- If ViewCurrentChannelIssue is not configured but CreateCurrentChannelIssue is configured, say this channel is not bound to an issue yet.',
+        '- If no Agent Spaces channel issue tool is configured, say the issue tool is unavailable.',
       );
     }
     configLines.push('When asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.');
@@ -1228,6 +1242,7 @@ function isIssueContextLookup(userPrompt: string): boolean {
 interface BuiltInToolContext {
   name: string;
   description: string;
+  channelId?: string;
   issueId?: string;
   issueTitle?: string;
 }
@@ -1237,27 +1252,32 @@ function buildBuiltInTools(
   channel: ReturnType<typeof getChannel>,
   issue: ReturnType<typeof issueService.getById>,
 ): BuiltInToolContext[] {
-  if (!functionTools.length || channel?.type !== 'issue' || !channel.issueId) return [];
+  if (!functionTools.length || !channel) return [];
 
   const issueTitle = issue?.title ?? channel.name;
   return functionTools.map((functionTool) => ({
     name: functionTool.name,
     description: functionTool.description,
+    channelId: channel.id,
     issueId: channel.issueId,
     issueTitle,
   }));
 }
 
 function formatBuiltInToolContext(tools: BuiltInToolContext[]): string[] {
+  const firstTool = tools[0];
   const firstIssueTool = tools.find((tool) => tool.issueId);
   const lines = [
     'Built-in issue tool rules:',
     '- These are real function-call tools exposed through the agent-spaces MCP server.',
-    '- The current channel is already bound to an issue. Tool calls must use that issue id.',
+    '- Tool calls must use the current channel id.',
   ];
+  if (firstTool?.channelId) lines.push(`- Current channel id: ${firstTool.channelId}`);
   if (firstIssueTool?.issueId) {
     lines.push(`- Current channel issue id: ${firstIssueTool.issueId}`);
     lines.push(`- Current channel issue title: ${firstIssueTool.issueTitle || 'Untitled issue'}`);
+  } else {
+    lines.push('- Current channel is not bound to an issue yet. Use CreateCurrentChannelIssue before viewing or commenting.');
   }
   for (const tool of tools) {
     lines.push(`- ${tool.name}: ${tool.description}`);

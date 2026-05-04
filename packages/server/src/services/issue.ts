@@ -57,6 +57,38 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
   return issue;
 }
 
+export function createForChannel(
+  workspaceId: string,
+  channelId: string,
+  input: CreateIssueInput,
+): Issue | null {
+  const channel = channelService.getChannel(workspaceId, channelId);
+  if (!channel) return null;
+
+  const now = new Date().toISOString();
+  const issueId = uuid();
+  const issue: Issue = {
+    id: issueId,
+    workspaceId,
+    channelId,
+    title: input.title,
+    description: input.description,
+    status: 'draft',
+    tasks: [],
+    assignedAgents: [],
+    members: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  createIssue(issue);
+  channelService.updateChannel(workspaceId, channelId, {
+    name: input.title,
+    type: 'issue',
+    issueId,
+  });
+  return issue;
+}
+
 export function updateStatus(
   workspaceId: string,
   issueId: string,
