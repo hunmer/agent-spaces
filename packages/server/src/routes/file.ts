@@ -1,7 +1,9 @@
 import { Router, type Request, type Response } from 'express';
 import { exec } from 'child_process';
+import { resolve, join } from 'path';
 import * as fileService from '../services/file.js';
 import * as wsService from '../services/workspace.js';
+import { getDataDir } from '../storage/json-store.js';
 
 const router = Router({ mergeParams: true });
 
@@ -55,9 +57,18 @@ router.post('/reveal', async (req: Request<{ id: string }>, res: Response) => {
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const relPath = req.query.path as string;
-  const fullPath = relPath
-    ? `${ws.boundDirs[0]}/${relPath}`
-    : ws.boundDirs[0];
+  const channelId = req.query.channelId as string;
+
+  let fullPath: string;
+  if (channelId) {
+    fullPath = resolve(join(getDataDir(), 'workspaces', ws.id, 'channels', channelId));
+  } else if (relPath) {
+    fullPath = resolve(ws.boundDirs[0], relPath);
+  } else {
+    fullPath = resolve(ws.boundDirs[0]);
+  }
+
+  console.log('[reveal] workspace:', ws.id, 'channelId:', channelId ?? '(none)', 'relPath:', relPath ?? '(none)', '=> fullPath:', fullPath);
 
   const cmd = process.platform === 'darwin'
     ? `open "${fullPath}"`
@@ -65,9 +76,17 @@ router.post('/reveal', async (req: Request<{ id: string }>, res: Response) => {
       ? `explorer "${fullPath}"`
       : `xdg-open "${fullPath}"`;
 
-  exec(cmd, (err) => {
-    if (err) { res.status(500).json({ error: 'Failed to reveal' }); return; }
-    res.json({ ok: true });
+  console.log('[reveal] platform:', process.platform, 'cmd:', cmd);
+
+  exec(cmd, (err, stdout, stderr) => {
+    if (err) {
+      console.error('[reveal] failed:', err.message, 'stderr:', stderr);
+      res.status(500).json({ error: 'Failed to reveal', detail: err.message });
+      return;
+    }
+    if (stdout) console.log('[reveal] stdout:', stdout);
+    if (stderr) console.log('[reveal] stderr:', stderr);
+    res.json({ ok: true, path: fullPath });
   });
 });
 

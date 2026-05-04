@@ -2,12 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useChannelStore } from '@/stores/channel';
-import { Bot, Hash, MessageCircle, AlertCircle, Plus } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ChannelDialog } from './channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
@@ -29,8 +35,12 @@ interface ChannelListProps {
 }
 
 export function ChannelList({ workspaceId }: ChannelListProps) {
-  const { channels, activeChannelId, messages, loadChannels, createChannel, setActiveChannel } = useChannelStore();
+  const {
+    channels, activeChannelId, messages,
+    loadChannels, createChannel, updateChannel, setActiveChannel,
+  } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
 
   useEffect(() => {
@@ -55,12 +65,30 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const agentMap = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
 
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
-    await createChannel(
-      workspaceId,
-      data.name,
-      data.type,
-      normalizeChannelMembersToAgentIds(agents, data.members),
-    );
+    const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
+    if (editingChannel) {
+      await updateChannel(workspaceId, editingChannel.id, {
+        name: data.name,
+        type: data.type,
+        members: memberIds,
+      });
+    } else {
+      await createChannel(workspaceId, data.name, data.type, memberIds);
+    }
+  };
+
+  const handleEdit = (channel: Channel) => {
+    setEditingChannel(channel);
+    setDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) setEditingChannel(null);
+  };
+
+  const handleReveal = async (channelId: string) => {
+    await fetch(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`, { method: 'POST' });
   };
 
   return (
@@ -79,14 +107,14 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
           const agentMembers = ch.members.filter((m) => m !== 'user');
 
           return (
-            <button
-              key={ch.id}
-              onClick={() => setActiveChannel(ch.id)}
-              className={cn(
-                'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
-                activeChannelId === ch.id && 'bg-accent text-accent-foreground',
-              )}
-            >
+            <ContextMenu key={ch.id}>
+              <ContextMenuTrigger
+                className={cn(
+                  'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
+                  activeChannelId === ch.id && 'bg-accent text-accent-foreground',
+                )}
+                onClick={() => setActiveChannel(ch.id)}
+              >
               {(() => {
                 const Icon = badge.icon;
                 return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />;
@@ -113,15 +141,27 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                   <p className="text-xs text-muted-foreground/50 mt-0.5">暂无消息</p>
                 )}
               </div>
-            </button>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => handleEdit(ch)}>
+                  <Pencil className="size-3.5" />
+                  编辑
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleReveal(ch.id)}>
+                  <FolderOpen className="size-3.5" />
+                  打开文件夹位置
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
       </div>
 
       <ChannelDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogOpenChange}
         workspaceId={workspaceId}
+        channel={editingChannel}
         agents={agents}
         onSubmit={handleSubmit}
       />

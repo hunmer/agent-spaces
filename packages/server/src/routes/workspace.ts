@@ -81,17 +81,26 @@ router.post('/:id/reveal', (req, res) => {
     res.status(400).json({ error: 'Workspace has no bound directory' });
     return;
   }
+
+  console.log('[reveal:workspace] workspace:', ws.id, 'dir:', dir);
+
   const cmd = process.platform === 'darwin'
     ? `open "${dir}"`
     : process.platform === 'win32'
       ? `explorer "${dir}"`
       : `xdg-open "${dir}"`;
-  exec(cmd, (err) => {
+
+  console.log('[reveal:workspace] platform:', process.platform, 'cmd:', cmd);
+
+  exec(cmd, (err, stdout, stderr) => {
     if (err) {
-      res.status(500).json({ error: 'Failed to reveal directory' });
+      console.error('[reveal:workspace] failed:', err.message, 'stderr:', stderr);
+      res.status(500).json({ error: 'Failed to reveal directory', detail: err.message });
       return;
     }
-    res.json({ success: true });
+    if (stdout) console.log('[reveal:workspace] stdout:', stdout);
+    if (stderr) console.log('[reveal:workspace] stderr:', stderr);
+    res.json({ success: true, path: dir });
   });
 });
 

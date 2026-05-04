@@ -43,11 +43,11 @@ import {
 type McpDraft = Record<string, unknown>;
 type SkillDraft = { name: string; content?: string };
 
-type AgentPreset = Omit<AgentConfig, "mcps" | "skills"> & {
+type AgentPreset = Omit<AgentConfig, "mcps" | "skills" | "modelProvider"> & {
   name: string;
   description: string;
   avatarUrl: string;
-  modelProvider: NonNullable<AgentConfig["modelProvider"]>;
+  modelProvider: AgentConfig["modelProvider"] | "";
   modelId: string;
   apiBase: string;
   apiKey: string;
@@ -86,6 +86,8 @@ const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>
   { value: "anthropic-messages", label: "Anthropic Messages" },
   { value: "openai-chat-completions", label: "OpenAI Chat Completions" },
   { value: "openai-responses", label: "OpenAI Responses API" },
+  { value: "openai-responses-to-anthropic-messages", label: "OpenAI Responses To Anthropic Messages" },
+  { value: "openai-chat-completions-to-anthropic-messages", label: "OpenAI Chat Completions To Anthropic Messages" },
   { value: "gemini-generate-content", label: "Gemini Native generateContent" },
 ];
 const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; label: string }> = [
@@ -94,6 +96,10 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "codex", label: "Codex" },
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
+const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
+  "openai-responses-to-anthropic-messages",
+  "openai-chat-completions-to-anthropic-messages",
+]);
 
 function defaultMcpConfig(names: string[]): McpDraft {
   return {
@@ -117,7 +123,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     apiBase: "",
     apiKey: "",
     workingDir: "",
-    mcps: defaultMcpConfig(["code-review-graph", "fetch"]),
+    mcps: defaultMcpConfig([]),
     skills: defaultSkills(["planning", "task-split"]),
     systemPrompt:
       "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
@@ -136,7 +142,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     apiBase: "",
     apiKey: "",
     workingDir: "",
-    mcps: defaultMcpConfig(["code-review-graph"]),
+    mcps: defaultMcpConfig([]),
     skills: defaultSkills(["refactoring", "tdd"]),
     systemPrompt:
       "你是策划者 Agent。负责将复杂任务分解为可执行的子任务，制定详细的实施计划，识别潜在风险和依赖关系。",
@@ -155,7 +161,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     apiBase: "",
     apiKey: "",
     workingDir: "/workspace/src",
-    mcps: defaultMcpConfig(["code-review-graph", "fetch"]),
+    mcps: defaultMcpConfig([]),
     skills: defaultSkills(["coding", "debugging", "testing"]),
     systemPrompt:
       "你是执行者 Agent。根据计划编写高质量的代码，遵循项目编码规范，编写必要的测试。完成后提交审核。",
@@ -174,7 +180,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     apiBase: "",
     apiKey: "",
     workingDir: "",
-    mcps: defaultMcpConfig(["code-review-graph"]),
+    mcps: defaultMcpConfig([]),
     skills: defaultSkills(["code-review", "security-audit"]),
     systemPrompt:
       "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
@@ -209,7 +215,7 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     description: agent.description || "",
     avatarUrl: agent.avatarUrl || "",
     runtimeKind: agent.runtimeKind || "open-agent-sdk",
-    modelProvider: agent.modelProvider || "anthropic-messages",
+    modelProvider: agent.modelProvider || "",
     modelId: agent.modelId || "claude-sonnet-4-6",
     apiBase: agent.apiBase || "",
     apiKey: agent.apiKey || "",
@@ -236,12 +242,17 @@ function normalizeSkillDrafts(skills: AgentConfig["skills"] | SkillDraft[] | und
   });
 }
 
-type AgentPresetPayload = Omit<AgentPreset, "id">;
+type AgentPresetPayload = Omit<AgentPreset, "id" | "modelProvider"> & {
+  modelProvider?: AgentConfig["modelProvider"];
+};
 
 function serializeAgent(agent: AgentPreset): AgentPresetPayload {
   const { id: _id, ...body } = agent;
   void _id;
-  return body;
+  return {
+    ...body,
+    modelProvider: body.modelProvider || undefined,
+  };
 }
 
 function newAgentDraft(role: AgentRole): AgentPreset {
@@ -261,7 +272,7 @@ function newEmptyAgent(): AgentPreset {
     description: "",
     avatarUrl: "",
     runtimeKind: "open-agent-sdk",
-    modelProvider: "anthropic-messages",
+    modelProvider: "",
     modelId: "",
     apiBase: "",
     apiKey: "",
@@ -277,6 +288,10 @@ function newEmptyAgent(): AgentPreset {
 
 function isDraftAgent(agent: AgentPreset) {
   return agent.id.startsWith("draft-");
+}
+
+function isAnthropicBridgeProvider(provider: AgentPreset["modelProvider"]): boolean {
+  return Boolean(provider && ANTHROPIC_BRIDGE_PROVIDERS.has(provider));
 }
 
 export function AgentDialog({
@@ -435,6 +450,29 @@ export function AgentDialog({
     setEditDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
+  const updateAgentDraft = <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => {
+    setEditDraft((prev) => {
+      if (!prev) return prev;
+      if (key === "modelProvider") {
+        const provider = value as AgentPreset["modelProvider"];
+        return {
+          ...prev,
+          modelProvider: provider,
+          runtimeKind: isAnthropicBridgeProvider(provider) ? "claude-code" : prev.runtimeKind,
+        };
+      }
+      if (key === "runtimeKind") {
+        const runtimeKind = value as AgentPreset["runtimeKind"];
+        return {
+          ...prev,
+          runtimeKind,
+          modelProvider: runtimeKind === "claude-code" ? prev.modelProvider : "",
+        };
+      }
+      return { ...prev, [key]: value };
+    });
+  };
+
   const updateMcpConfig = (value: McpDraft) => {
     updateDraft("mcps", value);
   };
@@ -540,7 +578,7 @@ export function AgentDialog({
               agent={editDraft}
               testing={testing}
               testResult={testResult}
-              onChange={updateDraft}
+              onChange={updateAgentDraft}
               onMcpChange={updateMcpConfig}
               onAddSkillFiles={addSkillFiles}
               onRemoveSkill={removeSkill}
@@ -855,8 +893,8 @@ function AgentDetail({
           </FieldGroup>
           <FieldGroup label="API Message Type">
             <SearchSelect
-              value={agent.modelProvider}
-              onChange={(v) => onChange("modelProvider", v as NonNullable<AgentConfig["modelProvider"]>)}
+              value={agent.modelProvider || ""}
+              onChange={(v) => onChange("modelProvider", v as AgentPreset["modelProvider"])}
               options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
               placeholder="Select API message type..."
               searchPlaceholder="Search API message type..."

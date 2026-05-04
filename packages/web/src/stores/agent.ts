@@ -3,20 +3,17 @@ import type { AgentConfig } from '@agent-spaces/shared';
 
 interface AgentStore {
   agents: AgentConfig[];
-  loaded: boolean;
   ensure: (workspaceId: string) => Promise<void>;
 }
 
-export const useAgentStore = create<AgentStore>((set, get) => ({
+export const useAgentStore = create<AgentStore>(() => ({
   agents: [],
-  loaded: false,
   ensure: async (workspaceId: string) => {
-    if (get().loaded) return;
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets`);
       if (!res.ok) return;
       const data: AgentConfig[] = await res.json();
-      set({ agents: data, loaded: true });
+      useAgentStore.setState({ agents: data });
     } catch { /* ignore */ }
   },
 }));

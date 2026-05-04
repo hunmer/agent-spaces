@@ -71,10 +71,10 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
         <MessageAttachments attachments={message.attachments} isUser={isUser} />
       ) : null}
       {parts.length > 0 ? parts.map((part) => (
-        <MessagePartView key={part.id} part={part} message={message} workspaceId={workspaceId} />
+        <MessagePartView key={part.id} part={dedupeDisplayPart(part)} message={message} workspaceId={workspaceId} />
       )) : null}
       {!hasTextPart && shouldRenderLegacyContent ? (
-        isUser ? <UserContent content={message.content} /> : <Markdown content={message.content} />
+        isUser ? <UserContent content={message.content} /> : <Markdown content={dedupeRepeatedTextBlock(message.content)} />
       ) : null}
       {message.status === "pending" && parts.length === 0 ? (
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -84,6 +84,31 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
       ) : null}
     </div>
   )
+}
+
+function dedupeDisplayPart(part: MessagePart): MessagePart {
+  if (part.type !== "text") return part
+  const text = dedupeRepeatedTextBlock(part.text)
+  return text === part.text ? part : { ...part, text }
+}
+
+function dedupeRepeatedTextBlock(text: string) {
+  const lines = text.split(/\r?\n/)
+  let next = [...lines]
+
+  while (next.length > 1 && next.length % 2 === 0) {
+    const middle = next.length / 2
+    const first = next.slice(0, middle)
+    const second = next.slice(middle)
+    if (normalizeDisplayText(first.join("\n")) !== normalizeDisplayText(second.join("\n"))) break
+    next = first
+  }
+
+  return next.join("\n")
+}
+
+function normalizeDisplayText(text: string) {
+  return text.trim().replace(/\s+/g, " ")
 }
 
 function MessagePartView({ part, message, workspaceId }: { part: MessagePart; message: Message; workspaceId: string }) {

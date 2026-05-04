@@ -14,6 +14,10 @@ import { ensureDir, getDataDir } from '../storage/json-store.js';
 
 const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex'];
+const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [
+  'openai-responses-to-anthropic-messages',
+  'openai-chat-completions-to-anthropic-messages',
+];
 
 type SkillInput = string | { name?: string; content?: string };
 type McpConfig = Record<string, unknown>;
@@ -170,7 +174,10 @@ async function testProviderConnection(
     case 'anthropic-messages':
       return testAnthropicMessagesConnection(requestUrl, apiKey, model, signal);
     case 'openai-responses':
+    case 'openai-responses-to-anthropic-messages':
       return testOpenAIResponsesConnection(requestUrl, apiKey, model, signal);
+    case 'openai-chat-completions-to-anthropic-messages':
+      return testOpenAIChatCompletionsConnection(requestUrl, apiKey, model, signal);
     case 'gemini-generate-content':
       return testGeminiGenerateContentConnection(requestUrl, apiKey, signal);
     case 'openai-chat-completions':
@@ -282,8 +289,10 @@ function getConnectionTestUrl(
     case 'anthropic-messages':
       return getAnthropicMessagesUrl(apiBase);
     case 'openai-chat-completions':
+    case 'openai-chat-completions-to-anthropic-messages':
       return joinUrl(apiBase, '/chat/completions');
     case 'openai-responses':
+    case 'openai-responses-to-anthropic-messages':
       return joinUrl(apiBase, '/responses');
     case 'gemini-generate-content':
       return joinUrl(apiBase, `/models/${encodeURIComponent(model)}:generateContent`);
@@ -343,15 +352,18 @@ export function createPreset(
   const now = new Date().toISOString();
   const id = uuid();
   const workingDir = data.workingDir?.trim();
+  const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
+    ? data.runtimeKind
+    : 'open-agent-sdk';
+  const requestedModelProvider = normalizeModelProvider(data.modelProvider);
+  const presetRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
   const preset: AgentConfig = {
     id,
     name: data.name?.trim() || 'New Agent',
     role: data.role && VALID_ROLES.includes(data.role) ? data.role : 'executor',
     description: data.description || '',
-    runtimeKind: data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
-      ? data.runtimeKind
-      : 'open-agent-sdk',
-    modelProvider: data.modelProvider,
+    runtimeKind: presetRuntimeKind,
+    modelProvider: presetRuntimeKind === 'claude-code' ? requestedModelProvider : undefined,
     modelId: data.modelId || 'claude-sonnet-4-6',
     apiBase: data.apiBase || '',
     apiKey: data.apiKey || '',
@@ -391,13 +403,16 @@ export function updatePreset(
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
     ? data.runtimeKind
     : existing.runtimeKind || 'open-agent-sdk';
+  const requestedModelProvider = normalizeModelProvider(data.modelProvider);
+  const updatedRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
   const updated: AgentConfig = {
     ...existing,
     ...data,
     id: existing.id,
     role,
-    runtimeKind,
+    runtimeKind: updatedRuntimeKind,
     name: data.name?.trim() || existing.name || 'New Agent',
+    modelProvider: updatedRuntimeKind === 'claude-code' ? requestedModelProvider : undefined,
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     enabled: data.enabled ?? existing.enabled ?? true,
@@ -497,6 +512,14 @@ function getWorkspaceAgentDir(agentspaceDir: string, agentId: string): string {
 function normalizeMcpConfig(mcps?: AgentConfig['mcps']): McpConfig {
   if (!mcps) return {};
   return mcps;
+}
+
+function normalizeModelProvider(provider: AgentConfig['modelProvider'] | ''): AgentConfig['modelProvider'] {
+  return provider || undefined;
+}
+
+function isAnthropicBridgeProvider(provider: AgentConfig['modelProvider']): boolean {
+  return Boolean(provider && ANTHROPIC_BRIDGE_PROVIDERS.includes(provider));
 }
 
 function normalizeSkillNames(skills?: AgentConfig['skills'] | SkillInput[]): string[] {

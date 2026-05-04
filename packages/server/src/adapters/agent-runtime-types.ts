@@ -36,6 +36,7 @@ export interface AgentRuntimeConfig {
   model?: string;
   apiKey?: string;
   baseURL?: string;
+  adapterBaseURL?: string;
   permissionMode?: AgentOptions['permissionMode'];
 }
 

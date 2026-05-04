@@ -68,6 +68,14 @@ function makeContext(workspaceId: string): AgentContext {
   };
 }
 
+function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefined {
+  if (
+    provider === 'openai-responses-to-anthropic-messages'
+    || provider === 'openai-chat-completions-to-anthropic-messages'
+  ) return undefined;
+  return apiBase;
+}
+
 export function registerHandler(event: string, handler: EventHandler) {
   handlers.set(event, handler);
 }
@@ -260,7 +268,8 @@ async function runMentionedAgent(
       provider: preset.modelProvider,
       model: preset.modelId,
       apiKey: preset.apiKey,
-      baseURL: preset.apiBase,
+      baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
+      adapterBaseURL: preset.apiBase,
     });
     activeRun = {
       agentId: session.id,
@@ -608,7 +617,7 @@ function buildAgentMessageParts(input: {
   const lines = normalizeOutputLines(input.output);
   const finalTextRange = findFinalTextRange(lines);
   const finalText = finalTextRange
-    ? lines.slice(finalTextRange.start, finalTextRange.end + 1).join('\n').trim()
+    ? collapseRepeatedTextBlock(lines.slice(finalTextRange.start, finalTextRange.end + 1)).join('\n').trim()
     : '';
   const usage = extractUsage(lines);
   const parts: MessagePart[] = [];
@@ -683,6 +692,25 @@ function normalizeOutputLines(output: string[]): string[] {
     seenInitLines.add(line);
     return true;
   });
+}
+
+function collapseRepeatedTextBlock(lines: string[]): string[] {
+  let next = [...lines];
+
+  while (next.length > 1 && next.length % 2 === 0) {
+    const middle = next.length / 2;
+    const first = next.slice(0, middle);
+    const second = next.slice(middle);
+    if (!sameTextBlock(first, second)) break;
+    next = first;
+  }
+
+  return next;
+}
+
+function sameTextBlock(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  return normalizeMessageText(left.join('\n')) === normalizeMessageText(right.join('\n'));
 }
 
 function findFinalTextRange(lines: string[]): { start: number; end: number } | null {

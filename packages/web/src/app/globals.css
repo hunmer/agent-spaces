@@ -557,6 +557,13 @@
   display: none;
 }
 
+.suggestion-empty {
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
 .suggestion-header {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);

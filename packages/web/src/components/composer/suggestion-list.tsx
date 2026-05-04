@@ -74,7 +74,13 @@ export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>
       [props.items, selectedIndex],
     );
 
-    if (!props.items.length) return null;
+    if (!props.items.length) {
+      return (
+        <div className="suggestion-menu">
+          <div className="suggestion-empty">无匹配结果</div>
+        </div>
+      );
+    }
 
     return (
       <div className="suggestion-menu">
