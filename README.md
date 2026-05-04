@@ -2,6 +2,8 @@
 
 本地多 Agent 协同编程平台。创建工作空间、绑定代码目录，通过调度者、策划者、执行者、审核者四种 Agent 角色实现任务的自动分发、代码修改、审核与合并。
 
+![preview](screenshots/preview.jpg)
+
 ## 功能
 
 - **多 Agent 编排** — Scheduler → Planner → Executor → Reviewer 自动化链路，支持任务依赖调度
