@@ -6,6 +6,9 @@ interface TaskStore {
   loading: boolean;
 
   loadTasks: (workspaceId: string, issueId?: string) => Promise<void>;
+  createTask: (workspaceId: string, issueId: string, title: string, description: string) => Promise<Task>;
+  updateTask: (workspaceId: string, taskId: string, data: { title?: string; description?: string }) => Promise<void>;
+  deleteTask: (workspaceId: string, taskId: string) => Promise<void>;
   retryTask: (workspaceId: string, taskId: string) => Promise<void>;
   cancelTask: (workspaceId: string, taskId: string) => Promise<void>;
 
@@ -27,6 +30,32 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     } catch {
       set({ loading: false });
     }
+  },
+
+  createTask: async (workspaceId, issueId, title, description) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issueId, title, description }),
+    });
+    const task: Task = await res.json();
+    get().upsertTask(task);
+    return task;
+  },
+
+  updateTask: async (workspaceId, taskId, data) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const task: Task = await res.json();
+    get().upsertTask(task);
+  },
+
+  deleteTask: async (workspaceId, taskId) => {
+    await fetch(`/api/workspaces/${workspaceId}/tasks/${taskId}`, { method: 'DELETE' });
+    set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
   },
 
   retryTask: async (workspaceId, taskId) => {

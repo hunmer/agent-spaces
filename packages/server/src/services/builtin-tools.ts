@@ -83,12 +83,17 @@ function createOrUpdateBoundIssue(workspaceId: string, channel: Channel, input: 
 
   const title = typeof data.title === 'string' ? data.title.trim() : '';
   const description = typeof data.description === 'string' ? data.description.trim() : '';
-  if (title) issue.title = title;
-  if (description) issue.description = description;
-  issue.updatedAt = new Date().toISOString();
+  const nextTitle = title || issue.title;
+  const nextDescription = description || issue.description;
 
+  if (nextTitle === issue.title && nextDescription === issue.description) return issue;
+
+  issue.title = nextTitle;
+  issue.description = nextDescription;
   const updated = issueService.save(workspaceId, issue);
-  if (title) channelService.updateChannel(workspaceId, channel.id, { name: title, type: 'issue', issueId: issue.id });
+  if (title && title !== channel.name) {
+    channelService.updateChannel(workspaceId, channel.id, { name: title, type: 'issue', issueId: issue.id });
+  }
   return updated;
 }
 

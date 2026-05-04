@@ -34,6 +34,22 @@ export function create(
   return task;
 }
 
+export function update(
+  workspaceId: string,
+  taskId: string,
+  data: { title?: string; description?: string },
+): Task | null {
+  const task = getTask(workspaceId, taskId);
+  if (!task) return null;
+  if (task.status !== 'pending') return null;
+
+  if (data.title !== undefined) task.title = data.title;
+  if (data.description !== undefined) task.description = data.description;
+  task.updatedAt = new Date().toISOString();
+  updateTask(task);
+  return task;
+}
+
 export function updateStatus(
   workspaceId: string,
   taskId: string,
