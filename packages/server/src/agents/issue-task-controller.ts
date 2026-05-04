@@ -8,7 +8,7 @@ import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
 import { onExecutorComplete } from '../hooks/agent-hooks.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
-import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
+import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
 
@@ -56,6 +56,15 @@ export async function syncIssueTasksAfterPlanning(
     model: taskSyncPreset.modelId,
     phase: 'task_creator',
   });
+  const taskSyncTracker = createIssueAgentProgressTracker({
+    workspaceId,
+    issue,
+    progress,
+    agentSessionId: taskSyncAgent.id,
+    onOutput: (line) => {
+      ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: line });
+    },
+  });
   const runtime = createRuntimeForPreset(taskSyncPreset);
   const result = await runtime.execute(
     buildTaskSyncPrompt(issue, input),
@@ -67,17 +76,27 @@ export async function syncIssueTasksAfterPlanning(
       skills: [],
       configDir: agentService.getAgentConfigDir(workspaceId, taskSyncPreset),
       sandboxDirs: taskSyncPreset.sandboxDirs,
+      onEvent: taskSyncTracker.handleEvent,
     },
   );
 
-  for (const line of result.output) {
-    ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: line });
+  if (taskSyncTracker.output.length === 0) {
+    for (const line of result.output) {
+      taskSyncTracker.output.push(line);
+      ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: line });
+    }
   }
-  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, result.output, {
+  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, taskSyncTracker.output, {
     runtime: taskSyncPreset.runtimeKind,
     model: taskSyncPreset.modelId,
     duration: Date.now() - startTime,
     messageStatus: result.success ? 'completed' : 'error',
+    parts: taskSyncTracker.buildParts({
+      sessionId: taskSyncAgent.id,
+      model: taskSyncPreset.modelId,
+      success: result.success,
+      error: result.error,
+    }),
   });
 
   agentService.complete(workspaceId, taskSyncAgent.id, result.success ? undefined : result.error || result.summary);
@@ -178,12 +197,24 @@ export async function runIssueTask(
   agentService.assignTask(workspaceId, executor.id, taskId);
 
   const runtime = createRuntimeForPreset(executorPreset);
+  const executorWorkingDir = agentService.resolveWorkingDir(workspaceId, executorPreset);
   const startTime = Date.now();
   const progress = createIssueAgentProgress(workspaceId, issue, executorPreset, executor.id, {
     runtime: executorPreset.runtimeKind,
     model: executorPreset.modelId,
     taskId,
     phase: 'executor',
+  });
+  const executorTracker = createIssueAgentProgressTracker({
+    workspaceId,
+    issue,
+    progress,
+    agentSessionId: executor.id,
+    workspaceRoot: executorWorkingDir,
+    onOutput: (line) => {
+      ctx.broadcast('agent.output', { agentId: executor.id, data: line });
+      ctx.broadcast('task.output', { taskId, data: line });
+    },
   });
   ctx.broadcast('agent.output', { agentId: executor.id, data: `Executing task: ${runningTask.title}` });
   ctx.broadcast('agent.output', {
@@ -193,7 +224,7 @@ export async function runIssueTask(
 
   const result = await runtime.execute(
     buildExecutorPrompt(issue, runningTask),
-    agentService.resolveWorkingDir(workspaceId, executorPreset),
+    executorWorkingDir,
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(executorPreset.mcps),
@@ -201,18 +232,29 @@ export async function runIssueTask(
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, executorPreset), executorPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, executorPreset),
       sandboxDirs: runningTask.sandboxDirs ?? executorPreset.sandboxDirs,
+      onEvent: executorTracker.handleEvent,
     },
   );
 
-  for (const line of result.output) {
-    ctx.broadcast('agent.output', { agentId: executor.id, data: line });
-    ctx.broadcast('task.output', { taskId, data: line });
+  if (executorTracker.output.length === 0) {
+    for (const line of result.output) {
+      executorTracker.output.push(line);
+      ctx.broadcast('agent.output', { agentId: executor.id, data: line });
+      ctx.broadcast('task.output', { taskId, data: line });
+    }
   }
-  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, result.output, {
+  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, executorTracker.output, {
     runtime: executorPreset.runtimeKind,
     model: executorPreset.modelId,
     duration: Date.now() - startTime,
     messageStatus: result.success ? 'completed' : 'error',
+    parts: executorTracker.buildParts({
+      sessionId: executor.id,
+      workspaceRoot: executorWorkingDir,
+      model: executorPreset.modelId,
+      success: result.success,
+      error: result.error,
+    }),
   });
 
   if (!result.success) {

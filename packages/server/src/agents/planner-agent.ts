@@ -4,16 +4,13 @@
 
 import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
-import * as messageService from '../services/message.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentConfig } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import * as wsService from '../services/workspace.js';
 import * as channelService from '../services/channel.js';
-import { broadcastToWorkspace } from '../ws/connection-manager.js';
-import { createAgentMessagePartsTracker } from './agent-message-parts.js';
 import { syncIssueTasksAfterPlanning } from './issue-task-controller.js';
-import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
+import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
 
 export async function runPlanner(
@@ -57,28 +54,14 @@ export async function runPlanner(
     model: plannerPreset.modelId,
     phase: 'planner',
   });
-  const tracker = createAgentMessagePartsTracker({
+  const tracker = createIssueAgentProgressTracker({
     workspaceId,
-    channelId: plannedIssue.channelId,
-    messageId: progress.message.id,
+    issue: plannedIssue,
+    progress,
+    agentSessionId: planner.id,
     workspaceRoot: workspace?.boundDirs?.[0],
     onOutput: (line) => {
       ctx.broadcast('agent.output', { agentId: planner.id, data: line });
-      const live = messageService.updateMessage(workspaceId, plannedIssue.channelId, progress.message.id, {
-        content: tracker.output.join('\n') || progress.message.content,
-        status: 'streaming',
-        metadata: {
-          ...progress.message.metadata,
-          duration: Date.now() - startTime,
-        },
-        parts: tracker.buildParts({
-          sessionId: planner.id,
-          workspaceRoot: workspace?.boundDirs?.[0],
-          model: plannerPreset.modelId,
-          success: true,
-        }),
-      });
-      if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
     },
   });
   const planResult = await runtime.execute(

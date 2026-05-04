@@ -1,4 +1,5 @@
 import type { AgentConfig, Issue, MessagePart } from '@agent-spaces/shared';
+import { createAgentMessagePartsTracker, type AgentMessagePartsTracker } from './agent-message-parts.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as issueService from '../services/issue.js';
 import * as messageService from '../services/message.js';
@@ -7,6 +8,43 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 export interface IssueAgentProgress {
   message: ReturnType<typeof messageService.createMessage>;
   comment: NonNullable<ReturnType<typeof issueCommentService.createIssueComment>> | null;
+}
+
+export function createIssueAgentProgressTracker(input: {
+  workspaceId: string;
+  issue: Issue;
+  progress: IssueAgentProgress;
+  agentSessionId: string;
+  workspaceRoot?: string;
+  onOutput?: (line: string) => void;
+}): AgentMessagePartsTracker {
+  const startTime = Date.now();
+  let tracker: AgentMessagePartsTracker;
+  tracker = createAgentMessagePartsTracker({
+    workspaceId: input.workspaceId,
+    channelId: input.issue.channelId,
+    messageId: input.progress.message.id,
+    workspaceRoot: input.workspaceRoot,
+    onOutput: (line) => {
+      input.onOutput?.(line);
+      const live = messageService.updateMessage(input.workspaceId, input.issue.channelId, input.progress.message.id, {
+        content: tracker.output.join('\n') || input.progress.message.content,
+        status: 'streaming',
+        metadata: {
+          ...input.progress.message.metadata,
+          duration: Date.now() - startTime,
+        },
+        parts: tracker.buildParts({
+          sessionId: input.agentSessionId,
+          workspaceRoot: input.workspaceRoot,
+          model: input.progress.message.metadata?.model,
+          success: true,
+        }),
+      });
+      if (live) broadcastToWorkspace(input.workspaceId, 'channel.message.updated', live);
+    },
+  });
+  return tracker;
 }
 
 export function createIssueAgentProgress(

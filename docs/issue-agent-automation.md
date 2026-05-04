@@ -350,7 +350,11 @@ packages/server/src/agents/issue-agent-progress.ts
 
 1. 用完整 agent output 更新 channel message。
 2. 用完整 agent output 更新 issue comment。
-3. 写入 metadata：
+3. 对支持 runtime events 的 runtime，将 tool use/tool result 转成 channel message `parts`：
+   - chain part 中显示 toolcall 历史。
+   - tool detail 写入 tool detail store。
+   - issue comment 正文也保留可读的 tool line。
+4. 写入 metadata：
    - `agentSessionId`
    - `runtime`
    - `model`
@@ -358,7 +362,7 @@ packages/server/src/agents/issue-agent-progress.ts
 - `duration`
 - `taskId`
 - `phase`
-4. 广播：
+5. 广播：
    - `channel.message.updated`
    - `issue.updated`
 

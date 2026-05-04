@@ -10,7 +10,7 @@ import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentContext } from './agent-context.js';
 import type { AgentConfig, TaskResult } from '@agent-spaces/shared';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
-import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
+import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 
 export async function runReviewer(
   workspaceId: string,
@@ -59,6 +59,17 @@ export async function runReviewer(
     taskId,
     phase: 'reviewer',
   });
+  const reviewerWorkingDir = agentService.resolveWorkingDir(workspaceId, reviewerPreset);
+  const reviewerTracker = createIssueAgentProgressTracker({
+    workspaceId,
+    issue,
+    progress,
+    agentSessionId: reviewer.id,
+    workspaceRoot: reviewerWorkingDir,
+    onOutput: (line) => {
+      ctx.broadcast('agent.output', { agentId: reviewer.id, data: line });
+    },
+  });
 
   // Use runtime to review.
   const runtime = createAgentRuntime({
@@ -70,7 +81,7 @@ export async function runReviewer(
   });
   const reviewResult = await runtime.execute(
     buildReviewerPrompt(issue, taskId, taskResult),
-    agentService.resolveWorkingDir(workspaceId, reviewerPreset),
+    reviewerWorkingDir,
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(reviewerPreset.mcps),
@@ -78,17 +89,28 @@ export async function runReviewer(
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, reviewerPreset), reviewerPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, reviewerPreset),
       sandboxDirs: reviewerPreset.sandboxDirs,
+      onEvent: reviewerTracker.handleEvent,
     },
   );
 
-  for (const line of reviewResult.output) {
-    ctx.broadcast('agent.output', { agentId: reviewer.id, data: line });
+  if (reviewerTracker.output.length === 0) {
+    for (const line of reviewResult.output) {
+      reviewerTracker.output.push(line);
+      ctx.broadcast('agent.output', { agentId: reviewer.id, data: line });
+    }
   }
-  completeIssueAgentProgress(workspaceId, issue, progress, reviewResult.summary, reviewResult.output, {
+  completeIssueAgentProgress(workspaceId, issue, progress, reviewResult.summary, reviewerTracker.output, {
     runtime: reviewerPreset.runtimeKind,
     model: reviewerPreset.modelId,
     duration: Date.now() - startTime,
     messageStatus: reviewResult.success ? 'completed' : 'error',
+    parts: reviewerTracker.buildParts({
+      sessionId: reviewer.id,
+      workspaceRoot: reviewerWorkingDir,
+      model: reviewerPreset.modelId,
+      success: reviewResult.success,
+      error: reviewResult.error,
+    }),
   });
 
   // Mock: always approve for now
