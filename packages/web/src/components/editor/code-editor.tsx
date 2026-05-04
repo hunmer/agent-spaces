@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import "@/lib/monaco-loader";
 import { useEditorStore } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 

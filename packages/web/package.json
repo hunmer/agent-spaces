@@ -6,7 +6,8 @@
     "dev": "node server.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node -e \"const fs=require('fs'),p=require('path');const src=p.join(__dirname,'node_modules/monaco-editor/min/vs');const dst=p.join(__dirname,'public/monaco/vs');if(fs.existsSync(src)){fs.rmSync(dst,{recursive:true,force:true});fs.cpSync(src,dst,{recursive:true})}\""
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -28,6 +29,7 @@
     "flexlayout-react": "^0.9.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
+    "monaco-editor": "^0.55.1",
     "next": "16.2.4",
     "next-themes": "^0.4.6",
     "react": "19.2.4",

@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import "@/lib/monaco-loader"
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),

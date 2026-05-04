@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
-import { FileCode, RotateCcw, RefreshCw, Trash2, ChevronDown, GitBranch } from "lucide-react";
+import dynamic from "next/dynamic";
+import "@/lib/monaco-loader";
+import { useEffect, useCallback, useState, useRef } from "react";
+import { FileCode, FileText, RotateCcw, RefreshCw, Trash2, ChevronDown, GitBranch, EyeOff } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { DiffViewer } from "./diff-viewer";
 import { GitNotInitialized } from "./git-not-initialized";
+
+const MonacoEditor = dynamic(
+  () => import("@monaco-editor/react").then((mod) => mod.default),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-32 text-muted-foreground text-xs">Loading editor...</div> }
+);
 
 interface GitPanelProps {
   workspaceId: string;
@@ -33,6 +42,15 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
+
+  // gitignore dialog
+  const [gitignoreOpen, setGitignoreOpen] = useState(false);
+  const [gitignoreContent, setGitignoreContent] = useState("");
+  const [gitignoreSaving, setGitignoreSaving] = useState(false);
+
+  // context menu
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+  const ctxMenuRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => {
     loadStatus(workspaceId);
@@ -100,6 +118,64 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
     },
     [handleCommit],
   );
+
+  const openGitignore = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
+      const data = await res.json();
+      setGitignoreContent(data.content ?? "");
+    } catch {
+      setGitignoreContent("");
+    }
+    setGitignoreOpen(true);
+  }, [workspaceId]);
+
+  const saveGitignore = useCallback(async () => {
+    setGitignoreSaving(true);
+    try {
+      await fetch(`/api/workspaces/${workspaceId}/files/content`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: ".gitignore", content: gitignoreContent }),
+      });
+      setGitignoreOpen(false);
+      refresh();
+    } finally {
+      setGitignoreSaving(false);
+    }
+  }, [workspaceId, gitignoreContent, refresh]);
+
+  const addToGitignore = useCallback(async (pattern: string) => {
+    setCtxMenu(null);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
+      const data = await res.json();
+      const existing: string = data.content ?? "";
+      const lines = existing.split("\n").filter(Boolean);
+      if (lines.includes(pattern)) return;
+      const next = existing && !existing.endsWith("\n") ? existing + "\n" + pattern + "\n" : existing + pattern + "\n";
+      await fetch(`/api/workspaces/${workspaceId}/files/content`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: ".gitignore", content: next }),
+      });
+      refresh();
+    } catch { /* ignore */ }
+  }, [workspaceId, refresh]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ x: e.clientX, y: e.clientY, path });
+  }, []);
+
+  // close context menu on outside click
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [ctxMenu]);
 
   if (notGitRepo) {
     return (
@@ -170,6 +246,13 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           >
             <RefreshCw size={13} />
           </button>
+          <button
+            onClick={openGitignore}
+            className="p-1 text-muted-foreground hover:text-foreground"
+            title="Edit .gitignore"
+          >
+            <FileText size={13} />
+          </button>
         </div>
 
         {/* Click outside to close branch dropdown */}
@@ -186,6 +269,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
             <div
               key={f.path}
               onClick={() => handleFileClick(f.path)}
+              onContextMenu={(e) => handleContextMenu(e, f.path)}
               className={`group w-full text-left px-2 py-1 text-xs font-mono flex items-center gap-1.5 hover:bg-accent cursor-pointer ${
                 selectedFile === f.path ? "bg-accent" : ""
               }`}
@@ -254,6 +338,69 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           </div>
         )}
       </div>
+
+      {/* .gitignore dialog */}
+      <Dialog open={gitignoreOpen} onOpenChange={setGitignoreOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>.gitignore</DialogTitle>
+          </DialogHeader>
+          <div className="h-80 border rounded overflow-hidden">
+            <MonacoEditor
+              height="100%"
+              language="plaintext"
+              value={gitignoreContent}
+              onChange={(v) => setGitignoreContent(v ?? "")}
+              options={{
+                fontSize: 13,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                padding: { top: 8 },
+                lineNumbers: "on",
+              }}
+              theme="vs-dark"
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" size="sm" />}>取消</DialogClose>
+            <Button size="sm" onClick={saveGitignore} disabled={gitignoreSaving}>
+              {gitignoreSaving ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div
+          ref={ctxMenuRef}
+          className="fixed z-[100] bg-popover border rounded-lg shadow-md py-1 text-xs min-w-40 ring-1 ring-foreground/10"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        >
+          <button
+            className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left"
+            onClick={() => addToGitignore(ctxMenu.path.split("/").pop()!)}
+          >
+            <EyeOff size={13} />
+            <span>忽略此文件</span>
+            <span className="ml-auto text-muted-foreground truncate max-w-24">{ctxMenu.path.split("/").pop()}</span>
+          </button>
+          <button
+            className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left"
+            onClick={() => {
+              const idx = ctxMenu.path.lastIndexOf("/");
+              const dir = idx >= 0 ? ctxMenu.path.substring(0, idx + 1) : "";
+              if (dir) addToGitignore(dir);
+            }}
+          >
+            <EyeOff size={13} />
+            <span>忽略文件路径</span>
+            <span className="ml-auto text-muted-foreground truncate max-w-24">
+              {(() => { const i = ctxMenu.path.lastIndexOf("/"); return i >= 0 ? ctxMenu.path.substring(0, i + 1) : ctxMenu.path; })()}
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
