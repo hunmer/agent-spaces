@@ -24,16 +24,16 @@ const STATUS_LABEL: Record<IssueStatus, string> = {
   error: 'Error',
 };
 
-const STATUS_COLOR: Record<IssueStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  draft: 'secondary',
-  planned: 'outline',
-  in_progress: 'default',
-  review_pending: 'outline',
-  changes_requested: 'destructive',
-  approved: 'default',
-  completed: 'secondary',
-  archived: 'outline',
-  error: 'destructive',
+const STATUS_STYLE: Record<IssueStatus, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  planned: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  in_progress: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  review_pending: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  changes_requested: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+  approved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  completed: 'bg-green-600/10 text-green-600 dark:text-green-400',
+  archived: 'bg-muted text-muted-foreground',
+  error: 'bg-destructive/10 text-destructive',
 };
 
 const GROUP_ORDER: IssueStatus[] = [
@@ -116,7 +116,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
                       {issue.tasks.length} task{issue.tasks.length !== 1 ? 's' : ''}
                     </div>
                   </div>
-                  <Badge variant={STATUS_COLOR[issue.status]} className="text-[10px] shrink-0">
+                  <Badge variant="outline" className={`text-[10px] shrink-0 border-none ${STATUS_STYLE[issue.status]}`}>
                     {STATUS_LABEL[issue.status]}
                   </Badge>
                 </ContextMenuTrigger>

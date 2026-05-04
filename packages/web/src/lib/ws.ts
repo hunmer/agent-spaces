@@ -1,4 +1,5 @@
 import type { ServerEventName, ClientEventName, WSEvent } from '@agent-spaces/shared';
+import { getActiveServerUrl } from './server';
 
 type EventHandler = (data: unknown) => void;
 
@@ -9,8 +10,15 @@ export class WorkspaceWS {
   private url: string;
 
   constructor(readonly workspaceId: string) {
-    const port = process.env.NEXT_PUBLIC_WS_PORT || '3100';
-    this.url = `ws://localhost:${port}/ws?workspaceId=${workspaceId}`;
+    const serverUrl = getActiveServerUrl();
+    if (serverUrl) {
+      const wsProtocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
+      const wsBase = serverUrl.replace(/^https?/, wsProtocol);
+      this.url = `${wsBase}/ws?workspaceId=${workspaceId}`;
+    } else {
+      const port = process.env.NEXT_PUBLIC_WS_PORT || '3100';
+      this.url = `ws://localhost:${port}/ws?workspaceId=${workspaceId}`;
+    }
   }
 
   connect() {

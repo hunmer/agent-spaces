@@ -31,7 +31,7 @@ import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
-import { TeamSwitcher } from "@/components/sidebar/team-switcher";
+import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import type { Workspace } from "@agent-spaces/shared";
 
@@ -57,12 +57,6 @@ const sampleNotifications = [
     text: "New user signed up.",
     time: "2h ago",
   },
-];
-
-const teams = [
-  { id: "1", name: "Alpha Inc.", logo: Logo, plan: "Free" },
-  { id: "2", name: "Beta Corp.", logo: Logo, plan: "Free" },
-  { id: "3", name: "Gamma Tech", logo: Logo, plan: "Free" },
 ];
 
 export function DashboardSidebar() {
@@ -220,7 +214,7 @@ export function DashboardSidebar() {
         <DashboardNavigation routes={dashboardRoutes} />
       </SidebarContent>
       <SidebarFooter className="mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <TeamSwitcher teams={teams} />
+        <ServerSwitcher />
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
