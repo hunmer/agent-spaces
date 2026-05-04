@@ -335,7 +335,7 @@ async function runMentionedAgent(
             if (Array.isArray(input.todos)) {
               const todos = input.todos.map((t: any) => ({
                 id: String(t.id ?? ''),
-                subject: String(t.subject ?? ''),
+                subject: String(t.subject ?? t.title ?? ''),
                 description: t.description ? String(t.description) : undefined,
                 status: (['pending', 'in_progress', 'completed'].includes(t.status) ? t.status : 'pending') as 'pending' | 'in_progress' | 'completed',
                 activeForm: t.activeForm ? String(t.activeForm) : undefined,

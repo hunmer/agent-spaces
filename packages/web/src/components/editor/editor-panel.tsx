@@ -54,17 +54,19 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
             No files found
           </div>
         )}
-        <FileTree
-          selectedPath={selectedPath}
-          onFileSelect={(path) => {
-            setSelectedPath(path);
-            openFile(workspaceId, path);
-          }}
-          workspaceId={workspaceId}
-          onDelete={handleDelete}
-        >
-          <FileTreeNodes nodes={tree} />
-        </FileTree>
+        {tree.length > 0 && (
+          <FileTree
+            selectedPath={selectedPath}
+            onFileSelect={(path) => {
+              setSelectedPath(path);
+              openFile(workspaceId, path);
+            }}
+            workspaceId={workspaceId}
+            onDelete={handleDelete}
+          >
+            <FileTreeNodes nodes={tree} />
+          </FileTree>
+        )}
       </div>
     </div>
   );

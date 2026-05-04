@@ -10,9 +10,7 @@ interface GitGraphPanelProps {
 }
 
 export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
-  const { log, status, loading, error, loadLog, loadStatus } = useGitStore();
-
-  const isNotGitRepo = !loading && !!error && error.includes("not a git repository");
+  const { log, status, notGitRepo, loadLog, loadStatus } = useGitStore();
 
   const refresh = useCallback(() => {
     loadLog(workspaceId);
@@ -23,7 +21,7 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
     refresh();
   }, [refresh]);
 
-  if (isNotGitRepo) {
+  if (notGitRepo) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center px-2 py-1.5 border-b">

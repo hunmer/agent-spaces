@@ -9,9 +9,7 @@ interface GitCommitsPanelProps {
 }
 
 export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
-  const { log, loading, error, loadLog } = useGitStore();
-
-  const isNotGitRepo = !loading && !!error && error.includes("not a git repository");
+  const { log, loading, notGitRepo, loadLog } = useGitStore();
 
   const refresh = useCallback(() => {
     loadLog(workspaceId);
@@ -21,7 +19,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
     refresh();
   }, [refresh]);
 
-  if (isNotGitRepo) {
+  if (notGitRepo) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center px-2 py-1.5 border-b">

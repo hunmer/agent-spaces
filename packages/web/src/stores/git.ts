@@ -9,6 +9,7 @@ interface GitState {
   branches: GitBranch[];
   loading: boolean;
   error: string | null;
+  notGitRepo: boolean;
 
   loadStatus: (workspaceId: string) => Promise<void>;
   loadDiffs: (workspaceId: string, filePath?: string) => Promise<void>;
@@ -22,6 +23,12 @@ interface GitState {
   selectFile: (path: string | null) => void;
 }
 
+const GIT_NOT_REPO_PATTERN = /not a git repository/i;
+
+function isNotGitRepoError(err: unknown): boolean {
+  return err instanceof Error && GIT_NOT_REPO_PATTERN.test(err.message);
+}
+
 export const useGitStore = create<GitState>((set) => ({
   status: null,
   diffs: [],
@@ -30,15 +37,16 @@ export const useGitStore = create<GitState>((set) => ({
   branches: [],
   loading: false,
   error: null,
+  notGitRepo: false,
 
   loadStatus: async (workspaceId) => {
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/git/status`);
       if (!res.ok) throw new Error(await res.text());
       const data: GitStatusResult = await res.json();
-      set({ status: data });
+      set({ status: data, notGitRepo: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -51,9 +59,9 @@ export const useGitStore = create<GitState>((set) => ({
       const res = await fetch(url);
       if (!res.ok) throw new Error(await res.text());
       const data: GitDiffResult[] = await res.json();
-      set({ diffs: data, loading: false });
+      set({ diffs: data, loading: false, notGitRepo: false });
     } catch (err: any) {
-      set({ error: err.message, loading: false });
+      set({ error: err.message, loading: false, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -62,9 +70,9 @@ export const useGitStore = create<GitState>((set) => ({
       const res = await fetch(`/api/workspaces/${workspaceId}/git/log`);
       if (!res.ok) throw new Error(await res.text());
       const data: GitLogEntry[] = await res.json();
-      set({ log: data });
+      set({ log: data, notGitRepo: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -73,9 +81,9 @@ export const useGitStore = create<GitState>((set) => ({
       const res = await fetch(`/api/workspaces/${workspaceId}/git/branches`);
       if (!res.ok) throw new Error(await res.text());
       const data: GitBranch[] = await res.json();
-      set({ branches: data });
+      set({ branches: data, notGitRepo: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -83,7 +91,7 @@ export const useGitStore = create<GitState>((set) => ({
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/git/init`, { method: 'POST' });
       if (!res.ok) throw new Error(await res.text());
-      set({ error: null });
+      set({ error: null, notGitRepo: false });
     } catch (err: any) {
       set({ error: err.message });
     }

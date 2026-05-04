@@ -51,6 +51,11 @@ import {
 } from "./attachments";
 
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills">;
+type DisplayTodoItem = TodoItem & { title?: string };
+
+function getTodoTitle(todo: DisplayTodoItem) {
+  return todo.subject || todo.title || "Untitled todo";
+}
 
 interface ChatInputProps {
   channelName: string;
@@ -638,7 +643,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                       <IconCircleDashed size={14} className="text-muted-foreground shrink-0" />
                     )}
                     <span className={cn("truncate", todo.status === 'completed' && "line-through text-muted-foreground")}>
-                      {todo.subject}
+                      {getTodoTitle(todo)}
                     </span>
                   </DropdownMenuItem>
                 ))}

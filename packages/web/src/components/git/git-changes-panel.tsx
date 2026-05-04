@@ -28,13 +28,11 @@ const statusLabels: Record<string, string> = {
 };
 
 export function GitChangesPanel({ workspaceId }: GitPanelProps) {
-  const { status, diffs, selectedFile, loading, error, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile } = useGitStore();
+  const { status, diffs, selectedFile, loading, notGitRepo, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
-
-  const isNotGitRepo = !loading && !!error && error.includes("not a git repository");
 
   const refresh = useCallback(() => {
     loadStatus(workspaceId);
@@ -103,7 +101,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
     [handleCommit],
   );
 
-  if (isNotGitRepo) {
+  if (notGitRepo) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center px-2 py-1.5 border-b">
