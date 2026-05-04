@@ -47,7 +47,7 @@ export function updateIssueComment(
   workspaceId: string,
   issueId: string,
   commentId: string,
-  data: Partial<Pick<IssueComment, 'content'>>,
+  data: Partial<Pick<IssueComment, 'content' | 'metadata'>>,
 ): IssueComment | null {
   const comments = listIssueComments(workspaceId, issueId);
   const index = comments.findIndex((comment) => comment.id === commentId);

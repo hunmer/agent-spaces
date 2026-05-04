@@ -8,12 +8,13 @@ import * as issueCommentService from '../services/issue-comment.js';
 import * as messageService from '../services/message.js';
 import * as taskService from '../services/task.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
-import type { AgentConfig } from '@agent-spaces/shared';
+import type { AgentConfig, MessagePart } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import { onExecutorComplete } from '../hooks/agent-hooks.js';
 import * as wsService from '../services/workspace.js';
 import * as channelService from '../services/channel.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import { createAgentMessagePartsTracker } from './agent-message-parts.js';
 
 export async function runPlanner(
   workspaceId: string,
@@ -49,6 +50,35 @@ export async function runPlanner(
   // Use runtime to plan.
   const runtime = createRuntimeForPreset(plannerPreset);
   const workspace = wsService.getById(workspaceId);
+  const startTime = Date.now();
+  const progress = createIssueAgentProgress(workspaceId, plannedIssue, plannerPreset, planner.id, {
+    runtime: plannerPreset.runtimeKind,
+    model: plannerPreset.modelId,
+  });
+  const tracker = createAgentMessagePartsTracker({
+    workspaceId,
+    channelId: plannedIssue.channelId,
+    messageId: progress.message.id,
+    workspaceRoot: workspace?.boundDirs?.[0],
+    onOutput: (line) => {
+      ctx.broadcast('agent.output', { agentId: planner.id, data: line });
+      const live = messageService.updateMessage(workspaceId, plannedIssue.channelId, progress.message.id, {
+        content: tracker.output.join('\n') || progress.message.content,
+        status: 'streaming',
+        metadata: {
+          ...progress.message.metadata,
+          duration: Date.now() - startTime,
+        },
+        parts: tracker.buildParts({
+          sessionId: planner.id,
+          workspaceRoot: workspace?.boundDirs?.[0],
+          model: plannerPreset.modelId,
+          success: true,
+        }),
+      });
+      if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
+    },
+  });
   const planResult = await runtime.execute(
     buildPlannerPrompt(plannedIssue),
     agentService.resolveWorkingDir(workspaceId, plannerPreset),
@@ -58,16 +88,28 @@ export async function runPlanner(
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, plannerPreset), plannerPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, plannerPreset),
       sandboxDirs: plannerPreset.sandboxDirs,
+      onEvent: tracker.handleEvent,
     },
   );
 
-  for (const line of planResult.output) {
-    ctx.broadcast('agent.output', { agentId: planner.id, data: line });
+  if (tracker.output.length === 0) {
+    for (const line of planResult.output) {
+      tracker.output.push(line);
+      ctx.broadcast('agent.output', { agentId: planner.id, data: line });
+    }
   }
-  persistIssueAgentMessage(workspaceId, plannedIssue, plannerPreset.id, 'planner', planResult.summary, planResult.output, {
+  completeIssueAgentProgress(workspaceId, plannedIssue, progress, planResult.summary, tracker.output, {
     runtime: plannerPreset.runtimeKind,
     model: plannerPreset.modelId,
-    workspaceRoot: workspace?.boundDirs?.[0],
+    duration: Date.now() - startTime,
+    messageStatus: planResult.success ? 'completed' : 'error',
+    parts: tracker.buildParts({
+      sessionId: planner.id,
+      workspaceRoot: workspace?.boundDirs?.[0],
+      model: plannerPreset.modelId,
+      success: planResult.success,
+      error: planResult.error,
+    }),
   });
 
   // Decompose into a single task covering the issue.
@@ -132,45 +174,99 @@ function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.ge
   ].join('\n');
 }
 
-function persistIssueAgentMessage(
+function createIssueAgentProgress(
   workspaceId: string,
   issue: NonNullable<ReturnType<typeof issueService.getById>>,
-  senderId: string,
-  senderRole: string,
-  summary: string,
-  output: string[],
-  metadata: { runtime?: string; model?: string; workspaceRoot?: string },
-): void {
-  const content = output.join('\n').trim() || summary;
-  if (!content.trim()) return;
-
+  preset: AgentConfig,
+  agentSessionId: string,
+  metadata: { runtime?: string; model?: string },
+): {
+  message: ReturnType<typeof messageService.createMessage>;
+  comment: NonNullable<ReturnType<typeof issueCommentService.createIssueComment>> | null;
+} {
+  const content = `${preset.name || preset.role} is processing...`;
   const message = messageService.createMessage(workspaceId, issue.channelId, {
-    senderId,
-    senderRole,
+    senderId: preset.id,
+    senderRole: preset.role,
     content,
     type: 'text',
-    status: 'completed',
+    status: 'streaming',
     metadata: {
+      agentSessionId,
       runtime: metadata.runtime,
       model: metadata.model,
-      summary,
+      summary: content,
+      duration: 0,
     },
   });
   broadcastToWorkspace(workspaceId, 'channel.message', message);
 
   const comment = issueCommentService.createIssueComment(workspaceId, issue.id, {
-    senderId,
-    senderRole,
-    content: summary || content,
+    senderId: preset.id,
+    senderRole: preset.role,
+    content,
     source: 'agent_progress',
     metadata: {
       channelId: issue.channelId,
       messageId: message.id,
+      agentSessionId,
+      runtime: metadata.runtime,
+      model: metadata.model,
+      summary: content,
+      duration: 0,
+    },
+  });
+  if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
+
+  return { message, comment };
+}
+
+function completeIssueAgentProgress(
+  workspaceId: string,
+  issue: NonNullable<ReturnType<typeof issueService.getById>>,
+  progress: ReturnType<typeof createIssueAgentProgress>,
+  summary: string,
+  output: string[],
+  metadata: {
+    runtime?: string;
+    model?: string;
+    duration: number;
+    messageStatus: 'completed' | 'error';
+    parts: MessagePart[];
+  },
+): void {
+  const content = output.join('\n').trim() || summary;
+  if (!content.trim()) return;
+
+  const message = messageService.updateMessage(workspaceId, issue.channelId, progress.message.id, {
+    content,
+    type: 'text',
+    status: metadata.messageStatus,
+    metadata: {
+      ...progress.message.metadata,
       runtime: metadata.runtime,
       model: metadata.model,
       summary,
+      duration: metadata.duration,
     },
+    parts: metadata.parts,
   });
+  if (message) broadcastToWorkspace(workspaceId, 'channel.message.updated', message);
+
+  const comment = progress.comment
+    ? issueCommentService.updateIssueComment(workspaceId, issue.id, progress.comment.id, {
+    content: summary || content,
+    metadata: {
+      ...progress.comment.metadata,
+      channelId: issue.channelId,
+      messageId: progress.message.id,
+      runtime: metadata.runtime,
+      model: metadata.model,
+      summary,
+      duration: metadata.duration,
+    },
+  })
+    : null;
   if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
 }
 

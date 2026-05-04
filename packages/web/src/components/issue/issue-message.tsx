@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Pencil, Copy, Trash2, Check } from 'lucide-react';
+import { Pencil, Copy, Trash2, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
+import { useChannelStore } from '@/stores/channel';
 import type { IssueComment } from '@agent-spaces/shared';
 
 interface IssueMessageProps {
@@ -23,6 +24,10 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
   const agents = useAgentStore((s) => s.agents);
   const ensure = useAgentStore((s) => s.ensure);
   const agent = !isUser ? agents.find((a) => a.id === comment.senderId) : undefined;
+  const setActiveChannel = useChannelStore((s) => s.setActiveChannel);
+  const loadMessages = useChannelStore((s) => s.loadMessages);
+  const linkedChannelId = comment.metadata?.channelId;
+  const linkedMessageId = comment.metadata?.messageId;
 
   useEffect(() => {
     if (!isUser && workspaceId) ensure(workspaceId);
@@ -42,6 +47,18 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
     await navigator.clipboard.writeText(comment.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const handleOpenMessage = async () => {
+    if (!linkedChannelId || !linkedMessageId) return;
+    setActiveChannel(linkedChannelId);
+    await loadMessages(workspaceId, linkedChannelId);
+    window.setTimeout(() => {
+      document.getElementById(`msg-${linkedMessageId}`)?.scrollIntoView({
+        block: 'center',
+        behavior: 'smooth',
+      });
+    }, 80);
   };
 
   const handleSave = () => {
@@ -86,6 +103,17 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
             <span className="text-[10px] text-muted-foreground">
               {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
+            {linkedChannelId && linkedMessageId ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 gap-1 px-1.5 text-[10px] text-muted-foreground"
+                onClick={handleOpenMessage}
+              >
+                <ExternalLink className="size-3" />
+                Open message
+              </Button>
+            ) : null}
           </div>
           {editing ? (
             <textarea

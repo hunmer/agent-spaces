@@ -36,6 +36,13 @@ const tabIcons: Record<string, React.ReactNode> = {
   "project-settings": <Settings2 size={16} />,
 };
 
+// 右侧 tab → 左侧 tab 同步映射
+const rightToLeftTabMap: Record<string, string> = {
+  "code-editor": "editor",
+  "chat": "channel-list",
+  "issue-detail": "issue-list",
+};
+
 const defaultJson: IJsonModel = {
   global: {
     tabSetEnableTabStrip: true,
@@ -63,10 +70,10 @@ const defaultJson: IJsonModel = {
         type: "tabset",
         weight: 0.25,
         children: [
-          { type: "tab", name: "Settings", component: "project-settings" },
-          { type: "tab", name: "Channels", component: "channel-list" },
-          { type: "tab", name: "Issues", component: "issue-list" },
-          { type: "tab", name: "Editor", component: "editor" },
+          { type: "tab", name: "Settings", component: "project-settings", id: "project-settings" },
+          { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
+          { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
+          { type: "tab", name: "Editor", component: "editor", id: "editor" },
         ],
       },
       {
@@ -198,6 +205,17 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       const node = _model.getNodeById(action.data.tabNode);
       if (!node || !(node instanceof TabNode)) return;
       const comp = node.getComponent();
+
+      // 右侧 tab 切换时，同步切换左侧对应 tab
+      const leftTabId = rightToLeftTabMap[comp ?? ""];
+      if (leftTabId) {
+        const leftNode = _model.getNodeById(leftTabId);
+        if (leftNode && leftNode instanceof TabNode) {
+          _model.doAction(Actions.selectTab(leftNode.getId()));
+        }
+      }
+
+      // Git 面板数据加载
       const git = useGitStore.getState();
       if (comp === "git-changes") {
         git.loadStatus(workspaceId);
