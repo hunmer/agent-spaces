@@ -229,7 +229,7 @@ async function runMentionedAgent(
   const functionTools = createIssueFunctionTools(workspaceId, channel, {
     senderId: preset.id,
     senderRole: preset.role,
-  });
+  }, preset.tools);
   const startTime = Date.now();
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)

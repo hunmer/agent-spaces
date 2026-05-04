@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { AgentConfig, LLMModel, LLMProvider } from "@agent-spaces/shared";
+import {
+  BUILT_IN_AGENT_TOOLS,
+  type AgentConfig,
+  type BuiltInAgentToolName,
+  type LLMModel,
+  type LLMProvider,
+} from "@agent-spaces/shared";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { useAgentStore } from "@/stores/agent";
 import {
@@ -55,6 +61,7 @@ type AgentPreset = Omit<AgentConfig, "mcps" | "skills" | "modelProvider"> & {
   workingDir: string;
   mcps: McpDraft;
   skills: SkillDraft[];
+  tools: BuiltInAgentToolName[];
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
@@ -97,6 +104,7 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "codex", label: "Codex" },
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
+const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = BUILT_IN_AGENT_TOOLS.map((tool) => tool.name);
 const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
   "openai-chat-completions-to-anthropic-messages",
@@ -126,6 +134,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     workingDir: "",
     mcps: defaultMcpConfig([]),
     skills: defaultSkills(["planning", "task-split"]),
+    tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
     temperature: 0.3,
@@ -145,6 +154,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     workingDir: "",
     mcps: defaultMcpConfig([]),
     skills: defaultSkills(["refactoring", "tdd"]),
+    tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是策划者 Agent。负责将复杂任务分解为可执行的子任务，制定详细的实施计划，识别潜在风险和依赖关系。",
     temperature: 0.5,
@@ -164,6 +174,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     workingDir: "",
     mcps: defaultMcpConfig([]),
     skills: defaultSkills(["coding", "debugging", "testing"]),
+    tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是执行者 Agent。根据计划编写高质量的代码，遵循项目编码规范，编写必要的测试。完成后提交审核。",
     temperature: 0.2,
@@ -183,6 +194,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     workingDir: "",
     mcps: defaultMcpConfig([]),
     skills: defaultSkills(["code-review", "security-audit"]),
+    tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
     temperature: 0.2,
@@ -202,6 +214,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     workingDir: "",
     mcps: {},
     skills: [],
+    tools: DEFAULT_AGENT_TOOLS,
     systemPrompt: "",
     temperature: 0.3,
     maxTokens: 4096,
@@ -223,11 +236,18 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     workingDir: agent.workingDir || "",
     mcps: normalizeMcpDraft(agent.mcps),
     skills: normalizeSkillDrafts(agent.skills),
+    tools: normalizeToolDrafts(agent.tools),
     systemPrompt: agent.systemPrompt || "",
     temperature: agent.temperature ?? 0.3,
     maxTokens: agent.maxTokens ?? 4096,
     enabled: agent.enabled ?? true,
   };
+}
+
+function normalizeToolDrafts(tools: AgentConfig["tools"] | undefined): BuiltInAgentToolName[] {
+  if (!Array.isArray(tools)) return DEFAULT_AGENT_TOOLS;
+  const valid = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  return tools.filter((tool): tool is BuiltInAgentToolName => valid.has(tool));
 }
 
 function normalizeMcpDraft(mcps: AgentConfig["mcps"] | undefined): McpDraft {
@@ -262,6 +282,7 @@ function newAgentDraft(role: AgentRole): AgentPreset {
     ...ROLE_TEMPLATES[role],
     mcps: structuredClone(ROLE_TEMPLATES[role].mcps),
     skills: ROLE_TEMPLATES[role].skills.map((skill) => ({ ...skill })),
+    tools: [...ROLE_TEMPLATES[role].tools],
   };
 }
 
@@ -280,6 +301,7 @@ function newEmptyAgent(): AgentPreset {
     workingDir: "",
     mcps: {},
     skills: [],
+    tools: DEFAULT_AGENT_TOOLS,
     systemPrompt: "",
     temperature: 0.3,
     maxTokens: 4096,
@@ -733,6 +755,16 @@ function AgentDetail({
     onAddSkillFiles(next);
   };
 
+  const toggleTool = (toolName: BuiltInAgentToolName) => {
+    const selected = new Set(agent.tools);
+    if (selected.has(toolName)) {
+      selected.delete(toolName);
+    } else {
+      selected.add(toolName);
+    }
+    onChange("tools", BUILT_IN_AGENT_TOOLS.map((tool) => tool.name).filter((name) => selected.has(name)));
+  };
+
   return (
     <div className="flex flex-col gap-5 p-5">
       {/* Basic Info */}
@@ -839,6 +871,29 @@ function AgentDetail({
         {mcpError && (
           <div className="text-xs text-destructive">{mcpError}</div>
         )}
+      </Section>
+
+      {/* Tools */}
+      <Section icon={<Wrench className="size-3.5" />} title="Tools">
+        <div className="grid gap-2">
+          {BUILT_IN_AGENT_TOOLS.map((tool) => (
+            <label
+              key={tool.name}
+              className="flex cursor-pointer items-start gap-2 rounded-lg border border-input px-3 py-2 hover:bg-muted/50"
+            >
+              <input
+                type="checkbox"
+                checked={agent.tools.includes(tool.name)}
+                onChange={() => toggleTool(tool.name)}
+                className="mt-0.5 size-3.5"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-medium">{tool.label}</span>
+                <span className="block text-[11px] text-muted-foreground">{tool.description}</span>
+              </span>
+            </label>
+          ))}
+        </div>
       </Section>
 
       {/* Skills */}

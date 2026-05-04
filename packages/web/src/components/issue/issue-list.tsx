@@ -119,28 +119,47 @@ export function IssueList({ workspaceId }: IssueListProps) {
               {STATUS_LABEL[group.status]} ({group.items.length})
             </div>
             {group.items.map((issue) => (
-              <button
-                key={issue.id}
-                onClick={() => setActiveIssue(issue.id)}
-                className={`w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-start gap-2 ${
-                  activeIssueId === issue.id ? 'bg-accent' : ''
-                }`}
-              >
-                <CircleDot className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{issue.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {issue.tasks.length} task{issue.tasks.length !== 1 ? 's' : ''}
+              <ContextMenu key={issue.id}>
+                <ContextMenuTrigger
+                  onClick={() => setActiveIssue(issue.id)}
+                  className={`w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-start gap-2 ${
+                    activeIssueId === issue.id ? 'bg-accent' : ''
+                  }`}
+                >
+                  <CircleDot className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{issue.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {issue.tasks.length} task{issue.tasks.length !== 1 ? 's' : ''}
+                    </div>
                   </div>
-                </div>
-                <Badge variant={STATUS_COLOR[issue.status]} className="text-[10px] shrink-0">
-                  {STATUS_LABEL[issue.status]}
-                </Badge>
-              </button>
+                  <Badge variant={STATUS_COLOR[issue.status]} className="text-[10px] shrink-0">
+                    {STATUS_LABEL[issue.status]}
+                  </Badge>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => setEditingIssue(issue)}>
+                    <Pencil className="size-4 mr-2" />
+                    Edit
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             ))}
           </div>
         ))}
       </ScrollArea>
+
+      {editingIssue && (
+        <EditIssueDialog
+          issue={editingIssue}
+          open={!!editingIssue}
+          onOpenChange={(open) => { if (!open) setEditingIssue(null); }}
+          onSave={async (data) => {
+            await updateIssue(workspaceId, editingIssue.id, data);
+            setEditingIssue(null);
+          }}
+        />
+      )}
     </div>
   );
 }

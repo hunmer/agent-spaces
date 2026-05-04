@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path';
 import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
+import { BUILT_IN_AGENT_TOOLS } from '@agent-spaces/shared';
 import {
   listAgentSessions,
   getAgentSession,
@@ -14,6 +15,7 @@ import { ensureDir, getDataDir } from '../storage/json-store.js';
 
 const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex'];
+const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [
   'openai-responses-to-anthropic-messages',
   'openai-chat-completions-to-anthropic-messages',
@@ -370,6 +372,7 @@ export function createPreset(
     workingDir: workingDir || getWorkspaceAgentDir(ws.agentspaceDir, id),
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
+    tools: normalizeToolNames(data.tools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name)),
     systemPrompt: data.systemPrompt || '',
     temperature: data.temperature ?? 0.3,
     maxTokens: data.maxTokens ?? 4096,
@@ -415,6 +418,7 @@ export function updatePreset(
     modelProvider: updatedRuntimeKind === 'claude-code' ? requestedModelProvider : undefined,
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
+    tools: normalizeToolNames(data.tools ?? existing.tools),
     enabled: data.enabled ?? existing.enabled ?? true,
   };
   writeAgentTemplate(updated, data.skills as SkillInput[] | undefined);
@@ -528,6 +532,11 @@ function normalizeSkillNames(skills?: AgentConfig['skills'] | SkillInput[]): str
     .map((skill) => typeof skill === 'string' ? skill : skill.name)
     .filter((name): name is string => Boolean(name?.trim()))
     .map((name) => name.trim());
+}
+
+function normalizeToolNames(tools?: AgentConfig['tools']): AgentConfig['tools'] {
+  if (!Array.isArray(tools)) return [];
+  return tools.filter((name): name is NonNullable<AgentConfig['tools']>[number] => VALID_TOOL_NAMES.has(name));
 }
 
 function writeAgentTemplate(preset: AgentConfig, skillInputs?: SkillInput[]): void {

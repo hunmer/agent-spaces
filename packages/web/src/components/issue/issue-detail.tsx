@@ -13,6 +13,7 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2 } from 'lucide-react';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
+import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -145,11 +146,12 @@ interface IssueDetailProps {
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
-  const { issues, activeIssueId, startIssue } = useIssueStore();
+  const { issues, activeIssueId, startIssue, updateIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -359,6 +361,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
                 {ISSUE_STATUS_LABEL[issue.status]}
               </Badge>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="size-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -613,6 +622,17 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         candidates={candidateMembers}
         onAdd={handleAddMembers}
       />
+
+      {issue && (
+        <EditIssueDialog
+          issue={issue}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          onSave={async (data) => {
+            await updateIssue(workspaceId, issue.id, data);
+          }}
+        />
+      )}
     </div>
   );
 }

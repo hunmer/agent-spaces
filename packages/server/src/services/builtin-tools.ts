@@ -1,4 +1,4 @@
-import type { Channel, Issue, IssueComment } from '@agent-spaces/shared';
+import { BUILT_IN_AGENT_TOOLS, type BuiltInAgentToolName, type Channel, type Issue, type IssueComment } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../adapters/agent-runtime-types.js';
 import * as issueService from './issue.js';
 import * as issueCommentService from './issue-comment.js';
@@ -61,8 +61,10 @@ export function createIssueFunctionTools(
   workspaceId: string,
   channel: Channel | undefined,
   actor: IssueToolActor,
+  allowedTools?: BuiltInAgentToolName[],
 ): AgentFunctionTool[] {
   if (!channel) return [];
+  const allowedToolNames = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 
   const tools: AgentFunctionTool[] = [
     {
@@ -91,7 +93,7 @@ export function createIssueFunctionTools(
     },
   );
 
-  return tools;
+  return tools.filter((tool) => allowedToolNames.has(tool.name as BuiltInAgentToolName));
 }
 
 export function isBuiltInIssueToolName(name: string): boolean {

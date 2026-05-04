@@ -1,3 +1,5 @@
+import type { BuiltInAgentToolName } from './tool.js';
+
 export interface Workspace {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ export interface AgentConfig {
   workingDir?: string;
   mcps?: Record<string, unknown>;
   skills?: string[];
+  tools?: BuiltInAgentToolName[];
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;

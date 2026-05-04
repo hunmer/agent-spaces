@@ -14,10 +14,11 @@ import {
   IconCircleCheck,
   IconCircleDashed,
   IconCode,
+  IconFileText,
   IconHistory,
   IconLoader2,
+  IconMessageCirclePlus,
   IconPaperclip,
-  IconFileText,
   IconPin,
   IconPinFilled,
   IconPlug,
@@ -40,7 +41,13 @@ import { useDropzone } from "react-dropzone";
 import { ComposerShell } from "@/components/composer/composer-shell";
 import { createSuggestionRenderer } from "@/components/composer/create-suggestion-renderer";
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
-import type { AgentConfig, Attachment as MessageAttachment, Channel, TodoItem } from "@agent-spaces/shared";
+import {
+  BUILT_IN_AGENT_TOOLS,
+  type AgentConfig,
+  type Attachment as MessageAttachment,
+  type Channel,
+  type TodoItem,
+} from "@agent-spaces/shared";
 import { useChannelStore } from "@/stores/channel";
 import {
   Attachment,
@@ -51,7 +58,7 @@ import {
   type AttachmentData,
 } from "./attachments";
 
-type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills">;
+type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools">;
 type DisplayTodoItem = TodoItem & { title?: string };
 
 function getTodoTitle(todo: DisplayTodoItem) {
@@ -105,21 +112,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const activeAgent = mentionedAgents[0];
   const activeMcps = getMcpLabels(activeAgent?.mcps);
   const activeSkills = activeAgent?.skills ?? [];
-  const tools = useMemo(
-    () => [
-      {
-        label: "Create Current Issue",
-        icon: IconPlus,
-        enabled: channel.type === "issue" && Boolean(channel.issueId),
-      },
-      {
-        label: "View Current Issue",
-        icon: IconFileText,
-        enabled: channel.type === "issue" && Boolean(channel.issueId),
-      },
-    ],
-    [channel.issueId, channel.type]
-  );
+  const activeTools = useMemo(() => {
+    const enabledNames = new Set(activeAgent?.tools ?? []);
+    return BUILT_IN_AGENT_TOOLS
+      .filter((tool) => enabledNames.has(tool.name))
+      .map((tool) => ({ ...tool, icon: getToolIcon(tool.name) }));
+  }, [activeAgent?.tools]);
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -609,21 +607,24 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             }
           >
             <IconTools className="size-3" />
-            <span>Tools</span>
+            <span>Tools{activeTools.length ? ` ${activeTools.length}` : ""}</span>
             <IconChevronDown className="size-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              {tools.map(({ label, icon: Icon, enabled }) => (
-                <DropdownMenuItem
-                  key={label}
-                  disabled={!enabled}
-                  className="rounded-[calc(1rem-6px)] text-xs"
-                >
-                  <Icon size={16} className="opacity-60" />
-                  {label}
+              {activeTools.length ? (
+                activeTools.map(({ name, label, icon: Icon }) => (
+                  <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs">
+                    <Icon size={16} className="opacity-60" />
+                    {label}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                  <IconTools size={16} className="opacity-60" />
+                  No tools configured
                 </DropdownMenuItem>
-              ))}
+              )}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -732,6 +733,13 @@ function getMcpLabels(mcps: AgentConfig["mcps"] | undefined): string[] {
   const servers = (mcps as { mcpServers?: unknown }).mcpServers;
   if (!servers || typeof servers !== "object" || Array.isArray(servers)) return [];
   return Object.keys(servers);
+}
+
+function getToolIcon(name: string) {
+  if (name === "CreateCurrentChannelIssue") return IconPlus;
+  if (name === "ViewCurrentChannelIssue") return IconFileText;
+  if (name === "AddCurrentChannelComment") return IconMessageCirclePlus;
+  return IconTools;
 }
 
 function buildContentWithMentions(
