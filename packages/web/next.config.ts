@@ -37,10 +37,6 @@ const nextConfig: NextConfig = {
     const serverUrl = process.env.SERVER_URL || "http://localhost:3100";
     return [
       {
-        source: "/api/:path*",
-        destination: `${serverUrl}/api/:path*`,
-      },
-      {
         source: "/ws",
         destination: `${serverUrl}/ws`,
       },

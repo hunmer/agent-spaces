@@ -24,6 +24,7 @@ services:
     environment:
       - HOSTNAME=0.0.0.0
       - PORT=3000
+      - SERVER_URL=http://server:3100
     depends_on:
       - server
     restart: unless-stopped
