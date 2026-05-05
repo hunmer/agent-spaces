@@ -5,7 +5,7 @@ import { getWorkspace } from '../storage/workspace-store.js';
 import { simpleGit } from 'simple-git';
 
 const DEFAULT_SYSTEM_PROMPT =
-  'You are a git commit message generator. Based on the provided diff, generate a concise commit message following conventional commits format (type: description). Types: feat, fix, docs, style, refactor, perf, test, chore, build, ci. Keep the first line under 72 chars. If there are multiple changes, use a subject line + blank line + bullet body. Output ONLY the commit message text, nothing else.';
+  'You are a git commit message generator. Generate a short conventional commit message (type: description). Types: feat, fix, docs, style, refactor, perf, test, chore. First line under 72 chars. Multiple changes: subject + blank line + bullet body. Output ONLY the commit message. No explanation, no markdown, no code fences.';
 
 export async function runCommitAgent(workspaceId: string): Promise<string> {
   const ws = getWorkspace(workspaceId);
@@ -33,7 +33,7 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
     `Generate a commit message for these changes:\n\n${truncatedDiff}`,
     workingDir,
     {
-      maxTurns: 1,
+      maxTurns: 100,
       systemPrompt,
     },
   );
@@ -42,7 +42,8 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
     throw new Error(result.error || 'Commit agent failed');
   }
 
-  const msg = result.summary?.trim() || result.output.join('\n').trim();
+  // output has full text, summary is truncated to 160 chars — prefer output
+  const msg = result.output.join('\n').trim();
   if (!msg) throw new Error('Empty response from commit agent');
   return msg;
 }

@@ -64,7 +64,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="h-full flex flex-col">
-      <div className="sticky top-0 z-10 bg-background">
+      <div className="shrink-0 bg-background">
         <WorkspaceTabs />
         {isMobile && (
           <div className="flex items-center h-10 border-b px-1 gap-0.5 shrink-0 overflow-x-auto">
