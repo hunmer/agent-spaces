@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LLMModel, LLMProvider } from "@agent-spaces/shared";
 import {
   Dialog,
@@ -286,6 +286,7 @@ function ModelForm({
   providerNames: string[];
   onChange: (key: string, value: unknown) => void;
 }) {
+  const nameEditedByUser = useRef(false);
   const options = providerNames.length > 0 ? providerNames : ["Other"];
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -294,13 +295,14 @@ function ModelForm({
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Model ID</label>
           <Input value={draft.modelId || ""} onChange={e => {
-            onChange("modelId", e.target.value);
-            if (!draft.name) onChange("name", e.target.value);
+            const val = e.target.value;
+            onChange("modelId", val);
+            if (!nameEditedByUser.current) onChange("name", val);
           }} placeholder="e.g. gpt-4o" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Display Name</label>
-          <Input value={draft.name || ""} onChange={e => onChange("name", e.target.value)} placeholder="e.g. GPT-4o" />
+          <Input value={draft.name || ""} onChange={e => { nameEditedByUser.current = true; onChange("name", e.target.value); }} placeholder="e.g. GPT-4o" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Provider</label>
