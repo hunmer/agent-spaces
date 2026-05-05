@@ -34,6 +34,7 @@ const CONTEXT_OPTIONS = [
   { label: "64K", value: 65_536 },
   { label: "128K", value: 128_000 },
   { label: "200K", value: 200_000 },
+  { label: "256K", value: 256_000 },
   { label: "1M", value: 1_000_000 },
 ];
 
@@ -295,6 +296,7 @@ function ModelForm({
   onChange: (key: string, value: unknown) => void;
 }) {
   const nameEditedByUser = useRef(false);
+  const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
   const options = providerNames.length > 0 ? providerNames : ["Other"];
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -333,17 +335,18 @@ function ModelForm({
               min={0}
               max={CONTEXT_OPTIONS.length}
               step={1}
-              value={getContextSliderIndex(draft.maxContextTokens)}
+              value={contextIdx}
               onValueChange={(idx) => {
+                setContextIdx(idx);
                 if (idx < CONTEXT_OPTIONS.length) {
                   onChange("maxContextTokens", CONTEXT_OPTIONS[idx].value);
                 }
               }}
               className="flex-1"
             />
-            {getContextSliderIndex(draft.maxContextTokens) < CONTEXT_OPTIONS.length ? (
+            {contextIdx < CONTEXT_OPTIONS.length ? (
               <span className="text-sm tabular-nums min-w-[3.5rem] text-right">
-                {CONTEXT_OPTIONS[getContextSliderIndex(draft.maxContextTokens)].label}
+                {CONTEXT_OPTIONS[contextIdx].label}
               </span>
             ) : (
               <Input
