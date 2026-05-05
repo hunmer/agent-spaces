@@ -3,7 +3,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { Options, Query } from '@anthropic-ai/claude-agent-sdk';
 import type { AgentRunOptions, AgentRunResult, AgentRuntime, AgentRuntimeConfig } from '../agent-runtime-types.js';
 import { summarizeResult } from '../agent-runtime-types.js';
-import { normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
+import { isRootUser, normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
 import { extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
 
@@ -21,7 +21,11 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const startTime = Date.now();
     const MAX_LOG = 500;
     const d = (msg: string) => console.log(`[claude-code] ${msg.length > MAX_LOG ? msg.slice(0, MAX_LOG) + '...' : msg}`);
-    const permissionMode = normalizePermissionMode(this.config.permissionMode);
+    const requestedPermissionMode = normalizePermissionMode(this.config.permissionMode);
+    const runningAsRoot = isRootUser();
+    const permissionMode = runningAsRoot && requestedPermissionMode === 'bypassPermissions'
+      ? 'default'
+      : requestedPermissionMode;
     const agentDir = options?.configDir;
     const configDir = agentDir ? join(agentDir, '.claude') : undefined;
     if (configDir) prepareConfigDir(configDir, agentDir);
@@ -32,7 +36,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const apiKey = this.adapterRun ? 'default' : this.config.apiKey;
     const model = getClaudeCodeModel(this.config);
 
-    d(`starting | cwd=${cwd} model=${model ?? 'default'} targetModel=${this.config.model ?? 'default'} provider=${this.config.provider ?? 'default'} baseURL=${baseURL ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'} claudeExecutable=${claudeExecutable ?? 'sdk-default'}`);
+    d(`starting | cwd=${cwd} model=${model ?? 'default'} targetModel=${this.config.model ?? 'default'} provider=${this.config.provider ?? 'default'} baseURL=${baseURL ?? 'default'} permissionMode=${permissionMode}${permissionMode !== requestedPermissionMode ? ` requested=${requestedPermissionMode}` : ''} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'} claudeExecutable=${claudeExecutable ?? 'sdk-default'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
@@ -51,7 +55,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         strictMcpConfig: true,
         additionalDirectories: options?.sandboxDirs,
         permissionMode,
-        allowDangerouslySkipPermissions: permissionMode === 'bypassPermissions' ? true : undefined,
+        allowDangerouslySkipPermissions: !runningAsRoot && permissionMode === 'bypassPermissions' ? true : undefined,
         abortController: this.abortController,
         env: buildEnv(this.config, configDir, { baseURL, apiKey }),
         stderr: (data) => {

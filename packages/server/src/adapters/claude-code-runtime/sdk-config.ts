@@ -183,3 +183,7 @@ export function normalizePermissionMode(permissionMode?: AgentRuntimeConfig['per
   }
   return 'bypassPermissions';
 }
+
+export function isRootUser(): boolean {
+  return typeof process.getuid === 'function' && process.getuid() === 0;
+}

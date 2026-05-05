@@ -19,5 +19,5 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
 export function verifyToken(token: string | null): boolean {
   const secret = getSecret();
-  return token === secret;
+  return (token ?? '') === secret;
 }

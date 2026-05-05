@@ -13,15 +13,11 @@ export class WorkspaceWS {
   constructor(readonly workspaceId: string) {
     const serverUrl = getActiveServerUrl();
     const token = getToken();
-    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
-    if (serverUrl) {
-      const wsProtocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
-      const wsBase = serverUrl.replace(/^https?/, wsProtocol);
-      this.url = `${wsBase}/ws?workspaceId=${workspaceId}${tokenParam}`;
-    } else {
-      const port = process.env.NEXT_PUBLIC_WS_PORT || '3100';
-      this.url = `ws://localhost:${port}/ws?workspaceId=${workspaceId}${tokenParam}`;
-    }
+    const url = new URL('/ws', serverUrl ?? window.location.origin);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.searchParams.set('workspaceId', workspaceId);
+    if (token) url.searchParams.set('token', token);
+    this.url = url.toString();
   }
 
   connect() {
@@ -43,8 +39,8 @@ export class WorkspaceWS {
       }
     };
 
-    this.ws.onclose = () => {
-      console.log('[WS] disconnected, reconnecting...');
+    this.ws.onclose = (ev) => {
+      console.log(`[WS] disconnected (${ev.code}${ev.reason ? `: ${ev.reason}` : ''}), reconnecting...`);
       this.reconnectTimer = setTimeout(() => this.connect(), 3000);
     };
 

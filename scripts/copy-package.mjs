@@ -90,7 +90,7 @@ fi
 pnpm_cmd=(corepack pnpm@${pnpmVersion})
 
 rm -rf node_modules pnpm-lock.yaml
-"\${pnpm_cmd[@]}" install --prod --ignore-scripts --no-optional
+"\${pnpm_cmd[@]}" install --prod --ignore-scripts
 "\${pnpm_cmd[@]}" rebuild node-pty protobufjs
 
 if find node_modules/.pnpm -maxdepth 1 -name 'zod-to-json-schema@3.25.2_zod@3.23.0' | grep -q .; then
@@ -104,7 +104,38 @@ if find node_modules/.pnpm -maxdepth 1 \\( -name '@openai+codex@*-darwin-*' -o -
   exit 1
 fi
 
-node -e "import('zod-to-json-schema').then(()=>import('@codeany/open-agent-sdk')).then(()=>require('node-pty')).then(()=>console.log('install verification ok')).catch(e=>{console.error(e); process.exit(1)})"
+node <<'NODE'
+const packagesByPlatform = {
+  'darwin-arm64': '@anthropic-ai/claude-agent-sdk-darwin-arm64',
+  'darwin-x64': '@anthropic-ai/claude-agent-sdk-darwin-x64',
+  'linux-arm64-glibc': '@anthropic-ai/claude-agent-sdk-linux-arm64',
+  'linux-arm64-musl': '@anthropic-ai/claude-agent-sdk-linux-arm64-musl',
+  'linux-x64-glibc': '@anthropic-ai/claude-agent-sdk-linux-x64',
+  'linux-x64-musl': '@anthropic-ai/claude-agent-sdk-linux-x64-musl',
+  'win32-arm64': '@anthropic-ai/claude-agent-sdk-win32-arm64',
+  'win32-x64': '@anthropic-ai/claude-agent-sdk-win32-x64',
+};
+
+const libc = process.platform === 'linux'
+  ? (process.report?.getReport?.().header?.glibcVersionRuntime ? 'glibc' : 'musl')
+  : undefined;
+const key = [process.platform, process.arch, libc].filter(Boolean).join('-');
+const claudePackage = packagesByPlatform[key];
+
+Promise.resolve()
+  .then(() => import('zod-to-json-schema'))
+  .then(() => import('@codeany/open-agent-sdk'))
+  .then(() => require('node-pty'))
+  .then(() => {
+    if (!claudePackage) return;
+    require.resolve(claudePackage + '/claude');
+  })
+  .then(() => console.log('install verification ok'))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+NODE
 
 echo "Install complete. Start with: npm run start"
 `,

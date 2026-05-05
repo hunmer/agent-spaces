@@ -9,15 +9,38 @@ const STORAGE_KEY = "agent-spaces-servers";
 const ACTIVE_KEY = "agent-spaces-active-server";
 const COOKIE_KEY = "active-server";
 
+function getDefaultServerUrl(): string {
+  const configuredUrl = process.env.NEXT_PUBLIC_SERVER_URL?.trim();
+  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
+
+  if (typeof window === "undefined") return "http://localhost:3100";
+
+  const { protocol, hostname, port, origin } = window.location;
+  if ((hostname === "localhost" || hostname === "127.0.0.1") && port === "3000") {
+    return `${protocol}//${hostname}:3100`;
+  }
+
+  return origin;
+}
+
 const DEFAULT_SERVERS: ServerConfig[] = [
-  { id: "default", name: "Local", url: "http://localhost:3100" },
+  { id: "default", name: "Default", url: getDefaultServerUrl() },
 ];
+
+function normalizeServers(servers: ServerConfig[]): ServerConfig[] {
+  const defaultUrl = getDefaultServerUrl();
+  return servers.map((server) => {
+    if (server.id !== "default") return server;
+    if (!/^https?:\/\/(localhost|127\.0\.0\.1):3100\/?$/.test(server.url)) return server;
+    return { ...server, url: defaultUrl };
+  });
+}
 
 export function loadServers(): ServerConfig[] {
   if (typeof window === "undefined") return DEFAULT_SERVERS;
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : DEFAULT_SERVERS;
+    return data ? normalizeServers(JSON.parse(data)) : DEFAULT_SERVERS;
   } catch {
     return DEFAULT_SERVERS;
   }
@@ -47,7 +70,8 @@ export function getActiveServerUrl(): string | null {
 }
 
 export function setActiveServerCookie(url: string | null) {
-  if (url && url !== DEFAULT_SERVERS[0].url) {
+  const defaultUrl = getDefaultServerUrl();
+  if (url && url !== defaultUrl) {
     document.cookie = `${COOKIE_KEY}=${encodeURIComponent(url)}; path=/; max-age=31536000; SameSite=Lax`;
   } else {
     document.cookie = `${COOKIE_KEY}=; path=/; max-age=0`;
