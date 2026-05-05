@@ -10,11 +10,40 @@ import {
   startWorkspaceNotificationService,
   stopWorkspaceNotificationService,
 } from '../services/notification-hub/index.js';
+import { gitClone } from '../adapters/git.js';
 
 const router = Router();
 
 router.get('/', (_req, res) => {
   res.json(wsService.getAll());
+});
+
+router.post('/clone', async (req, res) => {
+  const { url, targetDir } = req.body as { url?: string; targetDir?: string };
+  if (!url || !targetDir) {
+    res.status(400).json({ error: 'url and targetDir are required' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendSSE = (data: object) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const cloneDir = await gitClone(targetDir, url, (progress) => {
+      sendSSE(progress);
+    });
+    sendSSE({ phase: 'done', progress: 100, cloneDir });
+  } catch (err: any) {
+    sendSSE({ phase: 'error', progress: 0, error: err.message });
+  } finally {
+    res.end();
+  }
 });
 
 router.post('/', (req, res) => {

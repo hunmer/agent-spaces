@@ -2,8 +2,10 @@ import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
 import type { GitStatusResult, GitFileStatus, GitLogEntry, GitDiffResult } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
-import { writeFile, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { writeFile, readFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join, basename } from 'node:path';
+import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 const gitInstances = new Map<string, SimpleGit>();
 
@@ -291,6 +293,75 @@ export async function gitInit(workspaceId: string): Promise<void> {
     await writeFile(gitignorePath, DEFAULT_GITIGNORE, 'utf-8');
   }
 
-  // 清除缓存的实例，强制下次使用新实例
   gitInstances.delete(workspaceId);
+}
+
+export interface GitCloneProgress {
+  phase: 'counting' | 'compressing' | 'receiving' | 'resolving' | 'done' | 'error';
+  progress: number;
+  received?: number;
+  total?: number;
+  error?: string;
+}
+
+export async function gitClone(
+  targetDir: string,
+  url: string,
+  onProgress: (progress: GitCloneProgress) => void,
+): Promise<string> {
+  if (!existsSync(targetDir)) {
+    await mkdir(targetDir, { recursive: true });
+  }
+
+  const repoName = basename(url, '.git').replace(/\.git$/, '') || 'repo';
+  const cloneDir = join(targetDir, repoName);
+
+  if (existsSync(cloneDir)) {
+    throw new Error(`目录 ${cloneDir} 已存在`);
+  }
+
+  const git = simpleGit();
+  git.outputHandler((_binary, stdout, stderr) => {
+    stderr.on('data', (chunk: Buffer) => {
+      const text = chunk.toString();
+      const parsed = parseCloneProgress(text);
+      if (parsed) onProgress(parsed);
+    });
+    stdout.on('data', () => {});
+  });
+
+  await git.clone(url, cloneDir, ['--progress']);
+  return cloneDir;
+}
+
+function parseCloneProgress(text: string): GitCloneProgress | null {
+  // git --progress 输出用 \r 覆盖，可能有多个阶段在同一段文本中
+  const lines = text.split('\r').filter(Boolean);
+  let result: GitCloneProgress | null = null;
+
+  for (const line of lines) {
+    const m =
+      line.match(/Counting objects:\s*(\d+)%\s*\((\d+)\/(\d+)\)/) ||
+      line.match(/Compressing objects:\s*(\d+)%\s*\((\d+)\/(\d+)\)/) ||
+      line.match(/Receiving objects:\s*(\d+)%\s*\((\d+)\/(\d+)\)/) ||
+      line.match(/Resolving deltas:\s*(\d+)%\s*\((\d+)\/(\d+)\)/);
+
+    if (m) {
+      const phaseMap: Record<string, GitCloneProgress['phase']> = {
+        Counting: 'counting',
+        Compressing: 'compressing',
+        Receiving: 'receiving',
+        Resolving: 'resolving',
+      };
+      const keyword = m[0].split(' ')[0];
+      result = {
+        phase: phaseMap[keyword] || 'receiving',
+        progress: parseInt(m[1]),
+        received: parseInt(m[2]),
+        total: parseInt(m[3]),
+      };
+    }
+  }
+
+  return result;
 }
