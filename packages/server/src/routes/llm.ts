@@ -9,7 +9,18 @@ router.get('/models', (_req, res) => {
 });
 
 router.post('/models', (req, res) => {
-  const { modelId, name, provider, vision, reasoning, embedding, cost, maxContextTokens } = req.body;
+  const {
+    modelId,
+    name,
+    provider,
+    vision,
+    reasoning,
+    embedding,
+    cost,
+    maxContextTokens,
+    thinkingEnabled,
+    thinkingEffort,
+  } = req.body;
   if (!modelId || !name || !provider) {
     res.status(400).json({ error: 'modelId, name, and provider are required' });
     return;
@@ -20,6 +31,8 @@ router.post('/models', (req, res) => {
     provider,
     cost: normalizeModelCost(cost),
     maxContextTokens: normalizeTokenLimit(maxContextTokens),
+    thinkingEnabled: normalizeThinkingEnabled(thinkingEnabled),
+    thinkingEffort: normalizeThinkingEffort(thinkingEffort),
     vision: Boolean(vision),
     reasoning: Boolean(reasoning),
     embedding: Boolean(embedding),
@@ -33,6 +46,8 @@ router.put('/models/:id', (req, res) => {
   };
   if ('cost' in body) body.cost = normalizeModelCost(body.cost);
   if ('maxContextTokens' in body) body.maxContextTokens = normalizeTokenLimit(body.maxContextTokens);
+  if ('thinkingEnabled' in body) body.thinkingEnabled = normalizeThinkingEnabled(body.thinkingEnabled);
+  if ('thinkingEffort' in body) body.thinkingEffort = normalizeThinkingEffort(body.thinkingEffort);
   const model = store.updateModel(req.params.id, body);
   if (!model) {
     res.status(404).json({ error: 'Model not found' });
@@ -107,4 +122,12 @@ function normalizeTokenLimit(value: unknown): number | undefined {
   const number = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(number) || number <= 0) return undefined;
   return Math.floor(number);
+}
+
+function normalizeThinkingEnabled(value: unknown): boolean {
+  return value === undefined ? true : Boolean(value);
+}
+
+function normalizeThinkingEffort(value: unknown): 'low' | 'medium' | 'high' {
+  return value === 'low' || value === 'high' ? value : 'medium';
 }

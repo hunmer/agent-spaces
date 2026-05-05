@@ -6,7 +6,11 @@ import type {
   OpenAIChatBody,
 } from './types.js';
 
-export function convertAnthropicToOpenAI(request: AnthropicRequest, model: string): OpenAIChatRequest {
+export function convertAnthropicToOpenAI(
+  request: AnthropicRequest,
+  model: string,
+  options: { thinkingEnabled?: boolean; thinkingEffort?: 'low' | 'medium' | 'high' } = {},
+): OpenAIChatRequest {
   const messages: Array<Record<string, unknown>> = [];
   const system = normalizeSystemPrompt(request.system);
   if (system) messages.push({ role: 'system', content: system });
@@ -22,6 +26,9 @@ export function convertAnthropicToOpenAI(request: AnthropicRequest, model: strin
     temperature: request.temperature,
     top_p: request.top_p,
     stop: request.stop_sequences,
+    reasoning: options.thinkingEnabled === false
+      ? undefined
+      : { effort: options.thinkingEffort ?? 'medium' },
     tools: request.tools?.map((tool) => ({
       type: 'function' as const,
       function: {
@@ -107,6 +114,7 @@ export function convertOpenAIChatRequestToResponses(chatRequest: OpenAIChatReque
     temperature: chatRequest.temperature,
     top_p: chatRequest.top_p,
     stop: chatRequest.stop,
+    reasoning: chatRequest.reasoning,
     tools: chatRequest.tools?.map((tool: { function: { name: string; description?: string; parameters?: unknown } }) => ({
       type: 'function',
       name: tool.function.name,
@@ -133,6 +141,7 @@ export function convertResponsesToAnthropic(response: ResponsesBody, originalMod
       input_tokens: response.usage?.input_tokens ?? 0,
       output_tokens: response.usage?.output_tokens ?? 0,
       cache_read_input_tokens: response.usage?.input_tokens_details?.cached_tokens,
+      reasoning_output_tokens: response.usage?.output_tokens_details?.reasoning_tokens,
     },
   };
 }
@@ -165,6 +174,7 @@ export function convertChatCompletionsToAnthropic(response: OpenAIChatBody, orig
       input_tokens: response.usage?.prompt_tokens ?? 0,
       output_tokens: response.usage?.completion_tokens ?? 0,
       cache_read_input_tokens: response.usage?.prompt_tokens_details?.cached_tokens,
+      reasoning_output_tokens: response.usage?.completion_tokens_details?.reasoning_tokens,
     },
   };
 }
@@ -276,6 +286,11 @@ function extractResponsesContent(response: ResponsesBody): AnthropicBlock[] {
       }
       continue;
     }
+    if (item.type === 'reasoning') {
+      const thinking = extractReasoningText(item);
+      if (thinking) blocks.push({ type: 'thinking', thinking });
+      continue;
+    }
     if (item.type === 'function_call') {
       blocks.push({
         type: 'tool_use',
@@ -287,6 +302,21 @@ function extractResponsesContent(response: ResponsesBody): AnthropicBlock[] {
   }
 
   return blocks;
+}
+
+function extractReasoningText(item: Record<string, unknown>): string {
+  if (typeof item.summary === 'string') return item.summary;
+  if (Array.isArray(item.summary)) {
+    return item.summary.map((part) => {
+      if (typeof part === 'string') return part;
+      if (!part || typeof part !== 'object') return '';
+      const record = part as Record<string, unknown>;
+      return typeof record.text === 'string' ? record.text : '';
+    }).filter(Boolean).join('\n');
+  }
+  if (typeof item.text === 'string') return item.text;
+  if (typeof item.content === 'string') return item.content;
+  return '';
 }
 
 function mapOpenAIStopReason(finishReason?: string | null): string {

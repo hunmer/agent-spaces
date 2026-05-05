@@ -22,6 +22,8 @@ export type AnthropicBridgeConfig = {
   baseUrl: string;
   apiKey: string;
   model: string;
+  thinkingEnabled?: boolean;
+  thinkingEffort?: 'low' | 'medium' | 'high';
 };
 
 export type AnthropicRequest = {
@@ -29,6 +31,10 @@ export type AnthropicRequest = {
   messages: Array<{ role: 'user' | 'assistant'; content: string | AnthropicBlock[] }>;
   system?: string | Array<{ text?: string }>;
   max_tokens?: number;
+  thinking?: {
+    type?: 'enabled' | 'disabled';
+    budget_tokens?: number;
+  };
   stream?: boolean;
   temperature?: number;
   top_p?: number;
@@ -38,6 +44,7 @@ export type AnthropicRequest = {
 };
 
 export type AnthropicBlock =
+  | { type: 'thinking'; thinking: string }
   | { type: 'text'; text: string }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
   | { type: 'tool_result'; tool_use_id: string; content: string | AnthropicBlock[]; is_error?: boolean };
@@ -51,6 +58,7 @@ export type ResponsesBody = {
     input_tokens?: number;
     output_tokens?: number;
     input_tokens_details?: { cached_tokens?: number };
+    output_tokens_details?: { reasoning_tokens?: number };
   };
 };
 
@@ -71,6 +79,7 @@ export type OpenAIChatBody = {
     prompt_tokens?: number;
     completion_tokens?: number;
     prompt_tokens_details?: { cached_tokens?: number };
+    completion_tokens_details?: { reasoning_tokens?: number };
   };
 };
 
@@ -90,6 +99,9 @@ export type OpenAIChatRequest = {
     };
   }>;
   tool_choice?: unknown;
+  reasoning?: {
+    effort?: 'low' | 'medium' | 'high';
+  };
 };
 
 export function isAnthropicBridgeProvider(provider?: string): provider is AnthropicBridgeProvider {

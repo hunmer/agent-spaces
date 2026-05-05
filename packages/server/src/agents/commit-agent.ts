@@ -2,6 +2,7 @@ import * as agentService from '../services/agent.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentConfig } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { simpleGit } from 'simple-git';
 
 const DEFAULT_SYSTEM_PROMPT =
@@ -34,6 +35,7 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
     model: commitAgent.modelId,
     apiKey: commitAgent.apiKey,
     baseURL: commitAgent.apiBase,
+    ...getThinkingRuntimeConfig(commitAgent),
   });
 
   const workingDir = agentService.resolveWorkingDir(workspaceId, commitAgent);

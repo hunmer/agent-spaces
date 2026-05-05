@@ -39,7 +39,10 @@ function formatAssistantMessage(content: unknown): string | null {
 
   const parts = content.flatMap((block) => {
     if (!block || typeof block !== 'object') return [];
-    const typedBlock = block as { type?: string; text?: unknown };
+    const typedBlock = block as { type?: string; text?: unknown; thinking?: unknown };
+    if (typedBlock.type === 'thinking' && typeof typedBlock.thinking === 'string') {
+      return [`Thinking: ${typedBlock.thinking}`];
+    }
     if (typedBlock.type === 'text' && typeof typedBlock.text === 'string') {
       return [typedBlock.text];
     }
@@ -195,6 +198,7 @@ export function formatUsageLine(usage: unknown): string | null {
     `input=${normalized.inputTokens}`,
     `output=${normalized.outputTokens}`,
     `cached=${normalized.cachedInputTokens}`,
+    `reasoning=${normalized.reasoningTokens}`,
   ].join(' ');
 }
 
@@ -205,6 +209,7 @@ export function normalizeUsage(usage: unknown): MessageTokenUsage | undefined {
     inputTokens: normalized.inputTokens,
     outputTokens: normalized.outputTokens,
     cachedInputTokens: normalized.cachedInputTokens,
+    reasoningTokens: normalized.reasoningTokens,
     totalTokens: normalized.totalTokens,
   };
 }
@@ -213,6 +218,7 @@ function normalizeClaudeUsage(usage: unknown): {
   inputTokens: number;
   outputTokens: number;
   cachedInputTokens: number;
+  reasoningTokens: number;
   totalTokens: number;
 } | null {
   if (!usage || typeof usage !== 'object') return null;
@@ -223,9 +229,11 @@ function normalizeClaudeUsage(usage: unknown): {
     numberValue(record.cache_read_input_tokens)
     + numberValue(record.cache_creation_input_tokens)
     + numberValue(record.cached_input_tokens);
-  const totalTokens = inputTokens + outputTokens + cachedInputTokens;
+  const reasoningTokens = numberValue(record.reasoning_output_tokens)
+    + numberValue(record.reasoning_tokens);
+  const totalTokens = inputTokens + outputTokens + cachedInputTokens + reasoningTokens;
   if (totalTokens === 0) return null;
-  return { inputTokens, outputTokens, cachedInputTokens, totalTokens };
+  return { inputTokens, outputTokens, cachedInputTokens, reasoningTokens, totalTokens };
 }
 
 function numberValue(value: unknown): number {

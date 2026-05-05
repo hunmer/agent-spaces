@@ -11,6 +11,7 @@ import type { AgentContext } from './agent-context.js';
 import type { AgentConfig, TaskResult } from '@agent-spaces/shared';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 
 export async function runReviewer(
   workspaceId: string,
@@ -79,6 +80,7 @@ export async function runReviewer(
     model: reviewerPreset.modelId,
     apiKey: reviewerPreset.apiKey,
     baseURL: reviewerPreset.apiBase,
+    ...getThinkingRuntimeConfig(reviewerPreset),
   });
   const reviewResult = await runtime.execute(
     buildReviewerPrompt(issue, taskId, taskResult, reviewerWorkingDir),

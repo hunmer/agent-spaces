@@ -8,6 +8,7 @@ import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
 import { onExecutorComplete } from '../hooks/agent-hooks.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
@@ -497,6 +498,7 @@ function createRuntimeForPreset(preset: AgentConfig) {
     model: preset.modelId,
     apiKey: preset.apiKey,
     baseURL: preset.apiBase,
+    ...getThinkingRuntimeConfig(preset),
   });
 }
 

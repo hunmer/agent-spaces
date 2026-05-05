@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft,
   Brain,
@@ -37,6 +38,8 @@ const CONTEXT_OPTIONS = [
   { label: "256K", value: 256_000 },
   { label: "1M", value: 1_000_000 },
 ];
+
+const THINKING_EFFORT_OPTIONS = ["low", "medium", "high"] as const;
 
 function groupByProvider(models: LLMModel[]): Record<string, LLMModel[]> {
   const groups: Record<string, LLMModel[]> = {};
@@ -66,26 +69,32 @@ export function ModelsDialog({
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    setError(null);
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+    });
     ensure().finally(() => setLoading(false));
   }, [open, ensure]);
 
   useEffect(() => {
     if (open && initialProvider && !draft) {
-      setSelected(null);
-      setDraft({
-        modelId: "",
-        name: "",
-        provider: initialProvider,
-        cost: { inputPerMillion: 0, outputPerMillion: 0 },
-        maxContextTokens: 128_000,
-        vision: false,
-        reasoning: false,
-        embedding: false,
+      queueMicrotask(() => {
+        setSelected(null);
+        setDraft({
+          modelId: "",
+          name: "",
+          provider: initialProvider,
+          cost: { inputPerMillion: 0, outputPerMillion: 0 },
+          maxContextTokens: 128_000,
+          thinkingEnabled: true,
+          thinkingEffort: "medium",
+          vision: false,
+          reasoning: false,
+          embedding: false,
+        });
       });
     }
-  }, [open, initialProvider]);
+  }, [open, initialProvider, draft]);
 
   const handleBack = () => { setSelected(null); setDraft(null); };
 
@@ -97,6 +106,8 @@ export function ModelsDialog({
       provider: "Other",
       cost: { inputPerMillion: 0, outputPerMillion: 0 },
       maxContextTokens: 128_000,
+      thinkingEnabled: true,
+      thinkingEffort: "medium",
       vision: false,
       reasoning: false,
       embedding: false,
@@ -105,7 +116,11 @@ export function ModelsDialog({
 
   const handleEdit = (m: LLMModel) => {
     setSelected(m);
-    setDraft({ ...m });
+    setDraft({
+      ...m,
+      thinkingEnabled: m.thinkingEnabled ?? true,
+      thinkingEffort: m.thinkingEffort ?? "medium",
+    });
   };
 
   const handleSave = async () => {
@@ -364,6 +379,33 @@ function ModelForm({
       </div>
 
       <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Thinking</div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2">
+          <div className="min-w-0">
+            <label className="text-sm font-medium">Enable thinking</label>
+            <p className="text-xs text-muted-foreground">Send reasoning/thinking options with model requests.</p>
+          </div>
+          <Switch
+            checked={draft.thinkingEnabled ?? true}
+            onCheckedChange={(checked) => onChange("thinkingEnabled", checked)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Effort</label>
+          <select
+            value={draft.thinkingEffort || "medium"}
+            onChange={e => onChange("thinkingEffort", e.target.value)}
+            disabled={!(draft.thinkingEnabled ?? true)}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+          >
+            {THINKING_EFFORT_OPTIONS.map(effort => (
+              <option key={effort} value={effort}>{effort}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost</div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
@@ -426,11 +468,6 @@ function ModelForm({
 function parseCost(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-}
-
-function parseTokenLimit(value: string): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 128_000;
 }
 
 function parseOptionalTokenLimit(value: string): number | undefined {

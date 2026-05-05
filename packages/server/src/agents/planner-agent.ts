@@ -12,6 +12,7 @@ import * as channelService from '../services/channel.js';
 import { syncIssueTasksAfterPlanning } from './issue-task-controller.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 
 export async function runPlanner(
   workspaceId: string,
@@ -149,6 +150,7 @@ function createRuntimeForPreset(preset: AgentConfig) {
     model: preset.modelId,
     apiKey: preset.apiKey,
     baseURL: preset.apiBase,
+    ...getThinkingRuntimeConfig(preset),
   });
 }
 

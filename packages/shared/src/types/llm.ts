@@ -5,10 +5,14 @@ export interface LLMModel {
   provider: string;
   cost?: LLMModelCost;
   maxContextTokens?: number;
+  thinkingEnabled: boolean;
+  thinkingEffort: LLMThinkingEffort;
   vision: boolean;
   reasoning: boolean;
   embedding: boolean;
 }
+
+export type LLMThinkingEffort = 'low' | 'medium' | 'high';
 
 export interface LLMModelCost {
   inputPerMillion: number;

@@ -66,7 +66,10 @@ async function handleAnthropicBridgeRequest(
 
   try {
     const anthropicRequest = await readJson(req) as import('./types.js').AnthropicRequest;
-    const openAIRequest = convertAnthropicToOpenAI(anthropicRequest, config.model);
+    const openAIRequest = convertAnthropicToOpenAI(anthropicRequest, config.model, {
+      thinkingEnabled: config.thinkingEnabled,
+      thinkingEffort: config.thinkingEffort,
+    });
     const requestBody = config.provider === 'openai-responses-to-anthropic-messages'
       ? convertOpenAIChatRequestToResponses(openAIRequest)
       : openAIRequest;

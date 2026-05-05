@@ -17,6 +17,8 @@ export async function startClaudeAdapterIfNeeded(config: AgentRuntimeConfig): Pr
     baseUrl: adapterBaseURL,
     apiKey: config.apiKey,
     model: config.model,
+    thinkingEnabled: config.thinkingEnabled,
+    thinkingEffort: config.thinkingEffort,
   };
   const key = JSON.stringify(adapterConfig);
   const existing = activeClaudeAdapters.get(key);

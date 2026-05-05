@@ -170,6 +170,9 @@ function buildCodexConfig(
 ): CodexConfigObject {
   const config: CodexConfigObject = {};
   Object.assign(config, buildCodexProviderConfig(runtimeConfig));
+  if (runtimeConfig.thinkingEnabled !== false) {
+    config.model_reasoning_effort = runtimeConfig.thinkingEffort ?? 'medium';
+  }
   const mcpServers = normalizeMcpServers(options?.mcpServers);
   if (mcpServers) config.mcp_servers = mcpServers as CodexConfigValue;
   if (skillNames.length > 0) {

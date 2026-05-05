@@ -16,6 +16,7 @@ import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { saveToolDetails } from '../services/tool-detail.js';
 import type { ToolDetail } from '../services/tool-detail.js';
 import { readWorkspacePrompt } from '../services/workspace-prompt.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -281,6 +282,7 @@ async function runMentionedAgent(
       apiKey: preset.apiKey,
       baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
       adapterBaseURL: preset.apiBase,
+      ...getThinkingRuntimeConfig(preset),
     });
     activeRun = {
       agentId: session.id,
