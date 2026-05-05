@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
-import { Upload, Download, Loader2 } from "lucide-react";
+import { useEffect, useCallback, useState, useMemo } from "react";
+import { Upload, Download, Loader2, GitCommitHorizontal } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { GitNotInitialized } from "./git-not-initialized";
 import { GitRemoteDialog } from "./git-remote-dialog";
@@ -11,11 +11,25 @@ interface GitCommitsPanelProps {
   workspaceId: string;
 }
 
+function SyncBadge({ count, kind }: { count: number; kind: "push" | "pull" }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">
+      {count}
+    </span>
+  );
+}
+
 export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
   const { log, loading, notGitRepo, status, loadLog, loadStatus, push, pull, getRemotes, addRemote } = useGitStore();
   const [syncing, setSyncing] = useState<"push" | "pull" | null>(null);
   const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<"push" | "pull" | null>(null);
+
+  const ahead = status?.ahead ?? 0;
+  const behind = status?.behind ?? 0;
+  // remote HEAD is `ahead` commits behind local HEAD in the log array
+  const remoteHeadIndex = ahead > 0 ? ahead : -1;
 
   const refresh = useCallback(() => {
     loadLog(workspaceId);
@@ -86,27 +100,23 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
           Commits{log.length > 0 && ` (${log.length})`}
         </span>
         <div className="flex items-center gap-1">
-          {(status?.ahead ?? 0) > 0 && (
-            <span className="text-xs text-muted-foreground">↑{status!.ahead}</span>
-          )}
-          {(status?.behind ?? 0) > 0 && (
-            <span className="text-xs text-muted-foreground">↓{status!.behind}</span>
-          )}
           <button
             onClick={() => handleSync("push")}
             disabled={syncing !== null}
-            className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
-            title="Push"
+            className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
+            title={ahead > 0 ? `Push ${ahead} commit${ahead > 1 ? 's' : ''}` : "Push"}
           >
             {syncing === "push" ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            <SyncBadge count={ahead} kind="push" />
           </button>
           <button
             onClick={() => handleSync("pull")}
             disabled={syncing !== null}
-            className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
-            title="Pull"
+            className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
+            title={behind > 0 ? `Pull ${behind} commit${behind > 1 ? 's' : ''}` : "Pull"}
           >
             {syncing === "pull" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            <SyncBadge count={behind} kind="pull" />
           </button>
           <button
             onClick={refresh}
@@ -120,25 +130,31 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
         {loading && !log.length && (
           <div className="p-2 text-xs text-muted-foreground">Loading...</div>
         )}
-        {log.map((entry) => (
-          <div
-            key={entry.hash}
-            className="px-2 py-1.5 border-b hover:bg-accent cursor-default"
-          >
-            <div className="flex items-center gap-2">
-              <code className="text-xs font-mono text-blue-600 shrink-0">
-                {entry.hash.slice(0, 7)}
-              </code>
-              <span className="text-xs truncate">{entry.message.split("\n")[0]}</span>
+        {log.map((entry, i) => {
+          const isRemoteHead = i === remoteHeadIndex;
+          return (
+            <div
+              key={entry.hash}
+              className={`px-2 py-1.5 border-b hover:bg-accent cursor-default ${isRemoteHead ? 'border-l-2 border-l-blue-500' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                {isRemoteHead && (
+                  <GitCommitHorizontal size={13} className="shrink-0 text-blue-500" title="Remote tracking branch" />
+                )}
+                <code className="text-xs font-mono text-blue-600 shrink-0">
+                  {entry.hash.slice(0, 7)}
+                </code>
+                <span className="text-xs truncate">{entry.message.split("\n")[0]}</span>
+              </div>
+              <div className={`flex items-center gap-2 mt-0.5 ${isRemoteHead ? 'pl-[21px]' : ''}`}>
+                <span className="text-xs text-muted-foreground">{entry.author}</span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(entry.date).toLocaleDateString()}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs text-muted-foreground">{entry.author}</span>
-              <span className="text-xs text-muted-foreground">
-                {new Date(entry.date).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {!loading && !log.length && (
           <div className="p-2 text-xs text-muted-foreground">No commits</div>
         )}
