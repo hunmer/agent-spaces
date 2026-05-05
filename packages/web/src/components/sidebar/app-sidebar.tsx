@@ -22,6 +22,7 @@ import {
   Pencil,
   Trash2,
   FolderSearch,
+  LayoutGrid,
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -139,29 +140,36 @@ export function DashboardSidebar() {
       link: "/",
       onAdd: openCreateDialog,
       addLabel: "Add Workspace",
-      subs: workspaces.map((ws) => ({
-        title: ws.name,
-        link: `/workspace/${ws.id}`,
-        icon: <FolderOpen className="size-4" />,
-        menuItems: [
-          {
-            label: "Edit",
-            icon: <Pencil className="size-3.5" />,
-            onClick: () => openEditDialog(ws),
-          },
-          {
-            label: "Open",
-            icon: <FolderSearch className="size-3.5" />,
-            onClick: () => fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' }),
-          },
-          {
-            label: "Delete",
-            icon: <Trash2 className="size-3.5" />,
-            variant: "destructive" as const,
-            onClick: () => handleDelete(ws),
-          },
-        ],
-      })),
+      subs: [
+        {
+          title: "Manage Workspaces",
+          link: "/workspaces",
+          icon: <LayoutGrid className="size-3.5" />,
+        },
+        ...workspaces.map((ws) => ({
+          title: ws.name,
+          link: `/workspace/${ws.id}`,
+          icon: <FolderOpen className="size-4" />,
+          menuItems: [
+            {
+              label: "Edit",
+              icon: <Pencil className="size-3.5" />,
+              onClick: () => openEditDialog(ws),
+            },
+            {
+              label: "Open",
+              icon: <FolderSearch className="size-3.5" />,
+              onClick: () => fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' }),
+            },
+            {
+              label: "Delete",
+              icon: <Trash2 className="size-3.5" />,
+              variant: "destructive" as const,
+              onClick: () => handleDelete(ws),
+            },
+          ],
+        })),
+      ],
     },
     {
       id: "settings",
