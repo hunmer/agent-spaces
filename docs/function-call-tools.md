@@ -1,27 +1,27 @@
-# Function-Call Tools
+# Function Call 工具
 
-This document describes the server-side function-call tool layer used by agents.
+本文档描述 Agent 使用的服务端 function-call 工具层。
 
-## Goals
+## 目标
 
-Function-call tools must be real executable server-side capabilities, not prompt-only descriptions.
+Function-call 工具必须是真正可执行的服务端能力，而非仅停留在 prompt 描述层面。
 
-The layer provides:
+该层提供：
 
-- A runtime-neutral tool abstraction.
-- Server-owned execution for workspace data operations.
-- Strict channel-scoped validation for built-in issue tools.
-- Runtime adapters that can expose the same tools through their native tool protocol.
+- 运行时无关的工具抽象
+- 服务端控制的执行，用于工作空间数据操作
+- 内置 Issue 工具的严格频道级校验
+- 运行时适配器，通过各自的原生工具协议暴露相同的工具
 
-## Core Abstraction
+## 核心抽象
 
-The shared server abstraction is `AgentFunctionTool` in:
+共享的服务端抽象为 `AgentFunctionTool`，定义在：
 
 ```text
 packages/server/src/adapters/agent-runtime-types.ts
 ```
 
-Shape:
+结构：
 
 ```ts
 interface AgentFunctionTool {
@@ -37,88 +37,84 @@ interface AgentFunctionTool {
 }
 ```
 
-Runtime handlers receive these tools through `AgentRunOptions.functionTools`.
+运行时处理器通过 `AgentRunOptions.functionTools` 接收这些工具。
 
-## Built-In Issue Tools
+## 内置 Issue 工具
 
-The current built-in tools live in:
+当前内置工具位于：
 
 ```text
 packages/server/src/services/builtin-tools.ts
 ```
 
-Tools:
+工具列表：
 
 - `CreateCurrentChannelIssue`
 - `ViewCurrentChannelIssue`
 
-Both tools are available only when the active channel is an issue channel with a bound `issueId`.
+这两个工具仅在当前频道为绑定了 `issueId` 的 Issue 频道时可用。
 
-Important constraints:
+重要约束：
 
-- Tool input must include `issueId`.
-- `issueId` must match the current channel's bound `issueId`.
-- The tool cannot create or view arbitrary issue ids from another channel.
-- Creating or updating the current issue does not create another channel. Issue creation already creates and binds its channel in `issueService.create()`.
+- 工具输入必须包含 `issueId`
+- `issueId` 必须与当前频道绑定的 `issueId` 匹配
+- 工具无法创建或查看其他频道的 Issue
+- 创建或更新当前 Issue 不会创建新频道。Issue 创建时已在 `issueService.create()` 中创建并绑定了频道
 
-## Runtime Integration
+## 运行时集成
 
-### Claude Code Runtime
+### Claude Code 运行时
 
-Implemented in:
+实现在：
 
 ```text
 packages/server/src/adapters/claude-code-runtime.ts
 ```
 
-Claude integration uses the Claude Agent SDK in-process SDK MCP server:
+Claude 集成使用 Claude Agent SDK 的进程内 SDK MCP Server：
 
 - `createSdkMcpServer()`
 - `tool()`
 
-The server registers an MCP server named:
+服务端注册名为 `agent-spaces` 的 MCP Server。
 
-```text
-agent-spaces
-```
+每个 `AgentFunctionTool` 被转换为 SDK MCP 工具。当模型调用工具时，服务端执行 `AgentFunctionTool.execute()` 并将 JSON 结果作为 MCP 工具输出返回。
 
-Each `AgentFunctionTool` is converted into an SDK MCP tool. When the model calls the tool, the server executes `AgentFunctionTool.execute()` and returns the JSON result as MCP tool output.
+### 其他运行时
 
-### Other Runtimes
+`codex` 和 `open-agent-sdk` 当前未暴露相同的本地 function-tool 注册路径。
 
-`codex` and `open-agent-sdk` currently do not expose the same local function-tool registration path in this codebase.
+它们不应通过仅 prompt 的方式假装支持这些工具。后续适配器工作应将各自的原生自定义工具 API（如果有）映射到相同的 `AgentFunctionTool` 抽象。
 
-They should not pretend to support these tools through prompt-only behavior. Future adapter work should map their native custom tool API, if available, into the same `AgentFunctionTool` abstraction.
+## 执行流程
 
-## Execution Flow
+1. `runMentionedAgent()` 加载当前活跃频道
+2. `createIssueFunctionTools(workspaceId, channel)` 返回频道级工具
+3. 工具通过 `functionTools` 传递给 `runtime.execute()`
+4. 运行时适配器通过其原生工具协议暴露工具
+5. 模型调用 function tool
+6. 服务端执行 `AgentFunctionTool.execute(input)`
+7. 运行时发出 `tool_use` / `tool_result` 事件
+8. WebSocket 处理器存储工具详情并广播更新后的频道/Issue 状态
 
-1. `runMentionedAgent()` loads the active channel.
-2. `createIssueFunctionTools(workspaceId, channel)` returns channel-scoped tools.
-3. The tools are passed to `runtime.execute()` as `functionTools`.
-4. Runtime adapter exposes tools through its native tool protocol.
-5. Model calls the function tool.
-6. Server executes `AgentFunctionTool.execute(input)`.
-7. Runtime emits `tool_use` / `tool_result` events.
-8. WebSocket handler stores tool details and broadcasts updated channel / issue state.
+## UI 展示
 
-## UI Surface
-
-The chat input `Tools` menu displays built-in issue tools:
+聊天输入框的 `Tools` 菜单展示内置 Issue 工具：
 
 ```text
 packages/web/src/components/chat/chat-input.tsx
 ```
 
-These entries are visible for all channels but disabled unless the current channel is an issue channel with a bound `issueId`.
+这些入口在所有频道中可见，但仅在当前频道为绑定了 `issueId` 的 Issue 频道时才可用（否则禁用）。
 
-The UI is only a capability indicator. Actual authorization and scoping are enforced on the server.
+UI 仅作为能力指示器。实际的授权和作用域限制在服务端强制执行。
 
-## Validation Rules
+## 校验规则
 
-The built-in issue tools enforce validation in the service layer:
+内置 Issue 工具在服务层强制执行校验：
 
-- input must be an object
-- `input.issueId` must equal `channel.issueId`
-- bound issue must exist
+- 输入必须是对象
+- `input.issueId` 必须等于 `channel.issueId`
+- 绑定的 Issue 必须存在
 
-This keeps the trust boundary on the server even if a model or client sends malformed tool input.
+即使模型或客户端发送格式错误的工具输入，信任边界仍保持在服务端。

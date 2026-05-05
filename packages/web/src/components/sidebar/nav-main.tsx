@@ -21,7 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, MoreHorizontal, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Plus, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
@@ -47,6 +47,7 @@ export type Route = {
   subs?: SubMenuItem[];
   addLabel?: string;
   onAdd?: () => void;
+  manageLink?: string;
 };
 
 export default function DashboardNavigation({ routes }: { routes: Route[] }) {
@@ -150,8 +151,19 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                             className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
                           >
                             <Plus className="size-3.5" />
-                            {route.addLabel ?? "Add Workspace"}
+                            {route.addLabel ?? "Add"}
                           </button>
+                        </SidebarMenuSubItem>
+                      )}
+                      {route.manageLink && (
+                        <SidebarMenuSubItem>
+                          <Link
+                            href={route.manageLink}
+                            className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                          >
+                            <LayoutGrid className="size-3.5" />
+                            Manage
+                          </Link>
                         </SidebarMenuSubItem>
                       )}
                     </SidebarMenuSub>

@@ -3,9 +3,15 @@ export interface LLMModel {
   modelId: string;
   name: string;
   provider: string;
+  cost?: LLMModelCost;
   vision: boolean;
   reasoning: boolean;
   embedding: boolean;
+}
+
+export interface LLMModelCost {
+  inputPerMillion: number;
+  outputPerMillion: number;
 }
 
 export interface LLMProvider {

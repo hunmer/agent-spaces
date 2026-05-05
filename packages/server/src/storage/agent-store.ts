@@ -1,9 +1,9 @@
-import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { v4 as uuid } from 'uuid';
 import type { AgentSession, AgentUsageDashboard, AgentUsageRecord, MessageTokenUsage } from '@agent-spaces/shared';
-import { getDataDir, ensureDir, readJsonFile } from './json-store.js';
+import { getDataDir, ensureDir } from './json-store.js';
+import { listModels } from './llm-store.js';
 
 export interface CompleteAgentUsageInput {
   runtime?: string;
@@ -24,7 +24,6 @@ interface AgentUsageInsert {
 }
 
 let db: DatabaseSync | null = null;
-let migrationDone = false;
 
 function openDb(): DatabaseSync {
   if (db) return db;
@@ -72,40 +71,11 @@ function openDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_agent_usage_completed ON agent_usage(completed_at DESC);
     CREATE INDEX IF NOT EXISTS idx_agent_usage_workspace_completed ON agent_usage(workspace_id, completed_at DESC);
   `);
-  migrateLegacyJsonSessions(db);
   return db;
 }
 
 function agentsDir(): string {
   return join(getDataDir(), 'agents');
-}
-
-function legacyAgentsDir(workspaceId: string) {
-  return join(getDataDir(), 'workspaces', workspaceId, 'agents');
-}
-
-function legacyAgentsIndex(workspaceId: string) {
-  return join(legacyAgentsDir(workspaceId), 'index.json');
-}
-
-function legacyAgentFile(workspaceId: string, sessionId: string) {
-  return join(legacyAgentsDir(workspaceId), `${sessionId}.json`);
-}
-
-function migrateLegacyJsonSessions(database: DatabaseSync): void {
-  if (migrationDone) return;
-  migrationDone = true;
-
-  const workspacesDir = join(getDataDir(), 'workspaces');
-  if (!existsSync(workspacesDir)) return;
-
-  for (const entry of readdirSync(workspacesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const sessions = readJsonFile<AgentSession[]>(legacyAgentsIndex(entry.name)) || [];
-    for (const session of sessions) {
-      insertSession(database, session);
-    }
-  }
 }
 
 export function listAgentSessions(workspaceId: string): AgentSession[] {
@@ -125,12 +95,6 @@ export function getAgentSession(workspaceId: string, sessionId: string): AgentSe
     WHERE workspace_id = ? AND id = ?
   `).get(workspaceId, sessionId);
   if (row) return mapSessionRow(row);
-
-  const legacy = readJsonFile<AgentSession>(legacyAgentFile(workspaceId, sessionId));
-  if (legacy) {
-    insertSession(database, legacy);
-    return legacy;
-  }
   return null;
 }
 
@@ -389,6 +353,9 @@ function estimateCost(model: string | undefined, inputTokens: number, outputToke
 }
 
 function getModelPrices(model: string | undefined): { inputPerMillion: number; outputPerMillion: number } {
+  const configured = findConfiguredModelCost(model);
+  if (configured) return configured;
+
   const normalized = (model || '').toLowerCase();
   if (normalized.includes('gpt-4o-mini')) return { inputPerMillion: 0.15, outputPerMillion: 0.6 };
   if (normalized.includes('gpt-4o')) return { inputPerMillion: 2.5, outputPerMillion: 10 };
@@ -399,4 +366,14 @@ function getModelPrices(model: string | undefined): { inputPerMillion: number; o
   if (normalized.includes('opus')) return { inputPerMillion: 15, outputPerMillion: 75 };
   if (normalized.includes('gemini')) return { inputPerMillion: 1.25, outputPerMillion: 5 };
   return { inputPerMillion: 1, outputPerMillion: 3 };
+}
+
+function findConfiguredModelCost(model: string | undefined): { inputPerMillion: number; outputPerMillion: number } | null {
+  if (!model) return null;
+  const configured = listModels().find((item) => item.modelId === model || item.name === model);
+  if (!configured?.cost) return null;
+  return {
+    inputPerMillion: toMoney(configured.cost.inputPerMillion),
+    outputPerMillion: toMoney(configured.cost.outputPerMillion),
+  };
 }

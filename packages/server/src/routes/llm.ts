@@ -9,7 +9,7 @@ router.get('/models', (_req, res) => {
 });
 
 router.post('/models', (req, res) => {
-  const { modelId, name, provider, vision, reasoning, embedding } = req.body;
+  const { modelId, name, provider, vision, reasoning, embedding, cost } = req.body;
   if (!modelId || !name || !provider) {
     res.status(400).json({ error: 'modelId, name, and provider are required' });
     return;
@@ -18,6 +18,7 @@ router.post('/models', (req, res) => {
     modelId,
     name,
     provider,
+    cost: normalizeModelCost(cost),
     vision: Boolean(vision),
     reasoning: Boolean(reasoning),
     embedding: Boolean(embedding),
@@ -26,7 +27,11 @@ router.post('/models', (req, res) => {
 });
 
 router.put('/models/:id', (req, res) => {
-  const model = store.updateModel(req.params.id, req.body);
+  const body = {
+    ...req.body,
+  };
+  if ('cost' in body) body.cost = normalizeModelCost(body.cost);
+  const model = store.updateModel(req.params.id, body);
   if (!model) {
     res.status(404).json({ error: 'Model not found' });
     return;
@@ -79,3 +84,19 @@ router.delete('/providers/:id', (req, res) => {
 });
 
 export default router;
+
+function normalizeModelCost(cost: unknown) {
+  if (!cost || typeof cost !== 'object' || Array.isArray(cost)) {
+    return { inputPerMillion: 0, outputPerMillion: 0 };
+  }
+  const data = cost as Record<string, unknown>;
+  return {
+    inputPerMillion: toNonNegativeNumber(data.inputPerMillion),
+    outputPerMillion: toNonNegativeNumber(data.outputPerMillion),
+  };
+}
+
+function toNonNegativeNumber(value: unknown): number {
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
+}

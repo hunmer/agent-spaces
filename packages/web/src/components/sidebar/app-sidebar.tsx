@@ -140,12 +140,8 @@ export function DashboardSidebar() {
       link: "/",
       onAdd: openCreateDialog,
       addLabel: "Add Workspace",
+      manageLink: "/workspaces",
       subs: [
-        {
-          title: "Manage Workspaces",
-          link: "/workspaces",
-          icon: <LayoutGrid className="size-3.5" />,
-        },
         ...workspaces.map((ws) => ({
           title: ws.name,
           link: `/workspace/${ws.id}`,

@@ -75,6 +75,7 @@ export function ModelsDialog({
         modelId: "",
         name: "",
         provider: initialProvider,
+        cost: { inputPerMillion: 0, outputPerMillion: 0 },
         vision: false,
         reasoning: false,
         embedding: false,
@@ -86,7 +87,15 @@ export function ModelsDialog({
 
   const handleAdd = () => {
     setSelected(null);
-    setDraft({ modelId: "", name: "", provider: "Other", vision: false, reasoning: false, embedding: false });
+    setDraft({
+      modelId: "",
+      name: "",
+      provider: "Other",
+      cost: { inputPerMillion: 0, outputPerMillion: 0 },
+      vision: false,
+      reasoning: false,
+      embedding: false,
+    });
   };
 
   const handleEdit = (m: LLMModel) => {
@@ -230,6 +239,11 @@ function ModelList({
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium">{model.name}</span>
                   <span className="text-[11px] text-muted-foreground font-mono ml-2">{model.modelId}</span>
+                  {model.cost ? (
+                    <span className="ml-2 text-[11px] text-muted-foreground font-mono">
+                      ${formatCost(model.cost.inputPerMillion)}/${formatCost(model.cost.outputPerMillion)}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1">
                   {(["vision", "reasoning", "embedding"] as const).map(cap =>
@@ -301,6 +315,40 @@ function ModelForm({
       </div>
 
       <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Input / 1M tokens</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={draft.cost?.inputPerMillion ?? 0}
+              onChange={e => onChange("cost", {
+                inputPerMillion: parseCost(e.target.value),
+                outputPerMillion: draft.cost?.outputPerMillion ?? 0,
+              })}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Output / 1M tokens</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={draft.cost?.outputPerMillion ?? 0}
+              onChange={e => onChange("cost", {
+                inputPerMillion: draft.cost?.inputPerMillion ?? 0,
+                outputPerMillion: parseCost(e.target.value),
+              })}
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capabilities</div>
         <div className="flex items-center gap-1.5">
           {(["vision", "reasoning", "embedding"] as const).map(cap => {
@@ -324,4 +372,15 @@ function ModelForm({
       </div>
     </div>
   );
+}
+
+function parseCost(value: string): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function formatCost(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 4,
+  }).format(value);
 }
