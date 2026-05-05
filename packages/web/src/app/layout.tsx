@@ -5,6 +5,7 @@ import { DevInspector } from "@/components/dev-inspector";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "sonner";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
+import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
 import "./globals.css";
@@ -49,6 +50,7 @@ export default function RootLayout({
           <SidebarProvider>
             <DashboardSidebar />
             <SidebarInset>
+              <WorkspaceTabs />
               {children}
             </SidebarInset>
           </SidebarProvider>

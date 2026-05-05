@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, TerminalSquare, FileDiff, GitCommitHorizontal, Network, Settings2, PanelLeft } from "lucide-react";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
-import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -68,7 +67,6 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
       <div className="relative shrink-0 bg-background">
-        <WorkspaceTabs />
         <div className="flex items-center h-10 border-b px-1 gap-0.5 shrink-0 overflow-x-auto md:hidden">
           <button
             onClick={() => toggleSidebar()}
