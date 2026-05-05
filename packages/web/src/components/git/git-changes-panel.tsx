@@ -3,13 +3,14 @@
 import dynamic from "next/dynamic";
 import "@/lib/monaco-loader";
 import { useEffect, useCallback, useState, useRef } from "react";
-import { FileCode, FileText, RotateCcw, RefreshCw, Trash2, ChevronDown, GitBranch, EyeOff, Sparkles, Loader2 } from "lucide-react";
+import { FileCode, FileText, RotateCcw, RefreshCw, Trash2, ChevronDown, GitBranch, EyeOff, Sparkles, Loader2, Upload, Download } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { DiffViewer } from "./diff-viewer";
 import { GitNotInitialized } from "./git-not-initialized";
+import { GitRemoteDialog } from "./git-remote-dialog";
 import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
 
@@ -39,13 +40,15 @@ const statusLabels: Record<string, string> = {
 };
 
 export function GitChangesPanel({ workspaceId }: GitPanelProps) {
-  const { status, diffs, selectedFile, loading, notGitRepo, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile } = useGitStore();
+  const { status, diffs, selectedFile, loading, notGitRepo, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile, push, pull, getRemotes, addRemote } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
   const { resolvedTheme } = useTheme();
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
 
   // gitignore dialog
   const [gitignoreOpen, setGitignoreOpen] = useState(false);
@@ -141,6 +144,42 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
     },
     [handleCommit],
   );
+
+  const handleSyncChanges = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const remotes = await getRemotes(workspaceId);
+      if (!remotes.length) {
+        setRemoteDialogOpen(true);
+        return;
+      }
+      await push(workspaceId);
+      await pull(workspaceId);
+      toast.success("Synced successfully");
+      refresh();
+    } catch (err: any) {
+      if (err.message?.includes("No remote")) {
+        setRemoteDialogOpen(true);
+      } else {
+        toast.error("Sync failed", { description: err.message });
+      }
+    } finally {
+      setSyncing(false);
+    }
+  }, [workspaceId, push, pull, getRemotes, refresh]);
+
+  const handleRemoteSubmit = useCallback(async (name: string, url: string) => {
+    await addRemote(workspaceId, name, url);
+    toast.success("Remote added, syncing...");
+    try {
+      await push(workspaceId);
+      await pull(workspaceId);
+      toast.success("Synced successfully");
+      refresh();
+    } catch (err: any) {
+      toast.error("Sync failed", { description: err.message });
+    }
+  }, [workspaceId, addRemote, push, pull, refresh]);
 
   const openGitignore = useCallback(async () => {
     try {
@@ -356,6 +395,22 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
             </button>
           </div>
         )}
+        {!hasFiles && (status?.ahead ?? 0) > 0 && (
+          <div className="border-t p-2">
+            <button
+              onClick={handleSyncChanges}
+              disabled={syncing}
+              className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            >
+              {syncing ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Upload size={13} />
+              )}
+              {syncing ? "Syncing..." : "Sync Changes"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Diff area */}
@@ -435,6 +490,8 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           </button>
         </div>
       )}
+
+      <GitRemoteDialog open={remoteDialogOpen} onOpenChange={setRemoteDialogOpen} onSubmit={handleRemoteSubmit} />
     </div>
   );
 }

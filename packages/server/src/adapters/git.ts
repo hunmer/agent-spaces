@@ -227,6 +227,52 @@ export async function gitGenerateCommitMsg(workspaceId: string): Promise<string>
   return runCommitAgent(workspaceId);
 }
 
+export async function gitPush(workspaceId: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  const status = await git.status();
+  const branch = status.current || 'HEAD';
+
+  const remotes = await git.getRemotes(true);
+  if (!remotes.length) throw new Error('No remote repository configured. Please add a remote first.');
+
+  await git.push('origin', branch);
+}
+
+export async function gitPull(workspaceId: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  const status = await git.status();
+  const branch = status.current || 'HEAD';
+
+  await git.pull('origin', branch);
+}
+
+export async function gitGetRemotes(workspaceId: string): Promise<{ name: string; refs: { fetch: string; push: string } }[]> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  return git.getRemotes(true);
+}
+
+export async function gitAddRemote(workspaceId: string, name: string, url: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  const remotes = await git.getRemotes();
+  if (remotes.some(r => r.name === name)) {
+    await git.remote(['set-url', name, url]);
+  } else {
+    await git.addRemote(name, url);
+  }
+}
+
 export async function gitInit(workspaceId: string): Promise<void> {
   const ws = getWorkspace(workspaceId);
   if (!ws) throw new Error('Workspace not found');
