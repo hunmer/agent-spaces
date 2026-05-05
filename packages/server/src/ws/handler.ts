@@ -15,6 +15,7 @@ import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { saveToolDetails } from '../services/tool-detail.js';
 import type { ToolDetail } from '../services/tool-detail.js';
+import { readWorkspacePrompt } from '../services/workspace-prompt.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -24,8 +25,6 @@ const handlers = new Map<string, EventHandler>();
 const activeSchedulers = new Set<string>();
 const activeChannelRuns = new Map<string, Map<string, ActiveChannelRun>>();
 const pendingQuestionRuns = new Map<string, PendingQuestionRun>();
-const workspaceGlobalPrompts = new Map<string, string>();
-const DEFAULT_GLOBAL_PROMPT = '结果使用中文回复';
 
 interface ActiveChannelRun {
   agentId: string;
@@ -46,14 +45,12 @@ interface PendingAskUserQuestion {
 interface PendingQuestionRun {
   agentConfigId: string;
   question: string;
-  globalPrompt?: string;
 }
 
 interface RunMentionedAgentOptions {
   messageId?: string;
   seedOutput?: string[];
   seedQuestions?: PendingAskUserQuestion[];
-  globalPrompt?: string;
 }
 
 function ensureScheduler(workspaceId: string, ctx: AgentContext) {
@@ -133,18 +130,15 @@ for (const evt of terminalEvents) {
 
 // Register channel handler
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments, globalPrompt } = data as {
+  const { channelId, content, type, mentions, attachments } = data as {
     channelId: string;
     content: string;
     type?: string;
     mentions?: string[];
     attachments?: Message['attachments'];
-    globalPrompt?: string;
   };
   if (!channelId || (!content && !attachments?.length)) return;
   if (!getChannel(workspaceId, channelId)) return;
-  const normalizedGlobalPrompt = normalizeGlobalPrompt(globalPrompt);
-  workspaceGlobalPrompts.set(workspaceId, normalizedGlobalPrompt);
   const message = createMessage(workspaceId, channelId, {
     senderId: 'user',
     content,
@@ -155,9 +149,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
 
   const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
   for (const agentId of agentIds) {
-    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
-      globalPrompt: normalizedGlobalPrompt,
-    });
+    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content));
   }
 });
 
@@ -210,7 +202,6 @@ registerHandler('channel.answer_question', (_ws, workspaceId, data) => {
       messageId,
       seedOutput: normalizeOutputLines([message.content]),
       seedQuestions: seedQuestion ? [seedQuestion] : [],
-      globalPrompt: pending.globalPrompt,
     },
   );
 });
@@ -337,12 +328,12 @@ async function runMentionedAgent(
       });
       if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
     };
-    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history, {
+    const result = await runtime.execute(buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, {
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
       boundDirs: workspace?.boundDirs,
       builtInTools: buildBuiltInTools(functionTools, channel, issue),
-    }, options.globalPrompt ?? workspaceGlobalPrompts.get(workspaceId)), agentService.resolveWorkingDir(workspaceId, preset), {
+    }), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 100,
       functionTools,
       mcpServers,
@@ -357,7 +348,6 @@ async function runMentionedAgent(
             pendingQuestionRuns.set(questionRunKey(workspaceId, channelId, pending.id, question.id), {
               agentConfigId,
               question: question.question,
-              globalPrompt: options.globalPrompt ?? workspaceGlobalPrompts.get(workspaceId),
             });
             broadcastLiveParts(true);
             return;
@@ -1277,6 +1267,7 @@ function stringifySubagentOutput(output: unknown): string | undefined {
 }
 
 function buildAgentPrompt(
+  workspaceId: string,
   systemPrompt: string | undefined,
   userPrompt: string,
   history: Message[] = [],
@@ -1286,7 +1277,6 @@ function buildAgentPrompt(
     boundDirs?: string[];
     builtInTools?: BuiltInToolContext[];
   },
-  globalPrompt?: string,
 ): string {
   const parts: string[] = [];
   const trimmedSystemPrompt = systemPrompt?.trim();
@@ -1329,17 +1319,13 @@ function buildAgentPrompt(
   }
 
   parts.push(`User message:\n${userPrompt}`);
-  return prependGlobalPrompt(parts.join('\n\n'), globalPrompt);
+  return prependWorkspacePrompt(workspaceId, parts.join('\n\n'));
 }
 
-function normalizeGlobalPrompt(globalPrompt?: string): string {
-  return globalPrompt ?? DEFAULT_GLOBAL_PROMPT;
-}
-
-function prependGlobalPrompt(prompt: string, globalPrompt?: string): string {
-  const trimmedGlobalPrompt = normalizeGlobalPrompt(globalPrompt).trim();
-  if (!trimmedGlobalPrompt) return prompt;
-  return `${trimmedGlobalPrompt}\n\n${prompt}`;
+function prependWorkspacePrompt(workspaceId: string, prompt: string): string {
+  const workspacePrompt = readWorkspacePrompt(workspaceId).trim();
+  if (!workspacePrompt) return prompt;
+  return `${workspacePrompt}\n\n${prompt}`;
 }
 
 function isIssueContextLookup(userPrompt: string): boolean {

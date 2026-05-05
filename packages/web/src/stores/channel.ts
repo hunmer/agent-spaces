@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { Channel, Message, TodoItem } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
-import { readGlobalPrompt } from '@/lib/global-prompt';
 
 interface ChannelStore {
   workspaceId: string | null;
@@ -88,7 +87,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
 
   sendMessage: (workspaceId, channelId, content, mentions = [], attachments = []) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions, attachments, globalPrompt: readGlobalPrompt() });
+    ws.send('channel.message', { channelId, content, mentions, attachments });
   },
 
   addMessage: (channelId, message) => {

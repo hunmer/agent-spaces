@@ -9,9 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { DEFAULT_GLOBAL_PROMPT, GLOBAL_PROMPT_STORAGE_KEY, readGlobalPrompt } from "@/lib/global-prompt";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { UserIcon } from "@/components/common/user-icon";
 
@@ -30,17 +28,10 @@ export function SettingsDialog({
 }) {
   const { theme, setTheme } = useTheme();
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-  const [globalPrompt, setGlobalPrompt] = useState(DEFAULT_GLOBAL_PROMPT);
 
   useEffect(() => {
     setUserAvatarUrl(localStorage.getItem("userAvatarUrl"));
-    setGlobalPrompt(readGlobalPrompt());
   }, [open]);
-
-  const handleGlobalPromptChange = (value: string) => {
-    setGlobalPrompt(value);
-    localStorage.setItem(GLOBAL_PROMPT_STORAGE_KEY, value);
-  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,18 +108,6 @@ export function SettingsDialog({
                 </button>
               ))}
             </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
-              Global Prompt
-            </label>
-            <Textarea
-              value={globalPrompt}
-              onChange={(event) => handleGlobalPromptChange(event.target.value)}
-              placeholder={DEFAULT_GLOBAL_PROMPT}
-              className="min-h-24 resize-y text-sm"
-            />
           </div>
         </div>
       </DialogContent>

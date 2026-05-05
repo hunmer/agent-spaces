@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { exec } from 'child_process';
 import * as wsService from '../services/workspace.js';
 import * as agentService from '../services/agent.js';
+import { readWorkspacePrompt, writeWorkspacePrompt } from '../services/workspace-prompt.js';
 
 const router = Router();
 
@@ -26,6 +27,30 @@ router.get('/:id', (req, res) => {
     return;
   }
   res.json(ws);
+});
+
+router.get('/:id/prompt', (req, res) => {
+  const ws = wsService.getById(req.params.id);
+  if (!ws) {
+    res.status(404).json({ error: 'Workspace not found' });
+    return;
+  }
+  res.json({ prompt: readWorkspacePrompt(req.params.id) });
+});
+
+router.put('/:id/prompt', (req, res) => {
+  const { prompt } = req.body as { prompt?: unknown };
+  if (typeof prompt !== 'string') {
+    res.status(400).json({ error: 'prompt must be a string' });
+    return;
+  }
+
+  const saved = writeWorkspacePrompt(req.params.id, prompt);
+  if (saved === null) {
+    res.status(404).json({ error: 'Workspace not found' });
+    return;
+  }
+  res.json({ prompt: saved });
 });
 
 router.get('/:id/agent-templates', (req, res) => {
