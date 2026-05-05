@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { publishWorkspaceEvent } from '../services/notification-hub.js';
 
 interface ManagedConnection {
   ws: WebSocket;
@@ -34,6 +35,7 @@ export function broadcastToWorkspace(workspaceId: string, event: string, data: u
   for (const ws of getConnectionsByWorkspace(workspaceId)) {
     if (ws.readyState === 1) ws.send(payload);
   }
+  publishWorkspaceEvent(workspaceId, event, data);
 }
 
 export function getConnectionCount() {

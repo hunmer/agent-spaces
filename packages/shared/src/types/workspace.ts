@@ -11,6 +11,21 @@ export interface Workspace {
   activeIssues: string[];
   agents: AgentConfig[];
   autoProcessIssues?: boolean;
+  notificationSettings?: WorkspaceNotificationSettings;
+}
+
+export type NotificationProvider = 'lark' | 'wechat';
+
+export type NotificationEventKey = 'issue_started' | 'issue_completed' | 'issue_task_completed';
+
+export interface WorkspaceNotificationSettings {
+  enabled: boolean;
+  provider: NotificationProvider;
+  events: NotificationEventKey[];
+  lark?: {
+    appId?: string;
+    appSecret?: string;
+  };
 }
 
 export interface AgentConfig {

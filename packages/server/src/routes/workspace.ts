@@ -3,6 +3,7 @@ import { exec } from 'child_process';
 import * as wsService from '../services/workspace.js';
 import * as agentService from '../services/agent.js';
 import { readWorkspacePrompt, writeWorkspacePrompt } from '../services/workspace-prompt.js';
+import { startWorkspaceNotificationService } from '../services/notification-hub.js';
 
 const router = Router();
 
@@ -85,6 +86,21 @@ router.put('/:id', (req, res) => {
     return;
   }
   res.json(ws);
+});
+
+router.post('/:id/notifications/start', async (req, res) => {
+  try {
+    const result = await startWorkspaceNotificationService(req.params.id);
+    if (!result.started) {
+      res.status(400).json({ error: 'Notification service is not enabled or provider is unsupported', ...result });
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : 'Failed to start notification service',
+    });
+  }
 });
 
 router.delete('/:id', (req, res) => {
