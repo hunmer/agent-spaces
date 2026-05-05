@@ -22,6 +22,14 @@ import {
   Pencil,
   Trash2,
   FolderSearch,
+  Hash,
+  ListChecks,
+  Code2,
+  TerminalSquare,
+  FileDiff,
+  GitCommitHorizontal,
+  Network,
+  Settings2,
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -33,6 +41,8 @@ import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
+import { useMobilePanelStore } from "@/stores/mobile-panel";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Workspace } from "@agent-spaces/shared";
 
 const sampleNotifications = [
@@ -65,6 +75,8 @@ export function DashboardSidebar() {
   const isCollapsed = state === "collapsed";
   const isWorkspace = pathname.startsWith("/workspace/");
   const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
+  const isMobile = useIsMobile();
+  const { activePanel, setActivePanel } = useMobilePanelStore();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
@@ -74,6 +86,8 @@ export function DashboardSidebar() {
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
   const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
+
+  const showMobileTabs = isMobile && isWorkspace;
 
   const refreshWorkspaces = () => {
     fetch("/api/workspaces")
@@ -211,7 +225,11 @@ export function DashboardSidebar() {
         </motion.div>
       </SidebarHeader>
       <SidebarContent className="gap-2 mx-2 my-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <DashboardNavigation routes={dashboardRoutes} />
+        {showMobileTabs ? (
+          <MobileWorkspaceTabs activePanel={activePanel} onSelect={setActivePanel} />
+        ) : (
+          <DashboardNavigation routes={dashboardRoutes} />
+        )}
       </SidebarContent>
       <SidebarFooter className="mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <ServerSwitcher />
@@ -235,5 +253,43 @@ export function DashboardSidebar() {
         onAgentsChanged={refreshWorkspaces}
       />
     </Sidebar>
+  );
+}
+
+const mobileTabs = [
+  { id: "channel-list", label: "Channels", icon: Hash },
+  { id: "issue-list", label: "Issues", icon: ListChecks },
+  { id: "editor", label: "Editor", icon: FolderOpen },
+  { id: "code-editor", label: "Code", icon: Code2 },
+  { id: "terminal", label: "Terminal", icon: TerminalSquare },
+  { id: "git-changes", label: "Changes", icon: FileDiff },
+  { id: "git-commits", label: "Commits", icon: GitCommitHorizontal },
+  { id: "git-graph", label: "Graph", icon: Network },
+  { id: "project-settings", label: "Settings", icon: Settings2 },
+] as const;
+
+function MobileWorkspaceTabs({ activePanel, onSelect }: { activePanel: string; onSelect: (id: string) => void }) {
+  return (
+    <nav className="flex flex-col gap-0.5">
+      {mobileTabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activePanel === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onSelect(tab.id)}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
+              isActive
+                ? "bg-accent text-accent-foreground font-medium"
+                : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
+            )}
+          >
+            <Icon className="size-4 shrink-0" />
+            <span className="truncate">{tab.label}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }

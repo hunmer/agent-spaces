@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import "@/lib/monaco-loader";
 import { useEffect, useCallback, useState, useRef } from "react";
-import { FileCode, FileText, RotateCcw, RefreshCw, Trash2, ChevronDown, GitBranch, EyeOff } from "lucide-react";
+import { FileCode, FileText, RotateCcw, RefreshCw, Trash2, ChevronDown, GitBranch, EyeOff, Sparkles, Loader2 } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -43,6 +43,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const { resolvedTheme } = useTheme();
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
 
   // gitignore dialog
@@ -112,6 +113,24 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
     setCommitting(false);
     refresh();
   }, [workspaceId, commitMsg, commit, refresh, selectFile]);
+
+  const handleGenerateCommit = useCallback(async () => {
+    if (generating || committing) return;
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/git/generate-commit-message`, { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to generate' }));
+        throw new Error(err.error);
+      }
+      const data = await res.json();
+      if (data.message) setCommitMsg(data.message);
+    } catch (err: any) {
+      console.error('Generate commit message failed:', err.message);
+    } finally {
+      setGenerating(false);
+    }
+  }, [workspaceId, generating, committing]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -307,15 +326,26 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
         {/* Commit input */}
         {hasFiles && (
           <div className="border-t p-2 space-y-1.5">
-            <textarea
-              value={commitMsg}
-              onChange={(e) => setCommitMsg(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Commit message (⌘+Enter)"
-              rows={3}
-              className="w-full resize-none text-xs px-2 py-1 border rounded bg-background"
-              disabled={committing}
-            />
+            <div className="relative">
+              <textarea
+                value={commitMsg}
+                onChange={(e) => setCommitMsg(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Commit message (⌘+Enter)"
+                rows={3}
+                className="w-full resize-none text-xs px-2 pt-1 pr-8 pb-7 border rounded bg-background disabled:opacity-50"
+                disabled={committing || generating}
+              />
+              <button
+                type="button"
+                onClick={handleGenerateCommit}
+                disabled={generating || committing || !hasFiles}
+                className="absolute bottom-1.5 right-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="AI generate commit message"
+              >
+                {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              </button>
+            </div>
             <button
               onClick={handleCommit}
               disabled={!commitMsg.trim() || committing}

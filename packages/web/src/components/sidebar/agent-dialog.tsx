@@ -87,6 +87,7 @@ const ROLE_COLORS: Record<string, string> = {
   planner: "bg-purple-500/10 text-purple-600 border-purple-200",
   executor: "bg-green-500/10 text-green-600 border-green-200",
   reviewer: "bg-orange-500/10 text-orange-600 border-orange-200",
+  commit: "bg-pink-500/10 text-pink-600 border-pink-200",
   custom: "bg-gray-500/10 text-gray-600 border-gray-200"
 };
 
@@ -103,7 +104,7 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "claude-code", label: "Claude Code" },
   { value: "codex", label: "Codex" },
 ];
-const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
+const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "commit", "custom"];
 const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name);
 const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
@@ -199,6 +200,26 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
       "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
     temperature: 0.2,
     maxTokens: 8192,
+    enabled: true,
+  },
+  commit: {
+    name: "Commit",
+    role: "commit",
+    description: "提交消息生成器，根据 diff 智能生成 commit message",
+    avatarUrl: "",
+    runtimeKind: "open-agent-sdk",
+    modelProvider: "openai-chat-completions",
+    modelId: "",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "",
+    mcps: {},
+    skills: [],
+    tools: [],
+    systemPrompt:
+      "你是一个 git commit 消息生成器。根据提供的 diff 内容，生成简洁清晰的 conventional commit 消息。格式：type: description。类型包括：feat, fix, docs, style, refactor, perf, test, chore, build, ci。首行不超过 72 个字符。如果有多项变更，使用主题 + 空行 + 要点正文。只输出 commit 消息本身，不要任何解释。",
+    temperature: 0.3,
+    maxTokens: 200,
     enabled: true,
   },
   custom: {

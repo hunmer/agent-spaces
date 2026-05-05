@@ -9,7 +9,7 @@ export interface AgentSession {
   id: string;
   workspaceId: string;
   agentConfigId: string;
-  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'custom';
+  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'commit' | 'custom';
   status: AgentSessionStatus;
   currentTaskId?: string;
   processId?: number;

@@ -20,6 +20,8 @@ import { useTaskStore } from "@/stores/task";
 import { useEditorStore } from "@/stores/editor";
 import { useChannelStore } from "@/stores/channel";
 import { useGitStore } from "@/stores/git";
+import { useMobilePanelStore } from "@/stores/mobile-panel";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Issue, Task } from "@agent-spaces/shared";
 
 const tabIcons: Record<string, React.ReactNode> = {
@@ -95,6 +97,7 @@ interface WorkspaceShellProps {
 }
 
 export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) {
+  const isMobile = useIsMobile();
   const issueStore = useIssueStore();
   const taskStore = useTaskStore();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
@@ -103,39 +106,49 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
   const gitStatus = useGitStore((s) => s.status);
+  const { activePanel, setActivePanel } = useMobilePanelStore();
   const [model] = useState(() => Model.fromJson(defaultJson));
 
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {
-    if (activeIssueId) {
+    if (!activeIssueId) return;
+    if (isMobile) {
+      setActivePanel("issue-detail");
+    } else {
       const node = model.getNodeById("issue-detail");
       if (node && node instanceof TabNode) {
         model.doAction(Actions.selectTab(node.getId()));
       }
     }
-  }, [issueSelectSeq, activeIssueId, model]);
+  }, [issueSelectSeq, activeIssueId, model, isMobile, setActivePanel]);
 
   // 选中 channel 时自动切换到 Chat tab
   useEffect(() => {
-    if (activeChannelId) {
+    if (!activeChannelId) return;
+    if (isMobile) {
+      setActivePanel("chat");
+    } else {
       const node = model.getNodeById("chat");
       if (node && node instanceof TabNode) {
         model.doAction(Actions.selectTab(node.getId()));
       }
     }
-  }, [channelSelectSeq, activeChannelId, model]);
+  }, [channelSelectSeq, activeChannelId, model, isMobile, setActivePanel]);
 
   // 打开文件时自动切换到 Code Editor tab
   useEffect(() => {
-    if (activeFilePath) {
+    if (!activeFilePath) return;
+    if (isMobile) {
+      setActivePanel("code-editor");
+    } else {
       const node = model.getNodeById("code-editor");
       if (node && node instanceof TabNode) {
         model.doAction(Actions.selectTab(node.getId()));
       }
     }
-  }, [activeFilePath, model]);
+  }, [activeFilePath, model, isMobile, setActivePanel]);
 
-  // 加载 git 状态用于底部 tab 显示
+  // 加载 git 状态
   useEffect(() => {
     useGitStore.getState().loadStatus(workspaceId);
     const interval = setInterval(() => {
@@ -143,6 +156,21 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }, 30000);
     return () => clearInterval(interval);
   }, [workspaceId]);
+
+  // 移动端切换到 git 面板时加载数据
+  useEffect(() => {
+    if (!isMobile) return;
+    const git = useGitStore.getState();
+    if (activePanel === "git-changes") {
+      git.loadStatus(workspaceId);
+      git.loadDiffs(workspaceId);
+    } else if (activePanel === "git-commits") {
+      git.loadLog(workspaceId);
+    } else if (activePanel === "git-graph") {
+      git.loadLog(workspaceId);
+      git.loadStatus(workspaceId);
+    }
+  }, [activePanel, workspaceId, isMobile]);
 
   useEffect(() => {
     const ws = getWS(workspaceId);
@@ -262,11 +290,48 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     [workspaceId],
   );
 
+  if (isMobile) {
+    return (
+      <div className="h-full w-full">
+        <MobilePanelRenderer panel={activePanel} workspaceId={workspaceId} boundDirs={boundDirs} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full">
       <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
     </div>
   );
+}
+
+function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string; workspaceId: string; boundDirs: string[] }) {
+  switch (panel) {
+    case "channel-list":
+      return <ChannelList workspaceId={workspaceId} />;
+    case "chat":
+      return <ChatPanel workspaceId={workspaceId} />;
+    case "issue-list":
+      return <IssueList workspaceId={workspaceId} />;
+    case "issue-detail":
+      return <IssueDetail workspaceId={workspaceId} />;
+    case "editor":
+      return <EditorPanel workspaceId={workspaceId} />;
+    case "code-editor":
+      return <CodeEditor workspaceId={workspaceId} />;
+    case "terminal":
+      return <TerminalPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
+    case "git-changes":
+      return <GitChangesPanel workspaceId={workspaceId} />;
+    case "git-commits":
+      return <GitCommitsPanel workspaceId={workspaceId} />;
+    case "git-graph":
+      return <GitGraphPanel workspaceId={workspaceId} />;
+    case "project-settings":
+      return <ProjectSettingsPanel workspaceId={workspaceId} />;
+    default:
+      return <ChannelList workspaceId={workspaceId} />;
+  }
 }
 
 function Placeholder({ name }: { name: string }) {
