@@ -69,7 +69,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
       <div className="relative shrink-0 bg-background">
         <WorkspaceTabs />
-        <div className="flex items-center h-10 border-b px-1 gap-0.5 shrink-0 overflow-x-auto">
+        <div className="flex items-center h-10 border-b px-1 gap-0.5 shrink-0 overflow-x-auto md:hidden">
           <button
             onClick={() => toggleSidebar()}
             className="flex items-center justify-center size-8 rounded-md text-muted-foreground hover:bg-accent/50 transition-colors shrink-0"
