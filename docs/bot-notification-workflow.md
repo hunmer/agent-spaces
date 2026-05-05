@@ -67,7 +67,19 @@ packages/web/src/components/settings/project-settings-panel.tsx
 通知服务主要实现位置：
 
 ```text
-packages/server/src/services/notification-hub.ts
+packages/server/src/services/notification-hub/
+├── index.ts              # 公开 API 重导出
+├── types.ts              # 类型定义、常量、共享状态
+├── format.ts             # Lark/WeChat 消息格式化
+├── helpers.ts            # 持久化、判断辅助函数
+├── lark-api.ts           # Lark 消息去重、解析
+├── lark-adapter.ts       # LarkNotificationAdapter
+├── wechat-api.ts         # WeChat HTTP API + 登录 + 消息处理
+├── wechat-adapter.ts     # WeChatNotificationAdapter
+├── bot-agent.ts          # Bot Agent 执行、上下文构建
+├── bot-commands.ts       # Bot 命令解析、执行、格式化
+├── events.ts             # 事件发布、信封构建
+└── service.ts            # 服务生命周期管理
 ```
 
 后端路由：
@@ -113,7 +125,7 @@ packages/server/src/ws/connection-manager.ts
 publishWorkspaceEvent(workspaceId, event, data)
 ```
 
-`notification-hub.ts` 会把内部 WS 事件映射成外部通知事件。
+`notification-hub/` 的 `events.ts` 会把内部 WS 事件映射成外部通知事件。
 
 当前支持：
 
@@ -301,7 +313,7 @@ interface BotCommand {
 }
 ```
 
-目前还没有 registry，命令集中写在 `notification-hub.ts`。
+目前还没有 registry，命令集中在 `notification-hub/bot-commands.ts`。
 
 ## 如何接入其他平台
 
@@ -344,7 +356,7 @@ notificationSettings?: {
 packages/web/src/components/settings/project-settings-panel.tsx
 ```
 
-3. 在 `notification-hub.ts` 新增 adapter：
+3. 在 `notification-hub/` 新增 adapter（如 `slack-adapter.ts`）：
 
 ```ts
 class SlackNotificationAdapter implements BotAdapter {
@@ -355,7 +367,7 @@ class SlackNotificationAdapter implements BotAdapter {
 }
 ```
 
-4. 在 `startWorkspaceNotificationService()` 里分发：
+4. 在 `service.ts` 的 `startWorkspaceNotificationService()` 里分发：
 
 ```ts
 if (settings.provider === 'slack') {
@@ -378,14 +390,11 @@ platform event
   -> command or bot agent
 ```
 
-6. 复用以下逻辑：
+6. 复用以下逻辑（均从 `notification-hub/` 导出）：
 
 ```text
-isBuiltInCommand()
-buildCommandResponse()
-getConfiguredBotAgent()
-runBotAgent()
-formatBotFinalMessage()
+bot-commands.ts: isBuiltInCommand(), buildCommandResponse()
+bot-agent.ts: getConfiguredBotAgent(), runBotAgent(), formatBotFinalMessage()
 ```
 
 7. 平台适配器只负责平台 I/O，不要把 issue/task/agent 业务逻辑写进 adapter。

@@ -17,7 +17,7 @@ import llmRouter from './routes/llm.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
-import { startPersistedNotificationServices } from './services/notification-hub.js';
+import { startPersistedNotificationServices } from './services/notification-hub/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);

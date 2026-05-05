@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { publishWorkspaceEvent } from '../services/notification-hub.js';
+import { publishWorkspaceEvent } from '../services/notification-hub/index.js';
 
 interface ManagedConnection {
   ws: WebSocket;

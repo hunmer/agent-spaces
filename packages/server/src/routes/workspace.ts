@@ -9,7 +9,7 @@ import {
   sendTestNotification,
   startWorkspaceNotificationService,
   stopWorkspaceNotificationService,
-} from '../services/notification-hub.js';
+} from '../services/notification-hub/index.js';
 
 const router = Router();
 
