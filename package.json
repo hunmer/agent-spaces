@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @agent-spaces/server dev\" \"pnpm --filter @agent-spaces/web dev\"",
-    "build": "pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build && pnpm --filter @agent-spaces/web build && node scripts/copy-web.mjs",
+    "build": "pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build && pnpm --filter @agent-spaces/web build && node scripts/copy-web.mjs && node scripts/copy-package.mjs",
     "build:docker": "docker build -f Dockerfile.server -t agent-spaces-server:latest .",
     "up": "docker compose up -d --build",
     "lint": "pnpm -r lint",
