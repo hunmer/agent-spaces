@@ -41,10 +41,10 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-dvh overflow-hidden antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full font-sans">
+      <body className="h-full overflow-hidden font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <DevInspector />
           <SidebarProvider>

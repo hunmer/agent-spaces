@@ -58,7 +58,13 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
       body: JSON.stringify({ name, type, members }),
     });
     const channel: Channel = await res.json();
-    set((s) => ({ channels: [...s.channels, channel], activeChannelId: channel.id }));
+    set((s) => {
+      const exists = s.channels.some((c) => c.id === channel.id);
+      return {
+        channels: exists ? s.channels.map((c) => (c.id === channel.id ? channel : c)) : [...s.channels, channel],
+        activeChannelId: channel.id,
+      };
+    });
   },
 
   updateChannel: async (workspaceId, channelId, data) => {

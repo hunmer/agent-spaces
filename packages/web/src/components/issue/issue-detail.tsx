@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, MessagesSquare, X } from 'lucide-react';
+import { ArrowLeft, Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, MessagesSquare, X } from 'lucide-react';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
@@ -29,6 +29,7 @@ import { createSlashExtension } from '@/components/composer/create-slash-extensi
 import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import type { IssueComment, IssueStatus, Task, TaskStatus } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
+import { useMobilePanelStore } from '@/stores/mobile-panel';
 import type { JSONContent } from '@tiptap/react';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
@@ -392,7 +393,15 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         {/* Header */}
         <div className="shrink-0 p-4 pb-3 border-b">
           <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-lg font-semibold flex-1">{issue.title}</h2>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="md:hidden shrink-0"
+              onClick={() => useMobilePanelStore.getState().setActivePanel('issue-list')}
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <h2 className="text-lg font-semibold truncate shrink min-w-0">{issue.title}</h2>
             <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
               {ISSUE_STATUS_LABEL[issue.status]}
             </Badge>

@@ -9,7 +9,7 @@ import { ChatInput, type ChatInputHandle } from './chat-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { HelpCircleIcon, PanelRightOpen, PanelRightClose, SendIcon, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, HelpCircleIcon, PanelRightOpen, PanelRightClose, SendIcon, Trash2, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
@@ -18,6 +18,7 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
 import { useIssueStore } from '@/stores/issue';
+import { useMobilePanelStore } from '@/stores/mobile-panel';
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
 const channelTypeStatus: Record<Channel['type'], { label: string; status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
@@ -197,7 +198,15 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
       <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-2 border-b">
-          <span className="text-sm font-semibold"># {channel.name}</span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="md:hidden shrink-0"
+            onClick={() => useMobilePanelStore.getState().setActivePanel('channel-list')}
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+          <span className="text-sm font-semibold truncate shrink min-w-0"># {channel.name}</span>
           <Status status={typeConf.status}>
             <StatusIndicator />
             <StatusLabel>{typeConf.label}</StatusLabel>

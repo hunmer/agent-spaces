@@ -703,3 +703,9 @@
   color: #64748b;
   font-size: 12px;
 }
+
+/* Mobile: lock sidebar-wrapper to viewport height */
+[data-slot="sidebar-wrapper"] {
+  height: 100%;
+  min-height: unset;
+}

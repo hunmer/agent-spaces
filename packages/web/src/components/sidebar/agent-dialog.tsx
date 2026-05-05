@@ -6,7 +6,6 @@ import {
   BUILT_IN_AGENT_TOOLS,
   type AgentConfig,
   type BuiltInAgentToolName,
-  type LLMModel,
   type LLMProvider,
 } from "@agent-spaces/shared";
 import { AgentIcon } from "@/components/common/agent-icon";
@@ -520,7 +519,6 @@ export function AgentDialog({
         return {
           ...prev,
           runtimeKind,
-          modelProvider: runtimeKind === "claude-code" ? prev.modelProvider : "",
         };
       }
       return { ...prev, [key]: value };
