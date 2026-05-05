@@ -50,7 +50,7 @@ export function createAgentMessagePartsTracker(input: {
       }
 
       if (event.type === 'tool_result') {
-        const detail = findToolDetailForResult(event.toolUseId, toolUseDetailIds, toolDetails);
+        const detail = findToolDetailForResult(event.toolUseId, event.result, toolUseDetailIds, toolDetails);
         if (detail) {
           detail.output = event.result;
           detail.updatedAt = new Date().toISOString();
@@ -100,6 +100,10 @@ function buildAgentMessageParts(input: {
       type: 'chain',
       chains: chainItems,
     });
+  }
+
+  for (const subagent of extractSubagentBlocks(lines, input.sessionId, input.toolDetails)) {
+    parts.push(subagent);
   }
 
   if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
@@ -350,12 +354,76 @@ function extractSearchParams(
 
 function findToolDetailForResult(
   toolUseId: string | undefined,
+  result: unknown,
   toolUseDetailIds: Map<string, string>,
   toolDetails: Map<string, ToolDetail>,
 ): ToolDetail | undefined {
   const detailId = toolUseId ? toolUseDetailIds.get(toolUseId) : undefined;
   if (detailId) return toolDetails.get(detailId);
+  if (isSubagentToolResult(result)) {
+    const detail = Array.from(toolDetails.values()).reverse().find((candidate) => {
+      return candidate.output === undefined && /^Tool:\s*Task\b/i.test(candidate.raw);
+    });
+    if (detail) return detail;
+  }
   return Array.from(toolDetails.values()).reverse().find((detail) => detail.output === undefined);
+}
+
+function isSubagentToolResult(result: unknown): boolean {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+  const record = result as Record<string, unknown>;
+  return (
+    typeof record.agentId === 'string'
+    || typeof record.agentType === 'string'
+    || (record.status === 'completed' && Array.isArray(record.content))
+  );
+}
+
+function extractSubagentBlocks(
+  lines: string[],
+  sessionId: string,
+  toolDetails?: Map<string, ToolDetail>,
+): MessagePart[] {
+  const matchCounts = new Map<string, number>();
+  return lines
+    .map((line, index): MessagePart | null => {
+      const match = line.match(/^Tool:\s*Task\b\s*(.*)$/i);
+      if (!match) return null;
+      const name = line.match(/\bdescription=(["'])(.*?)\1/i)?.[2] || `Subagent ${index + 1}`;
+      const prompt = line.match(/\bprompt=(["'])(.*?)\1/i)?.[2];
+      const detailId = findToolDetailId(line, toolDetails, matchCounts);
+      const detail = detailId ? toolDetails?.get(detailId) : undefined;
+      const output = stringifySubagentOutput(detail?.output);
+      return {
+        id: `subagent-${sessionId}-${index}`,
+        type: 'subagent',
+        name,
+        instructions: prompt,
+        output,
+      };
+    })
+    .filter((part): part is MessagePart => Boolean(part));
+}
+
+function stringifySubagentOutput(output: unknown): string | undefined {
+  if (output === undefined || output === null) return undefined;
+  if (typeof output === 'string') return output.trim() || undefined;
+  if (Array.isArray(output)) {
+    const text = output.flatMap((item) => {
+      if (typeof item === 'string') return [item];
+      if (!item || typeof item !== 'object') return [];
+      const record = item as Record<string, unknown>;
+      return typeof record.text === 'string' ? [record.text] : [];
+    }).join('\n').trim();
+    return text || undefined;
+  }
+  if (typeof output === 'object') {
+    const record = output as Record<string, unknown>;
+    if (typeof record.result === 'string' && record.result.trim()) return record.result.trim();
+    if (typeof record.summary === 'string' && record.summary.trim()) return record.summary.trim();
+    if (Array.isArray(record.content)) return stringifySubagentOutput(record.content);
+  }
+  return undefined;
 }
 
 function findToolDetailId(

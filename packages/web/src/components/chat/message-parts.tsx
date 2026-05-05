@@ -228,9 +228,17 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
       return (
         <Agent>
           <AgentHeader name={part.name} model={part.model} />
-          {(part.instructions || part.tools?.length) ? (
+          {(part.instructions || part.output || part.tools?.length) ? (
             <AgentContent>
               {part.instructions ? <AgentInstructions>{part.instructions}</AgentInstructions> : null}
+              {part.output ? (
+                <div className="space-y-2">
+                  <span className="font-medium text-muted-foreground text-sm">Result</span>
+                  <div className="rounded-md bg-muted/50 p-3 text-sm">
+                    <Markdown content={part.output} />
+                  </div>
+                </div>
+              ) : null}
               {part.tools?.length ? (
                 <AgentTools>
                   {part.tools.map((tool, index) => (
