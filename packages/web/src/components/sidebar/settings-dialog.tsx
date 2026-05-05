@@ -10,7 +10,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor, User } from "lucide-react";
+import { Sun, Moon, Monitor } from "lucide-react";
+import { UserIcon } from "@/components/common/user-icon";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -72,13 +73,7 @@ export function SettingsDialog({
               User Avatar
             </label>
             <div className="flex items-center gap-3">
-              <div className={cn("size-12 rounded-full overflow-hidden border border-input flex items-center justify-center", userAvatarUrl ? "" : "bg-muted")}>
-                {userAvatarUrl ? (
-                  <img src={userAvatarUrl} alt="User" className="size-full object-cover" />
-                ) : (
-                  <User className="size-5 text-muted-foreground" />
-                )}
-              </div>
+              <UserIcon size="lg" />
               <div className="flex items-center gap-2">
                 <label className="text-xs text-primary cursor-pointer hover:underline">
                   Upload

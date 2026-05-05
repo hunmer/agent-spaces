@@ -24,7 +24,7 @@ import {
   FolderSearch,
   LayoutGrid,
 } from "lucide-react";
-import { Logo } from "@/components/sidebar/logo";
+import { UserIcon } from "@/components/common/user-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
 import { ModelsDialog } from "@/components/sidebar/models-dialog";
 import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
@@ -191,12 +191,12 @@ export function DashboardSidebar() {
         className={cn(
           "flex rounded-xl border border-border bg-card mx-2 mt-2 px-3 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
           isCollapsed
-            ? "flex-row items-center justify-between gap-y-4 md:flex-col md:items-start md:justify-start"
+            ? "flex-row items-center justify-between gap-y-4 md:flex-col md:items-center md:justify-center"
             : "flex-row items-center justify-between"
         )}
       >
         <a href="#" className="flex items-center gap-2">
-          <Logo className="h-8 w-8" />
+          <UserIcon size={isCollapsed ? "sm" : "md"} />
         </a>
 
         <motion.div
