@@ -13,6 +13,7 @@ const deps = { ...pkg.dependencies };
 if (deps['@agent-spaces/shared'] === 'workspace:*') {
   deps['@agent-spaces/shared'] = 'file:./shared';
 }
+deps.zod = '^4.0.0';
 
 const prod = {
   name: pkg.name,
@@ -21,7 +22,7 @@ const prod = {
   main: 'app.js',
   scripts: { start: 'node app.js' },
   dependencies: deps,
-  pnpm: { overrides: { zod: '^3.24.0' } },
+  pnpm: { onlyBuiltDependencies: ['node-pty', 'protobufjs'] },
   engines: pkg.engines,
 };
 

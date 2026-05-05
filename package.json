@@ -13,6 +13,16 @@
     "concurrently": "^9.1.2",
     "typescript": "^5.8.3"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "msw",
+      "node-pty",
+      "protobufjs",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
