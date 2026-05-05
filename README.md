@@ -62,6 +62,8 @@ npm run start
 
 生产包会在 `npm run setup` 时安装运行依赖；`npm run start` 会在 `PORT` 指定端口启动 API、WebSocket 和已打包的前端页面，默认访问 http://localhost:3100。
 
+> **Claude Code 部署注意**：由于 Claude Code 对 root/sudo 权限和 `/root` 目录有安全限制，工程目录尽量不要放在 `/root` 下。建议部署到普通用户可读写的目录，例如 `/home/agent-spaces/app` 或 `/opt/agent-spaces` 并将目录 owner 设置为运行用户。
+
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
