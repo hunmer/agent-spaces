@@ -274,6 +274,7 @@ async function runMentionedAgent(
   broadcastToWorkspace(workspaceId, existingMessage ? 'channel.message.updated' : 'channel.message', pending);
 
   let activeRun: ActiveChannelRun | undefined;
+  const liveReasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   try {
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind,
@@ -312,6 +313,7 @@ async function runMentionedAgent(
         skills,
         builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: liveOutput,
+        reasoning: liveReasoning,
         toolDetails,
         askUserQuestions,
         success: true,
@@ -343,6 +345,12 @@ async function runMentionedAgent(
       configDir,
       sandboxDirs: preset.sandboxDirs,
       onEvent: (event) => {
+        if (event.type === 'reasoning') {
+          liveReasoning.push({ text: event.text, status: event.status });
+          broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.text });
+          broadcastLiveParts();
+          return;
+        }
         if (event.type === 'tool_use') {
           if (event.name === 'AskUserQuestion') {
             const question = parseAskUserQuestion(event.id, event.input);
@@ -445,6 +453,7 @@ async function runMentionedAgent(
           mcpServers: Object.keys(mcpServers ?? {}),
           skills,
           output: waitingOutput,
+          reasoning: liveReasoning,
           toolDetails,
           askUserQuestions,
           success: true,
@@ -509,6 +518,7 @@ async function runMentionedAgent(
         skills,
         builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: displayOutput,
+        reasoning: liveReasoning,
         toolDetails,
         askUserQuestions,
         success: result.success,
@@ -548,6 +558,7 @@ async function runMentionedAgent(
         skills,
         builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: [error],
+        reasoning: liveReasoning,
         toolDetails: new Map(),
         askUserQuestions: [],
         success: false,
@@ -677,6 +688,7 @@ function buildAgentMessageParts(input: {
   skills: string[];
   builtInTools?: BuiltInToolContext[];
   output: string[];
+  reasoning?: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   toolDetails?: Map<string, ToolDetail>;
   askUserQuestions?: PendingAskUserQuestion[];
   success: boolean;
@@ -691,6 +703,16 @@ function buildAgentMessageParts(input: {
   const parts: MessagePart[] = [];
 
   const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
+
+  const reasoningText = normalizeReasoningText(input.reasoning);
+  if (reasoningText) {
+    parts.push({
+      id: `reasoning-${input.sessionId}`,
+      type: 'reasoning',
+      text: reasoningText,
+      status: input.success ? 'completed' : 'streaming',
+    });
+  }
 
   if (chainItems.length > 0) {
     parts.push({
@@ -745,6 +767,15 @@ function buildAgentMessageParts(input: {
   }
 
   return parts;
+}
+
+function normalizeReasoningText(reasoning?: Array<{ text: string }>): string {
+  if (!reasoning?.length) return '';
+  return collapseRepeatedTextBlock(
+    reasoning
+      .map((item) => item.text.trim())
+      .filter(Boolean),
+  ).join('\n\n').trim();
 }
 
 function hasTokenUsage(usage: MessageTokenUsage): boolean {

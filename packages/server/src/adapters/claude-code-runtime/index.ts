@@ -5,7 +5,7 @@ import type { AgentRunOptions, AgentRunResult, AgentRuntime, AgentRuntimeConfig 
 import { summarizeResult } from '../agent-runtime-types.js';
 import { normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
-import { extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
+import { extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
 
 export class ClaudeCodeRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
@@ -90,6 +90,10 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         }
 
         logToolDebug(message, d, { suppressAskUserQuestionResult });
+        for (const text of extractThinkingEvents(message)) {
+          d(`thinking | ${text}`);
+          options?.onEvent?.({ type: 'reasoning', text, status: 'completed' });
+        }
         for (const toolUse of toolUses) {
           options?.onEvent?.({ type: 'tool_use', ...toolUse });
         }
@@ -98,6 +102,9 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         }
         const line = formatMessage(message);
         if (line && !isAskUserQuestionAutoResult(line)) {
+          if (message.type === 'assistant') {
+            d(`assistant | ${line}`);
+          }
           output.push(line);
           options?.onEvent?.({ type: 'output', line });
         }

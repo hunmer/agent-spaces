@@ -40,9 +40,6 @@ function formatAssistantMessage(content: unknown): string | null {
   const parts = content.flatMap((block) => {
     if (!block || typeof block !== 'object') return [];
     const typedBlock = block as { type?: string; text?: unknown; thinking?: unknown };
-    if (typedBlock.type === 'thinking' && typeof typedBlock.thinking === 'string') {
-      return [`Thinking: ${typedBlock.thinking}`];
-    }
     if (typedBlock.type === 'text' && typeof typedBlock.text === 'string') {
       return [typedBlock.text];
     }
@@ -50,6 +47,18 @@ function formatAssistantMessage(content: unknown): string | null {
   });
 
   return parts.length > 0 ? parts.join('\n') : null;
+}
+
+export function extractThinkingEvents(message: SDKMessage): string[] {
+  if (message.type !== 'assistant' || !Array.isArray(message.message.content)) return [];
+
+  return message.message.content.flatMap((block) => {
+    if (!block || typeof block !== 'object') return [];
+    const typedBlock = block as { type?: string; thinking?: unknown };
+    if (typedBlock.type !== 'thinking' || typeof typedBlock.thinking !== 'string') return [];
+    const text = typedBlock.thinking.trim();
+    return text ? [text] : [];
+  });
 }
 
 export function extractToolUseEvents(message: SDKMessage): Array<{ id: string; name: string; input?: unknown; line: string }> {

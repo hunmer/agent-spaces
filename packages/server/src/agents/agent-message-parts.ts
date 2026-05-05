@@ -4,6 +4,7 @@ import { saveToolDetails, type ToolDetail } from '../services/tool-detail.js';
 
 export interface AgentMessagePartsTracker {
   readonly output: string[];
+  readonly reasoning: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   readonly toolDetails: Map<string, ToolDetail>;
   handleEvent(event: AgentRuntimeEvent): void;
   buildParts(input: {
@@ -24,13 +25,21 @@ export function createAgentMessagePartsTracker(input: {
   onOutput?: (line: string) => void;
 }): AgentMessagePartsTracker {
   const output: string[] = [];
+  const reasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   const toolDetails = new Map<string, ToolDetail>();
   const toolUseDetailIds = new Map<string, string>();
 
   return {
     output,
+    reasoning,
     toolDetails,
     handleEvent(event) {
+      if (event.type === 'reasoning') {
+        reasoning.push({ text: event.text, status: event.status });
+        input.onOutput?.(event.text);
+        return;
+      }
+
       if (event.type === 'tool_use') {
         const detailId = buildToolDetailId(event.id, event.line);
         toolUseDetailIds.set(event.id, detailId);
@@ -70,6 +79,7 @@ export function createAgentMessagePartsTracker(input: {
         model,
         usage,
         output,
+        reasoning,
         toolDetails,
         success,
         error,
@@ -84,6 +94,7 @@ function buildAgentMessageParts(input: {
   model?: string;
   usage?: MessageTokenUsage;
   output: string[];
+  reasoning?: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   toolDetails?: Map<string, ToolDetail>;
   success: boolean;
   error?: string;
@@ -96,6 +107,16 @@ function buildAgentMessageParts(input: {
   const usage = input.usage ?? extractUsage(lines);
   const parts: MessagePart[] = [];
   const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
+
+  const reasoningText = normalizeReasoningText(input.reasoning);
+  if (reasoningText) {
+    parts.push({
+      id: `reasoning-${input.sessionId}`,
+      type: 'reasoning',
+      text: reasoningText,
+      status: input.success ? 'completed' : 'streaming',
+    });
+  }
 
   if (chainItems.length > 0) {
     parts.push({
@@ -138,6 +159,15 @@ function buildAgentMessageParts(input: {
   }
 
   return parts;
+}
+
+function normalizeReasoningText(reasoning?: Array<{ text: string }>): string {
+  if (!reasoning?.length) return '';
+  return collapseRepeatedTextBlock(
+    reasoning
+      .map((item) => item.text.trim())
+      .filter(Boolean),
+  ).join('\n\n').trim();
 }
 
 function hasTokenUsage(usage: MessageTokenUsage): boolean {

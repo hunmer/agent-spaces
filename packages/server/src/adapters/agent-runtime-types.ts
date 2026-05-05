@@ -30,6 +30,7 @@ export interface AgentRunOptions {
 
 export type AgentRuntimeEvent =
   | { type: 'output'; line: string }
+  | { type: 'reasoning'; text: string; status?: 'streaming' | 'completed' }
   | { type: 'tool_use'; id: string; name: string; input?: unknown; line: string }
   | { type: 'tool_result'; toolUseId?: string; result: unknown };
 
