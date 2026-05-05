@@ -221,11 +221,7 @@ isBuiltInCommand(text)
 
 ```ts
 const command = text.trim().split(/\s+/, 1)[0];
-return command === '/new_issue'
-  || command === '/issue_list'
-  || command === '/issue_detail'
-  || command === '/help'
-  || command.startsWith('/');
+return command.startsWith('/');
 ```
 
 也就是说，只要以 `/` 开头，都会被视为命令，不会进入 bot agent。
@@ -239,15 +235,52 @@ buildCommandResponse(workspaceId, text)
 当前命令：
 
 ```text
-/issue_list
-/new_issue
-/issue_detail issue=<issueId>
+/workspace
+/workspaces
+/workspac [id]
+/issues
+/issue
+/issue [id]
+/issue new [title] [desc]
+/issue start
+/issue close
+/task
+/comment [msg]
+/comments
 /help
+/changes
+/commit [desc/auto]
+/push
+/pull
 ```
+
+命令说明：
+
+| 命令 | 说明 |
+| --- | --- |
+| `/workspace` | 查看当前 workspace 信息。 |
+| `/workspaces` | 查看所有 workspace 的简略信息。 |
+| `/workspac [id]` | 切换到指定 workspace。 |
+| `/issues` | 查看当前 workspace 的所有 issues。 |
+| `/issue` | 查看当前 issue 信息，包括标题、注释、状态、tasks、成员等。 |
+| `/issue [id]` | 进入指定 issue。 |
+| `/issue new [title] [desc]` | 创建新的 issue。 |
+| `/issue start` | 将当前 issue 切换为立即开始。 |
+| `/issue close` | 将当前 issue 设置为失败或关闭状态。 |
+| `/task` | 查看当前 agent 的 task。 |
+| `/comment [msg]` | 在当前 issue 发表评论。 |
+| `/comments` | 查看当前 issue 的 comments。 |
+| `/help` | 查看帮助。 |
+| `/changes` | 查看当前 diff 文件列表。 |
+| `/commit [desc/auto]` | 提交 commit；参数为 `auto` 时走 commit-agent 自动提交。 |
+| `/push` | 推送到远程 git。 |
+| `/pull` | 从远程 git 拉取。 |
+
+需要维护会话上下文的命令，例如 `/workspac [id]`、`/issue [id]` 和 `/task`，应记录用户当前所在 workspace、issue 和 agent/task 选择，避免每条命令都要求重复传参。
 
 新增命令建议步骤：
 
-1. 在 `isBuiltInCommand()` 中明确列出命令名。
+1. 在 `buildCommandResponse()` 或 command registry 中明确列出支持的命令，未知 slash command 返回 `/help` 引导。
 2. 在 `buildCommandResponse()` 中添加分支。
 3. 如果命令需要写操作，不要直接拼字符串改数据，优先调用现有 service：
    - `issueService`
@@ -469,4 +502,3 @@ agent.enabled !== false
 ### 为什么会出现重复执行？
 
 飞书长连接可能重复投递同一事件。当前用 message id 或 `chat_id + create_time + content` 做 5 分钟去重。
-
