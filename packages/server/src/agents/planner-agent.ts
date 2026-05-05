@@ -98,6 +98,7 @@ export async function runPlanner(
       sessionId: planner.id,
       workspaceRoot: workspace?.boundDirs?.[0],
       model: plannerPreset.modelId,
+      usage: planResult.usage,
       success: planResult.success,
       error: planResult.error,
     }),

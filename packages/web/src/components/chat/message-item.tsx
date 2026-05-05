@@ -6,7 +6,7 @@ import { Copy, Pencil, Trash2, Check, Clock } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
 import { MemberInfoDialog } from './member-info-dialog';
-import { MessageParts } from './message-parts';
+import { MessageContextUsage, MessageParts } from './message-parts';
 
 interface MessageItemProps {
   message: Message;
@@ -76,6 +76,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
               {message.metadata.model}
             </span>
           )}
+          <MessageContextUsage message={message} />
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>

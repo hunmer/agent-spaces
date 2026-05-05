@@ -501,6 +501,7 @@ async function runMentionedAgent(
         presetName: preset.name || preset.role,
         role: preset.role,
         model: preset.modelId,
+        usage: result.usage,
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
@@ -668,6 +669,7 @@ function buildAgentMessageParts(input: {
   presetName: string;
   role: string;
   model?: string;
+  usage?: MessageTokenUsage;
   systemPrompt?: string;
   mcpServers: string[];
   skills: string[];
@@ -683,7 +685,7 @@ function buildAgentMessageParts(input: {
   const finalText = finalTextRange
     ? collapseRepeatedTextBlock(lines.slice(finalTextRange.start, finalTextRange.end + 1)).join('\n').trim()
     : '';
-  const usage = extractUsage(lines);
+  const usage = input.usage ?? extractUsage(lines);
   const parts: MessagePart[] = [];
 
   const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
@@ -712,11 +714,11 @@ function buildAgentMessageParts(input: {
     });
   }
 
-  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
+  if (hasTokenUsage(usage)) {
     parts.push({
       id: `context-${input.sessionId}`,
       type: 'context',
-      usedTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      usedTokens: getTotalTokens(usage),
       maxTokens: 128_000,
       modelId: input.model,
       usage,
@@ -741,6 +743,14 @@ function buildAgentMessageParts(input: {
   }
 
   return parts;
+}
+
+function hasTokenUsage(usage: MessageTokenUsage): boolean {
+  return Boolean(usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.cachedInputTokens || usage.reasoningTokens);
+}
+
+function getTotalTokens(usage: MessageTokenUsage): number {
+  return usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) + (usage.cachedInputTokens ?? 0) + (usage.reasoningTokens ?? 0);
 }
 
 function normalizeOutputLines(output: string[]): string[] {

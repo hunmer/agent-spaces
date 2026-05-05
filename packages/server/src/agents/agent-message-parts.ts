@@ -1,5 +1,5 @@
 import type { AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
-import type { MessageChain, MessagePart } from '@agent-spaces/shared';
+import type { MessageChain, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import { saveToolDetails, type ToolDetail } from '../services/tool-detail.js';
 
 export interface AgentMessagePartsTracker {
@@ -10,6 +10,7 @@ export interface AgentMessagePartsTracker {
     sessionId: string;
     workspaceRoot?: string;
     model?: string;
+    usage?: MessageTokenUsage;
     success: boolean;
     error?: string;
   }): MessagePart[];
@@ -62,11 +63,12 @@ export function createAgentMessagePartsTracker(input: {
       output.push(event.line);
       input.onOutput?.(event.line);
     },
-    buildParts({ sessionId, workspaceRoot, model, success, error }) {
+    buildParts({ sessionId, workspaceRoot, model, usage, success, error }) {
       return buildAgentMessageParts({
         sessionId,
         workspaceRoot,
         model,
+        usage,
         output,
         toolDetails,
         success,
@@ -80,6 +82,7 @@ function buildAgentMessageParts(input: {
   sessionId: string;
   workspaceRoot?: string;
   model?: string;
+  usage?: MessageTokenUsage;
   output: string[];
   toolDetails?: Map<string, ToolDetail>;
   success: boolean;
@@ -90,7 +93,7 @@ function buildAgentMessageParts(input: {
   const finalText = finalTextRange
     ? collapseRepeatedTextBlock(lines.slice(finalTextRange.start, finalTextRange.end + 1)).join('\n').trim()
     : '';
-  const usage = extractUsage(lines);
+  const usage = input.usage ?? extractUsage(lines);
   const parts: MessagePart[] = [];
   const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
 
@@ -106,11 +109,11 @@ function buildAgentMessageParts(input: {
     parts.push(subagent);
   }
 
-  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
+  if (hasTokenUsage(usage)) {
     parts.push({
       id: `context-${input.sessionId}`,
       type: 'context',
-      usedTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      usedTokens: getTotalTokens(usage),
       maxTokens: 128_000,
       modelId: input.model,
       usage,
@@ -135,6 +138,14 @@ function buildAgentMessageParts(input: {
   }
 
   return parts;
+}
+
+function hasTokenUsage(usage: MessageTokenUsage): boolean {
+  return Boolean(usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.cachedInputTokens || usage.reasoningTokens);
+}
+
+function getTotalTokens(usage: MessageTokenUsage): number {
+  return usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) + (usage.cachedInputTokens ?? 0) + (usage.reasoningTokens ?? 0);
 }
 
 function normalizeOutputLines(output: string[]): string[] {

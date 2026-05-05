@@ -100,6 +100,7 @@ export async function syncIssueTasksAfterPlanning(
     parts: taskSyncTracker.buildParts({
       sessionId: taskSyncAgent.id,
       model: taskSyncPreset.modelId,
+      usage: result.usage,
       success: result.success,
       error: result.error,
     }),
@@ -266,6 +267,7 @@ export async function runIssueTask(
       sessionId: executor.id,
       workspaceRoot: executorWorkingDir,
       model: executorPreset.modelId,
+      usage: result.usage,
       success: result.success,
       error: result.error,
     }),

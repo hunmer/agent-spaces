@@ -109,6 +109,7 @@ export async function runReviewer(
       sessionId: reviewer.id,
       workspaceRoot: reviewerWorkingDir,
       model: reviewerPreset.modelId,
+      usage: reviewResult.usage,
       success: reviewResult.success,
       error: reviewResult.error,
     }),
