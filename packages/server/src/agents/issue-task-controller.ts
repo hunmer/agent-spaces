@@ -111,6 +111,8 @@ export async function syncIssueTasksAfterPlanning(
     summary: result.summary,
     output: taskSyncTracker.output.length ? taskSyncTracker.output : result.output,
     durationMs: Date.now() - startTime,
+    usage: result.usage,
+    costUsd: result.costUsd,
   });
   ctx.broadcast('agent.completed', { agentId: taskSyncAgent.id, result });
 
@@ -280,6 +282,8 @@ export async function runIssueTask(
     summary: result.summary,
     output: executorTracker.output.length ? executorTracker.output : result.output,
     durationMs: Date.now() - startTime,
+    usage: result.usage,
+    costUsd: result.costUsd,
   });
   ctx.broadcast('agent.completed', { agentId: executor.id, result });
 

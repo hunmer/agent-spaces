@@ -34,6 +34,7 @@ export interface AgentCompletionDetails {
   output?: string[];
   durationMs?: number;
   usage?: MessageTokenUsage;
+  costUsd?: number;
 }
 
 export interface AgentConnectionTestResult {
@@ -736,6 +737,7 @@ export function complete(
       summary: details?.summary,
       durationMs: details?.durationMs,
       usage,
+      costUsd: details?.costUsd,
     });
   }
   return session;

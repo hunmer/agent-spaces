@@ -45,6 +45,8 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
     model: commitAgent.modelId,
     summary: result.summary,
     output: result.output,
+    usage: result.usage,
+    costUsd: result.costUsd,
   });
 
   if (!result.success) {

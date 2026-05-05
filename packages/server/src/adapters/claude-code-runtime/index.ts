@@ -5,7 +5,7 @@ import type { AgentRunOptions, AgentRunResult, AgentRuntime, AgentRuntimeConfig 
 import { summarizeResult } from '../agent-runtime-types.js';
 import { normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
-import { extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine } from './message-format.js';
+import { extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
 
 export class ClaudeCodeRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
@@ -66,6 +66,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let tokenCount = 0;
       let error: string | undefined;
       let usageLine: string | null = null;
+      let usage: AgentRunResult['usage'];
+      let costUsd: number | undefined;
       const pendingAskUserQuestionToolIds = new Set<string>();
       let waitingForUserAnswer = false;
 
@@ -104,6 +106,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           turns = message.num_turns;
           tokenCount = countUsageTokens(message.usage);
           usageLine = formatUsageLine(message.usage);
+          usage = normalizeUsage(message.usage);
+          costUsd = readTotalCostUsd(message);
           if (message.subtype === 'success') {
             if (!isAskUserQuestionAutoResult(message.result)) {
               resultText = message.result;
@@ -123,6 +127,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           summary: 'Waiting for user answer',
           artifacts: [],
           output,
+          usage,
+          costUsd,
         };
       }
 
@@ -135,6 +141,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           artifacts: [],
           error,
           output,
+          usage,
+          costUsd,
         };
       }
 
@@ -152,6 +160,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         summary: summarizeResult(text),
         artifacts: [],
         output: finalOutput,
+        usage,
+        costUsd,
       };
     } catch (err) {
       const elapsed = Date.now() - startTime;
@@ -175,4 +185,10 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       this.activeQuery?.close();
     });
   }
+}
+
+function readTotalCostUsd(message: unknown): number | undefined {
+  if (!message || typeof message !== 'object') return undefined;
+  const value = (message as { total_cost_usd?: unknown }).total_cost_usd;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }

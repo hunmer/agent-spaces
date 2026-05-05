@@ -12,6 +12,7 @@ export interface CompleteAgentUsageInput {
   output?: string[];
   durationMs?: number;
   usage?: MessageTokenUsage;
+  costUsd?: number;
 }
 
 interface AgentUsageInsert {
@@ -21,6 +22,7 @@ interface AgentUsageInsert {
   summary?: string;
   durationMs?: number;
   usage: MessageTokenUsage;
+  costUsd?: number;
 }
 
 let db: DatabaseSync | null = null;
@@ -122,7 +124,9 @@ export function recordAgentUsage(input: AgentUsageInsert): AgentUsageRecord {
   const cachedInputTokens = toCount(input.usage.cachedInputTokens);
   const reasoningTokens = toCount(input.usage.reasoningTokens);
   const totalTokens = toCount(input.usage.totalTokens) || inputTokens + outputTokens + cachedInputTokens + reasoningTokens;
-  const cost = estimateCost(input.model, inputTokens + cachedInputTokens, outputTokens + reasoningTokens);
+  const cost = input.costUsd !== undefined
+    ? splitProvidedCost(input.costUsd, inputTokens + cachedInputTokens, outputTokens + reasoningTokens)
+    : estimateCost(input.model, inputTokens + cachedInputTokens, outputTokens + reasoningTokens);
   const record: AgentUsageRecord = {
     id: uuid(),
     workspaceId: input.session.workspaceId,
@@ -349,6 +353,20 @@ function estimateCost(model: string | undefined, inputTokens: number, outputToke
     inputCostUsd,
     outputCostUsd,
     totalCostUsd: inputCostUsd + outputCostUsd,
+  };
+}
+
+function splitProvidedCost(costUsd: number, inputTokens: number, outputTokens: number) {
+  const totalCostUsd = toMoney(costUsd);
+  const totalTokens = inputTokens + outputTokens;
+  if (!totalCostUsd || totalTokens === 0) {
+    return { inputCostUsd: 0, outputCostUsd: 0, totalCostUsd };
+  }
+  const inputCostUsd = totalCostUsd * (inputTokens / totalTokens);
+  return {
+    inputCostUsd,
+    outputCostUsd: totalCostUsd - inputCostUsd,
+    totalCostUsd,
   };
 }
 

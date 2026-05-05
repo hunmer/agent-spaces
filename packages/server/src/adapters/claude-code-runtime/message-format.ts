@@ -1,4 +1,5 @@
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { MessageTokenUsage } from '@agent-spaces/shared';
 
 export function formatMessage(message: SDKMessage): string | null {
   switch (message.type) {
@@ -187,7 +188,7 @@ export function countUsageTokens(usage: unknown): number {
 }
 
 export function formatUsageLine(usage: unknown): string | null {
-  const normalized = normalizeUsage(usage);
+  const normalized = normalizeClaudeUsage(usage);
   if (!normalized) return null;
   return [
     `[Usage] tokens=${normalized.totalTokens}`,
@@ -197,7 +198,18 @@ export function formatUsageLine(usage: unknown): string | null {
   ].join(' ');
 }
 
-function normalizeUsage(usage: unknown): {
+export function normalizeUsage(usage: unknown): MessageTokenUsage | undefined {
+  const normalized = normalizeClaudeUsage(usage);
+  if (!normalized) return undefined;
+  return {
+    inputTokens: normalized.inputTokens,
+    outputTokens: normalized.outputTokens,
+    cachedInputTokens: normalized.cachedInputTokens,
+    totalTokens: normalized.totalTokens,
+  };
+}
+
+function normalizeClaudeUsage(usage: unknown): {
   inputTokens: number;
   outputTokens: number;
   cachedInputTokens: number;

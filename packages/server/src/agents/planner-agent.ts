@@ -110,6 +110,8 @@ export async function runPlanner(
     summary: planResult.summary,
     output: tracker.output.length ? tracker.output : planResult.output,
     durationMs: Date.now() - startTime,
+    usage: planResult.usage,
+    costUsd: planResult.costUsd,
   });
   ctx.broadcast('agent.completed', { agentId: planner.id, result: planResult });
 

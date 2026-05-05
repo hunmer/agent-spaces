@@ -123,6 +123,8 @@ export async function runReviewer(
     summary: reviewResult.summary,
     output: reviewerTracker.output.length ? reviewerTracker.output : reviewResult.output,
     durationMs: Date.now() - startTime,
+    usage: reviewResult.usage,
+    costUsd: reviewResult.costUsd,
   });
   ctx.broadcast('agent.completed', {
     agentId: reviewer.id,

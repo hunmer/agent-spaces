@@ -469,6 +469,8 @@ async function runMentionedAgent(
       summary: result.summary,
       output: displayOutput,
       durationMs: Date.now() - startTime,
+      usage: result.usage,
+      costUsd: result.costUsd,
     });
     broadcastToWorkspace(workspaceId, 'agent.completed', {
       agentId: session.id,

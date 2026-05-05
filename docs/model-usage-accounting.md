@@ -114,6 +114,7 @@ agentService.complete(workspaceId, sessionId, error, details)
 - `output`
 - `durationMs`
 - 可选的结构化 `usage`
+- 可选的 provider 原始 `costUsd`
 
 当前接入的完成路径包括：
 
@@ -129,7 +130,7 @@ agentService.complete(workspaceId, sessionId, error, details)
 1. 更新 `agent_sessions` 中的 session 状态。
 2. 从 `details.usage` 读取结构化 usage；如果没有，则从 `details.output` 解析 usage 行。
 3. 如果没有任何 token 数据，结束。
-4. 根据模型成本计算美元成本。
+4. 如果 runtime 提供了原始 `costUsd`，优先使用该值；否则根据模型成本计算美元成本。
 5. 写入 `agent_usage`。
 
 ## Token 提取
@@ -148,7 +149,16 @@ extractUsageFromOutput(output)
 - `cached input`
 - `reasoning`
 
-Codex runtime 当前会在 turn 完成时输出类似：
+Claude Code runtime 通过 SDK `query()` 返回的 result message 读取结构化字段：
+
+```ts
+message.usage
+message.total_cost_usd
+```
+
+这两个字段会进入 `AgentRunResult.usage` 和 `AgentRunResult.costUsd`，再由 `agentService.complete()` 直接写入 `agent_usage`。因此 Claude Code 的计费统计不依赖输出文本中的 `[Usage]` 行。
+
+Codex runtime 当前也会在 turn 完成时输出类似：
 
 ```text
 [Usage] tokens=12345 input=8000 output=3000 reasoning=1345
@@ -184,11 +194,14 @@ totalCostUsd = inputCostUsd + outputCostUsd
 - input 侧：`inputTokens + cachedInputTokens`
 - output 侧：`outputTokens + reasoningTokens`
 
-价格选择顺序：
+成本来源顺序：
 
-1. 优先按 `modelId` 或模型显示名匹配 `LLMModel.cost`。
-2. 如果模型未配置 cost，回退到内置模型族估算表。
-3. 如果内置表也无法识别，使用默认估算值。
+1. 如果 runtime 返回 provider 原始 `costUsd`，直接使用该总成本。
+2. 否则按 `modelId` 或模型显示名匹配 `LLMModel.cost`。
+3. 如果模型未配置 cost，回退到内置模型族估算表。
+4. 如果内置表也无法识别，使用默认估算值。
+
+当使用 provider 原始总成本时，系统会按 input/output token 占比拆分 `input_cost_usd` 和 `output_cost_usd`，同时保留准确的 `total_cost_usd`。
 
 因此生产使用时，应在 Models 弹窗中为常用模型配置准确的 `Input / 1M tokens` 和 `Output / 1M tokens`。
 
@@ -253,4 +266,3 @@ Dashboard 展示：
 - 如果需要回算历史成本，需要新增显式 migration 或 rebuild 命令，按历史 `model` 和 token 重新计算 `agent_usage` 成本字段。
 - 当前 usage 主要依赖 runtime 输出中的 usage 行。后续更稳妥的方向是扩展 `AgentRuntimeEvent`，增加结构化 `usage` 事件，减少字符串解析。
 - `agent_usage` 的唯一约束是 `(agent_session_id, completed_at)`，避免同一 session 同一完成时间重复写入。
-

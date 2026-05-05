@@ -1,4 +1,5 @@
 import type { AgentOptions, ApiType } from '@codeany/open-agent-sdk';
+import type { MessageTokenUsage } from '@agent-spaces/shared';
 
 export interface AgentRunResult {
   success: boolean;
@@ -6,6 +7,8 @@ export interface AgentRunResult {
   artifacts: string[];
   error?: string;
   output: string[];
+  usage?: MessageTokenUsage;
+  costUsd?: number;
 }
 
 export interface AgentRuntime {
