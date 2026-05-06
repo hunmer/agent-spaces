@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 type Item = {
   id: string;
@@ -32,6 +33,7 @@ function getDesc(item: Item) {
 export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>(
   function SuggestionList(props, ref) {
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const t = useTranslations('composer');
 
     useEffect(() => {
       setSelectedIndex(0);
@@ -77,14 +79,14 @@ export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>
     if (!props.items.length) {
       return (
         <div className="suggestion-menu">
-          <div className="suggestion-empty">无匹配结果</div>
+          <div className="suggestion-empty">{t('noMatch')}</div>
         </div>
       );
     }
 
     return (
       <div className="suggestion-menu">
-        <div className="suggestion-header">选择一个选项</div>
+        <div className="suggestion-header">{t('selectOption')}</div>
         <div className="suggestion-list">
           {props.items.map((item, index) => {
             const selected = index === selectedIndex;

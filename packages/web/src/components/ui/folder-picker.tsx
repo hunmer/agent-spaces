@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from 'next-intl';
 import { Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderPlus, Check, X, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
   const [open, setOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(value || "");
   const [directories, setDirectories] = useState<FolderBrowseResult["directories"]>([]);
+  const t = useTranslations('folderPicker');
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -215,7 +217,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               type="button"
               onClick={() => { setCreating(true); setNewFolderName(""); }}
               className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
-              title="新建文件夹"
+              title={t('newFolder')}
             >
               <FolderPlus className="size-3.5" />
             </button>
@@ -224,7 +226,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               onClick={selectCurrent}
               className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              Select
+              {t('select')}
             </button>
           </div>
 
@@ -235,7 +237,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               <input
                 ref={newFolderInputRef}
                 className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary"
-                placeholder="文件夹名称"
+                placeholder={t('folderNamePlaceholder')}
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 onKeyDown={handleNewFolderKeyDown}
@@ -316,7 +318,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
                 )}
               </>
             ) : (
-              <span className="text-muted-foreground">Select a directory to check permissions</span>
+              <span className="text-muted-foreground">{t('selectDirectory')}</span>
             )}
           </div>
         </div>

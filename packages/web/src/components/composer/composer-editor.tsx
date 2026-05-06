@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useDropzone } from 'react-dropzone';
 import { EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -155,6 +156,8 @@ export function ComposerEditor({
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const t = useTranslations('composer');
+  const tc = useTranslations('common');
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
     noClick: true,
@@ -230,7 +233,7 @@ export function ComposerEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({
-        placeholder: '输入内容，支持 @ 艾特人，输入 / 打开命令面板',
+        placeholder: t('placeholder'),
       }),
       mentionExtension,
       slashExtension,
@@ -272,7 +275,7 @@ export function ComposerEditor({
           });
 
           if (!res.ok) {
-            throw new Error(`上传失败: ${item.file.name}`);
+            throw new Error(t('uploadFailed', { name: item.file.name }));
           }
 
           return (await res.json()) as {
@@ -314,22 +317,22 @@ export function ComposerEditor({
         <input {...getInputProps()} />
         <div className="editor-toolbar">
           <button className="btn" type="button" onClick={handleInsertHeading}>
-            标题
+            {t('heading')}
           </button>
           <button className="btn" type="button" onClick={handleInsertQuote}>
-            引用
+            {t('quote')}
           </button>
           <button className="btn" type="button" onClick={handleInsertDivider}>
-            分割线
+            {t('divider')}
           </button>
           <button className="btn" type="button" onClick={openFilePicker}>
-            添加文件
+            {t('addFile')}
           </button>
         </div>
 
         <div className="editor-area">
           <EditorContent editor={editor} />
-          <div className="dropzone-hint">提示：拖拽文件到这里，或点击"添加文件"</div>
+          <div className="dropzone-hint">{t('dropzoneHint')}</div>
         </div>
 
         {attachments.length > 0 ? (
@@ -352,7 +355,7 @@ export function ComposerEditor({
                     type="button"
                     onClick={() => removeAttachment(index)}
                   >
-                    删除
+                    {tc('delete')}
                   </button>
                 </div>
               );
@@ -363,7 +366,7 @@ export function ComposerEditor({
         <div className="footer">
           <div className="footer-left">
             <button className="btn" type="button" onClick={onClose}>
-              取消
+              {tc('cancel')}
             </button>
           </div>
 
@@ -374,7 +377,7 @@ export function ComposerEditor({
               onClick={handleSubmit}
               disabled={!canSubmit || submitting}
             >
-              {submitting ? '发送中...' : '发送'}
+              {submitting ? t('sending') : t('send')}
             </button>
           </div>
         </div>

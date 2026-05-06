@@ -549,6 +549,23 @@
   },
   "composer": {
     "openDialog": "打开对话框",
-    "newContent": "新建内容"
+    "newContent": "新建内容",
+    "placeholder": "输入内容，支持 @ 艾特人，输入 / 打开命令面板",
+    "heading": "标题",
+    "quote": "引用",
+    "divider": "分割线",
+    "addFile": "添加文件",
+    "dropzoneHint": "提示：拖拽文件到这里，或点击「添加文件」",
+    "send": "发送",
+    "sending": "发送中...",
+    "uploadFailed": "上传失败: {name}",
+    "noMatch": "无匹配结果",
+    "selectOption": "选择一个选项"
+  },
+  "folderPicker": {
+    "newFolder": "新建文件夹",
+    "folderNamePlaceholder": "文件夹名称",
+    "select": "选择",
+    "selectDirectory": "选择一个目录以检查权限"
   }
 }
