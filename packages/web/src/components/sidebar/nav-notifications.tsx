@@ -50,7 +50,7 @@ export function NotificationsPopover({
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem className="justify-center text-sm text-muted-foreground hover:text-primary">
-          View all notifications
+          {t('notifications.viewAll')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

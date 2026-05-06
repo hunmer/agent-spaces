@@ -35,9 +35,12 @@ import {
   saveActiveId,
   setActiveServerCookie,
 } from "@/lib/server";
+import { useTranslations } from 'next-intl';
 
 export function ServerSwitcher() {
   const { isMobile } = useSidebar();
+  const t = useTranslations('sidebar');
+  const tc = useTranslations('common');
   const [servers, setServers] = React.useState<ServerConfig[]>(loadServers);
   const [activeId, setActiveId] = React.useState(loadActiveId);
 
@@ -173,7 +176,7 @@ export function ServerSwitcher() {
             >
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  Servers
+                  {t('server.servers')}
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               {servers.map((server) => (
@@ -197,13 +200,13 @@ export function ServerSwitcher() {
                 <div className="flex size-6 items-center justify-center rounded-md border bg-background">
                   <Plus className="size-4" />
                 </div>
-                <div className="font-medium text-muted-foreground">Add Server</div>
+                <div className="font-medium text-muted-foreground">{t('server.addServer')}</div>
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-2 p-2" onClick={() => setManagerOpen(true)}>
                 <div className="flex size-6 items-center justify-center rounded-md border bg-background">
                   <Settings2 className="size-4" />
                 </div>
-                <div className="font-medium text-muted-foreground">Manage Servers</div>
+                <div className="font-medium text-muted-foreground">{t('server.manageServers')}</div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -214,18 +217,18 @@ export function ServerSwitcher() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Server" : "Add Server"}</DialogTitle>
+            <DialogTitle>{editingId ? t('server.editServer') : t('server.addServer')}</DialogTitle>
             <DialogDescription>
-              {editingId ? "Update server connection details." : "Add an API server to connect to."}
+              {editingId ? t('server.editDescription') : t('server.addDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
+              <label className="text-sm font-medium">{tc('name')}</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Server" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">URL</label>
+              <label className="text-sm font-medium">{t('server.url')}</label>
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -234,20 +237,20 @@ export function ServerSwitcher() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Secret</label>
+              <label className="text-sm font-medium">{t('server.secret')}</label>
               <Input
                 type="password"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
-                placeholder="Optional API secret"
+                placeholder={t('server.secretPlaceholder')}
                 onKeyDown={(e) => e.key === "Enter" && saveForm()}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>{tc('cancel')}</Button>
             <Button onClick={saveForm} disabled={!name.trim() || !url.trim()}>
-              {editingId ? "Save" : "Add"}
+              {editingId ? tc('save') : tc('add')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -257,8 +260,8 @@ export function ServerSwitcher() {
       <Dialog open={managerOpen} onOpenChange={(open) => { setManagerOpen(open); if (!open) cancelMgrEdit(); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Manage Servers</DialogTitle>
-            <DialogDescription>Add, edit, or remove API server connections.</DialogDescription>
+            <DialogTitle>{t('server.manageServers')}</DialogTitle>
+            <DialogDescription>{t('server.manageDescription')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-1">
             {servers.map((server) => (
@@ -283,8 +286,8 @@ export function ServerSwitcher() {
                       placeholder="http://..."
                       onKeyDown={(e) => e.key === "Enter" && saveMgrEdit()}
                     />
-                    <Button size="sm" variant="ghost" onClick={saveMgrEdit} className="h-7 px-2">Save</Button>
-                    <Button size="sm" variant="ghost" onClick={cancelMgrEdit} className="h-7 px-2">X</Button>
+                    <Button size="sm" variant="ghost" onClick={saveMgrEdit} className="h-7 px-2">{tc('save')}</Button>
+                    <Button size="sm" variant="ghost" onClick={cancelMgrEdit} className="h-7 px-2">{tc('cancel')}</Button>
                   </>
                 ) : (
                   <>
@@ -294,7 +297,7 @@ export function ServerSwitcher() {
                     </div>
                     {server.id === activeId && (
                       <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                        Active
+                        {tc('active')}
                       </span>
                     )}
                     {server.id !== "default" && (
@@ -317,7 +320,7 @@ export function ServerSwitcher() {
           {mgrEditId === null && (
             <>
               <div className="border-t pt-3 mt-2 space-y-2">
-                <div className="text-xs font-medium text-muted-foreground mb-2">New Server</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">{t('server.newServer')}</div>
                 <div className="flex items-center gap-2">
                   <Input
                     className="h-8 text-sm"
@@ -343,7 +346,7 @@ export function ServerSwitcher() {
                     type="password"
                     value={mgrSecret}
                     onChange={(e) => setMgrSecret(e.target.value)}
-                    placeholder="Secret (optional)"
+                    placeholder={t('server.secretOptionalPlaceholder')}
                     onKeyDown={(e) => e.key === "Enter" && addFromManager()}
                   />
                 </div>
