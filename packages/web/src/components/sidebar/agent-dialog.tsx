@@ -1085,7 +1085,7 @@ function AgentDetail({
               <span className="text-xs font-mono w-8 text-right">{agent.temperature}</span>
             </div>
           </FieldGroup>
-          <FieldGroup label="Max Tokens">
+          <FieldGroup label={t('detail.maxTokens')}>
             <Input
               type="number"
               value={agent.maxTokens}
