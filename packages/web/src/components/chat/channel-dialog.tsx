@@ -92,7 +92,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('channel.namePlaceholder')}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
             />
           </div>
           <div className="space-y-2">
