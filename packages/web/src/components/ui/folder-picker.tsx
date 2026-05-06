@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderPlus, Check, X } from "lucide-react";
+import { Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderPlus, Check, X, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FolderBrowseResult {
@@ -10,6 +10,14 @@ interface FolderBrowseResult {
   separator: string;
   home: string;
   directories: Array<{ name: string; path: string }>;
+}
+
+interface PermissionCheckResult {
+  path: string;
+  exists: boolean;
+  readable: boolean;
+  writable: boolean;
+  error: string;
 }
 
 interface FolderPickerProps {
@@ -28,9 +36,32 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [permission, setPermission] = useState<PermissionCheckResult | null>(null);
+  const [checkingPermission, setCheckingPermission] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
+
+  const checkPermission = useCallback(async (path: string) => {
+    if (!path) {
+      setPermission(null);
+      return;
+    }
+    setCheckingPermission(true);
+    try {
+      const res = await fetch(`/api/folder/check-permissions?path=${encodeURIComponent(path)}`);
+      if (!res.ok) {
+        setPermission(null);
+        return;
+      }
+      const data: PermissionCheckResult = await res.json();
+      setPermission(data);
+    } catch {
+      setPermission(null);
+    } finally {
+      setCheckingPermission(false);
+    }
+  }, []);
 
   const browse = useCallback(async (path: string) => {
     setLoading(true);
@@ -42,12 +73,13 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
       setCurrentPath(data.path);
       setDirectories(data.directories);
       setParentPath(data.parent);
+      checkPermission(data.path);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [checkPermission]);
 
   useEffect(() => {
     if (open) {
@@ -254,6 +286,37 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
                   <ChevronRight className="size-3 text-muted-foreground shrink-0" />
                 </button>
               ))
+            )}
+          </div>
+
+          {/* Permission check bar */}
+          <div className="border-t border-border px-3 py-1.5 flex items-center gap-2 text-xs">
+            {checkingPermission ? (
+              <>
+                <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">Checking permissions...</span>
+              </>
+            ) : permission ? (
+              <>
+                {permission.readable && permission.writable ? (
+                  <>
+                    <ShieldCheck className="size-3.5 text-green-500" />
+                    <span className="text-green-600 dark:text-green-400">Read/Write</span>
+                  </>
+                ) : permission.readable && !permission.writable ? (
+                  <>
+                    <ShieldAlert className="size-3.5 text-amber-500" />
+                    <span className="text-amber-600 dark:text-amber-400">Read-only — files cannot be written here</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldOff className="size-3.5 text-destructive" />
+                    <span className="text-destructive">{permission.error || "No access"}</span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="text-muted-foreground">Select a directory to check permissions</span>
             )}
           </div>
         </div>

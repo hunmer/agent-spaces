@@ -1,7 +1,8 @@
 import { Router, type Request, type Response } from 'express';
-import { readdir, stat, mkdir } from 'node:fs/promises';
+import { readdir, stat, mkdir, access } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
+import { constants } from 'node:fs';
 
 const router = Router();
 
@@ -65,6 +66,50 @@ router.post('/create', async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Failed to create directory' });
   }
+});
+
+router.get('/check-permissions', async (req: Request, res: Response) => {
+  const raw = req.query.path as string;
+  if (!raw) {
+    res.status(400).json({ error: 'path is required' });
+    return;
+  }
+
+  const rawPath = raw === '~' ? homedir() : raw.replace(/^~[/\\]/, homedir() + sep);
+  const dirPath = resolve(rawPath);
+
+  const result = { path: dirPath, exists: false, readable: false, writable: false, error: '' as string };
+
+  try {
+    await stat(dirPath);
+    result.exists = true;
+  } catch {
+    result.error = 'Directory does not exist';
+    res.json(result);
+    return;
+  }
+
+  try {
+    await access(dirPath, constants.R_OK);
+    result.readable = true;
+  } catch {
+    // not readable
+  }
+
+  try {
+    await access(dirPath, constants.W_OK);
+    result.writable = true;
+  } catch {
+    // not writable
+  }
+
+  if (!result.readable && !result.writable) {
+    result.error = 'No read or write permission';
+  } else if (!result.writable) {
+    result.error = 'Read-only directory';
+  }
+
+  res.json(result);
 });
 
 export default router;
