@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -64,6 +64,7 @@ const sampleNotifications = [
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
   const isCollapsed = state === "collapsed";
   const isWorkspace = pathname.startsWith("/workspace/");
   const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
@@ -114,6 +115,10 @@ export function DashboardSidebar() {
   const handleDelete = async (ws: Workspace) => {
     await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
     removeWorkspace(ws.id);
+    if (currentWorkspaceId === ws.id) {
+      const remaining = workspaces.filter((w) => w.id !== ws.id);
+      router.push(remaining.length > 0 ? `/workspace/${remaining[0].id}` : "/");
+    }
   };
 
   const openEditDialog = (ws: Workspace) => {
