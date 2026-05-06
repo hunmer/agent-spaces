@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
@@ -21,10 +22,10 @@ import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
-const channelTypeStatus: Record<Channel['type'], { label: string; status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
-  general: { label: 'General', status: 'online' },
-  issue: { label: 'Issue', status: 'degraded' },
-  agent: { label: 'Agent', status: 'maintenance' },
+const channelTypeStatus: Record<Channel['type'], { status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
+  general: { status: 'online' },
+  issue: { status: 'degraded' },
+  agent: { status: 'maintenance' },
 };
 
 const MAX_VISIBLE = 4;
@@ -55,6 +56,8 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
+  const t = useTranslations('chat');
+  const tc = useTranslations('common');
   const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -175,21 +178,21 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   if (!channel) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        Select a channel to start chatting
+        {t('emptyState')}
       </div>
     );
   }
 
   const typeConf = (() => {
     const base = channelTypeStatus[channel.type];
-    if (msgs.length === 0) return { label: '空闲中', status: 'degraded' as const };
+    if (msgs.length === 0) return { label: t('status.idle'), status: 'degraded' as const };
     const last = msgs[msgs.length - 1];
     const s = last.status;
-    if (s === 'waiting_for_user') return { label: '等待用户确定', status: 'degraded' as const };
-    if (s === 'streaming' || s === 'pending') return { label: '运行中', status: 'maintenance' as const };
-    if (s === 'completed') return { label: '成功', status: 'online' as const };
-    if (s === 'error') return { label: '失败', status: 'offline' as const };
-    return base;
+    if (s === 'waiting_for_user') return { label: t('status.waitingForUser'), status: 'degraded' as const };
+    if (s === 'streaming' || s === 'pending') return { label: t('status.running'), status: 'maintenance' as const };
+    if (s === 'completed') return { label: t('status.success'), status: 'online' as const };
+    if (s === 'error') return { label: t('status.error'), status: 'offline' as const };
+    return { label: t(`channelType.${channel.type}`), status: base.status };
   })();
 
   return (
@@ -218,7 +221,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
               variant="ghost"
               size="icon-sm"
               onClick={() => useIssueStore.getState().setActiveIssue(channel.issueId!)}
-              title="查看关联议题"
+              title={t('viewRelatedIssue')}
             >
               <ExternalLink className="size-4" />
             </Button>
@@ -286,13 +289,13 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
       <Dialog open={!!deletingMsg} onOpenChange={(open) => { if (!open) setDeletingMsg(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>删除消息</DialogTitle>
-            <DialogDescription>确认删除这条消息？此操作不可撤销。</DialogDescription>
+            <DialogTitle>{t('deleteMessage.title')}</DialogTitle>
+            <DialogDescription>{t('deleteMessage.description')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+            <DialogClose render={<Button variant="outline" />}>{tc('cancel')}</DialogClose>
             <Button variant="destructive" onClick={confirmDelete}>
-              <Trash2 className="size-3.5" />删除
+              <Trash2 className="size-3.5" />{tc('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -302,16 +305,16 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
       <Dialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>清空频道消息</DialogTitle>
-            <DialogDescription>确认清空 #{channel?.name} 的所有消息？此操作不可撤销。</DialogDescription>
+            <DialogTitle>{t('clearMessages.title')}</DialogTitle>
+            <DialogDescription>{t('clearMessages.description', { channel: channel?.name })}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+            <DialogClose render={<Button variant="outline" />}>{tc('cancel')}</DialogClose>
             <Button variant="destructive" onClick={async () => {
               if (channel) await clearMessages(workspaceId, channel.id);
               setClearConfirmOpen(false);
             }}>
-              <Trash2 className="size-3.5" />清空
+              <Trash2 className="size-3.5" />{t('clearMessages.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -343,6 +346,7 @@ function PendingQuestionPanel({
   question: PendingQuestion;
   onAnswer: (answer: string) => void;
 }) {
+  const t = useTranslations('chat');
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -390,7 +394,7 @@ function PendingQuestionPanel({
                 onChange={(event) => setDraft(event.target.value)}
                 disabled={submitting}
                 className="h-8 text-sm"
-                placeholder="输入回答..."
+                placeholder={t('pendingQuestion.placeholder')}
               />
               <Button type="submit" size="icon-sm" disabled={!draft.trim() || submitting}>
                 <SendIcon className="size-3.5" />
