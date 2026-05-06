@@ -29,12 +29,20 @@
 | 语言 | TypeScript 5.8+ |
 | 包管理 | pnpm monorepo |
 
-## 前置要求
+## 下载客户端
+
+支持 macOS、Windows、iOS 客户端，前往 [GitHub Release](https://github.com/nicepkg/agent-spaces/releases) 下载对应平台的安装包。
+
+## 自部署
+
+> 如果只需要使用客户端，无需阅读以下内容。
+
+### 前置要求
 
 - Node.js >= 20
 - pnpm >= 9
 
-## 快速开始
+### 快速开始
 
 ### 一键安装（推荐）
 
