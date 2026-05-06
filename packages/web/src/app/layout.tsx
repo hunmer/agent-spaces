@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LocaleProvider } from "@/components/locale-provider";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { Toaster } from "sonner";
@@ -45,16 +46,18 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="zh-CN"
+      lang=""
       className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-dvh overflow-hidden antialiased`}
       suppressHydrationWarning
     >
       <body className="h-full overflow-hidden font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthGuard>
-            <AppShell>{children}</AppShell>
-            <Toaster richColors position="bottom-right" />
-          </AuthGuard>
+          <LocaleProvider>
+            <AuthGuard>
+              <AppShell>{children}</AppShell>
+              <Toaster richColors position="bottom-right" />
+            </AuthGuard>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>
