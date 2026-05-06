@@ -12,3 +12,6 @@ server.tar
 web.tar
 packages/server/web/
 packages/server/agent_spaces/
+documents/.docusaurus/
+documents/build/
+.npmrc

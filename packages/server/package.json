@@ -2,10 +2,23 @@
   "name": "@agent-spaces/server",
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "agent-spaces-server": "./dist/app.js"
+  },
+  "files": [
+    "dist",
+    "public",
+    "!dist/**/*.map",
+    "!dist/shared"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
+    "prepublishOnly": "pnpm build",
     "postinstall": "node -e \"try{require('node-pty')}catch(e){if(!require('fs').existsSync('node_modules/node-pty/prebuilds')){process.exit(1)}}\""
   },
   "dependencies": {

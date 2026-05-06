@@ -20,8 +20,8 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
-            Docusaurus Tutorial - 5min ⏱️
+            to="/docs">
+            快速开始
           </Link>
         </div>
       </div>
@@ -33,8 +33,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title={`${siteConfig.title} - 本地多 Agent 协同编程平台`}
+      description="Agent Spaces 是一个本地多 Agent 协同编程平台，通过多种 Agent 角色实现任务的自动分发、代码修改、审核与提交。">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

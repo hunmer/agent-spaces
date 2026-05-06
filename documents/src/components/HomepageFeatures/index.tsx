@@ -5,50 +5,66 @@ import styles from './styles.module.css';
 
 type FeatureItem = {
   title: string;
-  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
   description: ReactNode;
 };
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: '多 Agent 协同',
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        调度者、策划者、执行者、审核者、提交者六种 Agent 角色各司其职，
+        自动完成从需求分析到代码提交的完整流程。
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: '完全本地运行',
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        代码不离开你的机器，数据存储在本地。支持 Claude Code、OpenAI Codex 等多种 AI 运行时。
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'IDE 级别体验',
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        集成 Monaco 代码编辑器、终端、Git 操作、议题管理、频道聊天，
+        提供一站式的开发环境体验。
+      </>
+    ),
+  },
+  {
+    title: '实时通知',
+    description: (
+      <>
+        通过飞书、企业微信接收 Agent 状态通知，支持 Bot 斜杠命令远程操控 Agent。
+      </>
+    ),
+  },
+  {
+    title: '用量统计',
+    description: (
+      <>
+        内置 Token 消耗追踪和费用估算仪表盘，帮助你掌握 Agent 使用成本。
+      </>
+    ),
+  },
+  {
+    title: '多服务器支持',
+    description: (
+      <>
+        前端支持配置和切换多个后端服务器实例，轻松管理不同环境的 Agent 服务。
       </>
     ),
   },
 ];
 
-function Feature({title, Svg, description}: FeatureItem) {
+function Feature({title, description}: FeatureItem) {
   return (
     <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
+      <div className="text--center padding-horiz--md padding-vert--md">
         <Heading as="h3">{title}</Heading>
         <p>{description}</p>
       </div>

@@ -1,0 +1,42 @@
+---
+sidebar_position: 6
+---
+
+# Git 操作
+
+Agent Spaces 内置 Git 操作面板，提供可视化的版本管理功能。
+
+## 功能概览
+
+- **状态查看** — 查看当前工作区的文件变更状态
+- **分支管理** — 创建、切换、合并分支
+- **变更暂存** — 选择要提交的文件变更
+- **提交记录** — 查看完整的提交历史
+- **Diff 查看** — 查看文件的具体变更内容
+
+## Agent 自动提交
+
+当配置了提交者（Commit）Agent 时，Agent 完成代码修改后会：
+
+1. 自动分析所有变更内容
+2. 生成符合 conventional commit 规范的提交信息
+3. 提交代码并推送
+
+提交信息格式示例：
+```
+feat(auth): add user login with email verification
+fix(api): handle null response from user endpoint
+docs(readme): update installation instructions
+```
+
+## 工作流建议
+
+推荐的工作方式：
+
+1. Agent 在主分支上创建功能分支
+2. 在功能分支上完成任务
+3. 审核者检查代码变更
+4. 提交者生成 commit 并提交
+5. 合并功能分支回主分支
+
+所有 Git 操作都通过 simple-git 在本地执行，不会直接推送到远程仓库，除非你明确配置了推送行为。

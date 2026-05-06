@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { config as loadDotenv } from 'dotenv';
 loadDotenv();
 
