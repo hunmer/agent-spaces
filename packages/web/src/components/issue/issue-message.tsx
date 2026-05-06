@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Pencil, Copy, Trash2, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -34,6 +35,9 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
   const phase = comment.metadata?.phase;
   const taskId = comment.metadata?.taskId;
 
+  const t = useTranslations('issue');
+  const tc = useTranslations('common');
+
   useEffect(() => {
     setDraft(comment.content);
     setEditing(false);
@@ -46,7 +50,7 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
     }
   }, [comment.content, expanded]);
 
-  const senderName = isUser ? 'You' : (agent?.name || comment.senderId);
+  const senderName = isUser ? tc('you') : (agent?.name || comment.senderId);
   const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
 
   useEffect(() => {
@@ -130,7 +134,7 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
             )}
             {taskId && (
               <span className="text-[10px] font-mono text-muted-foreground">
-                task {taskId.slice(0, 8)}
+                {t('message.task', { taskId: taskId.slice(0, 8) })}
               </span>
             )}
           </div>
@@ -143,7 +147,7 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
                 onClick={handleOpenMessage}
               >
                 <ExternalLink className="size-3" />
-                Open message
+                {t('message.openMessage')}
               </Button>
             ) : null}
           </div>
@@ -174,7 +178,7 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
                       onExpandedChange?.(comment.id, true);
                     }}
                   >
-                    展开更多
+                    {t('message.expandMore')}
                   </Button>
                 </div>
               )}
@@ -187,7 +191,7 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
                     onExpandedChange?.(comment.id, false);
                   }}
                 >
-                  收起
+                  {t('message.collapse')}
                 </Button>
               )}
             </div>

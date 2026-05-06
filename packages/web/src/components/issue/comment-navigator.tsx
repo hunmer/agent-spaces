@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { IssueComment } from '@agent-spaces/shared';
 import { findAgentById } from '@/stores/agent';
@@ -15,6 +16,7 @@ export function CommentNavigator({ comments, onNavigate }: CommentNavigatorProps
   const [hovered, setHovered] = useState(false);
   const [popoverY, setPopoverY] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const tc = useTranslations('common');
 
   const scrollTo = useCallback((index: number) => {
     setActiveIndex(index);
@@ -82,7 +84,7 @@ export function CommentNavigator({ comments, onNavigate }: CommentNavigatorProps
           style={{ top: popoverY, transform: 'translateY(-50%)' }}
         >
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="font-medium text-xs">{comments[activeIndex].senderId === 'user' ? 'You' : (findAgentById(comments[activeIndex].senderId)?.name ?? comments[activeIndex].senderId)}</span>
+            <span className="font-medium text-xs">{comments[activeIndex].senderId === 'user' ? tc('you') : (findAgentById(comments[activeIndex].senderId)?.name ?? comments[activeIndex].senderId)}</span>
             <span className="text-[10px] text-muted-foreground">
               {new Date(comments[activeIndex].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,15 +11,9 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { getMemberDisplayName } from '@/lib/agent-members';
 import type { Issue, IssueStatus, AgentConfig } from '@agent-spaces/shared';
 
-const STATUS_OPTIONS: { value: IssueStatus; label: string }[] = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'planned', label: 'Planned' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'review_pending', label: 'Review Pending' },
-  { value: 'changes_requested', label: 'Changes Requested' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
+const STATUS_OPTIONS: IssueStatus[] = [
+  'draft', 'planned', 'in_progress', 'review_pending', 'changes_requested',
+  'approved', 'completed', 'archived',
 ];
 
 interface EditIssueDialogProps {
@@ -36,6 +31,8 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
   const [members, setMembers] = useState<string[]>(issue.members || []);
   const [memberQuery, setMemberQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const t = useTranslations('issue');
+  const tc = useTranslations('common');
 
   useEffect(() => {
     if (open) {
@@ -72,47 +69,47 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>编辑议题</DialogTitle>
-          <DialogDescription>修改议题信息、状态和成员</DialogDescription>
+          <DialogTitle>{t('edit.title')}</DialogTitle>
+          <DialogDescription>{t('edit.description')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <Input
-            placeholder="Title"
+            placeholder={t('edit.titlePlaceholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !saving && handleSave()}
           />
           <Textarea
-            placeholder="Description"
+            placeholder={t('edit.descriptionPlaceholder')}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
           />
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Status</label>
+            <label className="text-sm font-medium text-foreground">{t('edit.statusLabel')}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as IssueStatus)}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                <option key={opt} value={opt}>
+                  {t(`status.${opt}`)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">成员</label>
+            <label className="text-sm font-medium">{t('edit.membersLabel')}</label>
             <Input
               value={memberQuery}
               onChange={(e) => setMemberQuery(e.target.value)}
-              placeholder="搜索 Agent..."
+              placeholder={t('edit.searchAgent')}
             />
             <div className="max-h-36 overflow-y-auto space-y-0.5">
               {filtered.length === 0 && (
-                <p className="text-sm text-muted-foreground py-2 text-center">无可用 Agent</p>
+                <p className="text-sm text-muted-foreground py-2 text-center">{t('edit.noAgents')}</p>
               )}
               {filtered.map((agent) => (
                 <button
@@ -142,7 +139,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
                 {members.map((m) => (
                   <span key={m} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                     {m === 'user' ? (
-                      'User'
+                      tc('user')
                     ) : (
                       <span className="inline-flex items-center gap-1">
                         <AgentIcon agentId={m} name={getMemberDisplayName(agents, m)} className="size-3.5 rounded-full" />
@@ -160,10 +157,10 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button onClick={handleSave} disabled={!title.trim() || saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? tc('saving') : tc('save')}
             </Button>
           </div>
         </div>

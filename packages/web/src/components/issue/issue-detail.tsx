@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useIssueStore } from '@/stores/issue';
 import { useChannelStore } from '@/stores/channel';
 import { useTaskStore } from '@/stores/task';
@@ -32,18 +33,6 @@ import { getWS } from '@/lib/ws';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import type { JSONContent } from '@tiptap/react';
 
-const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
-  draft: 'Draft',
-  planned: 'Planned',
-  in_progress: 'In Progress',
-  review_pending: 'Review Pending',
-  changes_requested: 'Changes Requested',
-  approved: 'Approved',
-  completed: 'Completed',
-  archived: 'Archived',
-  error: 'Error',
-};
-
 const ISSUE_STATUS_COLOR: Record<IssueStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   draft: 'secondary',
   planned: 'outline',
@@ -67,17 +56,6 @@ const TASK_STATUS_COLOR: Record<TaskStatus, 'default' | 'secondary' | 'destructi
   cancelled: 'outline',
 };
 
-const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
-  pending: 'Pending',
-  running: 'Running',
-  reviewing: 'Reviewing',
-  waiting_review: 'Waiting Review',
-  retrying: 'Retrying',
-  done: 'Done',
-  failed: 'Failed',
-  cancelled: 'Cancelled',
-};
-
 /* ------------------------------------------------------------------ */
 /*  TaskRow                                                            */
 /* ------------------------------------------------------------------ */
@@ -89,6 +67,7 @@ function TaskRow({
   onCancel,
   onEdit,
   onDelete,
+  tTask,
 }: {
   task: Task;
   workspaceId: string;
@@ -96,13 +75,14 @@ function TaskRow({
   onCancel: (wsId: string, taskId: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (wsId: string, taskId: string) => void;
+  tTask: (key: string) => string;
 }) {
   const isPending = task.status === 'pending';
 
   return (
     <div className="flex items-center gap-2 p-2 rounded-md border text-sm group">
       <Badge variant={TASK_STATUS_COLOR[task.status]} className="text-[10px] shrink-0">
-        {TASK_STATUS_LABEL[task.status]}
+        {tTask(`status.${task.status}`)}
       </Badge>
       <span className="flex-1 truncate">{task.title}</span>
       {/* Edit button – pending tasks only */}
@@ -168,6 +148,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [composerOpen, setComposerOpen] = useState(false);
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const t = useTranslations('issue');
+  const tTask = useTranslations('task');
+  const tc = useTranslations('common');
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
@@ -236,7 +220,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     immediatelyRender: false,
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: 'Write a comment... 支持 @mention，输入 / 打开命令' }),
+      Placeholder.configure({ placeholder: t('detail.commentPlaceholder') }),
       mentionExtension,
       slashExtension,
     ],
@@ -369,7 +353,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   if (!issue) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-        Select an issue to view details
+        {t('detail.selectIssue')}
       </div>
     );
   }
@@ -388,7 +372,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* 左侧：主内容区 */}
+      {/* Main content */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
         {/* Header */}
         <div className="shrink-0 p-4 pb-3 border-b">
@@ -403,7 +387,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             </Button>
             <h2 className="text-lg font-semibold truncate shrink min-w-0">{issue.title}</h2>
             <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
-              {ISSUE_STATUS_LABEL[issue.status]}
+              {t(`status.${issue.status}`)}
             </Badge>
             <Button
               variant="ghost"
@@ -415,7 +399,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              title="打开聊天频道"
+              title={t('detail.openChatChannel')}
               onClick={() => { if (issue?.channelId) useChannelStore.getState().setActiveChannel(issue.channelId); }}
             >
               <MessagesSquare className="size-4" />
@@ -442,25 +426,25 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     />
                   ))}
                 </AvatarGroup>
-                <span>{members.length} member{members.length !== 1 ? 's' : ''}</span>
+                <span>{t('detail.memberCount', { count: members.length })}</span>
               </span>
             )}
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Created {new Date(issue.createdAt).toLocaleDateString()}
+              {t('detail.created')} {new Date(issue.createdAt).toLocaleDateString()}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Updated {new Date(issue.updatedAt).toLocaleDateString()}
+              {t('detail.updated')} {new Date(issue.updatedAt).toLocaleDateString()}
             </span>
-            {issue.branch && (  
+            {issue.branch && (
               <span className="flex items-center gap-1">
                 <GitBranch className="h-3 w-3" />
                 {issue.branch}
               </span>
             )}
             {issue.prUrl && (
-              <span>PR: {issue.prUrl}</span>
+              <span>{t('detail.pr')} {issue.prUrl}</span>
             )}
           </div>
           {issue.description && (
@@ -470,7 +454,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <div className="mt-2">
               <Button size="sm" variant="outline" onClick={() => startIssue(workspaceId, issue.id)}>
                 <Play className="h-3 w-3 mr-1" />
-                Start
+                {t('detail.start')}
               </Button>
             </div>
           )}
@@ -478,11 +462,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <div className="mt-2 flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => resumeIssue(workspaceId, issue.id)}>
                 <RotateCcw className="h-3 w-3 mr-1" />
-                Resume failed tasks
+                {t('detail.resumeFailed')}
               </Button>
               {issue.retryPaused && (
                 <span className="text-[11px] text-muted-foreground">
-                  Automatic retry paused after {issue.retryCount}/{issue.maxRetries} attempts.
+                  {t('detail.retryPaused', { failed: issue.retryCount, total: issue.maxRetries })}
                 </span>
               )}
             </div>
@@ -493,7 +477,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         <div className="shrink-0 p-4 pb-2 max-h-[180px] overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium">
-              Tasks ({issueTasks.length})
+              {t('detail.tasks', { count: issueTasks.length })}
             </h3>
             <Dialog open={taskDialogOpen} onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}>
                 <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog} />}>
@@ -501,30 +485,30 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>{editingTask ? 'Edit Task' : 'Add Task'}</DialogTitle>
+                    <DialogTitle>{editingTask ? t('detail.editTask') : t('detail.addTask')}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-3">
                     <Input
-                      placeholder="Task title"
+                      placeholder={t('detail.taskTitlePlaceholder')}
                       value={newTaskTitle}
                       onChange={(e) => setNewTaskTitle(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
                     />
                     <Textarea
-                      placeholder="Description (optional)"
+                      placeholder={t('detail.taskDescriptionPlaceholder')}
                       value={newTaskDesc}
                       onChange={(e) => setNewTaskDesc(e.target.value)}
                       rows={3}
                     />
                     <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
-                      {editingTask ? 'Save' : 'Add Task'}
+                      {editingTask ? tc('save') : t('detail.addTask')}
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
           </div>
           {issueTasks.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No tasks yet</div>
+            <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
           ) : (
             <div className="space-y-1">
               {issueTasks.map((task) => (
@@ -536,6 +520,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                   onCancel={cancelTask}
                   onEdit={handleOpenEditDialog}
                   onDelete={handleDeleteTask}
+                  tTask={tTask}
                 />
               ))}
             </div>
@@ -545,7 +530,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         {/* Comments */}
         <div className="flex-1 min-h-0 flex flex-col border-t">
           <div className="shrink-0 px-4 pt-2">
-            <h3 className="text-sm font-medium mb-3">Comments ({comments.length})</h3>
+            <h3 className="text-sm font-medium mb-3">{t('detail.comments', { count: comments.length })}</h3>
           </div>
           {issue.description && (
             <div className="shrink-0 px-4 pb-3 border-b">
@@ -555,9 +540,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium">Author</span>
+                    <span className="text-xs font-medium">{t('detail.author')}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      commented {new Date(issue.createdAt).toLocaleDateString()}
+                      {t('detail.commented')} {new Date(issue.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="text-sm bg-muted/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
@@ -609,7 +594,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all z-10"
           >
             <MessageSquare className="size-4" />
-            <span className="text-sm font-medium">评论</span>
+            <span className="text-sm font-medium">{t('detail.comment')}</span>
           </button>
         ) : (
           <div className="absolute bottom-4 left-4 right-4 z-10 animate-in slide-in-from-bottom-2 duration-200">
@@ -630,50 +615,50 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         )}
       </div>
 
-      {/* 右侧：信息面板 */}
+      {/* Info panel */}
       {infoOpen && (
         <div className="w-72 border-l flex flex-col h-full">
           <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
             <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
               <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-                <Info className="size-3.5" />信息
+                <Info className="size-3.5" />{t('detail.tabInfo')}
               </TabsTrigger>
               <TabsTrigger value="members" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-                <Users className="size-3.5" />成员
+                <Users className="size-3.5" />{t('detail.tabMembers')}
               </TabsTrigger>
             </TabsList>
             <ScrollArea className="min-h-0 flex-1">
               <TabsContent value="info" className="p-4 mt-0 space-y-4">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">状态</span>
+                    <span className="text-muted-foreground">{t('detail.infoStatus')}</span>
                     <Badge variant={ISSUE_STATUS_COLOR[issue.status]} className="text-[10px]">
-                      {ISSUE_STATUS_LABEL[issue.status]}
+                      {t(`status.${issue.status}`)}
                     </Badge>
                   </div>
                   <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">Issue ID</span>
+                    <span className="text-muted-foreground">{t('detail.infoIssueId')}</span>
                     <span className="font-mono text-xs">{issue.id.slice(0, 8)}...</span>
                   </div>
                   <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">任务数</span>
+                    <span className="text-muted-foreground">{t('detail.infoTaskCount')}</span>
                     <span>{issueTasks.length}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">成员数</span>
+                    <span className="text-muted-foreground">{t('detail.infoMemberCount')}</span>
                     <span>{members.length}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">创建时间</span>
+                    <span className="text-muted-foreground">{t('detail.infoCreatedAt')}</span>
                     <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">更新时间</span>
+                    <span className="text-muted-foreground">{t('detail.infoUpdatedAt')}</span>
                     <span>{new Date(issue.updatedAt).toLocaleDateString()}</span>
                   </div>
                   {issue.branch && (
                     <div className="flex justify-between py-1 border-b">
-                      <span className="text-muted-foreground">分支</span>
+                      <span className="text-muted-foreground">{t('detail.infoBranch')}</span>
                       <span className="font-mono text-xs flex items-center gap-1">
                         <GitBranch className="h-3 w-3" />{issue.branch}
                       </span>
@@ -681,14 +666,14 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                   )}
                   {issue.prUrl && (
                     <div className="flex justify-between py-1 border-b">
-                      <span className="text-muted-foreground">PR</span>
+                      <span className="text-muted-foreground">{t('detail.infoPr')}</span>
                       <span className="text-xs truncate max-w-[140px]">{issue.prUrl}</span>
                     </div>
                   )}
                 </div>
                 {issue.description && (
                   <div className="space-y-1">
-                    <span className="text-xs text-muted-foreground">描述</span>
+                    <span className="text-xs text-muted-foreground">{t('detail.infoDescription')}</span>
                     <p className="text-sm bg-muted/50 rounded-lg px-3 py-2 whitespace-pre-wrap">
                       {issue.description}
                     </p>
@@ -716,7 +701,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                   className="w-full mt-2 text-xs text-muted-foreground"
                   onClick={() => setAddMemberOpen(true)}
                 >
-                  <UserPlus className="size-3.5 mr-1" />添加成员
+                  <UserPlus className="size-3.5 mr-1" />{t('detail.addMember')}
                 </Button>
               </TabsContent>
             </ScrollArea>
@@ -728,7 +713,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               className="w-full text-destructive hover:text-destructive"
               onClick={() => { deleteIssue(workspaceId, issue.id); }}
             >
-              <Trash2 className="size-3.5 mr-1.5" />删除 Issue
+              <Trash2 className="size-3.5 mr-1.5" />{t('detail.deleteIssue')}
             </Button>
           </div>
         </div>

@@ -290,6 +290,58 @@
     "askUser": { "placeholder": "输入回答..." },
     "readonlyCodeBlock": { "loading": "加载代码中..." }
   },
+  "issue": {
+    "status": {
+      "draft": "草稿", "planned": "已规划", "in_progress": "进行中",
+      "review_pending": "待审核", "changes_requested": "需修改",
+      "approved": "已批准", "completed": "已完成", "archived": "已归档", "error": "错误"
+    },
+    "list": {
+      "title": "议题", "emptyTitle": "暂无议题",
+      "emptyDescription": "创建一个议题开始协作",
+      "addIssue": "添加议题", "taskCount": "{count} 个任务"
+    },
+    "detail": {
+      "selectIssue": "选择一个议题查看详情",
+      "commentPlaceholder": "写评论... 使用 @ 提及 Agent，输入 / 打开命令",
+      "openChatChannel": "打开聊天频道", "memberCount": "{count} 位成员",
+      "created": "创建于", "updated": "更新于", "pr": "PR：",
+      "start": "开始", "resumeFailed": "重试失败任务",
+      "retryPaused": "自动重试已在 {failed}/{total} 次尝试后暂停。",
+      "tasks": "任务 ({count})", "editTask": "编辑任务", "addTask": "添加任务",
+      "taskTitlePlaceholder": "任务标题", "taskDescriptionPlaceholder": "描述（可选）",
+      "noTasks": "暂无任务", "comments": "评论 ({count})",
+      "author": "作者", "commented": "评论了", "comment": "评论",
+      "tabInfo": "信息", "tabMembers": "成员",
+      "infoStatus": "状态", "infoIssueId": "议题 ID", "infoTaskCount": "任务数",
+      "infoMemberCount": "成员数", "infoCreatedAt": "创建时间", "infoUpdatedAt": "更新时间",
+      "infoBranch": "分支", "infoPr": "PR", "infoDescription": "描述",
+      "addMember": "添加成员", "deleteIssue": "删除议题"
+    },
+    "message": {
+      "task": "任务 {taskId}", "openMessage": "打开消息",
+      "expandMore": "展开更多", "collapse": "收起"
+    },
+    "edit": {
+      "title": "编辑议题", "description": "修改议题信息、状态和成员",
+      "titlePlaceholder": "标题", "descriptionPlaceholder": "描述",
+      "statusLabel": "状态", "membersLabel": "成员",
+      "searchAgent": "搜索 Agent...", "noAgents": "无可用 Agent"
+    },
+    "create": {
+      "title": "创建议题", "description": "创建一个新的议题并指定成员",
+      "titlePlaceholder": "标题", "descriptionPlaceholder": "描述（可选）",
+      "membersLabel": "成员", "searchAgent": "搜索 Agent...", "noAgents": "无可用 Agent",
+      "submit": "创建"
+    }
+  },
+  "task": {
+    "status": {
+      "pending": "待处理", "running": "运行中", "reviewing": "审核中",
+      "waiting_review": "等待审核", "retrying": "重试中",
+      "done": "完成", "failed": "失败", "cancelled": "已取消"
+    }
+  },
   "home": {
     "table": {
       "agent": "Agent",

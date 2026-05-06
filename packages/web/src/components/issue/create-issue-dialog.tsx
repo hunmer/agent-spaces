@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
   const [desc, setDesc] = useState('');
   const [members, setMembers] = useState<string[]>(['user']);
   const [memberQuery, setMemberQuery] = useState('');
+  const t = useTranslations('issue');
+  const tc = useTranslations('common');
 
   const handleClose = (val: boolean) => {
     if (!val) {
@@ -60,33 +63,33 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>创建议题</DialogTitle>
-          <DialogDescription>创建一个新的议题并指定成员</DialogDescription>
+          <DialogTitle>{t('create.title')}</DialogTitle>
+          <DialogDescription>{t('create.description')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 pt-2">
           <Input
-            placeholder="标题"
+            placeholder={t('create.titlePlaceholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           />
           <Textarea
-            placeholder="描述（可选）"
+            placeholder={t('create.descriptionPlaceholder')}
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             rows={3}
           />
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">成员</label>
+            <label className="text-sm font-medium">{t('create.membersLabel')}</label>
             <Input
               value={memberQuery}
               onChange={(e) => setMemberQuery(e.target.value)}
-              placeholder="搜索 Agent..."
+              placeholder={t('create.searchAgent')}
             />
             <div className="max-h-40 overflow-y-auto space-y-0.5">
               {filtered.length === 0 && (
-                <p className="text-sm text-muted-foreground py-2 text-center">无可用 Agent</p>
+                <p className="text-sm text-muted-foreground py-2 text-center">{t('create.noAgents')}</p>
               )}
               {filtered.map((agent) => (
                 <button
@@ -116,7 +119,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
                 {members.map((m) => (
                   <span key={m} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                     {m === 'user' ? (
-                      'User'
+                      tc('user')
                     ) : (
                       <span className="inline-flex items-center gap-1">
                         <AgentIcon agentId={m} name={getMemberDisplayName(agents, m)} className="size-3.5 rounded-full" />
@@ -133,9 +136,9 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => handleClose(false)}>取消</Button>
+            <Button variant="outline" onClick={() => handleClose(false)}>{tc('cancel')}</Button>
             <Button onClick={handleSubmit} disabled={!title.trim()}>
-              创建
+              {t('create.submit')}
             </Button>
           </div>
         </div>
