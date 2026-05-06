@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { LLMProvider, LLMModel } from "@agent-spaces/shared";
 import {
   Dialog,
@@ -37,6 +38,8 @@ export function ProvidersDialog({
   onOpenChange: (open: boolean) => void;
   onAddModel: (providerName: string) => void;
 }) {
+  const t = useTranslations("providers");
+  const tc = useTranslations("common");
   const { models: allModels, providers, ensure, addProvider, updateProvider, removeProvider } = useLLMStore();
   const [selected, setSelected] = useState<LLMProvider | null>(null);
   const [draft, setDraft] = useState<Partial<LLMProvider> | null>(null);
@@ -79,14 +82,14 @@ export function ProvidersDialog({
       if (isNew) addProvider(saved); else updateProvider(saved);
       handleBack();
     } catch {
-      setError("Failed to save provider");
+      setError(t("error.saveFailed"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this provider?")) return;
+    if (!confirm(t("confirm.delete"))) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/providers/${id}`, { method: "DELETE" });
@@ -94,7 +97,7 @@ export function ProvidersDialog({
       removeProvider(id);
       if (selected?.id === id) handleBack();
     } catch {
-      setError("Failed to delete provider");
+      setError(t("error.deleteFailed"));
     } finally {
       setSaving(false);
     }
@@ -118,16 +121,16 @@ export function ProvidersDialog({
           )}
           <DialogHeader className="flex-1 space-y-0">
             <DialogTitle className="text-base">
-              {draft ? (selected ? "Edit Provider" : "Add Provider") : "Providers"}
+              {draft ? (selected ? t("dialog.editTitle") : t("dialog.addTitle")) : t("dialog.title")}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              {draft ? "Configure provider connection settings" : "Manage LLM API providers"}
+              {draft ? t("dialog.editDescription") : t("dialog.listDescription")}
             </DialogDescription>
           </DialogHeader>
           {!draft && (
             <Button variant="outline" size="sm" onClick={handleAdd} className="mr-6">
               <Plus className="size-3.5" />
-              Add
+              {t("dialog.add")}
             </Button>
           )}
         </div>
@@ -139,7 +142,7 @@ export function ProvidersDialog({
             </div>
           )}
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading providers...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">{t("dialog.loading")}</div>
           ) : draft ? (
             <ProviderForm draft={draft} onChange={updateDraft} />
           ) : (
@@ -155,9 +158,9 @@ export function ProvidersDialog({
 
         {draft && (
           <div className="flex justify-end gap-2 border-t px-5 py-3">
-            <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>{tc("cancel")}</Button>
             <Button size="sm" onClick={handleSave} disabled={saving || !draft.name}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? tc("saving") : tc("save")}
             </Button>
           </div>
         )}
@@ -179,6 +182,7 @@ function ProviderList({
   onDelete: (id: string) => void;
   onAddModel: (providerName: string) => void;
 }) {
+  const t = useTranslations("providers");
   return (
     <div className="flex flex-col p-2">
       {providers.map(provider => {
@@ -196,10 +200,10 @@ function ProviderList({
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium">{provider.name}</span>
-                <p className="text-xs text-muted-foreground truncate">{provider.apiBase || "No API base configured"}</p>
+                <p className="text-xs text-muted-foreground truncate">{provider.apiBase || t("list.noApiBase")}</p>
               </div>
               <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                {models.length} models
+                {models.length} {t("list.modelsCount")}
               </Badge>
               <Button
                 variant="ghost"
@@ -234,7 +238,7 @@ function ProviderList({
               onClick={e => { e.stopPropagation(); onAddModel(provider.name); }}
             >
               <ExternalLink className="size-3" />
-              Add model
+              {t("list.addModel")}
             </Button>
           </div>
         );
@@ -242,7 +246,7 @@ function ProviderList({
       {providers.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Server className="size-10 mb-2 opacity-30" />
-          <p className="text-sm">No providers yet</p>
+          <p className="text-sm">{t("list.empty")}</p>
         </div>
       )}
     </div>
@@ -256,21 +260,22 @@ function ProviderForm({
   draft: Partial<LLMProvider>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("providers");
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Connection</div>
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.connection")}</div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Name</label>
-          <Input value={draft.name || ""} onChange={e => onChange("name", e.target.value)} placeholder="e.g. Anthropic" />
+          <label className="text-xs text-muted-foreground">{t("form.name")}</label>
+          <Input value={draft.name || ""} onChange={e => onChange("name", e.target.value)} placeholder={t("form.namePlaceholder")} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">API Base</label>
-          <Input value={draft.apiBase || ""} onChange={e => onChange("apiBase", e.target.value)} placeholder="https://api.anthropic.com" />
+          <label className="text-xs text-muted-foreground">{t("form.apiBase")}</label>
+          <Input value={draft.apiBase || ""} onChange={e => onChange("apiBase", e.target.value)} placeholder={t("form.apiBasePlaceholder")} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">API Key</label>
-          <Input type="password" value={draft.apiKey || ""} onChange={e => onChange("apiKey", e.target.value)} placeholder="sk-..." />
+          <label className="text-xs text-muted-foreground">{t("form.apiKey")}</label>
+          <Input type="password" value={draft.apiKey || ""} onChange={e => onChange("apiKey", e.target.value)} placeholder={t("form.apiKeyPlaceholder")} />
         </div>
       </div>
     </div>
