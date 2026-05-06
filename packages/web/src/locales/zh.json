@@ -238,6 +238,39 @@
     "list": { "noApiBase": "未配置 API 地址", "modelsCount": "个模型", "addModel": "添加模型", "empty": "暂无供应商" },
     "form": { "connection": "连接", "name": "名称", "namePlaceholder": "例如 Anthropic", "apiBase": "API 地址", "apiBasePlaceholder": "https://api.anthropic.com", "apiKey": "API 密钥", "apiKeyPlaceholder": "sk-..." }
   },
+  "chat": {
+    "channelType": { "general": "通用", "issue": "议题", "agent": "Agent" },
+    "emptyState": "选择一个频道开始对话",
+    "status": { "idle": "空闲中", "waitingForUser": "等待用户确认", "running": "运行中", "success": "成功", "error": "失败" },
+    "viewRelatedIssue": "查看关联议题",
+    "deleteMessage": { "title": "删除消息", "description": "确认删除这条消息？此操作不可撤销。" },
+    "clearMessages": { "title": "清空频道消息", "description": "确认清空 #{channel} 的所有消息？此操作不可撤销。", "confirm": "清空" },
+    "pendingQuestion": { "placeholder": "输入回答..." },
+    "untitledTodo": "未命名待办",
+    "input": {
+      "placeholder": "发送消息到 #{channel}... 使用 @ 提及 Agent，输入 / 打开命令",
+      "attachFiles": "附件", "codeInterpreter": "代码解释器", "webSearch": "网络搜索", "chatHistory": "聊天记录",
+      "autoMode": "自动", "unpinAgent": "取消固定", "pinAgent": "固定此 Agent",
+      "mcp": "MCP", "noMcp": "未配置 MCP", "skill": "技能", "noSkills": "未配置技能",
+      "tools": "工具", "noTools": "未配置工具", "todos": "待办", "uploadFailed": "上传失败：{name}"
+    },
+    "messageParts": {
+      "agentProcessing": "Agent 正在处理...", "agentThinking": "Agent 正在思考", "aiIntermediateOutput": "AI 中间输出",
+      "streamingResponse": "流式响应", "intermediateMessage": "中间消息",
+      "chainSteps": "{count} 个链式步骤",
+      "reject": "拒绝", "approve": "批准", "result": "结果", "aiMessage": "AI 消息",
+      "failedToLoadDetails": "加载详情失败。", "loadingDetails": "加载详情中...", "noDetails": "无可用详情。",
+      "raw": "原始数据", "input": "输入", "output": "输出"
+    },
+    "chainOfThought": { "defaultHeader": "思维链" },
+    "commit": { "clipboardUnavailable": "剪贴板不可用" },
+    "subagent": { "instructions": "指令", "tools": "工具", "noDescription": "无描述", "outputSchema": "输出模式" },
+    "terminal": { "title": "终端", "running": "运行中...", "clipboardUnavailable": "剪贴板不可用" },
+    "context": { "totalCost": "总费用", "input": "输入", "output": "输出", "reasoning": "推理", "cache": "缓存" },
+    "attachments": { "source": "来源", "image": "图片", "attachment": "附件", "imageAlt": "图片", "remove": "移除", "noAttachments": "无附件" },
+    "askUser": { "placeholder": "输入回答..." },
+    "readonlyCodeBlock": { "loading": "加载代码中..." }
+  },
   "home": {
     "table": {
       "agent": "Agent",

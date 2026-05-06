@@ -238,6 +238,39 @@
     "list": { "noApiBase": "No API base configured", "modelsCount": "models", "addModel": "Add model", "empty": "No providers yet" },
     "form": { "connection": "Connection", "name": "Name", "namePlaceholder": "e.g. Anthropic", "apiBase": "API Base", "apiBasePlaceholder": "https://api.anthropic.com", "apiKey": "API Key", "apiKeyPlaceholder": "sk-..." }
   },
+  "chat": {
+    "channelType": { "general": "General", "issue": "Issue", "agent": "Agent" },
+    "emptyState": "Select a channel to start chatting",
+    "status": { "idle": "Idle", "waitingForUser": "Waiting for confirmation", "running": "Running", "success": "Success", "error": "Failed" },
+    "viewRelatedIssue": "View related issue",
+    "deleteMessage": { "title": "Delete Message", "description": "Are you sure you want to delete this message? This action cannot be undone." },
+    "clearMessages": { "title": "Clear Channel Messages", "description": "Are you sure you want to clear all messages in #{channel}? This action cannot be undone.", "confirm": "Clear" },
+    "pendingQuestion": { "placeholder": "Type your answer..." },
+    "untitledTodo": "Untitled todo",
+    "input": {
+      "placeholder": "Message #{channel}... Use @ to mention agents, / for commands",
+      "attachFiles": "Attach Files", "codeInterpreter": "Code Interpreter", "webSearch": "Web Search", "chatHistory": "Chat History",
+      "autoMode": "Auto", "unpinAgent": "Unpin Agent", "pinAgent": "Pin Agent",
+      "mcp": "MCP", "noMcp": "No MCP configured", "skill": "Skill", "noSkills": "No skills configured",
+      "tools": "Tools", "noTools": "No tools configured", "todos": "Todos", "uploadFailed": "Upload failed: {name}"
+    },
+    "messageParts": {
+      "agentProcessing": "Agent is processing...", "agentThinking": "Agent is thinking", "aiIntermediateOutput": "AI intermediate output",
+      "streamingResponse": "Streaming response", "intermediateMessage": "Intermediate message",
+      "chainSteps": "{count, plural, one {# chain step} other {# chain steps}}",
+      "reject": "Reject", "approve": "Approve", "result": "Result", "aiMessage": "AI message",
+      "failedToLoadDetails": "Failed to load details.", "loadingDetails": "Loading details...", "noDetails": "No details available.",
+      "raw": "Raw", "input": "Input", "output": "Output"
+    },
+    "chainOfThought": { "defaultHeader": "Chain of Thought" },
+    "commit": { "clipboardUnavailable": "Clipboard API not available" },
+    "subagent": { "instructions": "Instructions", "tools": "Tools", "noDescription": "No description", "outputSchema": "Output Schema" },
+    "terminal": { "title": "Terminal", "running": "Running...", "clipboardUnavailable": "Clipboard API not available" },
+    "context": { "totalCost": "Total cost", "input": "Input", "output": "Output", "reasoning": "Reasoning", "cache": "Cache" },
+    "attachments": { "source": "Source", "image": "Image", "attachment": "Attachment", "imageAlt": "Image", "remove": "Remove", "noAttachments": "No attachments" },
+    "askUser": { "placeholder": "Type an answer..." },
+    "readonlyCodeBlock": { "loading": "Loading code..." }
+  },
   "home": {
     "table": {
       "agent": "Agent",
