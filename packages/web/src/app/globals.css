@@ -257,6 +257,29 @@
 /* Dark mode floating card */
 .dark .flexlayout__layout {
   background-color: #0f1117 !important;
+  --color-text: #e5e7eb;
+  --color-background: #1a1b23;
+  --color-base: #1a1b23;
+  --color-1: rgba(255, 255, 255, 0.05);
+  --color-2: rgba(255, 255, 255, 0.08);
+  --color-3: rgba(255, 255, 255, 0.1);
+  --color-4: rgba(255, 255, 255, 0.12);
+  --color-5: rgba(255, 255, 255, 0.15);
+  --color-6: rgba(255, 255, 255, 0.18);
+  --color-icon: #8b8fa3;
+  --color-overflow: #8b8fa3;
+  --color-tabset-background: #1a1b23;
+  --color-tabset-background-selected: #1e1f2b;
+  --color-border-tab-content: #1a1b23;
+  --color-border-background: #1a1b23;
+  --color-tab-content: #1a1b23;
+  --color-tab-selected: #e5e7eb;
+  --color-tab-unselected: #8b8fa3;
+  --color-border-tab-selected: #e5e7eb;
+  --color-border-tab-unselected: #8b8fa3;
+  --color-popup-border: rgba(255, 255, 255, 0.12);
+  --color-popup-unselected: #e5e7eb;
+  --color-popup-unselected-background: #1a1b23;
 }
 
 .dark .flexlayout__tabset {
@@ -679,4 +702,10 @@
   margin-top: 10px;
   color: #64748b;
   font-size: 12px;
+}
+
+/* Mobile: lock sidebar-wrapper to viewport height */
+[data-slot="sidebar-wrapper"] {
+  height: 100%;
+  min-height: unset;
 }

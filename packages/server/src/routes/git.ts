@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit } from '../adapters/git.js';
+import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitGetRemotes, gitAddRemote } from '../adapters/git.js';
 
 const router = Router({ mergeParams: true });
 
@@ -95,6 +95,56 @@ router.post('/checkout', async (req: Request<{ id: string }>, res: Response) => 
 router.post('/init', async (req: Request<{ id: string }>, res: Response) => {
   try {
     await gitInit(req.params.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/generate-commit-message', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const message = await gitGenerateCommitMsg(req.params.id);
+    res.json({ message });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/push', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    await gitPush(req.params.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/pull', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    await gitPull(req.params.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/remotes', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const remotes = await gitGetRemotes(req.params.id);
+    res.json(remotes);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/remotes', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { name, url } = req.body;
+    if (!name || !url) {
+      res.status(400).json({ error: 'name and url are required' });
+      return;
+    }
+    await gitAddRemote(req.params.id, name, url);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

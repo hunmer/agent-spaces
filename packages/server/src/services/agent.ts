@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path';
-import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
+import type { AgentConfig, AgentSession, AgentSessionStatus, AgentUsageDashboard, MessageTokenUsage } from '@agent-spaces/shared';
 import { BUILT_IN_AGENT_TOOLS } from '@agent-spaces/shared';
 import {
   listAgentSessions,
@@ -9,11 +9,16 @@ import {
   createAgentSession,
   updateAgentSession,
   deleteAgentSession,
+  getAgentUsageDashboard,
+  recordAgentUsage,
 } from '../storage/agent-store.js';
 import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
+import { listIssues, updateIssue } from '../storage/issue-store.js';
+import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
+import { extractUsageFromOutput } from '../storage/usage.js';
 
-const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
+const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'commit', 'custom', 'bot'];
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [
@@ -23,6 +28,16 @@ const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']
 
 type SkillInput = string | { name?: string; content?: string };
 type McpConfig = Record<string, unknown>;
+
+export interface AgentCompletionDetails {
+  runtime?: string;
+  model?: string;
+  summary?: string;
+  output?: string[];
+  durationMs?: number;
+  usage?: MessageTokenUsage;
+  costUsd?: number;
+}
 
 export interface AgentConnectionTestResult {
   success: boolean;
@@ -376,11 +391,11 @@ export function createPreset(
     role: data.role && VALID_ROLES.includes(data.role) ? data.role : 'executor',
     description: data.description || '',
     runtimeKind: presetRuntimeKind,
-    modelProvider: presetRuntimeKind === 'claude-code' ? requestedModelProvider : undefined,
+    modelProvider: requestedModelProvider,
     modelId: data.modelId || 'claude-sonnet-4-6',
     apiBase: data.apiBase || '',
     apiKey: data.apiKey || '',
-    workingDir: workingDir || getWorkspaceAgentDir(ws.agentspaceDir, id),
+    workingDir: workingDir || '',
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     tools: normalizeToolNames(data.tools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name)),
@@ -426,7 +441,7 @@ export function updatePreset(
     role,
     runtimeKind: updatedRuntimeKind,
     name: data.name?.trim() || existing.name || 'New Agent',
-    modelProvider: updatedRuntimeKind === 'claude-code' ? requestedModelProvider : undefined,
+    modelProvider: requestedModelProvider,
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     tools: normalizeToolNames(data.tools ?? existing.tools),
@@ -479,9 +494,7 @@ export function resolveWorkingDir(workspaceId: string, preset: AgentConfig): str
   if (mappedWorkingDir) return mappedWorkingDir;
 
   if (!ws) return process.cwd();
-  const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
-  ensureWorkspaceAgentCopy(preset, ws.agentspaceDir);
-  return workspaceAgentDir;
+  return ws.boundDirs[0] || process.cwd();
 }
 
 function resolveWorkspacePath(boundDirs: string[] | undefined, workingDir?: string): string | undefined {
@@ -633,6 +646,27 @@ export function deletePreset(workspaceId: string, presetId: string): boolean | n
 
   ws.updatedAt = new Date().toISOString();
   updateWorkspace(ws);
+
+  // Remove agent from all channels' members
+  for (const ch of listChannels(workspaceId)) {
+    if (ch.members.includes(presetId)) {
+      updateChannel(workspaceId, ch.id, { members: ch.members.filter((m) => m !== presetId) });
+    }
+  }
+
+  // Remove agent from all issues' members and assignedAgents
+  for (const issue of listIssues(workspaceId)) {
+    const membersChanged = issue.members.includes(presetId);
+    const assignedChanged = issue.assignedAgents.includes(presetId);
+    if (membersChanged || assignedChanged) {
+      updateIssue({
+        ...issue,
+        members: membersChanged ? issue.members.filter((m) => m !== presetId) : issue.members,
+        assignedAgents: assignedChanged ? issue.assignedAgents.filter((a) => a !== presetId) : issue.assignedAgents,
+      });
+    }
+  }
+
   return true;
 }
 
@@ -709,11 +743,27 @@ export function complete(
   workspaceId: string,
   sessionId: string,
   error?: string,
+  details?: AgentCompletionDetails,
 ): AgentSession | null {
-  return updateStatus(workspaceId, sessionId, error ? 'crashed' : 'completed', {
+  const session = updateStatus(workspaceId, sessionId, error ? 'crashed' : 'completed', {
     currentTaskId: undefined,
     error,
   });
+  if (!session) return null;
+
+  const usage = details?.usage ?? extractUsageFromOutput(details?.output ?? []);
+  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.cachedInputTokens || usage.reasoningTokens) {
+    recordAgentUsage({
+      session,
+      runtime: details?.runtime,
+      model: details?.model,
+      summary: details?.summary,
+      durationMs: details?.durationMs,
+      usage,
+      costUsd: details?.costUsd,
+    });
+  }
+  return session;
 }
 
 export function remove(workspaceId: string, sessionId: string): boolean {
@@ -730,4 +780,8 @@ export function findActiveByRole(
   return listAgentSessions(workspaceId).find(
     (s) => s.role === role && (s.status === 'active' || s.status === 'idle'),
   );
+}
+
+export function usageDashboard(days?: number): AgentUsageDashboard {
+  return getAgentUsageDashboard(days);
 }

@@ -106,8 +106,18 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
           className="size-7 rounded-full"
         />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-0.5">
             <span className="text-xs font-medium">{senderName}</span>
+            {comment.metadata?.model && (
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {comment.metadata.model}
+              </span>
+            )}
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mb-1">
             {comment.senderRole && (
               <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
                 {comment.senderRole}
@@ -123,9 +133,8 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
                 task {taskId.slice(0, 8)}
               </span>
             )}
-            <span className="text-[10px] text-muted-foreground">
-              {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
+          </div>
+          <div className="flex items-center gap-2">
             {linkedChannelId && linkedMessageId ? (
               <Button
                 variant="ghost"

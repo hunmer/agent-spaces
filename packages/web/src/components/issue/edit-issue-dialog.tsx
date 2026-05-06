@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import type { Issue, IssueStatus } from '@agent-spaces/shared';
+import { X } from 'lucide-react';
+import { AgentIcon } from '@/components/common/agent-icon';
+import { getMemberDisplayName } from '@/lib/agent-members';
+import type { Issue, IssueStatus, AgentConfig } from '@agent-spaces/shared';
 
 const STATUS_OPTIONS: { value: IssueStatus; label: string }[] = [
   { value: 'draft', label: 'Draft' },
@@ -22,13 +25,16 @@ interface EditIssueDialogProps {
   issue: Issue;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: { title: string; description: string; status: IssueStatus }) => Promise<void>;
+  agents?: AgentConfig[];
+  onSave: (data: { title: string; description: string; status: IssueStatus; members: string[] }) => Promise<void>;
 }
 
-export function EditIssueDialog({ issue, open, onOpenChange, onSave }: EditIssueDialogProps) {
+export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave }: EditIssueDialogProps) {
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description);
   const [status, setStatus] = useState<IssueStatus>(issue.status);
+  const [members, setMembers] = useState<string[]>(issue.members || []);
+  const [memberQuery, setMemberQuery] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,25 +42,38 @@ export function EditIssueDialog({ issue, open, onOpenChange, onSave }: EditIssue
       setTitle(issue.title);
       setDescription(issue.description);
       setStatus(issue.status);
+      setMembers(issue.members?.length ? [...issue.members] : []);
+      setMemberQuery('');
     }
   }, [open, issue]);
+
+  const toggleMember = (id: string) => {
+    setMembers((prev) =>
+      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
+    );
+  };
 
   const handleSave = async () => {
     if (!title.trim()) return;
     setSaving(true);
     try {
-      await onSave({ title: title.trim(), description: description.trim(), status });
+      await onSave({ title: title.trim(), description: description.trim(), status, members });
       onOpenChange(false);
     } finally {
       setSaving(false);
     }
   };
 
+  const filtered = agents.filter((a) =>
+    `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Issue</DialogTitle>
+          <DialogTitle>编辑议题</DialogTitle>
+          <DialogDescription>修改议题信息、状态和成员</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <Input
@@ -67,7 +86,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, onSave }: EditIssue
             placeholder="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={4}
+            rows={3}
           />
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Status</label>
@@ -83,6 +102,62 @@ export function EditIssueDialog({ issue, open, onOpenChange, onSave }: EditIssue
               ))}
             </select>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">成员</label>
+            <Input
+              value={memberQuery}
+              onChange={(e) => setMemberQuery(e.target.value)}
+              placeholder="搜索 Agent..."
+            />
+            <div className="max-h-36 overflow-y-auto space-y-0.5">
+              {filtered.length === 0 && (
+                <p className="text-sm text-muted-foreground py-2 text-center">无可用 Agent</p>
+              )}
+              {filtered.map((agent) => (
+                <button
+                  key={agent.id}
+                  type="button"
+                  onClick={() => toggleMember(agent.id)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left text-sm transition-colors"
+                >
+                  <AgentIcon
+                    agentId={agent.id}
+                    name={getMemberDisplayName(agents, agent.id)}
+                    className="size-5 rounded-full"
+                  />
+                  <span className="flex-1 truncate">{getMemberDisplayName(agents, agent.id)}</span>
+                  <div
+                    className={`flex items-center justify-center size-4 rounded border ${
+                      members.includes(agent.id)
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'border-input'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            {members.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {members.map((m) => (
+                  <span key={m} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                    {m === 'user' ? (
+                      'User'
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <AgentIcon agentId={m} name={getMemberDisplayName(agents, m)} className="size-3.5 rounded-full" />
+                        {getMemberDisplayName(agents, m)}
+                      </span>
+                    )}
+                    <button type="button" onClick={() => toggleMember(m)} className="hover:text-destructive">
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

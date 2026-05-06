@@ -15,6 +15,8 @@ import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { saveToolDetails } from '../services/tool-detail.js';
 import type { ToolDetail } from '../services/tool-detail.js';
+import { readWorkspacePrompt } from '../services/workspace-prompt.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -55,8 +57,11 @@ interface RunMentionedAgentOptions {
 function ensureScheduler(workspaceId: string, ctx: AgentContext) {
   if (!activeSchedulers.has(workspaceId)) {
     activeSchedulers.add(workspaceId);
-    startScheduler(workspaceId, ctx);
-    console.log(`[ws] scheduler started for workspace ${workspaceId}`);
+    setTimeout(() => {
+      startScheduler(workspaceId, ctx);
+      console.log(`[ws] scheduler started for workspace ${workspaceId}`);
+    }, 10_000);
+    console.log(`[ws] scheduler scheduled for workspace ${workspaceId} in 10000ms`);
   }
 }
 
@@ -269,6 +274,7 @@ async function runMentionedAgent(
   broadcastToWorkspace(workspaceId, existingMessage ? 'channel.message.updated' : 'channel.message', pending);
 
   let activeRun: ActiveChannelRun | undefined;
+  const liveReasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   try {
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind,
@@ -277,6 +283,7 @@ async function runMentionedAgent(
       apiKey: preset.apiKey,
       baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
       adapterBaseURL: preset.apiBase,
+      ...getThinkingRuntimeConfig(preset),
     });
     activeRun = {
       agentId: session.id,
@@ -306,6 +313,7 @@ async function runMentionedAgent(
         skills,
         builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: liveOutput,
+        reasoning: liveReasoning,
         toolDetails,
         askUserQuestions,
         success: true,
@@ -324,7 +332,7 @@ async function runMentionedAgent(
       });
       if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
     };
-    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history, {
+    const result = await runtime.execute(buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, {
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
       boundDirs: workspace?.boundDirs,
@@ -337,6 +345,12 @@ async function runMentionedAgent(
       configDir,
       sandboxDirs: preset.sandboxDirs,
       onEvent: (event) => {
+        if (event.type === 'reasoning') {
+          liveReasoning.push({ text: event.text, status: event.status });
+          broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.text });
+          broadcastLiveParts();
+          return;
+        }
         if (event.type === 'tool_use') {
           if (event.name === 'AskUserQuestion') {
             const question = parseAskUserQuestion(event.id, event.input);
@@ -415,7 +429,7 @@ async function runMentionedAgent(
     broadcastLiveParts(true);
     if (activeRun.stopped) return;
 
-    const displayOutput = liveOutput.length > 0 ? liveOutput : result.output;
+    const displayOutput = mergeRuntimeOutput(liveOutput, result.output);
     if (shouldWaitForUserAnswer(askUserQuestions, result.summary, result.error, displayOutput)) {
       const waitingOutput = stripAskUserQuestionErrorLines(liveOutput);
       const waiting = updateMessage(workspaceId, channelId, pending.id, {
@@ -439,6 +453,7 @@ async function runMentionedAgent(
           mcpServers: Object.keys(mcpServers ?? {}),
           skills,
           output: waitingOutput,
+          reasoning: liveReasoning,
           toolDetails,
           askUserQuestions,
           success: true,
@@ -460,7 +475,15 @@ async function runMentionedAgent(
       }
     }
 
-    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error);
+    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error, {
+      runtime: preset.runtimeKind,
+      model: preset.modelId,
+      summary: result.summary,
+      output: displayOutput,
+      durationMs: Date.now() - startTime,
+      usage: result.usage,
+      costUsd: result.costUsd,
+    });
     broadcastToWorkspace(workspaceId, 'agent.completed', {
       agentId: session.id,
       result: {
@@ -489,11 +512,13 @@ async function runMentionedAgent(
         presetName: preset.name || preset.role,
         role: preset.role,
         model: preset.modelId,
+        usage: result.usage,
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
         builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: displayOutput,
+        reasoning: liveReasoning,
         toolDetails,
         askUserQuestions,
         success: result.success,
@@ -504,7 +529,13 @@ async function runMentionedAgent(
   } catch (err) {
     if (activeRun?.stopped) return;
     const error = err instanceof Error ? err.message : String(err);
-    agentService.complete(workspaceId, session.id, error);
+    agentService.complete(workspaceId, session.id, error, {
+      runtime: preset.runtimeKind,
+      model: preset.modelId,
+      summary: error,
+      output: [error],
+      durationMs: Date.now() - startTime,
+    });
     broadcastToWorkspace(workspaceId, 'agent.error', { agentId: session.id, error });
     const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: error,
@@ -527,6 +558,7 @@ async function runMentionedAgent(
         skills,
         builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: [error],
+        reasoning: liveReasoning,
         toolDetails: new Map(),
         askUserQuestions: [],
         success: false,
@@ -650,11 +682,13 @@ function buildAgentMessageParts(input: {
   presetName: string;
   role: string;
   model?: string;
+  usage?: MessageTokenUsage;
   systemPrompt?: string;
   mcpServers: string[];
   skills: string[];
   builtInTools?: BuiltInToolContext[];
   output: string[];
+  reasoning?: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   toolDetails?: Map<string, ToolDetail>;
   askUserQuestions?: PendingAskUserQuestion[];
   success: boolean;
@@ -665,10 +699,20 @@ function buildAgentMessageParts(input: {
   const finalText = finalTextRange
     ? collapseRepeatedTextBlock(lines.slice(finalTextRange.start, finalTextRange.end + 1)).join('\n').trim()
     : '';
-  const usage = extractUsage(lines);
+  const usage = input.usage ?? extractUsage(lines);
   const parts: MessagePart[] = [];
 
   const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
+
+  const reasoningText = normalizeReasoningText(input.reasoning);
+  if (reasoningText) {
+    parts.push({
+      id: `reasoning-${input.sessionId}`,
+      type: 'reasoning',
+      text: reasoningText,
+      status: input.success ? 'completed' : 'streaming',
+    });
+  }
 
   if (chainItems.length > 0) {
     parts.push({
@@ -678,7 +722,7 @@ function buildAgentMessageParts(input: {
     });
   }
 
-  for (const subagent of extractSubagentBlocks(lines, input.sessionId)) {
+  for (const subagent of extractSubagentBlocks(lines, input.sessionId, input.toolDetails)) {
     parts.push(subagent);
   }
 
@@ -694,11 +738,11 @@ function buildAgentMessageParts(input: {
     });
   }
 
-  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
+  if (hasTokenUsage(usage)) {
     parts.push({
       id: `context-${input.sessionId}`,
       type: 'context',
-      usedTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      usedTokens: getTotalTokens(usage),
       maxTokens: 128_000,
       modelId: input.model,
       usage,
@@ -725,6 +769,23 @@ function buildAgentMessageParts(input: {
   return parts;
 }
 
+function normalizeReasoningText(reasoning?: Array<{ text: string }>): string {
+  if (!reasoning?.length) return '';
+  return collapseRepeatedTextBlock(
+    reasoning
+      .map((item) => item.text.trim())
+      .filter(Boolean),
+  ).join('\n\n').trim();
+}
+
+function hasTokenUsage(usage: MessageTokenUsage): boolean {
+  return Boolean(usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.cachedInputTokens || usage.reasoningTokens);
+}
+
+function getTotalTokens(usage: MessageTokenUsage): number {
+  return usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) + (usage.cachedInputTokens ?? 0) + (usage.reasoningTokens ?? 0);
+}
+
 function normalizeOutputLines(output: string[]): string[] {
   const lines = output
     .flatMap((line) => line.split(/\r?\n/))
@@ -738,6 +799,16 @@ function normalizeOutputLines(output: string[]): string[] {
     seenInitLines.add(line);
     return true;
   });
+}
+
+function mergeRuntimeOutput(liveOutput: string[], resultOutput: string[]): string[] {
+  if (liveOutput.length === 0) return resultOutput;
+  const finalResult = resultOutput.at(-1)?.trim();
+  if (!finalResult) return liveOutput;
+  if (liveOutput.some((line) => normalizeMessageText(line) === normalizeMessageText(finalResult))) {
+    return liveOutput;
+  }
+  return [...liveOutput, finalResult];
 }
 
 function collapseRepeatedTextBlock(lines: string[]): string[] {
@@ -788,6 +859,23 @@ function buildChainItems(
   let messageIndex = 0;
   const items: MessageChain[] = [];
   const toolDetailMatchCounts = new Map<string, number>();
+  let messageBuffer: string[] = [];
+
+  const flushMessageBuffer = () => {
+    if (messageBuffer.length === 0) return;
+    const text = messageBuffer.join('\n').trim();
+    if (text) {
+      items.push({
+        id: `message-${messageIndex}`,
+        title: summarizeMessageTitle(text),
+        text,
+        kind: 'message',
+        status: 'completed',
+      });
+      messageIndex += 1;
+    }
+    messageBuffer = [];
+  };
 
   for (let index = 0; index < lines.length; index += 1) {
     if (finalTextRange && index >= finalTextRange.start && index <= finalTextRange.end) continue;
@@ -795,21 +883,16 @@ function buildChainItems(
     if (finalText && isSameMessageText(line, finalText)) continue;
     if (isSubagentToolLine(line)) continue;
     if (isToolLikeLine(line)) {
+      flushMessageBuffer();
       items.push(buildToolTodo(line, toolIndex, workspaceRoot, toolDetails, toolDetailMatchCounts));
       toolIndex += 1;
       continue;
     }
     if (isFinalAnswerLine(line)) {
-      items.push({
-        id: `message-${messageIndex}`,
-        title: summarizeMessageTitle(line),
-        text: line,
-        kind: 'message',
-        status: 'completed',
-      });
-      messageIndex += 1;
+      messageBuffer.push(line);
     }
   }
+  flushMessageBuffer();
 
   return items.slice(0, 40);
 }
@@ -1054,7 +1137,24 @@ function findToolDetailForResult(
     }
   }
 
+  if (isSubagentToolResult(result)) {
+    const detail = Array.from(toolDetails.values()).reverse().find((candidate) => {
+      return candidate.output === undefined && /^Tool:\s*Task\b/i.test(candidate.raw);
+    });
+    if (detail) return detail;
+  }
+
   return Array.from(toolDetails.values()).reverse().find((detail) => detail.output === undefined);
+}
+
+function isSubagentToolResult(result: unknown): boolean {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+  const record = result as Record<string, unknown>;
+  return (
+    typeof record.agentId === 'string'
+    || typeof record.agentType === 'string'
+    || (record.status === 'completed' && Array.isArray(record.content))
+  );
 }
 
 function extractResultFilePath(result: unknown, workspaceRoot?: string): string | undefined {
@@ -1162,24 +1262,55 @@ function extractUsage(lines: string[]): MessageTokenUsage {
   return usage;
 }
 
-function extractSubagentBlocks(lines: string[], sessionId: string): MessagePart[] {
+function extractSubagentBlocks(
+  lines: string[],
+  sessionId: string,
+  toolDetails?: Map<string, ToolDetail>,
+): MessagePart[] {
+  const matchCounts = new Map<string, number>();
   return lines
     .map((line, index): MessagePart | null => {
       const match = line.match(/^Tool:\s*Task\b\s*(.*)$/i);
       if (!match) return null;
       const name = line.match(/\bdescription=(["'])(.*?)\1/i)?.[2] || `Subagent ${index + 1}`;
       const prompt = line.match(/\bprompt=(["'])(.*?)\1/i)?.[2];
+      const detailId = findToolDetailId(line, toolDetails, matchCounts);
+      const detail = detailId ? toolDetails?.get(detailId) : undefined;
+      const output = stringifySubagentOutput(detail?.output);
       return {
         id: `subagent-${sessionId}-${index}`,
         type: 'subagent',
         name,
         instructions: prompt,
+        output,
       };
     })
     .filter((part): part is MessagePart => Boolean(part));
 }
 
+function stringifySubagentOutput(output: unknown): string | undefined {
+  if (output === undefined || output === null) return undefined;
+  if (typeof output === 'string') return output.trim() || undefined;
+  if (Array.isArray(output)) {
+    const text = output.flatMap((item) => {
+      if (typeof item === 'string') return [item];
+      if (!item || typeof item !== 'object') return [];
+      const record = item as Record<string, unknown>;
+      return typeof record.text === 'string' ? [record.text] : [];
+    }).join('\n').trim();
+    return text || undefined;
+  }
+  if (typeof output === 'object') {
+    const record = output as Record<string, unknown>;
+    if (typeof record.result === 'string' && record.result.trim()) return record.result.trim();
+    if (typeof record.summary === 'string' && record.summary.trim()) return record.summary.trim();
+    if (Array.isArray(record.content)) return stringifySubagentOutput(record.content);
+  }
+  return undefined;
+}
+
 function buildAgentPrompt(
+  workspaceId: string,
   systemPrompt: string | undefined,
   userPrompt: string,
   history: Message[] = [],
@@ -1205,6 +1336,7 @@ function buildAgentPrompt(
     if (runtimeConfig.boundDirs?.length) {
       configLines.push(`- Code directories (boundDirs): ${runtimeConfig.boundDirs.join(', ')}`);
     }
+    configLines.push('- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.');
     if (runtimeConfig.builtInTools?.length) {
       configLines.push(...formatBuiltInToolContext(runtimeConfig.builtInTools));
     }
@@ -1231,7 +1363,13 @@ function buildAgentPrompt(
   }
 
   parts.push(`User message:\n${userPrompt}`);
-  return parts.join('\n\n');
+  return prependWorkspacePrompt(workspaceId, parts.join('\n\n'));
+}
+
+function prependWorkspacePrompt(workspaceId: string, prompt: string): string {
+  const workspacePrompt = readWorkspacePrompt(workspaceId).trim();
+  if (!workspacePrompt) return prompt;
+  return `${workspacePrompt}\n\n${prompt}`;
 }
 
 function isIssueContextLookup(userPrompt: string): boolean {

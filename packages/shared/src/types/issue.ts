@@ -20,6 +20,10 @@ export interface Issue {
   tasks: string[];
   assignedAgents: string[];
   members: string[];
+  retryCount: number;
+  maxRetries: number;
+  retryPaused?: boolean;
+  lastError?: string;
   branch?: string;
   prUrl?: string;
   createdAt: string;
@@ -43,6 +47,7 @@ export interface IssueComment {
     summary?: string;
     duration?: number;
     taskId?: string;
+    mentions?: string[];
     phase?: 'planner' | 'task_creator' | 'executor' | 'reviewer';
   };
   createdAt: string;
@@ -52,4 +57,5 @@ export interface IssueComment {
 export interface CreateIssueInput {
   title: string;
   description: string;
+  members?: string[];
 }

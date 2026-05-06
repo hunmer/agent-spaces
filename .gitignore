@@ -7,3 +7,8 @@ dist/
 .DS_Store
 .agent-spaces-data/
 packages/server/public/
+server.tar
+.gitignore
+web.tar
+packages/server/web/
+packages/server/agent_spaces/

@@ -20,6 +20,7 @@ import {
   Brain,
   ExternalLink,
 } from "lucide-react";
+import { useLLMStore } from "@/stores/llm";
 
 const CAP_CLS: Record<string, string> = {
   vision: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -36,8 +37,7 @@ export function ProvidersDialog({
   onOpenChange: (open: boolean) => void;
   onAddModel: (providerName: string) => void;
 }) {
-  const [providers, setProviders] = useState<LLMProvider[]>([]);
-  const [allModels, setAllModels] = useState<LLMModel[]>([]);
+  const { models: allModels, providers, ensure, addProvider, updateProvider, removeProvider } = useLLMStore();
   const [selected, setSelected] = useState<LLMProvider | null>(null);
   const [draft, setDraft] = useState<Partial<LLMProvider> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -48,17 +48,8 @@ export function ProvidersDialog({
     if (!open) return;
     setLoading(true);
     setError(null);
-    Promise.all([
-      fetch("/api/providers").then(r => r.json()),
-      fetch("/api/models").then(r => r.json()),
-    ])
-      .then(([prov, models]: [LLMProvider[], LLMModel[]]) => {
-        setProviders(prov);
-        setAllModels(models);
-      })
-      .catch(() => setError("Failed to load providers"))
-      .finally(() => setLoading(false));
-  }, [open]);
+    ensure().finally(() => setLoading(false));
+  }, [open, ensure]);
 
   const handleBack = () => { setSelected(null); setDraft(null); };
 
@@ -85,7 +76,7 @@ export function ProvidersDialog({
       });
       if (!res.ok) throw new Error();
       const saved: LLMProvider = await res.json();
-      setProviders(prev => isNew ? [...prev, saved] : prev.map(p => p.id === saved.id ? saved : p));
+      if (isNew) addProvider(saved); else updateProvider(saved);
       handleBack();
     } catch {
       setError("Failed to save provider");
@@ -100,7 +91,7 @@ export function ProvidersDialog({
     try {
       const res = await fetch(`/api/providers/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      setProviders(prev => prev.filter(p => p.id !== id));
+      removeProvider(id);
       if (selected?.id === id) handleBack();
     } catch {
       setError("Failed to delete provider");

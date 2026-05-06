@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/theme-provider";
 import {
   Dialog,
@@ -9,8 +10,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor, User } from "lucide-react";
+import { Sun, Moon, Monitor } from "lucide-react";
+import { UserIcon } from "@/components/common/user-icon";
+import { getToken, removeToken } from "@/lib/auth";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -26,7 +31,10 @@ export function SettingsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+  const [newSecret, setNewSecret] = useState("");
+  const [secretSaved, setSecretSaved] = useState(false);
 
   useEffect(() => {
     setUserAvatarUrl(localStorage.getItem("userAvatarUrl"));
@@ -59,6 +67,22 @@ export function SettingsDialog({
     setUserAvatarUrl(null);
   };
 
+  const handleChangeSecret = async () => {
+    const token = getToken();
+    try {
+      const res = await fetch("/api/auth/change-secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token !== null ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ newSecret, currentToken: token }),
+      });
+      if (res.ok) {
+        setSecretSaved(true);
+        removeToken();
+        setTimeout(() => router.push("/login"), 800);
+      }
+    } catch { /* ignore */ }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0 gap-0">
@@ -72,13 +96,7 @@ export function SettingsDialog({
               User Avatar
             </label>
             <div className="flex items-center gap-3">
-              <div className={cn("size-12 rounded-full overflow-hidden border border-input flex items-center justify-center", userAvatarUrl ? "" : "bg-muted")}>
-                {userAvatarUrl ? (
-                  <img src={userAvatarUrl} alt="User" className="size-full object-cover" />
-                ) : (
-                  <User className="size-5 text-muted-foreground" />
-                )}
-              </div>
+              <UserIcon size="lg" />
               <div className="flex items-center gap-2">
                 <label className="text-xs text-primary cursor-pointer hover:underline">
                   Upload
@@ -113,6 +131,28 @@ export function SettingsDialog({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+              Security
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="password"
+                className="h-8 text-sm flex-1"
+                placeholder="New secret key (leave empty to remove)"
+                value={newSecret}
+                onChange={(e) => { setNewSecret(e.target.value); setSecretSaved(false); }}
+                onKeyDown={(e) => e.key === "Enter" && handleChangeSecret()}
+              />
+              <Button size="sm" onClick={handleChangeSecret} disabled={secretSaved}>
+                {secretSaved ? "Saved" : "Save"}
+              </Button>
+            </div>
+            {secretSaved && (
+              <p className="text-xs text-muted-foreground mt-1">Redirecting to login...</p>
+            )}
           </div>
         </div>
       </DialogContent>

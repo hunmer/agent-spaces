@@ -35,6 +35,7 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
         apiKey: this.config.apiKey,
         baseURL: this.config.baseURL,
         cwd,
+        systemPrompt: options?.systemPrompt,
         maxTurns: options?.maxTurns,
         allowedTools: options?.tools,
         additionalDirectories: options?.sandboxDirs,
@@ -53,10 +54,22 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
       const cacheCreation = usage.cache_creation_input_tokens ?? 0;
 
       output.push(result.text);
+      output.push(`[Usage] tokens=${inputTokens + outputTokens + Number(cacheRead) + Number(cacheCreation)} input=${inputTokens} output=${outputTokens} cached=${Number(cacheRead) + Number(cacheCreation)}`);
       options?.onEvent?.({ type: 'output', line: result.text });
       d(`done ${elapsed}ms | turns=${result.num_turns} tokens=${inputTokens + outputTokens} (in=${inputTokens} out=${outputTokens})${Number(cacheRead) > 0 || Number(cacheCreation) > 0 ? ` cache=(read=${cacheRead},create=${cacheCreation})` : ''}`);
 
-      return { success: true, summary: summarizeResult(result.text), artifacts: [], output };
+      return {
+        success: true,
+        summary: summarizeResult(result.text),
+        artifacts: [],
+        output,
+        usage: {
+          inputTokens,
+          outputTokens,
+          cachedInputTokens: Number(cacheRead) + Number(cacheCreation),
+          totalTokens: inputTokens + outputTokens + Number(cacheRead) + Number(cacheCreation),
+        },
+      };
     } catch (err) {
       const elapsed = Date.now() - startTime;
       const message = err instanceof Error ? err.message : String(err);

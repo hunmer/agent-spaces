@@ -5,6 +5,11 @@ import * as agentService from '../services/agent.js';
 
 const router = Router({ mergeParams: true });
 
+router.get('/usage/dashboard', (req: Request, res: Response) => {
+  const days = Number(req.query.days ?? 30);
+  res.json(agentService.usageDashboard(Number.isFinite(days) ? days : 30));
+});
+
 router.get('/presets', (req: Request<{ id: string }>, res: Response) => {
   const presets = agentService.listPresets(req.params.id);
   if (!presets) {
@@ -65,7 +70,7 @@ router.post('/start', (req: Request<{ id: string }>, res: Response) => {
     res.status(400).json({ error: 'role is required' });
     return;
   }
-  const validRoles = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
+  const validRoles = ['scheduler', 'planner', 'executor', 'reviewer', 'custom', 'bot'];
   if (!validRoles.includes(role)) {
     res.status(400).json({ error: `invalid role: ${role}` });
     return;

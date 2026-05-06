@@ -61,7 +61,7 @@ export function replaceIssueTasks(
   data: Array<{ title: string; description: string; agentConfigId?: string; dependsOnTaskIds?: string[]; sandboxDirs?: string[] }>,
 ): Task[] {
   const existing = list(workspaceId, issueId);
-  const removable = existing.filter((task) => task.status !== 'running');
+  const removable = existing.filter((task) => task.status !== 'running' && task.status !== 'reviewing');
   for (const task of removable) deleteTask(workspaceId, task.id);
 
   return data.map((task) => create(workspaceId, issueId, {
@@ -87,6 +87,37 @@ export function updateStatus(
   if (extra) Object.assign(task, extra);
   updateTask(task);
   return task;
+}
+
+export function markRunningTasksFailed(workspaceId: string, reason: string): Task[] {
+  const running = list(workspaceId).filter((task) =>
+    task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying');
+  return running.map((task) => updateStatus(workspaceId, task.id, 'failed', {
+    result: {
+      success: false,
+      summary: reason,
+      artifacts: [],
+      error: reason,
+    },
+  })).filter((task): task is Task => Boolean(task));
+}
+
+export function resetForRetry(
+  workspaceId: string,
+  taskId: string,
+  options: { incrementRetry?: boolean; resetRetryCount?: boolean } = {},
+): Task | null {
+  const task = getTask(workspaceId, taskId);
+  if (!task) return null;
+
+  const retryCount = options.resetRetryCount
+    ? 0
+    : options.incrementRetry ? (task.retryCount ?? 0) + 1 : (task.retryCount ?? 0);
+  return updateStatus(workspaceId, taskId, 'pending', {
+    retryCount,
+    assignedAgentId: undefined,
+    result: undefined,
+  });
 }
 
 export function assignAgent(

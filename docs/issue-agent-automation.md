@@ -206,6 +206,7 @@ scheduleRunnableIssueTasks(workspaceId, issueId, ctx)
 2. 收集状态为 `done` 的 task id。
 3. 跳过 active 状态任务：
    - `running`
+   - `reviewing`
    - `retrying`
    - `waiting_review`
 4. 找出满足以下条件的任务：
@@ -215,6 +216,45 @@ scheduleRunnableIssueTasks(workspaceId, issueId, ctx)
 6. 如果没有 runnable task，且所有 task 都 done，则将 issue 更新为 `completed`。
 
 当前策略是串行执行同一轮 runnable tasks，避免多个 executor/reviewer 的 issue comment 在时间线上交错，也降低共享工作区写冲突风险。依赖图仍用于判断哪些 task 可以开始；只是实际启动时按顺序执行。
+
+## 失败重试与重启恢复
+
+Task 和 Issue 都有独立的重试计数：
+
+```ts
+Task.retryCount / Task.maxRetries
+Issue.retryCount / Issue.maxRetries / Issue.retryPaused
+```
+
+Executor agent 运行失败时：
+
+```text
+task running
+  -> failed
+  -> retryCount < maxRetries: reset to pending and schedule again
+  -> retryCount >= maxRetries: keep failed and set issue error
+```
+
+Issue 进入 `error` 后，scheduler 会在后续 tick 中调用 error issue retry service：
+
+```text
+issue error
+  -> retryCount < maxRetries: reset failed tasks to pending, issue -> in_progress, continue scheduling
+  -> retryCount >= maxRetries: set retryPaused=true, stop automatic retries
+```
+
+手动恢复入口：
+
+- 后端：`POST /api/workspaces/:workspaceId/issues/:issueId/resume`
+- 前端：issue detail 在 `error` 状态显示 `Resume failed tasks`
+- 单个 failed task 仍可点击 retry，后端会把该 task 恢复为 `pending` 并立即重新调度。
+
+服务器启动恢复：
+
+1. `app.ts` 启动后调用 recovery service。
+2. 所有状态为 `running` 或 `retrying` 的 task 会被标记为 `failed`。
+3. 所有状态为 `in_progress` 的 issue 会被切换为 `error`。
+4. 后续由 scheduler 的 error issue retry service 继续自动恢复，超过三次后暂停。
 
 ## Executor 阶段
 
@@ -232,13 +272,14 @@ Executor 由 `runIssueTask()` 启动。
 2. 调用 `taskService.assignAgent()`，将 task 状态更新为 `running`，并写入 `assignedAgentId`。
 3. 创建 issue detail 进度占位和 channel message。
 4. runtime prompt 明确要求先调用 `ViewCurrentChannelIssue`。
-5. 执行 task title/description。
-6. 将 agent 输出写入：
+5. runtime prompt 明确写入当前 workspace working directory，并要求产物写在该目录下，不能默认写到 `/tmp`。
+6. 执行 task title/description。
+7. 将 agent 输出写入：
    - `agent.output`
    - `task.output`
    - issue progress comment
-7. executor 完成后触发 `onExecutorComplete()`。
-8. reviewer 完成后重新调用 `scheduleRunnableIssueTasks()`，启动后继任务。
+8. executor 完成后触发 `onExecutorComplete()`。
+9. reviewer 完成后重新调用 `scheduleRunnableIssueTasks()`，启动后继任务。
 
 Executor 可用的 issue function tools：
 
@@ -263,18 +304,19 @@ Reviewer 由 `packages/server/src/agents/reviewer-agent.ts` 实现。
 选择 agent 的规则：
 
 1. 查找 issue channel members 中启用的 `reviewer` preset。
-2. 如果没有 reviewer，任务进入 `waiting_review`。
+2. 如果没有 reviewer，任务直接标记为 `done`，调度器继续执行后继任务。
 
 Reviewer 执行步骤：
 
 1. 创建或复用 reviewer session。
 2. 创建 issue detail 进度占位和 channel message。
 3. runtime prompt 明确要求先调用 `ViewCurrentChannelIssue`。
-4. 执行 review。
-5. 当前实现仍是 mock approve：
+4. runtime prompt 明确写入当前 workspace working directory，并要求审查该目录下的产物；默认将 `/tmp` 产物视为位置错误。
+5. 执行 review。
+6. 当前实现仍是 mock approve：
    - approve 时 task 标记为 `done`
    - reject/changes_requested 分支保留，但当前不会走到
-6. 广播 `task.status_changed` 和 `task.updated`。
+7. 广播 `task.status_changed` 和 `task.updated`。
 
 Reviewer 不再直接把整个 issue 更新为 `approved`。issue 是否完成由 dependency scheduler 根据所有 task 状态决定。
 
@@ -310,7 +352,11 @@ packages/server/src/agents/issue-agent-progress.ts
 
 1. 用完整 agent output 更新 channel message。
 2. 用完整 agent output 更新 issue comment。
-3. 写入 metadata：
+3. 对支持 runtime events 的 runtime，将 tool use/tool result 转成 channel message `parts`：
+   - chain part 中显示 toolcall 历史。
+   - tool detail 写入 tool detail store。
+   - issue comment 正文也保留可读的 tool line。
+4. 写入 metadata：
    - `agentSessionId`
    - `runtime`
    - `model`
@@ -318,7 +364,7 @@ packages/server/src/agents/issue-agent-progress.ts
 - `duration`
 - `taskId`
 - `phase`
-4. 广播：
+5. 广播：
    - `channel.message.updated`
    - `issue.updated`
 

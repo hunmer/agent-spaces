@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agent';
 
@@ -100,6 +100,10 @@ export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClic
   const resolvedAvatarUrl = avatarUrl ?? agent?.avatarUrl;
   const resolvedApiBase = apiBase ?? agent?.apiBase;
   const src = resolvedAvatarUrl || (!imgError ? getProviderIconUrl(resolvedApiBase) : '');
+
+  useEffect(() => {
+    setImgError(false);
+  }, [resolvedAvatarUrl, resolvedApiBase]);
   const initial = displayName.charAt(0).toUpperCase();
 
   return (

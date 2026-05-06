@@ -56,11 +56,17 @@ export function create(input: CreateWorkspaceInput): Workspace {
   return ws;
 }
 
-export function update(id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues'>>): Workspace | null {
+export function update(id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues' | 'notificationSettings'>>): Workspace | null {
   const ws = getWorkspace(id);
   if (!ws) return null;
 
-  Object.assign(ws, data, { updatedAt: new Date().toISOString() });
+  const allowed: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues' | 'notificationSettings'>> = {};
+  if (Object.hasOwn(data, 'name')) allowed.name = data.name;
+  if (Object.hasOwn(data, 'boundDirs')) allowed.boundDirs = data.boundDirs;
+  if (Object.hasOwn(data, 'autoProcessIssues')) allowed.autoProcessIssues = data.autoProcessIssues;
+  if (Object.hasOwn(data, 'notificationSettings')) allowed.notificationSettings = data.notificationSettings;
+
+  Object.assign(ws, allowed, { updatedAt: new Date().toISOString() });
   updateWorkspace(ws);
   return ws;
 }

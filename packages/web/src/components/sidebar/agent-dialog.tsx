@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useLLMStore } from "@/stores/llm";
 import {
   BUILT_IN_AGENT_TOOLS,
   type AgentConfig,
   type BuiltInAgentToolName,
-  type LLMModel,
   type LLMProvider,
 } from "@agent-spaces/shared";
 import { AgentIcon } from "@/components/common/agent-icon";
@@ -87,7 +87,9 @@ const ROLE_COLORS: Record<string, string> = {
   planner: "bg-purple-500/10 text-purple-600 border-purple-200",
   executor: "bg-green-500/10 text-green-600 border-green-200",
   reviewer: "bg-orange-500/10 text-orange-600 border-orange-200",
-  custom: "bg-gray-500/10 text-gray-600 border-gray-200"
+  commit: "bg-pink-500/10 text-pink-600 border-pink-200",
+  custom: "bg-gray-500/10 text-gray-600 border-gray-200",
+  bot: "bg-cyan-500/10 text-cyan-600 border-cyan-200",
 };
 
 const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>; label: string }> = [
@@ -103,8 +105,8 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "claude-code", label: "Claude Code" },
   { value: "codex", label: "Codex" },
 ];
-const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
-const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = BUILT_IN_AGENT_TOOLS.map((tool) => tool.name);
+const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "commit", "custom", "bot"];
+const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name);
 const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
   "openai-chat-completions-to-anthropic-messages",
@@ -201,6 +203,26 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     maxTokens: 8192,
     enabled: true,
   },
+  commit: {
+    name: "Commit",
+    role: "commit",
+    description: "提交消息生成器，根据 diff 智能生成 commit message",
+    avatarUrl: "",
+    runtimeKind: "open-agent-sdk",
+    modelProvider: "openai-chat-completions",
+    modelId: "",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "",
+    mcps: {},
+    skills: [],
+    tools: [],
+    systemPrompt:
+      "你是一个 git commit 消息生成器。根据提供的 diff 内容，生成简洁清晰的 conventional commit 消息。格式：type: description。类型包括：feat, fix, docs, style, refactor, perf, test, chore, build, ci。首行不超过 72 个字符。如果有多项变更，使用主题 + 空行 + 要点正文。只输出 commit 消息本身，不要任何解释。",
+    temperature: 0.3,
+    maxTokens: 200,
+    enabled: true,
+  },
   custom: {
     name: "Custom Agent",
     role: "custom",
@@ -216,6 +238,26 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     skills: [],
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt: "",
+    temperature: 0.3,
+    maxTokens: 4096,
+    enabled: true,
+  },
+  bot: {
+    name: "Bot Agent",
+    role: "bot",
+    description: "消息机器人，负责处理外部聊天平台中的用户消息",
+    avatarUrl: "",
+    runtimeKind: "open-agent-sdk",
+    modelProvider: "anthropic-messages",
+    modelId: "claude-sonnet-4-6",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "",
+    mcps: {},
+    skills: [],
+    tools: DEFAULT_AGENT_TOOLS,
+    systemPrompt:
+      "你是 Agent Spaces 的消息机器人。你会简洁回答来自外部聊天平台的用户消息。不要执行危险操作；需要用户提供更多信息时直接询问。",
     temperature: 0.3,
     maxTokens: 4096,
     enabled: true,
@@ -246,7 +288,7 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
 
 function normalizeToolDrafts(tools: AgentConfig["tools"] | undefined): BuiltInAgentToolName[] {
   if (!Array.isArray(tools)) return DEFAULT_AGENT_TOOLS;
-  const valid = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  const valid = new Set((BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name));
   return tools.filter((tool): tool is BuiltInAgentToolName => valid.has(tool));
 }
 
@@ -321,10 +363,12 @@ export function AgentDialog({
   open,
   onOpenChange,
   workspaceId,
+  roleFilter,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId?: string;
+  roleFilter?: AgentRole | AgentRole[];
 }) {
   const [agents, setAgents] = useState<AgentPreset[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentPreset | null>(null);
@@ -334,6 +378,11 @@ export function AgentDialog({
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const roleFilterSet = roleFilter
+    ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
+    : null;
+  const visibleAgents = roleFilterSet ? agents.filter((agent) => roleFilterSet.has(agent.role)) : agents;
+  const addRoleOptions = roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS;
 
   useEffect(() => {
     if (!open || !workspaceId) return;
@@ -387,13 +436,18 @@ export function AgentDialog({
         },
       );
       if (!res.ok) throw new Error(await res.text());
-      const saved = normalizeAgent(await res.json());
+      const raw = (await res.json()) as AgentConfig;
+      const saved = normalizeAgent(raw);
       setAgents((prev) =>
         isDraft
           ? [...prev, saved]
           : prev.map((agent) => (agent.id === saved.id ? saved : agent)),
       );
-      useAgentStore.getState().ensure(workspaceId);
+      useAgentStore.setState((state) => ({
+        agents: isDraft
+          ? [...state.agents, raw]
+          : state.agents.map((a) => (a.id === raw.id ? raw : a)),
+      }));
       setSelectedAgent(null);
       setEditDraft(null);
     } catch {
@@ -459,7 +513,9 @@ export function AgentDialog({
       });
       if (!res.ok) throw new Error(await res.text());
       setAgents((prev) => prev.filter((a) => a.id !== id));
-      useAgentStore.getState().ensure(workspaceId);
+      useAgentStore.setState((state) => ({
+        agents: state.agents.filter((a) => a.id !== id),
+      }));
       if (selectedAgent?.id === id) {
         setSelectedAgent(null);
         setEditDraft(null);
@@ -491,7 +547,6 @@ export function AgentDialog({
         return {
           ...prev,
           runtimeKind,
-          modelProvider: runtimeKind === "claude-code" ? prev.modelProvider : "",
         };
       }
       return { ...prev, [key]: value };
@@ -554,13 +609,15 @@ export function AgentDialog({
               />
               <DropdownMenuContent side="bottom" align="end" className="w-44">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    className="gap-2"
-                    onClick={() => handleAddAgent("empty")}
-                  >
-                    <span className="size-2 rounded-full bg-muted" />
-                    <span>Empty</span>
-                  </DropdownMenuItem>
+                  {!roleFilterSet && (
+                    <DropdownMenuItem
+                      className="gap-2"
+                      onClick={() => handleAddAgent("empty")}
+                    >
+                      <span className="size-2 rounded-full bg-muted" />
+                      <span>Empty</span>
+                    </DropdownMenuItem>
+                  )}
                   {ROLE_OPTIONS.map((role) => (
                     <DropdownMenuItem
                       key={role}
@@ -593,7 +650,7 @@ export function AgentDialog({
             <div className="py-12 text-center text-sm text-muted-foreground">Loading agent presets...</div>
           ) : !selectedAgent ? (
             <AgentList
-              agents={agents}
+              agents={visibleAgents}
               onSelect={handleSelectAgent}
               onDelete={handleDeleteAgent}
             />
@@ -601,6 +658,7 @@ export function AgentDialog({
             <AgentDetail
               key={editDraft.id}
               agent={editDraft}
+              roleOptions={addRoleOptions}
               testing={testing}
               testResult={testResult}
               onChange={updateAgentDraft}
@@ -683,6 +741,7 @@ function AgentList({
 
 function AgentDetail({
   agent,
+  roleOptions,
   testing,
   testResult,
   onChange,
@@ -692,6 +751,7 @@ function AgentDetail({
   onTestConnection,
 }: {
   agent: AgentPreset;
+  roleOptions: AgentRole[];
   testing: boolean;
   testResult: ConnectionTestResult | null;
   onChange: <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => void;
@@ -702,20 +762,12 @@ function AgentDetail({
 }) {
   const [mcpJson, setMcpJson] = useState(() => JSON.stringify(agent.mcps, null, 2));
   const [mcpError, setMcpError] = useState<string | null>(null);
-  const [llmModels, setLlmModels] = useState<LLMModel[]>([]);
-  const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
   const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
 
-  useEffect(() => {
-    fetch("/api/providers")
-      .then((r) => r.json())
-      .then((data: LLMProvider[]) => setLlmProviders(data))
-      .catch(() => {});
-    fetch("/api/models")
-      .then((r) => r.json())
-      .then((data: LLMModel[]) => setLlmModels(data.filter((m) => !m.embedding)))
-      .catch(() => {});
-  }, []);
+  const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
+  const llmModels = allLlmModels.filter((m) => !m.embedding);
+
+  useEffect(() => { ensureLLM(); }, [ensureLLM]);
 
   const handleSelectProvider = useCallback(
     (provider: LLMProvider) => {
@@ -762,7 +814,7 @@ function AgentDetail({
     } else {
       selected.add(toolName);
     }
-    onChange("tools", BUILT_IN_AGENT_TOOLS.map((tool) => tool.name).filter((name) => selected.has(name)));
+    onChange("tools", (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name).filter((name) => selected.has(name)));
   };
 
   return (
@@ -823,7 +875,7 @@ function AgentDetail({
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
               >
-                {ROLE_OPTIONS.map((role) => (
+                {roleOptions.map((role) => (
                   <option key={role} value={role}>{role}</option>
                 ))}
               </select>
@@ -876,7 +928,7 @@ function AgentDetail({
       {/* Tools */}
       <Section icon={<Wrench className="size-3.5" />} title="Tools">
         <div className="grid gap-2">
-          {BUILT_IN_AGENT_TOOLS.map((tool) => (
+          {(BUILT_IN_AGENT_TOOLS ?? []).map((tool) => (
             <label
               key={tool.name}
               className="flex cursor-pointer items-start gap-2 rounded-lg border border-input px-3 py-2 hover:bg-muted/50"

@@ -8,15 +8,16 @@ import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
 import { onExecutorComplete } from '../hooks/agent-hooks.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
-import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
+import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 
-const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'retrying', 'waiting_review'];
+const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
 
 export interface PlannerTaskSyncInput {
-  plannerPreset: AgentConfig;
-  plannerSessionId: string;
-  planSummary: string;
-  planOutput: string[];
+  plannerPreset?: AgentConfig;
+  plannerSessionId?: string;
+  planSummary?: string;
+  planOutput?: string[];
 }
 
 interface TaskDraft {
@@ -40,7 +41,12 @@ export async function syncIssueTasksAfterPlanning(
     return;
   }
 
-  const taskSyncPreset = findIssueMemberAgent(workspaceId, issue, 'custom') ?? input.plannerPreset;
+  const taskSyncPreset = findTaskCreatorForIssue(workspaceId, issue, input.plannerPreset);
+  if (!taskSyncPreset) {
+    console.warn(`[issue-task-controller] no task creator or executor member found workspaceId=${workspaceId} issueId=${issueId}`);
+    updateIssueStatus(workspaceId, issueId, 'error', ctx);
+    return;
+  }
   const taskSyncAgent = agentService.getOrCreateSessionForConfig(workspaceId, taskSyncPreset);
   ctx.broadcast('agent.started', taskSyncAgent);
 
@@ -51,15 +57,25 @@ export async function syncIssueTasksAfterPlanning(
   ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: `Syncing issue tasks: ${issueId}` });
 
   const startTime = Date.now();
+  const taskSyncWorkingDir = agentService.resolveWorkingDir(workspaceId, taskSyncPreset);
   const progress = createIssueAgentProgress(workspaceId, issue, taskSyncPreset, taskSyncAgent.id, {
     runtime: taskSyncPreset.runtimeKind,
     model: taskSyncPreset.modelId,
     phase: 'task_creator',
   });
+  const taskSyncTracker = createIssueAgentProgressTracker({
+    workspaceId,
+    issue,
+    progress,
+    agentSessionId: taskSyncAgent.id,
+    onOutput: (line) => {
+      ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: line });
+    },
+  });
   const runtime = createRuntimeForPreset(taskSyncPreset);
   const result = await runtime.execute(
-    buildTaskSyncPrompt(issue, input),
-    agentService.resolveWorkingDir(workspaceId, taskSyncPreset),
+    buildTaskSyncPrompt(issue, input, taskSyncWorkingDir),
+    taskSyncWorkingDir,
     {
       maxTurns: 20,
       mcpServers: undefined,
@@ -67,20 +83,39 @@ export async function syncIssueTasksAfterPlanning(
       skills: [],
       configDir: agentService.getAgentConfigDir(workspaceId, taskSyncPreset),
       sandboxDirs: taskSyncPreset.sandboxDirs,
+      onEvent: taskSyncTracker.handleEvent,
     },
   );
 
-  for (const line of result.output) {
-    ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: line });
+  if (taskSyncTracker.output.length === 0) {
+    for (const line of result.output) {
+      taskSyncTracker.output.push(line);
+      ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: line });
+    }
   }
-  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, result.output, {
+  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, taskSyncTracker.output, {
     runtime: taskSyncPreset.runtimeKind,
     model: taskSyncPreset.modelId,
     duration: Date.now() - startTime,
     messageStatus: result.success ? 'completed' : 'error',
+    parts: taskSyncTracker.buildParts({
+      sessionId: taskSyncAgent.id,
+      model: taskSyncPreset.modelId,
+      usage: result.usage,
+      success: result.success,
+      error: result.error,
+    }),
   });
 
-  agentService.complete(workspaceId, taskSyncAgent.id, result.success ? undefined : result.error || result.summary);
+  agentService.complete(workspaceId, taskSyncAgent.id, result.success ? undefined : result.error || result.summary, {
+    runtime: taskSyncPreset.runtimeKind,
+    model: taskSyncPreset.modelId,
+    summary: result.summary,
+    output: taskSyncTracker.output.length ? taskSyncTracker.output : result.output,
+    durationMs: Date.now() - startTime,
+    usage: result.usage,
+    costUsd: result.costUsd,
+  });
   ctx.broadcast('agent.completed', { agentId: taskSyncAgent.id, result });
 
   if (!result.success) {
@@ -93,7 +128,7 @@ export async function syncIssueTasksAfterPlanning(
       {
         key: 'implementation',
         title: `Implement: ${issue.title}`,
-        description: issue.description || input.planSummary || input.planOutput.join('\n'),
+        description: issue.description || input.planSummary || input.planOutput?.join('\n') || `Implement issue: ${issue.title}`,
       },
     ]);
     console.warn(`[issue-task-controller] task sync produced no tasks; created fallback count=${fallbackTasks.length}`);
@@ -142,15 +177,22 @@ export async function runIssueTask(
 
   const executorPreset = findExecutorForTask(workspaceId, issue, task);
   if (!executorPreset) {
+    const missingExecutorResult = {
+      success: false,
+      summary: 'No executor agent configured in issue channel members',
+      artifacts: [],
+      error: 'No executor member found for issue channel',
+    };
     const failed = taskService.updateStatus(workspaceId, taskId, 'failed', {
       result: {
         success: false,
-        summary: 'No executor agent configured in issue channel members',
+        summary: missingExecutorResult.summary,
         artifacts: [],
-        error: 'No executor member found for issue channel',
+        error: missingExecutorResult.error,
       },
     });
     broadcastTaskUpdate(ctx, failed, task.status);
+    await handleTaskFailure(workspaceId, issueId, taskId, missingExecutorResult, ctx);
     return;
   }
 
@@ -171,12 +213,24 @@ export async function runIssueTask(
   agentService.assignTask(workspaceId, executor.id, taskId);
 
   const runtime = createRuntimeForPreset(executorPreset);
+  const executorWorkingDir = agentService.resolveWorkingDir(workspaceId, executorPreset);
   const startTime = Date.now();
   const progress = createIssueAgentProgress(workspaceId, issue, executorPreset, executor.id, {
     runtime: executorPreset.runtimeKind,
     model: executorPreset.modelId,
     taskId,
     phase: 'executor',
+  });
+  const executorTracker = createIssueAgentProgressTracker({
+    workspaceId,
+    issue,
+    progress,
+    agentSessionId: executor.id,
+    workspaceRoot: executorWorkingDir,
+    onOutput: (line) => {
+      ctx.broadcast('agent.output', { agentId: executor.id, data: line });
+      ctx.broadcast('task.output', { taskId, data: line });
+    },
   });
   ctx.broadcast('agent.output', { agentId: executor.id, data: `Executing task: ${runningTask.title}` });
   ctx.broadcast('agent.output', {
@@ -185,8 +239,8 @@ export async function runIssueTask(
   });
 
   const result = await runtime.execute(
-    buildExecutorPrompt(issue, runningTask),
-    agentService.resolveWorkingDir(workspaceId, executorPreset),
+    buildExecutorPrompt(issue, runningTask, executorWorkingDir),
+    executorWorkingDir,
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(executorPreset.mcps),
@@ -194,18 +248,30 @@ export async function runIssueTask(
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, executorPreset), executorPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, executorPreset),
       sandboxDirs: runningTask.sandboxDirs ?? executorPreset.sandboxDirs,
+      onEvent: executorTracker.handleEvent,
     },
   );
 
-  for (const line of result.output) {
-    ctx.broadcast('agent.output', { agentId: executor.id, data: line });
-    ctx.broadcast('task.output', { taskId, data: line });
+  if (executorTracker.output.length === 0) {
+    for (const line of result.output) {
+      executorTracker.output.push(line);
+      ctx.broadcast('agent.output', { agentId: executor.id, data: line });
+      ctx.broadcast('task.output', { taskId, data: line });
+    }
   }
-  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, result.output, {
+  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, executorTracker.output, {
     runtime: executorPreset.runtimeKind,
     model: executorPreset.modelId,
     duration: Date.now() - startTime,
     messageStatus: result.success ? 'completed' : 'error',
+    parts: executorTracker.buildParts({
+      sessionId: executor.id,
+      workspaceRoot: executorWorkingDir,
+      model: executorPreset.modelId,
+      usage: result.usage,
+      success: result.success,
+      error: result.error,
+    }),
   });
 
   if (!result.success) {
@@ -213,8 +279,21 @@ export async function runIssueTask(
     broadcastTaskUpdate(ctx, failedTask, 'running');
   }
 
-  agentService.complete(workspaceId, executor.id, result.success ? undefined : result.error || result.summary);
+  agentService.complete(workspaceId, executor.id, result.success ? undefined : result.error || result.summary, {
+    runtime: executorPreset.runtimeKind,
+    model: executorPreset.modelId,
+    summary: result.summary,
+    output: executorTracker.output.length ? executorTracker.output : result.output,
+    durationMs: Date.now() - startTime,
+    usage: result.usage,
+    costUsd: result.costUsd,
+  });
   ctx.broadcast('agent.completed', { agentId: executor.id, result });
+
+  if (!result.success) {
+    await handleTaskFailure(workspaceId, issueId, taskId, result, ctx);
+    return;
+  }
 
   await onExecutorComplete(workspaceId, taskId, issueId, result, ctx);
   await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
@@ -327,6 +406,16 @@ function findExecutorForTask(
   return assignable.find((agent) => agent.role === 'executor') ?? null;
 }
 
+function findTaskCreatorForIssue(
+  workspaceId: string,
+  issue: Issue,
+  plannerPreset?: AgentConfig,
+): AgentConfig | null {
+  return findIssueMemberAgent(workspaceId, issue, 'custom')
+    ?? plannerPreset
+    ?? findIssueMemberAgent(workspaceId, issue, 'executor');
+}
+
 function findIssueMemberAgent(
   workspaceId: string,
   issue: Issue,
@@ -365,6 +454,37 @@ function updateIssueStatus(
   return updated;
 }
 
+async function handleTaskFailure(
+  workspaceId: string,
+  issueId: string,
+  taskId: string,
+  result: TaskResult,
+  ctx: AgentContext,
+): Promise<void> {
+  const task = taskService.getById(workspaceId, taskId);
+  if (!task) return;
+
+  if ((task.retryCount ?? 0) < (task.maxRetries ?? 3)) {
+    const reset = taskService.resetForRetry(workspaceId, taskId, { incrementRetry: true });
+    if (reset) {
+      ctx.broadcast('task.status_changed', { taskId, from: task.status, to: reset.status });
+      ctx.broadcast('task.updated', reset);
+      ctx.broadcast('task.output', {
+        taskId,
+        data: `Retrying task after agent error (${reset.retryCount}/${reset.maxRetries}).`,
+      });
+    }
+    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+    return;
+  }
+
+  const issue = issueService.getById(workspaceId, issueId);
+  const updated = issueService.markError(workspaceId, issueId, result.error || result.summary || 'Task failed after retries');
+  if (!updated) return;
+  ctx.broadcast('issue.status_changed', { issueId, from: issue?.status ?? 'in_progress', to: 'error' });
+  ctx.broadcast('issue.updated', updated);
+}
+
 function broadcastTaskUpdate(ctx: AgentContext, task: Task | null, from: TaskStatus): void {
   if (!task) return;
   ctx.broadcast('task.status_changed', { taskId: task.id, from, to: task.status });
@@ -378,15 +498,20 @@ function createRuntimeForPreset(preset: AgentConfig) {
     model: preset.modelId,
     apiKey: preset.apiKey,
     baseURL: preset.apiBase,
+    ...getThinkingRuntimeConfig(preset),
   });
 }
 
-function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput): string {
+function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput, workingDir: string): string {
   return [
     'You are the issue task synchronization controller.',
     'First call ViewCurrentChannelIssue with the current channel id to load the shared issue context, comments, tasks, channel members, and valid assignable agent config ids.',
+    `The current workspace working directory is: ${workingDir}`,
+    'All implementation tasks must be scoped to this workspace unless the issue explicitly says otherwise.',
+    'For Bash commands that create or modify files under the current working directory, use relative paths instead of absolute paths.',
     'Use ReplaceIssueTasks to write tasks. Do not rely on private planner-only context.',
     'Create coarse-grained, independently deliverable tasks. Default to a single implementation task for one cohesive issue.',
+    'NEVER create review/audit/审查 tasks. The review phase is handled automatically by the system after all implementation tasks complete — do not include it as a task.',
     'Split into multiple tasks only when the issue clearly requires major cross-area work, such as separate frontend and backend changes, database/API contract changes plus UI changes, or independent workstreams that different executors can complete without stepping on each other.',
     'Do not split by tiny implementation steps such as "update types", "add route", "adjust UI text", "run tests", or "write docs" unless that item is itself a substantial deliverable.',
     'Each task description should include the relevant implementation scope and expected verification, so executor agents do not need a separate task for every small step.',
@@ -401,13 +526,17 @@ function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput): string 
     '',
     'Planner result:',
     `Summary: ${input.planSummary || '(empty)'}`,
-    input.planOutput.join('\n').trim(),
+    input.planOutput?.join('\n').trim(),
   ].filter(Boolean).join('\n');
 }
 
-function buildExecutorPrompt(issue: Issue, task: Task): string {
+function buildExecutorPrompt(issue: Issue, task: Task, workingDir: string): string {
   return [
     'Before executing, call ViewCurrentChannelIssue with the current channel id to load the latest shared issue context and comments.',
+    `The current workspace working directory is: ${workingDir}`,
+    'Create and modify project files under this working directory. Do not place deliverables in /tmp unless the task explicitly asks for temporary scratch output.',
+    'For Bash commands that create or modify files under this working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.',
+    'When reporting created files, use paths under the workspace working directory.',
     '',
     'Current issue:',
     `- Issue id: ${issue.id}`,

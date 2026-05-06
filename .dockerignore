@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+.git
+*.md
+.env*
+.DS_Store
+coverage
+.claude
+.agentspace

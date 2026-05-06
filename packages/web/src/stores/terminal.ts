@@ -55,7 +55,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   createSession: (shell?: string, cwd?: string) => {
     const { ws } = get();
-    ws?.send('terminal.create', { sessionId: crypto.randomUUID(), shell, cwd });
+    ws?.send('terminal.create', { sessionId: crypto.randomUUID?.() ?? crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), ''), shell, cwd });
   },
 
   setActive: (id) => set({ activeId: id }),

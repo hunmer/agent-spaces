@@ -114,7 +114,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const activeSkills = activeAgent?.skills ?? [];
   const activeTools = useMemo(() => {
     const enabledNames = new Set(activeAgent?.tools ?? []);
-    return BUILT_IN_AGENT_TOOLS
+    return (BUILT_IN_AGENT_TOOLS ?? [])
       .filter((tool) => enabledNames.has(tool.name))
       .map((tool) => ({ ...tool, icon: getToolIcon(tool.name) }));
   }, [activeAgent?.tools]);

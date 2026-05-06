@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { DevInspector } from "@/components/dev-inspector";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
+import { AuthGuard } from "@/components/auth-guard";
+import { AppShell } from "@/components/app-shell";
+import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
 import "./globals.css";
@@ -46,18 +46,15 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-dvh overflow-hidden antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full font-sans">
+      <body className="h-full overflow-hidden font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <DevInspector />
-          <SidebarProvider>
-            <DashboardSidebar />
-            <SidebarInset>
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
+          <AuthGuard>
+            <AppShell>{children}</AppShell>
+            <Toaster richColors position="bottom-right" />
+          </AuthGuard>
         </ThemeProvider>
       </body>
     </html>

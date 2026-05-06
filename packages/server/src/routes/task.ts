@@ -2,6 +2,10 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import * as taskService from '../services/task.js';
 import * as issueService from '../services/issue.js';
+import * as agentService from '../services/agent.js';
+import { broadcastToWorkspace } from '../ws/handler.js';
+import { scheduleRunnableIssueTasks } from '../agents/issue-task-controller.js';
+import type { AgentSessionStatus } from '@agent-spaces/shared';
 
 const router = Router({ mergeParams: true });
 
@@ -67,8 +71,8 @@ router.delete('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Re
     res.status(404).json({ error: 'task not found' });
     return;
   }
-  if (task.status === 'running') {
-    res.status(409).json({ error: 'running tasks cannot be deleted' });
+  if (task.status === 'running' || task.status === 'reviewing') {
+    res.status(409).json({ error: 'active tasks cannot be deleted' });
     return;
   }
 
@@ -77,12 +81,42 @@ router.delete('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Re
 });
 
 router.post('/:taskId/retry', (req: Request<{ id: string; taskId: string }>, res: Response) => {
-  const task = taskService.retry(req.params.id, req.params.taskId);
+  const workspaceId = req.params.id;
+  const original = taskService.getById(workspaceId, req.params.taskId);
+  if (!original) {
+    res.status(404).json({ error: 'task not found' });
+    return;
+  }
+
+  const task = taskService.resetForRetry(workspaceId, req.params.taskId, { resetRetryCount: true });
   if (!task) {
     res.status(404).json({ error: 'task not found' });
     return;
   }
+  broadcastToWorkspace(workspaceId, 'task.status_changed', { taskId: task.id, from: original.status, to: task.status });
+  broadcastToWorkspace(workspaceId, 'task.updated', task);
+
+  const issue = issueService.getById(workspaceId, task.issueId);
+  if (issue?.status === 'error') {
+    const updatedIssue = issueService.prepareRetry(workspaceId, issue.id, { manual: true });
+    if (updatedIssue) {
+      broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId: issue.id, from: issue.status, to: updatedIssue.status });
+      broadcastToWorkspace(workspaceId, 'issue.updated', updatedIssue);
+    }
+  }
+
   res.json(task);
+
+  const ctx = {
+    workspaceId,
+    broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
+    getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
+    updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
+      agentService.updateStatus(workspaceId, sessionId, status, extra),
+  };
+  scheduleRunnableIssueTasks(workspaceId, task.issueId, ctx).catch((err) => {
+    console.error(`[task-retry] scheduling error for task ${task.id}:`, err);
+  });
 });
 
 router.post('/:taskId/cancel', (req: Request<{ id: string; taskId: string }>, res: Response) => {

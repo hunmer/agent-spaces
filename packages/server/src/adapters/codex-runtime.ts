@@ -73,6 +73,7 @@ export class CodexRuntime implements AgentRuntime {
 
       let resultText = '';
       let tokenCount = 0;
+      let usage: AgentRunResult['usage'];
       let error: string | undefined;
       const emittedItemLines = new Set<string>();
 
@@ -98,6 +99,7 @@ export class CodexRuntime implements AgentRuntime {
           resultText = event.item.text;
         } else if (event.type === 'turn.completed') {
           tokenCount = countUsageTokens(event.usage);
+          usage = normalizeUsage(event.usage);
           const usageLine = formatUsageLine(event);
           output.push(usageLine);
           options?.onEvent?.({ type: 'output', line: usageLine });
@@ -117,6 +119,7 @@ export class CodexRuntime implements AgentRuntime {
           artifacts: [],
           error,
           output,
+          usage,
         };
       }
 
@@ -128,6 +131,7 @@ export class CodexRuntime implements AgentRuntime {
         summary: summarizeResult(text),
         artifacts: [],
         output,
+        usage,
       };
     } catch (err) {
       const elapsed = Date.now() - startTime;
@@ -166,6 +170,9 @@ function buildCodexConfig(
 ): CodexConfigObject {
   const config: CodexConfigObject = {};
   Object.assign(config, buildCodexProviderConfig(runtimeConfig));
+  if (runtimeConfig.thinkingEnabled !== false) {
+    config.model_reasoning_effort = runtimeConfig.thinkingEffort ?? 'medium';
+  }
   const mcpServers = normalizeMcpServers(options?.mcpServers);
   if (mcpServers) config.mcp_servers = mcpServers as CodexConfigValue;
   if (skillNames.length > 0) {
@@ -541,6 +548,16 @@ function countUsageTokens(usage: Usage): number {
     + usage.cached_input_tokens
     + usage.output_tokens
     + usage.reasoning_output_tokens;
+}
+
+function normalizeUsage(usage: Usage): AgentRunResult['usage'] {
+  return {
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cachedInputTokens: usage.cached_input_tokens,
+    reasoningTokens: usage.reasoning_output_tokens,
+    totalTokens: countUsageTokens(usage),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -2,11 +2,12 @@
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
 import { CheckIcon, CheckCircle2Icon, ChevronDownIcon, CircleIcon, CopyIcon, FileTextIcon, HelpCircleIcon, MessageSquareTextIcon } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import { Button } from "@/components/ui/button"
 import { useEditorStore } from "@/stores/editor"
+import { useLLMStore } from "@/stores/llm"
 import { cn } from "@/lib/utils"
 import { DiffViewer } from "@/components/git/diff-viewer"
 import {
@@ -61,9 +62,10 @@ interface MessagePartsProps {
 }
 
 export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps) {
-  const parts = message.parts ?? []
+  const messageParts = message.parts ?? []
+  const parts = messageParts.filter((part) => part.type !== "context")
   const hasTextPart = parts.some((part) => part.type === "text")
-  const shouldRenderLegacyContent = parts.length === 0 && message.content
+  const shouldRenderLegacyContent = messageParts.length === 0 && message.content
 
   return (
     <div className="space-y-3">
@@ -83,6 +85,56 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
         </div>
       ) : null}
     </div>
+  )
+}
+
+export function MessageContextUsage({ message }: { message: Message }) {
+  const part = message.parts?.find((item) => item.type === "context")
+  const models = useLLMStore((state) => state.models)
+  const ensureModels = useLLMStore((state) => state.ensure)
+  const configuredModel = part?.modelId
+    ? models.find((model) => model.modelId === part.modelId || model.name === part.modelId)
+    : undefined
+  const maxTokens = configuredModel?.maxContextTokens ?? part?.maxTokens
+
+  useEffect(() => {
+    if (!part) return
+    void ensureModels()
+  }, [ensureModels, part])
+
+  if (!part || !maxTokens) return null
+
+  return (
+    <Context
+      usedTokens={part.usedTokens}
+      maxTokens={maxTokens}
+      modelId={part.modelId}
+      usage={{
+        inputTokens: part.usage?.inputTokens ?? 0,
+        outputTokens: part.usage?.outputTokens ?? 0,
+        totalTokens: part.usage?.totalTokens ?? part.usedTokens,
+        cachedInputTokens: part.usage?.cachedInputTokens ?? 0,
+        reasoningTokens: part.usage?.reasoningTokens ?? 0,
+        inputTokenDetails: {
+          noCacheTokens: undefined,
+          cacheReadTokens: undefined,
+          cacheWriteTokens: undefined,
+        },
+        outputTokenDetails: { textTokens: undefined, reasoningTokens: undefined },
+      }}
+    >
+      <ContextTrigger className="h-5 gap-1 px-1.5 text-[10px]" />
+      <ContextContent>
+        <ContextContentHeader />
+        <ContextContentBody className="space-y-2">
+          <ContextInputUsage />
+          <ContextOutputUsage />
+          <ContextReasoningUsage />
+          <ContextCacheUsage />
+        </ContextContentBody>
+        <ContextContentFooter />
+      </ContextContent>
+    </Context>
   )
 }
 
@@ -192,45 +244,22 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
       )
     }
     case "context":
-      return (
-        <Context
-          usedTokens={part.usedTokens}
-          maxTokens={part.maxTokens}
-          modelId={part.modelId}
-          usage={{
-            inputTokens: part.usage?.inputTokens ?? 0,
-            outputTokens: part.usage?.outputTokens ?? 0,
-            totalTokens: part.usage?.totalTokens ?? part.usedTokens,
-            cachedInputTokens: part.usage?.cachedInputTokens ?? 0,
-            reasoningTokens: part.usage?.reasoningTokens ?? 0,
-            inputTokenDetails: {
-              noCacheTokens: undefined,
-              cacheReadTokens: undefined,
-              cacheWriteTokens: undefined,
-            },
-            outputTokenDetails: { textTokens: undefined, reasoningTokens: undefined },
-          }}
-        >
-          <ContextTrigger />
-          <ContextContent>
-            <ContextContentHeader />
-            <ContextContentBody className="space-y-2">
-              <ContextInputUsage />
-              <ContextOutputUsage />
-              <ContextReasoningUsage />
-              <ContextCacheUsage />
-            </ContextContentBody>
-            <ContextContentFooter />
-          </ContextContent>
-        </Context>
-      )
+      return null
     case "subagent":
       return (
         <Agent>
           <AgentHeader name={part.name} model={part.model} />
-          {(part.instructions || part.tools?.length) ? (
+          {(part.instructions || part.output || part.tools?.length) ? (
             <AgentContent>
               {part.instructions ? <AgentInstructions>{part.instructions}</AgentInstructions> : null}
+              {part.output ? (
+                <div className="space-y-2">
+                  <span className="font-medium text-muted-foreground text-sm">Result</span>
+                  <div className="rounded-md bg-muted/50 p-3 text-sm">
+                    <Markdown content={part.output} />
+                  </div>
+                </div>
+              ) : null}
               {part.tools?.length ? (
                 <AgentTools>
                   {part.tools.map((tool, index) => (

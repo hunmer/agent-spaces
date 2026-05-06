@@ -11,12 +11,38 @@ export interface Workspace {
   activeIssues: string[];
   agents: AgentConfig[];
   autoProcessIssues?: boolean;
+  notificationSettings?: WorkspaceNotificationSettings;
+}
+
+export type NotificationProvider = 'lark' | 'wechat';
+
+export type NotificationEventKey = 'issue_started' | 'issue_completed' | 'issue_task_completed';
+
+export interface WorkspaceNotificationSettings {
+  enabled: boolean;
+  provider: NotificationProvider;
+  events: NotificationEventKey[];
+  serviceRunning?: boolean;
+  botAgentId?: string;
+  lark?: {
+    appId?: string;
+    appSecret?: string;
+    chatIds?: string[];
+  };
+  wechat?: {
+    token?: string;
+    baseUrl?: string;
+    accountId?: string;
+    userId?: string;
+    userIds?: string[];
+    getUpdatesBuf?: string;
+  };
 }
 
 export interface AgentConfig {
   id: string;
   name: string;
-  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'custom';
+  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'commit' | 'custom' | 'bot';
   description?: string;
   runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex';
   modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'openai-responses-to-anthropic-messages' | 'openai-chat-completions-to-anthropic-messages' | 'gemini-generate-content';

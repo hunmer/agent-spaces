@@ -1,4 +1,6 @@
 import type { ServerEventName, ClientEventName, WSEvent } from '@agent-spaces/shared';
+import { getActiveServerUrl } from './server';
+import { getToken } from './auth';
 
 type EventHandler = (data: unknown) => void;
 
@@ -9,8 +11,13 @@ export class WorkspaceWS {
   private url: string;
 
   constructor(readonly workspaceId: string) {
-    const port = process.env.NEXT_PUBLIC_WS_PORT || '3100';
-    this.url = `ws://localhost:${port}/ws?workspaceId=${workspaceId}`;
+    const serverUrl = getActiveServerUrl();
+    const token = getToken();
+    const url = new URL('/ws', serverUrl ?? window.location.origin);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.searchParams.set('workspaceId', workspaceId);
+    if (token) url.searchParams.set('token', token);
+    this.url = url.toString();
   }
 
   connect() {
@@ -32,8 +39,8 @@ export class WorkspaceWS {
       }
     };
 
-    this.ws.onclose = () => {
-      console.log('[WS] disconnected, reconnecting...');
+    this.ws.onclose = (ev) => {
+      console.log(`[WS] disconnected (${ev.code}${ev.reason ? `: ${ev.reason}` : ''}), reconnecting...`);
       this.reconnectTimer = setTimeout(() => this.connect(), 3000);
     };
 

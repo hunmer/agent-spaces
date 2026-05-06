@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useIssueStore } from '@/stores/issue';
+import { useChannelStore } from '@/stores/channel';
 import { useTaskStore } from '@/stores/task';
 import { useAgentStore } from '@/stores/agent';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +11,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2 } from 'lucide-react';
-import { List, AutoSizer } from 'react-virtualized';
-import type { ListInstance } from 'react-virtualized';
+import { ArrowLeft, Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, MessagesSquare, X } from 'lucide-react';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
+import { CommentNavigator } from '@/components/issue/comment-navigator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +29,8 @@ import { createSlashExtension } from '@/components/composer/create-slash-extensi
 import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import type { IssueComment, IssueStatus, Task, TaskStatus } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
+import { useMobilePanelStore } from '@/stores/mobile-panel';
+import type { JSONContent } from '@tiptap/react';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
   draft: 'Draft',
@@ -57,6 +59,7 @@ const ISSUE_STATUS_COLOR: Record<IssueStatus, 'default' | 'secondary' | 'destruc
 const TASK_STATUS_COLOR: Record<TaskStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   pending: 'secondary',
   running: 'default',
+  reviewing: 'outline',
   waiting_review: 'outline',
   retrying: 'outline',
   done: 'secondary',
@@ -67,31 +70,13 @@ const TASK_STATUS_COLOR: Record<TaskStatus, 'default' | 'secondary' | 'destructi
 const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   pending: 'Pending',
   running: 'Running',
+  reviewing: 'Reviewing',
   waiting_review: 'Waiting Review',
   retrying: 'Retrying',
   done: 'Done',
   failed: 'Failed',
   cancelled: 'Cancelled',
 };
-
-const COLLAPSED_COMMENT_CONTENT_HEIGHT = 300;
-const COMMENT_ROW_BASE_HEIGHT = 56;
-const COMMENT_LINE_HEIGHT = 20;
-
-function estimateCommentRowHeight(comment: IssueComment, width: number, expanded: boolean) {
-  const availableTextWidth = Math.max(180, width - 150);
-  const charsPerLine = Math.max(24, Math.floor(availableTextWidth / 7));
-  const lineCount = comment.content
-    .split('\n')
-    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
-  const contentHeight = lineCount * COMMENT_LINE_HEIGHT;
-
-  if (expanded) {
-    return COMMENT_ROW_BASE_HEIGHT + contentHeight + 30;
-  }
-
-  return COMMENT_ROW_BASE_HEIGHT + Math.min(COLLAPSED_COMMENT_CONTENT_HEIGHT, contentHeight);
-}
 
 /* ------------------------------------------------------------------ */
 /*  TaskRow                                                            */
@@ -136,7 +121,7 @@ function TaskRow({
         <Button
           variant="ghost"
           size="icon"
-          className={`h-6 w-6 text-destructive hover:text-destructive ${isPending ? 'opacity-0 group-hover:opacity-100 transition-opacity' : ''}`}
+          className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={() => onDelete(workspaceId, task.id)}
         >
           <Trash2 className="h-3 w-3" />
@@ -149,7 +134,7 @@ function TaskRow({
         </Button>
       )}
       {/* Cancel – active tasks */}
-      {(isPending || task.status === 'running' || task.status === 'retrying') && (
+      {(isPending || task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying') && (
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCancel(workspaceId, task.id)}>
           <XCircle className="h-3 w-3" />
         </Button>
@@ -167,7 +152,7 @@ interface IssueDetailProps {
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
-  const { issues, activeIssueId, startIssue, updateIssue, deleteIssue } = useIssueStore();
+  const { issues, activeIssueId, startIssue, resumeIssue, updateIssue, deleteIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
@@ -180,7 +165,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
-  const listRef = useRef<ListInstance | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const commentsViewportRef = useRef<HTMLDivElement | null>(null);
+  const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
@@ -212,10 +199,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
     return () => { unsubIssueUpdated(); };
   }, [issue, workspaceId, loadComments]);
-
-  useEffect(() => {
-    listRef.current?.recomputeRowHeights();
-  }, [comments, expandedCommentIds]);
 
   const mentionExtension = useMemo(
     () =>
@@ -277,10 +260,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!editor || !issue) return;
     const text = editor.getText().trim();
     if (!text) return;
+    const mentions = collectMentionIds(editor.getJSON());
     void fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: text }),
+      body: JSON.stringify({ content: text, mentions }),
     })
       .then(async (res) => {
         if (!res.ok) return;
@@ -288,35 +272,18 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         setComments((current) => [...current, comment]);
         editor.commands.clearContent();
         setTimeout(() => {
-          listRef.current?.scrollToRow(comments.length);
+          commentsViewportRef.current?.scrollTo({
+            top: commentsViewportRef.current.scrollHeight,
+            behavior: 'smooth',
+          });
         }, 50);
       });
   }, [editor, issue, workspaceId]);
 
   const canSubmit = !!editor?.getText().trim();
 
-  if (!issue) {
-    return (
-      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-        Select an issue to view details
-      </div>
-    );
-  }
-
-  const issueTasks = tasks.filter((t) => t.issueId === issue.id);
-  const members = issue.members ?? [];
-  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
-  const memberIds = new Set(members);
-  const candidateMembers = enabledAgents
-    .filter((agent) => !memberIds.has(agent.id))
-    .map((agent) => ({
-      id: agent.id,
-      label: getAgentDisplayName(agent),
-      description: agent.role,
-    }));
-
-
   const handleAddMembers = async (newMembers: string[]) => {
+    if (!issue) return;
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -328,10 +295,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     useIssueStore.getState().upsertIssue(updated);
   };
 
-  const handleDeleteComment = async (commentId: string) => {
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    if (!issue) return;
     await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments/${commentId}`, { method: 'DELETE' });
     setComments((current) => current.filter((comment) => comment.id !== commentId));
-  };
+  }, [issue, workspaceId]);
 
   const handleCommentExpandedChange = useCallback((commentId: string, expanded: boolean) => {
     setExpandedCommentIds((current) => {
@@ -345,7 +313,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
   }, []);
 
-  const handleUpdateComment = async (wsId: string, commentId: string, content: string) => {
+  const handleUpdateComment = useCallback(async (wsId: string, commentId: string, content: string) => {
+    if (!issue) return;
     const res = await fetch(`/api/workspaces/${wsId}/issues/${issue.id}/comments/${commentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -354,9 +323,19 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!res.ok) return;
     const updated: IssueComment = await res.json();
     setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
-  };
+  }, [issue]);
+
+  const scrollToComment = useCallback((index: number) => {
+    const comment = comments[index];
+    if (!comment) return;
+    commentRefs.current.get(comment.id)?.scrollIntoView({
+      block: 'start',
+      behavior: 'smooth',
+    });
+  }, [comments]);
 
   const handleCreateTask = async () => {
+    if (!issue) return;
     if (!newTaskTitle.trim()) return;
     if (editingTask) {
       await updateTask(workspaceId, editingTask.id, { title: newTaskTitle.trim(), description: newTaskDesc.trim() });
@@ -387,31 +366,42 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     await deleteTask(wsId, taskId);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rowRenderer = useCallback(({ index, key, style }: any) => {
-    const comment = comments[index];
+  if (!issue) {
     return (
-      <div key={key} style={style} className="px-4">
-        <IssueMessage
-          comment={comment}
-          expanded={expandedCommentIds.has(comment.id)}
-          workspaceId={workspaceId}
-          onDelete={handleDeleteComment}
-          onUpdate={handleUpdateComment}
-          onExpandedChange={handleCommentExpandedChange}
-        />
+      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+        Select an issue to view details
       </div>
     );
-  }, [comments, expandedCommentIds, workspaceId, handleDeleteComment, handleUpdateComment, handleCommentExpandedChange]);
+  }
+
+  const issueTasks = tasks.filter((t) => t.issueId === issue.id);
+  const members = issue.members ?? [];
+  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+  const memberIds = new Set(members);
+  const candidateMembers = enabledAgents
+    .filter((agent) => !memberIds.has(agent.id))
+    .map((agent) => ({
+      id: agent.id,
+      label: getAgentDisplayName(agent),
+      description: agent.role,
+    }));
 
   return (
     <div className="flex h-full overflow-hidden">
       {/* 左侧：主内容区 */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
         {/* Header */}
         <div className="shrink-0 p-4 pb-3 border-b">
           <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-lg font-semibold flex-1">{issue.title}</h2>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="md:hidden shrink-0"
+              onClick={() => useMobilePanelStore.getState().setActivePanel('issue-list')}
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <h2 className="text-lg font-semibold truncate shrink min-w-0">{issue.title}</h2>
             <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
               {ISSUE_STATUS_LABEL[issue.status]}
             </Badge>
@@ -425,10 +415,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => { if (issue) deleteIssue(workspaceId, issue.id); }}
+              title="打开聊天频道"
+              onClick={() => { if (issue?.channelId) useChannelStore.getState().setActiveChannel(issue.channelId); }}
             >
-              <Trash2 className="size-4" />
+              <MessagesSquare className="size-4" />
             </Button>
             <Button
               variant="ghost"
@@ -482,6 +472,19 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 <Play className="h-3 w-3 mr-1" />
                 Start
               </Button>
+            </div>
+          )}
+          {issue.status === 'error' && (
+            <div className="mt-2 flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => resumeIssue(workspaceId, issue.id)}>
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Resume failed tasks
+              </Button>
+              {issue.retryPaused && (
+                <span className="text-[11px] text-muted-foreground">
+                  Automatic retry paused after {issue.retryCount}/{issue.maxRetries} attempts.
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -565,37 +568,71 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             </div>
           )}
 
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 relative">
             {comments.length > 0 ? (
-              <AutoSizer>
-                {({ height, width }) => (
-                  <List
-                    ref={listRef}
-                    height={height}
-                    width={width}
-                    rowCount={comments.length}
-                    rowHeight={({ index }) => estimateCommentRowHeight(comments[index], width, expandedCommentIds.has(comments[index].id))}
-                    rowRenderer={rowRenderer}
-                    overscanRowCount={5}
-                  />
-                )}
-              </AutoSizer>
+              <>
+                <div ref={commentsViewportRef} className="h-full overflow-y-auto">
+                  {comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      ref={(node) => {
+                        if (node) {
+                          commentRefs.current.set(comment.id, node);
+                        } else {
+                          commentRefs.current.delete(comment.id);
+                        }
+                      }}
+                      className="px-4"
+                    >
+                      <IssueMessage
+                        comment={comment}
+                        expanded={expandedCommentIds.has(comment.id)}
+                        workspaceId={workspaceId}
+                        onDelete={handleDeleteComment}
+                        onUpdate={handleUpdateComment}
+                        onExpandedChange={handleCommentExpandedChange}
+                      />
+                    </div>
+                  ))}
+                  <div className="h-20 pointer-events-none" />
+                </div>
+                <CommentNavigator comments={comments} onNavigate={scrollToComment} />
+              </>
             ) : null}
           </div>
         </div>
 
-        {/* Comment input */}
-        <ComposerShell
-          editor={editor}
-          canSubmit={canSubmit}
-          onSubmit={handleSendComment}
-          className="border-t px-3 py-2"
-        />
+        {/* Floating composer */}
+        {!composerOpen ? (
+          <button
+            onClick={() => setComposerOpen(true)}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all z-10"
+          >
+            <MessageSquare className="size-4" />
+            <span className="text-sm font-medium">评论</span>
+          </button>
+        ) : (
+          <div className="absolute bottom-4 left-4 right-4 z-10 animate-in slide-in-from-bottom-2 duration-200">
+            <div className="relative">
+              <button
+                onClick={() => setComposerOpen(false)}
+                className="absolute -top-2 -right-2 z-20 size-6 rounded-full bg-muted border shadow-sm flex items-center justify-center hover:bg-muted/80 transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+              <ComposerShell
+                editor={editor}
+                canSubmit={canSubmit}
+                onSubmit={handleSendComment}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 右侧：信息面板 */}
       {infoOpen && (
-        <div className="w-72 border-l flex flex-col h-full overflow-hidden">
+        <div className="w-72 border-l flex flex-col h-full">
           <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
             <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
               <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
@@ -684,6 +721,16 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </TabsContent>
             </ScrollArea>
           </Tabs>
+          <div className="shrink-0 p-3 border-t">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-destructive hover:text-destructive"
+              onClick={() => { deleteIssue(workspaceId, issue.id); }}
+            >
+              <Trash2 className="size-3.5 mr-1.5" />删除 Issue
+            </Button>
+          </div>
         </div>
       )}
 
@@ -699,6 +746,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           issue={issue}
           open={editOpen}
           onOpenChange={setEditOpen}
+          agents={enabledAgents}
           onSave={async (data) => {
             await updateIssue(workspaceId, issue.id, data);
           }}
@@ -706,4 +754,19 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       )}
     </div>
   );
+}
+
+function collectMentionIds(node: JSONContent): string[] {
+  const ids = new Set<string>();
+  const walk = (current: JSONContent) => {
+    if (!current) return;
+    if (current.type === 'mention' && typeof current.attrs?.id === 'string') {
+      ids.add(current.attrs.id);
+    }
+    if (Array.isArray(current.content)) {
+      for (const child of current.content) walk(child);
+    }
+  };
+  walk(node);
+  return [...ids];
 }

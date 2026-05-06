@@ -6,7 +6,7 @@ import { Copy, Pencil, Trash2, Check, Clock } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
 import { MemberInfoDialog } from './member-info-dialog';
-import { MessageParts } from './message-parts';
+import { MessageContextUsage, MessageParts } from './message-parts';
 
 interface MessageItemProps {
   message: Message;
@@ -61,7 +61,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
         onClick={() => setMemberDialogOpen(true)}
         className="size-7 rounded-full"
       />
-      <div className={`flex flex-col min-w-0 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col min-w-0 w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">
             {senderName}
@@ -71,6 +71,12 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
               {message.senderRole}
             </span>
           )}
+          {message.metadata?.model && (
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {message.metadata.model}
+            </span>
+          )}
+          <MessageContextUsage message={message} />
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>

@@ -20,6 +20,10 @@ interface GitState {
   discard: (workspaceId: string, filePath: string) => Promise<void>;
   discardAll: (workspaceId: string) => Promise<void>;
   checkout: (workspaceId: string, branch: string) => Promise<void>;
+  push: (workspaceId: string) => Promise<void>;
+  pull: (workspaceId: string) => Promise<void>;
+  getRemotes: (workspaceId: string) => Promise<{ name: string; refs: { fetch: string; push: string } }[]>;
+  addRemote: (workspaceId: string, name: string, url: string) => Promise<void>;
   selectFile: (path: string | null) => void;
 }
 
@@ -144,6 +148,40 @@ export const useGitStore = create<GitState>((set) => ({
       if (!res.ok) throw new Error(await res.text());
     } catch (err: any) {
       set({ error: err.message });
+    }
+  },
+
+  push: async (workspaceId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/push`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Push failed' }));
+      throw new Error(err.error);
+    }
+  },
+
+  pull: async (workspaceId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/pull`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Pull failed' }));
+      throw new Error(err.error);
+    }
+  },
+
+  getRemotes: async (workspaceId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/remotes`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  addRemote: async (workspaceId, name, url) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/remotes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, url }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to add remote' }));
+      throw new Error(err.error);
     }
   },
 

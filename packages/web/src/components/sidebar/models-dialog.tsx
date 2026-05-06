@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { LLMModel, LLMProvider } from "@agent-spaces/shared";
+import { useEffect, useRef, useState } from "react";
+import type { LLMModel } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -11,19 +11,35 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft,
   Brain,
   Plus,
   Trash2,
 } from "lucide-react";
+import { useLLMStore } from "@/stores/llm";
 
 const CAP_BADGES: Record<string, { label: string; cls: string }> = {
   vision: { label: "Vision", cls: "bg-blue-500/10 text-blue-600 border-blue-200" },
   reasoning: { label: "Reasoning", cls: "bg-purple-500/10 text-purple-600 border-purple-200" },
   embedding: { label: "Embedding", cls: "bg-green-500/10 text-green-600 border-green-200" },
 };
+
+const CONTEXT_OPTIONS = [
+  { label: "8K", value: 8_192 },
+  { label: "16K", value: 16_384 },
+  { label: "32K", value: 32_768 },
+  { label: "64K", value: 65_536 },
+  { label: "128K", value: 128_000 },
+  { label: "200K", value: 200_000 },
+  { label: "256K", value: 256_000 },
+  { label: "1M", value: 1_000_000 },
+];
+
+const THINKING_EFFORT_OPTIONS = ["low", "medium", "high"] as const;
 
 function groupByProvider(models: LLMModel[]): Record<string, LLMModel[]> {
   const groups: Record<string, LLMModel[]> = {};
@@ -43,8 +59,8 @@ export function ModelsDialog({
   onOpenChange: (open: boolean) => void;
   initialProvider?: string;
 }) {
-  const [models, setModels] = useState<LLMModel[]>([]);
-  const [providers, setProviders] = useState<LLMProvider[]>([]);
+  const { models, providers, ensure, addModel, updateModel, removeModel } = useLLMStore();
+  const providerNames = providers.map(p => p.name);
   const [selected, setSelected] = useState<LLMModel | null>(null);
   const [draft, setDraft] = useState<Partial<LLMModel> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -53,45 +69,58 @@ export function ModelsDialog({
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      fetch("/api/models").then(r => r.json()),
-      fetch("/api/providers").then(r => r.json()),
-    ])
-      .then(([models, prov]: [LLMModel[], LLMProvider[]]) => {
-        setModels(models);
-        setProviders(prov);
-      })
-      .catch(() => setError("Failed to load models"))
-      .finally(() => setLoading(false));
-  }, [open]);
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+    });
+    ensure().finally(() => setLoading(false));
+  }, [open, ensure]);
 
-  // When initialProvider is set, open add form with that provider pre-selected
   useEffect(() => {
     if (open && initialProvider && !draft) {
-      setSelected(null);
-      setDraft({
-        modelId: "",
-        name: "",
-        provider: initialProvider,
-        vision: false,
-        reasoning: false,
-        embedding: false,
+      queueMicrotask(() => {
+        setSelected(null);
+        setDraft({
+          modelId: "",
+          name: "",
+          provider: initialProvider,
+          cost: { inputPerMillion: 0, outputPerMillion: 0 },
+          maxContextTokens: 128_000,
+          thinkingEnabled: true,
+          thinkingEffort: "medium",
+          vision: false,
+          reasoning: false,
+          embedding: false,
+        });
       });
     }
-  }, [open, initialProvider]);
+  }, [open, initialProvider, draft]);
 
   const handleBack = () => { setSelected(null); setDraft(null); };
 
   const handleAdd = () => {
     setSelected(null);
-    setDraft({ modelId: "", name: "", provider: "Other", vision: false, reasoning: false, embedding: false });
+    setDraft({
+      modelId: "",
+      name: "",
+      provider: "Other",
+      cost: { inputPerMillion: 0, outputPerMillion: 0 },
+      maxContextTokens: 128_000,
+      thinkingEnabled: true,
+      thinkingEffort: "medium",
+      vision: false,
+      reasoning: false,
+      embedding: false,
+    });
   };
 
   const handleEdit = (m: LLMModel) => {
     setSelected(m);
-    setDraft({ ...m });
+    setDraft({
+      ...m,
+      thinkingEnabled: m.thinkingEnabled ?? true,
+      thinkingEffort: m.thinkingEffort ?? "medium",
+    });
   };
 
   const handleSave = async () => {
@@ -107,7 +136,7 @@ export function ModelsDialog({
       });
       if (!res.ok) throw new Error();
       const saved: LLMModel = await res.json();
-      setModels(prev => isNew ? [...prev, saved] : prev.map(m => m.id === saved.id ? saved : m));
+      if (isNew) addModel(saved); else updateModel(saved);
       handleBack();
     } catch {
       setError("Failed to save model");
@@ -122,7 +151,7 @@ export function ModelsDialog({
     try {
       const res = await fetch(`/api/models/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      setModels(prev => prev.filter(m => m.id !== id));
+      removeModel(id);
       if (selected?.id === id) handleBack();
     } catch {
       setError("Failed to delete model");
@@ -171,9 +200,9 @@ export function ModelsDialog({
           {loading ? (
             <div className="py-12 text-center text-sm text-muted-foreground">Loading models...</div>
           ) : draft ? (
-            <ModelForm draft={draft} providerNames={providers.map(p => p.name)} onChange={updateDraft} />
+            <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} />
           ) : (
-            <ModelList groups={groups} providerNames={providers.map(p => p.name)} onEdit={handleEdit} onDelete={handleDelete} />
+            <ModelList groups={groups} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </div>
 
@@ -205,7 +234,6 @@ function ModelList({
   const sorted = Object.keys(groups).sort((a, b) => {
     const ai = order.indexOf(a);
     const bi = order.indexOf(b);
-    // known providers first (sorted by their order), unknown ones last
     if (ai >= 0 && bi >= 0) return ai - bi;
     if (ai >= 0) return -1;
     if (bi >= 0) return 1;
@@ -230,6 +258,16 @@ function ModelList({
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium">{model.name}</span>
                   <span className="text-[11px] text-muted-foreground font-mono ml-2">{model.modelId}</span>
+                  {model.cost ? (
+                    <span className="ml-2 text-[11px] text-muted-foreground font-mono">
+                      ${formatCost(model.cost.inputPerMillion)}/${formatCost(model.cost.outputPerMillion)}
+                    </span>
+                  ) : null}
+                  {model.maxContextTokens ? (
+                    <span className="ml-2 text-[11px] text-muted-foreground font-mono">
+                      {formatTokenLimit(model.maxContextTokens)} ctx
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1">
                   {(["vision", "reasoning", "embedding"] as const).map(cap =>
@@ -272,6 +310,8 @@ function ModelForm({
   providerNames: string[];
   onChange: (key: string, value: unknown) => void;
 }) {
+  const nameEditedByUser = useRef(false);
+  const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
   const options = providerNames.length > 0 ? providerNames : ["Other"];
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -280,13 +320,14 @@ function ModelForm({
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Model ID</label>
           <Input value={draft.modelId || ""} onChange={e => {
-            onChange("modelId", e.target.value);
-            if (!draft.name) onChange("name", e.target.value);
+            const val = e.target.value;
+            onChange("modelId", val);
+            if (!nameEditedByUser.current) onChange("name", val);
           }} placeholder="e.g. gpt-4o" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Display Name</label>
-          <Input value={draft.name || ""} onChange={e => onChange("name", e.target.value)} placeholder="e.g. GPT-4o" />
+          <Input value={draft.name || ""} onChange={e => { nameEditedByUser.current = true; onChange("name", e.target.value); }} placeholder="e.g. GPT-4o" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Provider</label>
@@ -297,6 +338,105 @@ function ModelForm({
           >
             {options.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Context</div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Max context tokens</label>
+          <div className="flex items-center gap-3">
+            <Slider
+              min={0}
+              max={CONTEXT_OPTIONS.length}
+              step={1}
+              value={contextIdx}
+              onValueChange={(idx) => {
+                const i = idx as number;
+                setContextIdx(i);
+                if (i < CONTEXT_OPTIONS.length) {
+                  onChange("maxContextTokens", CONTEXT_OPTIONS[i].value);
+                }
+              }}
+              className="flex-1"
+            />
+            {contextIdx < CONTEXT_OPTIONS.length ? (
+              <span className="text-sm tabular-nums min-w-[3.5rem] text-right">
+                {CONTEXT_OPTIONS[contextIdx].label}
+              </span>
+            ) : (
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={draft.maxContextTokens ?? ""}
+                onChange={e => onChange("maxContextTokens", parseOptionalTokenLimit(e.target.value))}
+                placeholder="128000"
+                className="h-7 w-24 text-sm tabular-nums"
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Thinking</div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2">
+          <div className="min-w-0">
+            <label className="text-sm font-medium">Enable thinking</label>
+            <p className="text-xs text-muted-foreground">Send reasoning/thinking options with model requests.</p>
+          </div>
+          <Switch
+            checked={draft.thinkingEnabled ?? true}
+            onCheckedChange={(checked) => onChange("thinkingEnabled", checked)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Effort</label>
+          <select
+            value={draft.thinkingEffort || "medium"}
+            onChange={e => onChange("thinkingEffort", e.target.value)}
+            disabled={!(draft.thinkingEnabled ?? true)}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+          >
+            {THINKING_EFFORT_OPTIONS.map(effort => (
+              <option key={effort} value={effort}>{effort}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Input / 1M tokens</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={draft.cost?.inputPerMillion ?? 0}
+              onChange={e => onChange("cost", {
+                inputPerMillion: parseCost(e.target.value),
+                outputPerMillion: draft.cost?.outputPerMillion ?? 0,
+              })}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Output / 1M tokens</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={draft.cost?.outputPerMillion ?? 0}
+              onChange={e => onChange("cost", {
+                inputPerMillion: draft.cost?.inputPerMillion ?? 0,
+                outputPerMillion: parseCost(e.target.value),
+              })}
+              placeholder="0.00"
+            />
+          </div>
         </div>
       </div>
 
@@ -324,4 +464,34 @@ function ModelForm({
       </div>
     </div>
   );
+}
+
+function parseCost(value: string): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function parseOptionalTokenLimit(value: string): number | undefined {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
+}
+
+function getContextSliderIndex(value?: number): number {
+  if (!value) return CONTEXT_OPTIONS.length;
+  const idx = CONTEXT_OPTIONS.findIndex(o => o.value === value);
+  return idx >= 0 ? idx : CONTEXT_OPTIONS.length;
+}
+
+function formatCost(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function formatTokenLimit(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }

@@ -12,6 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -21,7 +26,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, MoreHorizontal, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Plus, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
@@ -47,6 +52,7 @@ export type Route = {
   subs?: SubMenuItem[];
   addLabel?: string;
   onAdd?: () => void;
+  manageLink?: string;
 };
 
 export default function DashboardNavigation({ routes }: { routes: Route[] }) {
@@ -64,6 +70,78 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
         return (
           <SidebarMenuItem key={route.id}>
             {useCollapsible ? (
+              isCollapsed ? (
+                <Popover>
+                  <PopoverTrigger render={<SidebarMenuButton className="justify-center text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" tooltip={route.title} />}>{route.icon}</PopoverTrigger>
+                  <PopoverContent side="right" sideOffset={8} className="w-56 p-1.5">
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mb-1">{route.title}</div>
+                    {route.subs?.map((subRoute) => (
+                      <div key={`${route.id}-${subRoute.title}`} className="group/sub relative flex items-center">
+                        {subRoute.onClick ? (
+                          <button
+                            type="button"
+                            onClick={subRoute.onClick}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          >
+                            {subRoute.icon}
+                            {subRoute.title}
+                          </button>
+                        ) : (
+                          <Link
+                            href={subRoute.link}
+                            prefetch={true}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          >
+                            {subRoute.icon}
+                            {subRoute.title}
+                          </Link>
+                        )}
+                        {subRoute.menuItems && subRoute.menuItems.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              className="absolute right-1 flex items-center justify-center rounded-md p-0.5 opacity-0 group-hover/sub:opacity-100 hover:bg-accent transition-opacity cursor-pointer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="size-3.5 text-muted-foreground" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" side="right">
+                              {subRoute.menuItems.map((item) => (
+                                <DropdownMenuItem
+                                  key={item.label}
+                                  variant={item.variant}
+                                  onClick={item.onClick}
+                                >
+                                  {item.icon}
+                                  {item.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    ))}
+                    {route.onAdd && (
+                      <button
+                        type="button"
+                        onClick={route.onAdd}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5"
+                      >
+                        <Plus className="size-3.5" />
+                        {route.addLabel ?? "Add"}
+                      </button>
+                    )}
+                    {route.manageLink && (
+                      <Link
+                        href={route.manageLink}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5"
+                      >
+                        <LayoutGrid className="size-3.5" />
+                        Manage
+                      </Link>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              ) : (
               <Collapsible
                 open={isOpen}
                 onOpenChange={(open) =>
@@ -81,12 +159,11 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                                               isOpen
                                                 ? "bg-sidebar-muted text-foreground"
                                                 : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
-                                              isCollapsed && "justify-center"
-                                            )} />}>{route.icon}{!isCollapsed && (
+                                            )} />}>{route.icon}{
                                               <span className="ml-2 flex-1 text-sm font-medium">
                                                 {route.title}
                                               </span>
-                                            )}{!isCollapsed && hasSubRoutes && (
+                                            }{hasSubRoutes && (
                                               <span>
                                                 {isOpen ? (
                                                   <ChevronUp className="size-4" />
@@ -96,7 +173,6 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                                               </span>
                                             )}</CollapsibleTrigger>
 
-                {!isCollapsed && (
                   <CollapsibleContent>
                     <SidebarMenuSub className="my-1 ml-3.5">
                       {route.subs?.map((subRoute) => (
@@ -150,14 +226,25 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                             className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
                           >
                             <Plus className="size-3.5" />
-                            {route.addLabel ?? "Add Workspace"}
+                            {route.addLabel ?? "Add"}
                           </button>
+                        </SidebarMenuSubItem>
+                      )}
+                      {route.manageLink && (
+                        <SidebarMenuSubItem>
+                          <Link
+                            href={route.manageLink}
+                            className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                          >
+                            <LayoutGrid className="size-3.5" />
+                            Manage
+                          </Link>
                         </SidebarMenuSubItem>
                       )}
                     </SidebarMenuSub>
                   </CollapsibleContent>
-                )}
               </Collapsible>
+              )
             ) : (
               <SidebarMenuButton tooltip={route.title} render={<Link href={route.link} prefetch={true} className={cn(
                                             "flex items-center rounded-lg px-2 transition-colors text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",

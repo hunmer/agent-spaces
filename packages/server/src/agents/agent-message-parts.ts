@@ -1,15 +1,17 @@
 import type { AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
-import type { MessageChain, MessagePart } from '@agent-spaces/shared';
+import type { MessageChain, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import { saveToolDetails, type ToolDetail } from '../services/tool-detail.js';
 
 export interface AgentMessagePartsTracker {
   readonly output: string[];
+  readonly reasoning: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   readonly toolDetails: Map<string, ToolDetail>;
   handleEvent(event: AgentRuntimeEvent): void;
   buildParts(input: {
     sessionId: string;
     workspaceRoot?: string;
     model?: string;
+    usage?: MessageTokenUsage;
     success: boolean;
     error?: string;
   }): MessagePart[];
@@ -23,13 +25,21 @@ export function createAgentMessagePartsTracker(input: {
   onOutput?: (line: string) => void;
 }): AgentMessagePartsTracker {
   const output: string[] = [];
+  const reasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   const toolDetails = new Map<string, ToolDetail>();
   const toolUseDetailIds = new Map<string, string>();
 
   return {
     output,
+    reasoning,
     toolDetails,
     handleEvent(event) {
+      if (event.type === 'reasoning') {
+        reasoning.push({ text: event.text, status: event.status });
+        input.onOutput?.(event.text);
+        return;
+      }
+
       if (event.type === 'tool_use') {
         const detailId = buildToolDetailId(event.id, event.line);
         toolUseDetailIds.set(event.id, detailId);
@@ -50,7 +60,7 @@ export function createAgentMessagePartsTracker(input: {
       }
 
       if (event.type === 'tool_result') {
-        const detail = findToolDetailForResult(event.toolUseId, toolUseDetailIds, toolDetails);
+        const detail = findToolDetailForResult(event.toolUseId, event.result, toolUseDetailIds, toolDetails);
         if (detail) {
           detail.output = event.result;
           detail.updatedAt = new Date().toISOString();
@@ -62,12 +72,14 @@ export function createAgentMessagePartsTracker(input: {
       output.push(event.line);
       input.onOutput?.(event.line);
     },
-    buildParts({ sessionId, workspaceRoot, model, success, error }) {
+    buildParts({ sessionId, workspaceRoot, model, usage, success, error }) {
       return buildAgentMessageParts({
         sessionId,
         workspaceRoot,
         model,
+        usage,
         output,
+        reasoning,
         toolDetails,
         success,
         error,
@@ -80,7 +92,9 @@ function buildAgentMessageParts(input: {
   sessionId: string;
   workspaceRoot?: string;
   model?: string;
+  usage?: MessageTokenUsage;
   output: string[];
+  reasoning?: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   toolDetails?: Map<string, ToolDetail>;
   success: boolean;
   error?: string;
@@ -90,9 +104,19 @@ function buildAgentMessageParts(input: {
   const finalText = finalTextRange
     ? collapseRepeatedTextBlock(lines.slice(finalTextRange.start, finalTextRange.end + 1)).join('\n').trim()
     : '';
-  const usage = extractUsage(lines);
+  const usage = input.usage ?? extractUsage(lines);
   const parts: MessagePart[] = [];
   const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
+
+  const reasoningText = normalizeReasoningText(input.reasoning);
+  if (reasoningText) {
+    parts.push({
+      id: `reasoning-${input.sessionId}`,
+      type: 'reasoning',
+      text: reasoningText,
+      status: input.success ? 'completed' : 'streaming',
+    });
+  }
 
   if (chainItems.length > 0) {
     parts.push({
@@ -102,11 +126,15 @@ function buildAgentMessageParts(input: {
     });
   }
 
-  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
+  for (const subagent of extractSubagentBlocks(lines, input.sessionId, input.toolDetails)) {
+    parts.push(subagent);
+  }
+
+  if (hasTokenUsage(usage)) {
     parts.push({
       id: `context-${input.sessionId}`,
       type: 'context',
-      usedTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      usedTokens: getTotalTokens(usage),
       maxTokens: 128_000,
       modelId: input.model,
       usage,
@@ -131,6 +159,23 @@ function buildAgentMessageParts(input: {
   }
 
   return parts;
+}
+
+function normalizeReasoningText(reasoning?: Array<{ text: string }>): string {
+  if (!reasoning?.length) return '';
+  return collapseRepeatedTextBlock(
+    reasoning
+      .map((item) => item.text.trim())
+      .filter(Boolean),
+  ).join('\n\n').trim();
+}
+
+function hasTokenUsage(usage: MessageTokenUsage): boolean {
+  return Boolean(usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.cachedInputTokens || usage.reasoningTokens);
+}
+
+function getTotalTokens(usage: MessageTokenUsage): number {
+  return usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) + (usage.cachedInputTokens ?? 0) + (usage.reasoningTokens ?? 0);
 }
 
 function normalizeOutputLines(output: string[]): string[] {
@@ -196,6 +241,23 @@ function buildChainItems(
   let messageIndex = 0;
   const items: MessageChain[] = [];
   const toolDetailMatchCounts = new Map<string, number>();
+  let messageBuffer: string[] = [];
+
+  const flushMessageBuffer = () => {
+    if (messageBuffer.length === 0) return;
+    const text = messageBuffer.join('\n').trim();
+    if (text) {
+      items.push({
+        id: `message-${messageIndex}`,
+        title: summarizeMessageTitle(text),
+        text,
+        kind: 'message',
+        status: 'completed',
+      });
+      messageIndex += 1;
+    }
+    messageBuffer = [];
+  };
 
   for (let index = 0; index < lines.length; index += 1) {
     if (finalTextRange && index >= finalTextRange.start && index <= finalTextRange.end) continue;
@@ -203,21 +265,16 @@ function buildChainItems(
     if (finalText && isSameMessageText(line, finalText)) continue;
     if (isSubagentToolLine(line)) continue;
     if (isToolLikeLine(line)) {
+      flushMessageBuffer();
       items.push(buildToolTodo(line, toolIndex, workspaceRoot, toolDetails, toolDetailMatchCounts));
       toolIndex += 1;
       continue;
     }
     if (isFinalAnswerLine(line)) {
-      items.push({
-        id: `message-${messageIndex}`,
-        title: summarizeMessageTitle(line),
-        text: line,
-        kind: 'message',
-        status: 'completed',
-      });
-      messageIndex += 1;
+      messageBuffer.push(line);
     }
   }
+  flushMessageBuffer();
 
   return items.slice(0, 40);
 }
@@ -338,12 +395,76 @@ function extractSearchParams(
 
 function findToolDetailForResult(
   toolUseId: string | undefined,
+  result: unknown,
   toolUseDetailIds: Map<string, string>,
   toolDetails: Map<string, ToolDetail>,
 ): ToolDetail | undefined {
   const detailId = toolUseId ? toolUseDetailIds.get(toolUseId) : undefined;
   if (detailId) return toolDetails.get(detailId);
+  if (isSubagentToolResult(result)) {
+    const detail = Array.from(toolDetails.values()).reverse().find((candidate) => {
+      return candidate.output === undefined && /^Tool:\s*Task\b/i.test(candidate.raw);
+    });
+    if (detail) return detail;
+  }
   return Array.from(toolDetails.values()).reverse().find((detail) => detail.output === undefined);
+}
+
+function isSubagentToolResult(result: unknown): boolean {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+  const record = result as Record<string, unknown>;
+  return (
+    typeof record.agentId === 'string'
+    || typeof record.agentType === 'string'
+    || (record.status === 'completed' && Array.isArray(record.content))
+  );
+}
+
+function extractSubagentBlocks(
+  lines: string[],
+  sessionId: string,
+  toolDetails?: Map<string, ToolDetail>,
+): MessagePart[] {
+  const matchCounts = new Map<string, number>();
+  return lines
+    .map((line, index): MessagePart | null => {
+      const match = line.match(/^Tool:\s*Task\b\s*(.*)$/i);
+      if (!match) return null;
+      const name = line.match(/\bdescription=(["'])(.*?)\1/i)?.[2] || `Subagent ${index + 1}`;
+      const prompt = line.match(/\bprompt=(["'])(.*?)\1/i)?.[2];
+      const detailId = findToolDetailId(line, toolDetails, matchCounts);
+      const detail = detailId ? toolDetails?.get(detailId) : undefined;
+      const output = stringifySubagentOutput(detail?.output);
+      return {
+        id: `subagent-${sessionId}-${index}`,
+        type: 'subagent',
+        name,
+        instructions: prompt,
+        output,
+      };
+    })
+    .filter((part): part is MessagePart => Boolean(part));
+}
+
+function stringifySubagentOutput(output: unknown): string | undefined {
+  if (output === undefined || output === null) return undefined;
+  if (typeof output === 'string') return output.trim() || undefined;
+  if (Array.isArray(output)) {
+    const text = output.flatMap((item) => {
+      if (typeof item === 'string') return [item];
+      if (!item || typeof item !== 'object') return [];
+      const record = item as Record<string, unknown>;
+      return typeof record.text === 'string' ? [record.text] : [];
+    }).join('\n').trim();
+    return text || undefined;
+  }
+  if (typeof output === 'object') {
+    const record = output as Record<string, unknown>;
+    if (typeof record.result === 'string' && record.result.trim()) return record.result.trim();
+    if (typeof record.summary === 'string' && record.summary.trim()) return record.summary.trim();
+    if (Array.isArray(record.content)) return stringifySubagentOutput(record.content);
+  }
+  return undefined;
 }
 
 function findToolDetailId(

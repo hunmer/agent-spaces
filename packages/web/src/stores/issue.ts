@@ -7,6 +7,7 @@ interface UpdateIssueInput {
   title?: string;
   description?: string;
   status?: IssueStatus;
+  members?: string[];
 }
 
 interface IssueStore {
@@ -18,11 +19,12 @@ interface IssueStore {
   loading: boolean;
 
   loadIssues: (workspaceId: string) => Promise<void>;
-  createIssue: (workspaceId: string, title: string, description: string) => Promise<void>;
+  createIssue: (workspaceId: string, title: string, description: string, members?: string[]) => Promise<void>;
   setActiveIssue: (id: string | null) => void;
   updateIssue: (workspaceId: string, issueId: string, input: UpdateIssueInput) => Promise<void>;
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
   startIssue: (workspaceId: string, issueId: string) => Promise<void>;
+  resumeIssue: (workspaceId: string, issueId: string) => Promise<void>;
   deleteIssue: (workspaceId: string, issueId: string) => Promise<void>;
 
   // WS handlers
@@ -59,14 +61,15 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     }
   },
 
-  createIssue: async (workspaceId, title, description) => {
+  createIssue: async (workspaceId, title, description, members) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/issues`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description }),
+      body: JSON.stringify({ title, description, members }),
     });
     const issue: Issue = await res.json();
-    set((s) => ({ issues: [...s.issues, issue] }));
+    get().upsertIssue(issue);
+    get().setActiveIssue(issue.id);
   },
 
   setActiveIssue: (id) => {
@@ -97,6 +100,14 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
 
   startIssue: async (workspaceId, issueId) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/start`, {
+      method: 'POST',
+    });
+    const issue: Issue = await res.json();
+    get().upsertIssue(issue);
+  },
+
+  resumeIssue: async (workspaceId, issueId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/resume`, {
       method: 'POST',
     });
     const issue: Issue = await res.json();

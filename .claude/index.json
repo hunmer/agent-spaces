@@ -1,11 +1,11 @@
 {
-  "version": "1.1.0",
-  "timestamp": "2026-05-02T23:43:41+08:00",
+  "version": "1.3.0",
+  "timestamp": "2026-05-05T23:52:43+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo",
     "language": "TypeScript",
-    "description": "多 Agent 协同编程平台"
+    "description": "多 Agent 协同编程平台（含认证、通知中心、用量统计、Commit Agent）"
   },
   "modules": [
     {
@@ -17,14 +17,16 @@
       "entry": "src/index.ts",
       "types": [
         "Workspace", "AgentConfig", "CreateWorkspaceInput",
-        "Issue", "IssueStatus", "CreateIssueInput",
+        "WorkspaceNotificationSettings", "NotificationProvider", "NotificationEventKey",
+        "Issue", "IssueStatus", "IssueComment", "CreateIssueInput",
         "Task", "TaskStatus", "TaskResult",
-        "AgentSession", "AgentSessionStatus",
-        "Channel", "Message", "Attachment",
+        "AgentSession", "AgentSessionStatus", "AgentUsageRecord", "AgentUsageDashboard",
+        "Channel", "TodoItem", "Message", "Attachment", "MessagePart", "MessageChain", "MessageApproval", "MessageTokenUsage", "MessageTool", "MessageMetadata",
         "FileNode",
         "GitFileStatus", "GitStatusResult", "GitLogEntry", "GitDiffResult",
         "WSEvent", "ClientEventMap", "ServerEventMap",
-        "LLMModel", "LLMProvider"
+        "LLMModel", "LLMModelCost", "LLMThinkingEffort", "LLMProvider",
+        "BUILT_IN_AGENT_TOOLS", "BuiltInAgentToolName"
       ],
       "api": [],
       "tests": [],
@@ -33,12 +35,18 @@
         "packages/shared/src/types/events.ts",
         "packages/shared/src/types/workspace.ts",
         "packages/shared/src/types/agent.ts",
-        "packages/shared/src/types/llm.ts"
+        "packages/shared/src/types/channel.ts",
+        "packages/shared/src/types/issue.ts",
+        "packages/shared/src/types/tool.ts",
+        "packages/shared/src/types/llm.ts",
+        "packages/shared/src/types/file.ts",
+        "packages/shared/src/types/git.ts",
+        "packages/shared/src/types/task.ts"
       ],
       "claudeMd": "packages/shared/CLAUDE.md",
       "coverage": {
-        "scanned": 11,
-        "total": 11,
+        "scanned": 12,
+        "total": 12,
         "percentage": 100,
         "gaps": []
       }
@@ -48,17 +56,25 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + Agent 编排 + PTY + Git + LLM 管理 + Agent Preset",
+      "role": "Express REST API + WebSocket + 认证中间件 + 三运行时 Agent 编排 + 通知中心（飞书/企微） + Commit Agent + SQLite Agent Usage + PTY + Git + LLM 管理 + Agent Preset + Function Call Tools + Anthropic Bridge（7文件子模块） + Issue 评论 + 工具详情持久化",
       "entry": "src/app.ts",
       "types": [],
       "api": [
         "GET /api/health",
+        "POST /api/auth/login",
+        "GET /api/auth/check",
+        "POST /api/auth/change-secret",
+        "POST /api/upload/avatar",
         "GET|POST /api/workspaces",
+        "POST /api/workspaces/clone",
         "GET|PUT|DELETE /api/workspaces/:id",
+        "GET|PUT /api/workspaces/:id/prompt",
+        "POST /api/workspaces/:id/reveal",
         "GET /api/workspaces/:id/files/tree",
         "GET|PUT /api/workspaces/:id/files/content",
         "GET|POST /api/workspaces/:id/channels",
         "GET|POST /api/workspaces/:id/channels/:channelId/messages",
+        "GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:detailId",
         "GET|POST /api/workspaces/:id/issues",
         "GET|PUT /api/workspaces/:id/issues/:issueId",
         "POST /api/workspaces/:id/issues/:issueId/start",
@@ -77,15 +93,23 @@
         "GET /api/workspaces/:id/git/status",
         "GET /api/workspaces/:id/git/diff",
         "GET /api/workspaces/:id/git/log",
+        "POST /api/workspaces/:id/notifications/start",
+        "POST /api/workspaces/:id/notifications/stop",
+        "POST /api/workspaces/:id/notifications/test",
+        "POST /api/workspaces/:id/notifications/wechat/qr",
+        "GET /api/agents/usage/dashboard",
         "GET|POST /api/models",
         "PUT|DELETE /api/models/:id",
         "GET|POST /api/providers",
-        "PUT|DELETE /api/providers/:id"
+        "PUT|DELETE /api/providers/:id",
+        "GET /api/folder/browse",
+        "POST /api/folder/create"
       ],
       "wsEvents": {
         "clientToServer": [
           "terminal.create", "terminal.input", "terminal.resize", "terminal.close",
-          "channel.message", "agent.start", "agent.stop"
+          "channel.message", "channel.stop", "channel.answer_question",
+          "agent.start", "agent.stop"
         ],
         "serverToClient": [
           "connected",
@@ -109,36 +133,104 @@
           "name": "ClaudeCodeRuntime",
           "kind": "claude-code",
           "sdk": "@anthropic-ai/claude-agent-sdk",
-          "file": "src/adapters/claude-code-runtime.ts"
+          "files": [
+            "src/adapters/claude-code-runtime/index.ts",
+            "src/adapters/claude-code-runtime/sdk-config.ts",
+            "src/adapters/claude-code-runtime/adapter-pool.ts",
+            "src/adapters/claude-code-runtime/anthropic-bridge.ts",
+            "src/adapters/claude-code-runtime/protocol-converter.ts",
+            "src/adapters/claude-code-runtime/message-format.ts",
+            "src/adapters/claude-code-runtime/types.ts"
+          ]
+        },
+        {
+          "name": "CodexRuntime",
+          "kind": "codex",
+          "sdk": "@openai/codex-sdk",
+          "file": "src/adapters/codex-runtime.ts"
         }
       ],
+      "notificationHub": {
+        "adapters": ["lark", "wechat"],
+        "botCommands": [
+          "/workspace", "/workspaces", "/workspac [id]",
+          "/agents", "/issues", "/issue [id]", "/issue new [title] [desc]",
+          "/issue start", "/issue close", "/issue [id] agent ids",
+          "/task", "/comment [msg]", "/comments",
+          "/changes", "/commit [desc/auto]", "/push", "/pull", "/help"
+        ],
+        "files": [
+          "src/services/notification-hub/index.ts",
+          "src/services/notification-hub/types.ts",
+          "src/services/notification-hub/service.ts",
+          "src/services/notification-hub/events.ts",
+          "src/services/notification-hub/format.ts",
+          "src/services/notification-hub/helpers.ts",
+          "src/services/notification-hub/lark-api.ts",
+          "src/services/notification-hub/lark-adapter.ts",
+          "src/services/notification-hub/wechat-api.ts",
+          "src/services/notification-hub/wechat-adapter.ts",
+          "src/services/notification-hub/bot-agent.ts",
+          "src/services/notification-hub/bot-commands.ts"
+        ]
+      },
       "tests": [],
       "importantPaths": [
         "packages/server/src/app.ts",
+        "packages/server/src/middleware/auth.ts",
+        "packages/server/src/routes/auth.ts",
+        "packages/server/src/routes/workspace.ts",
+        "packages/server/src/routes/agent.ts",
+        "packages/server/src/routes/folder.ts",
         "packages/server/src/agents/scheduler-agent.ts",
         "packages/server/src/agents/planner-agent.ts",
         "packages/server/src/agents/reviewer-agent.ts",
+        "packages/server/src/agents/commit-agent.ts",
+        "packages/server/src/agents/issue-task-controller.ts",
+        "packages/server/src/agents/issue-agent-runner.ts",
+        "packages/server/src/agents/issue-retry.ts",
+        "packages/server/src/agents/issue-agent-progress.ts",
+        "packages/server/src/agents/agent-message-parts.ts",
         "packages/server/src/agents/agent-context.ts",
         "packages/server/src/hooks/agent-hooks.ts",
         "packages/server/src/adapters/agent-runtime.ts",
         "packages/server/src/adapters/agent-runtime-types.ts",
         "packages/server/src/adapters/open-agent-sdk-runtime.ts",
-        "packages/server/src/adapters/claude-code-runtime.ts",
+        "packages/server/src/adapters/codex-runtime.ts",
+        "packages/server/src/adapters/claude-code-runtime/index.ts",
+        "packages/server/src/adapters/claude-code-runtime/sdk-config.ts",
+        "packages/server/src/adapters/claude-code-runtime/adapter-pool.ts",
+        "packages/server/src/adapters/claude-code-runtime/anthropic-bridge.ts",
+        "packages/server/src/adapters/claude-code-runtime/protocol-converter.ts",
+        "packages/server/src/adapters/claude-code-runtime/message-format.ts",
+        "packages/server/src/adapters/claude-code-runtime/types.ts",
         "packages/server/src/adapters/git.ts",
         "packages/server/src/ws/handler.ts",
         "packages/server/src/ws/connection-manager.ts",
         "packages/server/src/ws/terminal-handler.ts",
         "packages/server/src/storage/json-store.ts",
+        "packages/server/src/storage/workspace-store.ts",
+        "packages/server/src/storage/agent-store.ts",
+        "packages/server/src/storage/issue-store.ts",
+        "packages/server/src/storage/task-store.ts",
         "packages/server/src/storage/llm-store.ts",
+        "packages/server/src/storage/usage.ts",
         "packages/server/src/services/agent.ts",
         "packages/server/src/services/workspace.ts",
-        "packages/server/src/routes/agent.ts",
-        "packages/server/src/routes/llm.ts"
+        "packages/server/src/services/workspace-prompt.ts",
+        "packages/server/src/services/builtin-tools.ts",
+        "packages/server/src/services/issue-comment.ts",
+        "packages/server/src/services/tool-detail.ts",
+        "packages/server/src/services/issue.ts",
+        "packages/server/src/services/task.ts",
+        "packages/server/src/services/llm-model-config.ts",
+        "packages/server/src/services/auth-store.ts",
+        "packages/server/src/services/notification-hub/"
       ],
       "claudeMd": "packages/server/CLAUDE.md",
       "coverage": {
-        "scanned": 37,
-        "total": 37,
+        "scanned": 70,
+        "total": 70,
         "percentage": 100,
         "gaps": []
       }
@@ -148,7 +240,7 @@
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（IDE 布局 + 编辑器 + 终端 + TipTap 聊天 + Git + Agent 管理）",
+      "role": "Next.js 前端 SPA（登录 + 工作空间管理 + 用量 Dashboard + 项目设置 + 服务器切换 + IDE 布局 + 编辑器 + 终端 + 结构化 AI 消息渲染 + TipTap 聊天 + Git + Agent 管理 + 移动端适配）",
       "entry": "src/app/layout.tsx",
       "types": [],
       "api": [],
@@ -156,45 +248,77 @@
       "importantPaths": [
         "packages/web/src/app/page.tsx",
         "packages/web/src/app/layout.tsx",
+        "packages/web/src/app/login/page.tsx",
+        "packages/web/src/app/workspaces/page.tsx",
         "packages/web/src/app/workspace/[id]/page.tsx",
         "packages/web/src/app/api/upload/route.ts",
+        "packages/web/src/app/api/[...path]/route.ts",
+        "packages/web/src/components/auth-guard.tsx",
+        "packages/web/src/components/app-shell.tsx",
         "packages/web/src/components/layout/workspace-shell.tsx",
         "packages/web/src/components/layout/workspace-tabs.tsx",
+        "packages/web/src/components/layout/mobile-tab-bar.tsx",
         "packages/web/src/components/editor/editor-panel.tsx",
+        "packages/web/src/components/editor/file-icon.tsx",
+        "packages/web/src/components/editor/code-editor.tsx",
         "packages/web/src/components/terminal/terminal-panel.tsx",
         "packages/web/src/components/chat/chat-panel.tsx",
         "packages/web/src/components/chat/chat-input.tsx",
+        "packages/web/src/components/chat/message-parts.tsx",
+        "packages/web/src/components/chat/message-navigator.tsx",
+        "packages/web/src/components/chat/message-item.tsx",
+        "packages/web/src/components/chat/chain-of-thought.tsx",
+        "packages/web/src/components/chat/readonly-code-block.tsx",
+        "packages/web/src/components/chat/ask-user-question.tsx",
+        "packages/web/src/components/chat/subagent.tsx",
+        "packages/web/src/components/chat/attachments.tsx",
+        "packages/web/src/components/common/agent-icon.tsx",
+        "packages/web/src/components/common/user-icon.tsx",
         "packages/web/src/components/composer/composer-editor.tsx",
         "packages/web/src/components/sidebar/app-sidebar.tsx",
         "packages/web/src/components/sidebar/agent-dialog.tsx",
         "packages/web/src/components/sidebar/models-dialog.tsx",
         "packages/web/src/components/sidebar/providers-dialog.tsx",
-        "packages/web/src/components/git/git-panel.tsx",
+        "packages/web/src/components/sidebar/server-switcher.tsx",
+        "packages/web/src/components/settings/project-settings-panel.tsx",
+        "packages/web/src/components/issue/issue-list.tsx",
+        "packages/web/src/components/issue/issue-detail.tsx",
+        "packages/web/src/components/issue/edit-issue-dialog.tsx",
+        "packages/web/src/components/issue/create-issue-dialog.tsx",
+        "packages/web/src/components/git/diff-viewer.tsx",
+        "packages/web/src/components/git/git-changes-panel.tsx",
+        "packages/web/src/components/git/git-commits-panel.tsx",
         "packages/web/src/components/home/home-page.tsx",
+        "packages/web/src/components/home/usage-dashboard.tsx",
+        "packages/web/src/components/workspaces/workspaces-page.tsx",
         "packages/web/src/components/workspace/workspace-dialog.tsx",
+        "packages/web/src/components/ui/folder-picker.tsx",
+        "packages/web/src/stores/agent.ts",
         "packages/web/src/stores/editor.ts",
         "packages/web/src/stores/terminal.ts",
         "packages/web/src/stores/channel.ts",
         "packages/web/src/stores/issue.ts",
         "packages/web/src/stores/task.ts",
         "packages/web/src/stores/git.ts",
+        "packages/web/src/stores/workspace.ts",
+        "packages/web/src/stores/llm.ts",
+        "packages/web/src/stores/mobile-panel.ts",
         "packages/web/src/lib/ws.ts",
+        "packages/web/src/lib/auth.ts",
+        "packages/web/src/lib/server.ts",
         "packages/web/src/lib/agent-members.ts",
+        "packages/web/src/lib/monaco-loader.ts",
+        "packages/web/src/proxy.ts",
         "packages/web/next.config.ts",
         "packages/web/DESIGN.md",
         "packages/web/AGENTS.md"
       ],
       "claudeMd": "packages/web/CLAUDE.md",
       "coverage": {
-        "scanned": 90,
-        "total": 95,
-        "percentage": 95,
-        "gaps": [
-          "packages/web/src/app/timeline-component-05/page.tsx（辅助页面，未读取）",
-          "packages/web/src/app/dashboard-shell-01/page.tsx（辅助页面，未读取）",
-          "packages/web/src/components/shadcn-studio/blocks/（7个参考组件块，未逐一读取）",
-          "packages/web/src/components/timeline/（版本时间线组件，未逐一读取）"
-        ]
+        "scanned": 141,
+        "total": 141,
+        "percentage": 100,
+        "gaps": []
       }
     }
   ],
@@ -202,6 +326,34 @@
     {
       "path": "docs/agent-lifecycle.md",
       "description": "Agent Preset 创建、更新、工作空间导入、运行时工作目录行为的详细文档"
+    },
+    {
+      "path": "docs/issue-agent-automation.md",
+      "description": "Issue 自动化编排链路详细文档（Scheduler -> Planner -> TaskCreator -> Executor -> Reviewer）"
+    },
+    {
+      "path": "docs/codex-runtime-limitations.md",
+      "description": "Codex 运行时的已知限制、解决方法和排障清单"
+    },
+    {
+      "path": "docs/anthropic-bridge.md",
+      "description": "Anthropic Messages 到 OpenAI Chat/Responses 的协议中转说明"
+    },
+    {
+      "path": "docs/function-call-tools.md",
+      "description": "服务器端 Function Call 工具层文档"
+    },
+    {
+      "path": "docs/ai-message-rendering.md",
+      "description": "AI 消息结构化渲染链路文档（MessagePart/chain/tool-detail/diff）"
+    },
+    {
+      "path": "docs/model-usage-accounting.md",
+      "description": "模型用量统计与计费流程文档（Token 提取、SQLite 存储、费用计算、Dashboard API、前端展示）"
+    },
+    {
+      "path": "docs/bot-notification-workflow.md",
+      "description": "Bot 与 Workspace 通知流程文档（飞书/企微适配器、Bot Agent、命令系统、平台扩展指南）"
     },
     {
       "path": "PRD.md",
@@ -221,26 +373,101 @@
     "pnpm-workspace.yaml",
     ".gitignore",
     "PRD.md",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "Dockerfile.server",
+    "Dockerfile.web"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 143,
-    "scannedFiles": 138,
-    "coveragePercentage": 97,
+    "totalSourceFiles": 223,
+    "scannedFiles": 223,
+    "coveragePercentage": 100,
     "ignoredDirectories": [
       "node_modules",
       ".next",
       "dist",
       ".git",
-      ".agent-spaces-data"
+      ".agent-spaces-data",
+      "packages/server/public"
     ],
     "truncated": false,
-    "gapDetails": [
-      "web 模块有 5 个辅助/参考页面未读取（timeline-component-05, dashboard-shell-01, shadcn-studio blocks）",
-      "这些为 UI 参考组件，非核心功能路径"
-    ]
+    "gapDetails": [],
+    "moduleBreakdown": {
+      "shared": { "total": 12, "scanned": 12, "percentage": 100 },
+      "server": { "total": 70, "scanned": 70, "percentage": 100 },
+      "web": { "total": 141, "scanned": 141, "percentage": 100 }
+    }
+  },
+  "changesFromPrevious": {
+    "previousVersion": "1.2.0",
+    "previousTimestamp": "2026-05-04T21:04:42+08:00",
+    "newFiles": {
+      "server": [
+        "src/agents/commit-agent.ts",
+        "src/agents/issue-agent-runner.ts",
+        "src/agents/issue-retry.ts (not found, referenced in app.ts)",
+        "src/services/notification-hub/ (12 files)",
+        "src/services/auth-store.ts",
+        "src/services/workspace-prompt.ts",
+        "src/services/llm-model-config.ts",
+        "src/middleware/auth.ts",
+        "src/routes/auth.ts",
+        "src/routes/folder.ts",
+        "src/storage/workspace-store.ts",
+        "src/storage/usage.ts",
+        "src/storage/agent-store.ts (rewritten to SQLite)",
+        "src/types/node-sqlite.d.ts",
+        "src/adapters/claude-code-runtime/ (7 files, split from single file)"
+      ],
+      "web": [
+        "src/app/login/page.tsx",
+        "src/app/workspaces/page.tsx",
+        "src/stores/workspace.ts",
+        "src/stores/llm.ts",
+        "src/stores/mobile-panel.ts",
+        "src/lib/auth.ts",
+        "src/lib/server.ts",
+        "src/lib/monaco-loader.ts",
+        "src/components/auth-guard.tsx",
+        "src/components/app-shell.tsx",
+        "src/components/sidebar/server-switcher.tsx",
+        "src/components/settings/project-settings-panel.tsx",
+        "src/components/home/usage-dashboard.tsx",
+        "src/components/workspaces/workspaces-page.tsx",
+        "src/components/common/user-icon.tsx",
+        "src/components/layout/mobile-tab-bar.tsx",
+        "src/components/git/git-changes-panel.tsx",
+        "src/components/git/git-commits-panel.tsx",
+        "src/components/git/git-remote-dialog.tsx",
+        "src/components/git/git-not-initialized.tsx",
+        "src/components/issue/create-issue-dialog.tsx",
+        "src/components/issue/comment-navigator.tsx",
+        "src/components/ui/calendar.tsx",
+        "src/components/ui/slider.tsx",
+        "src/components/ui/context-menu.tsx",
+        "src/components/ui/folder-picker.tsx",
+        "src/components/ui/switch.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/popover.tsx",
+        "src/proxy.ts",
+        "src/types/react-virtualized.d.ts"
+      ],
+      "docs": [
+        "docs/model-usage-accounting.md",
+        "docs/bot-notification-workflow.md"
+      ]
+    },
+    "typeChanges": {
+      "shared/workspace.ts": "Added WorkspaceNotificationSettings, NotificationProvider, NotificationEventKey; AgentConfig.role added 'commit' | 'bot'",
+      "shared/agent.ts": "Added AgentUsageRecord, AgentUsageDashboard",
+      "shared/llm.ts": "Added LLMModelCost, LLMThinkingEffort"
+    }
   },
   "nextSteps": {
-    "description": "全部核心模块已完整扫描，web 模块有少量 UI 参考组件未深读",
+    "description": "全部核心模块已完整扫描（223/223 文件，100% 覆盖率）。",
+    "suggestions": [
+      "notification-hub/bot-commands.ts 的命令 registry 重构（当前为 switch-case，建议抽成 BotCommand 接口数组）",
+      "ws/handler.ts 1342 行的进一步模块化拆分",
+      "新增测试覆盖优先级：auth middleware、notification-hub adapters、SQLite agent-store CRUD"
+    ]
   }
 }

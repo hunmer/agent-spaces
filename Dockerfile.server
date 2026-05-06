@@ -1,0 +1,51 @@
+FROM node:22 AS builder
+
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm install -g pnpm && \
+    pnpm config set registry https://registry.npmmirror.com
+
+WORKDIR /app
+
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/shared/ packages/shared/
+COPY packages/server/ packages/server/
+COPY packages/web/ packages/web/
+COPY scripts/ scripts/
+
+ENV CI=true
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN printf '\nonlyBuiltDependencies[]=esbuild\nonlyBuiltDependencies[]=sharp\nonlyBuiltDependencies[]=node-pty\nonlyBuiltDependencies[]=protobufjs\n' >> .npmrc && \
+    pnpm install --frozen-lockfile && \
+    pnpm --filter @agent-spaces/shared build && \
+    pnpm --filter @agent-spaces/server build && \
+    pnpm --filter @agent-spaces/web build && \
+    node scripts/copy-web.mjs && \
+    node scripts/copy-package.mjs
+
+# Prune dev deps: replace workspace:* with file: reference first
+RUN node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('packages/server/package.json','utf8'));p.dependencies['@agent-spaces/shared']='file:../shared';fs.writeFileSync('packages/server/package.json',JSON.stringify(p,null,2))" && \
+    pnpm prune --prod && \
+    pnpm store prune && \
+    rm -rf packages/shared/src packages/server/src packages/web/src packages/web/out packages/web/.next
+
+FROM node:22
+
+WORKDIR /app/packages/server
+
+COPY --from=builder /app/packages/server/dist ./dist
+COPY --from=builder /app/packages/server/public ./public
+COPY --from=builder /app/packages/server/web ./web
+COPY --from=builder /app/packages/server/dist/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/shared/dist ../shared/dist
+COPY --from=builder /app/packages/shared/package.json ../shared/
+
+ENV PORT=3100
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
+ENV AGENT_SPACES_DATA_DIR=/root/.agent-spaces-data
+
+EXPOSE 3100
+
+CMD ["node", "dist/app.js"]

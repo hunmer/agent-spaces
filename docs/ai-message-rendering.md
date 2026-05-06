@@ -120,6 +120,8 @@ chain 构造和工具调用解析集中在：
   - `kind: "message"`：AI 中间输出，用 Markdown 显示在 chain 内。
   - `kind: "tool"` 或未设置 kind：工具调用，显示精简摘要和可懒加载详情。
 - 最后一段连续的非工具 AI 输出会合并为最终结论，只进入 `text` part，不再加入 chain，避免流式恢复时只显示最新一行。
+- 连续的非工具 AI 中间输出会先按块合并，再作为一个 `kind: "message"` chain step 展示，避免 Markdown 标题、表格行或列表被拆成多个 AI message。
+- agent 完成后，如果 runtime 返回了更完整的最终 result，而实时输出里只有分片文本，会把最终 result 追加进解析输入并由去重逻辑处理，保证最终回答以完整 Markdown 块进入 `text` part。
 - 如果 runtime 重复追加同一段最终结论，后端会按内容归一化去重，避免 chain 最后一条 AI message 和最终 Markdown 重复。
 - 普通工具调用会被压缩成精简摘要，例如 `Read timer.js`、`Update 2 todos`、`Run command`，不会直接展示原始 JSON 参数。
 - Read/Edit/Write 等文件工具会把 workspace 内绝对路径归一为相对路径；前端点击文件路径时调用 `useEditorStore.openFile(workspaceId, path)`，从而在 editor tabs 中打开文件。

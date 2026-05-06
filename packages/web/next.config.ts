@@ -6,6 +6,11 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const nextConfig: NextConfig = {
+  output: "export",
+  allowedDevOrigins: [
+    "127.0.0.1",
+    "192.168.*.*",
+  ],
   turbopack: {
     root: monorepoRoot,
   },
@@ -30,18 +35,19 @@ const nextConfig: NextConfig = {
     return config;
   },
   async rewrites() {
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3100";
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:3100/api/:path*",
+        destination: `${serverUrl}/api/:path*`,
       },
       {
         source: "/ws",
-        destination: "http://localhost:3100/ws",
+        destination: `${serverUrl}/ws`,
       },
       {
         source: "/static/:path*",
-        destination: "http://localhost:3100/public/:path*",
+        destination: `${serverUrl}/public/:path*`,
       },
     ];
   },

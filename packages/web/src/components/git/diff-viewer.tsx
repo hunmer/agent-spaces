@@ -1,6 +1,10 @@
 "use client";
 
-import { DiffEditor } from "@monaco-editor/react";
+import "@/lib/monaco-loader";
+import { DiffEditor, type DiffOnMount } from "@monaco-editor/react";
+import { useEffect, useRef } from "react";
+import type { editor } from "monaco-editor";
+import { useTheme } from "@/components/theme-provider";
 
 interface DiffViewerProps {
   oldContent: string;
@@ -24,6 +28,22 @@ function detectLanguage(path: string): string | undefined {
 
 export function DiffViewer({ oldContent, newContent, path }: DiffViewerProps) {
   const language = detectLanguage(path);
+  const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+  const { resolvedTheme } = useTheme();
+
+  const handleMount: DiffOnMount = (editor) => {
+    editorRef.current = editor;
+  };
+
+  useEffect(() => {
+    return () => {
+      const editor = editorRef.current;
+      if (editor) {
+        editor.setModel(null);
+        editorRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -35,7 +55,8 @@ export function DiffViewer({ oldContent, newContent, path }: DiffViewerProps) {
           original={oldContent}
           modified={newContent}
           language={language}
-          theme="vs"
+          theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
+          onMount={handleMount}
           options={{
             readOnly: true,
             renderSideBySide: true,

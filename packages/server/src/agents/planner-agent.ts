@@ -4,17 +4,15 @@
 
 import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
-import * as messageService from '../services/message.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentConfig } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import * as wsService from '../services/workspace.js';
 import * as channelService from '../services/channel.js';
-import { broadcastToWorkspace } from '../ws/connection-manager.js';
-import { createAgentMessagePartsTracker } from './agent-message-parts.js';
 import { syncIssueTasksAfterPlanning } from './issue-task-controller.js';
-import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
+import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 
 export async function runPlanner(
   workspaceId: string,
@@ -29,7 +27,11 @@ export async function runPlanner(
 
   const plannerPreset = findIssueMemberAgent(workspaceId, issue, 'planner');
   if (!plannerPreset) {
-    console.warn(`[planner] no planner member found workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId}`);
+    console.warn(`[planner] no planner member found; continuing with task creator workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId}`);
+    await syncIssueTasksAfterPlanning(workspaceId, issueId, {
+      planSummary: '',
+      planOutput: [],
+    }, ctx);
     return;
   }
 
@@ -51,39 +53,26 @@ export async function runPlanner(
   // Use runtime to plan.
   const runtime = createRuntimeForPreset(plannerPreset);
   const workspace = wsService.getById(workspaceId);
+  const plannerWorkingDir = agentService.resolveWorkingDir(workspaceId, plannerPreset);
   const startTime = Date.now();
   const progress = createIssueAgentProgress(workspaceId, plannedIssue, plannerPreset, planner.id, {
     runtime: plannerPreset.runtimeKind,
     model: plannerPreset.modelId,
     phase: 'planner',
   });
-  const tracker = createAgentMessagePartsTracker({
+  const tracker = createIssueAgentProgressTracker({
     workspaceId,
-    channelId: plannedIssue.channelId,
-    messageId: progress.message.id,
+    issue: plannedIssue,
+    progress,
+    agentSessionId: planner.id,
     workspaceRoot: workspace?.boundDirs?.[0],
     onOutput: (line) => {
       ctx.broadcast('agent.output', { agentId: planner.id, data: line });
-      const live = messageService.updateMessage(workspaceId, plannedIssue.channelId, progress.message.id, {
-        content: tracker.output.join('\n') || progress.message.content,
-        status: 'streaming',
-        metadata: {
-          ...progress.message.metadata,
-          duration: Date.now() - startTime,
-        },
-        parts: tracker.buildParts({
-          sessionId: planner.id,
-          workspaceRoot: workspace?.boundDirs?.[0],
-          model: plannerPreset.modelId,
-          success: true,
-        }),
-      });
-      if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
     },
   });
   const planResult = await runtime.execute(
-    buildPlannerPrompt(plannedIssue, plannerPreset),
-    agentService.resolveWorkingDir(workspaceId, plannerPreset),
+    buildPlannerPrompt(plannedIssue, plannerPreset, plannerWorkingDir),
+    plannerWorkingDir,
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(plannerPreset.mcps),
@@ -110,13 +99,22 @@ export async function runPlanner(
       sessionId: planner.id,
       workspaceRoot: workspace?.boundDirs?.[0],
       model: plannerPreset.modelId,
+      usage: planResult.usage,
       success: planResult.success,
       error: planResult.error,
     }),
   });
 
   // Complete planner
-  agentService.complete(workspaceId, planner.id, planResult.success ? undefined : planResult.error || planResult.summary);
+  agentService.complete(workspaceId, planner.id, planResult.success ? undefined : planResult.error || planResult.summary, {
+    runtime: plannerPreset.runtimeKind,
+    model: plannerPreset.modelId,
+    summary: planResult.summary,
+    output: tracker.output.length ? tracker.output : planResult.output,
+    durationMs: Date.now() - startTime,
+    usage: planResult.usage,
+    costUsd: planResult.costUsd,
+  });
   ctx.broadcast('agent.completed', { agentId: planner.id, result: planResult });
 
   if (!planResult.success) {
@@ -152,13 +150,17 @@ function createRuntimeForPreset(preset: AgentConfig) {
     model: preset.modelId,
     apiKey: preset.apiKey,
     baseURL: preset.apiBase,
+    ...getThinkingRuntimeConfig(preset),
   });
 }
 
-function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, plannerPreset: AgentConfig): string {
+function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, plannerPreset: AgentConfig, workingDir: string): string {
   return [
     plannerPreset.systemPrompt?.trim(),
     'Before planning, call ViewCurrentChannelIssue to load the latest issue context and comments for this channel.',
+    `The current workspace working directory is: ${workingDir}`,
+    'Plan work as changes to files under this workspace unless the issue explicitly says otherwise.',
+    'For Bash commands that inspect files under this working directory, prefer relative paths instead of absolute paths.',
     '',
     'Current issue context:',
     `- Issue id: ${issue.id}`,

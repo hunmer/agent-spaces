@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -22,8 +22,9 @@ import {
   Pencil,
   Trash2,
   FolderSearch,
+  LayoutGrid,
 } from "lucide-react";
-import { Logo } from "@/components/sidebar/logo";
+import { UserIcon } from "@/components/common/user-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
 import { ModelsDialog } from "@/components/sidebar/models-dialog";
 import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
@@ -31,8 +32,9 @@ import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
-import { TeamSwitcher } from "@/components/sidebar/team-switcher";
+import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
+import { useWorkspaceStore } from "@/stores/workspace";
 import type { Workspace } from "@agent-spaces/shared";
 
 const sampleNotifications = [
@@ -59,19 +61,16 @@ const sampleNotifications = [
   },
 ];
 
-const teams = [
-  { id: "1", name: "Alpha Inc.", logo: Logo, plan: "Free" },
-  { id: "2", name: "Beta Corp.", logo: Logo, plan: "Free" },
-  { id: "3", name: "Gamma Tech", logo: Logo, plan: "Free" },
-];
-
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
   const isCollapsed = state === "collapsed";
   const isWorkspace = pathname.startsWith("/workspace/");
   const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const workspaces = useWorkspaceStore((store) => store.workspaces);
+  const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces);
+  const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace);
+  const removeWorkspace = useWorkspaceStore((store) => store.removeWorkspace);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [modelsDialogOpen, setModelsDialogOpen] = useState(false);
@@ -81,16 +80,16 @@ export function DashboardSidebar() {
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
   const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
 
-  const refreshWorkspaces = () => {
+  const refreshWorkspaces = useCallback(() => {
     fetch("/api/workspaces")
       .then((r) => r.json())
       .then(setWorkspaces)
       .catch(() => {});
-  };
+  }, [setWorkspaces]);
 
   useEffect(() => {
     refreshWorkspaces();
-  }, []);
+  }, [refreshWorkspaces]);
 
   const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
     if (editingWs) {
@@ -100,7 +99,7 @@ export function DashboardSidebar() {
         body: JSON.stringify(data),
       });
       const updated = await res.json();
-      setWorkspaces((prev) => prev.map((ws) => (ws.id === updated.id ? updated : ws)));
+      upsertWorkspace(updated);
     } else {
       const res = await fetch("/api/workspaces", {
         method: "POST",
@@ -108,13 +107,13 @@ export function DashboardSidebar() {
         body: JSON.stringify(data),
       });
       const ws = await res.json();
-      setWorkspaces((prev) => [...prev, ws]);
+      upsertWorkspace(ws);
     }
   };
 
   const handleDelete = async (ws: Workspace) => {
     await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
-    setWorkspaces((prev) => prev.filter((w) => w.id !== ws.id));
+    removeWorkspace(ws.id);
   };
 
   const openEditDialog = (ws: Workspace) => {
@@ -127,7 +126,7 @@ export function DashboardSidebar() {
     setWsDialogOpen(true);
   };
 
-  const dashboardRoutes: Route[] = useMemo(() => [
+  const dashboardRoutes: Route[] = [
     {
       id: "home",
       title: "Home",
@@ -141,29 +140,32 @@ export function DashboardSidebar() {
       link: "/",
       onAdd: openCreateDialog,
       addLabel: "Add Workspace",
-      subs: workspaces.map((ws) => ({
-        title: ws.name,
-        link: `/workspace/${ws.id}`,
-        icon: <FolderOpen className="size-4" />,
-        menuItems: [
-          {
-            label: "Edit",
-            icon: <Pencil className="size-3.5" />,
-            onClick: () => openEditDialog(ws),
-          },
-          {
-            label: "Open",
-            icon: <FolderSearch className="size-3.5" />,
-            onClick: () => fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' }),
-          },
-          {
-            label: "Delete",
-            icon: <Trash2 className="size-3.5" />,
-            variant: "destructive" as const,
-            onClick: () => handleDelete(ws),
-          },
-        ],
-      })),
+      manageLink: "/workspaces",
+      subs: [
+        ...workspaces.map((ws) => ({
+          title: ws.name,
+          link: `/workspace/${ws.id}`,
+          icon: <FolderOpen className="size-4" />,
+          menuItems: [
+            {
+              label: "Edit",
+              icon: <Pencil className="size-3.5" />,
+              onClick: () => openEditDialog(ws),
+            },
+            {
+              label: "Open",
+              icon: <FolderSearch className="size-3.5" />,
+              onClick: () => fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' }),
+            },
+            {
+              label: "Delete",
+              icon: <Trash2 className="size-3.5" />,
+              variant: "destructive" as const,
+              onClick: () => handleDelete(ws),
+            },
+          ],
+        })),
+      ],
     },
     {
       id: "settings",
@@ -177,29 +179,24 @@ export function DashboardSidebar() {
         { title: "Providers", link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
       ],
     },
-  ], [workspaces, setAgentDialogOpen]);
+  ];
 
   return (
     <Sidebar
       variant="floating"
       collapsible="icon"
-      className={cn(isWorkspace && "bg-[#f2f3f5]")}
+      className={cn(isWorkspace && "bg-[#f2f3f5] dark:bg-[#0f1117]")}
     >
       <SidebarHeader
         className={cn(
           "flex rounded-xl border border-border bg-card mx-2 mt-2 px-3 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
           isCollapsed
-            ? "flex-row items-center justify-between gap-y-4 md:flex-col md:items-start md:justify-start"
+            ? "flex-row items-center justify-between gap-y-4 md:flex-col md:items-center md:justify-center"
             : "flex-row items-center justify-between"
         )}
       >
         <a href="#" className="flex items-center gap-2">
-          <Logo className="h-8 w-8" />
-          {!isCollapsed && (
-            <span className="font-semibold text-black dark:text-white">
-              Spaces
-            </span>
-          )}
+          <UserIcon size={isCollapsed ? "sm" : "md"} />
         </a>
 
         <motion.div
@@ -220,7 +217,7 @@ export function DashboardSidebar() {
         <DashboardNavigation routes={dashboardRoutes} />
       </SidebarContent>
       <SidebarFooter className="mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <TeamSwitcher teams={teams} />
+        <ServerSwitcher />
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
