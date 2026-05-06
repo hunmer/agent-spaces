@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,10 +16,10 @@ import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAge
 
 import type { AgentConfig, Channel } from '@agent-spaces/shared';
 
-const channelTypeStatus: Record<Channel['type'], { label: string; status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
-  general: { label: 'General', status: 'online' },
-  issue: { label: 'Issue', status: 'degraded' },
-  agent: { label: 'Agent', status: 'maintenance' },
+const channelTypeStatus: Record<Channel['type'], { status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
+  general: { status: 'online' },
+  issue: { status: 'degraded' },
+  agent: { status: 'maintenance' },
 };
 
 interface ChannelInfoPanelProps {
@@ -29,6 +30,8 @@ interface ChannelInfoPanelProps {
 }
 
 export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: ChannelInfoPanelProps) {
+  const t = useTranslations('chat');
+  const tc = useTranslations('common');
   const { updateChannel, deleteChannel } = useChannelStore();
   const [editOpen, setEditOpen] = useState(false);
   const [memberInfoOpen, setMemberInfoOpen] = useState(false);
@@ -64,10 +67,10 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
       <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
         <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
           <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-            <Info className="size-3.5" />频道信息
+            <Info className="size-3.5" />{t('channel.info')}
           </TabsTrigger>
           <TabsTrigger value="members" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-            <Users className="size-3.5" />成员
+            <Users className="size-3.5" />{t('channel.members')}
           </TabsTrigger>
         </TabsList>
         <ScrollArea className="flex-1 min-h-0">
@@ -80,7 +83,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">#{channel.name}</p>
-                <p className="text-xs text-muted-foreground">类型：{typeConf.label}</p>
+                <p className="text-xs text-muted-foreground">{t('channel.type')} {t(`channel.${channel.type}`)}</p>
               </div>
               <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
                 <Pencil className="size-3.5" />
@@ -88,15 +91,15 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between py-1 border-b">
-                <span className="text-muted-foreground">频道 ID</span>
+                <span className="text-muted-foreground">{t('channel.channelId')}</span>
                 <span className="font-mono text-xs">{channel.id.slice(0, 8)}...</span>
               </div>
               <div className="flex justify-between py-1 border-b">
-                <span className="text-muted-foreground">成员数</span>
+                <span className="text-muted-foreground">{t('channel.memberCount')}</span>
                 <span>{channel.members.length}</span>
               </div>
               <div className="flex justify-between py-1 border-b">
-                <span className="text-muted-foreground">创建时间</span>
+                <span className="text-muted-foreground">{t('channel.createdAt')}</span>
                 <span>{new Date(channel.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
@@ -104,7 +107,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
 
           <TabsContent value="members" className="p-4 mt-0 space-y-1">
             {channel.members.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">暂无成员</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t('channel.noMembers')}</p>
             )}
             {channel.members.map((member) => (
               <MemberCard
@@ -121,7 +124,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
               className="w-full mt-2 text-xs text-muted-foreground"
               onClick={() => setAddMemberOpen(true)}
             >
-              <UserPlus className="size-3.5 mr-1" />添加成员
+              <UserPlus className="size-3.5 mr-1" />{t('channel.addMember')}
             </Button>
           </TabsContent>
         </ScrollArea>
@@ -135,7 +138,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
           className="w-full text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={() => setDeleteOpen(true)}
         >
-          <Trash2 className="size-3.5 mr-1" />删除频道
+          <Trash2 className="size-3.5 mr-1" />{t('channel.delete')}
         </Button>
       </div>
 
@@ -172,15 +175,15 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>删除频道</DialogTitle>
+            <DialogTitle>{t('channel.delete')}</DialogTitle>
             <DialogDescription>
-              确认删除频道 <strong>#{channel.name}</strong>？所有消息将被永久删除，此操作不可撤销。
+              {t('channel.deleteConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+            <DialogClose render={<Button variant="outline" />}>{tc('cancel')}</DialogClose>
             <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="size-3.5" />删除
+              <Trash2 className="size-3.5" />{tc('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

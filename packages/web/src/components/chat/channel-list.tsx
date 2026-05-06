@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen } from 'lucide-react';
@@ -19,10 +20,10 @@ import {
 
 import type {  Channel, Message } from '@agent-spaces/shared';
 
-const typeBadge: Record<Channel['type'], { label: string; className: string; icon: typeof Hash }> = {
-  general: { label: 'General', className: 'bg-muted text-muted-foreground', icon: Hash },
-  issue: { label: 'Issue', className: 'bg-amber-500/15 text-amber-600', icon: AlertCircle },
-  agent: { label: 'Agent', className: 'bg-blue-500/15 text-blue-600', icon: MessageCircle },
+const typeBadgeConfig: Record<Channel['type'], { className: string; icon: typeof Hash }> = {
+  general: { className: 'bg-muted text-muted-foreground', icon: Hash },
+  issue: { className: 'bg-amber-500/15 text-amber-600', icon: AlertCircle },
+  agent: { className: 'bg-blue-500/15 text-blue-600', icon: MessageCircle },
 };
 
 function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Message['status'] } | null {
@@ -37,6 +38,8 @@ interface ChannelListProps {
 }
 
 export function ChannelList({ workspaceId }: ChannelListProps) {
+  const t = useTranslations('chat');
+  const tc = useTranslations('common');
   const {
     channels, activeChannelId, messages,
     loadChannels, createChannel, updateChannel, setActiveChannel,
@@ -99,7 +102,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b">
-        <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Channels</span>
+        <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t('channel.general')}</span>
         <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setDialogOpen(true)}>
           <Plus className="h-3.5 w-3.5" />
         </Button>
@@ -111,18 +114,18 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
               <MessageCircle className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm font-medium">暂无频道</p>
-              <p className="text-xs text-muted-foreground mt-0.5">创建一个频道开始对话</p>
+              <p className="text-sm font-medium">{t('channel.noMembers')}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t('channel.create')}</p>
             </div>
             <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
               <Plus className="h-3.5 w-3.5 mr-1" />
-              添加频道
+              {tc('add')}
             </Button>
           </div>
         ) : null}
         {channels.map((ch) => {
           const preview = lastMsgPreview(messages[ch.id]);
-          const badge = typeBadge[ch.type];
+          const badge = typeBadgeConfig[ch.type];
           const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
           const agentMembers = ch.members.filter((m) => m !== 'user');
 
@@ -143,7 +146,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                 <div className="flex items-center gap-1.5">
                   <span className="truncate font-medium text-[13px]">{ch.name}</span>
                   <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
-                    {badge.label}
+                    {t(`channel.${ch.type}`)}
                   </Badge>
                   {isRunning && (
                     <span className="relative flex h-2 w-2">
@@ -158,18 +161,18 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                 {preview ? (
                   <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground/50 mt-0.5">暂无消息</p>
+                  <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
                 )}
               </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem onClick={() => handleEdit(ch)}>
                   <Pencil className="size-3.5" />
-                  编辑
+                  {tc('edit')}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => handleReveal(ch.id)}>
                   <FolderOpen className="size-3.5" />
-                  打开文件夹位置
+                  {tc('open')}
                 </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>

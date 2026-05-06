@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check, Clock } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -16,11 +17,12 @@ interface MessageItemProps {
 }
 
 export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageItemProps) {
+  const tc = useTranslations('common');
   const isUser = message.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
   const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
 
-  const senderName = isUser ? 'You' : (agent?.name || message.senderId);
+  const senderName = isUser ? tc('you') : (agent?.name || message.senderId);
   const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);

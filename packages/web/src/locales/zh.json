@@ -239,6 +239,25 @@
     "form": { "connection": "连接", "name": "名称", "namePlaceholder": "例如 Anthropic", "apiBase": "API 地址", "apiBasePlaceholder": "https://api.anthropic.com", "apiKey": "API 密钥", "apiKeyPlaceholder": "sk-..." }
   },
   "chat": {
+    "channel": {
+      "general": "通用",
+      "issue": "议题",
+      "agent": "Agent",
+      "edit": "编辑频道",
+      "create": "创建频道",
+      "selectType": "选择类型",
+      "addMember": "添加成员",
+      "info": "频道信息",
+      "members": "成员",
+      "type": "类型：",
+      "channelId": "频道 ID",
+      "memberCount": "成员数",
+      "createdAt": "创建时间",
+      "noMembers": "暂无成员",
+      "delete": "删除频道",
+      "deleteConfirm": "确认删除此频道？此操作不可撤销。",
+      "namePlaceholder": "频道名称"
+    },
     "channelType": { "general": "通用", "issue": "议题", "agent": "Agent" },
     "emptyState": "选择一个频道开始对话",
     "status": { "idle": "空闲中", "waitingForUser": "等待用户确认", "running": "运行中", "success": "成功", "error": "失败" },

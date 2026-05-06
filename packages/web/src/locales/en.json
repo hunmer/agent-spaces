@@ -239,6 +239,25 @@
     "form": { "connection": "Connection", "name": "Name", "namePlaceholder": "e.g. Anthropic", "apiBase": "API Base", "apiBasePlaceholder": "https://api.anthropic.com", "apiKey": "API Key", "apiKeyPlaceholder": "sk-..." }
   },
   "chat": {
+    "channel": {
+      "general": "General",
+      "issue": "Issue",
+      "agent": "Agent",
+      "edit": "Edit Channel",
+      "create": "Create Channel",
+      "selectType": "Select type",
+      "addMember": "Add Member",
+      "info": "Channel Info",
+      "members": "Members",
+      "type": "Type:",
+      "channelId": "Channel ID",
+      "memberCount": "Member count",
+      "createdAt": "Created",
+      "noMembers": "No members yet",
+      "delete": "Delete Channel",
+      "deleteConfirm": "Are you sure you want to delete this channel? This action cannot be undone.",
+      "namePlaceholder": "Channel name"
+    },
     "channelType": { "general": "General", "issue": "Issue", "agent": "Agent" },
     "emptyState": "Select a channel to start chatting",
     "status": { "idle": "Idle", "waitingForUser": "Waiting for confirmation", "running": "Running", "success": "Success", "error": "Failed" },

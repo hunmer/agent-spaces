@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +17,7 @@ import { getMemberDisplayName } from '@/lib/agent-members';
 
 import type { AgentConfig, Channel } from '@agent-spaces/shared';
 
-const channelTypeOptions = [
-  { value: 'general', label: 'General' },
-  { value: 'issue', label: 'Issue' },
-  { value: 'agent', label: 'Agent' },
-];
+// channelTypeOptions moved to component for i18n
 
 interface ChannelDialogProps {
   open: boolean;
@@ -32,6 +29,13 @@ interface ChannelDialogProps {
 }
 
 export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubmit }: ChannelDialogProps) {
+  const t = useTranslations('chat');
+  const tc = useTranslations('common');
+  const channelTypeOptions = [
+    { value: 'general', label: t('channel.general') },
+    { value: 'issue', label: t('channel.issue') },
+    { value: 'agent', label: t('channel.agent') },
+  ];
   const [name, setName] = useState('');
   const [type, setType] = useState<Channel['type']>('general');
   const [members, setMembers] = useState<string[]>([]);
@@ -76,44 +80,44 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{channel ? '编辑频道' : '创建频道'}</DialogTitle>
+          <DialogTitle>{channel ? t('channel.edit') : t('channel.create')}</DialogTitle>
           <DialogDescription>
-            {channel ? '修改频道名称、类型和成员' : '创建一个新的频道'}
+            {channel ? t('channel.edit') : t('channel.create')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">名称</label>
+            <label className="text-sm font-medium">{tc('name')}</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="channel-name"
+              placeholder={t('channel.namePlaceholder')}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">类型</label>
+            <label className="text-sm font-medium">{t('channel.type')}</label>
             <SearchSelect
               value={type}
               onChange={(v) => setType(v as Channel['type'])}
               options={channelTypeOptions}
               allowCustom={false}
-              placeholder="选择类型"
+              placeholder={t('channel.selectType')}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">成员</label>
+            <label className="text-sm font-medium">{t('channel.members')}</label>
             <div className="flex gap-1.5">
               <Input
                 value={memberInput}
                 onChange={(e) => setMemberInput(e.target.value)}
-                placeholder="添加成员"
+                placeholder={t('channel.addMember')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { e.preventDefault(); addMember(); }
                 }}
               />
               <Button type="button" variant="outline" size="sm" onClick={addMember}>
-                添加
+                {tc('add')}
               </Button>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -128,9 +132,9 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{tc('cancel')}</Button>
             <Button onClick={handleSubmit} disabled={!name.trim()}>
-              {channel ? '保存' : '创建'}
+              {channel ? tc('save') : tc('create')}
             </Button>
           </div>
         </div>
