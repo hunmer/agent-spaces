@@ -131,5 +131,70 @@
       "secretOptionalPlaceholder": "Secret (optional)",
       "newServer": "New Server"
     }
+  },
+  "home": {
+    "table": {
+      "agent": "Agent",
+      "model": "Model",
+      "modelUnknown": "unknown",
+      "summary": "Summary",
+      "cost": "Cost",
+      "total": "Total:",
+      "cacheHit": "Cache hit:",
+      "tokensIn": "in",
+      "tokensOut": "out",
+      "status": "Status",
+      "duration": "Duration",
+      "time": "Time",
+      "emptyMessage": "Usage appears here after an agent run completes.",
+      "noResults": "No results."
+    },
+    "period": {
+      "today": "Today",
+      "7d": "7 days",
+      "30d": "30 days",
+      "1y": "1 year",
+      "custom": "Custom"
+    },
+    "title": "Agent Usage",
+    "metric": {
+      "agentRuns": "Agent Runs",
+      "agentRunsHelper": "completed runs",
+      "tokensUsed": "Tokens Used",
+      "tokensIn": "in",
+      "totalCost": "Total Cost",
+      "totalCostHelper": "estimated spend",
+      "avgDuration": "Avg Duration",
+      "avgDurationHelper": "per run"
+    },
+    "chart": {
+      "dailyTokenUsage": "Daily Token Usage",
+      "input": "Input",
+      "output": "Output",
+      "costByModel": "Cost by Model",
+      "noUsageRecords": "No completed usage records yet.",
+      "tokenDistribution": "Token Distribution",
+      "costDistribution": "Cost Distribution",
+      "tokens": "tokens",
+      "totalCost": "total cost",
+      "noCostData": "No cost data yet.",
+      "noTokenData": "No token data"
+    },
+    "pagination": {
+      "showing": "Showing",
+      "to": "to",
+      "of": "of",
+      "entries": "entries",
+      "prevAriaLabel": "Go to previous page",
+      "previous": "Previous",
+      "nextAriaLabel": "Go to next page",
+      "next": "Next"
+    },
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago",
+      "daysAgo": "{n}d ago"
+    }
   }
 }

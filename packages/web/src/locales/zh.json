@@ -131,5 +131,70 @@
       "secretOptionalPlaceholder": "密钥（可选）",
       "newServer": "新服务器"
     }
+  },
+  "home": {
+    "table": {
+      "agent": "Agent",
+      "model": "模型",
+      "modelUnknown": "未知",
+      "summary": "摘要",
+      "cost": "费用",
+      "total": "总计：",
+      "cacheHit": "缓存命中：",
+      "tokensIn": "输入",
+      "tokensOut": "输出",
+      "status": "状态",
+      "duration": "耗时",
+      "time": "时间",
+      "emptyMessage": "Agent 运行完成后，使用记录将显示在此处。",
+      "noResults": "暂无结果。"
+    },
+    "period": {
+      "today": "今日",
+      "7d": "7 天",
+      "30d": "30 天",
+      "1y": "1 年",
+      "custom": "自定义"
+    },
+    "title": "Agent 用量",
+    "metric": {
+      "agentRuns": "Agent 运行次数",
+      "agentRunsHelper": "已完成运行",
+      "tokensUsed": "Token 用量",
+      "tokensIn": "输入",
+      "totalCost": "总费用",
+      "totalCostHelper": "预估花费",
+      "avgDuration": "平均耗时",
+      "avgDurationHelper": "每次运行"
+    },
+    "chart": {
+      "dailyTokenUsage": "每日 Token 用量",
+      "input": "输入",
+      "output": "输出",
+      "costByModel": "按模型费用",
+      "noUsageRecords": "暂无已完成的用量记录。",
+      "tokenDistribution": "Token 分布",
+      "costDistribution": "费用分布",
+      "tokens": "tokens",
+      "totalCost": "总费用",
+      "noCostData": "暂无费用数据。",
+      "noTokenData": "暂无 Token 数据"
+    },
+    "pagination": {
+      "showing": "显示",
+      "to": "至",
+      "of": "共",
+      "entries": "条",
+      "prevAriaLabel": "上一页",
+      "previous": "上一页",
+      "nextAriaLabel": "下一页",
+      "next": "下一页"
+    },
+    "time": {
+      "justNow": "刚刚",
+      "minutesAgo": "{n} 分钟前",
+      "hoursAgo": "{n} 小时前",
+      "daysAgo": "{n} 天前"
+    }
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useTranslations } from 'next-intl'
 import { ArrowDown, ArrowUp, ChevronLeftIcon, ChevronRightIcon, Clock3, Cpu, DollarSign, TrendingUp, Zap, type LucideIcon } from "lucide-react"
 import type { ColumnDef, PaginationState } from "@tanstack/react-table"
 import {
@@ -52,131 +53,143 @@ function getModelIconUrl(model?: string): string {
   return ''
 }
 
-// ── table columns ──
-
-const columns: ColumnDef<AgentUsageRecord>[] = [
-  {
-    accessorKey: 'role',
-    header: 'Agent',
-    cell: ({ row }) => {
-      const { role, runtime } = row.original
-      return (
-        <div className="flex flex-col gap-0.5">
-          <span className="font-medium text-xs capitalize">{role}</span>
-          {runtime && <span className="text-muted-foreground text-[10px]">{runtime}</span>}
-        </div>
-      )
-    }
-  },
-  {
-    accessorKey: 'model',
-    header: 'Model',
-    cell: ({ row }) => {
-      const model = row.original.model
-      const iconUrl = getModelIconUrl(model)
-      return (
-        <div className="flex items-center gap-2">
-          {iconUrl ? (
-            <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
-          ) : (
-            <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold", textColorClass(model ?? '?'))}>
-              {model?.charAt(0).toUpperCase() ?? '?'}
-            </span>
-          )}
-          <span className="truncate text-xs max-w-40">{model || 'unknown'}</span>
-        </div>
-      )
-    }
-  },
-  {
-    accessorKey: 'summary',
-    header: 'Summary',
-    cell: ({ row }) => (
-      <span className="line-clamp-2 text-xs text-muted-foreground max-w-64">
-        {row.original.summary || '—'}
-      </span>
-    )
-  },
-  {
-    accessorKey: 'totalCostUsd',
-    header: 'Cost',
-    cell: ({ row }) => {
-      const { inputCostUsd, outputCostUsd, totalCostUsd } = row.original
-      return (
-        <div className="flex flex-col gap-0.5 font-mono text-xs tabular-nums">
-          <span>{formatCurrency(totalCostUsd)}</span>
-          <Tooltip>
-            <TooltipTrigger render={<span className="text-muted-foreground text-[10px] cursor-default" />}>
-                {formatTokens(row.original.inputTokens)} in / {formatTokens(row.original.outputTokens)} out
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              Total: {formatTokens(row.original.totalTokens)} · Cache hit: {row.original.inputTokens > 0 ? Math.round((row.original.cachedInputTokens / row.original.inputTokens) * 100) : 0}%
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      )
-    }
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => {
-      const status = row.original.status
-      const colorMap: Record<string, string> = {
-        completed: 'bg-emerald-500/10 text-emerald-600',
-        active: 'bg-blue-500/10 text-blue-600',
-        idle: 'bg-muted text-muted-foreground',
-        blocked: 'bg-amber-500/10 text-amber-600',
-        crashed: 'bg-red-500/10 text-red-600',
-      }
-      return (
-        <Badge className={cn('rounded-sm px-1.5 text-[10px] capitalize', colorMap[status] ?? 'bg-muted text-muted-foreground')}>
-          {status}
-        </Badge>
-      )
-    }
-  },
-  {
-    accessorKey: 'durationMs',
-    header: 'Duration',
-    cell: ({ row }) => {
-      const { startedAt, completedAt } = row.original
-      const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime()
-      return <span className="font-mono text-xs tabular-nums">{formatDuration(Number.isFinite(ms) && ms > 0 ? ms : 0)}</span>
-    }
-  },
-  {
-    accessorKey: 'completedAt',
-    header: 'Time',
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-xs">{formatRelative(row.original.completedAt)}</span>
-    )
-  },
-]
-
 // ── period types ──
 
 type PeriodKey = 'today' | '7d' | '30d' | '1y' | 'custom'
 
-const PERIOD_OPTIONS: Array<{ key: PeriodKey; label: string; days: number }> = [
-  { key: 'today', label: '今日', days: 1 },
-  { key: '7d', label: '7 天', days: 7 },
-  { key: '30d', label: '30 天', days: 30 },
-  { key: '1y', label: '1 年', days: 365 },
+const PERIOD_KEYS: Array<{ key: PeriodKey; days: number }> = [
+  { key: 'today', days: 1 },
+  { key: '7d', days: 7 },
+  { key: '30d', days: 30 },
+  { key: '1y', days: 365 },
 ]
 
 // ── main component ──
 
 export function UsageDashboard() {
+  const t = useTranslations('home')
   const [period, setPeriod] = useState<PeriodKey>('30d')
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | undefined>()
   const [data, setData] = useState<AgentUsageDashboardData | null>(null)
+
+  const formatRelative = useCallback((value: string) => {
+    const delta = Date.now() - new Date(value).getTime()
+    if (!Number.isFinite(delta) || delta < 0) return t('time.justNow')
+    const minutes = Math.floor(delta / 60_000)
+    if (minutes < 1) return t('time.justNow')
+    if (minutes < 60) return t('time.minutesAgo', { n: minutes })
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return t('time.hoursAgo', { n: hours })
+    return t('time.daysAgo', { n: Math.floor(hours / 24) })
+  }, [t])
+
+  // ── table columns (needs t) ──
+
+  const columns: ColumnDef<AgentUsageRecord>[] = [
+    {
+      accessorKey: 'role',
+      header: t('table.agent'),
+      cell: ({ row }) => {
+        const { role, runtime } = row.original
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium text-xs capitalize">{role}</span>
+            {runtime && <span className="text-muted-foreground text-[10px]">{runtime}</span>}
+          </div>
+        )
+      }
+    },
+    {
+      accessorKey: 'model',
+      header: t('table.model'),
+      cell: ({ row }) => {
+        const model = row.original.model
+        const iconUrl = getModelIconUrl(model)
+        return (
+          <div className="flex items-center gap-2">
+            {iconUrl ? (
+              <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
+            ) : (
+              <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold", textColorClass(model ?? '?'))}>
+                {model?.charAt(0).toUpperCase() ?? '?'}
+              </span>
+            )}
+            <span className="truncate text-xs max-w-40">{model || t('table.modelUnknown')}</span>
+          </div>
+        )
+      }
+    },
+    {
+      accessorKey: 'summary',
+      header: t('table.summary'),
+      cell: ({ row }) => (
+        <span className="line-clamp-2 text-xs text-muted-foreground max-w-64">
+          {row.original.summary || '—'}
+        </span>
+      )
+    },
+    {
+      accessorKey: 'totalCostUsd',
+      header: t('table.cost'),
+      cell: ({ row }) => {
+        const { inputCostUsd, outputCostUsd, totalCostUsd } = row.original
+        return (
+          <div className="flex flex-col gap-0.5 font-mono text-xs tabular-nums">
+            <span>{formatCurrency(totalCostUsd)}</span>
+            <Tooltip>
+              <TooltipTrigger render={<span className="text-muted-foreground text-[10px] cursor-default" />}>
+                  {formatTokens(row.original.inputTokens)} {t('table.tokensIn')} / {formatTokens(row.original.outputTokens)} {t('table.tokensOut')}
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {t('table.total')} {formatTokens(row.original.totalTokens)} · {t('table.cacheHit')} {row.original.inputTokens > 0 ? Math.round((row.original.cachedInputTokens / row.original.inputTokens) * 100) : 0}%
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      }
+    },
+    {
+      accessorKey: 'status',
+      header: t('table.status'),
+      cell: ({ row }) => {
+        const status = row.original.status
+        const colorMap: Record<string, string> = {
+          completed: 'bg-emerald-500/10 text-emerald-600',
+          active: 'bg-blue-500/10 text-blue-600',
+          idle: 'bg-muted text-muted-foreground',
+          blocked: 'bg-amber-500/10 text-amber-600',
+          crashed: 'bg-red-500/10 text-red-600',
+        }
+        return (
+          <Badge className={cn('rounded-sm px-1.5 text-[10px] capitalize', colorMap[status] ?? 'bg-muted text-muted-foreground')}>
+            {status}
+          </Badge>
+        )
+      }
+    },
+    {
+      accessorKey: 'durationMs',
+      header: t('table.duration'),
+      cell: ({ row }) => {
+        const { startedAt, completedAt } = row.original
+        const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime()
+        return <span className="font-mono text-xs tabular-nums">{formatDuration(Number.isFinite(ms) && ms > 0 ? ms : 0)}</span>
+      }
+    },
+    {
+      accessorKey: 'completedAt',
+      header: t('table.time'),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs">{formatRelative(row.original.completedAt)}</span>
+      )
+    },
+  ]
 
   const fetchDays = useCallback(() => {
     if (period === 'custom' && customRange) {
       return differenceInDays(customRange.to, customRange.from) + 1
     }
-    return PERIOD_OPTIONS.find(p => p.key === period)?.days ?? 30
+    return PERIOD_KEYS.find(p => p.key === period)?.days ?? 30
   }, [period, customRange])
 
   useEffect(() => {
@@ -206,16 +219,16 @@ export function UsageDashboard() {
   return (
     <Card className="col-span-full gap-0 overflow-hidden rounded-lg py-0">
       <div className="flex items-center gap-3 border-b px-4 py-3">
-        <span className="font-medium text-sm">Agent Usage</span>
+        <span className="font-medium text-sm">{t('title')}</span>
         <div className="flex items-center gap-1">
-          {PERIOD_OPTIONS.map(opt => (
+          {PERIOD_KEYS.map(opt => (
             <Badge
               key={opt.key}
               variant={period === opt.key ? 'default' : 'secondary'}
               className="h-5 cursor-pointer rounded-full font-normal text-[10px] transition-colors"
               onClick={() => { setPeriod(opt.key); setCustomRange(undefined) }}
             >
-              {opt.label}
+              {t(`period.${opt.key === '7d' ? '7d' : opt.key === '30d' ? '30d' : opt.key === '1y' ? '1y' : opt.key}`)}
             </Badge>
           ))}
           <Popover>
@@ -224,7 +237,7 @@ export function UsageDashboard() {
                 variant={period === 'custom' ? 'default' : 'secondary'}
                 className="h-5 cursor-pointer rounded-full font-normal text-[10px] transition-colors"
               >
-                自定义
+                {t('period.custom')}
               </Badge>
             } />
             <PopoverContent className="w-auto p-0" align="start">
@@ -246,19 +259,19 @@ export function UsageDashboard() {
       </div>
 
       <div className="grid grid-cols-2 border-b sm:grid-cols-4">
-        <Metric label="Agent Runs" value={formatNumber(totals.requests)} helper="completed runs" icon={Zap} />
-        <Metric label="Tokens Used" value={formatTokens(totals.totalTokens)} helper={`${formatTokens(totals.inputTokens)} in`} icon={Cpu} />
-        <Metric label="Total Cost" value={formatCurrency(totals.totalCostUsd)} helper="estimated spend" icon={DollarSign} />
-        <Metric label="Avg Duration" value={formatDuration(totals.avgDurationMs)} helper="per run" icon={Clock3} last />
+        <Metric label={t('metric.agentRuns')} value={formatNumber(totals.requests)} helper={t('metric.agentRunsHelper')} icon={Zap} totalCostLabel={t('metric.totalCost')} />
+        <Metric label={t('metric.tokensUsed')} value={formatTokens(totals.totalTokens)} helper={`${formatTokens(totals.inputTokens)} ${t('metric.tokensIn')}`} icon={Cpu} totalCostLabel={t('metric.totalCost')} />
+        <Metric label={t('metric.totalCost')} value={formatCurrency(totals.totalCostUsd)} helper={t('metric.totalCostHelper')} icon={DollarSign} totalCostLabel={t('metric.totalCost')} />
+        <Metric label={t('metric.avgDuration')} value={formatDuration(totals.avgDurationMs)} helper={t('metric.avgDurationHelper')} icon={Clock3} last totalCostLabel={t('metric.totalCost')} />
       </div>
 
       <div className="grid border-b lg:grid-cols-3">
         <div className="border-b p-4 lg:col-span-2 lg:border-r lg:border-b-0">
           <div className="mb-3 flex items-center justify-between">
-            <span className="font-medium text-xs">Daily Token Usage</span>
+            <span className="font-medium text-xs">{t('chart.dailyTokenUsage')}</span>
             <div className="flex items-center gap-3">
-              <Legend className="bg-foreground" label="Input" />
-              <Legend className="bg-foreground/40" label="Output" />
+              <Legend className="bg-foreground" label={t('chart.input')} />
+              <Legend className="bg-foreground/40" label={t('chart.output')} />
             </div>
           </div>
           <div className="flex h-[132px] items-end gap-2 sm:gap-3">
@@ -279,15 +292,15 @@ export function UsageDashboard() {
                 </div>
               )
             })}
-            {daily.length === 0 ? <EmptyBars /> : null}
+            {daily.length === 0 ? <EmptyBars label={t('chart.noTokenData')} /> : null}
           </div>
         </div>
 
         <div className="p-4">
-          <span className="font-medium text-xs">Cost by Model</span>
+          <span className="font-medium text-xs">{t('chart.costByModel')}</span>
           <div className="mt-3 space-y-2.5">
             {byModel.length === 0 ? (
-              <p className="text-muted-foreground text-xs">No completed usage records yet.</p>
+              <p className="text-muted-foreground text-xs">{t('chart.noUsageRecords')}</p>
             ) : byModel.map((item, index) => (
               <div key={item.model} className="rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
                 <div className="flex items-center justify-between gap-3">
@@ -317,23 +330,24 @@ export function UsageDashboard() {
 
       <div className="grid border-b lg:grid-cols-2">
         <div className="border-b p-4 lg:border-r lg:border-b-0">
-          <span className="font-medium text-xs">Token Distribution</span>
+          <span className="font-medium text-xs">{t('chart.tokenDistribution')}</span>
           <TokenPieChart inputTokens={totals.inputTokens} outputTokens={totals.outputTokens} />
         </div>
         <div className="p-4">
-          <span className="font-medium text-xs">Cost Distribution</span>
+          <span className="font-medium text-xs">{t('chart.costDistribution')}</span>
           <CostPieChart byModel={byModel} totalCost={totals.totalCostUsd} />
         </div>
       </div>
 
-      <AgentRunsTable data={recent} />
+      <AgentRunsTable data={recent} columns={columns} formatRelative={formatRelative} />
     </Card>
   )
 }
 
 // ── agent runs datatable ──
 
-function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
+function AgentRunsTable({ data, columns, formatRelative }: { data: AgentUsageRecord[]; columns: ColumnDef<AgentUsageRecord>[]; formatRelative: (v: string) => string }) {
+  const t = useTranslations('home')
   const pageSize = 5
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
 
@@ -357,7 +371,7 @@ function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
   if (data.length === 0) {
     return (
       <div className="p-6 text-center text-xs text-muted-foreground">
-        Usage appears here after an agent run completes.
+        {t('table.emptyMessage')}
       </div>
     )
   }
@@ -391,7 +405,7 @@ function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                  {t('table.noResults')}
                 </TableCell>
               </TableRow>
             )}
@@ -401,12 +415,12 @@ function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
 
       <div className="flex items-center justify-between gap-3 px-6 py-3 max-sm:flex-col md:max-lg:flex-col">
         <p className="text-muted-foreground text-sm whitespace-nowrap" aria-live="polite">
-          Showing{' '}
+          {t('pagination.showing')}{' '}
           <span>
-            {table.getState().pagination.pageIndex * pageSize + 1} to{' '}
+            {table.getState().pagination.pageIndex * pageSize + 1} {t('pagination.to')}{' '}
             {Math.min((table.getState().pagination.pageIndex + 1) * pageSize, table.getRowCount())}
           </span>{' '}
-          of <span>{table.getRowCount()}</span> entries
+          {t('pagination.of')} <span>{table.getRowCount()}</span> {t('pagination.entries')}
         </p>
         <Pagination className="mx-0 ml-auto w-auto justify-end">
           <PaginationContent>
@@ -416,10 +430,10 @@ function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
                 variant="ghost"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
-                aria-label="Go to previous page"
+                aria-label={t('pagination.prevAriaLabel')}
               >
                 <ChevronLeftIcon aria-hidden="true" />
-                Previous
+                {t('pagination.previous')}
               </Button>
             </PaginationItem>
             {showLeftEllipsis && (
@@ -449,9 +463,9 @@ function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
                 variant="ghost"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
-                aria-label="Go to next page"
+                aria-label={t('pagination.nextAriaLabel')}
               >
-                Next
+                {t('pagination.next')}
                 <ChevronRightIcon aria-hidden="true" />
               </Button>
             </PaginationItem>
@@ -464,7 +478,7 @@ function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
 
 // ── sub-components ──
 
-function Metric({ label, value, helper, icon: Icon, last }: { label: string; value: string; helper: string; icon: LucideIcon; last?: boolean }) {
+function Metric({ label, value, helper, icon: Icon, last, totalCostLabel }: { label: string; value: string; helper: string; icon: LucideIcon; last?: boolean; totalCostLabel: string }) {
   return (
     <div className={cn("px-4 py-3", !last && "border-r")}>
       <div className="flex items-center justify-between">
@@ -473,7 +487,7 @@ function Metric({ label, value, helper, icon: Icon, last }: { label: string; val
       </div>
       <div className="mt-1 font-semibold text-2xl tabular-nums">{value}</div>
       <div className="mt-1 flex items-center gap-1">
-        {label === "Total Cost" ? <ArrowDown className="size-3 text-emerald-500" /> : <ArrowUp className="size-3 text-emerald-500" />}
+        {label === totalCostLabel ? <ArrowDown className="size-3 text-emerald-500" /> : <ArrowUp className="size-3 text-emerald-500" />}
         <span className="text-muted-foreground text-[10px]">{helper}</span>
       </div>
     </div>
@@ -491,13 +505,13 @@ function Legend({ className, label }: { className: string; label: string }) {
 
 // ── pie charts ──
 
-const tokenPieConfig = {
-  input: { label: "Input", color: "var(--primary)" },
-  output: { label: "Output", color: "color-mix(in oklab, var(--primary) 40%, transparent)" },
-} satisfies ChartConfig
-
 function TokenPieChart({ inputTokens, outputTokens }: { inputTokens: number; outputTokens: number }) {
+  const t = useTranslations('home')
   const total = inputTokens + outputTokens
+  const tokenPieConfig = {
+    input: { label: t('chart.input'), color: "var(--primary)" },
+    output: { label: t('chart.output'), color: "color-mix(in oklab, var(--primary) 40%, transparent)" },
+  } satisfies ChartConfig
   const data = [
     { key: "input", value: inputTokens, fill: "var(--color-input)" },
     { key: "output", value: outputTokens, fill: "var(--color-output)" },
@@ -517,7 +531,7 @@ function TokenPieChart({ inputTokens, outputTokens }: { inputTokens: number; out
                         {formatTokens(total)}
                       </tspan>
                       <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 10} className="fill-muted-foreground text-[10px]">
-                        tokens
+                        {t('chart.tokens')}
                       </tspan>
                     </text>
                   )
@@ -528,16 +542,17 @@ function TokenPieChart({ inputTokens, outputTokens }: { inputTokens: number; out
         </PieChart>
       </ChartContainer>
       <div className="flex items-center justify-center gap-4">
-        <Legend className="bg-primary" label={`Input ${total ? Math.round((inputTokens / total) * 100) : 0}%`} />
-        <Legend className="bg-primary/40" label={`Output ${total ? Math.round((outputTokens / total) * 100) : 0}%`} />
+        <Legend className="bg-primary" label={`${t('chart.input')} ${total ? Math.round((inputTokens / total) * 100) : 0}%`} />
+        <Legend className="bg-primary/40" label={`${t('chart.output')} ${total ? Math.round((outputTokens / total) * 100) : 0}%`} />
       </div>
     </div>
   )
 }
 
 function CostPieChart({ byModel, totalCost }: { byModel: Array<{ model: string; costUsd: number }>; totalCost: number }) {
+  const t = useTranslations('home')
   if (byModel.length === 0) {
-    return <p className="mt-4 text-center text-xs text-muted-foreground">No cost data yet.</p>
+    return <p className="mt-4 text-center text-xs text-muted-foreground">{t('chart.noCostData')}</p>
   }
   const top = byModel.slice(0, 5)
   const data = top.map((item) => ({ key: item.model, value: item.costUsd, fill: textToColor(item.model) }))
@@ -559,7 +574,7 @@ function CostPieChart({ byModel, totalCost }: { byModel: Array<{ model: string; 
                         {formatCurrency(totalCost)}
                       </tspan>
                       <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 10} className="fill-muted-foreground text-[10px]">
-                        total cost
+                        {t('chart.totalCost')}
                       </tspan>
                     </text>
                   )
@@ -581,10 +596,10 @@ function CostPieChart({ byModel, totalCost }: { byModel: Array<{ model: string; 
   )
 }
 
-function EmptyBars() {
+function EmptyBars({ label }: { label: string }) {
   return (
     <div className="flex flex-1 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
-      No token data
+      {label}
     </div>
   )
 }
@@ -610,15 +625,4 @@ function formatDuration(value: number) {
   if (value < 1000) return `${Math.round(value)}ms`
   if (value < 60_000) return `${(value / 1000).toFixed(1)}s`
   return `${Math.round(value / 60_000)}m`
-}
-
-function formatRelative(value: string) {
-  const delta = Date.now() - new Date(value).getTime()
-  if (!Number.isFinite(delta) || delta < 0) return "just now"
-  const minutes = Math.floor(delta / 60_000)
-  if (minutes < 1) return "just now"
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
 }
