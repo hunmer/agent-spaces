@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useLLMStore } from "@/stores/llm";
 import {
   BUILT_IN_AGENT_TOOLS,
@@ -92,18 +93,18 @@ const ROLE_COLORS: Record<string, string> = {
   bot: "bg-cyan-500/10 text-cyan-600 border-cyan-200",
 };
 
-const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>; label: string }> = [
-  { value: "anthropic-messages", label: "Anthropic Messages" },
-  { value: "openai-chat-completions", label: "OpenAI Chat Completions" },
-  { value: "openai-responses", label: "OpenAI Responses API" },
-  { value: "openai-responses-to-anthropic-messages", label: "OpenAI Responses To Anthropic Messages" },
-  { value: "openai-chat-completions-to-anthropic-messages", label: "OpenAI Chat Completions To Anthropic Messages" },
-  { value: "gemini-generate-content", label: "Gemini Native generateContent" },
+const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>; labelKey: string }> = [
+  { value: "anthropic-messages", labelKey: "anthropicMessages" },
+  { value: "openai-chat-completions", labelKey: "openaiChatCompletions" },
+  { value: "openai-responses", labelKey: "openaiResponses" },
+  { value: "openai-responses-to-anthropic-messages", labelKey: "openaiResponsesToAnthropic" },
+  { value: "openai-chat-completions-to-anthropic-messages", labelKey: "openaiChatToAnthropic" },
+  { value: "gemini-generate-content", labelKey: "geminiGenerateContent" },
 ];
-const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; label: string }> = [
-  { value: "open-agent-sdk", label: "Open Agent SDK" },
-  { value: "claude-code", label: "Claude Code" },
-  { value: "codex", label: "Codex" },
+const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; labelKey: string }> = [
+  { value: "open-agent-sdk", labelKey: "openAgentSdk" },
+  { value: "claude-code", labelKey: "claudeCode" },
+  { value: "codex", labelKey: "codex" },
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "commit", "custom", "bot"];
 const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name);
@@ -370,6 +371,8 @@ export function AgentDialog({
   workspaceId?: string;
   roleFilter?: AgentRole | AgentRole[];
 }) {
+  const t = useTranslations('agent');
+  const tc = useTranslations('common');
   const [agents, setAgents] = useState<AgentPreset[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentPreset | null>(null);
   const [editDraft, setEditDraft] = useState<AgentPreset | null>(null);
@@ -399,7 +402,7 @@ export function AgentDialog({
       })
       .then((data) => setAgents(data.map(normalizeAgent)))
       .catch((err) => {
-        if (err.name !== "AbortError") setError("Failed to load agent presets");
+        if (err.name !== "AbortError") setError(t('error.loadFailed'));
       })
       .finally(() => setLoading(false));
 
@@ -451,7 +454,7 @@ export function AgentDialog({
       setSelectedAgent(null);
       setEditDraft(null);
     } catch {
-      setError("Failed to save agent preset");
+      setError(t('error.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -472,13 +475,13 @@ export function AgentDialog({
       const data = await res.json() as ConnectionTestResult & { error?: string };
       setTestResult({
         success: Boolean(data.success),
-        message: data.message || data.error || "Connection test failed",
+        message: data.message || data.error || t('error.connectionTestFailed'),
         debug: data.debug ? { ...data.debug, status: res.status } : { status: res.status },
       });
     } catch (err) {
       setTestResult({
         success: false,
-        message: err instanceof Error ? err.message : "Connection test failed",
+        message: err instanceof Error ? err.message : t('error.connectionTestFailed'),
       });
     } finally {
       setTesting(false);
@@ -487,7 +490,7 @@ export function AgentDialog({
 
   const handleAddAgent = (role: AgentRole | "empty") => {
     if (!workspaceId) {
-      setError("Open a workspace before adding agent presets");
+      setError(t('error.noWorkspace'));
       return;
     }
 
@@ -521,7 +524,7 @@ export function AgentDialog({
         setEditDraft(null);
       }
     } catch {
-      setError("Failed to delete agent preset");
+      setError(t('error.deleteFailed'));
     } finally {
       setSaving(false);
     }
@@ -588,12 +591,12 @@ export function AgentDialog({
           )}
           <DialogHeader className="flex-1 space-y-0">
             <DialogTitle className="text-base">
-              {selectedAgent ? editDraft?.name ?? "" : "Agent Presets"}
+              {selectedAgent ? editDraft?.name ?? "" : t('dialog.title')}
             </DialogTitle>
             <DialogDescription className="text-xs">
               {selectedAgent
-                ? "Configure agent behavior, tools, and model settings"
-                : "Manage agent presets for workspace automation"}
+                ? t('dialog.editDescription')
+                : t('dialog.listDescription')}
             </DialogDescription>
           </DialogHeader>
           {!selectedAgent && (
@@ -602,7 +605,7 @@ export function AgentDialog({
                 render={
                   <Button variant="outline" size="sm" disabled={saving || !workspaceId}>
                     <Plus className="size-3.5" />
-                    Add
+                    {t('dialog.add')}
                     <ChevronDown className="size-3.5" />
                   </Button>
                 }
@@ -615,7 +618,7 @@ export function AgentDialog({
                       onClick={() => handleAddAgent("empty")}
                     >
                       <span className="size-2 rounded-full bg-muted" />
-                      <span>Empty</span>
+                      <span>{t('dialog.addEmpty')}</span>
                     </DropdownMenuItem>
                   )}
                   {ROLE_OPTIONS.map((role) => (
@@ -625,7 +628,7 @@ export function AgentDialog({
                       onClick={() => handleAddAgent(role)}
                     >
                       <span className={cn("size-2 rounded-full", ROLE_COLORS[role].split(" ")[0])} />
-                      <span className="capitalize">{role}</span>
+                      <span className="capitalize">{t(`role.${role}.name`)}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>
@@ -644,10 +647,10 @@ export function AgentDialog({
           {!workspaceId ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bot className="size-10 mb-2 opacity-30" />
-              <p className="text-sm">No workspace selected</p>
+              <p className="text-sm">{t('dialog.noWorkspace')}</p>
             </div>
           ) : loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading agent presets...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">{t('dialog.loading')}</div>
           ) : !selectedAgent ? (
             <AgentList
               agents={visibleAgents}
@@ -674,10 +677,10 @@ export function AgentDialog({
         {selectedAgent && (
           <div className="flex justify-end gap-2 border-t px-5 py-3">
             <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? tc('saving') : tc('save')}
             </Button>
           </div>
         )}
@@ -695,6 +698,7 @@ function AgentList({
   onSelect: (agent: AgentPreset) => void;
   onDelete: (id: string) => void;
 }) {
+  const t = useTranslations('agent');
   return (
     <div className="flex flex-col p-2">
       {agents.map((agent) => (
@@ -716,7 +720,7 @@ function AgentList({
                 {agent.role}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground truncate">{agent.description || "No description"}</p>
+            <p className="text-xs text-muted-foreground truncate">{agent.description || t('list.noDescription')}</p>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono">{agent.modelId.split("-").slice(0, 2).join("-")}</span>
           <Button
@@ -732,7 +736,7 @@ function AgentList({
       {agents.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Bot className="size-10 mb-2 opacity-30" />
-          <p className="text-sm">No agent presets yet</p>
+          <p className="text-sm">{t('list.empty')}</p>
         </div>
       )}
     </div>
@@ -760,6 +764,7 @@ function AgentDetail({
   onRemoveSkill: (index: number) => void;
   onTestConnection: () => void;
 }) {
+  const t = useTranslations('agent');
   const [mcpJson, setMcpJson] = useState(() => JSON.stringify(agent.mcps, null, 2));
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -820,7 +825,7 @@ function AgentDetail({
   return (
     <div className="flex flex-col gap-5 p-5">
       {/* Basic Info */}
-      <Section icon={<MessageSquare className="size-3.5" />} title="Basic">
+      <Section icon={<MessageSquare className="size-3.5" />} title={t('detail.basic')}>
         <div className="flex items-start gap-4">
           <div className="flex flex-col items-center gap-1.5">
             <AgentIcon
@@ -830,7 +835,7 @@ function AgentDetail({
               className="size-16 rounded-xl border border-input"
             />
             <label className="text-[10px] text-primary cursor-pointer hover:underline">
-              Upload
+              {t('detail.uploadAvatar')}
               <input
                 type="file"
                 accept="image/*"
@@ -861,15 +866,15 @@ function AgentDetail({
                 className="text-[10px] text-destructive hover:underline"
                 onClick={() => onChange("avatarUrl", "")}
               >
-                Remove
+                {t('detail.removeAvatar')}
               </button>
             )}
           </div>
           <div className="flex-1 flex flex-col gap-2.5">
-            <FieldGroup label="Name">
+            <FieldGroup label={t('detail.name')}>
               <Input value={agent.name} onChange={(e) => onChange("name", e.target.value)} />
             </FieldGroup>
-            <FieldGroup label="Role">
+            <FieldGroup label={t('detail.role')}>
               <select
                 value={agent.role}
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
@@ -882,38 +887,38 @@ function AgentDetail({
             </FieldGroup>
           </div>
         </div>
-        <FieldGroup label="Description">
+        <FieldGroup label={t('detail.description')}>
           <Input value={agent.description} onChange={(e) => onChange("description", e.target.value)} />
         </FieldGroup>
-        <FieldGroup label="Agent Runtime">
+        <FieldGroup label={t('detail.agentRuntime')}>
           <SearchSelect
             value={agent.runtimeKind ?? ""}
             onChange={(v) => onChange("runtimeKind", v as NonNullable<AgentConfig["runtimeKind"]>)}
-            options={RUNTIME_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-            placeholder="Select agent runtime..."
-            searchPlaceholder="Search agent runtime..."
+            options={RUNTIME_OPTIONS.map((option) => ({ value: option.value, label: t(`runtime.${option.labelKey}`) }))}
+            placeholder={t('detail.runtimePlaceholder')}
+            searchPlaceholder={t('detail.runtimeSearchPlaceholder')}
             allowCustom={false}
           />
         </FieldGroup>
       </Section>
 
       {/* Working Directory */}
-      <Section icon={<FolderOpen className="size-3.5" />} title="Working Directory">
-        <Input value={agent.workingDir} onChange={(e) => onChange("workingDir", e.target.value)} placeholder="/workspace" />
+      <Section icon={<FolderOpen className="size-3.5" />} title={t('detail.workingDirectory')}>
+        <Input value={agent.workingDir} onChange={(e) => onChange("workingDir", e.target.value)} placeholder={t('detail.workingDirPlaceholder')} />
       </Section>
 
       {/* System Prompt */}
-      <Section icon={<Sparkles className="size-3.5" />} title="System Prompt">
+      <Section icon={<Sparkles className="size-3.5" />} title={t('detail.systemPrompt')}>
         <Textarea
           value={agent.systemPrompt}
           onChange={(e) => onChange("systemPrompt", e.target.value)}
-          placeholder="Enter system prompt..."
+          placeholder={t('detail.systemPromptPlaceholder')}
           className="min-h-24 text-xs"
         />
       </Section>
 
       {/* MCP Servers */}
-      <Section icon={<Wrench className="size-3.5" />} title="MCP Servers">
+      <Section icon={<Wrench className="size-3.5" />} title={t('detail.mcpServers')}>
         <Textarea
           value={mcpJson}
           onChange={(e) => handleMcpJsonChange(e.target.value)}
@@ -926,7 +931,7 @@ function AgentDetail({
       </Section>
 
       {/* Tools */}
-      <Section icon={<Wrench className="size-3.5" />} title="Tools">
+      <Section icon={<Wrench className="size-3.5" />} title={t('detail.tools')}>
         <div className="grid gap-2">
           {(BUILT_IN_AGENT_TOOLS ?? []).map((tool) => (
             <label
@@ -949,7 +954,7 @@ function AgentDetail({
       </Section>
 
       {/* Skills */}
-      <Section icon={<Cpu className="size-3.5" />} title="Skills">
+      <Section icon={<Cpu className="size-3.5" />} title={t('detail.skills')}>
         <div className="flex flex-wrap gap-1.5 mb-2">
           {agent.skills.map((skill, i) => (
             <Badge key={i} variant="outline" className="gap-1 pr-1">
@@ -962,7 +967,7 @@ function AgentDetail({
         </div>
         <label className="flex h-8 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-xs text-muted-foreground hover:bg-muted/50">
           <Upload className="size-3.5" />
-          Upload Markdown skills
+          {t('detail.uploadSkills')}
           <input
             type="file"
             accept=".md,text/markdown"
@@ -977,9 +982,9 @@ function AgentDetail({
       </Section>
 
       {/* Model Config */}
-      <Section icon={<Sliders className="size-3.5" />} title="Model">
+      <Section icon={<Sliders className="size-3.5" />} title={t('detail.model')}>
         <div className="space-y-2.5">
-          <FieldGroup label="Provider">
+          <FieldGroup label={t('detail.provider')}>
             <SearchSelect
               value={llmProviders.find((p) => p.apiBase === agent.apiBase && p.apiKey === agent.apiKey)?.name || ""}
               onChange={(v) => {
@@ -987,50 +992,50 @@ function AgentDetail({
                 if (provider) handleSelectProvider(provider);
               }}
               options={llmProviders.map((p) => ({ value: p.name, label: p.name }))}
-              placeholder="Select provider..."
-              searchPlaceholder="Search provider..."
+              placeholder={t('detail.providerPlaceholder')}
+              searchPlaceholder={t('detail.providerSearchPlaceholder')}
               allowCustom={false}
             />
           </FieldGroup>
-          <FieldGroup label="Model">
+          <FieldGroup label={t('detail.modelField')}>
             <SearchSelect
               value={agent.modelId}
               onChange={(v) => onChange("modelId", v)}
-              options={dynamicModelOptions.length > 0 ? dynamicModelOptions : [{ value: agent.modelId || "", label: agent.modelId || "Select a provider first..." }]}
-              placeholder="Select model..."
-              searchPlaceholder="Search or type custom model..."
+              options={dynamicModelOptions.length > 0 ? dynamicModelOptions : [{ value: agent.modelId || "", label: agent.modelId || t('detail.selectProviderFirst') }]}
+              placeholder={t('detail.modelPlaceholder')}
+              searchPlaceholder={t('detail.modelSearchPlaceholder')}
             />
           </FieldGroup>
-          <FieldGroup label="API Message Type">
+          <FieldGroup label={t('detail.apiMessageType')}>
             <SearchSelect
               value={agent.modelProvider || ""}
               onChange={(v) => onChange("modelProvider", v as AgentPreset["modelProvider"])}
-              options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-              placeholder="Select API message type..."
-              searchPlaceholder="Search API message type..."
+              options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: t(`provider.${option.labelKey}`) }))}
+              placeholder={t('detail.apiMessageTypePlaceholder')}
+              searchPlaceholder={t('detail.apiMessageTypeSearchPlaceholder')}
               allowCustom={false}
             />
           </FieldGroup>
-          <FieldGroup label="API Base">
+          <FieldGroup label={t('detail.apiBase')}>
             <Input
               value={agent.apiBase}
               onChange={(e) => onChange("apiBase", e.target.value)}
-              placeholder="https://api.example.com/v1"
+              placeholder={t('detail.apiBasePlaceholder')}
               className="h-7 text-xs"
             />
           </FieldGroup>
-          <FieldGroup label="API Key">
+          <FieldGroup label={t('detail.apiKey')}>
             <Input
               type="password"
               value={agent.apiKey}
               onChange={(e) => onChange("apiKey", e.target.value)}
-              placeholder="sk-..."
+              placeholder={t('detail.apiKeyPlaceholder')}
               className="h-7 text-xs"
             />
           </FieldGroup>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <div className="text-xs text-muted-foreground">Validate provider credentials before saving.</div>
+          <div className="text-xs text-muted-foreground">{t('detail.validateHelper')}</div>
           <Button
             type="button"
             variant="outline"
@@ -1039,7 +1044,7 @@ function AgentDetail({
             disabled={testing || !agent.apiBase || !agent.apiKey || !agent.modelId}
           >
             <PlugZap className="size-3.5" />
-            {testing ? "Testing..." : "Test"}
+            {testing ? t('detail.testing') : t('detail.test')}
           </Button>
         </div>
         {testResult && (
@@ -1054,19 +1059,19 @@ function AgentDetail({
             {testResult.message}
             {testResult.debug && (
               <div className="mt-2 space-y-1 font-mono text-[10px] opacity-80">
-                {testResult.debug.status && <div>status: {testResult.debug.status}</div>}
-                {testResult.debug.provider && <div>provider: {testResult.debug.provider}</div>}
-                {testResult.debug.requestUrl && <div>url: {testResult.debug.requestUrl}</div>}
-                {testResult.debug.model && <div>model: {testResult.debug.model}</div>}
+                {testResult.debug.status && <div>{t('debug.status')} {testResult.debug.status}</div>}
+                {testResult.debug.provider && <div>{t('debug.provider')} {testResult.debug.provider}</div>}
+                {testResult.debug.requestUrl && <div>{t('debug.url')} {testResult.debug.requestUrl}</div>}
+                {testResult.debug.model && <div>{t('debug.model')} {testResult.debug.model}</div>}
                 {testResult.debug.responseBody && (
-                  <div className="max-h-20 overflow-auto whitespace-pre-wrap">body: {testResult.debug.responseBody}</div>
+                  <div className="max-h-20 overflow-auto whitespace-pre-wrap">{t('debug.body')} {testResult.debug.responseBody}</div>
                 )}
               </div>
             )}
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <FieldGroup label="Temperature">
+          <FieldGroup label={t('detail.temperature')}>
             <div className="flex items-center gap-2">
               <input
                 type="range"

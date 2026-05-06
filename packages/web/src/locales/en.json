@@ -132,6 +132,97 @@
       "newServer": "New Server"
     }
   },
+  "agent": {
+    "provider": {
+      "anthropicMessages": "Anthropic Messages",
+      "openaiChatCompletions": "OpenAI Chat Completions",
+      "openaiResponses": "OpenAI Responses API",
+      "openaiResponsesToAnthropic": "OpenAI Responses To Anthropic Messages",
+      "openaiChatToAnthropic": "OpenAI Chat Completions To Anthropic Messages",
+      "geminiGenerateContent": "Gemini Native generateContent"
+    },
+    "runtime": {
+      "openAgentSdk": "Open Agent SDK",
+      "claudeCode": "Claude Code",
+      "codex": "Codex"
+    },
+    "role": {
+      "scheduler": { "name": "Scheduler" },
+      "planner": { "name": "Planner" },
+      "executor": { "name": "Executor" },
+      "reviewer": { "name": "Reviewer" },
+      "commit": { "name": "Commit" },
+      "custom": { "name": "Custom Agent" },
+      "bot": { "name": "Bot Agent" }
+    },
+    "defaultName": "New Agent",
+    "error": {
+      "loadFailed": "Failed to load agent presets",
+      "saveFailed": "Failed to save agent preset",
+      "connectionTestFailed": "Connection test failed",
+      "noWorkspace": "Open a workspace before adding agent presets",
+      "deleteFailed": "Failed to delete agent preset"
+    },
+    "dialog": {
+      "title": "Agent Presets",
+      "editDescription": "Configure agent behavior, tools, and model settings",
+      "listDescription": "Manage agent presets for workspace automation",
+      "add": "Add",
+      "addEmpty": "Empty",
+      "noWorkspace": "No workspace selected",
+      "loading": "Loading agent presets..."
+    },
+    "list": {
+      "noDescription": "No description",
+      "empty": "No agent presets yet"
+    },
+    "detail": {
+      "uploadAvatar": "Upload",
+      "removeAvatar": "Remove",
+      "name": "Name",
+      "role": "Role",
+      "description": "Description",
+      "agentRuntime": "Agent Runtime",
+      "runtimePlaceholder": "Select agent runtime...",
+      "runtimeSearchPlaceholder": "Search agent runtime...",
+      "workingDirectory": "Working Directory",
+      "workingDirPlaceholder": "/workspace",
+      "systemPrompt": "System Prompt",
+      "systemPromptPlaceholder": "Enter system prompt...",
+      "mcpServers": "MCP Servers",
+      "tools": "Tools",
+      "skills": "Skills",
+      "uploadSkills": "Upload Markdown skills",
+      "model": "Model",
+      "provider": "Provider",
+      "providerPlaceholder": "Select provider...",
+      "providerSearchPlaceholder": "Search provider...",
+      "modelField": "Model",
+      "selectProviderFirst": "Select a provider first...",
+      "modelPlaceholder": "Select model...",
+      "modelSearchPlaceholder": "Search or type custom model...",
+      "apiMessageType": "API Message Type",
+      "apiMessageTypePlaceholder": "Select API message type...",
+      "apiMessageTypeSearchPlaceholder": "Search API message type...",
+      "apiBase": "API Base",
+      "apiBasePlaceholder": "https://api.example.com/v1",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "sk-...",
+      "validateHelper": "Validate provider credentials before saving.",
+      "testing": "Testing...",
+      "test": "Test",
+      "temperature": "Temperature",
+      "maxTokens": "Max Tokens",
+      "basic": "Basic"
+    },
+    "debug": {
+      "status": "status:",
+      "provider": "provider:",
+      "url": "url:",
+      "model": "model:",
+      "body": "body:"
+    }
+  },
   "home": {
     "table": {
       "agent": "Agent",

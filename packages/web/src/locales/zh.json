@@ -132,6 +132,97 @@
       "newServer": "新服务器"
     }
   },
+  "agent": {
+    "provider": {
+      "anthropicMessages": "Anthropic Messages",
+      "openaiChatCompletions": "OpenAI Chat Completions",
+      "openaiResponses": "OpenAI Responses API",
+      "openaiResponsesToAnthropic": "OpenAI Responses To Anthropic Messages",
+      "openaiChatToAnthropic": "OpenAI Chat Completions To Anthropic Messages",
+      "geminiGenerateContent": "Gemini Native generateContent"
+    },
+    "runtime": {
+      "openAgentSdk": "Open Agent SDK",
+      "claudeCode": "Claude Code",
+      "codex": "Codex"
+    },
+    "role": {
+      "scheduler": { "name": "调度者" },
+      "planner": { "name": "策划者" },
+      "executor": { "name": "执行者" },
+      "reviewer": { "name": "审核者" },
+      "commit": { "name": "提交者" },
+      "custom": { "name": "自定义 Agent" },
+      "bot": { "name": "Bot Agent" }
+    },
+    "defaultName": "新 Agent",
+    "error": {
+      "loadFailed": "加载 Agent 预设失败",
+      "saveFailed": "保存 Agent 预设失败",
+      "connectionTestFailed": "连接测试失败",
+      "noWorkspace": "请先打开工作空间再添加 Agent 预设",
+      "deleteFailed": "删除 Agent 预设失败"
+    },
+    "dialog": {
+      "title": "Agent 预设",
+      "editDescription": "配置 Agent 行为、工具和模型设置",
+      "listDescription": "管理工作空间的 Agent 预设",
+      "add": "添加",
+      "addEmpty": "空白",
+      "noWorkspace": "未选择工作空间",
+      "loading": "加载 Agent 预设中..."
+    },
+    "list": {
+      "noDescription": "无描述",
+      "empty": "暂无 Agent 预设"
+    },
+    "detail": {
+      "uploadAvatar": "上传",
+      "removeAvatar": "移除",
+      "name": "名称",
+      "role": "角色",
+      "description": "描述",
+      "agentRuntime": "Agent 运行时",
+      "runtimePlaceholder": "选择 Agent 运行时...",
+      "runtimeSearchPlaceholder": "搜索 Agent 运行时...",
+      "workingDirectory": "工作目录",
+      "workingDirPlaceholder": "/workspace",
+      "systemPrompt": "系统提示",
+      "systemPromptPlaceholder": "输入系统提示...",
+      "mcpServers": "MCP 服务器",
+      "tools": "工具",
+      "skills": "技能",
+      "uploadSkills": "上传 Markdown 技能",
+      "model": "模型",
+      "provider": "供应商",
+      "providerPlaceholder": "选择供应商...",
+      "providerSearchPlaceholder": "搜索供应商...",
+      "modelField": "模型",
+      "selectProviderFirst": "请先选择供应商...",
+      "modelPlaceholder": "选择模型...",
+      "modelSearchPlaceholder": "搜索或输入自定义模型...",
+      "apiMessageType": "API 消息类型",
+      "apiMessageTypePlaceholder": "选择 API 消息类型...",
+      "apiMessageTypeSearchPlaceholder": "搜索 API 消息类型...",
+      "apiBase": "API 地址",
+      "apiBasePlaceholder": "https://api.example.com/v1",
+      "apiKey": "API 密钥",
+      "apiKeyPlaceholder": "sk-...",
+      "validateHelper": "保存前验证供应商凭据。",
+      "testing": "测试中...",
+      "test": "测试",
+      "temperature": "温度",
+      "maxTokens": "最大 Token 数",
+      "basic": "基本信息"
+    },
+    "debug": {
+      "status": "状态：",
+      "provider": "供应商：",
+      "url": "URL：",
+      "model": "模型：",
+      "body": "请求体："
+    }
+  },
   "home": {
     "table": {
       "agent": "Agent",
