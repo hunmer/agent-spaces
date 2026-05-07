@@ -93,12 +93,16 @@ jobs:
 
       - name: Package IPA
         run: |
-          APP_PATH=$(find packages/tauri/src-tauri/gen/apple -name "Agent Spaces.app" -path "*/Release-iphoneos/*" | head -1)
+          APP_PATH=$(find packages/tauri/src-tauri/gen/apple -name "Agent Spaces.app" -path "*.xcarchive/Products/Applications/*" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH=$(find packages/tauri/src-tauri/gen/apple -name "Agent Spaces.app" -path "*/Release-iphoneos/*" | head -1)
+          fi
           if [ -z "$APP_PATH" ]; then
             echo "Could not find built .app"
             find packages/tauri/src-tauri/gen/apple -name "*.app" || true
             exit 1
           fi
+          echo "Using app bundle: $APP_PATH"
           IPA_DIR=$(mktemp -d)
           mkdir -p "$IPA_DIR/Payload"
           cp -r "$APP_PATH" "$IPA_DIR/Payload/"
