@@ -132,6 +132,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
         open={createOpen}
         onOpenChange={setCreateOpen}
         agents={agents}
+        workspaceId={workspaceId}
         onSubmit={handleCreate}
       />
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { X } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { getMemberDisplayName } from '@/lib/agent-members';
+import { useWorkflowStore } from '@/stores/workflow';
 
 import type { AgentConfig } from '@agent-spaces/shared';
 
@@ -22,16 +23,23 @@ interface CreateIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agents?: AgentConfig[];
-  onSubmit: (data: { title: string; description: string; members: string[] }) => void;
+  workspaceId: string;
+  onSubmit: (data: { title: string; description: string; members: string[]; workflowId?: string }) => void;
 }
 
-export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }: CreateIssueDialogProps) {
+export function CreateIssueDialog({ open, onOpenChange, agents = [], workspaceId, onSubmit }: CreateIssueDialogProps) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [members, setMembers] = useState<string[]>(['user']);
   const [memberQuery, setMemberQuery] = useState('');
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('');
+  const { workflows, loadWorkflows } = useWorkflowStore();
   const t = useTranslations('issue');
   const tc = useTranslations('common');
+
+  useEffect(() => {
+    if (open) loadWorkflows(workspaceId);
+  }, [open, workspaceId, loadWorkflows]);
 
   const handleClose = (val: boolean) => {
     if (!val) {
@@ -39,6 +47,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
       setDesc('');
       setMembers(['user']);
       setMemberQuery('');
+      setSelectedWorkflowId('');
     }
     onOpenChange(val);
   };
@@ -51,7 +60,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    onSubmit({ title: title.trim(), description: desc.trim(), members });
+    onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId: selectedWorkflowId || undefined });
     handleClose(false);
   };
 
@@ -79,6 +88,30 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
             onChange={(e) => setDesc(e.target.value)}
             rows={3}
           />
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Workflow Template</label>
+            <select
+              value={selectedWorkflowId}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedWorkflowId(value);
+                if (value) {
+                  const template = workflows.find(w => w.id === value);
+                  if (template) {
+                    const agentIds = template.nodes.map(n => n.data.agentConfigId);
+                    setMembers(prev => Array.from(new Set([...prev, ...agentIds])));
+                  }
+                }
+              }}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">None (use default pipeline)</option>
+              {workflows.map(w => (
+                <option key={w.id} value={w.id}>{w.name} ({w.nodes.length} agents)</option>
+              ))}
+            </select>
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">{t('create.membersLabel')}</label>
