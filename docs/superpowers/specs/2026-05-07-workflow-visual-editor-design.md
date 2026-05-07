@@ -70,22 +70,36 @@ export interface WorkflowEdge {
 ### 3.2 Issue Extension
 
 ```typescript
-// Add to Issue type
+// packages/shared/src/types/issue.ts - Add to Issue interface
 interface Issue {
   // ...existing fields
   workflowId?: string;  // associated workflow template ID
+}
+
+// packages/shared/src/types/issue.ts - Add to CreateIssueInput
+interface CreateIssueInput {
+  // ...existing fields
+  workflowId?: string;
+}
+
+// packages/web/src/stores/issue.ts - UpdateIssueInput
+interface UpdateIssueInput {
+  // ...existing fields
+  workflowId?: string | null;  // null to clear association
 }
 ```
 
 ### 3.3 Storage
 
-Following the existing dual-file pattern:
+Following the existing dual-file pattern (same as issue-store.ts: `index.json` stores full objects for list views, individual files for detail views):
 
 ```
 ~/.agent-spaces-data/workspaces/{workspaceId}/workflows/
-  index.json              # Array<{ id, name, description, nodeCount, updatedAt }>
-  {workflowId}.json       # Full WorkflowTemplate object
+  index.json              # WorkflowTemplate[] (full objects, used for list display)
+  {workflowId}.json       # WorkflowTemplate (individual file for detail/edit)
 ```
+
+`index.json` stores complete `WorkflowTemplate[]` to match the issue-store pattern and avoid extra reads when listing templates with mini-preview data.
 
 ### 3.4 Serialization Format
 
@@ -174,8 +188,10 @@ The xyflow canvas state maps directly to WorkflowTemplate:
 | File | Change |
 |------|--------|
 | `shared/src/types/workspace.ts` | Issue type adds `workflowId?: string` |
+| `shared/src/types/issue.ts` | `CreateIssueInput` adds `workflowId?: string` |
+| `shared/src/types/events.ts` | Add `workflow.*` events to `ServerEventMap` |
 | `server/src/agents/issue-agent-runner.ts` | `runIssueAutomation()` adds workflow branch |
-| `server/src/agents/issue-task-controller.ts` | New `createTasksFromWorkflow()` function |
+| `server/src/agents/issue-task-controller.ts` | New `createTasksFromWorkflow()` function (reuses existing `TaskDraft` interface with `key` + `dependsOnKeys`) |
 | `server/src/app.ts` | Register workflow routes |
 
 ### 4.3 API Design
@@ -189,6 +205,19 @@ DELETE /api/workspaces/:id/workflows/:wid         # Delete template
 POST   /api/workspaces/:id/workflows/:wid/duplicate  # Duplicate template
 ```
 
+### 4.3.1 WebSocket Events
+
+Following the existing event naming pattern (`domain.action`):
+
+```typescript
+// Add to ServerEventMap in packages/shared/src/types/events.ts
+'workflow.created': { workspaceId: string; workflow: WorkflowTemplate };
+'workflow.updated': { workspaceId: string; workflow: WorkflowTemplate };
+'workflow.deleted': { workspaceId: string; workflowId: string };
+```
+
+These events enable real-time sync across multiple browser tabs/sessions. The frontend WorkflowStore subscribes to these events to update its local state without manual reload.
+
 ### 4.4 Execution Flow
 
 ```
@@ -201,13 +230,15 @@ Issue automation triggered
       |   +-- Skip Planner phase entirely
       |   +-- Set issue status to 'planned' (brief transitional state)
       |   +-- createTasksFromWorkflow():
-      |   |   +-- For each node, create a Task:
+      |   |   +-- Reuse existing TaskDraft interface (key, dependsOnKeys pattern)
+      |   |   +-- For each node, create a TaskDraft:
+      |   |   |   - key = node.id
       |   |   |   - agentConfigId = node.data.agentConfigId
       |   |   |   - title = node.data.taskTitleTemplate or "Execute {node.data.label}"
       |   |   |   - description = node.data.taskDescriptionTemplate or auto-generated
-      |   |   |   - key = node.id (for dependency mapping)
-      |   |   +-- For each edge, map source/target to dependsOnKeys
+      |   |   +-- For each edge, map source node id -> dependsOnKeys on target
       |   |   +-- Validate all agentConfigIds exist and are enabled in channel members
+      |   |   +-- Call existing replaceIssueTasks() to persist and set up dependencies
       |   +-- Set issue status to 'in_progress'
       |   +-- Call scheduleRunnableIssueTasks()
       |   +-- Existing dependency scheduler handles the rest
@@ -224,6 +255,7 @@ Issue automation triggered
 3. **Connectivity**: At least one node (single-node workflows are valid)
 4. **No duplicate edges**: Same source-target pair cannot appear twice
 5. **No self-loops**: Source and target must differ
+6. **Role staleness**: When saving, re-resolve each node's `role` from the current agent preset. If the preset's role has changed since the node was created, update the node's `role` field to match. If the preset no longer exists, reject the save and return the specific node IDs that have invalid references.
 
 **On issue start:**
 1. **Agent enabled**: All agent presets must still be enabled
@@ -235,10 +267,11 @@ Issue automation triggered
 
 | Scenario | Behavior |
 |----------|----------|
-| Agent preset deleted after template created | Validation on save warns; on run, skip that node or fail gracefully |
+| Agent preset deleted after template created | Reject save with specific invalid node IDs. On run: fall back entirely to hardcoded pipeline with warning log |
 | Workflow template deleted while issue references it | Fall back to hardcoded pipeline with warning log |
 | Cycle detected in template | Reject save with error message |
-| Agent preset disabled between template save and issue run | Log warning, skip node, continue with remaining nodes |
+| Agent preset disabled between template save and issue run | Log warning, fall back entirely to hardcoded pipeline. Do not skip individual nodes, as partial DAG execution may produce inconsistent results |
+| Agent preset role changed after template created | On next template save, node role auto-updates to match preset. On run, role is re-validated |
 
 ## 5. Frontend Architecture
 
