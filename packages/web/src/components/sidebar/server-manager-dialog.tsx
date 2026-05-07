@@ -21,9 +21,10 @@ interface ServerManagerDialogProps {
   activeId: string;
   onUpdate: (updated: ServerConfig[]) => void;
   onRemove: (id: string) => void;
+  onSwitch: (server: ServerConfig) => void;
 }
 
-export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onUpdate, onRemove }: ServerManagerDialogProps) {
+export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onUpdate, onRemove, onSwitch }: ServerManagerDialogProps) {
   const t = useTranslations("sidebar");
   const tc = useTranslations("common");
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -91,19 +92,26 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
                 </>
               ) : (
                 <>
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => { if (server.id !== activeId) onSwitch(server); }}
+                  >
                     <div className="text-sm font-medium truncate">{server.name}</div>
                     <div className="text-xs text-muted-foreground truncate">{server.url}</div>
                   </div>
-                  {server.id === activeId && (
-                    <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">{tc("active")}</span>
+                  {server.id === activeId ? (
+                    <Check className="size-4 shrink-0 text-primary" />
+                  ) : (
+                    <Button size="sm" variant="ghost" onClick={() => onSwitch(server)} className="h-7 px-2 text-xs shrink-0">
+                      {t("server.switch")}
+                    </Button>
                   )}
-                  {server.id !== "default" && (
-                    <>
-                      <Pencil className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => startEdit(server)} />
+                  <>
+                    <Pencil className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => startEdit(server)} />
+                    {server.id !== "default" && (
                       <Trash2 className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-destructive" onClick={() => onRemove(server.id)} />
-                    </>
-                  )}
+                    )}
+                  </>
                 </>
               )}
             </div>

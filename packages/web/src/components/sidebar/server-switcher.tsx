@@ -157,6 +157,7 @@ export function ServerSwitcher() {
         activeId={activeId}
         onUpdate={handleManagerUpdate}
         onRemove={removeServer}
+        onSwitch={switchServer}
       />
     </>
   );

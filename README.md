@@ -47,7 +47,7 @@
 ### 一键安装（推荐）
 
 ```bash
-npm i @agent-spaces/server -g --registry https://registry.npmmirror.com
+npm i @agent-spaces/server -g
 agent-spaces-server
 ```
 

@@ -130,7 +130,8 @@
       "secret": "Secret",
       "secretPlaceholder": "Optional API secret",
       "secretOptionalPlaceholder": "Secret (optional)",
-      "newServer": "New Server"
+      "newServer": "New Server",
+      "switch": "Switch"
     }
   },
   "agent": {

@@ -130,7 +130,8 @@
       "secret": "密钥",
       "secretPlaceholder": "可选 API 密钥",
       "secretOptionalPlaceholder": "密钥（可选）",
-      "newServer": "新服务器"
+      "newServer": "新服务器",
+      "switch": "切换"
     }
   },
   "agent": {

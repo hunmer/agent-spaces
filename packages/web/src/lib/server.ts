@@ -15,12 +15,18 @@ function getDefaultServerUrl(): string {
 
   if (typeof window === "undefined") return "http://localhost:3100";
 
-  const { protocol, hostname, port, origin } = window.location;
-  if ((hostname === "localhost" || hostname === "127.0.0.1") && port === "3000") {
-    return `${protocol}//${hostname}:3100`;
+  const { hostname, port } = window.location;
+
+  // Tauri or other non-standard hosts: always resolve to localhost:3100
+  if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+    return "http://localhost:3100";
   }
 
-  return origin;
+  if (port === "3000") {
+    return `http://${hostname}:3100`;
+  }
+
+  return window.location.origin;
 }
 
 const DEFAULT_SERVERS: ServerConfig[] = [
@@ -31,7 +37,7 @@ function normalizeServers(servers: ServerConfig[]): ServerConfig[] {
   const defaultUrl = getDefaultServerUrl();
   return servers.map((server) => {
     if (server.id !== "default") return server;
-    if (!/^https?:\/\/(localhost|127\.0\.0\.1):3100\/?$/.test(server.url)) return server;
+    if (!/^https?:\/\/((tauri\.)?localhost|127\.0\.0\.1):3100\/?$/.test(server.url)) return server;
     return { ...server, url: defaultUrl };
   });
 }
