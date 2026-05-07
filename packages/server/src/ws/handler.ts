@@ -9,7 +9,6 @@ import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
-import { runPlanner } from '../agents/planner-agent.js';
 import type { AgentContext } from '../agents/agent-context.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
@@ -1457,12 +1456,9 @@ function decodeHtml(value: string): string {
 // Register agent handlers
 registerHandler('agent.start', (_ws, workspaceId, data) => {
   const { role, issueId } = data as { role: string; issueId?: string };
-  const ctx = makeContext(workspaceId);
 
   if (role === 'planner' && issueId) {
-    runPlanner(workspaceId, issueId, ctx).catch((err) => {
-      console.error(`[ws] planner error:`, err);
-    });
+    console.warn(`[ws] planner start ignored; issue automation is workflow-driven workspaceId=${workspaceId} issueId=${issueId}`);
   }
 });
 

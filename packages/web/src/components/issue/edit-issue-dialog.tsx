@@ -58,6 +58,15 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
     );
   };
 
+  const selectWorkflow = (workflowId: string) => {
+    setSelectedWorkflowId(workflowId);
+    if (!workflowId) return;
+    const template = workflows.find((workflow) => workflow.id === workflowId);
+    if (!template) return;
+    const agentIds = template.nodes.map((node) => node.data.agentConfigId);
+    setMembers((prev) => Array.from(new Set([...prev, ...agentIds])));
+  };
+
   const handleSave = async () => {
     if (!title.trim()) return;
     setSaving(true);
@@ -112,7 +121,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
             <label className="text-sm font-medium text-foreground">Workflow Template</label>
             <select
               value={selectedWorkflowId || '__none__'}
-              onChange={(e) => setSelectedWorkflowId(e.target.value === '__none__' ? '' : e.target.value)}
+              onChange={(e) => selectWorkflow(e.target.value === '__none__' ? '' : e.target.value)}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="__none__">None (use default pipeline)</option>

@@ -1,21 +1,14 @@
 import type { AgentContext } from './agent-context.js';
-import { runPlanner } from './planner-agent.js';
-import { scheduleRunnableIssueTasks, syncIssueTasksAfterPlanning, createTasksFromWorkflow } from './issue-task-controller.js';
+import { scheduleRunnableIssueTasks, createTasksFromWorkflow } from './issue-task-controller.js';
 import * as issueService from '../services/issue.js';
-import * as issueCommentService from '../services/issue-comment.js';
 import * as taskService from '../services/task.js';
 import * as agentService from '../services/agent.js';
 import * as workflowService from '../services/workflow.js';
-
-export interface RunIssueAutomationOptions {
-  forcePlanner?: boolean;
-}
 
 export async function runIssueAutomation(
   workspaceId: string,
   issueId: string,
   ctx: AgentContext,
-  options: RunIssueAutomationOptions = {},
 ): Promise<void> {
   const issue = issueService.getById(workspaceId, issueId);
   if (!issue) {
@@ -31,31 +24,25 @@ export async function runIssueAutomation(
         createTasksFromWorkflow(workspaceId, issueId, template, ctx);
         return;
       } catch (err: any) {
-        console.warn(`Workflow execution failed for issue ${issueId}: ${err.message}. Falling back to hardcoded pipeline.`);
+        console.warn(`Workflow execution failed for issue ${issueId}: ${err.message}.`);
+        markIssueError(workspaceId, issueId, `Workflow execution failed: ${err.message}`, ctx);
+        return;
       }
     } else {
-      console.warn(`Workflow template ${issue.workflowId} not found, falling back to hardcoded pipeline`);
+      console.warn(`Workflow template ${issue.workflowId} not found`);
+      markIssueError(workspaceId, issueId, `Workflow template ${issue.workflowId} not found`, ctx);
+      return;
     }
   }
 
   const tasks = taskService.list(workspaceId, issueId);
-  const shouldPlan = options.forcePlanner || tasks.length === 0;
-  if (shouldPlan) {
-    await runPlanner(workspaceId, issueId, ctx);
+  if (tasks.length > 0) {
+    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
     return;
   }
 
-  await syncIssueTasksAfterPlanning(workspaceId, issueId, {
-    planSummary: latestUserCommentSummary(workspaceId, issueId),
-    planOutput: [],
-  }, ctx);
-}
-
-export function shouldForcePlannerFromMentions(workspaceId: string, mentions: string[]): boolean {
-  const mentionedIds = new Set(mentions);
-  return (agentService.listPresets(workspaceId) ?? []).some(
-    (agent) => mentionedIds.has(agent.id) && ['planner', 'task_creator'].includes(agent.role) && agent.enabled !== false,
-  );
+  console.warn(`[issue-runner] no workflow configured for issue workspaceId=${workspaceId} issueId=${issueId}`);
+  markIssueError(workspaceId, issueId, 'No workflow configured for issue', ctx);
 }
 
 export function hasActiveIssueAutomation(workspaceId: string): boolean {
@@ -66,9 +53,15 @@ export function hasActiveIssueAutomation(workspaceId: string): boolean {
   );
 }
 
-function latestUserCommentSummary(workspaceId: string, issueId: string): string {
-  const latest = [...issueCommentService.listIssueComments(workspaceId, issueId)]
-    .reverse()
-    .find((comment) => comment.senderId === 'user');
-  return latest?.content ?? '';
+function markIssueError(
+  workspaceId: string,
+  issueId: string,
+  message: string,
+  ctx: AgentContext,
+): void {
+  const issue = issueService.getById(workspaceId, issueId);
+  const updated = issueService.markError(workspaceId, issueId, message);
+  if (!updated) return;
+  ctx.broadcast('issue.status_changed', { issueId, from: issue?.status ?? 'draft', to: 'error' });
+  ctx.broadcast('issue.updated', updated);
 }

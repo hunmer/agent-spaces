@@ -20,7 +20,7 @@ interface IssueStore {
   loading: boolean;
 
   loadIssues: (workspaceId: string) => Promise<void>;
-  createIssue: (workspaceId: string, title: string, description: string, members?: string[]) => Promise<void>;
+  createIssue: (workspaceId: string, title: string, description: string, members?: string[], workflowId?: string) => Promise<void>;
   setActiveIssue: (id: string | null) => void;
   updateIssue: (workspaceId: string, issueId: string, input: UpdateIssueInput) => Promise<void>;
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
@@ -62,11 +62,11 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     }
   },
 
-  createIssue: async (workspaceId, title, description, members) => {
+  createIssue: async (workspaceId, title, description, members, workflowId) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/issues`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, members }),
+      body: JSON.stringify({ title, description, members, workflowId }),
     });
     const issue: Issue = await res.json();
     get().upsertIssue(issue);

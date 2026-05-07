@@ -177,12 +177,10 @@ runIssueAutomation(workspaceId, issueId)
       |        createTasksFromWorkflow()
       |        return
       |
-      +-- no/fail: fallback old planning/task_creator path
+      +-- no/fail: mark issue error
 ```
 
-如果 workflow 存在并成功创建 tasks，则不会进入 planner/task_creator fallback 链路。
-
-如果 workflow 缺失或运行前校验失败，当前代码会打印 warning，并回退到旧的 hardcoded/fallback pipeline。这个行为是兼容策略，不是 workflow 的理想路径。
+Issue 自动化不再回退到旧 planner/task_creator hardcoded pipeline。workflow 缺失、workflow 模板不存在、或运行前校验失败时，Issue 会进入 `error`。
 
 ## Workflow 到 Task 的映射
 
@@ -239,8 +237,8 @@ source -> target
 `runIssueTask()` 规则：
 
 1. 只运行 `pending` task，防止重复调度。
-2. 优先使用 task 上的 `agentConfigId` 找到具体 agent preset。
-3. 如果 task 没有指定 agent，则 fallback 到 issue channel members 中第一个非 `scheduler`/`bot` agent。
+2. 使用 task 上的 `agentConfigId` 找到具体 agent preset。
+3. 如果 task 没有指定 agent，或绑定的 agent 不在 issue channel members 中 / 已禁用，则 task 失败并让 issue 进入重试或 `error`。
 4. 用该 agent preset 创建或复用 agent session。
 5. 调用对应 runtime 执行 task prompt。
 6. 成功则 `task.status = done`。
@@ -268,7 +266,7 @@ implement-agent -> review-agent -> final-agent
 
 - 在 workflow 中，`task_creator` 节点不会自动调用 `ReplaceIssueTasks` 来改写当前 workflow 生成的 task graph。
 - 它只是一个绑定了 `task_creator` role 和系统 prompt 的普通 agent task。
-- 非 workflow fallback 链路中的 `syncIssueTasksAfterPlanning()` 才会给 task creator 暴露 `ReplaceIssueTasks` 工具，让它动态创建 tasks。
+- 旧 `syncIssueTasksAfterPlanning()` 链路仍保留在代码中用于兼容，但 Issue 自动化入口不再调用它。
 
 如果未来要支持“workflow 中的 task_creator 动态展开后续 tasks”，需要新增专门节点语义或运行时分支，目前没有。
 

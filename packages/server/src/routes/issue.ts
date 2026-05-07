@@ -8,7 +8,8 @@ import { broadcastToWorkspace, stopChannelRuns } from '../ws/handler.js';
 import { getWorkspace } from '../storage/workspace-store.js';
 import * as agentService from '../services/agent.js';
 import { retryIssue } from '../services/issue-retry.js';
-import { hasActiveIssueAutomation, runIssueAutomation, shouldForcePlannerFromMentions } from '../agents/issue-agent-runner.js';
+import { hasActiveIssueAutomation, runIssueAutomation } from '../agents/issue-agent-runner.js';
+import * as workflowService from '../services/workflow.js';
 
 const router = Router({ mergeParams: true });
 
@@ -24,7 +25,12 @@ router.post('/', (req: Request<{ id: string }>, res: Response) => {
     res.status(400).json({ error: 'title is required' });
     return;
   }
-  const issue = issueService.create(req.params.id, { title, description: description || '', members, workflowId });
+  const issue = issueService.create(req.params.id, {
+    title,
+    description: description || '',
+    members: mergeWorkflowMembers(members, workflowId),
+    workflowId,
+  });
   const channel = issue.channelId ? channelService.getChannel(req.params.id, issue.channelId) : null;
   if (channel) broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   broadcastToWorkspace(req.params.id, 'issue.created', issue);
@@ -52,11 +58,13 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
   if (description !== undefined) issue.description = description;
   if (workflowId !== undefined) issue.workflowId = workflowId || undefined;
   if (members !== undefined) {
-    issue.members = normalizeIssueMembers(req.params.id, members);
-    if (issue.channelId) {
-      const updatedChannel = channelService.updateChannel(req.params.id, issue.channelId, { members: issue.members });
-      if (updatedChannel) broadcastToWorkspace(req.params.id, 'channel.updated', updatedChannel);
-    }
+    issue.members = normalizeIssueMembers(req.params.id, mergeWorkflowMembers(members, issue.workflowId));
+  } else if (workflowId !== undefined) {
+    issue.members = normalizeIssueMembers(req.params.id, mergeWorkflowMembers(issue.members, issue.workflowId));
+  }
+  if ((members !== undefined || workflowId !== undefined) && issue.channelId) {
+    const updatedChannel = channelService.updateChannel(req.params.id, issue.channelId, { members: issue.members });
+    if (updatedChannel) broadcastToWorkspace(req.params.id, 'channel.updated', updatedChannel);
   }
   if (status) {
     issue.status = status;
@@ -195,9 +203,7 @@ router.post('/:issueId/comments', (req: Request<{ id: string; issueId: string }>
       updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
         agentService.updateStatus(workspaceId, sessionId, status, extra),
     };
-    runIssueAutomation(workspaceId, issueId, ctx, {
-      forcePlanner: shouldForcePlannerFromMentions(workspaceId, mentions),
-    }).catch((err) => {
+    runIssueAutomation(workspaceId, issueId, ctx).catch((err) => {
       console.error(`[issue-comment] automation error for issue ${issueId}:`, err);
     });
   }
@@ -241,4 +247,17 @@ function normalizeIssueMembers(workspaceId: string, members: string[]): string[]
   }
 
   return normalized;
+}
+
+function mergeWorkflowMembers(members: unknown, workflowId: unknown): string[] {
+  const base = Array.isArray(members)
+    ? members.filter((member): member is string => typeof member === 'string' && Boolean(member.trim())).map((member) => member.trim())
+    : [];
+  if (typeof workflowId !== 'string' || !workflowId.trim()) return base;
+  const workflow = workflowService.getWorkflow(workflowId.trim());
+  if (!workflow) return base;
+  return Array.from(new Set([
+    ...base,
+    ...workflow.nodes.map((node) => node.data.agentConfigId).filter(Boolean),
+  ]));
 }

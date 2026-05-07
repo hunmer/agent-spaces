@@ -47,8 +47,8 @@ export function IssueList({ workspaceId }: IssueListProps) {
     ensureAgents();
   }, [workspaceId, loadIssues, ensureAgents]);
 
-  const handleCreate = async (data: { title: string; description: string; members: string[] }) => {
-    await createIssue(workspaceId, data.title, data.description, data.members);
+  const handleCreate = async (data: { title: string; description: string; members: string[]; workflowId?: string }) => {
+    await createIssue(workspaceId, data.title, data.description, data.members, data.workflowId);
   };
 
   const grouped = GROUP_ORDER

@@ -1,21 +1,20 @@
 /**
- * Agent hooks: chain executor completion to reviewer processing.
+ * Agent hooks retained for legacy callers.
  */
 
 import type { TaskResult } from '@agent-spaces/shared';
 import type { AgentContext } from '../agents/agent-context.js';
-import { runReviewer } from '../agents/reviewer-agent.js';
 
 /**
- * Hook: executor complete triggers reviewer.
- * This is the core hook in the agent orchestration pipeline.
+ * Workflow task execution completes tasks directly. Review steps should be
+ * modeled as workflow nodes instead of this hardcoded hook.
  */
 export async function onExecutorComplete(
   workspaceId: string,
   taskId: string,
   issueId: string,
   result: TaskResult,
-  ctx: AgentContext,
+  _ctx: AgentContext,
 ): Promise<void> {
   console.log(
     `[hook:onExecutorComplete] entered workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} success=${result.success} summary=${JSON.stringify(result.summary)}`,
@@ -26,7 +25,5 @@ export async function onExecutorComplete(
     return;
   }
 
-  console.log(`[hook:onExecutorComplete] triggering reviewer taskId=${taskId} issueId=${issueId}`);
-  await runReviewer(workspaceId, taskId, issueId, result, ctx);
-  console.log(`[hook:onExecutorComplete] reviewer completed taskId=${taskId} issueId=${issueId}`);
+  console.log(`[hook:onExecutorComplete] reviewer hook skipped; workflow controls task order taskId=${taskId} issueId=${issueId}`);
 }

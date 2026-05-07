@@ -7,6 +7,7 @@ import * as agentService from '../services/agent.js';
 import * as channelService from '../services/channel.js';
 import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
+import { mapWorkflowToTaskDrafts, validateWorkflowForRun } from '../services/workflow.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
@@ -41,9 +42,9 @@ export async function syncIssueTasksAfterPlanning(
     return;
   }
 
-  const taskSyncPreset = findTaskCreatorForIssue(workspaceId, issue, input.plannerPreset);
+  const taskSyncPreset = findTaskSyncAgentForIssue(workspaceId, issue, input.plannerPreset);
   if (!taskSyncPreset) {
-    console.warn(`[issue-task-controller] no task creator member found workspaceId=${workspaceId} issueId=${issueId}`);
+    console.warn(`[issue-task-controller] no task sync agent member found workspaceId=${workspaceId} issueId=${issueId}`);
     updateIssueStatus(workspaceId, issueId, 'error', ctx);
     return;
   }
@@ -403,9 +404,8 @@ export function createTasksFromWorkflow(
   template: WorkflowTemplate,
   ctx: AgentContext,
 ): void {
-  const { mapWorkflowToTaskDrafts, validateWorkflowForRun } = require('../services/workflow.js') as typeof import('../services/workflow.js');
-
   const issue = requireIssue(workspaceId, issueId);
+  ensureWorkflowAgentsForRun(workspaceId, issue, template, ctx);
 
   // Validate all agents exist, are enabled, and are in channel members
   const channel = channelService.getChannel(workspaceId, issue.channelId);
@@ -431,38 +431,61 @@ export function createTasksFromWorkflow(
   });
 }
 
+function ensureWorkflowAgentsForRun(
+  workspaceId: string,
+  issue: Issue,
+  template: WorkflowTemplate,
+  ctx: AgentContext,
+): void {
+  const workflowAgentIds = [...new Set(template.nodes.map((node) => node.data.agentConfigId).filter(Boolean))];
+  const workspaceAgentIds = new Set((agentService.listPresets(workspaceId) ?? []).map((agent) => agent.id));
+  const missingAgentIds = workflowAgentIds.filter((agentId) => !workspaceAgentIds.has(agentId));
+  if (missingAgentIds.length > 0) {
+    agentService.addTemplatesToWorkspace(workspaceId, missingAgentIds);
+  }
+
+  const mergedMembers = [...new Set([...(issue.members ?? []), ...workflowAgentIds])];
+  const membersChanged = mergedMembers.length !== (issue.members ?? []).length
+    || mergedMembers.some((member, index) => member !== issue.members?.[index]);
+  if (membersChanged) {
+    issue.members = mergedMembers;
+    const savedIssue = issueService.save(workspaceId, issue);
+    ctx.broadcast('issue.updated', savedIssue);
+  }
+
+  const channel = channelService.getChannel(workspaceId, issue.channelId);
+  const mergedChannelMembers = [...new Set([...(channel?.members ?? []), ...workflowAgentIds])];
+  const channelMembersChanged = mergedChannelMembers.length !== (channel?.members ?? []).length
+    || mergedChannelMembers.some((member, index) => member !== channel?.members?.[index]);
+  if (channelMembersChanged) {
+    const updatedChannel = channelService.updateChannel(workspaceId, issue.channelId, { members: mergedChannelMembers });
+    if (updatedChannel) ctx.broadcast('channel.updated', updatedChannel);
+  }
+}
+
 function findAgentForTask(
   workspaceId: string,
   issue: Issue,
   task: Task,
 ): AgentConfig | null {
   const assignable = getIssueMemberPresets(workspaceId, issue);
-  if (task.agentConfigId) {
-    const assigned = assignable.find((agent) => agent.id === task.agentConfigId);
-    if (assigned) return assigned;
-  }
-  return assignable.find((agent) => !['scheduler', 'bot'].includes(agent.role)) ?? assignable[0] ?? null;
+  if (!task.agentConfigId) return null;
+  return assignable.find((agent) => agent.id === task.agentConfigId) ?? null;
 }
 
-function findTaskCreatorForIssue(
+function findTaskSyncAgentForIssue(
   workspaceId: string,
   issue: Issue,
   plannerPreset?: AgentConfig,
 ): AgentConfig | null {
-  return findIssueMemberAgent(workspaceId, issue, 'task_creator')
-    ?? findIssueMemberAgent(workspaceId, issue, 'custom')
-    ?? plannerPreset
-    ?? findIssueMemberAgent(workspaceId, issue, 'executor');
-}
-
-function findIssueMemberAgent(
-  workspaceId: string,
-  issue: Issue,
-  role: AgentConfig['role'],
-): AgentConfig | null {
-  const channel = channelService.getChannel(workspaceId, issue.channelId);
-  if (!channel) return null;
-  return agentService.findEnabledPresetByRoleInMembers(workspaceId, channel.members, role);
+  const assignable = getIssueMemberPresets(workspaceId, issue);
+  const findByRole = (role: AgentConfig['role']) => assignable.find((agent) => agent.role === role) ?? null;
+  return plannerPreset
+    ?? findByRole('task_creator')
+    ?? findByRole('agent')
+    ?? findByRole('custom')
+    ?? findByRole('executor')
+    ?? assignable.find((agent) => !['scheduler', 'bot'].includes(agent.role)) ?? null;
 }
 
 function getIssueMemberPresets(workspaceId: string, issue: Issue): AgentConfig[] {
