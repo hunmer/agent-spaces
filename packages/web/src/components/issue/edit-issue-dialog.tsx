@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { X } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { getMemberDisplayName } from '@/lib/agent-members';
+import { useWorkflowStore } from '@/stores/workflow';
 import type { Issue, IssueStatus, AgentConfig } from '@agent-spaces/shared';
 
 const STATUS_OPTIONS: IssueStatus[] = [
@@ -21,16 +22,19 @@ interface EditIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agents?: AgentConfig[];
-  onSave: (data: { title: string; description: string; status: IssueStatus; members: string[] }) => Promise<void>;
+  workspaceId: string;
+  onSave: (data: { title: string; description: string; status: IssueStatus; members: string[]; workflowId?: string | null }) => Promise<void>;
 }
 
-export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave }: EditIssueDialogProps) {
+export function EditIssueDialog({ issue, open, onOpenChange, agents = [], workspaceId, onSave }: EditIssueDialogProps) {
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description);
   const [status, setStatus] = useState<IssueStatus>(issue.status);
   const [members, setMembers] = useState<string[]>(issue.members || []);
   const [memberQuery, setMemberQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>(issue.workflowId ?? '');
+  const { workflows, loadWorkflows } = useWorkflowStore();
   const t = useTranslations('issue');
   const tc = useTranslations('common');
 
@@ -41,8 +45,13 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
       setStatus(issue.status);
       setMembers(issue.members?.length ? [...issue.members] : []);
       setMemberQuery('');
+      setSelectedWorkflowId(issue.workflowId ?? '');
     }
   }, [open, issue]);
+
+  useEffect(() => {
+    if (open) loadWorkflows(workspaceId);
+  }, [open, workspaceId, loadWorkflows]);
 
   const toggleMember = (id: string) => {
     setMembers((prev) =>
@@ -54,7 +63,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
     if (!title.trim()) return;
     setSaving(true);
     try {
-      await onSave({ title: title.trim(), description: description.trim(), status, members });
+      await onSave({ title: title.trim(), description: description.trim(), status, members, workflowId: selectedWorkflowId === '__none__' ? null : (selectedWorkflowId || null) });
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -96,6 +105,20 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
                 <option key={opt} value={opt}>
                   {t(`status.${opt}`)}
                 </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Workflow Template</label>
+            <select
+              value={selectedWorkflowId || '__none__'}
+              onChange={(e) => setSelectedWorkflowId(e.target.value === '__none__' ? '' : e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="__none__">None (use default pipeline)</option>
+              {workflows.map(w => (
+                <option key={w.id} value={w.id}>{w.name} ({w.nodes.length} agents)</option>
               ))}
             </select>
           </div>
