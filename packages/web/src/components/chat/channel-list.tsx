@@ -29,6 +29,7 @@ const typeBadgeConfig: Record<Channel['type'], { className: string; icon: typeof
 function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Message['status'] } | null {
   if (!msgs || msgs.length === 0) return null;
   const last = msgs[msgs.length - 1];
+  if (!last) return null;
   const text = (last.content ?? '').replace(/<[^>]*>/g, '').slice(0, 60);
   return { text: text || '...', status: last.status };
 }
