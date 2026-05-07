@@ -1,3 +1,5 @@
+import type { AgentRole } from './workspace.js';
+
 export type AgentSessionStatus =
   | 'idle'
   | 'active'
@@ -9,7 +11,7 @@ export interface AgentSession {
   id: string;
   workspaceId: string;
   agentConfigId: string;
-  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'commit' | 'custom' | 'bot';
+  role: AgentRole;
   status: AgentSessionStatus;
   currentTaskId?: string;
   processId?: number;

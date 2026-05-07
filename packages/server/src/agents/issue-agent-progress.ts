@@ -56,7 +56,7 @@ export function createIssueAgentProgress(
     runtime?: string;
     model?: string;
     taskId?: string;
-    phase?: 'planner' | 'task_creator' | 'executor' | 'reviewer';
+    phase?: string;
   },
 ): IssueAgentProgress {
   const content = `${preset.name || preset.role} is processing...`;

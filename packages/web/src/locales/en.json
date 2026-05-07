@@ -149,12 +149,9 @@
       "codex": "Codex"
     },
     "role": {
+      "agent": { "name": "Agent" },
       "scheduler": { "name": "Scheduler" },
-      "planner": { "name": "Planner" },
-      "executor": { "name": "Executor" },
-      "reviewer": { "name": "Reviewer" },
-      "commit": { "name": "Commit" },
-      "custom": { "name": "Custom Agent" },
+      "task_creator": { "name": "Task Creator" },
       "bot": { "name": "Bot Agent" }
     },
     "defaultName": "New Agent",

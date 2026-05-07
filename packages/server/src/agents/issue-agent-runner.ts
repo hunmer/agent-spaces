@@ -54,7 +54,7 @@ export async function runIssueAutomation(
 export function shouldForcePlannerFromMentions(workspaceId: string, mentions: string[]): boolean {
   const mentionedIds = new Set(mentions);
   return (agentService.listPresets(workspaceId) ?? []).some(
-    (agent) => mentionedIds.has(agent.id) && agent.role === 'planner' && agent.enabled !== false,
+    (agent) => mentionedIds.has(agent.id) && ['planner', 'task_creator'].includes(agent.role) && agent.enabled !== false,
   );
 }
 
@@ -62,7 +62,7 @@ export function hasActiveIssueAutomation(workspaceId: string): boolean {
   return agentService.list(workspaceId).some(
     (session) =>
       session.status === 'active' &&
-      ['planner', 'custom', 'executor', 'reviewer'].includes(session.role),
+      !['scheduler', 'bot'].includes(session.role),
   );
 }
 

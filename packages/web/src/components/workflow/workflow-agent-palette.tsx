@@ -10,15 +10,14 @@ interface AgentWithWorkspace extends AgentConfig {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  planner: 'Planner', executor: 'Executor', reviewer: 'Reviewer',
-  commit: 'Commit', custom: 'Custom', bot: 'Bot', scheduler: 'Scheduler',
+  agent: 'Agent', scheduler: 'Scheduler', task_creator: 'Task Creator', bot: 'Bot',
 };
 
 function groupByRole(agents: AgentWithWorkspace[]): Record<string, AgentWithWorkspace[]> {
   const groups: Record<string, AgentWithWorkspace[]> = {};
   for (const agent of agents) {
     if (!agent.enabled) continue;
-    const role = agent.role || 'custom';
+    const role = agent.role || 'agent';
     if (!groups[role]) groups[role] = [];
     groups[role].push(agent);
   }

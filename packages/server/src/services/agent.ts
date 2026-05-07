@@ -18,7 +18,7 @@ import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 import { extractUsageFromOutput } from '../storage/usage.js';
 
-const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'commit', 'custom', 'bot'];
+const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [
@@ -69,6 +69,10 @@ export function findEnabledPresetByRoleInMembers(
   return (listPresets(workspaceId) ?? []).find(
     (agent) => members.has(agent.id) && agent.role === role && agent.enabled !== false,
   ) ?? null;
+}
+
+export function isValidRole(role: unknown): role is AgentConfig['role'] {
+  return typeof role === 'string' && role.trim().length > 0;
 }
 
 export function listTemplates(): AgentConfig[] {
@@ -388,7 +392,7 @@ export function createPreset(
   const preset: AgentConfig = {
     id,
     name: data.name?.trim() || 'New Agent',
-    role: data.role && VALID_ROLES.includes(data.role) ? data.role : 'executor',
+    role: isValidRole(data.role) ? data.role.trim() : DEFAULT_AGENT_ROLE,
     description: data.description || '',
     runtimeKind: presetRuntimeKind,
     modelProvider: requestedModelProvider,
@@ -428,7 +432,7 @@ export function updatePreset(
   if (index === -1) return null;
 
   const existing = ws.agents[index];
-  const role = data.role && VALID_ROLES.includes(data.role) ? data.role : existing.role;
+  const role = isValidRole(data.role) ? data.role.trim() : existing.role;
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
     ? data.runtimeKind
     : existing.runtimeKind || 'open-agent-sdk';

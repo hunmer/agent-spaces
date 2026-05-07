@@ -49,7 +49,7 @@ export interface IssueComment {
     duration?: number;
     taskId?: string;
     mentions?: string[];
-    phase?: 'planner' | 'task_creator' | 'executor' | 'reviewer';
+    phase?: string;
   };
   createdAt: string;
   updatedAt?: string;

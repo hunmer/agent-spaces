@@ -70,8 +70,7 @@ router.post('/start', (req: Request<{ id: string }>, res: Response) => {
     res.status(400).json({ error: 'role is required' });
     return;
   }
-  const validRoles = ['scheduler', 'planner', 'executor', 'reviewer', 'custom', 'bot'];
-  if (!validRoles.includes(role)) {
+  if (!agentService.isValidRole(role)) {
     res.status(400).json({ error: `invalid role: ${role}` });
     return;
   }

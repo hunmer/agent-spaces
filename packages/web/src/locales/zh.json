@@ -150,12 +150,9 @@
       "codex": "Codex"
     },
     "role": {
+      "agent": { "name": "Agent" },
       "scheduler": { "name": "调度者" },
-      "planner": { "name": "策划者" },
-      "executor": { "name": "执行者" },
-      "reviewer": { "name": "审核者" },
-      "commit": { "name": "提交者" },
-      "custom": { "name": "自定义 Agent" },
+      "task_creator": { "name": "任务创建者" },
       "bot": { "name": "Bot Agent" }
     },
     "defaultName": "新 Agent",

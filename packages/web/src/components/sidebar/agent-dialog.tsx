@@ -82,14 +82,12 @@ interface ConnectionTestResult {
 }
 
 type AgentRole = AgentConfig["role"];
+type BuiltInRole = "agent" | "scheduler" | "task_creator" | "bot";
 
 const ROLE_COLORS: Record<string, string> = {
+  agent: "bg-gray-500/10 text-gray-600 border-gray-200",
   scheduler: "bg-blue-500/10 text-blue-600 border-blue-200",
-  planner: "bg-purple-500/10 text-purple-600 border-purple-200",
-  executor: "bg-green-500/10 text-green-600 border-green-200",
-  reviewer: "bg-orange-500/10 text-orange-600 border-orange-200",
-  commit: "bg-pink-500/10 text-pink-600 border-pink-200",
-  custom: "bg-gray-500/10 text-gray-600 border-gray-200",
+  task_creator: "bg-green-500/10 text-green-600 border-green-200",
   bot: "bg-cyan-500/10 text-cyan-600 border-cyan-200",
 };
 
@@ -106,7 +104,7 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "open-agent-sdk", labelKey: "openAgentSdk" },
   { value: "codex", labelKey: "codex" },
 ];
-const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "commit", "custom", "bot"];
+const ROLE_OPTIONS: BuiltInRole[] = ["agent", "scheduler", "task_creator", "bot"];
 const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name);
 const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
@@ -123,7 +121,27 @@ function defaultSkills(names: string[]): SkillDraft[] {
   return names.map((name) => ({ name: `${name}.md`, content: `# ${name}\n` }));
 }
 
-const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
+const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
+  agent: {
+    name: "Agent",
+    role: "agent",
+    description: "通用 Agent，可在 workflow 中承担任意执行节点",
+    avatarUrl: "",
+    runtimeKind: "claude-code",
+    modelProvider: "anthropic-messages",
+    modelId: "claude-sonnet-4-6",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "",
+    mcps: defaultMcpConfig([]),
+    skills: defaultSkills(["coding", "debugging", "testing"]),
+    tools: DEFAULT_AGENT_TOOLS,
+    systemPrompt:
+      "你是通用 Agent。根据 issue 和当前任务上下文完成被分配的工作，遵循项目规范，必要时修改代码、运行验证，并清晰汇报结果。",
+    temperature: 0.3,
+    maxTokens: 8192,
+    enabled: true,
+  },
   scheduler: {
     name: "Scheduler",
     role: "scheduler",
@@ -144,30 +162,10 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     maxTokens: 4096,
     enabled: true,
   },
-  planner: {
-    name: "Planner",
-    role: "planner",
-    description: "策划者，负责分解任务和制定计划",
-    avatarUrl: "",
-    runtimeKind: "claude-code",
-    modelProvider: "anthropic-messages",
-    modelId: "claude-opus-4-7",
-    apiBase: "",
-    apiKey: "",
-    workingDir: "",
-    mcps: defaultMcpConfig([]),
-    skills: defaultSkills(["refactoring", "tdd"]),
-    tools: DEFAULT_AGENT_TOOLS,
-    systemPrompt:
-      "你是策划者 Agent。负责将复杂任务分解为可执行的子任务，制定详细的实施计划，识别潜在风险和依赖关系。",
-    temperature: 0.5,
-    maxTokens: 8192,
-    enabled: true,
-  },
-  executor: {
-    name: "Executor",
-    role: "executor",
-    description: "执行者，负责代码编写和修改",
+  task_creator: {
+    name: "Task Creator",
+    role: "task_creator",
+    description: "任务创建者，负责把 issue 拆成可执行任务",
     avatarUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
@@ -176,69 +174,10 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     apiKey: "",
     workingDir: "",
     mcps: defaultMcpConfig([]),
-    skills: defaultSkills(["coding", "debugging", "testing"]),
+    skills: defaultSkills(["planning", "task-split"]),
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
-      "你是执行者 Agent。根据计划编写高质量的代码，遵循项目编码规范，编写必要的测试。完成后提交审核。",
-    temperature: 0.2,
-    maxTokens: 16384,
-    enabled: true,
-  },
-  reviewer: {
-    name: "Reviewer",
-    role: "reviewer",
-    description: "审核者，负责代码审查和质量把关",
-    avatarUrl: "",
-    runtimeKind: "claude-code",
-    modelProvider: "anthropic-messages",
-    modelId: "claude-opus-4-7",
-    apiBase: "",
-    apiKey: "",
-    workingDir: "",
-    mcps: defaultMcpConfig([]),
-    skills: defaultSkills(["code-review", "security-audit"]),
-    tools: DEFAULT_AGENT_TOOLS,
-    systemPrompt:
-      "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
-    temperature: 0.2,
-    maxTokens: 8192,
-    enabled: true,
-  },
-  commit: {
-    name: "Commit",
-    role: "commit",
-    description: "提交消息生成器，根据 diff 智能生成 commit message",
-    avatarUrl: "",
-    runtimeKind: "claude-code",
-    modelProvider: "openai-chat-completions",
-    modelId: "",
-    apiBase: "",
-    apiKey: "",
-    workingDir: "",
-    mcps: {},
-    skills: [],
-    tools: [],
-    systemPrompt:
-      "你是一个 git commit 消息生成器。根据提供的 diff 内容，生成简洁清晰的 conventional commit 消息。格式：type: description。类型包括：feat, fix, docs, style, refactor, perf, test, chore, build, ci。首行不超过 72 个字符。如果有多项变更，使用主题 + 空行 + 要点正文。只输出 commit 消息本身，不要任何解释。",
-    temperature: 0.3,
-    maxTokens: 200,
-    enabled: true,
-  },
-  custom: {
-    name: "Custom Agent",
-    role: "custom",
-    description: "",
-    avatarUrl: "",
-    runtimeKind: "claude-code",
-    modelProvider: "anthropic-messages",
-    modelId: "",
-    apiBase: "",
-    apiKey: "",
-    workingDir: "",
-    mcps: {},
-    skills: [],
-    tools: DEFAULT_AGENT_TOOLS,
-    systemPrompt: "",
+      "你是任务创建者 Agent。负责读取 issue 上下文，把需求拆分为少量可执行任务，并用系统工具写入任务列表。只创建真正需要独立执行的任务，避免把细碎步骤拆成任务。",
     temperature: 0.3,
     maxTokens: 4096,
     enabled: true,
@@ -319,7 +258,7 @@ function serializeAgent(agent: AgentPreset): AgentPresetPayload {
   };
 }
 
-function newAgentDraft(role: AgentRole): AgentPreset {
+function newAgentDraft(role: BuiltInRole): AgentPreset {
   return {
     id: `draft-${role}-${Date.now()}`,
     ...ROLE_TEMPLATES[role],
@@ -333,7 +272,7 @@ function newEmptyAgent(): AgentPreset {
   return {
     id: `draft-empty-${Date.now()}`,
     name: "",
-    role: "executor",
+    role: "agent",
     description: "",
     avatarUrl: "",
     runtimeKind: "claude-code",
@@ -500,7 +439,7 @@ export function AgentDialog({
     }
   };
 
-  const handleAddAgent = (role: AgentRole | "empty") => {
+  const handleAddAgent = (role: BuiltInRole | "empty") => {
     if (!workspaceId) {
       setError(t('error.noWorkspace'));
       return;

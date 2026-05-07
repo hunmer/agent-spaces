@@ -1,5 +1,8 @@
 import type { BuiltInAgentToolName } from './tool.js';
 
+export type BuiltInAgentRole = 'agent' | 'scheduler' | 'task_creator' | 'bot';
+export type AgentRole = BuiltInAgentRole | (string & {});
+
 export interface Workspace {
   id: string;
   name: string;
@@ -43,7 +46,7 @@ export interface WorkspaceNotificationSettings {
 export interface AgentConfig {
   id: string;
   name: string;
-  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'commit' | 'custom' | 'bot';
+  role: AgentRole;
   description?: string;
   runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex';
   modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'openai-responses-to-anthropic-messages' | 'openai-chat-completions-to-anthropic-messages' | 'gemini-generate-content';
