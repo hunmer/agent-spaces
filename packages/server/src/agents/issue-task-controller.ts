@@ -1,4 +1,5 @@
 import type { AgentConfig, Issue, Task, TaskResult, TaskStatus } from '@agent-spaces/shared';
+import type { WorkflowTemplate } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import type { AgentFunctionTool } from '../adapters/agent-runtime-types.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
@@ -353,7 +354,7 @@ function createTaskSyncTools(
   ];
 }
 
-function replaceIssueTasksFromDrafts(
+export function replaceIssueTasksFromDrafts(
   workspaceId: string,
   issueId: string,
   ctx: AgentContext,
@@ -391,6 +392,40 @@ function replaceIssueTasksFromDrafts(
   for (const task of updated) ctx.broadcast('task.created', task);
   if (issueTasks) ctx.broadcast('issue.updated', issueTasks);
   return updated;
+}
+
+export function createTasksFromWorkflow(
+  workspaceId: string,
+  issueId: string,
+  template: WorkflowTemplate,
+  ctx: AgentContext,
+): void {
+  const { mapWorkflowToTaskDrafts, validateWorkflowForRun } = require('../services/workflow.js') as typeof import('../services/workflow.js');
+
+  const issue = requireIssue(workspaceId, issueId);
+
+  // Validate all agents exist, are enabled, and are in channel members
+  const channel = channelService.getChannel(workspaceId, issue.channelId);
+  const memberAgentIds = new Set(channel?.members ?? []);
+  const validationError = validateWorkflowForRun(workspaceId, template, memberAgentIds);
+  if (validationError) {
+    throw new Error(`Workflow validation failed: ${validationError}`);
+  }
+
+  const drafts = mapWorkflowToTaskDrafts(template);
+
+  issueService.updateStatus(workspaceId, issueId, 'planned');
+  ctx.broadcast('issue.status_changed', { issueId, oldStatus: issue.status, newStatus: 'planned' });
+
+  replaceIssueTasksFromDrafts(workspaceId, issueId, ctx, drafts);
+
+  issueService.updateStatus(workspaceId, issueId, 'in_progress');
+  ctx.broadcast('issue.status_changed', { issueId, oldStatus: 'planned', newStatus: 'in_progress' });
+  ctx.broadcast('issue.updated', issueService.getById(workspaceId, issueId));
+
+  scheduleRunnableIssueTasks(workspaceId, issueId, ctx).catch((err) => {
+    console.error(`[workflow] task scheduling failed for issue ${issueId}:`, err);
+  });
 }
 
 function findExecutorForTask(
