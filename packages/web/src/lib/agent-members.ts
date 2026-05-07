@@ -29,11 +29,11 @@ export function normalizeChannelMembersToAgentIds(
   const seen = new Set<string>();
 
   for (const member of members) {
-    if (member !== 'user' && !agentIds.has(member)) continue;
+    if (!agentIds.has(member)) continue;
     if (seen.has(member)) continue;
     seen.add(member);
     normalized.push(member);
   }
 
-  return normalized.includes('user') ? normalized : ['user', ...normalized];
+  return normalized;
 }

@@ -6,7 +6,7 @@ import * as taskService from '../services/task.js';
 
 function ensureChannel(workspaceId: string, issue: Issue): void {
   ensureRetryDefaults(workspaceId, issue);
-  const channelMembers = ['user', ...(issue.members || [])];
+  const channelMembers = issue.members || [];
   if (issue.channelId) {
     channelService.updateChannel(workspaceId, issue.channelId, { type: 'issue', issueId: issue.id, members: channelMembers });
     return;
@@ -50,7 +50,7 @@ export function getById(workspaceId: string, issueId: string): Issue | null {
 export function create(workspaceId: string, input: CreateIssueInput): Issue {
   const now = new Date().toISOString();
   const issueId = uuid();
-  const channelMembers = ['user', ...(input.members || [])];
+  const channelMembers = input.members || [];
   const channel = channelService.createChannel(workspaceId, {
     name: input.title,
     type: 'issue',
@@ -65,7 +65,6 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     description: input.description,
     status: 'draft',
     tasks: [],
-    assignedAgents: [],
     members: input.members || [],
     workflowId: input.workflowId,
     retryCount: 0,
@@ -95,7 +94,6 @@ export function createForChannel(
     description: input.description,
     status: 'draft',
     tasks: [],
-    assignedAgents: [],
     members: [],
     retryCount: 0,
     maxRetries: 3,
@@ -198,8 +196,8 @@ export function addAgent(workspaceId: string, issueId: string, agentId: string):
   const issue = getIssue(workspaceId, issueId);
   if (!issue) return null;
 
-  if (!issue.assignedAgents.includes(agentId)) {
-    issue.assignedAgents.push(agentId);
+  if (!issue.members.includes(agentId)) {
+    issue.members.push(agentId);
     issue.updatedAt = new Date().toISOString();
     updateIssue(issue);
   }

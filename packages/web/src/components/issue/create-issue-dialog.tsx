@@ -30,7 +30,7 @@ interface CreateIssueDialogProps {
 export function CreateIssueDialog({ open, onOpenChange, agents = [], workspaceId, onSubmit }: CreateIssueDialogProps) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
-  const [members, setMembers] = useState<string[]>(['user']);
+  const [members, setMembers] = useState<string[]>([]);
   const [memberQuery, setMemberQuery] = useState('');
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('');
   const { workflows, loadWorkflows } = useWorkflowStore();
@@ -45,7 +45,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], workspaceId
     if (!val) {
       setTitle('');
       setDesc('');
-      setMembers(['user']);
+      setMembers([]);
       setMemberQuery('');
       setSelectedWorkflowId('');
     }

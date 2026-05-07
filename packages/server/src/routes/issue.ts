@@ -51,10 +51,10 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
   if (title) issue.title = title;
   if (description !== undefined) issue.description = description;
   if (workflowId !== undefined) issue.workflowId = workflowId || undefined;
-  if (members) {
+  if (members !== undefined) {
     issue.members = normalizeIssueMembers(req.params.id, members);
     if (issue.channelId) {
-      const updatedChannel = channelService.updateChannel(req.params.id, issue.channelId, { members: ['user', ...issue.members] });
+      const updatedChannel = channelService.updateChannel(req.params.id, issue.channelId, { members: issue.members });
       if (updatedChannel) broadcastToWorkspace(req.params.id, 'channel.updated', updatedChannel);
     }
   }

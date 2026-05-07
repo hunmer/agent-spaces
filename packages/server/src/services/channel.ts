@@ -64,19 +64,19 @@ export function updateChannel(
   return channels[idx];
 }
 
-function normalizeMembers(workspaceId: string, members: string[] = ['user']): string[] {
+function normalizeMembers(workspaceId: string, members: string[] = []): string[] {
   const agentIds = new Set((getWorkspace(workspaceId)?.agents || []).map((agent) => agent.id));
   const normalized: string[] = [];
   const seen = new Set<string>();
 
   for (const member of members) {
-    if (member !== 'user' && !agentIds.has(member)) continue;
+    if (!agentIds.has(member)) continue;
     if (seen.has(member)) continue;
     seen.add(member);
     normalized.push(member);
   }
 
-  return normalized.includes('user') ? normalized : ['user', ...normalized];
+  return normalized;
 }
 
 export function deleteChannel(workspaceId: string, channelId: string): boolean {

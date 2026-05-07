@@ -658,15 +658,13 @@ export function deletePreset(workspaceId: string, presetId: string): boolean | n
     }
   }
 
-  // Remove agent from all issues' members and assignedAgents
+  // Remove agent from all issues' members
   for (const issue of listIssues(workspaceId)) {
     const membersChanged = issue.members.includes(presetId);
-    const assignedChanged = issue.assignedAgents.includes(presetId);
-    if (membersChanged || assignedChanged) {
+    if (membersChanged) {
       updateIssue({
         ...issue,
-        members: membersChanged ? issue.members.filter((m) => m !== presetId) : issue.members,
-        assignedAgents: assignedChanged ? issue.assignedAgents.filter((a) => a !== presetId) : issue.assignedAgents,
+        members: issue.members.filter((m) => m !== presetId),
       });
     }
   }

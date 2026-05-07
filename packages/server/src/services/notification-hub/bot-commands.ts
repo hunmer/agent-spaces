@@ -106,10 +106,10 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
       const presetIds = new Set(presets.map((p) => p.id));
       const invalid = agentIds.filter((id) => !presetIds.has(id));
       if (invalid.length) return `Agent not found: ${invalid.join(', ')}`;
-      issue.assignedAgents = agentIds;
+      issue.members = agentIds;
       issueService.save(workspaceId, issue);
       botCommandContexts.set(input.conversationId, { ...context, workspaceId, issueId: issue.id });
-      return `Set agents for "${issue.title}": ${agentIds.join(', ')}`;
+      return `Set members for "${issue.title}": ${agentIds.join(', ')}`;
     }
 
     if (args[0]) {
@@ -321,13 +321,11 @@ function formatIssueDetail(workspaceId: string, issueId: string): string {
   const tasks = taskService.list(workspaceId, issue.id);
   const comments = issueCommentService.listIssueComments(workspaceId, issue.id);
   const members = issue.members.length ? issue.members.join(', ') : '-';
-  const agents = issue.assignedAgents.length ? issue.assignedAgents.join(', ') : '-';
   return [
     `${issue.title} [${issue.status}]`,
     `ID: ${issue.id}`,
     issue.description ? `Desc: ${issue.description}` : undefined,
     `Members: ${members}`,
-    `Agents: ${agents}`,
     `Tasks: ${tasks.length}`,
     ...tasks.map((task) => `- ${task.title} [${task.status}] ${task.id}`),
     `Comments: ${comments.length}`,
@@ -405,4 +403,3 @@ function buildCommandHelp(): string {
     '/pull',
   ].join('\n');
 }
-

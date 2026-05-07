@@ -273,7 +273,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        members: normalizeChannelMembersToAgentIds(enabledAgents, [...members, ...newMembers]).filter((member) => member !== 'user'),
+        members: normalizeChannelMembersToAgentIds(enabledAgents, [...members, ...newMembers]),
       }),
     });
     const updated = await res.json();

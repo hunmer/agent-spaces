@@ -18,7 +18,6 @@ export interface Issue {
   status: IssueStatus;
   planFile?: string;
   tasks: string[];
-  assignedAgents: string[];
   members: string[];
   workflowId?: string;
   retryCount: number;
