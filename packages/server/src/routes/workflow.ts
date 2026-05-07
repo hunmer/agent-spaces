@@ -1,10 +1,11 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import * as workflowService from '../services/workflow.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
 
 const router = Router({ mergeParams: true });
 
-router.get('/', (req, res) => {
+router.get('/', (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id: workspaceId } = req.params;
     const workflows = workflowService.listWorkflows(workspaceId);
@@ -14,7 +15,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.get('/:workflowId', (req, res) => {
+router.get('/:workflowId', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
   try {
     const { id: workspaceId, workflowId } = req.params;
     const workflow = workflowService.getWorkflow(workspaceId, workflowId);
@@ -28,7 +29,7 @@ router.get('/:workflowId', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id: workspaceId } = req.params;
     const workflow = workflowService.createWorkflow(workspaceId, req.body);
@@ -39,7 +40,7 @@ router.post('/', (req, res) => {
   }
 });
 
-router.put('/:workflowId', (req, res) => {
+router.put('/:workflowId', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
   try {
     const { id: workspaceId, workflowId } = req.params;
     const workflow = workflowService.updateWorkflow(workspaceId, workflowId, req.body);
@@ -50,7 +51,7 @@ router.put('/:workflowId', (req, res) => {
   }
 });
 
-router.delete('/:workflowId', (req, res) => {
+router.delete('/:workflowId', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
   try {
     const { id: workspaceId, workflowId } = req.params;
     workflowService.deleteWorkflow(workspaceId, workflowId);
@@ -61,7 +62,7 @@ router.delete('/:workflowId', (req, res) => {
   }
 });
 
-router.post('/:workflowId/duplicate', (req, res) => {
+router.post('/:workflowId/duplicate', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
   try {
     const { id: workspaceId, workflowId } = req.params;
     const workflow = workflowService.duplicateWorkflow(workspaceId, workflowId);
