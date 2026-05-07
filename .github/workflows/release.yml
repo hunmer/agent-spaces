@@ -89,12 +89,7 @@ jobs:
           CODE_SIGNING_REQUIRED: "NO"
           CODE_SIGNING_ALLOWED: "NO"
           DEVELOPMENT_TEAM: ""
-        run: |
-          pnpm tauri ios build --target aarch64 --no-sign --ci -- \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM=""
+        run: pnpm tauri ios build --target aarch64 --no-sign --ci
 
       - name: Package IPA
         run: |
@@ -115,6 +110,48 @@ jobs:
         with:
           name: ios
           path: packages/tauri/Agent Spaces.ipa
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared & server
+        run: pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build
+
+      - name: Build web
+        run: pnpm --filter @agent-spaces/web build
+        env:
+          NEXT_STATIC_EXPORT: 1
+
+      - name: Copy web dist
+        run: node scripts/copy-web.mjs
+
+      - name: Build Windows
+        working-directory: packages/tauri
+        run: pnpm build:windows
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            packages/tauri/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            packages/tauri/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
 
   build-android:
     runs-on: macos-latest
@@ -178,7 +215,7 @@ jobs:
             packages/tauri/src-tauri/gen/android/app/build/outputs/bundle/universalRelease/*.aab
 
   release:
-    needs: [build-macos, build-ios, build-android]
+    needs: [build-macos, build-ios, build-windows, build-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -196,5 +233,7 @@ jobs:
           files: |
             artifacts/macos/*.dmg
             artifacts/ios/*.ipa
+            artifacts/windows/*.exe
+            artifacts/windows/*.msi
             artifacts/android/*.apk
             artifacts/android/*.aab
