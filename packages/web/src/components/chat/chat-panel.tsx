@@ -10,8 +10,9 @@ import { ChatInput, type ChatInputHandle } from './chat-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { ArrowLeft, HelpCircleIcon, PanelRightOpen, PanelRightClose, SendIcon, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, HelpCircleIcon, Info, SendIcon, Trash2, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
 import { findAgentById } from '@/lib/agent-members';
@@ -238,9 +239,9 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => setInfoOpen(!infoOpen)}
+            onClick={() => setInfoOpen(true)}
           >
-            {infoOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+            <Info className="size-4" />
           </Button>
         </div>
 
@@ -275,15 +276,21 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
       </div>
 
-      {/* 右侧：信息面板 */}
-      {infoOpen && (
-        <ChannelInfoPanel
-          workspaceId={workspaceId}
-          channel={channel}
-          agents={agents}
-          allChannels={channels}
-        />
-      )}
+      {/* 右侧：信息面板 - Drawer */}
+      <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
+        <SheetContent side="right" className="w-80 p-0 gap-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{channel.name}</SheetTitle>
+            <SheetDescription>Channel info panel</SheetDescription>
+          </SheetHeader>
+          <ChannelInfoPanel
+            workspaceId={workspaceId}
+            channel={channel}
+            agents={agents}
+            allChannels={channels}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* 删除确认 Dialog */}
       <Dialog open={!!deletingMsg} onOpenChange={(open) => { if (!open) setDeletingMsg(null); }}>

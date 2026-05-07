@@ -24,6 +24,7 @@ import {
   Trash2,
   FolderSearch,
   LayoutGrid,
+  GitBranch,
 } from "lucide-react";
 import { UserIcon } from "@/components/common/user-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -174,6 +175,12 @@ export function DashboardSidebar() {
           ],
         })),
       ],
+    },
+    {
+      id: "workflows",
+      title: ts('nav.workflows'),
+      icon: <GitBranch className="size-4" />,
+      link: "/workflows",
     },
     {
       id: "settings",

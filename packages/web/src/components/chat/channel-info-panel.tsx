@@ -63,7 +63,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
   };
 
   return (
-    <div className="w-72 border-l flex flex-col h-full">
+    <div className="flex flex-col h-full">
       <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
         <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
           <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">

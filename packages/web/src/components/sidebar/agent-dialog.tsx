@@ -365,11 +365,13 @@ export function AgentDialog({
   onOpenChange,
   workspaceId,
   roleFilter,
+  initialAgentId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId?: string;
   roleFilter?: AgentRole | AgentRole[];
+  initialAgentId?: string;
 }) {
   const t = useTranslations('agent');
   const tc = useTranslations('common');
@@ -400,14 +402,24 @@ export function AgentDialog({
         if (!res.ok) throw new Error(await res.text());
         return res.json() as Promise<AgentConfig[]>;
       })
-      .then((data) => setAgents(data.map(normalizeAgent)))
+      .then((data) => {
+        const normalized = data.map(normalizeAgent);
+        setAgents(normalized);
+        if (initialAgentId) {
+          const target = normalized.find((a) => a.id === initialAgentId);
+          if (target) {
+            setSelectedAgent(target);
+            setEditDraft({ ...target });
+          }
+        }
+      })
       .catch((err) => {
         if (err.name !== "AbortError") setError(t('error.loadFailed'));
       })
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [open, workspaceId]);
+  }, [open, workspaceId, initialAgentId, t]);
 
   const handleSelectAgent = (agent: AgentPreset) => {
     setSelectedAgent(agent);

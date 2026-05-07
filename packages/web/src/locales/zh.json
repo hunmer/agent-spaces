@@ -105,7 +105,8 @@
       "general": "通用",
       "agents": "智能体",
       "models": "模型",
-      "providers": "供应商"
+      "providers": "供应商",
+      "workflows": "工作流"
     },
     "notifications": {
       "openAriaLabel": "打开通知",
@@ -256,6 +257,7 @@
       "memberCount": "成员数",
       "createdAt": "创建时间",
       "noMembers": "暂无成员",
+      "noAgents": "未找到 Agent",
       "delete": "删除频道",
       "deleteConfirm": "确认删除此频道？此操作不可撤销。",
       "namePlaceholder": "频道名称"

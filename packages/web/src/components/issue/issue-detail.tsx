@@ -12,12 +12,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { ArrowLeft, Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, MessagesSquare, X } from 'lucide-react';
+import { ArrowLeft, Play, RotateCcw, XCircle, User, Clock, GitBranch, Info, Users, UserPlus, Plus, Pencil, Trash2, MessageSquare, MessagesSquare, X } from 'lucide-react';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
 import { CommentNavigator } from '@/components/issue/comment-navigator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useEditor } from '@tiptap/react';
@@ -389,6 +390,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <Badge variant={ISSUE_STATUS_COLOR[issue.status]}>
               {t(`status.${issue.status}`)}
             </Badge>
+            <div className="ml-auto flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -407,10 +409,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => setInfoOpen(!infoOpen)}
+              onClick={() => setInfoOpen(true)}
             >
-              {infoOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+              <Info className="size-4" />
             </Button>
+            </div>
           </div>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
             {/* Members avatars */}
@@ -615,9 +618,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         )}
       </div>
 
-      {/* Info panel */}
-      {infoOpen && (
-        <div className="w-72 border-l flex flex-col h-full">
+      {/* Info panel - Drawer */}
+      <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
+        <SheetContent side="right" className="w-80 p-0 gap-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t('detail.tabInfo')}</SheetTitle>
+            <SheetDescription>{issue.title}</SheetDescription>
+          </SheetHeader>
           <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
             <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
               <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
@@ -716,8 +723,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               <Trash2 className="size-3.5 mr-1.5" />{t('detail.deleteIssue')}
             </Button>
           </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
       <AddMemberDialog
         open={addMemberOpen}
