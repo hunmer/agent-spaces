@@ -69,9 +69,13 @@ export function ModelsDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const initialProviderHandled = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initialProviderHandled.current = false;
+      return;
+    }
     queueMicrotask(() => {
       setLoading(true);
       setError(null);
@@ -80,7 +84,8 @@ export function ModelsDialog({
   }, [open, ensure]);
 
   useEffect(() => {
-    if (open && initialProvider && !draft) {
+    if (open && initialProvider && !draft && !initialProviderHandled.current) {
+      initialProviderHandled.current = true;
       queueMicrotask(() => {
         setSelected(null);
         setDraft({

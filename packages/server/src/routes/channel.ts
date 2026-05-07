@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { listChannels, createChannel, getChannel, updateChannel, deleteChannel } from '../services/channel.js';
 import { listMessages, createMessage, updateMessage, deleteMessage, clearMessages } from '../services/message.js';
-import { broadcastToWorkspace, hasActiveChannelRuns, markInactiveChannelRunsStopped } from '../ws/handler.js';
+import { broadcastToWorkspace, hasActiveChannelRuns, markInactiveChannelRunsStopped, stopChannelRuns } from '../ws/handler.js';
 import { getToolDetail } from '../services/tool-detail.js';
 
 const router = Router({ mergeParams: true });
@@ -41,6 +41,8 @@ router.put('/:channelId', (req: Request<ChannelParams>, res: Response) => {
 // DELETE /api/workspaces/:id/channels/:channelId
 router.delete('/:channelId', (req: Request<ChannelParams>, res: Response) => {
   const { id, channelId } = req.params;
+  // 先停止该频道中所有运行中的 agent
+  stopChannelRuns(id, channelId!);
   const ok = deleteChannel(id, channelId!);
   if (!ok) { res.status(404).json({ error: 'channel not found' }); return; }
   broadcastToWorkspace(id, 'channel.deleted', { channelId });

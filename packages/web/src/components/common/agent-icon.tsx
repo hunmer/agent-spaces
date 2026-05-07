@@ -93,18 +93,31 @@ export interface AgentIconProps {
 
 export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClick }: AgentIconProps) {
   const agents = useAgentStore((s) => s.agents);
-  const [imgError, setImgError] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [providerError, setProviderError] = useState(false);
 
   const agent = agentId ? agents.find((a) => a.id === agentId) : undefined;
   const displayName = name || agent?.name || agentId || '?';
   const resolvedAvatarUrl = avatarUrl ?? agent?.avatarUrl;
   const resolvedApiBase = apiBase ?? agent?.apiBase;
-  const src = resolvedAvatarUrl || (!imgError ? getProviderIconUrl(resolvedApiBase) : '');
+
+  const src = (!avatarError && resolvedAvatarUrl)
+    || (!providerError ? getProviderIconUrl(resolvedApiBase) : '');
 
   useEffect(() => {
-    setImgError(false);
+    setAvatarError(false);
+    setProviderError(false);
   }, [resolvedAvatarUrl, resolvedApiBase]);
+
   const initial = displayName.charAt(0).toUpperCase();
+
+  const handleError = () => {
+    if (!avatarError && resolvedAvatarUrl) {
+      setAvatarError(true);
+    } else {
+      setProviderError(true);
+    }
+  };
 
   return (
     <div
@@ -118,7 +131,7 @@ export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClic
       )}
     >
       {src ? (
-        <img src={src} alt={displayName} className="size-full object-cover rounded-[inherit]" onError={() => setImgError(true)} />
+        <img src={src} alt={displayName} className="size-full object-cover rounded-[inherit]" onError={handleError} />
       ) : (
         <span className="text-xs font-semibold select-none">{initial}</span>
       )}

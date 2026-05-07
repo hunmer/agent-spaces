@@ -4,7 +4,7 @@ import type { AgentSessionStatus } from '@agent-spaces/shared';
 import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as channelService from '../services/channel.js';
-import { broadcastToWorkspace } from '../ws/handler.js';
+import { broadcastToWorkspace, stopChannelRuns } from '../ws/handler.js';
 import { getWorkspace } from '../storage/workspace-store.js';
 import * as agentService from '../services/agent.js';
 import { retryIssue } from '../services/issue-retry.js';
@@ -46,6 +46,7 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
     res.status(404).json({ error: 'issue not found' });
     return;
   }
+  const previousStatus = issue.status;
   const { title, description, status, members } = req.body;
   if (title) issue.title = title;
   if (description !== undefined) issue.description = description;
@@ -57,13 +58,17 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
     }
   }
   if (status) {
-    const updated = issueService.updateStatus(req.params.id, req.params.issueId, status, { title: issue.title, description: issue.description });
-    broadcastToWorkspace(req.params.id, 'issue.updated', updated);
-    res.json(updated);
-    return;
+    issue.status = status;
   }
   const saved = issueService.save(req.params.id, issue);
   broadcastToWorkspace(req.params.id, 'issue.updated', saved);
+  if (status && status !== previousStatus) {
+    // 状态变更时停止该议题关联频道中所有运行中的 agent
+    if (issue.channelId) {
+      stopChannelRuns(req.params.id, issue.channelId);
+    }
+    broadcastToWorkspace(req.params.id, 'issue.status_changed', { issueId: req.params.issueId, from: previousStatus, to: status });
+  }
   res.json(saved);
 });
 
@@ -119,11 +124,17 @@ router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: strin
 });
 
 router.delete('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Response) => {
-  const ok = issueService.remove(req.params.id, req.params.issueId);
-  if (!ok) {
+  const { id, issueId } = req.params;
+  const issue = issueService.getById(id, issueId);
+  if (!issue) {
     res.status(404).json({ error: 'issue not found' });
     return;
   }
+  // 先停止该议题关联频道中所有运行中的 agent
+  if (issue.channelId) {
+    stopChannelRuns(id, issue.channelId);
+  }
+  issueService.remove(id, issueId);
   res.status(204).send();
 });
 

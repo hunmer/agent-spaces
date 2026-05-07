@@ -611,7 +611,7 @@ function untrackChannelRun(workspaceId: string, channelId: string, agentId: stri
   if (runs.size === 0) activeChannelRuns.delete(key);
 }
 
-function stopChannelRuns(workspaceId: string, channelId: string): void {
+export function stopChannelRuns(workspaceId: string, channelId: string): void {
   const runs = activeChannelRuns.get(channelRunKey(workspaceId, channelId));
   if (!runs || runs.size === 0) {
     markInactiveChannelRunsStopped(workspaceId, channelId);

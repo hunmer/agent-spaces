@@ -11,6 +11,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.4.1
         version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@emotion/is-prop-valid':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -64,7 +67,7 @@ importers:
         version: 0.9.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       framer-motion:
         specifier: ^12.38.0
-        version: 12.38.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       lucide-react:
         specifier: ^1.14.0
         version: 1.14.0(react@19.2.4)
@@ -73,10 +76,10 @@ importers:
         version: 0.55.1
       next:
         specifier: 16.2.4
-        version: 16.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 16.2.4(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       next-intl:
         specifier: ^4.11.0
-        version: 4.11.0(next@16.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+        version: 4.11.0(next@16.2.4(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -348,6 +351,12 @@ packages:
 
   '@emnapi/wasi-threads@1.2.1':
     resolution: {integrity: sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w==}
+
+  '@emotion/is-prop-valid@1.4.0':
+    resolution: {integrity: sha512-QgD4fyscGcbbKwJmqNvUMSE02OsHUa+lAWKdEUIJKgqe5IwRSKd7+KhibEWdaKwgjLj0DRSHA9biAIqGBk05lw==}
+
+  '@emotion/memoize@0.9.0':
+    resolution: {integrity: sha512-30FAj7/EoJ5mwVPOWhAyCX+FPfMDrVecJAM+Iw9NRoSl4BBAQeqj4cApHHUXOVvIPgLVDsCFoz/hGD+5QQD1GQ==}
 
   '@eslint-community/eslint-utils@4.9.1':
     resolution: {integrity: sha512-phrYmNiYppR7znFEdqgfWHXR6NCkZEK7hwWDHZUjit/2/U0r6XvkDl0SYnoM51Hq7FhCGdLDT6zxCCOY1hexsQ==}
@@ -1027,28 +1036,24 @@ packages:
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-arm64-musl@4.2.4':
     resolution: {integrity: sha512-bBADEGAbo4ASnppIziaQJelekCxdMaxisrk+fB7Thit72IBnALp9K6ffA2G4ruj90G9XRS2VQ6q2bCKbfFV82g==}
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-linux-x64-gnu@4.2.4':
     resolution: {integrity: sha512-7Mx25E4WTfnht0TVRTyC00j3i0M+EeFe7wguMDTlX4mRxafznw0CA8WJkFjWYH5BlgELd1kSjuU2JiPnNZbJDA==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-x64-musl@4.2.4':
     resolution: {integrity: sha512-2wwJRF7nyhOR0hhHoChc04xngV3iS+akccHTGtz965FwF0up4b2lOdo6kI1EbDaEXKgvcrFBYcYQQ/rrnWFVfA==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-wasm32-wasi@4.2.4':
     resolution: {integrity: sha512-FQsqApeor8Fo6gUEklzmaa9994orJZZDBAlQpK2Mq+DslRKFJeD6AjHpBQ0kZFQohVr8o85PPh8eOy86VlSCmw==}
@@ -1463,49 +1468,41 @@ packages:
     resolution: {integrity: sha512-34gw7PjDGB9JgePJEmhEqBhWvCiiWCuXsL9hYphDF7crW7UgI05gyBAi6MF58uGcMOiOqSJ2ybEeCvHcq0BCmQ==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-arm64-musl@1.11.1':
     resolution: {integrity: sha512-RyMIx6Uf53hhOtJDIamSbTskA99sPHS96wxVE/bJtePJJtpdKGXO1wY90oRdXuYOGOTuqjT8ACccMc4K6QmT3w==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-ppc64-gnu@1.11.1':
     resolution: {integrity: sha512-D8Vae74A4/a+mZH0FbOkFJL9DSK2R6TFPC9M+jCWYia/q2einCubX10pecpDiTmkJVUH+y8K3BZClycD8nCShA==}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-gnu@1.11.1':
     resolution: {integrity: sha512-frxL4OrzOWVVsOc96+V3aqTIQl1O2TjgExV4EKgRY09AJ9leZpEg8Ak9phadbuX0BA4k8U5qtvMSQQGGmaJqcQ==}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-musl@1.11.1':
     resolution: {integrity: sha512-mJ5vuDaIZ+l/acv01sHoXfpnyrNKOk/3aDoEdLO/Xtn9HuZlDD6jKxHlkN8ZhWyLJsRBxfv9GYM2utQ1SChKew==}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-s390x-gnu@1.11.1':
     resolution: {integrity: sha512-kELo8ebBVtb9sA7rMe1Cph4QHreByhaZ2QEADd9NzIQsYNQpt9UkM9iqr2lhGr5afh885d/cB5QeTXSbZHTYPg==}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-gnu@1.11.1':
     resolution: {integrity: sha512-C3ZAHugKgovV5YvAMsxhq0gtXuwESUKc5MhEtjBpLoHPLYM+iuwSj3lflFwK3DPm68660rZ7G8BMcwSro7hD5w==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-musl@1.11.1':
     resolution: {integrity: sha512-rV0YSoyhK2nZ4vEswT/QwqzqQXw5I6CjoaYMOX0TqBlWhojUf8P94mvI7nuJTeaCkkds3QE4+zS8Ko+GdXuZtA==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-wasm32-wasi@1.11.1':
     resolution: {integrity: sha512-5u4RkfxJm+Ng7IWgkzi3qrFOvLvQYnPBmjmZQ8+szTK/b31fQCnleNl1GgEt7nIsZRIf5PLhPwT0WM+q45x/UQ==}
@@ -3139,28 +3136,24 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.32.0:
     resolution: {integrity: sha512-UpQkoenr4UJEzgVIYpI80lDFvRmPVg6oqboNHfoH4CQIfNA+HOrZ7Mo7KZP02dC6LjghPQJeBsvXhJod/wnIBg==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.32.0:
     resolution: {integrity: sha512-V7Qr52IhZmdKPVr+Vtw8o+WLsQJYCTd8loIfpDaMRWGUZfBOYEJeyJIkqGIDMZPwPx24pUMfwSxxI8phr/MbOA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.32.0:
     resolution: {integrity: sha512-bYcLp+Vb0awsiXg/80uCRezCYHNg1/l3mt0gzHnWV9XP1W5sKa5/TCdGWaR/zBM2PeF/HbsQv/j2URNOiVuxWg==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.32.0:
     resolution: {integrity: sha512-8SbC8BR40pS6baCM8sbtYDSwEVQd4JlFTOlaD3gWGHfThTcABnNDBda6eTZeqbofalIJhFx0qKzgHJmcPTnGdw==}
@@ -4847,6 +4840,12 @@ snapshots:
     dependencies:
       tslib: 2.8.1
     optional: true
+
+  '@emotion/is-prop-valid@1.4.0':
+    dependencies:
+      '@emotion/memoize': 0.9.0
+
+  '@emotion/memoize@0.9.0': {}
 
   '@eslint-community/eslint-utils@4.9.1(eslint@9.39.4(jiti@2.6.1))':
     dependencies:
@@ -7103,12 +7102,13 @@ snapshots:
 
   forwarded@0.2.0: {}
 
-  framer-motion@12.38.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  framer-motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       motion-dom: 12.38.0
       motion-utils: 12.36.0
       tslib: 2.8.1
     optionalDependencies:
+      '@emotion/is-prop-valid': 1.4.0
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
@@ -8180,18 +8180,20 @@ snapshots:
 
   next-intl-swc-plugin-extractor@4.11.0: {}
 
-  next-intl@4.11.0(next@16.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4):
+  next-intl@4.11.0(next@16.2.4(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(typescript@5.9.3):
     dependencies:
       '@formatjs/intl-localematcher': 0.8.6
       '@parcel/watcher': 2.5.6
       '@swc/core': 1.15.33
       icu-minify: 4.11.0
       negotiator: 1.0.0
-      next: 16.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 16.2.4(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       next-intl-swc-plugin-extractor: 4.11.0
       po-parser: 2.1.1
       react: 19.2.4
       use-intl: 4.11.0(react@19.2.4)
+    optionalDependencies:
+      typescript: 5.9.3
     transitivePeerDependencies:
       - '@swc/helpers'
 
@@ -8200,7 +8202,7 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  next@16.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  next@16.2.4(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@next/env': 16.2.4
       '@swc/helpers': 0.5.15
@@ -8209,7 +8211,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      styled-jsx: 5.1.6(react@19.2.4)
+      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.2.4)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.2.4
       '@next/swc-darwin-x64': 16.2.4
@@ -9172,10 +9174,12 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.7
 
-  styled-jsx@5.1.6(react@19.2.4):
+  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.2.4):
     dependencies:
       client-only: 0.0.1
       react: 19.2.4
+    optionalDependencies:
+      '@babel/core': 7.29.0
 
   supports-color@7.2.0:
     dependencies:
