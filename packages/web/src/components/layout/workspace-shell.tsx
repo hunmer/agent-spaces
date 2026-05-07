@@ -14,6 +14,7 @@ import { GitChangesPanel } from "@/components/git/git-changes-panel";
 import { GitCommitsPanel } from "@/components/git/git-commits-panel";
 import { GitGraphPanel } from "@/components/git/git-graph-panel";
 import { ProjectSettingsPanel } from "@/components/settings/project-settings-panel";
+import { WorkflowList } from "@/components/workflow/workflow-list";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -36,6 +37,7 @@ const tabIcons: Record<string, React.ReactNode> = {
   "git-commits": <GitCommitHorizontal size={16} />,
   "git-graph": <Network size={16} />,
   "project-settings": <Settings2 size={16} />,
+  "workflows": <Network size={16} />,
 };
 
 // 右侧 tab → 左侧 tab 同步映射
@@ -75,6 +77,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Settings", component: "project-settings", id: "project-settings" },
           { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
+          { type: "tab", name: "Workflows", component: "workflows", id: "workflows" },
           { type: "tab", name: "Editor", component: "editor", id: "editor" },
         ],
       },
@@ -218,6 +221,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <GitGraphPanel workspaceId={workspaceId} />;
         case "project-settings":
           return <ProjectSettingsPanel workspaceId={workspaceId} />;
+        case "workflows":
+          return <WorkflowList workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }
@@ -329,6 +334,8 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <GitGraphPanel workspaceId={workspaceId} />;
     case "project-settings":
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
+    case "workflows":
+      return <WorkflowList workspaceId={workspaceId} />;
     default:
       return <ChannelList workspaceId={workspaceId} />;
   }
