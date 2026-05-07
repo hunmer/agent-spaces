@@ -19,12 +19,12 @@ router.get('/', (req: Request<{ id: string }>, res: Response) => {
 });
 
 router.post('/', (req: Request<{ id: string }>, res: Response) => {
-  const { title, description, members } = req.body;
+  const { title, description, members, workflowId } = req.body;
   if (!title) {
     res.status(400).json({ error: 'title is required' });
     return;
   }
-  const issue = issueService.create(req.params.id, { title, description: description || '', members });
+  const issue = issueService.create(req.params.id, { title, description: description || '', members, workflowId });
   const channel = issue.channelId ? channelService.getChannel(req.params.id, issue.channelId) : null;
   if (channel) broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   broadcastToWorkspace(req.params.id, 'issue.created', issue);
@@ -47,9 +47,10 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
     return;
   }
   const previousStatus = issue.status;
-  const { title, description, status, members } = req.body;
+  const { title, description, status, members, workflowId } = req.body;
   if (title) issue.title = title;
   if (description !== undefined) issue.description = description;
+  if (workflowId !== undefined) issue.workflowId = workflowId || undefined;
   if (members) {
     issue.members = normalizeIssueMembers(req.params.id, members);
     if (issue.channelId) {

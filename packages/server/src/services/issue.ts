@@ -67,6 +67,7 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     tasks: [],
     assignedAgents: [],
     members: input.members || [],
+    workflowId: input.workflowId,
     retryCount: 0,
     maxRetries: 3,
     createdAt: now,
