@@ -145,6 +145,18 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgs.length]);
 
+  // Poll for message updates when agent is active
+  useEffect(() => {
+    if (!activeChannelId || !workspaceId) return;
+    const last = msgs[msgs.length - 1];
+    if (!last || !['pending', 'streaming', 'waiting_for_user'].includes(last.status ?? '')) return;
+
+    const interval = setInterval(() => {
+      loadMessages(workspaceId, activeChannelId);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [activeChannelId, workspaceId, msgs.length, msgs[msgs.length - 1]?.status, loadMessages]);
+
   const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments']) => {
     if (!activeChannelId) return;
     sendMessage(workspaceId, activeChannelId, content, mentions, attachments);
