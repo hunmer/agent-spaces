@@ -8,6 +8,7 @@ interface UpdateIssueInput {
   description?: string;
   status?: IssueStatus;
   members?: string[];
+  workflowId?: string | null;
 }
 
 interface IssueStore {

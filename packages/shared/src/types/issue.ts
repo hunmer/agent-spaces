@@ -20,6 +20,7 @@ export interface Issue {
   tasks: string[];
   assignedAgents: string[];
   members: string[];
+  workflowId?: string;
   retryCount: number;
   maxRetries: number;
   retryPaused?: boolean;
@@ -58,4 +59,5 @@ export interface CreateIssueInput {
   title: string;
   description: string;
   members?: string[];
+  workflowId?: string;
 }

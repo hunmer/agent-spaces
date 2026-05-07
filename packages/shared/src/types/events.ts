@@ -1,3 +1,5 @@
+import type { WorkflowTemplate } from './workflow.js';
+
 export interface WSEvent<T = unknown> {
   event: string;
   workspaceId: string;
@@ -116,6 +118,9 @@ export type ServerEventMap = {
   'task.updated': import('./task.js').Task;
   'task.status_changed': TaskStatusChangedPayload;
   'task.output': TaskOutputPayload;
+  'workflow.created': { workspaceId: string; workflow: WorkflowTemplate };
+  'workflow.updated': { workspaceId: string; workflow: WorkflowTemplate };
+  'workflow.deleted': { workspaceId: string; workflowId: string };
 };
 
 export type ClientEventName = keyof ClientEventMap;
