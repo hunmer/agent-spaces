@@ -102,6 +102,9 @@ In `packages/shared/src/types/issue.ts`:
 - Add `workflowId?: string` to the `Issue` interface (after `members` field)
 - Add `workflowId?: string` to `CreateIssueInput` interface
 
+In `packages/web/src/stores/issue.ts`:
+- Add `workflowId?: string | null` to the `UpdateIssueInput` interface (matching the `onSave` prop shape from `edit-issue-dialog.tsx`)
+
 - [ ] **Step 3: Add workflow events to ServerEventMap in events.ts**
 
 In `packages/shared/src/types/events.ts`, add inside `ServerEventMap`:
@@ -140,11 +143,11 @@ git commit -m "feat(workflow): add WorkflowTemplate type definitions and Issue e
 
 ```typescript
 // packages/server/src/storage/workflow-store.ts
+// NOTE: All functions are synchronous to match json-store.ts and issue-store.ts patterns
 
 import type { WorkflowTemplate } from '@agent-spaces/shared';
-import { ensureDir, readJsonFile, writeJsonFile, deleteFile } from './json-store.js';
+import { ensureDir, readJsonFile, writeJsonFile, deleteFile, getDataDir } from './json-store.js';
 import path from 'node:path';
-import { getDataDir } from './json-store.js';
 
 function workflowsDir(workspaceId: string) {
   return path.join(getDataDir(), 'workspaces', workspaceId, 'workflows');
@@ -158,49 +161,34 @@ function workflowFile(workspaceId: string, workflowId: string) {
   return path.join(workflowsDir(workspaceId), `${workflowId}.json`);
 }
 
-export async function listWorkflows(workspaceId: string): Promise<WorkflowTemplate[]> {
-  const data = await readJsonFile<WorkflowTemplate[]>(workflowsIndex(workspaceId));
-  return data ?? [];
+export function listWorkflows(workspaceId: string): WorkflowTemplate[] {
+  return readJsonFile<WorkflowTemplate[]>(workflowsIndex(workspaceId)) ?? [];
 }
 
-export async function getWorkflow(workspaceId: string, workflowId: string): Promise<WorkflowTemplate | null> {
+export function getWorkflow(workspaceId: string, workflowId: string): WorkflowTemplate | null {
   return readJsonFile<WorkflowTemplate>(workflowFile(workspaceId, workflowId));
 }
 
-export async function createWorkflow(workspaceId: string, workflow: WorkflowTemplate): Promise<void> {
-  const dir = workflowsDir(workspaceId);
-  await ensureDir(dir);
-
-  // Write individual file
-  await writeJsonFile(workflowFile(workspaceId, workflow.id), workflow);
-
-  // Update index
-  const index = await listWorkflows(workspaceId);
+export function createWorkflow(workspaceId: string, workflow: WorkflowTemplate): void {
+  ensureDir(workflowsDir(workspaceId));
+  writeJsonFile(workflowFile(workspaceId, workflow.id), workflow);
+  const index = listWorkflows(workspaceId);
   index.push(workflow);
-  await writeJsonFile(workflowsIndex(workspaceId), index);
+  writeJsonFile(workflowsIndex(workspaceId), index);
 }
 
-export async function updateWorkflow(workspaceId: string, workflow: WorkflowTemplate): Promise<void> {
-  // Write individual file
-  await writeJsonFile(workflowFile(workspaceId, workflow.id), workflow);
-
-  // Update index
-  const index = await listWorkflows(workspaceId);
+export function updateWorkflow(workspaceId: string, workflow: WorkflowTemplate): void {
+  writeJsonFile(workflowFile(workspaceId, workflow.id), workflow);
+  const index = listWorkflows(workspaceId);
   const idx = index.findIndex(w => w.id === workflow.id);
-  if (idx !== -1) {
-    index[idx] = workflow;
-  }
-  await writeJsonFile(workflowsIndex(workspaceId), index);
+  if (idx !== -1) index[idx] = workflow;
+  writeJsonFile(workflowsIndex(workspaceId), index);
 }
 
-export async function deleteWorkflow(workspaceId: string, workflowId: string): Promise<void> {
-  // Remove individual file
-  await deleteFile(workflowFile(workspaceId, workflowId));
-
-  // Update index
-  const index = await listWorkflows(workspaceId);
-  const filtered = index.filter(w => w.id !== workflowId);
-  await writeJsonFile(workflowsIndex(workspaceId), filtered);
+export function deleteWorkflow(workspaceId: string, workflowId: string): void {
+  deleteFile(workflowFile(workspaceId, workflowId));
+  const index = listWorkflows(workspaceId);
+  writeJsonFile(workflowsIndex(workspaceId), index.filter(w => w.id !== workflowId));
 }
 ```
 
@@ -222,10 +210,14 @@ git commit -m "feat(workflow): add workflow JSON storage layer"
 
 ```typescript
 // packages/server/src/services/workflow.ts
+// NOTE: All storage functions are synchronous (matching json-store pattern).
+//       Service functions are also synchronous where they only call sync storage.
+//       Route handlers wrap in async for Express compatibility.
 
 import { v4 as uuid } from 'uuid';
-import type { WorkflowTemplate, WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
 import * as workflowStore from '../storage/workflow-store.js';
+import { getWorkspace } from '../storage/workspace-store.js';
 
 // --- DAG Validation ---
 
@@ -294,28 +286,65 @@ export function validateDAG(template: Pick<WorkflowTemplate, 'nodes' | 'edges'>)
   return null; // valid
 }
 
-// --- CRUD ---
+// --- Role Staleness Resolution ---
 
-export async function listWorkflows(workspaceId: string): Promise<WorkflowTemplate[]> {
+function resolveStaleRoles(workspaceId: string, nodes: WorkflowNode[]): { nodes: WorkflowNode[]; invalidIds: string[] } {
+  const workspace = getWorkspace(workspaceId);
+  const agentMap = new Map(workspace?.agents.map(a => [a.id, a]) ?? []);
+  const invalidIds: string[] = [];
+
+  const resolved = nodes.map(node => {
+    const agent = agentMap.get(node.data.agentConfigId);
+    if (!agent) {
+      invalidIds.push(node.id);
+      return node;
+    }
+    // Re-resolve role, avatarUrl, modelId from current preset
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        role: agent.role,
+        avatarUrl: agent.avatarUrl,
+        modelId: agent.modelId,
+      },
+    };
+  });
+
+  return { nodes: resolved, invalidIds };
+}
+
+// --- CRUD (synchronous) ---
+
+export function listWorkflows(workspaceId: string): WorkflowTemplate[] {
   return workflowStore.listWorkflows(workspaceId);
 }
 
-export async function getWorkflow(workspaceId: string, workflowId: string): Promise<WorkflowTemplate | null> {
+export function getWorkflow(workspaceId: string, workflowId: string): WorkflowTemplate | null {
   return workflowStore.getWorkflow(workspaceId, workflowId);
 }
 
-export async function createWorkflow(
+export function createWorkflow(
   workspaceId: string,
   input: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; viewport?: WorkflowTemplate['viewport'] }
-): Promise<WorkflowTemplate> {
+): WorkflowTemplate {
   const now = new Date().toISOString();
+  const nodes = input.nodes ?? [];
+  const edges = input.edges ?? [];
+
+  // Resolve stale roles
+  const { nodes: resolvedNodes, invalidIds } = resolveStaleRoles(workspaceId, nodes);
+  if (invalidIds.length > 0) {
+    throw new Error(`Invalid agent references in nodes: ${invalidIds.join(', ')}`);
+  }
+
   const template: WorkflowTemplate = {
     id: uuid(),
     workspaceId,
     name: input.name,
     description: input.description,
-    nodes: input.nodes ?? [],
-    edges: input.edges ?? [],
+    nodes: resolvedNodes,
+    edges,
     viewport: input.viewport,
     createdAt: now,
     updatedAt: now,
@@ -324,21 +353,33 @@ export async function createWorkflow(
   const error = validateDAG(template);
   if (error) throw new Error(error);
 
-  await workflowStore.createWorkflow(workspaceId, template);
+  workflowStore.createWorkflow(workspaceId, template);
   return template;
 }
 
-export async function updateWorkflow(
+export function updateWorkflow(
   workspaceId: string,
   workflowId: string,
   updates: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges' | 'viewport'>>
-): Promise<WorkflowTemplate> {
-  const existing = await workflowStore.getWorkflow(workspaceId, workflowId);
+): WorkflowTemplate {
+  const existing = workflowStore.getWorkflow(workspaceId, workflowId);
   if (!existing) throw new Error('Workflow not found');
+
+  let nodes = updates.nodes ?? existing.nodes;
+
+  // Resolve stale roles if nodes are being updated
+  if (updates.nodes) {
+    const resolved = resolveStaleRoles(workspaceId, updates.nodes);
+    if (resolved.invalidIds.length > 0) {
+      throw new Error(`Invalid agent references in nodes: ${resolved.invalidIds.join(', ')}`);
+    }
+    nodes = resolved.nodes;
+  }
 
   const updated: WorkflowTemplate = {
     ...existing,
     ...updates,
+    nodes,
     id: existing.id,
     workspaceId: existing.workspaceId,
     createdAt: existing.createdAt,
@@ -350,18 +391,18 @@ export async function updateWorkflow(
     if (error) throw new Error(error);
   }
 
-  await workflowStore.updateWorkflow(workspaceId, updated);
+  workflowStore.updateWorkflow(workspaceId, updated);
   return updated;
 }
 
-export async function deleteWorkflow(workspaceId: string, workflowId: string): Promise<void> {
-  const existing = await workflowStore.getWorkflow(workspaceId, workflowId);
+export function deleteWorkflow(workspaceId: string, workflowId: string): void {
+  const existing = workflowStore.getWorkflow(workspaceId, workflowId);
   if (!existing) throw new Error('Workflow not found');
-  await workflowStore.deleteWorkflow(workspaceId, workflowId);
+  workflowStore.deleteWorkflow(workspaceId, workflowId);
 }
 
-export async function duplicateWorkflow(workspaceId: string, workflowId: string): Promise<WorkflowTemplate> {
-  const existing = await workflowStore.getWorkflow(workspaceId, workflowId);
+export function duplicateWorkflow(workspaceId: string, workflowId: string): WorkflowTemplate {
+  const existing = workflowStore.getWorkflow(workspaceId, workflowId);
   if (!existing) throw new Error('Workflow not found');
 
   const now = new Date().toISOString();
@@ -373,13 +414,13 @@ export async function duplicateWorkflow(workspaceId: string, workflowId: string)
     updatedAt: now,
   };
 
-  await workflowStore.createWorkflow(workspaceId, duplicated);
+  workflowStore.createWorkflow(workspaceId, duplicated);
   return duplicated;
 }
 
 // --- Task Mapping ---
 
-export interface TaskDraft {
+export interface TaskDraftForWorkflow {
   key: string;
   title: string;
   description: string;
@@ -388,10 +429,8 @@ export interface TaskDraft {
   sandboxDirs?: string[];
 }
 
-export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraft[] {
-  const nodeMap = new Map(template.nodes.map(n => [n.id, n]));
-
-  // Build reverse adjacency: for each node, which nodes depend on it
+export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftForWorkflow[] {
+  // Build reverse adjacency: for each node, which nodes point to it (its dependencies)
   const dependsOn = new Map<string, string[]>();
   for (const node of template.nodes) {
     dependsOn.set(node.id, []);
@@ -408,6 +447,22 @@ export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraft[]
     dependsOnKeys: dependsOn.get(node.id)?.length ? dependsOn.get(node.id) : undefined,
     sandboxDirs: undefined,
   }));
+}
+
+// --- Run-time Validation ---
+
+export function validateWorkflowForRun(workspaceId: string, template: WorkflowTemplate, memberAgentIds: Set<string>): string | null {
+  const workspace = getWorkspace(workspaceId);
+  const agentMap = new Map(workspace?.agents.map(a => [a.id, a]) ?? []);
+
+  for (const node of template.nodes) {
+    const agent = agentMap.get(node.data.agentConfigId);
+    if (!agent) return `Agent "${node.data.label}" (${node.data.agentConfigId}) no longer exists`;
+    if (!agent.enabled) return `Agent "${agent.name}" is disabled`;
+    if (!memberAgentIds.has(node.data.agentConfigId)) return `Agent "${agent.name}" is not in the issue channel members`;
+  }
+
+  return null; // valid
 }
 ```
 
@@ -559,13 +614,18 @@ Inside `runIssueAutomation()`, at the beginning of the function body (after gett
 ```typescript
 // Workflow template branch
 if (issue.workflowId) {
-  const template = await workflowService.getWorkflow(workspaceId, issue.workflowId);
+  const template = workflowService.getWorkflow(workspaceId, issue.workflowId);
   if (template) {
-    await createTasksFromWorkflow(workspaceId, issueId, template, ctx);
-    return;
+    try {
+      createTasksFromWorkflow(workspaceId, issueId, template, ctx);
+      return;
+    } catch (err: any) {
+      // Workflow execution failed -- fall back to hardcoded pipeline
+      console.warn(`Workflow execution failed for issue ${issueId}: ${err.message}. Falling back to hardcoded pipeline.`);
+    }
+  } else {
+    console.warn(`Workflow template ${issue.workflowId} not found, falling back to hardcoded pipeline`);
   }
-  // Template not found - fall through to hardcoded pipeline
-  console.warn(`Workflow template ${issue.workflowId} not found, falling back to hardcoded pipeline`);
 }
 ```
 
@@ -585,47 +645,65 @@ git commit -m "feat(workflow): add workflow template branch to issue automation 
 **Files:**
 - Modify: `packages/server/src/agents/issue-task-controller.ts`
 
-- [ ] **Step 1: Add createTasksFromWorkflow function**
+**IMPORTANT:** The existing `replaceIssueTasksFromDrafts()` is a non-exported function (line 356) with signature `(workspaceId, issueId, ctx: AgentContext, drafts: TaskDraft[]): Task[]`. We must either:
+  - **Option A (recommended):** Export `replaceIssueTasksFromDrafts` by adding `export` keyword
+  - **Option B:** Inline the logic in `createTasksFromWorkflow`
 
-In `packages/server/src/agents/issue-task-controller.ts`, add a new exported function after the existing `replaceIssueTasksFromDrafts()` function:
+This plan uses Option A.
+
+- [ ] **Step 1: Export replaceIssueTasksFromDrafts**
+
+In `packages/server/src/agents/issue-task-controller.ts`:
+- Change `function replaceIssueTasksFromDrafts(` to `export function replaceIssueTasksFromDrafts(` (line 356)
+
+- [ ] **Step 2: Add createTasksFromWorkflow function**
+
+Add a new exported function after `replaceIssueTasksFromDrafts()`:
 
 ```typescript
-export async function createTasksFromWorkflow(
+export function createTasksFromWorkflow(
   workspaceId: string,
   issueId: string,
   template: WorkflowTemplate,
   ctx: AgentContext
-): Promise<void> {
-  const { mapWorkflowToTaskDrafts } = await import('../services/workflow.js');
+): void {
+  const { mapWorkflowToTaskDrafts, validateWorkflowForRun } = require('../services/workflow.js') as typeof import('../services/workflow.js');
 
-  // Map template to task drafts
+  // Map template to task drafts (synchronous)
   const drafts = mapWorkflowToTaskDrafts(template);
 
   // Set issue status to 'planned' briefly
-  const issue = await issueService.getIssue(workspaceId, issueId);
-  if (!issue) throw new Error('Issue not found');
+  const issue = requireIssue(workspaceId, issueId);
 
-  await issueService.updateStatus(workspaceId, issueId, 'planned');
+  // Validate all agents exist, are enabled, and are in channel members
+  const channel = channelService.getByIssueId(workspaceId, issueId);
+  const memberAgentIds = new Set(channel?.members ?? []);
+  const validationError = validateWorkflowForRun(workspaceId, template, memberAgentIds);
+  if (validationError) {
+    throw new Error(`Workflow validation failed: ${validationError}`);
+  }
+
+  issueService.updateStatus(workspaceId, issueId, 'planned');
   ctx.broadcast('issue.status_changed', {
     issueId,
     oldStatus: issue.status,
     newStatus: 'planned',
   });
 
-  // Use existing replaceIssueTasksFromDrafts to create tasks
-  await replaceIssueTasksFromDrafts(workspaceId, issueId, drafts);
+  // Use existing replaceIssueTasksFromDrafts (now exported) -- note: ctx is 3rd param
+  replaceIssueTasksFromDrafts(workspaceId, issueId, ctx, drafts);
 
   // Set issue status to 'in_progress'
-  await issueService.updateStatus(workspaceId, issueId, 'in_progress');
+  issueService.updateStatus(workspaceId, issueId, 'in_progress');
   ctx.broadcast('issue.status_changed', {
     issueId,
     oldStatus: 'planned',
     newStatus: 'in_progress',
   });
-  ctx.broadcast('issue.updated', await issueService.getIssue(workspaceId, issueId));
+  ctx.broadcast('issue.updated', issueService.getById(workspaceId, issueId));
 
-  // Start scheduling
-  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+  // Start scheduling (synchronous)
+  scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
 }
 ```
 
@@ -634,7 +712,9 @@ Add import at top:
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 ```
 
-- [ ] **Step 2: Commit**
+Note: `requireIssue` and `issueService` are already imported in this file. `channelService` may need to be imported if not already available -- check existing imports and add `import * as channelService from '../services/channel.js';` if needed.
+
+- [ ] **Step 3: Commit**
 
 ```bash
 git add packages/server/src/agents/issue-task-controller.ts
@@ -676,12 +756,13 @@ git commit -m "feat(workflow): pass workflowId through issue create/update route
 
 ```bash
 cd packages/web && pnpm add @xyflow/react @dagrejs/dagre
+# Note: pnpm-lock.yaml is at the monorepo root, not in packages/web/
 ```
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/web/package.json packages/web/pnpm-lock.yaml
+git add packages/web/package.json pnpm-lock.yaml
 git commit -m "feat(workflow): add @xyflow/react and @dagrejs/dagre dependencies"
 ```
 
@@ -1110,7 +1191,7 @@ interface WorkflowCanvasProps {
   onNodeAdd?: (node: Node<WorkflowNode['data']>) => void;
 }
 
-const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+// NOTE: dagre Graph instances are created fresh inside functions to avoid state pollution
 
 export function WorkflowCanvas({
   nodes,
@@ -1193,11 +1274,13 @@ export function WorkflowCanvas({
   );
 }
 
-// Auto-layout utility using dagre
+// Auto-layout utility using dagre -- creates fresh Graph each call
 export function getAutoLayoutedNodes(
   nodes: Node<WorkflowNode['data'>[],
   edges: Edge[]
 ): Node<WorkflowNode['data']>[] {
+  const g = new Dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 100 });
 
   for (const node of nodes) {
@@ -1269,9 +1352,10 @@ const miniNodeTypes: NodeTypes = {
   agent: MiniNode,
 };
 
-const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
 function layoutNodes(template: WorkflowTemplate): { nodes: Node[]; edges: Edge[] } {
+  const g = new Dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: 'LR', nodesep: 20, ranksep: 40 });
 
   const nodes: Node[] = template.nodes.map(n => ({
@@ -1367,9 +1451,19 @@ git commit -m "feat(workflow): add mini preview for workflow list cards"
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
-import type { Node, Edge, Connection } from '@xyflow/react';
+import { useState, useCallback } from 'react';
+import {
+  ReactFlowProvider,
+  useReactFlow,
+  applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
+  type Node,
+  type Edge,
+  type Connection,
+  type NodeChange,
+  type EdgeChange,
+} from '@xyflow/react';
 import type { WorkflowTemplate, WorkflowNode } from '@agent-spaces/shared';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorkflowStore } from '@/stores/workflow';
@@ -1377,7 +1471,6 @@ import { WorkflowCanvas, getAutoLayoutedNodes } from './workflow-canvas';
 import { WorkflowAgentPalette } from './workflow-agent-palette';
 import { WorkflowToolbar } from './workflow-toolbar';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 
 type WorkflowNodeData = WorkflowNode['data'];
 
@@ -1534,10 +1627,6 @@ function WorkflowEditorInner({ template, onBack }: { template: WorkflowTemplate 
     </div>
   );
 }
-
-// Need to import applyNodeChanges and applyEdgeChanges
-import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
-import type { NodeChange, EdgeChange } from '@xyflow/react';
 
 export function WorkflowEditor({ template, onBack }: { template: WorkflowTemplate | null; onBack: () => void }) {
   return (
@@ -1857,6 +1946,28 @@ case 'workflows':
 ```typescript
 workflows: GitBranch,  // or Share2, Workflow, Network icons from lucide
 ```
+
+5. If the project has a mobile tab bar component (check for mobile-specific layout code), add a "Workflows" entry there as well, matching the existing mobile tab pattern.
+
+- [ ] **Step 2: Add i18n translation keys**
+
+Add translation keys for workflow-related labels. Check existing translation files (e.g., `messages/zh.json`, `messages/en.json` or wherever `useTranslations` keys are defined). Add:
+
+```json
+{
+  "workflow": {
+    "title": "Workflow Templates",
+    "new": "New Workflow",
+    "empty": "No workflow templates yet",
+    "createFirst": "Create your first workflow",
+    "agents": "agents",
+    "templateLabel": "Workflow Template",
+    "none": "None (use default pipeline)"
+  }
+}
+```
+
+Then update Task 17/18 dialogs to use `t('workflow.templateLabel')` instead of hardcoded "Workflow Template".
 
 - [ ] **Step 2: Commit**
 
