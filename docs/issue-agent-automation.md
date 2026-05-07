@@ -1,5 +1,7 @@
 # Issue Agent 自动化执行流程
 
+> 当前 workflow 系统已经替代 issue 自动化里的固定 executor/reviewer 编排。需要理解当前 workflow 数据模型和运行时，请优先阅读 `docs/workflow-system.md`。本文保留旧 fallback 链路背景，部分 planner/executor/reviewer 描述可能只适用于兼容路径。
+
 本文档说明当前 issue 被自动处理时，后端如何串联 scheduler、planner、task creator、executor、reviewer，以及前端如何通过事件看到状态和消息更新。
 
 ## 入口条件
