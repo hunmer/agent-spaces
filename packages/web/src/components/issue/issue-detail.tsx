@@ -213,6 +213,17 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
   }, [comments]);
 
+  const issueTasks = useMemo(() => {
+    if (!issue) return [];
+    const filtered = tasks.filter((t) => t.issueId === issue.id);
+    const taskOrder = issue.tasks ?? [];
+    const orderMap = new Map(taskOrder.map((id, idx) => [id, idx]));
+    const fallback = taskOrder.length;
+    return filtered.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
+  }, [tasks, issue]);
+  const members = issue?.members ?? [];
+  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+
   if (!issue) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
@@ -220,16 +231,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       </div>
     );
   }
-
-  const issueTasks = useMemo(() => {
-    const filtered = tasks.filter((t) => t.issueId === issue.id);
-    const taskOrder = issue.tasks ?? [];
-    const orderMap = new Map(taskOrder.map((id, idx) => [id, idx]));
-    const fallback = taskOrder.length;
-    return filtered.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
-  }, [tasks, issue.id, issue.tasks]);
-  const members = issue.members ?? [];
-  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
 
   return (
     <div className="flex h-full overflow-hidden">

@@ -108,7 +108,13 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
   const gitStatus = useGitStore((s) => s.status);
   const { activePanel, setActivePanel } = useMobilePanelStore();
-  const [model] = useState(() => Model.fromJson(defaultJson));
+  const [model] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
+      if (saved) return Model.fromJson(JSON.parse(saved));
+    } catch { /* ignore corrupt data */ }
+    return Model.fromJson(defaultJson);
+  });
 
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {
@@ -262,6 +268,13 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   const onModelChange = useCallback(
     (_model: Model, action: Action) => {
+      // 持久化布局（忽略高频的 SELECT_TAB，避免无意义写入）
+      if (action.type !== Actions.SELECT_TAB) {
+        try {
+          localStorage.setItem(`flexlayout-${workspaceId}`, JSON.stringify(_model.toJson()));
+        } catch { /* quota exceeded — ignore */ }
+      }
+
       if (action.type !== Actions.SELECT_TAB) return;
       const node = _model.getNodeById(action.data.tabNode);
       if (!node || !(node instanceof TabNode)) return;
