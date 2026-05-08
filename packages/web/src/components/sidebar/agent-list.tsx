@@ -48,12 +48,13 @@ export function AgentList({
             <p className="text-xs text-muted-foreground truncate">{agent.description || t('list.noDescription')}</p>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono">{agent.modelId.split("-").slice(0, 2).join("-")}</span>
-          <Switch
-            size="sm"
-            checked={agent.enabled}
-            onClick={(e) => e.stopPropagation()}
-            onCheckedChange={() => onToggleEnabled?.(agent.id)}
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <Switch
+              size="sm"
+              checked={agent.enabled}
+              onCheckedChange={() => onToggleEnabled?.(agent.id)}
+            />
+          </div>
           <Button
             variant="ghost"
             size="icon-xs"

@@ -702,6 +702,7 @@ export function createGlobalPreset(data: Omit<Partial<AgentConfig>, 'id'>): Agen
     maxTokens: data.maxTokens ?? 4096,
     sandboxDirs: data.sandboxDirs,
     maxRetries: data.maxRetries,
+    templateId: data.templateId,
     enabled: data.enabled ?? true,
   };
 
