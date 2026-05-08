@@ -363,7 +363,7 @@ function handlePtyExit(sessionId: string, exitCode: number): void {
     const restartCount = process.restartCount + 1;
     broadcastToWorkspace(workspaceId, 'command.restarted', {
       commandId,
-      sessionId: '', // will be filled on next run
+      sessionId: process.sessionId, // previous session, new one comes via command.started
       restartCount,
       workspaceId,
     });
@@ -1166,11 +1166,22 @@ feat(web): add command i18n translations
 ### Task 11: Wire builtin tools into agent runtime
 
 **Files:**
-- Modify: `packages/server/src/ws/handler.ts` or wherever `createIssueFunctionTools` is called
+- Modify: `packages/server/src/ws/handler.ts` (add `createCommandFunctionTools` to agent tool assembly)
 
 - [ ] **Step 1: Add `createCommandFunctionTools` to agent tool registration**
 
-Find where `createIssueFunctionTools` is called (likely in `ws/handler.ts` or `agents/` directory). Add `createCommandFunctionTools(workspaceId)` to the tools array for all agent runs.
+In `ws/handler.ts`, find where `createIssueFunctionTools(...)` is called (around line 233 in the `runMentionedAgent` flow, and in the issue-agent-runner). Add the import:
+
+```typescript
+import { createCommandFunctionTools } from '../services/builtin-tools.js';
+```
+
+At each location where agent tools are assembled into an array, append:
+```typescript
+...createCommandFunctionTools(workspaceId),
+```
+
+This ensures all agent runtimes (mention, issue automation, bot) can list/run/stop commands.
 
 - [ ] **Step 2: Verify full stack**
 
