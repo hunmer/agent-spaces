@@ -11,6 +11,7 @@ interface TaskStore {
   deleteTask: (workspaceId: string, taskId: string) => Promise<void>;
   retryTask: (workspaceId: string, taskId: string) => Promise<void>;
   cancelTask: (workspaceId: string, taskId: string) => Promise<void>;
+  reorderTasks: (workspaceId: string, issueId: string, taskIds: string[]) => Promise<void>;
 
   // WS handlers
   upsertTask: (task: Task) => void;
@@ -72,6 +73,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     });
     const task: Task = await res.json();
     get().upsertTask(task);
+  },
+
+  reorderTasks: async (workspaceId, issueId, taskIds) => {
+    await fetch(`/api/workspaces/${workspaceId}/tasks/reorder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issueId, taskIds }),
+    });
   },
 
   upsertTask: (task) => {

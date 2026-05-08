@@ -41,6 +41,24 @@ router.get('/', (req: Request<{ id: string }>, res: Response) => {
   res.json(tasks);
 });
 
+router.put('/reorder', (req: Request<{ id: string }>, res: Response) => {
+  const { issueId, taskIds } = req.body as { issueId?: string; taskIds?: string[] };
+  if (!issueId || !Array.isArray(taskIds)) {
+    res.status(400).json({ error: 'issueId and taskIds are required' });
+    return;
+  }
+
+  const issue = issueService.getById(req.params.id, issueId);
+  if (!issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+
+  issueService.replaceTasks(req.params.id, issueId, taskIds);
+  const updated = issueService.getById(req.params.id, issueId);
+  res.json(updated);
+});
+
 router.get('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Response) => {
   const task = taskService.getById(req.params.id, req.params.taskId);
   if (!task) {

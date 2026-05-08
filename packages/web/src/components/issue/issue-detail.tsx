@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { DragDropProvider } from '@dnd-kit/react';
+import { useSortable } from '@dnd-kit/react/sortable';
 import { useTranslations } from 'next-intl';
 import { useIssueStore } from '@/stores/issue';
 import { useChannelStore } from '@/stores/channel';
@@ -63,6 +65,7 @@ const TASK_STATUS_COLOR: Record<TaskStatus, 'default' | 'secondary' | 'destructi
 
 function TaskRow({
   task,
+  index,
   workspaceId,
   onRetry,
   onCancel,
@@ -71,6 +74,7 @@ function TaskRow({
   tTask,
 }: {
   task: Task;
+  index: number;
   workspaceId: string;
   onRetry: (wsId: string, taskId: string) => void;
   onCancel: (wsId: string, taskId: string) => void;
@@ -80,9 +84,24 @@ function TaskRow({
 }) {
   const isPending = task.status === 'pending';
   const isActive = isPending || task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying';
+  const isDraggable = isPending || isActive;
+
+  const { ref, isDragging } = useSortable({
+    id: task.id,
+    index,
+    disabled: !isDraggable,
+  });
 
   return (
-    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30 min-w-0">
+    <div
+      ref={ref}
+      className={[
+        'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30 min-w-0',
+        isDragging && 'opacity-50 shadow-lg scale-105',
+        !isDraggable && 'opacity-70',
+      ].filter(Boolean).join(' ')}
+      style={{ cursor: isDraggable ? 'grab' : 'default' }}
+    >
       {/* Agent icon */}
       <AgentIcon agentId={task.agentConfigId} className="h-6 w-6 shrink-0 rounded" />
 
@@ -131,7 +150,7 @@ interface IssueDetailProps {
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue, resumeIssue, updateIssue, deleteIssue } = useIssueStore();
-  const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask } = useTaskStore();
+  const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask, reorderTasks } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -356,7 +375,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     );
   }
 
-  const issueTasks = tasks.filter((t) => t.issueId === issue.id);
+  const issueTasks = useMemo(() => {
+    const filtered = tasks.filter((t) => t.issueId === issue.id);
+    const orderMap = new Map((issue.tasks ?? []).map((id, idx) => [id, idx]));
+    return filtered.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+  }, [tasks, issue.id, issue.tasks]);
   const members = issue.members ?? [];
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
   const memberIds = new Set(members);
@@ -510,20 +533,42 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           {issueTasks.length === 0 ? (
             <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {issueTasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  workspaceId={workspaceId}
-                  onRetry={retryTask}
-                  onCancel={cancelTask}
-                  onEdit={handleOpenEditDialog}
-                  onDelete={handleDeleteTask}
-                  tTask={tTask}
-                />
-              ))}
-            </div>
+            <DragDropProvider
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              onDragEnd={(event: any) => {
+                if (event.canceled) return;
+                const source = event.operation?.source;
+                const target = event.operation?.target;
+                if (!source || !target || source.id === target.id) return;
+
+                const ids = issueTasks.map((t) => t.id);
+                const fromIdx = ids.indexOf(String(source.id));
+                const toIdx = ids.indexOf(String(target.id));
+                if (fromIdx === -1 || toIdx === -1) return;
+
+                const reordered = Array.from(ids);
+                const [moved] = reordered.splice(fromIdx, 1);
+                reordered.splice(toIdx, 0, moved);
+
+                reorderTasks(workspaceId, issue.id, reordered);
+              }}
+            >
+              <div className="flex flex-wrap gap-2">
+                {issueTasks.map((task, idx) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    index={idx}
+                    workspaceId={workspaceId}
+                    onRetry={retryTask}
+                    onCancel={cancelTask}
+                    onEdit={handleOpenEditDialog}
+                    onDelete={handleDeleteTask}
+                    tTask={tTask}
+                  />
+                ))}
+              </div>
+            </DragDropProvider>
           )}
         </div>
 
