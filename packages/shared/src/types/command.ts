@@ -4,6 +4,7 @@ export interface QuickCommand {
   id: string;
   name: string;
   command: string;
+  folder?: string;
   cwd?: string;
   shell?: string;
   env?: Record<string, string>;

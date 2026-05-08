@@ -13,6 +13,7 @@ export function getCommand(workspaceId: string, commandId: string): QuickCommand
 export interface CreateCommandInput {
   name: string;
   command: string;
+  folder?: string;
   cwd?: string;
   shell?: string;
   env?: Record<string, string>;
@@ -25,6 +26,7 @@ export function createCommand(workspaceId: string, input: CreateCommandInput): Q
     id: uuid(),
     name: input.name.trim(),
     command: input.command,
+    folder: input.folder,
     cwd: input.cwd,
     shell: input.shell,
     env: input.env,

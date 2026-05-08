@@ -595,6 +595,16 @@
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
-    "noCommands": "暂无命令"
+    "noCommands": "暂无命令",
+    "searchPlaceholder": "搜索命令...",
+    "import": "导入",
+    "importTitle": "从 package.json 导入命令",
+    "importDescription": "选择项目目录，解析 package.json 中的 scripts 字段",
+    "selectProject": "选择项目目录",
+    "parsedScripts": "解析的脚本",
+    "noScripts": "未找到 scripts",
+    "addSelected": "添加选中命令",
+    "customCommands": "自定义命令",
+    "folder": "分组"
   }
 }

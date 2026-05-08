@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
-import { readdir, stat, mkdir, access } from 'node:fs/promises';
-import { join, resolve, sep } from 'node:path';
+import { readdir, stat, mkdir, access, readFile } from 'node:fs/promises';
+import { join, resolve, sep, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { constants } from 'node:fs';
 
@@ -110,6 +110,35 @@ router.get('/check-permissions', async (req: Request, res: Response) => {
   }
 
   res.json(result);
+});
+
+router.get('/read-file', async (req: Request, res: Response) => {
+  const raw = req.query.path as string;
+  if (!raw) {
+    res.status(400).json({ error: 'path is required' });
+    return;
+  }
+
+  const filePath = resolve(raw.replace(/^~[/\\]/, homedir() + sep));
+  const ext = extname(filePath).toLowerCase();
+
+  // Only allow reading text-based config files
+  const allowedExts = ['.json', '.yaml', '.yml', '.toml', '.txt', '.md', '.env', '.js', '.ts', '.mjs', '.cjs'];
+  if (!allowedExts.includes(ext)) {
+    res.status(400).json({ error: 'File type not allowed' });
+    return;
+  }
+
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    if (ext === '.json') {
+      res.json(JSON.parse(content));
+    } else {
+      res.json({ content });
+    }
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Cannot read file' });
+  }
 });
 
 export default router;

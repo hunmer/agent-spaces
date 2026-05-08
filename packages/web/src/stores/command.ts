@@ -15,7 +15,7 @@ interface CommandStore {
   wsAttached: boolean;
 
   load: (workspaceId: string) => Promise<void>;
-  create: (workspaceId: string, input: { name: string; command: string; cwd?: string; shell?: string; env?: Record<string, string>; autoRestart?: boolean }) => Promise<void>;
+  create: (workspaceId: string, input: { name: string; command: string; folder?: string; cwd?: string; shell?: string; env?: Record<string, string>; autoRestart?: boolean }) => Promise<void>;
   update: (workspaceId: string, id: string, updates: Partial<QuickCommand>) => Promise<void>;
   remove: (workspaceId: string, id: string) => Promise<void>;
   run: (workspaceId: string, commandId: string) => Promise<void>;

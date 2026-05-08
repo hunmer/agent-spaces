@@ -593,6 +593,16 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "noCommands": "No commands"
+    "noCommands": "No commands",
+    "searchPlaceholder": "Search commands...",
+    "import": "Import",
+    "importTitle": "Import Commands from package.json",
+    "importDescription": "Select a project directory to parse scripts from package.json",
+    "selectProject": "Select project directory",
+    "parsedScripts": "Parsed Scripts",
+    "noScripts": "No scripts found",
+    "addSelected": "Add Selected",
+    "customCommands": "Custom Commands",
+    "folder": "Folder"
   }
 }
