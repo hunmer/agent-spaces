@@ -82,12 +82,12 @@ function TaskRow({
   const isActive = isPending || task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying';
 
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30">
-      {/* Agent icon – square card */}
-      <AgentIcon agentId={task.agentConfigId} className="h-8 w-8 shrink-0 rounded-md" />
+    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30 min-w-0">
+      {/* Agent icon */}
+      <AgentIcon agentId={task.agentConfigId} className="h-6 w-6 shrink-0 rounded" />
 
       {/* Title */}
-      <span className="flex-1 text-sm truncate">{task.title}</span>
+      <span className="text-sm truncate max-w-[160px]">{task.title}</span>
 
       {/* Status */}
       <Badge variant={TASK_STATUS_COLOR[task.status]} className="text-[10px] shrink-0">
@@ -510,7 +510,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           {issueTasks.length === 0 ? (
             <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
           ) : (
-            <div className="space-y-1">
+            <div className="flex flex-wrap gap-2">
               {issueTasks.map((task) => (
                 <TaskRow
                   key={task.id}
