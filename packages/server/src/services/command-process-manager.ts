@@ -11,7 +11,10 @@ const restartTimers = new Map<string, NodeJS.Timeout>();
 
 export function runCommand(workspaceId: string, commandId: string): string {
   const existing = processes.get(commandId);
-  if (existing) return existing.sessionId;
+  if (existing) {
+    console.log(`[command] reuse existing session=${existing.sessionId} for command=${commandId}`);
+    return existing.sessionId;
+  }
 
   const command = commandService.getCommand(workspaceId, commandId);
   if (!command) throw new Error('Command not found');
@@ -20,6 +23,7 @@ export function runCommand(workspaceId: string, commandId: string): string {
   const cwd = command.cwd || workspace?.boundDirs[0] || process.env.HOME || '/tmp';
   const shell = command.shell;
   const env = command.env;
+  console.log(`[command] runCommand: workspace=${workspaceId} command=${commandId} cwd=${cwd} shell=${shell} cmd=${command.command}`);
 
   const sessionId = ptyService.createSession(
     workspaceId,
@@ -47,9 +51,10 @@ export function runCommand(workspaceId: string, commandId: string): string {
   processes.set(commandId, process);
   sessionIndex.set(sessionId, commandId);
 
-  ptyService.write(sessionId, command.command + '\n');
+  ptyService.write(sessionId, command.command + '\r');
 
   broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell });
+  console.log(`[command] broadcasted terminal.created: session=${sessionId} cwd=${cwd}`);
   broadcastToWorkspace(workspaceId, 'command.started', {
     commandId,
     sessionId,
@@ -62,6 +67,7 @@ export function runCommand(workspaceId: string, commandId: string): string {
 export function stopCommand(workspaceId: string, commandId: string): void {
   const process = processes.get(commandId);
   if (!process) throw new Error('Command not running');
+  console.log(`[command] stopCommand: command=${commandId} session=${process.sessionId}`);
 
   const timer = restartTimers.get(commandId);
   if (timer) {
@@ -76,6 +82,7 @@ export function stopCommand(workspaceId: string, commandId: string): void {
 function handlePtyExit(sessionId: string, exitCode: number): void {
   const commandId = sessionIndex.get(sessionId);
   if (!commandId) return;
+  console.log(`[command] handlePtyExit: session=${sessionId} command=${commandId} exitCode=${exitCode}`);
 
   const process = processes.get(commandId);
   if (!process) return;

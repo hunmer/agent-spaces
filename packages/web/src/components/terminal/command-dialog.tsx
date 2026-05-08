@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,18 @@ export function CommandDialog({ open, onOpenChange, command, defaultCwd, onSubmi
   );
   const [autoRestart, setAutoRestart] = useState(command?.autoRestart ?? false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Reset form when dialog opens or command changes
+  useEffect(() => {
+    if (open) {
+      setName(command?.name ?? '');
+      setCmd(command?.command ?? '');
+      setCwd(command?.cwd ?? defaultCwd ?? '');
+      setShell(command?.shell ?? '');
+      setEnvPairs(command?.env ? Object.entries(command.env).map(([key, value]) => ({ key, value })) : []);
+      setAutoRestart(command?.autoRestart ?? false);
+    }
+  }, [open, command, defaultCwd]);
 
   const handleSubmit = async () => {
     if (!name.trim() || !cmd.trim()) return;

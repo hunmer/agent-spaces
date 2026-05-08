@@ -24,16 +24,6 @@ function getGit(workspace: Workspace): SimpleGit {
   if (existing) return existing;
 
   const git = simpleGit(workspace.boundDirs[0], getGitOptions());
-  git.outputHandler((_binary, stdout, stderr) => {
-    stderr.on('data', (chunk: Buffer) => {
-      const text = chunk.toString().trim();
-      if (text) console.log(`[git:${workspace.id}] ${text}`);
-    });
-    stdout.on('data', (chunk: Buffer) => {
-      const text = chunk.toString().trim();
-      if (text) console.log(`[git:${workspace.id}] ${text}`);
-    });
-  });
   gitInstances.set(workspace.id, git);
   return git;
 }
@@ -341,16 +331,10 @@ export async function gitClone(
   }
 
   const git = simpleGit(getGitOptions());
-  git.outputHandler((_binary, stdout, stderr) => {
+  git.outputHandler((_binary, _stdout, stderr) => {
     stderr.on('data', (chunk: Buffer) => {
-      const text = chunk.toString();
-      console.log(`[git:clone] ${text.trim()}`);
-      const parsed = parseCloneProgress(text);
+      const parsed = parseCloneProgress(chunk.toString());
       if (parsed) onProgress(parsed);
-    });
-    stdout.on('data', (chunk: Buffer) => {
-      const text = chunk.toString().trim();
-      if (text) console.log(`[git:clone] ${text}`);
     });
   });
 

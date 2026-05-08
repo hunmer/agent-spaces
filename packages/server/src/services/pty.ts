@@ -19,7 +19,7 @@ export function createSession(
   env?: Record<string, string>,
 ): string {
   const id = uuid();
-  const resolvedShell = shell || process.env.SHELL || '/bin/zsh';
+  const resolvedShell = shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh');
   const ptyProcess = pty.spawn(resolvedShell, [], {
     name: 'xterm-256color',
     cols: 80,

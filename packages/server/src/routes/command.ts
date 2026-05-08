@@ -63,8 +63,10 @@ router.post('/:commandId/run', (req: Request, res: Response) => {
   if (!workspaceId || !commandId) { res.status(400).json({ error: 'workspaceId and commandId required' }); return; }
   try {
     const sessionId = processManager.runCommand(workspaceId, commandId);
+    console.log(`[command] POST run: workspace=${workspaceId} command=${commandId} -> session=${sessionId}`);
     res.json({ sessionId });
   } catch (error: any) {
+    console.error(`[command] POST run error: workspace=${workspaceId} command=${commandId}`, error.message);
     res.status(400).json({ error: error.message });
   }
 });
@@ -74,8 +76,10 @@ router.post('/:commandId/stop', (req: Request, res: Response) => {
   if (!workspaceId || !commandId) { res.status(400).json({ error: 'workspaceId and commandId required' }); return; }
   try {
     processManager.stopCommand(workspaceId, commandId);
+    console.log(`[command] POST stop: workspace=${workspaceId} command=${commandId}`);
     res.json({ ok: true });
   } catch (error: any) {
+    console.error(`[command] POST stop error: workspace=${workspaceId} command=${commandId}`, error.message);
     res.status(400).json({ error: error.message });
   }
 });

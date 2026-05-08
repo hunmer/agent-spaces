@@ -109,6 +109,18 @@ export const useCommandStore = create<CommandStore>((set, get) => ({
       }));
     });
 
+    // User closes terminal tab manually -> clean up running state
+    ws.on('terminal.closed', (data) => {
+      const { sessionId } = data as { sessionId: string };
+      set(s => {
+        const newMap = Object.fromEntries(
+          Object.entries(s.runningMap).filter(([_, v]) => v.sessionId !== sessionId)
+        );
+        if (Object.keys(newMap).length === Object.keys(s.runningMap).length) return s;
+        return { runningMap: newMap };
+      });
+    });
+
     set({ wsAttached: true });
   },
 
