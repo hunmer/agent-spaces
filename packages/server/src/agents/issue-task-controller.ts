@@ -439,11 +439,6 @@ function ensureWorkflowAgentsForRun(
   ctx: AgentContext,
 ): void {
   const workflowAgentIds = [...new Set(template.nodes.map((node) => node.data.agentConfigId).filter(Boolean))];
-  const workspaceAgentIds = new Set((agentService.listPresets(workspaceId) ?? []).map((agent) => agent.id));
-  const missingAgentIds = workflowAgentIds.filter((agentId) => !workspaceAgentIds.has(agentId));
-  if (missingAgentIds.length > 0) {
-    agentService.addTemplatesToWorkspace(workspaceId, missingAgentIds);
-  }
 
   const mergedMembers = [...new Set([...(issue.members ?? []), ...workflowAgentIds])];
   const membersChanged = mergedMembers.length !== (issue.members ?? []).length

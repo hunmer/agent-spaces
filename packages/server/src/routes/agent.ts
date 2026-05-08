@@ -11,32 +11,13 @@ router.get('/usage/dashboard', (req: Request, res: Response) => {
 });
 
 router.get('/presets', (req: Request<{ id: string }>, res: Response) => {
-  const workspaceId = req.params.id;
-  if (workspaceId) {
-    const presets = agentService.listPresets(workspaceId);
-    if (!presets) {
-      res.status(404).json({ error: 'workspace not found' });
-      return;
-    }
-    res.json(presets);
-    return;
-  }
-  res.json(agentService.listGlobalPresets());
+  res.json(agentService.listTemplates());
 });
 
 router.post('/presets', (req: Request<{ id: string }>, res: Response) => {
-  const workspaceId = req.params.id;
   const body = req.body as Omit<Partial<AgentConfig>, 'id'>;
-  if (workspaceId) {
-    const preset = agentService.createPreset(workspaceId, body);
-    if (!preset) {
-      res.status(404).json({ error: 'workspace not found' });
-      return;
-    }
-    res.status(201).json(preset);
-    return;
-  }
-  res.status(201).json(agentService.createGlobalPreset(body));
+  const preset = agentService.createPreset(req.params.id, body);
+  res.status(201).json(preset);
 });
 
 router.post('/presets/test-connection', async (req: Request<{ id: string }>, res: Response) => {
@@ -62,18 +43,8 @@ router.post('/presets/test-connection', async (req: Request<{ id: string }>, res
 });
 
 router.put('/presets/:presetId', (req: Request<{ id: string; presetId: string }>, res: Response) => {
-  const workspaceId = req.params.id;
   const data = req.body as Partial<AgentConfig>;
-  if (workspaceId) {
-    const preset = agentService.updatePreset(workspaceId, req.params.presetId, data);
-    if (!preset) {
-      res.status(404).json({ error: 'agent preset not found' });
-      return;
-    }
-    res.json(preset);
-    return;
-  }
-  const preset = agentService.updateGlobalPreset(req.params.presetId, data);
+  const preset = agentService.updatePreset(req.params.id, req.params.presetId, data);
   if (!preset) {
     res.status(404).json({ error: 'agent preset not found' });
     return;

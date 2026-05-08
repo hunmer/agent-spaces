@@ -12,7 +12,6 @@ export interface Workspace {
   updatedAt: string;
   activeChannels: string[];
   activeIssues: string[];
-  agents: AgentConfig[];
   autoProcessIssues?: boolean;
   notificationSettings?: WorkspaceNotificationSettings;
 }

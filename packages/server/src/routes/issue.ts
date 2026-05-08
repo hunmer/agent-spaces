@@ -5,7 +5,7 @@ import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as channelService from '../services/channel.js';
 import { broadcastToWorkspace, stopChannelRuns } from '../ws/handler.js';
-import { getWorkspace } from '../storage/workspace-store.js';
+
 import * as agentService from '../services/agent.js';
 import { retryIssue } from '../services/issue-retry.js';
 import { hasActiveIssueAutomation, runIssueAutomation } from '../agents/issue-agent-runner.js';
@@ -236,7 +236,7 @@ router.delete('/:issueId/comments/:commentId', (req: Request<{ id: string; issue
 export default router;
 
 function normalizeIssueMembers(workspaceId: string, members: string[]): string[] {
-  const agentIds = new Set((getWorkspace(workspaceId)?.agents || []).map((agent) => agent.id));
+  const agentIds = new Set(agentService.listPresets(workspaceId).map((agent) => agent.id));
   const normalized: string[] = [];
   const seen = new Set<string>();
 

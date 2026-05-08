@@ -46,7 +46,6 @@ export function create(input: CreateWorkspaceInput): Workspace {
     updatedAt: now,
     activeChannels: [],
     activeIssues: [],
-    agents: [],
   };
 
   ensureDir(agentspaceDir);

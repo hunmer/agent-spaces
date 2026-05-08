@@ -13,6 +13,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   agents: [],
   loaded: false,
   loading: false,
+
   ensure: async () => {
     const { loaded, loading } = get();
     if (loaded || loading) return;
@@ -28,6 +29,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       set({ loading: false });
     }
   },
+
   toggleEnabled: async (id: string) => {
     const agent = get().agents.find((a) => a.id === id);
     if (!agent) return;

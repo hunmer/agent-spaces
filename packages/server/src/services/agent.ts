@@ -12,7 +12,7 @@ import {
   getAgentUsageDashboard,
   recordAgentUsage,
 } from '../storage/agent-store.js';
-import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
+import { getWorkspace } from '../storage/workspace-store.js';
 import { listIssues, updateIssue } from '../storage/issue-store.js';
 import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
@@ -54,21 +54,8 @@ export interface AgentConnectionTestResult {
   };
 }
 
-export function listPresets(workspaceId: string): AgentConfig[] | null {
-  const ws = getWorkspace(workspaceId);
-  if (!ws) return null;
-  return ws.agents || [];
-}
-
-export function findEnabledPresetByRoleInMembers(
-  workspaceId: string,
-  memberIds: string[],
-  role: AgentConfig['role'],
-): AgentConfig | null {
-  const members = new Set(memberIds);
-  return (listPresets(workspaceId) ?? []).find(
-    (agent) => members.has(agent.id) && agent.role === role && agent.enabled !== false,
-  ) ?? null;
+export function listPresets(_workspaceId: string): AgentConfig[] {
+  return listTemplates();
 }
 
 export function isValidRole(role: unknown): role is AgentConfig['role'] {
@@ -83,38 +70,6 @@ export function listTemplates(): AgentConfig[] {
     .filter((entry) => entry.isDirectory())
     .map((entry) => readAgentTemplate(entry.name))
     .filter((template): template is AgentConfig => Boolean(template));
-}
-
-export function addTemplatesToWorkspace(workspaceId: string, templateIds: string[]): AgentConfig[] | null {
-  const ws = getWorkspace(workspaceId);
-  if (!ws) return null;
-
-  const existingIds = new Set((ws.agents || []).map((agent) => agent.id));
-  const added: AgentConfig[] = [];
-
-  for (const templateId of templateIds) {
-    if (existingIds.has(templateId)) continue;
-    const template = readAgentTemplate(templateId);
-    if (!template) continue;
-
-    const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, templateId);
-    const preset: AgentConfig = {
-      ...template,
-      id: templateId,
-      workingDir: workspaceAgentDir,
-    };
-    writeWorkspaceAgentCopy(preset, ws.agentspaceDir);
-    ws.agents = [...(ws.agents || []), preset];
-    existingIds.add(templateId);
-    added.push(preset);
-  }
-
-  if (added.length > 0) {
-    ws.updatedAt = new Date().toISOString();
-    updateWorkspace(ws);
-  }
-
-  return added;
 }
 
 export async function testConnection(
@@ -377,13 +332,9 @@ async function readErrorMessage(response: Response): Promise<{ message: string; 
 }
 
 export function createPreset(
-  workspaceId: string,
+  _workspaceId: string,
   data: Omit<Partial<AgentConfig>, 'id'>,
 ): AgentConfig | null {
-  const ws = getWorkspace(workspaceId);
-  if (!ws) return null;
-
-  const now = new Date().toISOString();
   const id = uuid();
   const workingDir = data.workingDir?.trim();
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
@@ -415,26 +366,18 @@ export function createPreset(
   };
 
   writeAgentTemplate(preset, data.skills as SkillInput[] | undefined);
-  if (!workingDir) writeWorkspaceAgentCopy(preset, ws.agentspaceDir);
 
-  ws.agents = [...(ws.agents || []), preset];
-  ws.updatedAt = now;
-  updateWorkspace(ws);
   return preset;
 }
 
 export function updatePreset(
-  workspaceId: string,
+  _workspaceId: string,
   presetId: string,
   data: Partial<AgentConfig>,
 ): AgentConfig | null {
-  const ws = getWorkspace(workspaceId);
-  if (!ws) return null;
+  const existing = readAgentTemplate(presetId);
+  if (!existing) return null;
 
-  const index = (ws.agents || []).findIndex((preset) => preset.id === presetId);
-  if (index === -1) return null;
-
-  const existing = ws.agents[index];
   const role = isValidRole(data.role) ? data.role.trim() : existing.role;
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
     ? data.runtimeKind
@@ -455,10 +398,6 @@ export function updatePreset(
     enabled: data.enabled ?? existing.enabled ?? true,
   };
   writeAgentTemplate(updated, data.skills as SkillInput[] | undefined);
-
-  ws.agents[index] = updated;
-  ws.updatedAt = new Date().toISOString();
-  updateWorkspace(ws);
   return updated;
 }
 
@@ -647,12 +586,12 @@ export function deletePreset(workspaceId: string, presetId: string): boolean | n
   const ws = getWorkspace(workspaceId);
   if (!ws) return null;
 
-  const before = (ws.agents || []).length;
-  ws.agents = (ws.agents || []).filter((preset) => preset.id !== presetId);
-  if (ws.agents.length === before) return false;
+  const template = readAgentTemplate(presetId);
+  if (!template) return false;
 
-  ws.updatedAt = new Date().toISOString();
-  updateWorkspace(ws);
+  // Delete global template
+  const templateDir = getGlobalAgentTemplateDir(presetId);
+  if (existsSync(templateDir)) rmSync(templateDir, { recursive: true, force: true });
 
   // Remove agent from all channels' members
   for (const ch of listChannels(workspaceId)) {

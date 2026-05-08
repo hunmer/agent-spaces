@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useChannelStore } from '@/stores/channel';
 import { useIssueStore } from '@/stores/issue';
+import { useAgentStore } from '@/stores/agent';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
 import { Bell, Bot, CheckCircle2, FolderOpen, Hash, ListChecks, Loader2, QrCode, RefreshCw, Send } from 'lucide-react';
 import { toast } from 'sonner';
@@ -70,7 +71,8 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
   const autoProcessIssues = workspace?.autoProcessIssues !== false;
   const promptChanged = prompt !== savedPrompt;
   const notificationSettings = notificationDraft;
-  const botAgents = (workspace?.agents ?? []).filter((agent) => agent.role === 'bot' && agent.enabled !== false);
+  const allAgents = useAgentStore((s) => s.agents);
+  const botAgents = allAgents.filter((agent) => agent.role === 'bot' && agent.enabled !== false);
   const wechatLoggedIn = Boolean(notificationSettings.wechat?.token && notificationSettings.wechat?.accountId);
 
   useEffect(() => {
@@ -616,18 +618,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       </div>
       <AgentDialog
         open={agentDialogOpen}
-        onOpenChange={(open) => {
-          setAgentDialogOpen(open);
-          if (!open) {
-            fetch(`/api/workspaces/${workspaceId}`)
-              .then((res) => res.json())
-              .then((updated: Workspace) => {
-                setWorkspace(updated);
-                setNotificationDraft(updated.notificationSettings ?? defaultNotificationSettings());
-              })
-              .catch(() => undefined);
-          }
-        }}
+        onOpenChange={setAgentDialogOpen}
         roleFilter="bot"
       />
     </ScrollArea>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { AgentConfig, Workspace } from "@agent-spaces/shared";
-import { AddMemberDialog, type AddMemberCandidate } from "@/components/chat/add-member-dialog";
-import { Bot, Download, Plus, X, Loader2, AlertCircle } from "lucide-react";
+import { useAgentStore } from "@/stores/agent";
+import type { Workspace } from "@agent-spaces/shared";
+import { Download, Loader2, AlertCircle } from "lucide-react";
 import { FolderPicker } from "@/components/ui/folder-picker";
 import {
   Progress,
@@ -27,7 +27,6 @@ interface WorkspaceDialogProps {
   onOpenChange: (open: boolean) => void;
   workspace?: Workspace | null;
   onSubmit: (data: { name: string; boundDirs: string[] }) => Promise<void>;
-  onAgentsChanged?: () => void;
 }
 
 interface CloneProgress {
@@ -39,7 +38,7 @@ interface CloneProgress {
   cloneDir?: string;
 }
 
-export function WorkspaceDialog({ open, onOpenChange, workspace, onSubmit, onAgentsChanged }: WorkspaceDialogProps) {
+export function WorkspaceDialog({ open, onOpenChange, workspace, onSubmit }: WorkspaceDialogProps) {
   return (
     <WorkspaceDialogContent
       key={open ? workspace?.id ?? "new" : "closed"}
@@ -47,21 +46,17 @@ export function WorkspaceDialog({ open, onOpenChange, workspace, onSubmit, onAge
       onOpenChange={onOpenChange}
       workspace={workspace}
       onSubmit={onSubmit}
-      onAgentsChanged={onAgentsChanged}
     />
   );
 }
 
-function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAgentsChanged }: WorkspaceDialogProps) {
+function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit }: WorkspaceDialogProps) {
   const t = useTranslations('workspace');
   const tc = useTranslations('common');
+  const agents = useAgentStore((s) => s.agents);
   const [name, setName] = useState(workspace?.name ?? "");
   const [dir, setDir] = useState(workspace?.boundDirs[0] ?? "");
   const [loading, setLoading] = useState(false);
-  const [addAgentOpen, setAddAgentOpen] = useState(false);
-  const [agentCandidates, setAgentCandidates] = useState<AddMemberCandidate[]>([]);
-  const [workspaceAgents, setWorkspaceAgents] = useState<AgentConfig[]>(workspace?.agents ?? []);
-  const [agentLoading, setAgentLoading] = useState(false);
 
   // Git clone states
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
@@ -71,27 +66,6 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
 
   const isEdit = !!workspace;
 
-  useEffect(() => {
-    if (!open || !workspace) return;
-    const controller = new AbortController();
-    fetch(`/api/workspaces/${workspace.id}/agent-templates`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-        return res.json() as Promise<Array<{ id: string; name?: string; role: string; description?: string }>>;
-      })
-      .then((agents) => {
-        setAgentCandidates(agents.map((agent) => ({
-          id: agent.id,
-          label: agent.name || agent.role,
-          description: agent.description || agent.role,
-        })));
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") setAgentCandidates([]);
-      });
-    return () => controller.abort();
-  }, [open, workspace]);
-
   const handleSubmit = async () => {
     if (!name || !dir) return;
     setLoading(true);
@@ -100,25 +74,6 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
       onOpenChange(false);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAddAgents = async (agentIds: string[]) => {
-    if (!workspace || agentIds.length === 0) return;
-    setAgentLoading(true);
-    try {
-      const res = await fetch(`/api/workspaces/${workspace.id}/agents/from-templates`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentIds }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const added = await res.json() as AgentConfig[];
-      setWorkspaceAgents((prev) => [...prev, ...added]);
-      setAgentCandidates((prev) => prev.filter((candidate) => !agentIds.includes(candidate.id)));
-      onAgentsChanged?.();
-    } finally {
-      setAgentLoading(false);
     }
   };
 
@@ -225,35 +180,18 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
               {t('clone.createFromGit')}
             </Button>
           )}
-          {isEdit && (
+          {isEdit && agents.length > 0 && (
             <div className="rounded-xl border border-border p-3">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Bot className="size-4 text-muted-foreground" />
-                  {t('agents')}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAddAgentOpen(true)}
-                  disabled={agentLoading || agentCandidates.length === 0}
-                >
-                  <Plus className="size-3.5" />
-                  {t('addAgent')}
-                </Button>
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                <span className="text-muted-foreground">{agents.length}</span>
+                <span>{t('agents')}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {workspaceAgents.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">{t('noAgents')}</span>
-                ) : (
-                  workspaceAgents.map((agent) => (
-                    <span key={agent.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                      {agent.name || agent.role}
-                      <X className="size-3 text-muted-foreground" />
-                    </span>
-                  ))
-                )}
+                {agents.map((agent) => (
+                  <span key={agent.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                    {agent.name || agent.role}
+                  </span>
+                ))}
               </div>
             </div>
           )}
@@ -335,15 +273,6 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
-    {workspace && (
-      <AddMemberDialog
-        open={addAgentOpen}
-        onOpenChange={setAddAgentOpen}
-        candidates={agentCandidates}
-        onAdd={handleAddAgents}
-      />
-    )}
     </>
   );
 }

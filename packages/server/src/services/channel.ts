@@ -4,6 +4,7 @@ import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from '../storage/j
 import { rmSync } from 'node:fs';
 import type { Channel } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
+import * as agentService from '../services/agent.js';
 
 function workspaceDir(workspaceId: string) {
   return join(getDataDir(), 'workspaces', workspaceId);
@@ -65,7 +66,7 @@ export function updateChannel(
 }
 
 function normalizeMembers(workspaceId: string, members: string[] = []): string[] {
-  const agentIds = new Set((getWorkspace(workspaceId)?.agents || []).map((agent) => agent.id));
+  const agentIds = new Set(agentService.listPresets(workspaceId).map((agent) => agent.id));
   const normalized: string[] = [];
   const seen = new Set<string>();
 

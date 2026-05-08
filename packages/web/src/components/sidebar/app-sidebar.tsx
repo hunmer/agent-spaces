@@ -249,7 +249,6 @@ export function DashboardSidebar() {
         onOpenChange={setWsDialogOpen}
         workspace={editingWs}
         onSubmit={handleWsSubmit}
-        onAgentsChanged={refreshWorkspaces}
       />
     </Sidebar>
   );

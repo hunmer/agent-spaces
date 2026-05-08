@@ -232,9 +232,8 @@ export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftFo
 
 // --- Run-time Validation ---
 
-export function validateWorkflowForRun(workspaceId: string, template: WorkflowTemplate, memberAgentIds: Set<string>): string | null {
-  const workspace = getWorkspace(workspaceId);
-  const agentMap = new Map(workspace?.agents.map(a => [a.id, a]) ?? []);
+export function validateWorkflowForRun(_workspaceId: string, template: WorkflowTemplate, memberAgentIds: Set<string>): string | null {
+  const agentMap = new Map(listTemplates().map((a) => [a.id, a]));
 
   for (const node of template.nodes) {
     const agent = agentMap.get(node.data.agentConfigId);
