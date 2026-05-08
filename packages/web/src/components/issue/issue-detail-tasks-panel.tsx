@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { TaskRow } from './task-row';
+import { AgentIcon } from '@/components/common/agent-icon';
+import { cn } from '@/lib/utils';
 import type { Issue, Task, AgentConfig } from '@agent-spaces/shared';
 
 interface IssueDetailTasksPanelProps {
@@ -113,18 +115,37 @@ export function IssueDetailTasksPanel({
                 rows={3}
               />
               {agents.length > 0 && (
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
-                >
-                  <option value="">{t('detail.noAgent') as string || 'No agent assigned'}</option>
-                  {agents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name} ({agent.role})
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Agent</label>
+                  <div className="flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAgentId('')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors border',
+                        !selectedAgentId ? 'border-primary bg-primary/10 text-primary' : 'border-transparent hover:bg-muted',
+                      )}
+                    >
+                      <span className="size-4 rounded bg-muted flex items-center justify-center text-[10px]">—</span>
+                      {t('detail.noAgent') as string}
+                    </button>
+                    {agents.map((agent) => (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        onClick={() => setSelectedAgentId(agent.id)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors border',
+                          selectedAgentId === agent.id ? 'border-primary bg-primary/10 text-primary' : 'border-transparent hover:bg-muted',
+                        )}
+                      >
+                        <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} apiBase={agent.apiBase} className="size-4 rounded-full" />
+                        <span className="truncate max-w-[80px]">{agent.name}</span>
+                        {selectedAgentId === agent.id && <Check className="size-3 shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
               <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
                 {editingTask ? tc('save') : t('detail.addTask')}

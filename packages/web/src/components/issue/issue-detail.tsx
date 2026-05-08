@@ -223,8 +223,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   const issueTasks = useMemo(() => {
     const filtered = tasks.filter((t) => t.issueId === issue.id);
-    const orderMap = new Map((issue.tasks ?? []).map((id, idx) => [id, idx]));
-    return filtered.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+    const taskOrder = issue.tasks ?? [];
+    const orderMap = new Map(taskOrder.map((id, idx) => [id, idx]));
+    const fallback = taskOrder.length;
+    return filtered.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
   }, [tasks, issue.id, issue.tasks]);
   const members = issue.members ?? [];
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
