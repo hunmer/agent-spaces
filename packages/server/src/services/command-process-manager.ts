@@ -25,18 +25,24 @@ export function runCommand(workspaceId: string, commandId: string): string {
   const env = command.env;
   console.log(`[command] runCommand: workspace=${workspaceId} command=${commandId} cwd=${cwd} shell=${shell} cmd=${command.command}`);
 
-  const sessionId = ptyService.createSession(
-    workspaceId,
-    cwd,
-    (id, output) => {
-      broadcastToWorkspace(workspaceId, 'terminal.output', { sessionId: id, data: output });
-    },
-    (id, exitCode) => {
-      handlePtyExit(id, exitCode);
-    },
-    shell,
-    env,
-  );
+  let sessionId: string;
+  try {
+    sessionId = ptyService.createSession(
+      workspaceId,
+      cwd,
+      (id, output) => {
+        broadcastToWorkspace(workspaceId, 'terminal.output', { sessionId: id, data: output });
+      },
+      (id, exitCode) => {
+        handlePtyExit(id, exitCode);
+      },
+      shell,
+      env,
+    );
+  } catch (err: any) {
+    console.error(`[command] pty.spawn failed: ${err.message}`);
+    throw new Error(`Failed to spawn terminal: ${err.message}`);
+  }
 
   const now = new Date().toISOString();
   const cmdProcess: CommandProcess = {

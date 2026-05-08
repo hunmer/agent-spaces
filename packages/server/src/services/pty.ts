@@ -19,13 +19,18 @@ export function createSession(
   env?: Record<string, string>,
 ): string {
   const id = uuid();
-  const resolvedShell = shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh');
+  const resolvedShell = shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh') || '/bin/sh';
+  const ptyEnv: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v !== undefined) ptyEnv[k] = v;
+  }
+  if (env) Object.assign(ptyEnv, env);
   const ptyProcess = pty.spawn(resolvedShell, [], {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,
     cwd,
-    env: { ...(process.env as Record<string, string>), ...env },
+    env: ptyEnv,
   });
 
   ptyProcess.onData((data) => onOutput(id, data));

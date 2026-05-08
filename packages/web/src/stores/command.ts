@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { QuickCommand, CommandProcess } from '@agent-spaces/shared';
 import { fetchWithAuth } from '@/lib/auth';
 import { getWS } from '@/lib/ws';
+import { toast } from 'sonner';
 
 interface RunningState {
   sessionId: string;
@@ -76,11 +77,29 @@ export const useCommandStore = create<CommandStore>((set, get) => ({
   },
 
   run: async (workspaceId, commandId) => {
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/commands/${commandId}/run`, { method: 'POST' });
+    try {
+      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/commands/${commandId}/run`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(data.error || 'Failed to run command');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to run command');
+      throw e;
+    }
   },
 
   stop: async (workspaceId, commandId) => {
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/commands/${commandId}/stop`, { method: 'POST' });
+    try {
+      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/commands/${commandId}/stop`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(data.error || 'Failed to stop command');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to stop command');
+      throw e;
+    }
   },
 
   attachWS: (workspaceId: string) => {
