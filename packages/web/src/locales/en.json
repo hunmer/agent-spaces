@@ -309,7 +309,7 @@
       "retryPaused": "Automatic retry paused after {failed}/{total} attempts.",
       "tasks": "Tasks ({count})", "editTask": "Edit Task", "addTask": "Add Task",
       "taskTitlePlaceholder": "Task title", "taskDescriptionPlaceholder": "Description (optional)",
-      "noTasks": "No tasks yet", "comments": "Comments ({count})",
+      "noTasks": "No tasks yet", "noAgent": "No agent assigned", "comments": "Comments ({count})",
       "author": "Author", "commented": "commented", "comment": "Comment",
       "tabInfo": "Info", "tabMembers": "Members",
       "infoStatus": "Status", "infoIssueId": "Issue ID", "infoTaskCount": "Tasks",

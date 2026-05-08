@@ -6,7 +6,7 @@ interface TaskStore {
   loading: boolean;
 
   loadTasks: (workspaceId: string, issueId?: string) => Promise<void>;
-  createTask: (workspaceId: string, issueId: string, title: string, description: string) => Promise<Task>;
+  createTask: (workspaceId: string, issueId: string, title: string, description: string, agentConfigId?: string) => Promise<Task>;
   updateTask: (workspaceId: string, taskId: string, data: { title?: string; description?: string }) => Promise<void>;
   deleteTask: (workspaceId: string, taskId: string) => Promise<void>;
   retryTask: (workspaceId: string, taskId: string) => Promise<void>;
@@ -33,11 +33,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  createTask: async (workspaceId, issueId, title, description) => {
+  createTask: async (workspaceId, issueId, title, description, agentConfigId) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/tasks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ issueId, title, description }),
+      body: JSON.stringify({ issueId, title, description, agentConfigId }),
     });
     const task: Task = await res.json();
     get().upsertTask(task);

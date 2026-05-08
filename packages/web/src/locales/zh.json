@@ -311,7 +311,7 @@
       "retryPaused": "自动重试已在 {failed}/{total} 次尝试后暂停。",
       "tasks": "任务 ({count})", "editTask": "编辑任务", "addTask": "添加任务",
       "taskTitlePlaceholder": "任务标题", "taskDescriptionPlaceholder": "描述（可选）",
-      "noTasks": "暂无任务", "comments": "评论 ({count})",
+      "noTasks": "暂无任务", "noAgent": "未分配 Agent", "comments": "评论 ({count})",
       "author": "作者", "commented": "评论了", "comment": "评论",
       "tabInfo": "信息", "tabMembers": "成员",
       "infoStatus": "状态", "infoIssueId": "议题 ID", "infoTaskCount": "任务数",

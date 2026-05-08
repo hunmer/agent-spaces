@@ -8,19 +8,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 import { TaskRow } from './task-row';
-import type { Issue, Task } from '@agent-spaces/shared';
+import type { Issue, Task, AgentConfig } from '@agent-spaces/shared';
 
 interface IssueDetailTasksPanelProps {
   issue: Issue;
   workspaceId: string;
   issueTasks: Task[];
+  agents: AgentConfig[];
   t: (key: string, params?: Record<string, string | number | Date>) => string;
   tTask: (key: string) => string;
   tc: (key: string) => string;
   retryTask: (wsId: string, taskId: string) => void;
   cancelTask: (wsId: string, taskId: string) => void;
   reorderTasks: (wsId: string, issueId: string, taskIds: string[]) => void;
-  createTask: (wsId: string, issueId: string, title: string, desc: string) => Promise<Task>;
+  createTask: (wsId: string, issueId: string, title: string, desc: string, agentConfigId?: string) => Promise<Task>;
   updateTask: (wsId: string, taskId: string, data: Partial<Task>) => Promise<void>;
   deleteTask: (wsId: string, taskId: string) => Promise<void>;
 }
@@ -29,6 +30,7 @@ export function IssueDetailTasksPanel({
   issue,
   workspaceId,
   issueTasks,
+  agents,
   t,
   tTask,
   tc,
@@ -43,16 +45,22 @@ export function IssueDetailTasksPanel({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [selectedAgentId, setSelectedAgentId] = useState('');
 
   const handleCreateTask = async () => {
     if (!newTaskTitle.trim()) return;
     if (editingTask) {
-      await updateTask(workspaceId, editingTask.id, { title: newTaskTitle.trim(), description: newTaskDesc.trim() });
+      await updateTask(workspaceId, editingTask.id, {
+        title: newTaskTitle.trim(),
+        description: newTaskDesc.trim(),
+        agentConfigId: selectedAgentId || undefined,
+      });
     } else {
-      await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim());
+      await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim(), selectedAgentId || undefined);
     }
     setNewTaskTitle('');
     setNewTaskDesc('');
+    setSelectedAgentId('');
     setEditingTask(null);
     setTaskDialogOpen(false);
   };
@@ -61,6 +69,7 @@ export function IssueDetailTasksPanel({
     setEditingTask(null);
     setNewTaskTitle('');
     setNewTaskDesc('');
+    setSelectedAgentId('');
     setTaskDialogOpen(true);
   };
 
@@ -68,6 +77,7 @@ export function IssueDetailTasksPanel({
     setEditingTask(task);
     setNewTaskTitle(task.title);
     setNewTaskDesc(task.description);
+    setSelectedAgentId(task.agentConfigId ?? '');
     setTaskDialogOpen(true);
   };
 
@@ -102,6 +112,20 @@ export function IssueDetailTasksPanel({
                 onChange={(e) => setNewTaskDesc(e.target.value)}
                 rows={3}
               />
+              {agents.length > 0 && (
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={selectedAgentId}
+                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                >
+                  <option value="">{t('detail.noAgent') as string || 'No agent assigned'}</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name} ({agent.role})
+                    </option>
+                  ))}
+                </select>
+              )}
               <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
                 {editingTask ? tc('save') : t('detail.addTask')}
               </Button>

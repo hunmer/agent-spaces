@@ -249,6 +249,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           issue={issue}
           workspaceId={workspaceId}
           issueTasks={issueTasks}
+          agents={enabledAgents}
           t={t}
           tTask={tTask}
           tc={tc}
