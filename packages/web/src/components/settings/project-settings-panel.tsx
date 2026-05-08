@@ -350,11 +350,10 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
 
   return (
     <ScrollArea className="h-full">
+      <div className="flex items-center px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
+        <span>{t('title')}</span>
+      </div>
       <div className="p-4 space-y-6">
-        {/* Header */}
-        <div>
-          <h3 className="text-sm font-semibold">{t('title')}</h3>
-        </div>
 
         {/* Basic Info */}
         <div className="space-y-3">

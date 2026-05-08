@@ -64,11 +64,11 @@ export function IssueList({ workspaceId }: IssueListProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-2 border-b">
-        <span className="text-sm font-medium">{t('list.title')}</span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-        </Button>
+      <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
+        <span>{t('list.title')}</span>
+        <button onClick={() => setCreateOpen(true)} className="p-0.5 hover:bg-accent rounded">
+          <Plus className="size-3.5" />
+        </button>
       </div>
 
       <ScrollArea className="flex-1">

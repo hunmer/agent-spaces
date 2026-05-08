@@ -102,11 +102,11 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b">
-        <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t('channel.general')}</span>
-        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
+      <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
+        <span>{t('channel.general')}</span>
+        <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded">
+          <Plus className="size-3.5" />
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto">
         {channels.length === 0 ? (
