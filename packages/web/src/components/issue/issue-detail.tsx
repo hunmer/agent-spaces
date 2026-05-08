@@ -79,47 +79,44 @@ function TaskRow({
   tTask: (key: string) => string;
 }) {
   const isPending = task.status === 'pending';
+  const isActive = isPending || task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying';
 
   return (
-    <div className="flex items-center gap-2 p-2 rounded-md border text-sm group">
+    <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30">
+      {/* Agent icon – square card */}
+      <AgentIcon agentId={task.agentConfigId} className="h-8 w-8 shrink-0 rounded-md" />
+
+      {/* Title */}
+      <span className="flex-1 text-sm truncate">{task.title}</span>
+
+      {/* Status */}
       <Badge variant={TASK_STATUS_COLOR[task.status]} className="text-[10px] shrink-0">
         {tTask(`status.${task.status}`)}
       </Badge>
-      <span className="flex-1 truncate">{task.title}</span>
-      {/* Edit button – pending tasks only */}
-      {isPending && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onEdit(task)}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
-      )}
-      {/* Delete button – pending, cancelled, or done */}
-      {(isPending || task.status === 'cancelled' || task.status === 'done') && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onDelete(workspaceId, task.id)}
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
-      )}
-      {/* Retry – failed tasks */}
-      {task.status === 'failed' && (
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onRetry(workspaceId, task.id)}>
-          <RotateCcw className="h-3 w-3" />
-        </Button>
-      )}
-      {/* Cancel – active tasks */}
-      {(isPending || task.status === 'running' || task.status === 'reviewing' || task.status === 'retrying') && (
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCancel(workspaceId, task.id)}>
-          <XCircle className="h-3 w-3" />
-        </Button>
-      )}
+
+      {/* Actions */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        {isPending && (
+          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onEdit(task)}>
+            <Pencil className="h-3 w-3" />
+          </Button>
+        )}
+        {(isPending || task.status === 'cancelled' || task.status === 'done') && (
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onDelete(workspaceId, task.id)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
+        {task.status === 'failed' && (
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onRetry(workspaceId, task.id)}>
+            <RotateCcw className="h-3 w-3" />
+          </Button>
+        )}
+        {isActive && (
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCancel(workspaceId, task.id)}>
+            <XCircle className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
