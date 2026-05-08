@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FolderPicker } from '@/components/ui/folder-picker';
@@ -17,27 +17,33 @@ interface ParsedScript {
 interface ImportCommandsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultPath?: string;
   onImport: (scripts: { name: string; command: string; folder: string }[]) => Promise<void>;
 }
 
-export function ImportCommandsDialog({ open, onOpenChange, onImport }: ImportCommandsDialogProps) {
+export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport }: ImportCommandsDialogProps) {
   const t = useTranslations('commands');
-  const [folder, setFolder] = useState('');
+  const [folder, setFolder] = useState(defaultPath ?? '');
   const [scripts, setScripts] = useState<ParsedScript[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleFolderChange = useCallback(async (newFolder: string) => {
-    setFolder(newFolder);
-    if (!newFolder) {
+  useEffect(() => {
+    if (open) {
+      setFolder(defaultPath ?? '');
       setScripts([]);
-      return;
     }
+  }, [open, defaultPath]);
+
+  const handlePathChange = useCallback(async (path: string) => {
+    setFolder(path);
+    setScripts([]);
+    if (!path) return;
 
     setLoading(true);
     try {
       const res = await fetchWithAuth(
-        `/api/folder/read-file?path=${encodeURIComponent(newFolder + '/package.json')}`
+        `/api/folder/read-file?path=${encodeURIComponent(path)}`
       );
       if (!res.ok) {
         setScripts([]);
@@ -76,10 +82,10 @@ export function ImportCommandsDialog({ open, onOpenChange, onImport }: ImportCom
     if (selected.length === 0) return;
     setSubmitting(true);
     try {
-      await onImport(selected.map(s => ({ name: s.name, command: s.command, folder })));
+      // folder for grouping = directory containing the package.json
+      const dir = folder.includes('/') ? folder.substring(0, folder.lastIndexOf('/')) : folder;
+      await onImport(selected.map(s => ({ name: s.name, command: s.command, folder: dir })));
       onOpenChange(false);
-      setFolder('');
-      setScripts([]);
     } finally {
       setSubmitting(false);
     }
@@ -95,7 +101,12 @@ export function ImportCommandsDialog({ open, onOpenChange, onImport }: ImportCom
         <div className="flex flex-col gap-3 py-2">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">{t('selectProject')}</label>
-            <FolderPicker value={folder} onChange={handleFolderChange} />
+            <FolderPicker
+              value={folder}
+              onChange={handlePathChange}
+              allowFiles
+              fileFilter="package.json"
+            />
           </div>
 
           {scripts.length > 0 && (

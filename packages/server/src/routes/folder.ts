@@ -13,23 +13,31 @@ interface DirEntry {
 
 router.get('/browse', async (req: Request, res: Response) => {
   const raw = (req.query.path as string) || '';
+  const includeFiles = req.query.files === '1';
+  const fileFilter = (req.query.fileFilter as string) || '';
   const rawPath = raw === '~' || raw === '' ? homedir() : raw.replace(/^~[/\\]/, homedir() + sep);
   const dirPath = resolve(rawPath);
 
   try {
     const entries = await readdir(dirPath, { withFileTypes: true });
     const directories: DirEntry[] = [];
+    const files: DirEntry[] = [];
 
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      // Skip hidden directories
+      // Skip hidden entries
       if (entry.name.startsWith('.')) continue;
       try {
         const fullPath = join(dirPath, entry.name);
         await stat(fullPath);
-        directories.push({ name: entry.name, path: fullPath });
+        if (entry.isDirectory()) {
+          directories.push({ name: entry.name, path: fullPath });
+        } else if (includeFiles && entry.isFile()) {
+          if (!fileFilter || entry.name.endsWith(fileFilter)) {
+            files.push({ name: entry.name, path: fullPath });
+          }
+        }
       } catch {
-        // Skip inaccessible directories
+        // Skip inaccessible entries
       }
     }
 
@@ -38,6 +46,7 @@ router.get('/browse', async (req: Request, res: Response) => {
     const isRoot = parentPath === dirPath;
 
     directories.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    files.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
     res.json({
       path: dirPath,
@@ -45,6 +54,7 @@ router.get('/browse', async (req: Request, res: Response) => {
       separator: sep,
       home: homedir(),
       directories,
+      files,
     });
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Cannot read directory' });

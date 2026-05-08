@@ -2,15 +2,21 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from 'next-intl';
-import { Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderPlus, Check, X, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react";
+import { File, Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderPlus, Check, X, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface BrowseEntry {
+  name: string;
+  path: string;
+}
 
 interface FolderBrowseResult {
   path: string;
   parent: string | null;
   separator: string;
   home: string;
-  directories: Array<{ name: string; path: string }>;
+  directories: BrowseEntry[];
+  files?: BrowseEntry[];
 }
 
 interface PermissionCheckResult {
@@ -26,12 +32,15 @@ interface FolderPickerProps {
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
+  allowFiles?: boolean;
+  fileFilter?: string;
 }
 
-export function FolderPicker({ value, onChange, className, placeholder = "/path/to/project" }: FolderPickerProps) {
+export function FolderPicker({ value, onChange, className, placeholder = "/path/to/project", allowFiles = false, fileFilter }: FolderPickerProps) {
   const [open, setOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(value || "");
-  const [directories, setDirectories] = useState<FolderBrowseResult["directories"]>([]);
+  const [directories, setDirectories] = useState<BrowseEntry[]>([]);
+  const [files, setFiles] = useState<BrowseEntry[]>([]);
   const t = useTranslations('folderPicker');
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,11 +78,17 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/folder/browse?path=${encodeURIComponent(path)}`);
+      let url = `/api/folder/browse?path=${encodeURIComponent(path)}`;
+      if (allowFiles) {
+        url += '&files=1';
+        if (fileFilter) url += `&fileFilter=${encodeURIComponent(fileFilter)}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error((await res.json()).error || "Failed to browse");
       const data: FolderBrowseResult = await res.json();
       setCurrentPath(data.path);
       setDirectories(data.directories);
+      setFiles(data.files ?? []);
       setParentPath(data.parent);
       checkPermission(data.path);
     } catch (err: any) {
@@ -81,13 +96,13 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     } finally {
       setLoading(false);
     }
-  }, [checkPermission]);
+  }, [checkPermission, allowFiles, fileFilter]);
 
   useEffect(() => {
     if (open) {
       browse(value || "");
     }
-  }, [open, value, browse]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (creating && newFolderInputRef.current) {
@@ -105,6 +120,11 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
 
   const selectCurrent = () => {
     onChange(currentPath);
+    setOpen(false);
+  };
+
+  const selectFile = (filePath: string) => {
+    onChange(filePath);
     setOpen(false);
   };
 
@@ -164,6 +184,8 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     }
   };
 
+  const hasEntries = directories.length > 0 || files.length > 0;
+
   return (
     <div className={cn("relative", className)}>
       <div className="flex gap-1.5">
@@ -221,13 +243,15 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             >
               <FolderPlus className="size-3.5" />
             </button>
-            <button
-              type="button"
-              onClick={selectCurrent}
-              className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              {t('select')}
-            </button>
+            {!allowFiles && (
+              <button
+                type="button"
+                onClick={selectCurrent}
+                className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                {t('select')}
+              </button>
+            )}
           </div>
 
           {/* New folder input */}
@@ -260,7 +284,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             </div>
           )}
 
-          {/* Directory list */}
+          {/* Directory + file list */}
           <div ref={listRef} className="flex-1 overflow-y-auto p-1.5">
             {loading ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -269,25 +293,38 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               </div>
             ) : error ? (
               <div className="px-3 py-8 text-center text-xs text-destructive">{error}</div>
-            ) : directories.length === 0 ? (
+            ) : !hasEntries ? (
               <div className="px-3 py-8 text-center text-xs text-muted-foreground">No subdirectories</div>
             ) : (
-              directories.map((dir) => (
-                <button
-                  key={dir.path}
-                  type="button"
-                  onClick={() => navigateTo(dir.path)}
-                  onDoubleClick={() => {
-                    onChange(dir.path);
-                    setOpen(false);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
-                >
-                  <Folder className="size-4 text-muted-foreground shrink-0" />
-                  <span className="flex-1 truncate">{dir.name}</span>
-                  <ChevronRight className="size-3 text-muted-foreground shrink-0" />
-                </button>
-              ))
+              <>
+                {directories.map((dir) => (
+                  <button
+                    key={dir.path}
+                    type="button"
+                    onClick={() => navigateTo(dir.path)}
+                    onDoubleClick={() => {
+                      onChange(dir.path);
+                      setOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                  >
+                    <Folder className="size-4 text-muted-foreground shrink-0" />
+                    <span className="flex-1 truncate">{dir.name}</span>
+                    <ChevronRight className="size-3 text-muted-foreground shrink-0" />
+                  </button>
+                ))}
+                {files.map((file) => (
+                  <button
+                    key={file.path}
+                    type="button"
+                    onClick={() => selectFile(file.path)}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                  >
+                    <File className="size-4 text-muted-foreground shrink-0" />
+                    <span className="flex-1 truncate font-mono text-xs">{file.name}</span>
+                  </button>
+                ))}
+              </>
             )}
           </div>
 

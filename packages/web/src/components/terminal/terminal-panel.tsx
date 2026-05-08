@@ -80,6 +80,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const [editingCommand, setEditingCommand] = useState<QuickCommand | undefined>();
   const [importOpen, setImportOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [customOpen, setCustomOpen] = useState(true);
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
 
   const resolveCwd = useCallback((): string | undefined => {
@@ -242,11 +243,10 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
               <>
                 {/* Custom commands (no folder) - collapsible */}
                 {customCommands.length > 0 && (
-                  <Collapsible defaultOpen>
+                  <Collapsible open={customOpen} onOpenChange={setCustomOpen}>
                     <div className="flex items-center gap-1 px-2 py-0.5 group">
                       <CollapsibleTrigger className="flex items-center gap-1 flex-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground">
-                        <ChevronDown size={10} className="shrink-0 [[data-panel-closed]>&]:hidden" />
-                        <ChevronRight size={10} className="shrink-0 hidden [[data-panel-closed]>&]:block" />
+                        {customOpen ? <ChevronDown size={10} className="shrink-0" /> : <ChevronRight size={10} className="shrink-0" />}
                         <span>{tc('customCommands')}</span>
                         <span className="text-muted-foreground/60">({customCommands.length})</span>
                       </CollapsibleTrigger>
@@ -275,19 +275,19 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 )}
 
                 {/* Folder groups */}
-                {Object.entries(folderGroups).map(([folder, cmds]) => (
+                {Object.entries(folderGroups).map(([folder, cmds]) => {
+                  const isOpen = collapsedFolders[folder] !== true;
+                  return (
                   <Collapsible
                     key={folder}
-                    defaultOpen
-                    open={collapsedFolders[folder] === undefined ? true : !collapsedFolders[folder]}
-                    onOpenChange={() => {}}
+                    open={isOpen}
+                    onOpenChange={() => toggleFolder(folder)}
                   >
                     <div className="flex items-center gap-1 px-2 py-0.5 mt-1 group">
                       <CollapsibleTrigger
                         className="flex items-center gap-1 flex-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground"
-                        onClick={() => toggleFolder(folder)}
                       >
-                        <ChevronDown size={10} className="shrink-0" />
+                        {isOpen ? <ChevronDown size={10} className="shrink-0" /> : <ChevronRight size={10} className="shrink-0" />}
                         <span className="truncate">{folder.split('/').pop() || folder}</span>
                         <span className="text-muted-foreground/60">({cmds.length})</span>
                       </CollapsibleTrigger>
@@ -306,7 +306,8 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                       ))}
                     </CollapsibleContent>
                   </Collapsible>
-                ))}
+                  );
+                })}
 
                 {/* Show add button when no custom commands exist */}
                 {customCommands.length === 0 && (
@@ -392,6 +393,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       <ImportCommandsDialog
         open={importOpen}
         onOpenChange={setImportOpen}
+        defaultPath={boundDirs[0]}
         onImport={handleImport}
       />
     </div>
