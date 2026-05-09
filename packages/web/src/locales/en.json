@@ -105,6 +105,7 @@
       "general": "General",
       "agents": "Agents",
       "skills": "Skills",
+      "mcps": "MCP Servers",
       "models": "Models",
       "providers": "Providers"
     },
@@ -625,6 +626,32 @@
     "editDescription": "Edit skill Markdown content",
     "bindTitle": "Bind Agents - {name}",
     "bindDescription": "Select agents to bind this skill to",
-    "searchAgents": "Search agents..."
+    "searchAgents": "Search agents...",
+    "syncToAgents": "Sync to Agents",
+    "syncTitle": "Sync Skills to Agents",
+    "syncDescription": "The following agent skill files are outdated. Select items to update.",
+    "syncEmpty": "All agent skills are up to date",
+    "syncConfirm": "Confirm Update",
+    "syncSuccess": "Updated {count} skill files"
+  },
+  "mcps": {
+    "title": "MCP Servers",
+    "description": "Manage and import MCP server configs, bind to agents",
+    "import": "Import",
+    "importTitle": "Import MCP Config",
+    "importConfirm": "Confirm Import",
+    "importInvalidJson": "Invalid JSON format",
+    "importFailed": "Import failed",
+    "filterAll": "All",
+    "filterFavorites": "Favorites",
+    "filterByAgent": "Filter by Agent",
+    "search": "Search MCP servers...",
+    "empty": "No MCP servers configured",
+    "apply": "Apply",
+    "delete": "Delete",
+    "editTitle": "Edit MCP - {name}",
+    "editDescription": "Edit MCP server config (JSON)",
+    "bindTitle": "Bind Agents - {name}",
+    "bindDescription": "Select agents to bind this MCP server to"
   }
 }

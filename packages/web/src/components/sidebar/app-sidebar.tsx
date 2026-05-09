@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   GitBranch,
   Sparkles,
+  Plug,
 } from "lucide-react";
 import { UserIcon } from "@/components/common/user-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -33,6 +34,7 @@ import { ModelsDialog } from "@/components/sidebar/models-dialog";
 import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
 import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
+import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
@@ -83,6 +85,7 @@ export function DashboardSidebar() {
   const [modelsDialogOpen, setModelsDialogOpen] = useState(false);
   const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
+  const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
@@ -193,6 +196,7 @@ export function DashboardSidebar() {
         { title: ts('nav.general'), link: "#", onClick: () => setSettingsDialogOpen(true) },
         { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
         { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
+        { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
         { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
         { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
       ],
@@ -239,6 +243,7 @@ export function DashboardSidebar() {
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
       <SkillsDialog open={skillsDialogOpen} onOpenChange={setSkillsDialogOpen} />
+      <McpsDialog open={mcpsDialogOpen} onOpenChange={setMcpsDialogOpen} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
       <ProvidersDialog

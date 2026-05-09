@@ -116,7 +116,7 @@ export const workflowTemplates: WorkflowTemplatePreset[] = [
           apiBase: '',
           workingDir: '',
           mcps: {},
-          skills: ['coding.md', 'debugging.md', 'testing.md'],
+          skills: [],
           systemPrompt:
             '你是执行者 Agent。根据计划编写高质量的代码，遵循项目编码规范，编写必要的测试。完成后提交审核。',
           temperature: 0.2,
@@ -137,7 +137,7 @@ export const workflowTemplates: WorkflowTemplatePreset[] = [
           apiBase: '',
           workingDir: '',
           mcps: {},
-          skills: ['code-review.md', 'security-audit.md'],
+          skills: [],
           systemPrompt:
             '你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。',
           temperature: 0.2,

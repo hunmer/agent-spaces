@@ -517,26 +517,53 @@ function writeAgentTemplate(preset: AgentConfig, skillInputs?: SkillInput[]): vo
   writeFileSync(join(dir, 'agent.json'), JSON.stringify(preset, null, 2), 'utf-8');
   writeFileSync(join(dir, 'mcp.json'), JSON.stringify(preset.mcps ?? {}, null, 2), 'utf-8');
 
-  if (skillInputs?.some((skill) => typeof skill !== 'string')) {
+  const hasObjectSkills = skillInputs?.some((skill) => typeof skill !== 'string');
+  console.log('[writeAgentTemplate]', {
+    agentId: preset.id,
+    skillsCount: preset.skills?.length ?? 0,
+    skills: preset.skills,
+    hasObjectSkills,
+    skillInputTypes: skillInputs?.map((s) => typeof s),
+  });
+
+  if (hasObjectSkills) {
     rmSync(skillsDir, { recursive: true, force: true });
     ensureDir(skillsDir);
-    for (const skill of skillInputs) {
+    for (const skill of skillInputs!) {
       if (typeof skill === 'string' || !skill.name?.trim()) continue;
       const filename = sanitizeMarkdownFilename(skill.name);
       writeFileSync(join(skillsDir, filename), skill.content ?? '', 'utf-8');
     }
   } else if (preset.skills?.length) {
-    // Skills are string names — sync files from global skills dir
     const globalSkillsDir = join(getDataDir(), 'skills');
-    for (const skillName of preset.skills) {
-      const filename = skillName.endsWith('.md') ? skillName : `${skillName}.md`;
+    const keepFiles = new Set(preset.skills.map((s) => s.endsWith('.md') ? s : `${s}.md`));
+    // Remove skill files no longer in the list
+    if (existsSync(skillsDir)) {
+      for (const existing of readdirSync(skillsDir)) {
+        if (existing.endsWith('.md') && !keepFiles.has(existing)) {
+          rmSync(join(skillsDir, existing), { force: true });
+          console.log('[writeAgentTemplate] removed stale skill:', existing);
+        }
+      }
+    }
+    // Copy / ensure skill files
+    for (const filename of keepFiles) {
       const target = join(skillsDir, filename);
-      // Prefer global skills dir, fall back to existing file
       const globalSource = join(globalSkillsDir, filename);
+      console.log('[writeAgentTemplate] skill:', filename, 'globalExists:', existsSync(globalSource), 'targetExists:', existsSync(target));
       if (existsSync(globalSource)) {
         copyFileSync(globalSource, target);
       } else if (!existsSync(target)) {
         writeFileSync(target, '', 'utf-8');
+      }
+    }
+  } else {
+    // No skills — clean skills dir
+    if (existsSync(skillsDir)) {
+      for (const existing of readdirSync(skillsDir)) {
+        if (existing.endsWith('.md')) {
+          rmSync(join(skillsDir, existing), { force: true });
+        }
       }
     }
   }
@@ -580,7 +607,7 @@ function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): v
   writeWorkspaceAgentCopy(preset, agentspaceDir);
 }
 
-function readAgentTemplate(agentId: string): AgentConfig | null {
+export function readAgentTemplate(agentId: string): AgentConfig | null {
   const filePath = join(getGlobalAgentTemplateDir(agentId), 'agent.json');
   if (!existsSync(filePath)) return null;
   try {

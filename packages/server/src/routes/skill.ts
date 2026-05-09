@@ -1,11 +1,25 @@
 import { Router } from 'express';
-import { listSkills, importSkill, toggleFavorite, updateSkillContent, deleteSkill } from '../services/skill.js';
+import { listSkills, importSkill, toggleFavorite, updateSkillContent, deleteSkill, checkSkillSync, syncSkills } from '../services/skill.js';
 import type { Request, Response } from 'express';
 
 const router = Router();
 
 router.get('/', (_req: Request, res: Response) => {
   res.json(listSkills());
+});
+
+router.get('/sync-check', (_req: Request, res: Response) => {
+  res.json(checkSkillSync());
+});
+
+router.post('/sync', (req: Request, res: Response) => {
+  const { items } = req.body as { items?: Array<{ agentId: string; skillName: string }> };
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: 'items required' });
+    return;
+  }
+  const synced = syncSkills(items);
+  res.json({ synced });
 });
 
 router.post('/import', (req: Request, res: Response) => {

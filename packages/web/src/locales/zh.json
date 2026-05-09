@@ -105,6 +105,7 @@
       "general": "通用",
       "agents": "智能体",
       "skills": "技能管理",
+      "mcps": "MCP 服务器",
       "models": "模型",
       "providers": "供应商",
       "workflows": "工作流"
@@ -627,6 +628,32 @@
     "editDescription": "编辑技能 Markdown 内容",
     "bindTitle": "绑定智能体 - {name}",
     "bindDescription": "选择要绑定此技能的智能体",
-    "searchAgents": "搜索智能体..."
+    "searchAgents": "搜索智能体...",
+    "syncToAgents": "更新到智能体",
+    "syncTitle": "同步技能到智能体",
+    "syncDescription": "以下智能体的技能文件已过时，勾选需要更新的项目",
+    "syncEmpty": "所有智能体的技能已是最新",
+    "syncConfirm": "确认更新",
+    "syncSuccess": "已更新 {count} 个技能文件"
+  },
+  "mcps": {
+    "title": "MCP 服务器管理",
+    "description": "管理和导入 MCP 服务器配置，绑定到智能体",
+    "import": "导入",
+    "importTitle": "导入 MCP 配置",
+    "importConfirm": "确认导入",
+    "importInvalidJson": "JSON 格式无效",
+    "importFailed": "导入失败",
+    "filterAll": "全部",
+    "filterFavorites": "收藏",
+    "filterByAgent": "按智能体过滤",
+    "search": "搜索 MCP 服务器...",
+    "empty": "暂无 MCP 服务器配置",
+    "apply": "应用",
+    "delete": "删除",
+    "editTitle": "编辑 MCP - {name}",
+    "editDescription": "编辑 MCP 服务器配置（JSON）",
+    "bindTitle": "绑定智能体 - {name}",
+    "bindDescription": "选择要绑定此 MCP 服务器的智能体"
   }
 }

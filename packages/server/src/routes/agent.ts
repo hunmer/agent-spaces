@@ -14,6 +14,15 @@ router.get('/presets', (req: Request<{ id: string }>, res: Response) => {
   res.json(agentService.listTemplates());
 });
 
+router.get('/presets/:presetId', (req: Request<{ id: string; presetId: string }>, res: Response) => {
+  const preset = agentService.readAgentTemplate(req.params.presetId);
+  if (!preset) {
+    res.status(404).json({ error: 'agent preset not found' });
+    return;
+  }
+  res.json(preset);
+});
+
 router.post('/presets', (req: Request<{ id: string }>, res: Response) => {
   const body = req.body as Omit<Partial<AgentConfig>, 'id'>;
   const preset = agentService.createPreset(req.params.id, body);

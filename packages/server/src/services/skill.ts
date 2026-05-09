@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 import { listTemplates } from './agent.js';
@@ -149,4 +149,67 @@ export function deleteSkill(name: string): boolean {
   if (!existsSync(filePath)) return false;
   unlinkSync(filePath);
   return true;
+}
+
+export interface SkillSyncItem {
+  agentId: string;
+  agentName: string;
+  skillName: string;
+  globalMtime: string;
+  agentMtime: string;
+}
+
+export function checkSkillSync(): SkillSyncItem[] {
+  const globalSkillsDir = getSkillsDir();
+  const agents = listTemplates();
+  const result: SkillSyncItem[] = [];
+
+  for (const agent of agents) {
+    const skillNames = (agent.skills || []).map((s: string) => s.replace(/\.md$/i, ''));
+    if (skillNames.length === 0) continue;
+
+    const agentSkillsDir = join(getDataDir(), 'agent-templates', agent.id, 'skills');
+
+    for (const skillName of skillNames) {
+      const globalFile = join(globalSkillsDir, `${skillName}.md`);
+      const agentFile = join(agentSkillsDir, `${skillName}.md`);
+
+      if (!existsSync(globalFile)) continue;
+      if (!existsSync(agentFile)) continue;
+
+      const globalStat = statSync(globalFile);
+      const agentStat = statSync(agentFile);
+
+      if (globalStat.mtimeMs > agentStat.mtimeMs) {
+        result.push({
+          agentId: agent.id,
+          agentName: agent.name || agent.id,
+          skillName,
+          globalMtime: globalStat.mtime.toISOString(),
+          agentMtime: agentStat.mtime.toISOString(),
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+export function syncSkills(items: Array<{ agentId: string; skillName: string }>): number {
+  const globalSkillsDir = getSkillsDir();
+  let synced = 0;
+
+  for (const item of items) {
+    const globalFile = join(globalSkillsDir, `${item.skillName}.md`);
+    const agentSkillsDir = join(getDataDir(), 'agent-templates', item.agentId, 'skills');
+    const agentFile = join(agentSkillsDir, `${item.skillName}.md`);
+
+    if (!existsSync(globalFile)) continue;
+
+    ensureDir(agentSkillsDir);
+    copyFileSync(globalFile, agentFile);
+    synced++;
+  }
+
+  return synced;
 }
