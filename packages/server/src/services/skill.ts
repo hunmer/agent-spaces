@@ -6,6 +6,7 @@ import type { AgentConfig } from '@agent-spaces/shared';
 
 export interface SkillInfo {
   name: string;
+  description: string;
   filename: string;
   content: string;
   favorited: boolean;
@@ -51,6 +52,7 @@ export function listSkills(): SkillInfo[] {
   return skillFiles.map((filename) => {
     const content = readFileSync(join(skillsDir, filename), 'utf-8');
     const name = basename(filename, '.md');
+    const fm = parseFrontmatter(content);
     const boundAgents = agents
       .filter((a: AgentConfig) =>
         (a.skills || []).some((s: string) => {
@@ -66,6 +68,7 @@ export function listSkills(): SkillInfo[] {
 
     return {
       name,
+      description: fm.description || '',
       filename,
       content,
       favorited: meta.favorites.includes(name),
@@ -74,14 +77,43 @@ export function listSkills(): SkillInfo[] {
   });
 }
 
+interface Frontmatter {
+  name: string | null;
+  description: string | null;
+}
+
+function parseFrontmatter(content: string): Frontmatter {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) return { name: null, description: null };
+  const lines = match[1].split(/\r?\n/);
+  let name: string | null = null;
+  let description: string | null = null;
+  for (const line of lines) {
+    if (/^\s*name\s*:/i.test(line)) {
+      name = line.split(':', 2)[1].trim() || null;
+    } else if (/^\s*description\s*:/i.test(line)) {
+      description = line.split(':', 2)[1].trim() || null;
+    }
+  }
+  return { name, description };
+}
+
+function sanitizeFilename(name: string): string {
+  const safe = name.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'skill';
+  return safe.endsWith('.md') ? safe : `${safe}.md`;
+}
+
 export function importSkill(filename: string, content: string): SkillInfo {
-  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const finalName = safeName.endsWith('.md') ? safeName : `${safeName}.md`;
+  const fm = parseFrontmatter(content);
+  const finalName = fm.name
+    ? sanitizeFilename(fm.name)
+    : sanitizeFilename(filename);
   const skillsDir = getSkillsDir();
   ensureDir(skillsDir);
   writeFileSync(join(skillsDir, finalName), content, 'utf-8');
   return {
     name: basename(finalName, '.md'),
+    description: fm.description || '',
     filename: finalName,
     content,
     favorited: false,

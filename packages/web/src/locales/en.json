@@ -619,6 +619,8 @@
     "search": "Search skills...",
     "empty": "No skills found",
     "manageAgents": "Manage",
+    "apply": "Apply",
+    "delete": "Delete",
     "bindTitle": "Bind Agents - {name}",
     "bindDescription": "Select agents to bind this skill to",
     "searchAgents": "Search agents..."

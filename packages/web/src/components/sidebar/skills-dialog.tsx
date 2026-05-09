@@ -11,8 +11,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -21,10 +26,12 @@ import {
   StarOff,
   Plus,
   Upload,
-  Filter,
   Search,
   FileText,
   X,
+  MoreVertical,
+  Trash2,
+  Rocket,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +43,7 @@ interface BoundAgent {
 
 interface SkillInfo {
   name: string;
+  description: string;
   filename: string;
   content: string;
   favorited: boolean;
@@ -135,6 +143,15 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
     setBindSelected(skill.boundAgents.map((a) => a.id));
   };
 
+  const handleDeleteSkill = async (skill: SkillInfo) => {
+    try {
+      const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSkills((prev) => prev.filter((s) => s.name !== skill.name));
+      }
+    } catch { /* ignore */ }
+  };
+
   const handleBindConfirm = async () => {
     if (!bindDialogSkill) return;
 
@@ -200,9 +217,9 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
   return (
     <>
       <Dialog open={open && !bindDialogSkill} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-3xl max-h-[80vh] flex flex-col">
+        <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pr-8">
               <div>
                 <DialogTitle>{t('title')}</DialogTitle>
                 <DialogDescription>{t('description')}</DialogDescription>
@@ -320,7 +337,7 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {skill.content.slice(0, 120).replace(/^#\s+/, '')}
+                              {skill.description || skill.content.slice(0, 120).replace(/^#\s+/, '')}
                             </p>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
@@ -341,9 +358,27 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
                               size="sm"
                               onClick={() => openBindDialog(skill)}
                             >
-                              <Plus className="size-3.5 mr-1" />
-                              {t('manageAgents')}
+                              <Rocket className="size-3.5 mr-1" />
+                              {t('apply')}
                             </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <Button variant="ghost" size="icon" className="size-7" />
+                                }
+                              >
+                                <MoreVertical className="size-3.5" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onSelect={() => handleDeleteSkill(skill)}
+                                >
+                                  <Trash2 className="size-3.5 mr-1.5" />
+                                  {t('delete')}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
 

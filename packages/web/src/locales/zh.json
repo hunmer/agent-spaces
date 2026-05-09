@@ -621,6 +621,8 @@
     "search": "搜索技能...",
     "empty": "暂无技能",
     "manageAgents": "管理",
+    "apply": "应用",
+    "delete": "删除",
     "bindTitle": "绑定智能体 - {name}",
     "bindDescription": "选择要绑定此技能的智能体",
     "searchAgents": "搜索智能体..."
