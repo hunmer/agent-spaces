@@ -53,7 +53,7 @@ function getDefaultHeaders(provider: SubscriptionProvider): HeaderRow[] {
   return DEFAULT_HEADERS[provider]?.map(h => ({ ...h, id: nextHeaderId++ })) ?? []
 }
 
-export function SubscriptionDialog() {
+export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
   const t = useTranslations('home')
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<SubscriptionConfig[]>([])
@@ -82,12 +82,14 @@ export function SubscriptionDialog() {
     if (res.ok) {
       setEditing(null)
       await load()
+      onChange?.()
     }
   }
 
   const handleDelete = async (id: string) => {
     await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' })
     await load()
+    onChange?.()
   }
 
   const updateHeader = (id: number, field: 'key' | 'value', val: string) => {
@@ -115,7 +117,7 @@ export function SubscriptionDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger nativeButton={false} render={
+      <DialogTrigger nativeButton render={
         <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
           <Plus className="size-3.5" />
           {t('subscription.addPlatform')}

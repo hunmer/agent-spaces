@@ -1,4 +1,4 @@
-export type SubscriptionProvider = 'zhipu'
+export type SubscriptionProvider = 'zhipu' | 'minimax'
 
 export interface SubscriptionConfig {
   id: string
