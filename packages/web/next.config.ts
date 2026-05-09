@@ -52,6 +52,10 @@ const nextConfig: NextConfig = {
           destination: `${serverUrl}/ws`,
         },
         {
+          source: "/public/:path*",
+          destination: `${serverUrl}/public/:path*`,
+        },
+        {
           source: "/static/:path*",
           destination: `${serverUrl}/public/:path*`,
         },
