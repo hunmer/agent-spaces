@@ -16,3 +16,4 @@ documents/.docusaurus/
 documents/build/
 .npmrc
 packages/tauri/web/
+packages/tauri/src-tauri/target/

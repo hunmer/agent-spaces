@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/api-polyfill";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { isAuthenticated, getToken } from "@/lib/auth";

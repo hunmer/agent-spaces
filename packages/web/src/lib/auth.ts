@@ -1,4 +1,4 @@
-import { getActiveServer } from './server';
+import { getActiveServer, getActiveServerUrl } from './server';
 
 const TOKEN_KEY = 'agent-spaces-token';
 const VERIFIED_KEY = 'agent-spaces-auth-verified';
@@ -33,9 +33,17 @@ export function authHeaders(): HeadersInit {
   return { Authorization: `Bearer ${token}` };
 }
 
+function resolveUrl(input: string): string {
+  if (typeof input !== 'string' || input.startsWith('http')) return input;
+  const baseUrl = getActiveServerUrl();
+  if (!baseUrl) return input;
+  return `${baseUrl}${input.startsWith('/') ? '' : '/'}${input}`;
+}
+
 export async function fetchWithAuth(input: string, init?: RequestInit) {
+  const url = resolveUrl(input);
   const headers = { ...authHeaders(), ...init?.headers };
-  const res = await fetch(input, { ...init, headers });
+  const res = await fetch(url, { ...init, headers });
 
   if (res.status === 401 || res.status === 403) {
     removeToken();
