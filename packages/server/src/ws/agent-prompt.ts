@@ -55,7 +55,11 @@ export function buildAgentPrompt(
         '- If no Agent Spaces channel issue tool is configured, say the issue tool is unavailable.',
       );
     }
-    configLines.push('When asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.');
+    configLines.push(
+      'When asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have, answer from this configuration only.',
+      'Important distinction: MCP servers configured for this agent are only the names in "MCP servers configured for this agent". Agent Spaces channel tools are built-in runtime tools and must not be listed as agent-configured MCP servers.',
+      'Do not infer availability from provider-side function names, hidden runtime internals, previous sessions, or filesystem settings.',
+    );
     parts.push(configLines.join('\n'));
   }
 
@@ -104,7 +108,8 @@ function formatBuiltInToolContext(tools: BuiltInToolContext[]): string[] {
   const firstIssueTool = tools.find((tool) => tool.issueId);
   const lines = [
     'Built-in issue tool rules:',
-    '- These are real function-call tools exposed through the agent-spaces MCP server.',
+    '- These are real function-call tools exposed by the Agent Spaces runtime.',
+    '- They are not agent-configured MCP servers and must be reported only as Agent Spaces channel tools.',
     '- Tool calls must use the current channel id.',
   ];
   if (firstTool?.channelId) lines.push(`- Current channel id: ${firstTool.channelId}`);
