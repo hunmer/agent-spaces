@@ -44,6 +44,10 @@ import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { Workspace } from "@agent-spaces/shared";
 
+function buildWorkspaceHref(id: string) {
+  return `/workspace/${id}`;
+}
+
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
@@ -76,7 +80,8 @@ export function DashboardSidebar() {
   ];
   const isCollapsed = state === "collapsed";
   const isWorkspace = pathname.startsWith("/workspace/");
-  const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
+  const currentWorkspaceId = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("workspaceId")
+    || pathname.match(/^\/workspace\/([^/]+)/)?.[1]?.replace(/\.html$/, "");
   const workspaces = useWorkspaceStore((store) => store.workspaces);
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces);
   const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace);
@@ -127,7 +132,7 @@ export function DashboardSidebar() {
     removeWorkspace(ws.id);
     if (currentWorkspaceId === ws.id) {
       const remaining = workspaces.filter((w) => w.id !== ws.id);
-      tauriNavigate(router, remaining.length > 0 ? `/workspace/${remaining[0].id}` : "/");
+      tauriNavigate(router, remaining.length > 0 ? buildWorkspaceHref(remaining[0].id) : "/");
     }
   };
 
@@ -159,7 +164,7 @@ export function DashboardSidebar() {
       subs: [
         ...workspaces.map((ws) => ({
           title: ws.name,
-          link: `/workspace/${ws.id}`,
+          link: buildWorkspaceHref(ws.id),
           icon: <FolderOpen className="size-4" />,
           menuItems: [
             {

@@ -1,21 +1,26 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tauriNavigate } from "@/lib/navigate";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useSidebar } from "@/components/ui/sidebar";
 
+function buildWorkspaceHref(id: string) {
+  return `/workspace/${id}`;
+}
+
 export function WorkspaceTabs() {
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const { toggleSidebar } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const activeId = pathname.startsWith("/workspace/")
-    ? pathname.split("/workspace/")[1]
-    : null;
+  const activeId = searchParams.get("workspaceId")
+    || (pathname.startsWith("/workspace/") ? pathname.split("/workspace/")[1]?.replace(/\.html$/, "") : null);
 
   if (workspaces.length === 0) return null;
 
@@ -31,7 +36,7 @@ export function WorkspaceTabs() {
         {workspaces.map((ws) => (
           <button
             key={ws.id}
-            onClick={() => tauriNavigate(router, `/workspace/${ws.id}`)}
+            onClick={() => tauriNavigate(router, buildWorkspaceHref(ws.id))}
             className={cn(
               "flex items-center gap-1.5 px-3.5 h-7 text-[13px] font-medium rounded-lg transition-all whitespace-nowrap",
               activeId === ws.id

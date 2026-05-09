@@ -27,10 +27,11 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, MoreHorizontal, Plus, LayoutGrid } from "lucide-react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
+import { tauriNavigate } from "@/lib/navigate";
+import { useRouter } from "next/navigation";
 
 export type SubMenuItem = {
   title: string;
@@ -60,6 +61,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
+  const router = useRouter();
   const tc = useTranslations('common');
 
   return (
@@ -89,14 +91,14 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                             {subRoute.title}
                           </button>
                         ) : (
-                          <Link
-                            href={subRoute.link}
-                            prefetch={true}
+                          <button
+                            type="button"
+                            onClick={() => tauriNavigate(router, subRoute.link)}
                             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                           >
                             {subRoute.icon}
                             {subRoute.title}
-                          </Link>
+                          </button>
                         )}
                         {subRoute.menuItems && subRoute.menuItems.length > 0 && (
                           <DropdownMenu>
@@ -133,13 +135,14 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                       </button>
                     )}
                     {route.manageLink && (
-                      <Link
-                        href={route.manageLink}
+                      <button
+                        type="button"
+                        onClick={() => tauriNavigate(router, route.manageLink!)}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5"
                       >
                         <LayoutGrid className="size-3.5" />
                         {tc('manage')}
-                      </Link>
+                      </button>
                     )}
                   </PopoverContent>
                 </Popover>
@@ -191,7 +194,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                                     onClick={subRoute.onClick}
                                     className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
                                   />
-                                : <Link href={subRoute.link} prefetch={true} className="flex items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
+                                : <button type="button" onClick={() => tauriNavigate(router, subRoute.link)} className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
                             }
                           >{subRoute.title}</SidebarMenuSubButton>
 
@@ -234,13 +237,14 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                       )}
                       {route.manageLink && (
                         <SidebarMenuSubItem>
-                          <Link
-                            href={route.manageLink}
+                          <button
+                            type="button"
+                            onClick={() => tauriNavigate(router, route.manageLink!)}
                             className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
                           >
                             <LayoutGrid className="size-3.5" />
                             {tc('manage')}
-                          </Link>
+                          </button>
                         </SidebarMenuSubItem>
                       )}
                     </SidebarMenuSub>
@@ -248,7 +252,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
               </Collapsible>
               )
             ) : (
-              <SidebarMenuButton tooltip={route.title} render={<Link href={route.link} prefetch={true} className={cn(
+              <SidebarMenuButton tooltip={route.title} render={<button type="button" onClick={() => tauriNavigate(router, route.link)} className={cn(
                                             "flex items-center rounded-lg px-2 transition-colors text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
                                             isCollapsed && "justify-center"
                                           )} />}>{route.icon}{!isCollapsed && (

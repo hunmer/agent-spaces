@@ -1,23 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { Workspace } from "@agent-spaces/shared";
+import { useRouter } from "next/navigation";
+import { tauriNavigate } from "@/lib/navigate";
 
 function useWorkspaceId() {
-  const [id, setId] = useState("");
+  const searchParams = useSearchParams();
+  const queryId = searchParams.get("workspaceId") || "";
+  const [pathId, setPathId] = useState("");
+
   useEffect(() => {
     const match = window.location.pathname.match(/\/workspace\/([^/]+)/);
-    setId(match?.[1] || "");
+    setPathId(match?.[1] || "");
   }, []);
-  return id;
+
+  return useMemo(() => queryId || pathId, [pathId, queryId]);
 }
 
 export function WorkspaceClient() {
   const id = useWorkspaceId();
+  const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const upsertWorkspace = useWorkspaceStore((state) => state.upsertWorkspace);
@@ -40,9 +47,9 @@ export function WorkspaceClient() {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4">
         <p className="text-destructive">{error}</p>
-        <Link href="/" className="text-sm underline">
+        <button type="button" onClick={() => tauriNavigate(router, "/")} className="text-sm underline">
           Back to home
-        </Link>
+        </button>
       </div>
     );
   }

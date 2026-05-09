@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from "next/navigation"
 import { FolderOpen, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button'
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { Workspace } from '@agent-spaces/shared'
+import { tauriNavigate } from '@/lib/navigate'
 
 export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
   const t = useTranslations('workspaces')
+  const router = useRouter()
   const workspaces = useWorkspaceStore((store) => store.workspaces)
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)
   const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace)
@@ -51,9 +53,10 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
         ) : (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
             {workspaces.map((ws) => (
-              <Link
+              <button
                 key={ws.id}
-                href={`/workspace/${ws.id}`}
+                type="button"
+                onClick={() => tauriNavigate(router, `/workspace/${ws.id}`)}
                 className='group rounded-2xl border border-border bg-card p-5 hover:shadow-card-hover transition-all duration-200 block'
               >
                 <div className='flex items-start justify-between'>
@@ -65,7 +68,7 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
                 <p className='text-sm text-muted-foreground mt-1 truncate'>
                   {ws.boundDirs.join(', ')}
                 </p>
-              </Link>
+              </button>
             ))}
           </div>
         )}
