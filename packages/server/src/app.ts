@@ -41,7 +41,8 @@ const resolveRuntimeDir = (name: string) => {
 };
 
 const app = express();
-app.use(cors());
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: '50mb' }));
 app.use('/api', authMiddleware);
 
