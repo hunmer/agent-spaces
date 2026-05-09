@@ -188,8 +188,8 @@ function WorkflowEditorInner({
           placeholder="Workflow name"
         />
       </div>
-      <div className="flex flex-1 min-h-0">
-        <WorkflowAgentPalette agents={allAgents} />
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
+        <WorkflowAgentPalette agents={allAgents} onNodeAdd={onNodeAdd} />
         <WorkflowCanvas
           nodes={nodes}
           edges={edges}

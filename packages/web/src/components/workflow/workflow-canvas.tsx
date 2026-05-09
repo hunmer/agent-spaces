@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -10,6 +10,9 @@ import {
   applyEdgeChanges,
   addEdge,
   useReactFlow,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
   BackgroundVariant,
   type Connection,
   type Edge,
@@ -19,17 +22,60 @@ import {
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
+  type EdgeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Dagre from '@dagrejs/dagre';
 import type { WorkflowNode, AgentConfig } from '@agent-spaces/shared';
 import { WorkflowAgentNode } from './workflow-agent-node';
+import { X } from 'lucide-react';
 
-const nodeTypes = { agent: WorkflowAgentNode };
-
-// Define the node data type to match what WorkflowAgentNode expects
 type AgentNodeData = WorkflowNode['data'];
 type AgentNode = Node<AgentNodeData, 'agent'>;
+
+function DeletableEdge({
+  id,
+  sourceX, sourceY, targetX, targetY,
+  sourcePosition, targetPosition,
+  style = {},
+  markerEnd,
+}: EdgeProps) {
+  const { setEdges } = useReactFlow();
+  const [hovered, setHovered] = useState(false);
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
+  });
+
+  return (
+    <>
+      <g
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Invisible wider path for easier hover */}
+        <path d={edgePath} fill="none" strokeWidth={20} stroke="transparent" />
+        <BaseEdge id={id} path={edgePath} markerEnd={markerEnd}
+          style={{ ...style, strokeWidth: hovered ? 3 : 2, stroke: hovered ? 'hsl(var(--primary))' : style.stroke }}
+        />
+      </g>
+      {hovered && (
+        <EdgeLabelRenderer>
+          <button
+            type="button"
+            className="nodrag nopan absolute flex items-center justify-center size-5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80 pointer-events-auto"
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
+            onClick={() => setEdges((eds) => eds.filter((e) => e.id !== id))}
+          >
+            <X className="size-3" />
+          </button>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+const nodeTypes = { agent: WorkflowAgentNode };
+const edgeTypes = { smoothstep: DeletableEdge };
 
 interface WorkflowCanvasProps {
   nodes: AgentNode[];
@@ -69,7 +115,7 @@ export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onC
         nodes={nodes} edges={edges}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
         onDragOver={onDragOver} onDrop={onDrop}
-        nodeTypes={nodeTypes} fitView snapToGrid snapGrid={[15, 15]}
+        nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[15, 15]}
         deleteKeyCode={['Backspace', 'Delete']}
         defaultEdgeOptions={{ type: 'smoothstep', animated: false, style: { strokeWidth: 2 } }}
       >
