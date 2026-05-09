@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SearchSelect } from '@/components/ui/search-select';
 import { AgentIcon } from '@/components/common/agent-icon';
 import {
   Star,
@@ -279,8 +280,8 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
   const mainBody = (
     <>
       <DialogHeader>
-        <div className="flex items-center justify-between pr-8">
-          <div>
+        <div className="flex items-center justify-end pr-8 pt-2">
+          <div className="hidden md:block">
             {standalone
               ? <h2 className="text-base font-semibold">{t('title')}</h2>
               : <DialogTitle>{t('title')}</DialogTitle>
@@ -326,8 +327,8 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
       </DialogHeader>
 
       <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        {/* Left: Filters */}
-        <div className="w-44 shrink-0 space-y-3">
+        {/* Desktop: Left sidebar filters */}
+        <div className="hidden md:flex w-44 shrink-0 flex-col gap-3">
           <div className="space-y-1">
             <Button
               variant={filterMode === 'all' ? 'secondary' : 'ghost'}
@@ -372,7 +373,59 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
 
         {/* Right: MCP cards */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="relative">
+          {/* Mobile: Top filters */}
+          <div className="flex md:hidden flex-col gap-2">
+            <div className="relative">
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('search')}
+                className="pl-8"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg border border-input p-0.5">
+                <button
+                  type="button"
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+                    filterMode === 'all' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  onClick={() => { setFilterMode('all'); setFilterAgentId(''); }}
+                >
+                  {t('filterAll')}
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+                    filterMode === 'favorites' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); }}
+                >
+                  <Star className="size-3 inline-block mr-0.5 -mt-px" />
+                  {t('filterFavorites')}
+                </button>
+              </div>
+              {agents.length > 0 && (
+                <SearchSelect
+                  value={filterMode === 'agent' ? filterAgentId : ''}
+                  onChange={(v) => {
+                    if (v) { setFilterMode('agent'); setFilterAgentId(v); }
+                    else { setFilterMode('all'); setFilterAgentId(''); }
+                  }}
+                  options={agents.map((a) => ({ value: a.id, label: a.name }))}
+                  placeholder={t('filterByAgent')}
+                  allowCustom={false}
+                  className="flex-1 min-w-0"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Desktop: Search bar */}
+          <div className="hidden md:block relative">
             <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchQuery}
