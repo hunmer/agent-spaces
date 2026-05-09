@@ -316,7 +316,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
               : <DialogDescription>{t('description')}</DialogDescription>
             }
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
             <Button variant="outline" size="sm" onClick={handleSyncCheck} disabled={syncLoading}>
               <RefreshCw className={cn("size-3.5 mr-1", syncLoading && "animate-spin")} />
               {t('syncToAgents')}
