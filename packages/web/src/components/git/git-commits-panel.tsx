@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState, useMemo } from "react";
-import { Upload, Download, Loader2, GitCommitHorizontal } from "lucide-react";
+import { Upload, Download, Loader2, GitCommitHorizontal, RefreshCw } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { GitNotInitialized } from "./git-not-initialized";
 import { GitRemoteDialog } from "./git-remote-dialog";
@@ -123,9 +123,9 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
           </button>
           <button
             onClick={refresh}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground"
           >
-            {tc('refresh')}
+            <RefreshCw size={13} />
           </button>
         </div>
       </div>

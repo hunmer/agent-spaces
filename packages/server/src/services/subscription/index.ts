@@ -1,9 +1,11 @@
 import type { SubscriptionConfig, SubscriptionQuota } from '@agent-spaces/shared'
 import { SubscriptionProviderBase } from './base.js'
 import { ZhiPuSubscriptionProvider } from './zhipu.js'
+import { MiniMaxSubscriptionProvider } from './minimax.js'
 
 const providers: SubscriptionProviderBase[] = [
   new ZhiPuSubscriptionProvider(),
+  new MiniMaxSubscriptionProvider(),
 ]
 
 function getProvider(provider: string): SubscriptionProviderBase {

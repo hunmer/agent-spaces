@@ -11,6 +11,9 @@ import { SubscriptionDialog } from "./subscription-dialog"
 const LIMIT_TYPE_LABELS: Record<string, string> = {
   TIME_LIMIT: '时间额度',
   TOKENS_LIMIT: 'Token 额度',
+  'MiniMax-M*': 'MiniMax-M*',
+  'coding-plan-vlm': 'Coding Plan VLM',
+  'coding-plan-search': 'Coding Plan Search',
 }
 
 function formatLimitValue(limit: SubscriptionLimit): string | null {

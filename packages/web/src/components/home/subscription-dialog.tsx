@@ -18,10 +18,12 @@ import { Label } from "@/components/ui/label"
 
 const PROVIDERS: Array<{ value: SubscriptionProvider; label: string }> = [
   { value: 'zhipu', label: '智谱 (ZhiPu)' },
+  { value: 'minimax', label: 'MiniMax' },
 ]
 
 const DEFAULT_HEADERS: Record<SubscriptionProvider, Array<{ key: string; value: string }>> = {
   zhipu: [{ key: 'Authorization', value: '' }],
+  minimax: [{ key: 'X-Group-Id', value: '' }],
 }
 
 interface HeaderRow {

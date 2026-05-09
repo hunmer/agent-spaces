@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useMemo } from "react";
-import { GitCommit, GitBranch as BranchIcon } from "lucide-react";
+import { GitCommit, GitBranch as BranchIcon, RefreshCw } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { GitNotInitialized } from "./git-not-initialized";
 import { useTranslations } from "next-intl";
@@ -55,9 +55,9 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
         </div>
         <button
           onClick={refresh}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground"
         >
-          {tc('refresh')}
+          <RefreshCw size={13} />
         </button>
       </div>
       <div className="flex-1 overflow-auto pl-4">

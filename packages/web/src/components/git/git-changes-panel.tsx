@@ -14,6 +14,7 @@ import { GitRemoteDialog } from "./git-remote-dialog";
 import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -61,6 +62,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   // context menu
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const ctxMenuRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // compact layout detection
   const containerRef = useRef<HTMLDivElement>(null);
@@ -274,9 +276,9 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const hasFiles = (status?.files.length ?? 0) > 0;
 
   return (
-    <div ref={containerRef} className="flex h-full overflow-hidden rounded-t-xl bg-background">
+    <div ref={containerRef} className={`flex h-full overflow-hidden rounded-t-xl bg-background ${isMobile ? 'flex-col' : ''}`}>
       {/* File list */}
-      <div className={`flex flex-col bg-muted/20 border-r ${isCompact ? 'w-40' : 'w-64'}`}>
+      <div className={`flex flex-col bg-muted/20 ${isMobile ? 'w-full border-b max-h-[40%]' : isCompact ? 'w-40 border-r' : 'w-64 border-r'}`}>
         <div className="flex items-center gap-1 px-2 py-1.5 border-b">
           {/* Branch selector */}
           <div className="relative flex-1 min-w-0">
@@ -383,8 +385,8 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           )}
         </div>
 
-        {/* Commit input - only shown in non-compact mode */}
-        {!isCompact && hasFiles && (
+        {/* Commit input - shown in non-compact mode or mobile */}
+        {((!isCompact || isMobile) && hasFiles) && (
           <div className="border-t p-2 space-y-1.5">
             <div className="relative">
               <textarea
@@ -433,8 +435,8 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
         )}
       </div>
 
-      {/* Commit column - only shown in compact mode (height < 300px) */}
-      {isCompact && hasFiles && (
+      {/* Commit column - only shown in compact mode (height < 300px) and non-mobile */}
+      {isCompact && !isMobile && hasFiles && (
         <div className="w-52 border-r flex flex-col p-2 space-y-1.5">
           <div className="relative flex-1 flex flex-col">
             <textarea
@@ -466,7 +468,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
       )}
 
       {/* Diff area */}
-      <div className="flex-1">
+      <div className={`flex-1 ${isMobile ? 'min-h-0' : ''}`}>
         {selectedDiff ? (
           <DiffViewer
             oldContent={selectedDiff.oldContent}
