@@ -24,6 +24,7 @@ import folderRouter from './routes/folder.js';
 import commandRouter from './routes/command.js';
 import skillRouter from './routes/skill.js';
 import mcpRouter from './routes/mcp.js';
+import subscriptionRouter from './routes/subscription.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
@@ -90,6 +91,7 @@ app.use('/api', llmRouter);
 app.use('/api/folder', folderRouter);
 app.use('/api/skills', skillRouter);
 app.use('/api/mcps', mcpRouter);
+app.use('/api/subscriptions', subscriptionRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
 const webDir = resolveRuntimeDir('web');

@@ -28,6 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn, textColorClass, textToColor } from "@/lib/utils"
+import { SubscriptionPanel } from "./subscription-panel"
 
 // ── model -> provider icon mapping ──
 
@@ -337,6 +338,10 @@ export function UsageDashboard() {
           <span className="font-medium text-xs">{t('chart.costDistribution')}</span>
           <CostPieChart byModel={byModel} totalCost={totals.totalCostUsd} />
         </div>
+      </div>
+
+      <div className="p-4">
+        <SubscriptionPanel />
       </div>
 
       <AgentRunsTable data={recent} columns={columns} formatRelative={formatRelative} />

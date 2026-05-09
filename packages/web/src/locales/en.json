@@ -151,10 +151,18 @@
       "codex": "Codex"
     },
     "role": {
-      "agent": { "name": "Agent" },
-      "scheduler": { "name": "Scheduler" },
-      "task_creator": { "name": "Task Creator" },
-      "bot": { "name": "Bot Agent" }
+      "agent": {
+        "name": "Agent"
+      },
+      "scheduler": {
+        "name": "Scheduler"
+      },
+      "task_creator": {
+        "name": "Task Creator"
+      },
+      "bot": {
+        "name": "Bot Agent"
+      }
     },
     "defaultName": "New Agent",
     "error": {
@@ -225,19 +233,84 @@
     }
   },
   "models": {
-    "capability": { "vision": "Vision", "reasoning": "Reasoning", "embedding": "Embedding" },
-    "error": { "saveFailed": "Failed to save model", "deleteFailed": "Failed to delete model" },
-    "confirm": { "delete": "Delete this model?" },
-    "dialog": { "editTitle": "Edit Model", "addTitle": "Add Model", "title": "Models", "editDescription": "Configure model properties and capabilities", "listDescription": "Manage available LLM models", "add": "Add", "loading": "Loading models..." },
-    "list": { "contextAbbr": "ctx", "empty": "No models yet" },
-    "form": { "details": "Details", "modelId": "Model ID", "modelIdPlaceholder": "e.g. gpt-4o", "displayName": "Display Name", "displayNamePlaceholder": "e.g. GPT-4o", "provider": "Provider", "context": "Context", "maxContextTokens": "Max context tokens", "customContextPlaceholder": "128000", "thinking": "Thinking", "enableThinking": "Enable thinking", "enableThinkingHelper": "Send reasoning/thinking options with model requests.", "effort": "Effort", "cost": "Cost", "inputPerMillion": "Input / 1M tokens", "outputPerMillion": "Output / 1M tokens", "costPlaceholder": "0.00", "capabilities": "Capabilities" }
+    "capability": {
+      "vision": "Vision",
+      "reasoning": "Reasoning",
+      "embedding": "Embedding"
+    },
+    "error": {
+      "saveFailed": "Failed to save model",
+      "deleteFailed": "Failed to delete model"
+    },
+    "confirm": {
+      "delete": "Delete this model?"
+    },
+    "dialog": {
+      "editTitle": "Edit Model",
+      "addTitle": "Add Model",
+      "title": "Models",
+      "editDescription": "Configure model properties and capabilities",
+      "listDescription": "Manage available LLM models",
+      "add": "Add",
+      "loading": "Loading models..."
+    },
+    "list": {
+      "contextAbbr": "ctx",
+      "empty": "No models yet"
+    },
+    "form": {
+      "details": "Details",
+      "modelId": "Model ID",
+      "modelIdPlaceholder": "e.g. gpt-4o",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "e.g. GPT-4o",
+      "provider": "Provider",
+      "context": "Context",
+      "maxContextTokens": "Max context tokens",
+      "customContextPlaceholder": "128000",
+      "thinking": "Thinking",
+      "enableThinking": "Enable thinking",
+      "enableThinkingHelper": "Send reasoning/thinking options with model requests.",
+      "effort": "Effort",
+      "cost": "Cost",
+      "inputPerMillion": "Input / 1M tokens",
+      "outputPerMillion": "Output / 1M tokens",
+      "costPlaceholder": "0.00",
+      "capabilities": "Capabilities"
+    }
   },
   "providers": {
-    "error": { "saveFailed": "Failed to save provider", "deleteFailed": "Failed to delete provider" },
-    "confirm": { "delete": "Delete this provider?" },
-    "dialog": { "editTitle": "Edit Provider", "addTitle": "Add Provider", "title": "Providers", "editDescription": "Configure provider connection settings", "listDescription": "Manage LLM API providers", "add": "Add", "loading": "Loading providers..." },
-    "list": { "noApiBase": "No API base configured", "modelsCount": "models", "addModel": "Add model", "empty": "No providers yet" },
-    "form": { "connection": "Connection", "name": "Name", "namePlaceholder": "e.g. Anthropic", "apiBase": "API Base", "apiBasePlaceholder": "https://api.anthropic.com", "apiKey": "API Key", "apiKeyPlaceholder": "sk-..." }
+    "error": {
+      "saveFailed": "Failed to save provider",
+      "deleteFailed": "Failed to delete provider"
+    },
+    "confirm": {
+      "delete": "Delete this provider?"
+    },
+    "dialog": {
+      "editTitle": "Edit Provider",
+      "addTitle": "Add Provider",
+      "title": "Providers",
+      "editDescription": "Configure provider connection settings",
+      "listDescription": "Manage LLM API providers",
+      "add": "Add",
+      "loading": "Loading providers..."
+    },
+    "list": {
+      "noApiBase": "No API base configured",
+      "modelsCount": "models",
+      "addModel": "Add model",
+      "empty": "No providers yet"
+    },
+    "form": {
+      "connection": "Connection",
+      "name": "Name",
+      "namePlaceholder": "e.g. Anthropic",
+      "apiBase": "API Base",
+      "apiBasePlaceholder": "https://api.anthropic.com",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "sk-..."
+    }
   },
   "chat": {
     "channel": {
@@ -259,88 +332,200 @@
       "deleteConfirm": "Are you sure you want to delete this channel? This action cannot be undone.",
       "namePlaceholder": "Channel name"
     },
-    "channelType": { "general": "General", "issue": "Issue", "agent": "Agent" },
+    "channelType": {
+      "general": "General",
+      "issue": "Issue",
+      "agent": "Agent"
+    },
     "emptyState": "Select a channel to start chatting",
-    "status": { "idle": "Idle", "waitingForUser": "Waiting for confirmation", "running": "Running", "success": "Success", "error": "Failed" },
+    "status": {
+      "idle": "Idle",
+      "waitingForUser": "Waiting for confirmation",
+      "running": "Running",
+      "success": "Success",
+      "error": "Failed"
+    },
     "viewRelatedIssue": "View related issue",
-    "deleteMessage": { "title": "Delete Message", "description": "Are you sure you want to delete this message? This action cannot be undone." },
-    "clearMessages": { "title": "Clear Channel Messages", "description": "Are you sure you want to clear all messages in #{channel}? This action cannot be undone.", "confirm": "Clear" },
-    "pendingQuestion": { "placeholder": "Type your answer..." },
+    "deleteMessage": {
+      "title": "Delete Message",
+      "description": "Are you sure you want to delete this message? This action cannot be undone."
+    },
+    "clearMessages": {
+      "title": "Clear Channel Messages",
+      "description": "Are you sure you want to clear all messages in #{channel}? This action cannot be undone.",
+      "confirm": "Clear"
+    },
+    "pendingQuestion": {
+      "placeholder": "Type your answer..."
+    },
     "untitledTodo": "Untitled todo",
     "input": {
       "placeholder": "Message #{channel}... Use @ to mention agents, / for commands",
-      "attachFiles": "Attach Files", "codeInterpreter": "Code Interpreter", "webSearch": "Web Search", "chatHistory": "Chat History",
-      "autoMode": "Auto", "unpinAgent": "Unpin Agent", "pinAgent": "Pin Agent",
-      "mcp": "MCP", "noMcp": "No MCP configured", "skill": "Skill", "noSkills": "No skills configured",
-      "tools": "Tools", "noTools": "No tools configured", "todos": "Todos", "uploadFailed": "Upload failed: {name}"
+      "attachFiles": "Attach Files",
+      "codeInterpreter": "Code Interpreter",
+      "webSearch": "Web Search",
+      "chatHistory": "Chat History",
+      "autoMode": "Auto",
+      "unpinAgent": "Unpin Agent",
+      "pinAgent": "Pin Agent",
+      "mcp": "MCP",
+      "noMcp": "No MCP configured",
+      "skill": "Skill",
+      "noSkills": "No skills configured",
+      "tools": "Tools",
+      "noTools": "No tools configured",
+      "todos": "Todos",
+      "uploadFailed": "Upload failed: {name}"
     },
     "messageParts": {
-      "agentProcessing": "Agent is processing...", "agentThinking": "Agent is thinking", "aiIntermediateOutput": "AI intermediate output",
-      "streamingResponse": "Streaming response", "intermediateMessage": "Intermediate message",
+      "agentProcessing": "Agent is processing...",
+      "agentThinking": "Agent is thinking",
+      "aiIntermediateOutput": "AI intermediate output",
+      "streamingResponse": "Streaming response",
+      "intermediateMessage": "Intermediate message",
       "chainSteps": "{count, plural, one {# chain step} other {# chain steps}}",
-      "reject": "Reject", "approve": "Approve", "result": "Result", "aiMessage": "AI message",
-      "failedToLoadDetails": "Failed to load details.", "loadingDetails": "Loading details...", "noDetails": "No details available.",
-      "raw": "Raw", "input": "Input", "output": "Output"
+      "reject": "Reject",
+      "approve": "Approve",
+      "result": "Result",
+      "aiMessage": "AI message",
+      "failedToLoadDetails": "Failed to load details.",
+      "loadingDetails": "Loading details...",
+      "noDetails": "No details available.",
+      "raw": "Raw",
+      "input": "Input",
+      "output": "Output"
     },
-    "chainOfThought": { "defaultHeader": "Chain of Thought" },
-    "commit": { "clipboardUnavailable": "Clipboard API not available" },
-    "subagent": { "instructions": "Instructions", "tools": "Tools", "noDescription": "No description", "outputSchema": "Output Schema" },
-    "terminal": { "title": "Terminal", "running": "Running...", "clipboardUnavailable": "Clipboard API not available" },
-    "context": { "totalCost": "Total cost", "input": "Input", "output": "Output", "reasoning": "Reasoning", "cache": "Cache" },
-    "attachments": { "source": "Source", "image": "Image", "attachment": "Attachment", "imageAlt": "Image", "remove": "Remove", "noAttachments": "No attachments" },
-    "askUser": { "placeholder": "Type an answer..." },
-    "readonlyCodeBlock": { "loading": "Loading code..." }
+    "chainOfThought": {
+      "defaultHeader": "Chain of Thought"
+    },
+    "commit": {
+      "clipboardUnavailable": "Clipboard API not available"
+    },
+    "subagent": {
+      "instructions": "Instructions",
+      "tools": "Tools",
+      "noDescription": "No description",
+      "outputSchema": "Output Schema"
+    },
+    "terminal": {
+      "title": "Terminal",
+      "running": "Running...",
+      "clipboardUnavailable": "Clipboard API not available"
+    },
+    "context": {
+      "totalCost": "Total cost",
+      "input": "Input",
+      "output": "Output",
+      "reasoning": "Reasoning",
+      "cache": "Cache"
+    },
+    "attachments": {
+      "source": "Source",
+      "image": "Image",
+      "attachment": "Attachment",
+      "imageAlt": "Image",
+      "remove": "Remove",
+      "noAttachments": "No attachments"
+    },
+    "askUser": {
+      "placeholder": "Type an answer..."
+    },
+    "readonlyCodeBlock": {
+      "loading": "Loading code..."
+    }
   },
   "issue": {
     "status": {
-      "draft": "Draft", "planned": "Planned", "in_progress": "In Progress",
-      "review_pending": "Review Pending", "changes_requested": "Changes Requested",
-      "approved": "Approved", "completed": "Completed", "archived": "Archived", "error": "Error"
+      "draft": "Draft",
+      "planned": "Planned",
+      "in_progress": "In Progress",
+      "review_pending": "Review Pending",
+      "changes_requested": "Changes Requested",
+      "approved": "Approved",
+      "completed": "Completed",
+      "archived": "Archived",
+      "error": "Error"
     },
     "list": {
-      "title": "Issues", "emptyTitle": "No issues yet",
+      "title": "Issues",
+      "emptyTitle": "No issues yet",
       "emptyDescription": "Create an issue to start collaborating",
-      "addIssue": "Add Issue", "taskCount": "{count, plural, one {# task} other {# tasks}}"
+      "addIssue": "Add Issue",
+      "taskCount": "{count, plural, one {# task} other {# tasks}}"
     },
     "detail": {
       "selectIssue": "Select an issue to view details",
       "commentPlaceholder": "Write a comment... Use @ to mention agents, / for commands",
-      "openChatChannel": "Open chat channel", "memberCount": "{count, plural, one {# member} other {# members}}",
-      "created": "Created", "updated": "Updated", "pr": "PR:",
-      "start": "Start", "resumeFailed": "Resume failed tasks",
+      "openChatChannel": "Open chat channel",
+      "memberCount": "{count, plural, one {# member} other {# members}}",
+      "created": "Created",
+      "updated": "Updated",
+      "pr": "PR:",
+      "start": "Start",
+      "resumeFailed": "Resume failed tasks",
       "retryPaused": "Automatic retry paused after {failed}/{total} attempts.",
-      "tasks": "Tasks ({count})", "editTask": "Edit Task", "addTask": "Add Task",
-      "taskTitlePlaceholder": "Task title", "taskDescriptionPlaceholder": "Description (optional)",
-      "noTasks": "No tasks yet", "noAgent": "No agent assigned", "comments": "Comments ({count})",
-      "author": "Author", "commented": "commented", "comment": "Comment",
-      "tabInfo": "Info", "tabMembers": "Members",
-      "infoStatus": "Status", "infoIssueId": "Issue ID", "infoTaskCount": "Tasks",
-      "infoMemberCount": "Members", "infoCreatedAt": "Created", "infoUpdatedAt": "Updated",
-      "infoBranch": "Branch", "infoPr": "PR", "infoDescription": "Description",
-      "addMember": "Add member", "deleteIssue": "Delete Issue"
+      "tasks": "Tasks ({count})",
+      "editTask": "Edit Task",
+      "addTask": "Add Task",
+      "taskTitlePlaceholder": "Task title",
+      "taskDescriptionPlaceholder": "Description (optional)",
+      "noTasks": "No tasks yet",
+      "noAgent": "No agent assigned",
+      "comments": "Comments ({count})",
+      "author": "Author",
+      "commented": "commented",
+      "comment": "Comment",
+      "tabInfo": "Info",
+      "tabMembers": "Members",
+      "infoStatus": "Status",
+      "infoIssueId": "Issue ID",
+      "infoTaskCount": "Tasks",
+      "infoMemberCount": "Members",
+      "infoCreatedAt": "Created",
+      "infoUpdatedAt": "Updated",
+      "infoBranch": "Branch",
+      "infoPr": "PR",
+      "infoDescription": "Description",
+      "addMember": "Add member",
+      "deleteIssue": "Delete Issue"
     },
     "message": {
-      "task": "task {taskId}", "openMessage": "Open message",
-      "expandMore": "Show more", "collapse": "Collapse"
+      "task": "task {taskId}",
+      "openMessage": "Open message",
+      "expandMore": "Show more",
+      "collapse": "Collapse"
     },
     "edit": {
-      "title": "Edit Issue", "description": "Modify issue info, status and members",
-      "titlePlaceholder": "Title", "descriptionPlaceholder": "Description",
-      "statusLabel": "Status", "membersLabel": "Members",
-      "searchAgent": "Search Agent...", "noAgents": "No agents available"
+      "title": "Edit Issue",
+      "description": "Modify issue info, status and members",
+      "titlePlaceholder": "Title",
+      "descriptionPlaceholder": "Description",
+      "statusLabel": "Status",
+      "membersLabel": "Members",
+      "searchAgent": "Search Agent...",
+      "noAgents": "No agents available"
     },
     "create": {
-      "title": "Create Issue", "description": "Create a new issue and assign members",
-      "titlePlaceholder": "Title", "descriptionPlaceholder": "Description (optional)",
-      "membersLabel": "Members", "searchAgent": "Search Agent...", "noAgents": "No agents available",
+      "title": "Create Issue",
+      "description": "Create a new issue and assign members",
+      "titlePlaceholder": "Title",
+      "descriptionPlaceholder": "Description (optional)",
+      "membersLabel": "Members",
+      "searchAgent": "Search Agent...",
+      "noAgents": "No agents available",
       "submit": "Create"
     }
   },
   "task": {
     "status": {
-      "pending": "Pending", "running": "Running", "reviewing": "Reviewing",
-      "waiting_review": "Waiting Review", "retrying": "Retrying",
-      "done": "Done", "failed": "Failed", "cancelled": "Cancelled"
+      "pending": "Pending",
+      "running": "Running",
+      "reviewing": "Reviewing",
+      "waiting_review": "Waiting Review",
+      "retrying": "Retrying",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
     }
   },
   "home": {
@@ -406,6 +591,21 @@
       "minutesAgo": "{n}m ago",
       "hoursAgo": "{n}h ago",
       "daysAgo": "{n}d ago"
+    },
+    "subscription": {
+      "planTitle": "Subscription Plans",
+      "addPlatform": "Subscriptions",
+      "title": "Manage Subscriptions",
+      "empty": "No subscriptions yet. Click below to add one.",
+      "add": "Add Platform",
+      "cancel": "Cancel",
+      "save": "Save",
+      "platform": "Platform",
+      "label": "Label",
+      "labelPlaceholder": "Optional name for this config",
+      "cookiePlaceholder": "Paste Cookie or Token",
+      "loading": "Loading...",
+      "resetAt": "Resets at"
     }
   },
   "editor": {
