@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listSkills, importSkill, toggleFavorite } from '../services/skill.js';
+import { listSkills, importSkill, toggleFavorite, updateSkillContent, deleteSkill } from '../services/skill.js';
 import type { Request, Response } from 'express';
 
 const router = Router();
@@ -22,6 +22,31 @@ router.post('/:name/favorite', (req: Request, res: Response) => {
   const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
   const favorited = toggleFavorite(name);
   res.json({ favorited });
+});
+
+router.put('/:name', (req: Request, res: Response) => {
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const { content } = req.body as { content?: string };
+  if (content === undefined) {
+    res.status(400).json({ error: 'content required' });
+    return;
+  }
+  const ok = updateSkillContent(name, content);
+  if (!ok) {
+    res.status(404).json({ error: 'Skill not found' });
+    return;
+  }
+  res.json({ success: true });
+});
+
+router.delete('/:name', (req: Request, res: Response) => {
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const ok = deleteSkill(name);
+  if (!ok) {
+    res.status(404).json({ error: 'Skill not found' });
+    return;
+  }
+  res.json({ success: true });
 });
 
 export default router;

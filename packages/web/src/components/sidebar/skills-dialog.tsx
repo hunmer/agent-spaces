@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import {
   Star,
   StarOff,
-  Plus,
   Upload,
   Search,
   FileText,
@@ -32,8 +32,15 @@ import {
   MoreVertical,
   Trash2,
   Rocket,
+  Save,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import '@/lib/monaco-loader';
+
+const MonacoEditor = dynamic(
+  () => import('@monaco-editor/react').then((mod) => mod.default),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> },
+);
 
 interface BoundAgent {
   id: string;
@@ -78,6 +85,8 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
   const [uploadFiles, setUploadFiles] = useState<FileUploadFile[]>([]);
   const [bindDialogSkill, setBindDialogSkill] = useState<SkillInfo | null>(null);
   const [bindSelected, setBindSelected] = useState<string[]>([]);
+  const [editSkill, setEditSkill] = useState<SkillInfo | null>(null);
+  const [editContent, setEditContent] = useState('');
 
   const fetchSkills = useCallback(async () => {
     setLoading(true);
@@ -143,6 +152,28 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
     setBindSelected(skill.boundAgents.map((a) => a.id));
   };
 
+  const openEditDialog = (skill: SkillInfo) => {
+    setEditSkill(skill);
+    setEditContent(skill.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editSkill) return;
+    try {
+      const res = await fetch(`/api/skills/${encodeURIComponent(editSkill.name)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent }),
+      });
+      if (res.ok) {
+        setSkills((prev) =>
+          prev.map((s) => s.name === editSkill.name ? { ...s, content: editContent } : s),
+        );
+        setEditSkill(null);
+      }
+    } catch { /* ignore */ }
+  };
+
   const handleDeleteSkill = async (skill: SkillInfo) => {
     try {
       const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}`, { method: 'DELETE' });
@@ -160,7 +191,6 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
       const shouldBeBound = bindSelected.includes(agent.id);
 
       if (wasBound && !shouldBeBound) {
-        // remove skill from agent
         const res = await fetch(`/api/agents/presets/${agent.id}`);
         if (!res.ok) continue;
         const preset = await res.json();
@@ -173,7 +203,6 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
           body: JSON.stringify({ ...preset, skills: updatedSkills }),
         });
       } else if (!wasBound && shouldBeBound) {
-        // add skill to agent
         const res = await fetch(`/api/agents/presets/${agent.id}`);
         if (!res.ok) continue;
         const preset = await res.json();
@@ -214,9 +243,12 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
     return true;
   });
 
+  const showMainDialog = open && !bindDialogSkill && !editSkill;
+
   return (
     <>
-      <Dialog open={open && !bindDialogSkill} onOpenChange={onOpenChange}>
+      {/* Main Skills Dialog */}
+      <Dialog open={showMainDialog} onOpenChange={onOpenChange}>
         <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col">
           <DialogHeader>
             <div className="flex items-center justify-between pr-8">
@@ -326,33 +358,30 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
                     {filtered.map((skill) => (
                       <div
                         key={skill.name}
-                        className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
+                        className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+                        onClick={() => openEditDialog(skill)}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <span className="font-medium text-sm">{skill.name}</span>
-                              {skill.favorited && (
-                                <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
-                              )}
+                              <button
+                                type="button"
+                                className="flex items-center justify-center size-5 rounded hover:bg-accent"
+                                onClick={(e) => { e.stopPropagation(); handleToggleFavorite(skill); }}
+                              >
+                                {skill.favorited ? (
+                                  <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
+                                ) : (
+                                  <StarOff className="size-3.5 text-muted-foreground" />
+                                )}
+                              </button>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                               {skill.description || skill.content.slice(0, 120).replace(/^#\s+/, '')}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-7"
-                              onClick={() => handleToggleFavorite(skill)}
-                            >
-                              {skill.favorited ? (
-                                <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
-                              ) : (
-                                <StarOff className="size-3.5 text-muted-foreground" />
-                              )}
-                            </Button>
+                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="outline"
                               size="sm"
@@ -372,7 +401,7 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
-                                  onSelect={() => handleDeleteSkill(skill)}
+                                  onClick={() => handleDeleteSkill(skill)}
                                 >
                                   <Trash2 className="size-3.5 mr-1.5" />
                                   {t('delete')}
@@ -409,6 +438,41 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Skill Dialog */}
+      <Dialog open={!!editSkill} onOpenChange={(v) => { if (!v) setEditSkill(null); }}>
+        <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between pr-8">
+              <div>
+                <DialogTitle>{t('editTitle', { name: editSkill?.name || '' })}</DialogTitle>
+                <DialogDescription>{t('editDescription')}</DialogDescription>
+              </div>
+              <Button size="sm" onClick={handleSaveEdit}>
+                <Save className="size-3.5 mr-1" />
+                {tc('save')}
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 pt-2">
+            <MonacoEditor
+              height="100%"
+              language="markdown"
+              value={editContent}
+              onChange={(value) => setEditContent(value || '')}
+              theme="vs-dark"
+              options={{
+                fontSize: 13,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                padding: { top: 8 },
+                renderLineHighlight: 'gutter',
+                wordWrap: 'on',
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Bind Agent Dialog */}
       <Dialog open={!!bindDialogSkill} onOpenChange={(v) => { if (!v) setBindDialogSkill(null); }}>
         <DialogContent className="sm:max-w-sm">
@@ -417,12 +481,6 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
             <DialogDescription>{t('bindDescription')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-2">
-            <Input
-              placeholder={t('searchAgents')}
-              disabled
-              className="opacity-60"
-              value=""
-            />
             <div className="max-h-52 overflow-y-auto space-y-0.5">
               {agents.map((agent) => (
                 <button

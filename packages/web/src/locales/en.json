@@ -621,6 +621,8 @@
     "manageAgents": "Manage",
     "apply": "Apply",
     "delete": "Delete",
+    "editTitle": "Edit Skill - {name}",
+    "editDescription": "Edit skill Markdown content",
     "bindTitle": "Bind Agents - {name}",
     "bindDescription": "Select agents to bind this skill to",
     "searchAgents": "Search agents..."

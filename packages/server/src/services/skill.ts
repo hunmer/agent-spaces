@@ -133,6 +133,15 @@ export function toggleFavorite(name: string): boolean {
   return idx < 0;
 }
 
+export function updateSkillContent(name: string, content: string): boolean {
+  const skillsDir = getSkillsDir();
+  const filename = name.endsWith('.md') ? name : `${name}.md`;
+  const filePath = join(skillsDir, filename);
+  if (!existsSync(filePath)) return false;
+  writeFileSync(filePath, content, 'utf-8');
+  return true;
+}
+
 export function deleteSkill(name: string): boolean {
   const skillsDir = getSkillsDir();
   const filename = name.endsWith('.md') ? name : `${name}.md`;

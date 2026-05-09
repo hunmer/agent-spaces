@@ -525,6 +525,20 @@ function writeAgentTemplate(preset: AgentConfig, skillInputs?: SkillInput[]): vo
       const filename = sanitizeMarkdownFilename(skill.name);
       writeFileSync(join(skillsDir, filename), skill.content ?? '', 'utf-8');
     }
+  } else if (preset.skills?.length) {
+    // Skills are string names — sync files from global skills dir
+    const globalSkillsDir = join(getDataDir(), 'skills');
+    for (const skillName of preset.skills) {
+      const filename = skillName.endsWith('.md') ? skillName : `${skillName}.md`;
+      const target = join(skillsDir, filename);
+      // Prefer global skills dir, fall back to existing file
+      const globalSource = join(globalSkillsDir, filename);
+      if (existsSync(globalSource)) {
+        copyFileSync(globalSource, target);
+      } else if (!existsSync(target)) {
+        writeFileSync(target, '', 'utf-8');
+      }
+    }
   }
 }
 

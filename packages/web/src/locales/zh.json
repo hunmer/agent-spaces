@@ -623,6 +623,8 @@
     "manageAgents": "管理",
     "apply": "应用",
     "delete": "删除",
+    "editTitle": "编辑技能 - {name}",
+    "editDescription": "编辑技能 Markdown 内容",
     "bindTitle": "绑定智能体 - {name}",
     "bindDescription": "选择要绑定此技能的智能体",
     "searchAgents": "搜索智能体..."
