@@ -18,6 +18,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@tabler/icons-react": "^3.41.1",
     "@tanstack/react-table": "^8.21.3",
+    "@tauri-apps/plugin-notification": "^2.3.3",
     "@tiptap/core": "^3.22.5",
     "@tiptap/extension-mention": "^3.22.5",
     "@tiptap/extension-placeholder": "^3.22.5",
