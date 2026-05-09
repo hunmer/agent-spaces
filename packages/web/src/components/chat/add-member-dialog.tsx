@@ -8,52 +8,43 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { UserPlus, Check, X } from 'lucide-react';
-import { AgentIcon } from '@/components/common/agent-icon';
+import { UserPlus } from 'lucide-react';
+import { MemberPicker } from '@/components/common/member-picker';
 
-export interface AddMemberCandidate {
-  id: string;
-  label: string;
-  description?: string;
-}
+import type { MemberCandidate } from '@/components/common/member-picker';
+
+export type { MemberCandidate as AddMemberCandidate };
 
 interface AddMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  candidates: AddMemberCandidate[];
+  candidates: MemberCandidate[];
   onAdd: (members: string[]) => void;
 }
 
 export function AddMemberDialog({ open, onOpenChange, candidates, onAdd }: AddMemberDialogProps) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [dialogKey, setDialogKey] = useState(0);
 
-  const filtered = candidates.filter((candidate) =>
-    `${candidate.label} ${candidate.description || ''}`.toLowerCase().includes(query.toLowerCase()),
-  );
   const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
+    );
   };
 
   const handleConfirm = () => {
-    if (selected.size === 0) return;
-    onAdd([...selected]);
-    onOpenChange(false);
+    if (selected.length === 0) return;
+    onAdd(selected);
+    handleClose(false);
   };
 
-  const handleClose = (open: boolean) => {
-    if (!open) {
-      setSelected(new Set());
-      setQuery('');
+  const handleClose = (val: boolean) => {
+    if (!val) {
+      setSelected([]);
+      setDialogKey((k) => k + 1);
     }
-    onOpenChange(open);
+    onOpenChange(val);
   };
 
   return (
@@ -64,59 +55,18 @@ export function AddMemberDialog({ open, onOpenChange, candidates, onAdd }: AddMe
           <DialogDescription>选择要添加到频道的成员</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 pt-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索成员..."
+          <MemberPicker
+            key={dialogKey}
+            candidates={candidates}
+            selected={selected}
+            onToggle={toggle}
+            searchPlaceholder="搜索成员..."
+            emptyText="无可用成员"
           />
-          <div className="max-h-52 overflow-y-auto space-y-0.5">
-            {filtered.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">无可用成员</p>
-            )}
-            {filtered.map((candidate) => (
-              <button
-                key={candidate.id}
-                type="button"
-                onClick={() => toggle(candidate.id)}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left text-sm transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <AgentIcon
-                    agentId={candidate.id !== 'user' ? candidate.id : undefined}
-                    name={candidate.label}
-                    className="size-6 rounded-full"
-                  />
-                  <div className={`flex items-center justify-center size-4 rounded border ${selected.has(candidate.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-input'}`}>
-                    {selected.has(candidate.id) && <Check className="size-2.5" />}
-                  </div>
-                </div>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{candidate.label}</span>
-                  {candidate.description && (
-                    <span className="block truncate text-xs text-muted-foreground">{candidate.description}</span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-          {selected.size > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {[...selected].map((id) => {
-                const candidate = candidates.find((item) => item.id === id);
-                return (
-                <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                  {candidate?.label || id}
-                  <button type="button" onClick={() => toggle(id)}>
-                    <X className="size-3 hover:text-destructive" />
-                  </button>
-                </span>
-              );})}
-            </div>
-          )}
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => handleClose(false)}>取消</Button>
-            <Button onClick={handleConfirm} disabled={selected.size === 0}>
-              <UserPlus className="size-3.5 mr-1" />添加 ({selected.size})
+            <Button onClick={handleConfirm} disabled={selected.length === 0}>
+              <UserPlus className="size-3.5 mr-1" />添加 ({selected.length})
             </Button>
           </div>
         </div>
