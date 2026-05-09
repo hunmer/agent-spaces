@@ -91,14 +91,14 @@ export default function LoginPage() {
             if (fallback) {
               setActiveId(fallback.id);
               saveActiveId(fallback.id);
-              setActiveServerCookie(fallback.id === "default" ? null : fallback.url);
+              setActiveServerCookie(fallback.url);
             }
           }
         }}
         onSwitch={(server) => {
           setActiveId(server.id);
           saveActiveId(server.id);
-          setActiveServerCookie(server.id === "default" ? null : server.url);
+          setActiveServerCookie(server.url);
         }}
       />
     </div>

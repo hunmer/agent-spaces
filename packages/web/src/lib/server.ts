@@ -34,11 +34,10 @@ const DEFAULT_SERVERS: ServerConfig[] = [
 ];
 
 function normalizeServers(servers: ServerConfig[]): ServerConfig[] {
-  const defaultUrl = getDefaultServerUrl();
   return servers.map((server) => {
     if (server.id !== "default") return server;
-    if (!/^https?:\/\/((tauri\.)?localhost|127\.0\.0\.1):3100\/?$/.test(server.url)) return server;
-    return { ...server, url: defaultUrl };
+    if (server.url) return server;
+    return { ...server, url: getDefaultServerUrl() };
   });
 }
 
@@ -76,8 +75,7 @@ export function getActiveServerUrl(): string | null {
 }
 
 export function setActiveServerCookie(url: string | null) {
-  const defaultUrl = getDefaultServerUrl();
-  if (url && url !== defaultUrl) {
+  if (url) {
     document.cookie = `${COOKIE_KEY}=${encodeURIComponent(url)}; path=/; max-age=31536000; SameSite=Lax`;
   } else {
     document.cookie = `${COOKIE_KEY}=; path=/; max-age=0`;

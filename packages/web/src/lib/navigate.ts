@@ -1,19 +1,22 @@
 import { isTauriEnvironment } from './native-notification';
 
 export function tauriNavigate(router: { push: (href: string) => void; replace: (href: string) => void }, href: string, replace = false) {
-  if (isTauriEnvironment()) {
-    href = normalizeTauriHref(href);
-    if (replace) {
-      window.location.replace(href);
-    } else {
-      window.location.href = href;
-    }
-  } else {
+  const isDev = process.env.NODE_ENV === "development";
+
+  if (isDev && !isTauriEnvironment()) {
     replace ? router.replace(href) : router.push(href);
+    return;
+  }
+
+  href = toStaticHref(href);
+  if (replace) {
+    window.location.replace(href);
+  } else {
+    window.location.href = href;
   }
 }
 
-function normalizeTauriHref(href: string) {
+export function toStaticHref(href: string) {
   const [pathWithQuery, hash = ""] = href.split("#", 2);
   const [path, queryString = ""] = pathWithQuery.split("?", 2);
 

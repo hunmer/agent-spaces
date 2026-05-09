@@ -3,16 +3,14 @@
  *
  * - Web: uses the browser Notification API
  * - Tauri: uses @tauri-apps/plugin-notification
- *
- * Tauri detection relies on `window.__TAURI_INTERNALS__` which is injected
- * by the Tauri runtime when the frontend is loaded inside a webview.
  */
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'default' | 'unsupported';
 
 /** Detect whether we are running inside a Tauri webview. */
 export function isTauriEnvironment(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  return typeof window !== "undefined"
+    && (window.location.hostname === "tauri.localhost" || "__TAURI_INTERNALS__" in window);
 }
 
 /** Get the current native notification permission status. */

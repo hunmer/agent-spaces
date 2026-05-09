@@ -44,8 +44,7 @@ export function ServerSwitcher() {
   const switchServer = (server: ServerConfig) => {
     setActiveId(server.id);
     saveActiveId(server.id);
-    setActiveServerCookie(server.id === "default" ? null : server.url);
-    window.location.reload();
+    setActiveServerCookie(server.url);
   };
 
   const removeServer = (id: string) => {
@@ -69,6 +68,8 @@ export function ServerSwitcher() {
   const handleManagerUpdate = (updated: ServerConfig[]) => {
     setServers(updated);
     saveServers(updated);
+    const active = updated.find((server) => server.id === activeId);
+    if (active) setActiveServerCookie(active.url);
   };
 
   if (!activeServer) return null;
