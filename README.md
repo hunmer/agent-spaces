@@ -52,7 +52,7 @@
 
 ## 下载客户端
 
-支持 macOS、Windows、iOS 客户端，前往 [GitHub Release](https://github.com/nicepkg/agent-spaces/releases) 下载对应平台的安装包。
+支持 macOS、Windows、iOS 客户端，前往 [GitHub Release](https://github.com/hunmer/agent-spaces/releases) 下载对应平台的安装包。
 
 ## 自部署
 
