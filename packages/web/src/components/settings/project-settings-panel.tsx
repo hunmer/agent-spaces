@@ -69,10 +69,18 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         setWorkspace(ws);
         setPrompt(promptData.prompt ?? '');
         setSavedPrompt(promptData.prompt ?? '');
-        setNotificationDraft(ws.notificationSettings ?? defaultNotificationSettings());
+        const ns = ws.notificationSettings ?? defaultNotificationSettings();
+        setNotificationDraft(ns);
         setLoading(false);
         // Check native notification permission status
-        getNotificationPermission().then(setNativePermission);
+        getNotificationPermission().then((status) => {
+          setNativePermission(status);
+          if (status === 'granted' && ns.provider === 'native' && !ns.native?.permissionGranted) {
+            const updated = { ...ns, native: { permissionGranted: true } };
+            setNotificationDraft(updated);
+            updateNotifications(updated);
+          }
+        });
       })
       .catch(() => setLoading(false));
   }, [workspaceId, loadChannels, loadIssues]);
@@ -575,6 +583,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                             const status = await requestNotificationPermission();
                             setNativePermission(status);
                             if (status === 'granted') {
+                              patchNotifications({ native: { permissionGranted: true } });
                               toast.success(t('notifications.nativePermissionGrantedToast'));
                             } else if (status === 'denied') {
                               toast.error(t('notifications.nativePermissionDeniedToast'));

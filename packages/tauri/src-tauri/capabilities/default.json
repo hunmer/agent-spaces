@@ -7,6 +7,11 @@
   ],
   "permissions": [
     "core:default",
-    "notification:default"
+    "notification:default",
+    "fs:default",
+    "fs:allow-download-write",
+    "dialog:default",
+    "dialog:allow-save",
+    "http:default"
   ]
 }
