@@ -311,7 +311,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
               </button>
             }
           />
-          <PopoverContent align="center" side="top" sideOffset={4} className="p-0 w-auto">
+          <PopoverContent align="center" side="top" sideOffset={4} className="p-0 max-w-[800px] w-[calc(100vw-16px)]">
             <VirtualKeyboard onKey={(data) => activeId && sendInput(activeId, data)} />
           </PopoverContent>
         </Popover>

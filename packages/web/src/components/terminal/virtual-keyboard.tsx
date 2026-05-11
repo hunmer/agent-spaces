@@ -58,17 +58,17 @@ export function VirtualKeyboard({ onKey }: VirtualKeyboardProps) {
     setModifiers(new Set());
   }, [modifiers, onKey]);
 
-  const keyClass = 'flex-1 h-8 min-w-0 flex items-center justify-center rounded text-xs font-mono bg-muted hover:bg-accent active:bg-accent/70 select-none cursor-pointer transition-colors';
+  const keyClass = 'flex-1 h-10 min-w-0 flex items-center justify-center rounded text-sm font-mono bg-muted hover:bg-accent active:bg-accent/70 select-none cursor-pointer transition-colors';
 
   return (
-    <div className="flex flex-col gap-0.5 p-1.5 w-[320px]">
+    <div className="flex flex-col gap-1 p-2 max-w-[800px] w-[calc(100vw-16px)]">
       {/* Modifier row */}
       <div className="flex gap-0.5 mb-0.5">
         {(['ctrl', 'alt', 'shift'] as Modifier[]).map(mod => (
           <button
             key={mod}
             onClick={() => toggleMod(mod)}
-            className={`flex-1 h-7 rounded text-[10px] font-semibold uppercase tracking-wide select-none cursor-pointer transition-colors ${
+            className={`flex-1 h-9 rounded text-xs font-semibold uppercase tracking-wide select-none cursor-pointer transition-colors ${
               modifiers.has(mod)
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted hover:bg-accent text-muted-foreground'
