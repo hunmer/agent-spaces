@@ -43,7 +43,6 @@ export function SubscriptionPanel() {
   const [loading, setLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [editConfig, setEditConfig] = useState<SubscriptionConfig | null>(null)
-  const dialogRef = useState<ReturnType<typeof SubscriptionDialog> | null>(null)
 
   const loadConfigs = useCallback(async () => {
     const res = await fetch('/api/subscriptions')
@@ -111,15 +110,9 @@ export function SubscriptionPanel() {
           <Button variant="ghost" size="icon" className="size-6" onClick={() => fetchAllQuotas(configs)} disabled={loading}>
             <RefreshCw className={`size-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <SubscriptionDialog onChange={handleChanged} />
+          <SubscriptionDialog onChange={handleChanged} editConfig={editConfig} onEditClear={() => setEditConfig(null)} />
         </div>
       </div>
-
-      <SubscriptionDialog
-        onChange={handleChanged}
-        editConfig={editConfig}
-        onEditClear={() => setEditConfig(null)}
-      />
 
       {configs.map(config => {
         const state = quotas.get(config.id)

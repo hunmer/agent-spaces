@@ -177,7 +177,7 @@ export function IssueDetailTasksPanel({
             reorderTasks(workspaceId, issue.id, reordered);
           }}
         >
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
             {issueTasks.map((task, idx) => (
               <TaskRow
                 key={task.id}
