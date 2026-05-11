@@ -623,7 +623,10 @@
     "newTerminal": "New Terminal",
     "noSession": "No terminal session",
     "selectWorkingDirectory": "Select Working Directory",
-    "selectWorkingDirectoryDescription": "This workspace has multiple bound directories. Select which one to use for this terminal."
+    "selectWorkingDirectoryDescription": "This workspace has multiple bound directories. Select which one to use for this terminal.",
+    "virtualKeyboard": "Keyboard",
+    "sendCtrlC": "Quit",
+    "clearScreen": "Clear"
   },
   "git": {
     "changes": {

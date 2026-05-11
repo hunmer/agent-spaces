@@ -625,7 +625,10 @@
     "newTerminal": "新建终端",
     "noSession": "无终端会话",
     "selectWorkingDirectory": "选择工作目录",
-    "selectWorkingDirectoryDescription": "此工作空间绑定了多个目录。请选择用于此终端的目录。"
+    "selectWorkingDirectoryDescription": "此工作空间绑定了多个目录。请选择用于此终端的目录。",
+    "virtualKeyboard": "键盘",
+    "sendCtrlC": "退出",
+    "clearScreen": "清屏"
   },
   "git": {
     "changes": {

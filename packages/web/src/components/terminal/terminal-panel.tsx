@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, FolderOpen, Play, Pencil, Trash2, Search, Download, Terminal } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, X, FolderOpen, Play, Pencil, Trash2, Search, Download, Terminal, Keyboard, Power, Eraser } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -11,6 +11,7 @@ import { getWS } from '@/lib/ws';
 import { TerminalInstance } from './terminal-instance';
 import { CommandDialog } from './command-dialog';
 import { ImportCommandsDialog } from './import-commands-dialog';
+import { VirtualKeyboard } from './virtual-keyboard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import type { QuickCommand } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
@@ -71,6 +72,7 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete }:
 export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sessions, activeId, init, createSession, setActive, removeSession } = useTerminalStore();
   const { commands, load: loadCommands, run, remove, update, create, isRunning, runningMap } = useCommandStore();
+  const { sendInput } = useTerminalStore();
   const t = useTranslations('terminal');
   const tc = useTranslations('commands');
 
@@ -293,6 +295,44 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             ))
           )}
         </div>
+      </div>
+
+      {/* Bottom toolbar */}
+      <div className="flex items-center justify-center gap-1 px-2 py-1 border-t border-border bg-muted/50 shrink-0">
+        <Popover>
+          <PopoverTrigger
+            render={
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title={t('virtualKeyboard')}
+              >
+                <Keyboard size={14} />
+                <span className="hidden sm:inline">{t('virtualKeyboard')}</span>
+              </button>
+            }
+          />
+          <PopoverContent align="center" side="top" sideOffset={4} className="p-0 w-auto">
+            <VirtualKeyboard onKey={(data) => activeId && sendInput(activeId, data)} />
+          </PopoverContent>
+        </Popover>
+
+        <button
+          onClick={() => activeId && sendInput(activeId, '\x03')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title="Ctrl+C"
+        >
+          <Power size={14} />
+          <span className="hidden sm:inline">{t('sendCtrlC')}</span>
+        </button>
+
+        <button
+          onClick={() => activeId && sendInput(activeId, 'clear\n')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title={t('clearScreen')}
+        >
+          <Eraser size={14} />
+          <span className="hidden sm:inline">{t('clearScreen')}</span>
+        </button>
       </div>
 
       {/* Directory picker dialog */}
