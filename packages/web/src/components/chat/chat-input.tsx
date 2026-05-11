@@ -29,6 +29,7 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslations } from "next-intl";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -48,6 +49,7 @@ import {
   type Attachment as MessageAttachment,
   type Channel,
   type TodoItem,
+  type Message,
 } from "@agent-spaces/shared";
 import { useChannelStore } from "@/stores/channel";
 import {
@@ -58,8 +60,9 @@ import {
   Attachments,
   type AttachmentData,
 } from "./attachments";
+import { AgentIcon } from "@/components/common/agent-icon";
 
-type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools">;
+type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools" | "avatarUrl">;
 type DisplayTodoItem = TodoItem & { title?: string; content?: string };
 
 function getTodoTitle(todo: DisplayTodoItem, fallback: string) {
@@ -72,6 +75,7 @@ interface ChatInputProps {
   workspaceId: string;
   channel: Channel;
   agents: MentionedAgent[];
+  messages?: Message[];
   onSend: (message: string, mentions: string[], attachments?: MessageAttachment[]) => void;
   isProcessing?: boolean;
   onStop?: () => void;
@@ -82,7 +86,7 @@ export interface ChatInputHandle {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { channelName, channelId, workspaceId, channel, agents, onSend, isProcessing = false, onStop },
+  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop },
   ref
 ) {
   const t = useTranslations('chat');
@@ -120,6 +124,29 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       .filter((tool) => enabledNames.has(tool.name))
       .map((tool) => ({ ...tool, icon: getToolIcon(tool.name) }));
   }, [activeAgent?.tools]);
+
+  // Build last-active timestamps from messages (senderId -> last createdAt)
+  const agentLastActive = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const msg of messages) {
+      if (msg.senderId && msg.senderId !== 'user') {
+        map.set(msg.senderId, msg.createdAt);
+      }
+    }
+    return map;
+  }, [messages]);
+
+  // Sorted agents: active first, then by last active time descending
+  const sortedAgents = useMemo(() => {
+    const activeId = activeAgent?.id;
+    return [...agents].sort((a, b) => {
+      if (a.id === activeId) return -1;
+      if (b.id === activeId) return 1;
+      const ta = agentLastActive.get(a.id) ?? '';
+      const tb = agentLastActive.get(b.id) ?? '';
+      return tb.localeCompare(ta);
+    });
+  }, [agents, activeAgent?.id, agentLastActive]);
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -356,6 +383,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     editorRef.current = editor;
   }, [editor]);
 
+  const activateAgent = useCallback((agent: MentionedAgent) => {
+    if (!editor) return;
+    if (mentionedAgentIds[0] === agent.id) return;
+    removeExistingMentions(editor, agent.id);
+    const doc = editor.getJSON();
+    const hasMention = doc.content?.some?.(
+      (n: JSONContent) => n.type === 'mention' && n.attrs?.id === agent.id
+    );
+    if (!hasMention) {
+      editor.chain().focus().insertContentAt(0, [
+        { type: 'mention', attrs: { id: agent.id, label: agent.name || agent.role } },
+        { type: 'text', text: ' ' },
+      ]).run();
+    }
+    editor.commands.focus('end');
+  }, [editor, mentionedAgentIds, removeExistingMentions]);
+
   useEffect(() => {
     if (!editor || restoredChannelRef.current === channelId) return;
     restoredChannelRef.current = channelId;
@@ -485,8 +529,58 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   return (
     <div className="border-t px-4 py-2">
-      {/* Mention indicator with pin */}
-      {activeAgent && (
+      {/* Agent quick bar */}
+      {sortedAgents.length > 1 && (
+        <div className="flex items-center gap-1 mb-1.5 overflow-x-auto scrollbar-none">
+          {sortedAgents.map((agent) => {
+            const isActive = agent.id === activeAgent?.id;
+            return (
+              <Tooltip key={agent.id}>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={() => activateAgent(agent)}
+                      className={cn(
+                        "shrink-0 rounded-full transition-all",
+                        isActive
+                          ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                          : "opacity-60 hover:opacity-100"
+                      )}
+                    />
+                  }
+                >
+                  <AgentIcon
+                    agentId={agent.id}
+                    name={agent.name || agent.role}
+                    avatarUrl={agent.avatarUrl}
+                    className="size-6 rounded-full text-[10px]"
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {agent.name || agent.role}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+          {/* Pin toggle for active agent */}
+          {activeAgent && (
+            <button
+              type="button"
+              onClick={togglePin}
+              className={cn(
+                "shrink-0 inline-flex items-center justify-center size-5 rounded-full hover:bg-accent transition-colors",
+                isPinned ? "text-primary" : "text-muted-foreground"
+              )}
+              title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
+            >
+              {isPinned ? <IconPinFilled className="size-3" /> : <IconPin className="size-3" />}
+            </button>
+          )}
+        </div>
+      )}
+      {/* Single active agent indicator (when only 1 agent) */}
+      {sortedAgents.length <= 1 && activeAgent && (
         <div className="flex items-center gap-1 mb-1.5">
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
             @{activeAgent.name || activeAgent.role}

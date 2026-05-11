@@ -709,3 +709,12 @@
   height: 100%;
   min-height: unset;
 }
+
+/* Hide scrollbar but keep scroll */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

@@ -291,7 +291,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
             }}
           />
         ) : null}
-        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
+        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
       </div>
 
       {/* 右侧：信息面板 - Drawer */}
