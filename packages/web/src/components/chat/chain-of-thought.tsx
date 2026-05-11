@@ -60,7 +60,7 @@ export const ChainOfThought = memo(
 
     return (
       <ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
-        <div className={cn("not-prose max-w-prose space-y-4", className)} {...props}>
+        <div className={cn("not-prose max-w-prose overflow-hidden space-y-4", className)} {...props}>
           {children}
         </div>
       </ChainOfThoughtContext.Provider>
@@ -135,7 +135,7 @@ export const ChainOfThoughtStep = memo(
           <Icon className="size-4" />
           <div className="-mx-px absolute top-7 bottom-0 left-1/2 w-px bg-border" />
         </div>
-        <div className="flex-1 space-y-2">
+        <div className="min-w-0 flex-1 space-y-2">
           <div>{label}</div>
           {description && <div className="text-muted-foreground text-xs">{description}</div>}
           {children}

@@ -12,10 +12,10 @@ const config: Config = {
   },
 
   url: 'https://agent-spaces.dev',
-  baseUrl: '/agent_spaces/',
+  baseUrl: '/agent-spaces/',
 
   organizationName: 'hunmer',
-  projectName: 'agent_spaces',
+  projectName: 'agent-spaces',
 
   onBrokenLinks: 'throw',
 
@@ -94,7 +94,7 @@ const config: Config = {
             },
             {
               label: 'GitHub',
-              href: 'https://github.com/hunmer/agent_spaces',
+              href: 'https://github.com/hunmer/agent-spaces',
             },
           ],
         },

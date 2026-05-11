@@ -265,7 +265,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
         {/* Messages */}
         <div className="flex-1 min-h-0 relative">
-          <div className="h-full overflow-y-auto py-2">
+          <div className="h-full overflow-y-auto overflow-x-hidden py-2">
             {msgs.map((msg) => (
               <div key={msg.id} id={`msg-${msg.id}`}>
                 <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />

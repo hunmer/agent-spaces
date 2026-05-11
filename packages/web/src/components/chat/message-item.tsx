@@ -81,7 +81,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
           <MessageContextUsage message={message} />
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
-        <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+        <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />
           {showDuration && (
             <div className="flex items-center justify-end gap-1 mt-1 pt-1 border-t border-border/30">
