@@ -4,7 +4,9 @@ import { type ComponentProps, createContext, isValidElement, useContext } from "
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Progress } from "@/components/ui/progress"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
 const PERCENT_MAX = 100
@@ -30,6 +32,7 @@ interface ContextSchema {
   maxTokens: number
   usage?: LanguageModelUsage
   modelId?: ModelId
+  isMobile?: boolean
 }
 
 const ContextContext = createContext<ContextSchema | null>(null)
@@ -44,20 +47,26 @@ const useContextValue = () => {
   return context
 }
 
-export type ContextProps = ComponentProps<typeof HoverCard> & ContextSchema
+export type ContextProps = ContextSchema & {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  defaultOpen?: boolean
+  children?: React.ReactNode
+}
 
-export const Context = ({ usedTokens, maxTokens, usage, modelId, ...props }: ContextProps) => (
-  <ContextContext.Provider
-    value={{
-      usedTokens,
-      maxTokens,
-      usage,
-      modelId,
-    }}
-  >
-    <HoverCard closeDelay={0} openDelay={0} {...props} />
-  </ContextContext.Provider>
-)
+export const Context = ({ usedTokens, maxTokens, usage, modelId, children, ...props }: ContextProps) => {
+  const isMobile = useIsMobile()
+  const value = { usedTokens, maxTokens, usage, modelId, isMobile }
+  return (
+    <ContextContext.Provider value={value}>
+      {isMobile ? (
+        <Popover {...props}>{children}</Popover>
+      ) : (
+        <HoverCard {...props}>{children}</HoverCard>
+      )}
+    </ContextContext.Provider>
+  )
+}
 
 const ContextIcon = () => {
   const { usedTokens, maxTokens } = useContextValue()
@@ -103,7 +112,7 @@ const ContextIcon = () => {
 export type ContextTriggerProps = ComponentProps<typeof Button>
 
 export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
-  const { usedTokens, maxTokens } = useContextValue()
+  const { usedTokens, maxTokens, isMobile } = useContextValue()
   const usedPercent = usedTokens / maxTokens
   const renderedPercent = new Intl.NumberFormat("en-US", {
     style: "percent",
@@ -111,24 +120,27 @@ export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
   }).format(usedPercent)
 
   const customTrigger = isValidElement(children) ? children : undefined
-
-  return (
-    <HoverCardTrigger render={customTrigger ?? <Button type="button" variant="ghost" {...props} />}>
-      {!customTrigger ? (
-        <>
-          <span className="font-medium text-muted-foreground">{renderedPercent}</span>
-          <ContextIcon />
-        </>
-      ) : null}
-    </HoverCardTrigger>
+  const triggerContent = customTrigger ?? (
+    <Button type="button" variant="ghost" {...props}>
+      <span className="font-medium text-muted-foreground">{renderedPercent}</span>
+      <ContextIcon />
+    </Button>
   )
+
+  if (isMobile) {
+    return <PopoverTrigger>{triggerContent}</PopoverTrigger>
+  }
+
+  return <HoverCardTrigger delay={0} closeDelay={0} render={triggerContent} />
 }
 
-export type ContextContentProps = ComponentProps<typeof HoverCardContent>
+export type ContextContentProps = ComponentProps<typeof HoverCardContent> & ComponentProps<typeof PopoverContent>
 
-export const ContextContent = ({ className, ...props }: ContextContentProps) => (
-  <HoverCardContent className={cn("min-w-60 divide-y overflow-hidden p-0", className)} {...props} />
-)
+export const ContextContent = ({ className, ...props }: ContextContentProps) => {
+  const { isMobile } = useContextValue()
+  const Content = isMobile ? PopoverContent : HoverCardContent
+  return <Content className={cn("min-w-60 divide-y overflow-hidden p-0", className)} {...props} />
+}
 
 export type ContextContentHeaderProps = ComponentProps<"div">
 
