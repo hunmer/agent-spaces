@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { LocaleProvider } from "@/components/locale-provider";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
+import { ConsolePanel } from "@/components/common/console-panel";
 import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
@@ -61,6 +62,7 @@ export default function RootLayout({
               <AppShell>{children}</AppShell>
               <Toaster richColors position="bottom-right" />
             </AuthGuard>
+            <ConsolePanel />
           </LocaleProvider>
         </ThemeProvider>
       </body>

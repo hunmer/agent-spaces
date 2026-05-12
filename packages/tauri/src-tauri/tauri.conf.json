@@ -4,8 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.agent-spaces.app",
   "build": {
-    "frontendDist": "../../web/out",
-    "devUrl": "http://localhost:3100"
+    "frontendDist": "../../web/out"
   },
   "app": {
     "windows": [
