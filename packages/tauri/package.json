@@ -9,7 +9,7 @@
     "dev:windows": "tauri dev --target x86_64-pc-windows-msvc",
     "dev:linux": "tauri dev --target x86_64-unknown-linux-gnu",
     "dev:ios": "tauri ios dev --target aarch64",
-    "dev:android": "tauri android dev --target aarch64",
+    "dev:android": "tauri android dev",
     "build": "tauri build",
     "build:macos": "tauri build --target aarch64-apple-darwin",
     "build:windows": "tauri build --target x86_64-pc-windows-msvc",
