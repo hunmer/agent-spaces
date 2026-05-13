@@ -61,25 +61,30 @@ export async function preloadDirectory(
   const dir = filePath.split('/').slice(0, -1).join('/');
   const cacheKey = `${workspaceId}:${dir}`;
 
-  if (preloadedDirs.has(cacheKey)) return;
+  if (preloadedDirs.has(cacheKey)) {
+    console.log('[monaco-models] skip preloaded dir:', dir);
+    return;
+  }
   preloadedDirs.add(cacheKey);
 
   try {
     const params = new URLSearchParams({ path: dir });
     const res = await fetch(`/api/workspaces/${workspaceId}/files/tree?${params}`);
     const nodes: Array<{ name: string; path: string; type: string; size?: number }> = await res.json();
+    console.log('[monaco-models] preload dir:', dir, 'nodes:', nodes.length);
 
     let count = 0;
+    const skipped: string[] = [];
     for (const node of nodes) {
-      if (count >= MAX_PRELOAD_FILES) break;
+      if (count >= MAX_PRELOAD_FILES) { skipped.push('maxFiles limit'); break; }
       if (node.type !== 'file') continue;
 
       const ext = '.' + (node.name.split('.').pop()?.toLowerCase() || '');
       if (!PRELOAD_EXTENSIONS.includes(ext)) continue;
-      if (node.size && node.size > MAX_PRELOAD_SIZE) continue;
+      if (node.size && node.size > MAX_PRELOAD_SIZE) { skipped.push(`${node.name} (${(node.size / 1024).toFixed(0)}KB)`); continue; }
 
       const uri = toUri(workspaceId, node.path);
-      if (MonacoEditor.getModel(uri)) continue;
+      if (MonacoEditor.getModel(uri)) { skipped.push(`${node.name} (exists)`); continue; }
 
       try {
         const contentRes = await fetch(
@@ -90,9 +95,12 @@ export async function preloadDirectory(
           getOrCreateModel(workspaceId, node.path, data.content);
           count++;
         }
-      } catch { /* skip */ }
+      } catch (e) { skipped.push(`${node.name} (fetch error)`); }
     }
-  } catch { /* dir preload failed, non-critical */ }
+    console.log('[monaco-models] preloaded:', count, 'skipped:', skipped.length ? skipped : 'none');
+  } catch (e) {
+    console.warn('[monaco-models] preload failed for dir:', dir, e);
+  }
 }
 
 export function disposeModel(filePath: string): void {
