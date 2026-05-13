@@ -619,7 +619,17 @@
     "noFiles": "未找到文件",
     "revealInFinder": "在 Finder 中显示",
     "loadingEditor": "编辑器加载中...",
-    "openFileToEdit": "打开文件开始编辑"
+    "openFileToEdit": "打开文件开始编辑",
+    "search": "搜索",
+    "searchPlaceholder": "搜索文件内容...",
+    "searchFiles": "搜索文件名",
+    "searchCode": "搜索代码",
+    "caseSensitive": "区分大小写",
+    "useRegex": "正则表达式",
+    "searchResults": "{count} 个结果，{files} 个文件",
+    "tooManyResults": "结果过多，请缩小搜索范围",
+    "noResults": "未找到结果",
+    "searching": "搜索中..."
   },
   "terminal": {
     "newTerminal": "新建终端",

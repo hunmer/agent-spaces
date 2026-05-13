@@ -617,7 +617,17 @@
     "noFiles": "No files found",
     "revealInFinder": "Reveal in Finder",
     "loadingEditor": "Loading editor...",
-    "openFileToEdit": "Open a file to start editing"
+    "openFileToEdit": "Open a file to start editing",
+    "search": "Search",
+    "searchPlaceholder": "Search file contents...",
+    "searchFiles": "Search Files",
+    "searchCode": "Search Code",
+    "caseSensitive": "Case Sensitive",
+    "useRegex": "Regex",
+    "searchResults": "{count} results in {files} files",
+    "tooManyResults": "Too many results, narrow your search",
+    "noResults": "No results found",
+    "searching": "Searching..."
   },
   "terminal": {
     "newTerminal": "New Terminal",
