@@ -60,6 +60,7 @@ export const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKin
   { value: "claude-code", labelKey: "claudeCode" },
   { value: "open-agent-sdk", labelKey: "openAgentSdk" },
   { value: "codex", labelKey: "codex" },
+  { value: "langchain", labelKey: "langchain" },
 ];
 
 export const ROLE_OPTIONS: BuiltInRole[] = ["agent", "scheduler", "task_creator", "bot"];

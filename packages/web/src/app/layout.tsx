@@ -6,6 +6,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
 import { ViewportInsets } from "@/components/viewport-insets";
+import { ZoomWrapper } from "@/components/zoom-wrapper";
 import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
@@ -58,6 +59,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="h-full overflow-hidden font-sans">
+        <ZoomWrapper>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LocaleProvider>
             <ViewportInsets />
@@ -68,6 +70,7 @@ export default function RootLayout({
             <ConsolePanel />
           </LocaleProvider>
         </ThemeProvider>
+        </ZoomWrapper>
       </body>
     </html>
   );

@@ -16,15 +16,6 @@ function updateViewportInsets() {
 
 export function ViewportInsets() {
   useEffect(() => {
-    // Restore page zoom from localStorage
-    const savedZoom = localStorage.getItem("pageZoom");
-    if (savedZoom) {
-      const v = Number(savedZoom);
-      if (v >= 50 && v <= 200) {
-        document.documentElement.style.zoom = `${v}%`;
-      }
-    }
-
     updateViewportInsets();
 
     const viewport = window.visualViewport;

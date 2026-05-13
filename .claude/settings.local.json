@@ -5,7 +5,8 @@
       "mcp__code-review-graph__get_minimal_context_tool",
       "mcp__code-review-graph__query_graph_tool",
       "mcp__fetch__fetch",
-      "mcp__code-review-graph__semantic_search_nodes_tool"
+      "mcp__code-review-graph__semantic_search_nodes_tool",
+      "mcp__shadcn__get_add_command_for_items"
     ]
   },
   "enableAllProjectMcpServers": true,

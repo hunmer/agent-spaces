@@ -25,6 +25,7 @@ import {
   IconTools,
   IconWand,
 } from "@tabler/icons-react";
+import { IconChevronUp } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useEditor, useEditorState } from "@tiptap/react";
@@ -86,6 +87,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   ref
 ) {
   const t = useTranslations('chat');
+  const [collapsed, setCollapsed] = useState(false);
   const [mentionedAgentIds, setMentionedAgentIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -510,238 +512,251 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   );
 
   return (
-    <div className="border-t px-4 py-2">
-      {/* Agent quick bar */}
-      {sortedAgents.length > 1 && (
-        <div className="flex items-center gap-1 mb-1.5 overflow-x-auto scrollbar-none">
-          {sortedAgents.map((agent) => {
-            const isActive = agent.id === activeAgent?.id;
-            return (
-              <button
-                key={agent.id}
-                type="button"
-                onClick={() => activateAgent(agent)}
-                className={cn(
-                  "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1 rounded-full text-xs transition-all",
-                  isActive
-                    ? "bg-primary/10 text-primary border border-primary/30"
-                    : "text-muted-foreground border border-transparent hover:bg-accent"
-                )}
-              >
-                <AgentIcon
-                  agentId={agent.id}
-                  name={agent.name || agent.role}
-                  avatarUrl={agent.avatarUrl}
-                  className="size-5 rounded-full text-[9px]"
-                />
-                <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>
-                {isActive ? (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); togglePin(); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); togglePin(); } }}
-                    className={cn(
-                      "inline-flex items-center justify-center size-4 rounded-full hover:bg-primary/20 transition-colors",
-                      isPinned ? "text-primary" : "text-primary/50"
-                    )}
-                    title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
-                  >
-                    {isPinned ? <IconPinFilled className="size-2.5" /> : <IconPin className="size-2.5" />}
-                  </span>
-                ) : pinnedMentionId === agent.id ? (
-                  <IconPinFilled className="size-2.5 text-muted-foreground/50" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {/* Single active agent indicator (when only 1 agent) */}
-      {sortedAgents.length <= 1 && activeAgent && (
-        <div className="flex items-center gap-1 mb-1.5">
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-            @{activeAgent.name || activeAgent.role}
-          </span>
-          <button
-            type="button"
-            onClick={togglePin}
-            className={cn(
-              "inline-flex items-center justify-center size-5 rounded-full hover:bg-accent transition-colors",
-              isPinned ? "text-primary" : "text-muted-foreground"
-            )}
-            title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
-          >
-            {isPinned ? <IconPinFilled className="size-3" /> : <IconPin className="size-3" />}
-          </button>
-        </div>
-      )}
-
-      <ComposerShell
-        editor={editor}
-        canSubmit={canSubmit}
-        onSubmit={handleSubmit}
-        onStop={onStop}
-        isProcessing={isProcessing || submitting}
-        actions={chatActions}
-        dropzoneProps={getRootProps()}
-        hiddenInput={<input {...getInputProps()} data-chat-file-input="" />}
-      />
-      {attachments.length > 0 && (
-        <Attachments variant="inline" className="mt-2 justify-start">
-          {attachments.map((item, index) => (
-            <Attachment
-              key={`${item.file.name}-${item.file.lastModified}-${index}`}
-              data={localAttachmentToData(item)}
-              onRemove={() => removeAttachment(index)}
-            >
-              <AttachmentPreview />
-              <AttachmentInfo />
-              <AttachmentRemove />
-            </Attachment>
-          ))}
-        </Attachments>
-      )}
-
-      <div className="flex items-center gap-0 pt-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-              />
-            }
-          >
-            <IconPlug className="size-3" />
-            <span>{t('input.mcp')}{activeMcps.length ? ` ${activeMcps.length}` : ""}</span>
-            <IconChevronDown className="size-3" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-            <DropdownMenuGroup className="space-y-1">
-              {activeMcps.length ? (
-                activeMcps.map((mcp) => (
-                  <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs">
-                    <IconPlug size={16} className="opacity-60" />
-                    {mcp}
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                  <IconPlug size={16} className="opacity-60" />
-                  {t('input.noMcp')}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-              />
-            }
-          >
-            <IconPuzzle className="size-3" />
-            <span>{t('input.skill')}{activeSkills.length ? ` ${activeSkills.length}` : ""}</span>
-            <IconChevronDown className="size-3" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-            <DropdownMenuGroup className="space-y-1">
-              {activeSkills.length ? (
-                activeSkills.map((skill) => (
-                  <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs">
-                    <IconPuzzle size={16} className="opacity-60" />
-                    {skill}
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                  <IconPuzzle size={16} className="opacity-60" />
-                  {t('input.noSkills')}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-              />
-            }
-          >
-            <IconTools className="size-3" />
-            <span>{t('input.tools')}{activeTools.length ? ` ${activeTools.length}` : ""}</span>
-            <IconChevronDown className="size-3" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-            <DropdownMenuGroup className="space-y-1">
-              {activeTools.length ? (
-                activeTools.map(({ name, label, icon: Icon }) => (
-                  <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs">
-                    <Icon size={16} className="opacity-60" />
-                    {label}
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                  <IconTools size={16} className="opacity-60" />
-                  {t('input.noTools')}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {channel.todos && channel.todos.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-                />
-              }
-            >
-              <IconCircleCheck className="size-3" />
-              <span>{t('input.todos')} {channel.todos.length}</span>
-              <IconChevronDown className="size-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-              <DropdownMenuGroup className="space-y-0.5">
-                {channel.todos.map((todo, index) => (
-                  <DropdownMenuItem key={todo.id || `${getTodoTitle(todo, t('untitledTodo'))}-${index}`} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
-                    {todo.status === 'completed' ? (
-                      <IconCircleCheck size={14} className="text-green-500 shrink-0" />
-                    ) : todo.status === 'in_progress' ? (
-                      <IconLoader2 size={14} className="text-blue-500 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
-                    ) : (
-                      <IconCircleDashed size={14} className="text-muted-foreground shrink-0" />
-                    )}
-                    <span className={cn("truncate", todo.status === 'completed' && "line-through text-muted-foreground")}>
-                      {getTodoTitle(todo, t('untitledTodo'))}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        <div className="flex-1" />
+    <>
+      <div className="flex justify-center -mt-0.5">
+        <button
+          type="button"
+          onClick={() => setCollapsed(c => !c)}
+          className="p-0.5 text-muted-foreground/60 hover:text-foreground transition-colors"
+        >
+          <IconChevronUp className={cn("size-3.5 transition-transform", collapsed && "rotate-180")} />
+        </button>
       </div>
-    </div>
+      {!collapsed && (
+        <div className="border-t px-4 py-2">
+          {/* Agent quick bar */}
+          {sortedAgents.length > 1 && (
+            <div className="flex items-center gap-1 mb-1.5 overflow-x-auto scrollbar-none">
+              {sortedAgents.map((agent) => {
+                const isActive = agent.id === activeAgent?.id;
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    onClick={() => activateAgent(agent)}
+                    className={cn(
+                      "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1 rounded-full text-xs transition-all",
+                      isActive
+                        ? "bg-primary/10 text-primary border border-primary/30"
+                        : "text-muted-foreground border border-transparent hover:bg-accent"
+                    )}
+                  >
+                    <AgentIcon
+                      agentId={agent.id}
+                      name={agent.name || agent.role}
+                      avatarUrl={agent.avatarUrl}
+                      className="size-5 rounded-full text-[9px]"
+                    />
+                    <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>
+                    {isActive ? (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); togglePin(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); togglePin(); } }}
+                        className={cn(
+                          "inline-flex items-center justify-center size-4 rounded-full hover:bg-primary/20 transition-colors",
+                          isPinned ? "text-primary" : "text-primary/50"
+                        )}
+                        title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
+                      >
+                        {isPinned ? <IconPinFilled className="size-2.5" /> : <IconPin className="size-2.5" />}
+                      </span>
+                    ) : pinnedMentionId === agent.id ? (
+                      <IconPinFilled className="size-2.5 text-muted-foreground/50" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {/* Single active agent indicator (when only 1 agent) */}
+          {sortedAgents.length <= 1 && activeAgent && (
+            <div className="flex items-center gap-1 mb-1.5">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                @{activeAgent.name || activeAgent.role}
+              </span>
+              <button
+                type="button"
+                onClick={togglePin}
+                className={cn(
+                  "inline-flex items-center justify-center size-5 rounded-full hover:bg-accent transition-colors",
+                  isPinned ? "text-primary" : "text-muted-foreground"
+                )}
+                title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
+              >
+                {isPinned ? <IconPinFilled className="size-3" /> : <IconPin className="size-3" />}
+              </button>
+            </div>
+          )}
+
+          <ComposerShell
+            editor={editor}
+            canSubmit={canSubmit}
+            onSubmit={handleSubmit}
+            onStop={onStop}
+            isProcessing={isProcessing || submitting}
+            actions={chatActions}
+            dropzoneProps={getRootProps()}
+            hiddenInput={<input {...getInputProps()} data-chat-file-input="" />}
+          />
+          {attachments.length > 0 && (
+            <Attachments variant="inline" className="mt-2 justify-start">
+              {attachments.map((item, index) => (
+                <Attachment
+                  key={`${item.file.name}-${item.file.lastModified}-${index}`}
+                  data={localAttachmentToData(item)}
+                  onRemove={() => removeAttachment(index)}
+                >
+                  <AttachmentPreview />
+                  <AttachmentInfo />
+                  <AttachmentRemove />
+                </Attachment>
+              ))}
+            </Attachments>
+          )}
+
+          <div className="flex items-center gap-0 pt-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+                  />
+                }
+              >
+                <IconPlug className="size-3" />
+                <span>{t('input.mcp')}{activeMcps.length ? ` ${activeMcps.length}` : ""}</span>
+                <IconChevronDown className="size-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+                <DropdownMenuGroup className="space-y-1">
+                  {activeMcps.length ? (
+                    activeMcps.map((mcp) => (
+                      <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs">
+                        <IconPlug size={16} className="opacity-60" />
+                        {mcp}
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                      <IconPlug size={16} className="opacity-60" />
+                      {t('input.noMcp')}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+                  />
+                }
+              >
+                <IconPuzzle className="size-3" />
+                <span>{t('input.skill')}{activeSkills.length ? ` ${activeSkills.length}` : ""}</span>
+                <IconChevronDown className="size-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+                <DropdownMenuGroup className="space-y-1">
+                  {activeSkills.length ? (
+                    activeSkills.map((skill) => (
+                      <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs">
+                        <IconPuzzle size={16} className="opacity-60" />
+                        {skill}
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                      <IconPuzzle size={16} className="opacity-60" />
+                      {t('input.noSkills')}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+                  />
+                }
+              >
+                <IconTools className="size-3" />
+                <span>{t('input.tools')}{activeTools.length ? ` ${activeTools.length}` : ""}</span>
+                <IconChevronDown className="size-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+                <DropdownMenuGroup className="space-y-1">
+                  {activeTools.length ? (
+                    activeTools.map(({ name, label, icon: Icon }) => (
+                      <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs">
+                        <Icon size={16} className="opacity-60" />
+                        {label}
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                      <IconTools size={16} className="opacity-60" />
+                      {t('input.noTools')}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {channel.todos && channel.todos.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+                    />
+                  }
+                >
+                  <IconCircleCheck className="size-3" />
+                  <span>{t('input.todos')} {channel.todos.length}</span>
+                  <IconChevronDown className="size-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+                  <DropdownMenuGroup className="space-y-0.5">
+                    {channel.todos.map((todo, index) => (
+                      <DropdownMenuItem key={todo.id || `${getTodoTitle(todo, t('untitledTodo'))}-${index}`} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
+                        {todo.status === 'completed' ? (
+                          <IconCircleCheck size={14} className="text-green-500 shrink-0" />
+                        ) : todo.status === 'in_progress' ? (
+                          <IconLoader2 size={14} className="text-blue-500 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
+                        ) : (
+                          <IconCircleDashed size={14} className="text-muted-foreground shrink-0" />
+                        )}
+                        <span className={cn("truncate", todo.status === 'completed' && "line-through text-muted-foreground")}>
+                          {getTodoTitle(todo, t('untitledTodo'))}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            <div className="flex-1" />
+          </div>
+        </div>
+      )}
+    </>
   );
 });
 

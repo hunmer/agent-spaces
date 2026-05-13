@@ -150,7 +150,8 @@
     "runtime": {
       "openAgentSdk": "Open Agent SDK",
       "claudeCode": "Claude Code",
-      "codex": "Codex"
+      "codex": "Codex",
+      "langchain": "LangChain"
     },
     "role": {
       "agent": {

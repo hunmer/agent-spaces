@@ -41,9 +41,9 @@ export function SettingsDialog({
   const [zoom, setZoom] = useState(100);
 
   const applyZoom = useCallback((value: number) => {
-    document.documentElement.style.zoom = `${value}%`;
     localStorage.setItem("pageZoom", String(value));
     setZoom(value);
+    window.dispatchEvent(new CustomEvent("zoom-change", { detail: value }));
   }, []);
 
   useEffect(() => {
