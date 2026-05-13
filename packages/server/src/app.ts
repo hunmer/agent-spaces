@@ -25,6 +25,7 @@ import commandRouter from './routes/command.js';
 import skillRouter from './routes/skill.js';
 import mcpRouter from './routes/mcp.js';
 import subscriptionRouter from './routes/subscription.js';
+import agentSseRouter from './routes/agent-sse.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
@@ -44,6 +45,7 @@ const app = express();
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: '50mb' }));
+app.use('/api/agent-sse', agentSseRouter);
 app.use('/api', authMiddleware);
 
 // Serve static files from public/

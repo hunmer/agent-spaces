@@ -5,7 +5,7 @@ import { AgentIcon } from "@/components/common/agent-icon";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Bot, Trash2 } from "lucide-react";
+import { Bot, Copy, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgentPreset } from "./agent-shared";
 
@@ -55,6 +55,14 @@ export function AgentList({
               onCheckedChange={() => onToggleEnabled?.(agent.id)}
             />
           </div>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(agent.id); }}
+          >
+            <Copy className="size-3" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-xs"
