@@ -27,7 +27,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
   const [codeTotal, setCodeTotal] = useState(0);
   const [fileResults, setFileResults] = useState<FileSearchResult[]>([]);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) {

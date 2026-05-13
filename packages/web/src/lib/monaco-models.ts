@@ -1,10 +1,10 @@
-import * as monaco from 'monaco-editor';
+import { editor as MonacoEditor, Uri, languages } from 'monaco-editor';
 
 const PRELOAD_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
 const MAX_PRELOAD_FILES = 20;
 const MAX_PRELOAD_SIZE = 500 * 1024; // 500KB
 
-const modelCache = new Map<string, monaco.editor.ITextModel>();
+const modelCache = new Map<string, MonacoEditor.ITextModel>();
 const preloadedDirs = new Set<string>();
 
 function getLanguageFromPath(path: string): string {
@@ -21,20 +21,20 @@ function getLanguageFromPath(path: string): string {
   return map[ext] || 'plaintext';
 }
 
-function toUri(workspaceId: string, filePath: string): monaco.Uri {
-  return monaco.Uri.parse(`file:///workspace/${workspaceId}/${filePath}`);
+function toUri(workspaceId: string, filePath: string): Uri {
+  return Uri.parse(`file:///workspace/${workspaceId}/${filePath}`);
 }
 
 export function getOrCreateModel(
   workspaceId: string,
   filePath: string,
   content: string,
-): monaco.editor.ITextModel {
+): MonacoEditor.ITextModel {
   const uri = toUri(workspaceId, filePath);
-  let model = monaco.editor.getModel(uri);
+  let model = MonacoEditor.getModel(uri);
 
   if (!model) {
-    model = monaco.editor.createModel(content, getLanguageFromPath(filePath), uri);
+    model = MonacoEditor.createModel(content, getLanguageFromPath(filePath), uri);
   } else {
     if (model.getValue() !== content) {
       model.setValue(content);
@@ -45,12 +45,12 @@ export function getOrCreateModel(
   return model;
 }
 
-export function getModel(workspaceId: string, filePath: string): monaco.editor.ITextModel | null {
+export function getModel(workspaceId: string, filePath: string): MonacoEditor.ITextModel | null {
   const uri = toUri(workspaceId, filePath);
-  return monaco.editor.getModel(uri);
+  return MonacoEditor.getModel(uri);
 }
 
-export function getModelUri(workspaceId: string, filePath: string): monaco.Uri {
+export function getModelUri(workspaceId: string, filePath: string): Uri {
   return toUri(workspaceId, filePath);
 }
 
@@ -79,7 +79,7 @@ export async function preloadDirectory(
       if (node.size && node.size > MAX_PRELOAD_SIZE) continue;
 
       const uri = toUri(workspaceId, node.path);
-      if (monaco.editor.getModel(uri)) continue;
+      if (MonacoEditor.getModel(uri)) continue;
 
       try {
         const contentRes = await fetch(
@@ -112,15 +112,16 @@ export function disposeAll(): void {
 }
 
 export function setupLanguageDefaults(): void {
-  monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
-  monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
-
-  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+  const ts = (languages.typescript as any);
+  if (!ts) return;
+  ts.typescriptDefaults?.setEagerModelSync(true);
+  ts.javascriptDefaults?.setEagerModelSync(true);
+  ts.typescriptDefaults?.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
     noSuggestionDiagnostics: true,
   });
-  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+  ts.javascriptDefaults?.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
     noSuggestionDiagnostics: true,
