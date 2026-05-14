@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, FolderOpen, Play, Pencil, Trash2, Search, Download, Terminal, Keyboard, Power, Eraser } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, X, FolderOpen, Play, Pencil, Trash2, Search, Download, Terminal, Keyboard, Power, Eraser, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ClipboardPaste } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -85,6 +85,8 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const [customOpen, setCustomOpen] = useState(true);
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
   const [commandPopoverOpen, setCommandPopoverOpen] = useState(false);
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
 
   const resolveCwd = useCallback((): string | undefined => {
     if (boundDirs.length === 0) return undefined;
@@ -298,7 +300,41 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       </div>
 
       {/* Bottom toolbar */}
-      <div className="flex items-center justify-center gap-1 px-2 py-1 border-t border-border bg-muted/50 shrink-0">
+      <div className="flex items-center gap-1 px-2 py-1 border-t border-border bg-muted/50 shrink-0">
+        {/* Cursor keys */}
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => activeId && sendInput(activeId, '\x1b[A')}
+            className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="↑"
+          >
+            <ArrowUp size={14} />
+          </button>
+          <button
+            onClick={() => activeId && sendInput(activeId, '\x1b[B')}
+            className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="↓"
+          >
+            <ArrowDown size={14} />
+          </button>
+          <button
+            onClick={() => activeId && sendInput(activeId, '\x1b[D')}
+            className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="←"
+          >
+            <ArrowLeft size={14} />
+          </button>
+          <button
+            onClick={() => activeId && sendInput(activeId, '\x1b[C')}
+            className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="→"
+          >
+            <ArrowRight size={14} />
+          </button>
+        </div>
+
+        <div className="w-px h-4 bg-border" />
+
         <Popover>
           <PopoverTrigger
             render={
@@ -311,7 +347,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
               </button>
             }
           />
-          <PopoverContent align="center" side="top" sideOffset={4} className="p-0 max-w-[800px] w-[calc(100vw-16px)]">
+          <PopoverContent align="start" side="top" sideOffset={4} className="p-0 max-w-[800px] w-[calc(100vw-16px)]">
             <VirtualKeyboard onKey={(data) => activeId && sendInput(activeId, data)} />
           </PopoverContent>
         </Popover>
@@ -332,6 +368,23 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
         >
           <Eraser size={14} />
           <span className="hidden sm:inline">{t('clearScreen')}</span>
+        </button>
+
+        <button
+          onClick={async () => {
+            try {
+              const text = await navigator.clipboard.readText();
+              setPasteText(text);
+            } catch {
+              setPasteText('');
+            }
+            setPasteDialogOpen(true);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title={t('pasteCommand')}
+        >
+          <ClipboardPaste size={14} />
+          <span className="hidden sm:inline">{t('pasteCommand')}</span>
         </button>
       </div>
 
@@ -381,6 +434,48 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
         defaultPath={boundDirs[0]}
         onImport={handleImport}
       />
+
+      {/* Paste command dialog */}
+      <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('pasteCommand')}</DialogTitle>
+            <DialogDescription>{t('pasteCommandDescription')}</DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            className="w-full h-40 rounded-md border border-border bg-background px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+            placeholder={t('pasteCommandPlaceholder')}
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setPasteDialogOpen(false)}
+              className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              disabled={!pasteText.trim() || !activeId}
+              onClick={() => {
+                if (!activeId) return;
+                const lines = pasteText.split('\n');
+                let delay = 0;
+                for (const line of lines) {
+                  const cmd = line.trim();
+                  if (!cmd) continue;
+                  setTimeout(() => sendInput(activeId, cmd + '\n'), delay);
+                  delay += 300;
+                }
+                setPasteDialogOpen(false);
+              }}
+              className="px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {t('confirm')}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

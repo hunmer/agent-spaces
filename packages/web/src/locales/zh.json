@@ -648,7 +648,10 @@
     "selectWorkingDirectoryDescription": "此工作空间绑定了多个目录。请选择用于此终端的目录。",
     "virtualKeyboard": "键盘",
     "sendCtrlC": "退出",
-    "clearScreen": "清屏"
+    "clearScreen": "清屏",
+    "pasteCommand": "粘贴命令",
+    "pasteCommandDescription": "编辑命令后点击确认，将逐行发送到终端",
+    "pasteCommandPlaceholder": "每行一条命令..."
   },
   "git": {
     "changes": {

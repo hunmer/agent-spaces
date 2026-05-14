@@ -646,7 +646,10 @@
     "selectWorkingDirectoryDescription": "This workspace has multiple bound directories. Select which one to use for this terminal.",
     "virtualKeyboard": "Keyboard",
     "sendCtrlC": "Quit",
-    "clearScreen": "Clear"
+    "clearScreen": "Clear",
+    "pasteCommand": "Paste Commands",
+    "pasteCommandDescription": "Edit commands and confirm to send them line by line to the terminal",
+    "pasteCommandPlaceholder": "One command per line..."
   },
   "git": {
     "changes": {
