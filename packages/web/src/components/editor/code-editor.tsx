@@ -61,7 +61,7 @@ function EditorMenuBar({ editorRef, workspaceId }: {
   const t = useTranslations('editor');
 
   const exec = (action: string) => {
-    editorRef.current?.trigger('menu', action);
+    editorRef.current?.trigger('menu', action, null);
   };
 
   return (
