@@ -25,7 +25,8 @@ import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { sendNativeNotification } from "@/lib/native-notification";
-import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload } from "@agent-spaces/shared";
+import { useNotificationStore } from "@/stores/notification";
+import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
 
 const tabIcons: Record<string, React.ReactNode> = {
   "channel-list": <Hash size={16} />,
@@ -189,6 +190,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   useEffect(() => {
     const ws = getWS(workspaceId);
+    const notificationStore = useNotificationStore.getState();
+    notificationStore.load(workspaceId);
     const unsubs = [
       ws.on('issue.created', (data) => issueStore.upsertIssue(data as Issue)),
       ws.on('issue.updated', (data) => issueStore.upsertIssue(data as Issue)),
@@ -214,6 +217,12 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           const body = `Status changed: ${from} → ${to}`;
           sendNativeNotification(title, body);
         }
+      }),
+      ws.on('notification.created', (data) => {
+        notificationStore.addNotification(data as AppNotification);
+      }),
+      ws.on('notification.cleared', () => {
+        notificationStore.reset();
       }),
     ];
     return () => unsubs.forEach((u) => u());

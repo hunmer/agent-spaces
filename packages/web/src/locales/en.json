@@ -116,12 +116,11 @@
       "openAriaLabel": "Open notifications",
       "title": "Notifications",
       "viewAll": "View all notifications",
-      "sample1": "New order received.",
-      "sample2": "Server upgrade completed.",
-      "sample3": "New user signed up.",
-      "sample1Time": "10m ago",
-      "sample2Time": "1h ago",
-      "sample3Time": "2h ago"
+      "centerTitle": "Notification Center",
+      "empty": "No notifications",
+      "clearAll": "Clear all",
+      "markAllRead": "Mark all read",
+      "backToList": "Back to list"
     },
     "server": {
       "servers": "Servers",
@@ -628,7 +627,17 @@
     "searchResults": "{count} results in {files} files",
     "tooManyResults": "Too many results, narrow your search",
     "noResults": "No results found",
-    "searching": "Searching..."
+    "searching": "Searching...",
+    "menuFile": "File",
+    "menuEdit": "Edit",
+    "menuSave": "Save",
+    "menuUndo": "Undo",
+    "menuRedo": "Redo",
+    "menuCut": "Cut",
+    "menuCopy": "Copy",
+    "menuPaste": "Paste",
+    "menuFind": "Find",
+    "menuReplace": "Replace"
   },
   "terminal": {
     "newTerminal": "New Terminal",

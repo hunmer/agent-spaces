@@ -12,3 +12,4 @@ export * from './workflow.js';
 export * from './command.js';
 export * from './subscription.js';
 export * from './search.js';
+export * from './notification.js';

@@ -12,6 +12,14 @@ import {
   preloadDirectory,
   setupLanguageDefaults,
 } from "@/lib/monaco-models";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+} from "@/components/ui/dropdown-menu";
 import type * as Monaco from 'monaco-editor';
 
 if (typeof window !== "undefined" && !navigator.clipboard?.write) {
@@ -43,6 +51,72 @@ const MonacoEditor = dynamic(
 
 interface CodeEditorProps {
   workspaceId: string;
+}
+
+function EditorMenuBar({ editorRef, workspaceId }: {
+  editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
+  workspaceId: string;
+}) {
+  const { saveFile, activeFilePath } = useEditorStore();
+  const t = useTranslations('editor');
+
+  const exec = (action: string) => {
+    editorRef.current?.trigger('menu', action);
+  };
+
+  return (
+    <div className="flex items-center h-7 border-b bg-background shrink-0">
+      <DropdownMenu>
+        <DropdownMenuTrigger className="px-3 h-full text-xs hover:bg-accent outline-none cursor-default">
+          {t('menuFile')}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" sideOffset={0}>
+          <DropdownMenuItem onClick={() => activeFilePath && saveFile(workspaceId, activeFilePath)}>
+            {t('menuSave')}
+            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger className="px-3 h-full text-xs hover:bg-accent outline-none cursor-default">
+          {t('menuEdit')}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" sideOffset={0}>
+          <DropdownMenuItem onClick={() => exec('undo')}>
+            {t('menuUndo')}
+            <DropdownMenuShortcut>⌘Z</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => exec('redo')}>
+            {t('menuRedo')}
+            <DropdownMenuShortcut>⇧⌘Z</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => exec('editor.action.clipboardCutAction')}>
+            {t('menuCut')}
+            <DropdownMenuShortcut>⌘X</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => exec('editor.action.clipboardCopyAction')}>
+            {t('menuCopy')}
+            <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => exec('editor.action.clipboardPasteAction')}>
+            {t('menuPaste')}
+            <DropdownMenuShortcut>⌘V</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => exec('actions.find')}>
+            {t('menuFind')}
+            <DropdownMenuShortcut>⌘F</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => exec('editor.action.startFindReplaceAction')}>
+            {t('menuReplace')}
+            <DropdownMenuShortcut>⌥⌘F</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
@@ -97,6 +171,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   return (
     <div className="flex flex-col h-full">
       <EditorTabs workspaceId={workspaceId} />
+      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} />
       <div className="flex-1 min-h-0">
         {activeFile ? (
           <MonacoEditor

@@ -1,5 +1,6 @@
 import type { WorkflowTemplate } from './workflow.js';
 import type { CommandProcessEvent } from './command.js';
+import type { AppNotification } from './notification.js';
 
 export interface WSEvent<T = unknown> {
   event: string;
@@ -125,6 +126,8 @@ export type ServerEventMap = {
   'command.started': CommandProcessEvent;
   'command.stopped': CommandProcessEvent;
   'command.restarted': CommandProcessEvent;
+  'notification.created': AppNotification;
+  'notification.cleared': null;
 };
 
 export type ClientEventName = keyof ClientEventMap;

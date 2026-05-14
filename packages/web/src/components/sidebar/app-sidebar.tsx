@@ -57,29 +57,6 @@ export function DashboardSidebar() {
   const ts = useTranslations('sidebar');
   const tc = useTranslations('common');
 
-  const sampleNotifications = [
-    {
-      id: "1",
-      avatar: "/avatars/01.png",
-      fallback: "OM",
-      text: ts('notifications.sample1'),
-      time: ts('notifications.sample1Time'),
-    },
-    {
-      id: "2",
-      avatar: "/avatars/02.png",
-      fallback: "JL",
-      text: ts('notifications.sample2'),
-      time: ts('notifications.sample2Time'),
-    },
-    {
-      id: "3",
-      avatar: "/avatars/03.png",
-      fallback: "HH",
-      text: ts('notifications.sample3'),
-      time: ts('notifications.sample3Time'),
-    },
-  ];
   const isCollapsed = state === "collapsed";
   const isWorkspace = isWorkspacePath(pathname);
   const isMobile = useIsMobile();
@@ -248,7 +225,7 @@ export function DashboardSidebar() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
         >
-          <NotificationsPopover notifications={sampleNotifications} />
+          <NotificationsPopover workspaceId={currentWorkspaceId ?? ''} />
           <SidebarTrigger />
         </motion.div>
       </SidebarHeader>

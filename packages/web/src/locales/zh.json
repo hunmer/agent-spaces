@@ -117,12 +117,11 @@
       "openAriaLabel": "打开通知",
       "title": "通知",
       "viewAll": "查看所有通知",
-      "sample1": "收到新订单。",
-      "sample2": "服务器升级完成。",
-      "sample3": "新用户注册。",
-      "sample1Time": "10分钟前",
-      "sample2Time": "1小时前",
-      "sample3Time": "2小时前"
+      "centerTitle": "通知中心",
+      "empty": "暂无通知",
+      "clearAll": "清空",
+      "markAllRead": "全部已读",
+      "backToList": "返回列表"
     },
     "server": {
       "servers": "服务器",
@@ -630,7 +629,17 @@
     "searchResults": "{count} 个结果，{files} 个文件",
     "tooManyResults": "结果过多，请缩小搜索范围",
     "noResults": "未找到结果",
-    "searching": "搜索中..."
+    "searching": "搜索中...",
+    "menuFile": "文件",
+    "menuEdit": "编辑",
+    "menuSave": "保存",
+    "menuUndo": "撤销",
+    "menuRedo": "重做",
+    "menuCut": "剪切",
+    "menuCopy": "复制",
+    "menuPaste": "粘贴",
+    "menuFind": "查找",
+    "menuReplace": "替换"
   },
   "terminal": {
     "newTerminal": "新建终端",
