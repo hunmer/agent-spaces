@@ -16,7 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor, Languages, RotateCcw } from "lucide-react";
+import { Sun, Moon, Monitor, Languages, RotateCcw, PanelTop } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
 import { getToken, removeToken } from "@/lib/auth";
@@ -49,6 +50,11 @@ export function SettingsDialog({
     return value >= 50 && value <= 200 ? value : 100;
   });
   const [showZoomSetting, setShowZoomSetting] = useState(false);
+  const [showTabs, setShowTabs] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("showWorkspaceTabs");
+    return saved === null ? true : saved !== "false";
+  });
 
   const applyZoom = useCallback((value: number) => {
     localStorage.setItem("pageZoom", String(value));
@@ -160,6 +166,24 @@ export function SettingsDialog({
 
       <div>
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+          {t('showWorkspaceTabs')}
+        </label>
+        <div className="flex items-center gap-2">
+          <PanelTop className="size-4 text-muted-foreground" />
+          <Switch
+            size="sm"
+            checked={showTabs}
+            onCheckedChange={(checked) => {
+              setShowTabs(checked);
+              localStorage.setItem("showWorkspaceTabs", String(checked));
+              window.dispatchEvent(new CustomEvent("workspace-tabs-visibility", { detail: checked }));
+            }}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
           {t('language')}
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -238,12 +262,12 @@ export function SettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 gap-0">
-        <DialogHeader className="px-5 py-4 border-b">
+      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-5 py-4 border-b shrink-0">
           <DialogTitle className="text-base">{t('title')}</DialogTitle>
           <DialogDescription className="text-xs">{t('description')}</DialogDescription>
         </DialogHeader>
-        {body}
+        <div className="flex-1 min-h-0 overflow-y-auto">{body}</div>
       </DialogContent>
     </Dialog>
   );

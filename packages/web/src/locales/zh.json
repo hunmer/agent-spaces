@@ -49,7 +49,8 @@
     "newSecretPlaceholder": "新的密钥（留空则移除）",
     "redirecting": "正在跳转到登录页...",
     "zoom": "页面缩放",
-    "zoomReset": "重置"
+    "zoomReset": "重置",
+    "showWorkspaceTabs": "显示工作空间标签栏"
   },
   "login": {
     "subtitle": "输入密钥以继续",
