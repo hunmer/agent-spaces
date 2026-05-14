@@ -36,8 +36,8 @@ export function ConsolePanel() {
   const offset = useRef({ x: 0, y: 0 });
   const moved = useRef(false);
   const [snapping, setSnapping] = useState(false);
-  const minimizeTimer = useRef<ReturnType<typeof setTimeout>>();
-  const unhoverTimer = useRef<ReturnType<typeof setTimeout>>();
+  const minimizeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const unhoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const edgeRef = useRef<'left' | 'right'>('right');
   const [hovered, setHovered] = useState(false);
   const snappedEdge = useRef<'left' | 'right' | null>(null);
