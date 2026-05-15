@@ -33,7 +33,20 @@ export interface Message {
   attachments?: Attachment[];
   parts?: MessagePart[];
   metadata?: MessageMetadata;
+  replies?: MessageReply[];
   codeRef?: { file: string; range: [number, number] };
+  createdAt: string;
+}
+
+export interface MessageReply {
+  id: string;
+  senderId: string;
+  senderRole?: string;
+  content: string;
+  status?: Message['status'];
+  attachments?: Attachment[];
+  parts?: MessagePart[];
+  metadata?: MessageMetadata;
   createdAt: string;
 }
 
@@ -47,6 +60,7 @@ export interface Attachment {
 
 export type MessagePart =
   | { id: string; type: 'text'; text: string }
+  | { id: string; type: 'user_message'; text: string; senderName?: string }
   | { id: string; type: 'reasoning'; text: string; duration?: number; status?: 'streaming' | 'completed' }
   | { id: string; type: 'chain'; chains: MessageChain[] }
   | { id: string; type: 'terminal'; command?: string; output: string; status?: 'streaming' | 'completed' | 'error' }

@@ -89,7 +89,7 @@ export type ClientEventMap = {
   'terminal.input': TerminalInputPayload;
   'terminal.resize': TerminalResizePayload;
   'terminal.close': TerminalClosePayload;
-  'channel.message': { channelId: string; content: string; type?: string; mentions?: string[]; attachments?: import('./channel.js').Attachment[] };
+  'channel.message': { channelId: string; content: string; type?: string; mentions?: string[]; attachments?: import('./channel.js').Attachment[]; replyToMessageId?: string };
   'channel.stop': { channelId: string };
   'channel.answer_question': { channelId: string; messageId: string; questionId: string; answer: string };
   'agent.start': { workspaceId: string; role: string; issueId?: string };

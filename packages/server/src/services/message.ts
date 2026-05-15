@@ -63,7 +63,7 @@ export function updateMessage(
   workspaceId: string,
   channelId: string,
   messageId: string,
-  data: Partial<Pick<Message, 'content' | 'status' | 'senderRole' | 'type' | 'attachments' | 'parts' | 'metadata'>>,
+  data: Partial<Pick<Message, 'content' | 'status' | 'senderRole' | 'type' | 'attachments' | 'parts' | 'metadata' | 'replies'>>,
 ): Message | null {
   const path = messageFilePath(workspaceId, channelId);
   const messages = readJsonFile<Message[]>(path) || [];
@@ -73,6 +73,45 @@ export function updateMessage(
   const updated: Message = {
     ...messages[index],
     ...data,
+  };
+  messages[index] = updated;
+  writeJsonFile(path, messages);
+  return updated;
+}
+
+export function appendMessageReply(
+  workspaceId: string,
+  channelId: string,
+  messageId: string,
+  data: {
+    senderId: string;
+    content: string;
+    senderRole?: string;
+    status?: Message['status'];
+    attachments?: Message['attachments'];
+    parts?: Message['parts'];
+    metadata?: Message['metadata'];
+  },
+): Message | null {
+  const path = messageFilePath(workspaceId, channelId);
+  const messages = readJsonFile<Message[]>(path) || [];
+  const index = messages.findIndex((message) => message.id === messageId);
+  if (index === -1) return null;
+
+  const reply = {
+    id: uuid(),
+    senderId: data.senderId,
+    senderRole: data.senderRole,
+    content: data.content,
+    status: data.status,
+    attachments: data.attachments,
+    parts: data.parts,
+    metadata: data.metadata,
+    createdAt: new Date().toISOString(),
+  };
+  const updated: Message = {
+    ...messages[index],
+    replies: [...(messages[index].replies ?? []), reply],
   };
   messages[index] = updated;
   writeJsonFile(path, messages);
