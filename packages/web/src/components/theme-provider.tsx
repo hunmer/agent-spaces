@@ -22,6 +22,18 @@ export function useTheme() {
 }
 
 const STORAGE_KEY = 'agent-spaces-theme';
+const THEME_COLORS = {
+  light: '#ffffff',
+  dark: '#0f1117',
+} as const;
+
+declare global {
+  interface Window {
+    AgentSpacesStatusBar?: {
+      setTheme: (theme: 'light' | 'dark') => void;
+    };
+  }
+}
 
 function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
@@ -34,6 +46,18 @@ function applyTheme(theme: Theme) {
   root.classList.remove('light', 'dark');
   root.classList.add(resolved);
   root.style.colorScheme = resolved;
+  applyNativeTheme(resolved);
+}
+
+function applyNativeTheme(resolved: 'light' | 'dark') {
+  let themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!themeColor) {
+    themeColor = document.createElement('meta');
+    themeColor.name = 'theme-color';
+    document.head.appendChild(themeColor);
+  }
+  themeColor.content = THEME_COLORS[resolved];
+  window.AgentSpacesStatusBar?.setTheme(resolved);
 }
 
 export function ThemeProvider({
@@ -51,7 +75,7 @@ export function ThemeProvider({
     <script
       key="theme-init"
       dangerouslySetInnerHTML={{
-        __html: `(function(){try{var t=localStorage.getItem('${STORAGE_KEY}');var d=t==='dark'||((!t||t==='system')&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.classList.add(d?'dark':'light');document.documentElement.style.colorScheme=d?'dark':'light'}catch(e){}})()`,
+        __html: `(function(){try{var t=localStorage.getItem('${STORAGE_KEY}');var d=t==='dark'||((!t||t==='system')&&matchMedia('(prefers-color-scheme:dark)').matches);var r=d?'dark':'light';document.documentElement.classList.add(r);document.documentElement.style.colorScheme=r;var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m)}m.content=d?'${THEME_COLORS.dark}':'${THEME_COLORS.light}';if(window.AgentSpacesStatusBar){window.AgentSpacesStatusBar.setTheme(r)}}catch(e){}})()`,
       }}
     />
   ));
