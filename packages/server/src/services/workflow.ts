@@ -222,7 +222,7 @@ export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftFo
 
   return template.nodes.map(node => ({
     key: node.id,
-    title: node.data.taskTitleTemplate || `Execute ${node.data.label}`,
+    title: node.data.taskTitleTemplate || node.data.label,
     description: node.data.taskDescriptionTemplate || `Task assigned to ${node.data.label} (${node.data.role})`,
     agentConfigId: node.data.agentConfigId,
     dependsOnKeys: dependsOn.get(node.id)?.length ? dependsOn.get(node.id) : undefined,

@@ -154,8 +154,8 @@ export function CommandPalette() {
                         cmd.action();
                       }}
                     >
-                      {cmd.icon && <cmd.icon className="size-4" />}
-                      <span>{cmd.label}</span>
+                      {cmd.icon && <cmd.icon className="size-4 shrink-0" />}
+                      <span className="truncate min-w-0">{cmd.label}</span>
                       {cmd.shortcut && <CommandShortcut>{cmd.shortcut}</CommandShortcut>}
                     </CommandItem>
                   ))}
