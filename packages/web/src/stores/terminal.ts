@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { WorkspaceWS } from '@/lib/ws';
 
+type SessionCreatedCallback = () => void;
+
 export interface TerminalSession {
   id: string;
   cwd: string;
@@ -14,8 +16,9 @@ interface TerminalState {
   activeId: string | null;
   ws: WorkspaceWS | null;
   _initialized: boolean;
+  _restored: boolean;
 
-  init: (ws: WorkspaceWS) => void;
+  init: (ws: WorkspaceWS, onRestored?: SessionCreatedCallback) => void;
   createSession: (shell?: string, cwd?: string) => void;
   setActive: (id: string) => void;
   setSessionName: (id: string, name: string) => void;
@@ -29,11 +32,12 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   activeId: null,
   ws: null,
   _initialized: false,
+  _restored: false,
 
-  init: (ws) => {
+  init: (ws, onRestored) => {
     const state = get();
     if (state._initialized && state.ws === ws) return;
-    set({ ws, _initialized: true });
+    set({ ws, _initialized: true, _restored: false });
     ws.on('terminal.created', (data) => {
       const { sessionId, cwd, shell } = data as { sessionId: string; cwd: string; shell?: string };
       set((s) => {
@@ -53,6 +57,24 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
           : s.activeId;
         return { sessions, activeId };
       });
+    });
+    ws.on('terminal.sessions', (data) => {
+      const { sessions: remoteSessions } = data as { sessions: Array<{ sessionId: string; cwd: string }> };
+      set((s) => {
+        const existing = new Set(s.sessions.map(t => t.id));
+        const merged = [...s.sessions];
+        for (const rs of remoteSessions) {
+          if (!existing.has(rs.sessionId)) {
+            merged.push({ id: rs.sessionId, cwd: rs.cwd });
+          }
+        }
+        return {
+          sessions: merged,
+          activeId: s.activeId ?? merged[0]?.id ?? null,
+          _restored: true,
+        };
+      });
+      onRestored?.();
     });
   },
 

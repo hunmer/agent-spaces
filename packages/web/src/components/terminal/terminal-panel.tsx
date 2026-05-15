@@ -66,12 +66,14 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const initRef = useRef<string | null>(null);
   useEffect(() => {
     const ws = getWS(workspaceId);
-    init(ws);
-    if (initRef.current !== workspaceId) {
-      initRef.current = workspaceId;
-      if (sessions.length === 0) {
+    init(ws, () => {
+      // After server sessions restored, create default if none exist
+      if (useTerminalStore.getState().sessions.length === 0) {
         handleCreateSession();
       }
+    });
+    if (initRef.current !== workspaceId) {
+      initRef.current = workspaceId;
     }
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 

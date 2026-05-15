@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws';
 import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
+import * as ptyService from '../services/pty.js';
 import { createMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
 import * as agentService from '../services/agent.js';
@@ -27,6 +28,17 @@ export function handleConnection(ws: WebSocket, workspaceId: string) {
     workspaceId,
     timestamp: new Date().toISOString(),
     data: { workspaceId },
+  }));
+
+  // Send existing terminal sessions for reconnection
+  const existingSessions = ptyService.getSessionsByWorkspace(workspaceId);
+  ws.send(JSON.stringify({
+    event: 'terminal.sessions',
+    workspaceId,
+    timestamp: new Date().toISOString(),
+    data: {
+      sessions: existingSessions.map(s => ({ sessionId: s.id, cwd: s.cwd })),
+    },
   }));
 
   ws.on('message', (raw) => {

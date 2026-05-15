@@ -723,3 +723,13 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Touch devices: always show hover-dependent actions */
+@media (hover: none) {
+  [class*="opacity-0"][class*="group-hover"] {
+    opacity: 1 !important;
+  }
+  [class*="invisible"][class*="group-hover"] {
+    visibility: visible !important;
+  }
+}
