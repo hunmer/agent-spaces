@@ -28,6 +28,7 @@ import subscriptionRouter from './routes/subscription.js';
 import agentSseRouter from './routes/agent-sse.js';
 import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
+import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
@@ -80,6 +81,22 @@ app.post('/api/upload/avatar', async (req, res) => {
   if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
   await writeFile(join(avatarsDir, name), Buffer.from(base64, 'base64'));
   res.json({ url: `/static/avatars/${name}` });
+});
+
+// User settings
+app.get('/api/user/settings', (_req, res) => {
+  const settings = getUserSettings();
+  res.json({ avatarUrl: settings.avatarUrl ?? null });
+});
+
+app.put('/api/user/settings', (req, res) => {
+  const { avatarUrl } = req.body as { avatarUrl?: string };
+  if (avatarUrl === null || avatarUrl === undefined) {
+    removeUserAvatarUrl();
+  } else if (typeof avatarUrl === 'string') {
+    setUserAvatarUrl(avatarUrl);
+  }
+  res.json({ ok: true });
 });
 
 app.use('/api/workspaces', workspaceRouter);

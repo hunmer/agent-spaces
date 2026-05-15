@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
+import { useUserAvatar } from '@/hooks/use-user-avatar';
 import type { IssueComment } from '@agent-spaces/shared';
 
 interface IssueMessageProps {
@@ -51,7 +52,7 @@ export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdat
   }, [comment.content, expanded]);
 
   const senderName = isUser ? tc('you') : (agent?.name || comment.senderId);
-  const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
+  const userAvatarUrl = useUserAvatar();
 
   useEffect(() => {
     if (editing && inputRef.current) {

@@ -69,7 +69,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     const dirsToExpand: string[] = [];
     let current = '';
     for (let i = 0; i < parts.length - 1; i++) {
-      current += '/' + parts[i];
+      current = current ? `${current}/${parts[i]}` : parts[i];
       dirsToExpand.push(current);
     }
     setExpandedPaths((prev) => {

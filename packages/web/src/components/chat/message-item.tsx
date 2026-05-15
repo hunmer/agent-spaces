@@ -6,6 +6,7 @@ import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check, Clock, Reply } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
+import { useUserAvatar } from '@/hooks/use-user-avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MemberInfoDialog } from './member-info-dialog';
 import { MessageContextUsage, MessageParts } from './message-parts';
@@ -25,7 +26,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
 
   const senderName = isUser ? tc('you') : (agent?.name || message.senderId);
-  const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
+  const userAvatarUrl = useUserAvatar();
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);

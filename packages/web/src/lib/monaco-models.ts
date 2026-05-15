@@ -28,16 +28,17 @@ function toUri(workspaceId: string, filePath: string): Uri {
 export function getOrCreateModel(
   workspaceId: string,
   filePath: string,
-  content: string,
+  content: string | undefined,
 ): MonacoEditor.ITextModel {
+  const safeContent = content ?? '';
   const uri = toUri(workspaceId, filePath);
   let model = MonacoEditor.getModel(uri);
 
   if (!model) {
-    model = MonacoEditor.createModel(content, getLanguageFromPath(filePath), uri);
+    model = MonacoEditor.createModel(safeContent, getLanguageFromPath(filePath), uri);
   } else {
-    if (model.getValue() !== content) {
-      model.setValue(content);
+    if (model.getValue() !== safeContent) {
+      model.setValue(safeContent);
     }
   }
 

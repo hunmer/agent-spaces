@@ -101,6 +101,11 @@ export function SettingsDialog({
         if (data.url) {
           localStorage.setItem("userAvatarUrl", data.url);
           setUserAvatarUrl(data.url);
+          fetch("/api/user/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatarUrl: data.url }),
+          }).catch(() => {});
         }
       } catch { /* ignore */ }
     };
@@ -111,7 +116,11 @@ export function SettingsDialog({
   const handleRemove = () => {
     localStorage.removeItem("userAvatarUrl");
     setUserAvatarUrl(null);
-  };
+    fetch("/api/user/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avatarUrl: null }),
+    }).catch(() => {});
 
   const handleChangeSecret = async () => {
     const token = getToken();

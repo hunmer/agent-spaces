@@ -12,6 +12,7 @@ import { MessageSquare, UserMinus } from 'lucide-react';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { AgentIcon } from '@/components/common/agent-icon';
+import { useUserAvatar } from '@/hooks/use-user-avatar';
 
 interface MemberInfoDialogProps {
   open: boolean;
@@ -29,7 +30,8 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
   const agents = useAgentStore((s) => s.agents);
   const agent = memberName !== 'user' ? agents.find((a) => a.id === memberName) : undefined;
   const resolvedName = displayName || agent?.name || memberName;
-  const userAvatarUrl = memberName === 'user' && typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
+  const _userAvatar = useUserAvatar();
+  const userAvatarUrl = memberName === 'user' ? _userAvatar : null;
 
   const channel = allChannels.find((c) => c.id === channelId);
   const isMember = channel?.members.includes(memberName);

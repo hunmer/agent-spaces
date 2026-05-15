@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
+import { useUserAvatar } from "@/hooks/use-user-avatar";
 
 const SIZES = {
   sm: "size-8 [&>svg]:size-3",
@@ -16,17 +16,7 @@ export interface UserIconProps {
 }
 
 export function UserIcon({ size = "lg", className }: UserIconProps) {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    setAvatarUrl(localStorage.getItem("userAvatarUrl"));
-
-    const handler = (e: StorageEvent) => {
-      if (e.key === "userAvatarUrl") setAvatarUrl(e.newValue);
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
+  const avatarUrl = useUserAvatar();
 
   return (
     <div
