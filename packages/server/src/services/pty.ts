@@ -1,11 +1,14 @@
 import pty from 'node-pty';
 import { v4 as uuid } from 'uuid';
 
+const MAX_BUFFER_LINES = 100;
+
 interface PtySession {
   id: string;
   pty: pty.IPty;
   workspaceId: string;
   cwd: string;
+  buffer: string[];
 }
 
 const sessions = new Map<string, PtySession>();
@@ -33,10 +36,18 @@ export function createSession(
     env: ptyEnv,
   });
 
-  ptyProcess.onData((data) => onOutput(id, data));
+  const session: PtySession = { id, pty: ptyProcess, workspaceId, cwd, buffer: [] };
+
+  ptyProcess.onData((data) => {
+    session.buffer.push(data);
+    if (session.buffer.length > MAX_BUFFER_LINES) {
+      session.buffer = session.buffer.slice(-MAX_BUFFER_LINES);
+    }
+    onOutput(id, data);
+  });
   ptyProcess.onExit(({ exitCode }) => onExit(id, exitCode ?? 0));
 
-  sessions.set(id, { id, pty: ptyProcess, workspaceId, cwd });
+  sessions.set(id, session);
   return id;
 }
 

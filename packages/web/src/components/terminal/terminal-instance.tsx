@@ -7,7 +7,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import { useTheme } from '@/components/theme-provider';
 import { getWS } from '@/lib/ws';
-import { useTerminalStore } from '@/stores/terminal';
+import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
 
 // Global registry to persist xterm instances across mount/unmount cycles
 const terminalRegistry = new Map<string, { xterm: Terminal; fit: FitAddon }>();
@@ -121,6 +121,10 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
       requestAnimationFrame(() => fit.fit());
 
       terminalRegistry.set(sessionId, { xterm, fit });
+
+      // Restore buffered output for reconnected sessions
+      const buffer = consumeSessionBuffer(sessionId);
+      if (buffer) xterm.write(buffer);
     }
 
     xtermRef.current = xterm;

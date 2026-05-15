@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import type { WorkspaceWS } from '@/lib/ws';
 
+// Buffer cache for terminal session reconnection, consumed by TerminalInstance
+const sessionBufferCache = new Map<string, string>();
+export function consumeSessionBuffer(sessionId: string): string | undefined {
+  const buf = sessionBufferCache.get(sessionId);
+  sessionBufferCache.delete(sessionId);
+  return buf;
+}
+
 type SessionCreatedCallback = () => void;
 
 export interface TerminalSession {
@@ -59,13 +67,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
     });
     ws.on('terminal.sessions', (data) => {
-      const { sessions: remoteSessions } = data as { sessions: Array<{ sessionId: string; cwd: string }> };
+      const { sessions: remoteSessions } = data as { sessions: Array<{ sessionId: string; cwd: string; buffer?: string }> };
       set((s) => {
         const existing = new Set(s.sessions.map(t => t.id));
         const merged = [...s.sessions];
         for (const rs of remoteSessions) {
           if (!existing.has(rs.sessionId)) {
             merged.push({ id: rs.sessionId, cwd: rs.cwd });
+            if (rs.buffer) sessionBufferCache.set(rs.sessionId, rs.buffer);
           }
         }
         return {
