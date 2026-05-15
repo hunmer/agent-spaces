@@ -646,7 +646,11 @@
     "menuFullscreen": "全屏",
     "exitFullscreen": "退出全屏",
     "enableEdit": "启用编辑",
-    "disableEdit": "设为只读"
+    "disableEdit": "设为只读",
+    "revealInTree": "在文件树中显示",
+    "copyFilePath": "复制文件路径",
+    "copyRelativePath": "复制相对路径",
+    "copied": "已复制"
   },
   "terminal": {
     "newTerminal": "新建终端",

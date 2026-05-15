@@ -19,6 +19,7 @@ interface EditorState {
   openFiles: OpenFile[];
   activeFilePath: string | null;
   pendingJump: JumpPosition | null;
+  revealPath: string | null;
 
   loadTree: (workspaceId: string) => Promise<void>;
   openFile: (workspaceId: string, path: string) => Promise<void>;
@@ -28,6 +29,8 @@ interface EditorState {
   setActiveFile: (workspaceId: string, path: string | null) => void;
   jumpToPosition: (workspaceId: string, path: string, line: number, column?: number) => Promise<void>;
   clearPendingJump: () => void;
+  setRevealPath: (path: string | null) => void;
+  clearRevealPath: () => void;
   loadEditorState: (workspaceId: string) => Promise<void>;
   saveEditorState: (workspaceId: string) => Promise<void>;
 }
@@ -47,6 +50,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   openFiles: [],
   activeFilePath: null,
   pendingJump: null,
+  revealPath: null,
 
   loadTree: async (workspaceId) => {
     set({ treeLoading: true });
@@ -130,6 +134,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   clearPendingJump: () => set({ pendingJump: null }),
+
+  setRevealPath: (path) => set({ revealPath: path }),
+  clearRevealPath: () => set({ revealPath: null }),
 
   loadEditorState: async (workspaceId) => {
     try {

@@ -644,7 +644,11 @@
     "menuFullscreen": "Fullscreen",
     "exitFullscreen": "Exit Fullscreen",
     "enableEdit": "Enable Editing",
-    "disableEdit": "Set Read-only"
+    "disableEdit": "Set Read-only",
+    "revealInTree": "Reveal in File Tree",
+    "copyFilePath": "Copy File Path",
+    "copyRelativePath": "Copy Relative Path",
+    "copied": "Copied"
   },
   "terminal": {
     "newTerminal": "New Terminal",

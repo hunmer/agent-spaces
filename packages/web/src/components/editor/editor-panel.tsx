@@ -43,7 +43,7 @@ interface EditorPanelProps {
 }
 
 export function EditorPanel({ workspaceId }: EditorPanelProps) {
-  const { tree, treeLoading, loadTree, openFile } = useEditorStore();
+  const { tree, treeLoading, loadTree, openFile, revealPath, clearRevealPath } = useEditorStore();
   const t = useTranslations('editor');
   const [selectedPath, setSelectedPath] = useState<string>();
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(workspaceId));
@@ -62,6 +62,25 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     await fetch(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
     loadTree(workspaceId);
   };
+
+  useEffect(() => {
+    if (!revealPath) return;
+    const parts = revealPath.split('/').filter(Boolean);
+    const dirsToExpand: string[] = [];
+    let current = '';
+    for (let i = 0; i < parts.length - 1; i++) {
+      current += '/' + parts[i];
+      dirsToExpand.push(current);
+    }
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      for (const d of dirsToExpand) next.add(d);
+      saveExpandedPaths(workspaceId, next);
+      return next;
+    });
+    setSelectedPath(revealPath);
+    clearRevealPath();
+  }, [revealPath, workspaceId, clearRevealPath]);
 
   return (
     <div className="flex flex-col h-full">

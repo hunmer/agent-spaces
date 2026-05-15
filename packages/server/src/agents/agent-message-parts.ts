@@ -276,7 +276,7 @@ function buildChainItems(
   }
   flushMessageBuffer();
 
-  return items.slice(0, 40);
+  return items;
 }
 
 function buildToolTodo(
