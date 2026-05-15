@@ -43,11 +43,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   return (
     <div className="flex flex-col h-full">
       <Tabs defaultValue="files" className="flex flex-col h-full">
-        <TabsList className="w-full rounded-none border-b bg-transparent h-8 p-0 shrink-0">
-          <TabsTrigger value="files" className="flex-1 gap-1 text-xs data-[active]:shadow-none data-[active]:border-b-2 data-[active]:border-primary rounded-none">
+        <TabsList variant="line" className="w-full h-8 shrink-0 border-b">
+          <TabsTrigger value="files" className="flex-1 gap-1 text-xs data-active:after:bottom-0">
             {t('explorer')}
           </TabsTrigger>
-          <TabsTrigger value="search" className="flex-1 gap-1 text-xs data-[active]:shadow-none data-[active]:border-b-2 data-[active]:border-primary rounded-none">
+          <TabsTrigger value="search" className="flex-1 gap-1 text-xs data-active:after:bottom-0">
             {t('search')}
           </TabsTrigger>
         </TabsList>

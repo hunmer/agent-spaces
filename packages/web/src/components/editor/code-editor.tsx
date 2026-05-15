@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import "@/lib/monaco-loader";
 import { useEditorStore } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";

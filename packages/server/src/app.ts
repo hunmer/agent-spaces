@@ -55,7 +55,7 @@ const publicDir = resolveRuntimeDir('public');
 app.use('/public', express.static(publicDir));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), platform: process.platform });
 });
 
 app.use('/api/auth', authRouter);

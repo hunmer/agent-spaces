@@ -1,18 +1,34 @@
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
+interface ShellOption {
+  value: string;
+  label: string;
+}
 
-export const SHELL_OPTIONS = isMac
-  ? [
-      { value: '/bin/zsh', label: 'zsh' },
-      { value: '/bin/bash', label: 'bash' },
-    ]
-  : [
-      { value: 'cmd.exe', label: 'CMD' },
-      { value: 'powershell.exe', label: 'PowerShell' },
-    ];
+const MAC_SHELLS: ShellOption[] = [
+  { value: '/bin/zsh', label: 'zsh' },
+  { value: '/bin/bash', label: 'bash' },
+];
 
-export const DEFAULT_SHELL = SHELL_OPTIONS[0];
+const WIN_SHELLS: ShellOption[] = [
+  { value: 'cmd.exe', label: 'CMD' },
+  { value: 'powershell.exe', label: 'PowerShell' },
+];
 
-export function getShellLabel(shell?: string) {
-  if (!shell) return DEFAULT_SHELL.label;
-  return SHELL_OPTIONS.find((s) => s.value === shell)?.label ?? shell;
+let cachedOptions: ShellOption[] | null = null;
+
+export async function getShellOptions(): Promise<ShellOption[]> {
+  if (cachedOptions) return cachedOptions;
+  try {
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    cachedOptions = data.platform === 'win32' ? WIN_SHELLS : MAC_SHELLS;
+  } catch {
+    cachedOptions = MAC_SHELLS;
+  }
+  return cachedOptions;
+}
+
+export function getShellLabel(shell?: string, options?: ShellOption[]): string {
+  const opts = options ?? MAC_SHELLS;
+  if (!shell) return opts[0].label;
+  return opts.find((s) => s.value === shell)?.label ?? shell;
 }

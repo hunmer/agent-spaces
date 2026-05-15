@@ -13,7 +13,7 @@ import { CommandDialog } from './command-dialog';
 import { ImportCommandsDialog } from './import-commands-dialog';
 import { CommandSidebar } from './command-sidebar';
 import { TerminalToolbar } from './terminal-toolbar';
-import { SHELL_OPTIONS, getShellLabel } from './terminal-utils';
+import { getShellOptions, getShellLabel } from './terminal-utils';
 import type { QuickCommand } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 
@@ -40,6 +40,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const [commandPopoverOpen, setCommandPopoverOpen] = useState(false);
   const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
+  const [shellOptions, setShellOptions] = useState<Awaited<ReturnType<typeof getShellOptions>>>([]);
 
   const resolveCwd = useCallback((): string | undefined => {
     if (boundDirs.length === 0) return undefined;
@@ -80,6 +81,10 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   useEffect(() => {
     if (workspaceId) loadCommands(workspaceId);
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    getShellOptions().then(setShellOptions);
+  }, []);
 
   // Group commands by folder
   const { customCommands, folderGroups } = useMemo(() => {
@@ -144,7 +149,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             }`}
           >
-            <span className="font-mono text-[10px] opacity-60">{session.name ?? getShellLabel(session.shell)}</span>
+            <span className="font-mono text-[10px] opacity-60">{session.name ?? getShellLabel(session.shell, shellOptions)}</span>
             {!session.name && <span>{sessions.indexOf(session) + 1}</span>}
             <span
               onClick={(e) => { e.stopPropagation(); removeSession(session.id); }}
@@ -167,7 +172,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             }
           />
           <DropdownMenuContent align="start" className="min-w-[120px]">
-            {SHELL_OPTIONS.map((opt) => (
+            {shellOptions.map((opt) => (
               <DropdownMenuItem
                 key={opt.value}
                 onClick={() => handleCreateSession(opt.value)}
