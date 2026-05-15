@@ -1,6 +1,6 @@
 {
   "name": "@agent-spaces/server",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "type": "module",
   "bin": {
     "agent-spaces-server": "./dist/app.js"
