@@ -61,7 +61,7 @@ export function IframeFloatingBall() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const count = tabs.length;
-  const show = count > 1;
+  const show = count >= 1;
 
   useEffect(() => {
     if (!open) return;

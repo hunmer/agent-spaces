@@ -5,6 +5,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
+import { useIframeTabs } from '@/stores/iframe-tabs';
 import { useTheme } from '@/components/theme-provider';
 import { getWS } from '@/lib/ws';
 import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
@@ -79,6 +80,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
   const xtermRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const { resolvedTheme } = useTheme();
+  const addIframe = useIframeTabs((s) => s.add);
 
   const handleOutput = useCallback((data: unknown) => {
     const { sessionId: sid, data: output } = data as { sessionId: string; data: string };
@@ -115,7 +117,16 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
 
       fit = new FitAddon();
       xterm.loadAddon(fit);
-      xterm.loadAddon(new WebLinksAddon());
+      xterm.loadAddon(new WebLinksAddon((_e: MouseEvent, uri: string) => {
+        try {
+          const url = new URL(uri, window.location.href);
+          if (url.origin !== window.location.origin) {
+            addIframe(uri);
+            return;
+          }
+        } catch {}
+        window.open(uri);
+      }));
       xterm.open(termRef.current);
 
       requestAnimationFrame(() => fit.fit());

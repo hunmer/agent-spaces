@@ -28,7 +28,7 @@ export async function getShellOptions(): Promise<ShellOption[]> {
 }
 
 export function getShellLabel(shell?: string, options?: ShellOption[]): string {
-  const opts = options ?? MAC_SHELLS;
+  const opts = options?.length ? options : MAC_SHELLS;
   if (!shell) return opts[0].label;
   return opts.find((s) => s.value === shell)?.label ?? shell;
 }
