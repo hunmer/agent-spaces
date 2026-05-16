@@ -22,7 +22,11 @@ export async function readTree(workspace: Workspace, relPath = '', depth = Infin
   const baseDir = resolve(workspace.boundDirs[0]);
   const ig = await createGitignoreFilter(baseDir);
 
-  const entries = await readdir(dirPath, { withFileTypes: true });
+  try {
+    var entries = await readdir(dirPath, { withFileTypes: true });
+  } catch {
+    return [];
+  }
   const nodes: FileNode[] = [];
 
   for (const entry of entries) {

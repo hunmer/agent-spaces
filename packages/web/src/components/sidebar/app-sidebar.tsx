@@ -49,6 +49,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useCommandPalette } from "@/stores/command-palette";
 import { useChannelStore } from "@/stores/channel";
 import { useIssueStore } from "@/stores/issue";
+import { useMobilePanelStore } from "@/stores/mobile-panel";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
 
@@ -125,7 +126,10 @@ export function DashboardSidebar() {
         icon: Hash,
         action: () => {
           const { channels, setActiveChannel } = useChannelStore.getState();
-          if (channels.length > 0) setActiveChannel(channels[channels.length - 1].id);
+          if (channels.length > 0) {
+            setActiveChannel(channels[channels.length - 1].id);
+            useMobilePanelStore.getState().setActivePanel('chat');
+          }
         },
       },
       {
@@ -135,7 +139,10 @@ export function DashboardSidebar() {
         icon: CircleDot,
         action: () => {
           const { issues, setActiveIssue } = useIssueStore.getState();
-          if (issues.length > 0) setActiveIssue(issues[issues.length - 1].id);
+          if (issues.length > 0) {
+            setActiveIssue(issues[issues.length - 1].id);
+            useMobilePanelStore.getState().setActivePanel('issue-detail');
+          }
         },
       },
       {

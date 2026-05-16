@@ -6,6 +6,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
 import { IframeLinkInterceptor, IframeFloatingBall, IframeOverlay } from "@/components/common/iframe-manager";
+import { TauriFullscreen } from "@/components/tauri-fullscreen";
 import { ViewportInsets } from "@/components/viewport-insets";
 import { ZoomWrapper } from "@/components/zoom-wrapper";
 import { CommandPalette } from "@/components/command-palette";
@@ -65,6 +66,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LocaleProvider>
             <ViewportInsets />
+            <TauriFullscreen />
             <AuthGuard>
               <AppShell>{children}</AppShell>
               <CommandPalette />

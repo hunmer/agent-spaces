@@ -6,8 +6,6 @@ import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.core.view.WindowCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
     private var statusBarTheme = "light"
@@ -16,15 +14,8 @@ class MainActivity : TauriActivity() {
         super.onCreate(savedInstanceState)
 
         statusBarTheme = if (isSystemDarkTheme()) "dark" else "light"
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         applyStatusBarTheme(statusBarTheme)
-
-        val content = findViewById<android.view.View>(android.R.id.content)
-        ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-        ViewCompat.requestApplyInsets(content)
     }
 
     override fun onWebViewCreate(webView: WebView) {
@@ -40,8 +31,12 @@ class MainActivity : TauriActivity() {
     fun applyStatusBarTheme(theme: String) {
         val isDark = theme == "dark"
         statusBarTheme = if (isDark) "dark" else "light"
-        window.statusBarColor = Color.parseColor(if (isDark) "#0f1117" else "#ffffff")
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = !isDark
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.isAppearanceLightStatusBars = !isDark
+        insetsController.isAppearanceLightNavigationBars = !isDark
     }
 
     private fun isSystemDarkTheme(): Boolean {
