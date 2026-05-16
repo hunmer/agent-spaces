@@ -6,12 +6,13 @@ import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";
 import type { FileNode } from "@agent-spaces/shared";
-import { RefreshCw, Ellipsis, Upload, Copy } from "lucide-react";
+import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus } from "lucide-react";
 import { FileIconImg, FolderIconImg } from "./file-icon";
 import { useTranslations } from 'next-intl';
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   return nodes.map((node) =>
@@ -47,6 +48,8 @@ interface EditorPanelProps {
 
 export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const { tree, treeLoading, loadTree, openFile, revealPath, clearRevealPath } = useEditorStore();
+  const workspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId));
+  const boundDir = workspace?.boundDirs?.[0] || '';
   const t = useTranslations('editor');
   const [selectedPath, setSelectedPath] = useState<string>();
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(workspaceId));
@@ -111,12 +114,37 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                   {t('importFile')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => {
-                  const path = selectedPath || '';
-                  navigator.clipboard.writeText(path);
+                  const relPath = selectedPath || '';
+                  const absPath = relPath ? (boundDir ? boundDir.replace(/\/+$/, '') + '/' + relPath : relPath) : boundDir;
+                  navigator.clipboard.writeText(absPath);
                   toast.success(t('copied'));
                 }}>
                   <Copy className="size-4" />
                   {t('copyPath')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  const name = prompt(t('newFileName'));
+                  if (!name) return;
+                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: name, content: '' }),
+                  }).then(() => loadTree(workspaceId));
+                }}>
+                  <FilePlus className="size-4" />
+                  {t('newFile')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  const name = prompt(t('newFolderName'));
+                  if (!name) return;
+                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: name + '/.gitkeep', content: '' }),
+                  }).then(() => loadTree(workspaceId));
+                }}>
+                  <FolderPlus className="size-4" />
+                  {t('newFolder')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -146,7 +174,26 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 workspaceId={workspaceId}
                 onDelete={handleDelete}
                 onImport={(targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); }}
-                onCopyPath={(path) => { navigator.clipboard.writeText(path); toast.success(t('copied')); }}
+                onCopyPath={(path) => { navigator.clipboard.writeText(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
+                onCreateFile={(targetDir) => {
+                  const name = prompt(t('newFileName'));
+                  if (!name) return;
+                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: targetDir ? targetDir + '/' + name : name, content: '' }),
+                  }).then(() => loadTree(workspaceId));
+                }}
+                onCreateFolder={(targetDir) => {
+                  const name = prompt(t('newFolderName'));
+                  if (!name) return;
+                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: targetDir ? targetDir + '/' + name + '/.gitkeep' : name + '/.gitkeep', content: '' }),
+                  }).then(() => loadTree(workspaceId));
+                }}
+                boundDir={boundDir}
               >
                 <FileTreeNodes nodes={tree} />
               </FileTree>

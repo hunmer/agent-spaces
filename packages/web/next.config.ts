@@ -52,6 +52,10 @@ const nextConfig: NextConfig = {
           destination: `${serverUrl}/ws`,
         },
         {
+          source: "/ws/speech",
+          destination: `${serverUrl}/ws/speech`,
+        },
+        {
           source: "/public/:path*",
           destination: `${serverUrl}/public/:path*`,
         },

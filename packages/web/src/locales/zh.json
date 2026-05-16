@@ -52,7 +52,16 @@
     "zoomReset": "重置",
     "showWorkspaceTabs": "显示工作空间标签栏",
     "layout": "布局",
-    "resetLayout": "恢复默认布局"
+    "resetLayout": "恢复默认布局",
+    "speech": "语音识别",
+    "speechDescription": "配置语音识别服务商凭据",
+    "speechProvider": "服务商",
+    "speechTencent": "腾讯云",
+    "speechAppId": "App ID",
+    "speechSecretId": "Secret ID",
+    "speechSecretKey": "Secret Key",
+    "speechNoConfig": "暂无语音识别配置",
+    "speechAddConfig": "添加配置"
   },
   "login": {
     "subtitle": "输入密钥以继续",
@@ -379,7 +388,9 @@
       "tools": "工具",
       "noTools": "未配置工具",
       "todos": "待办",
-      "uploadFailed": "上传失败：{name}"
+      "uploadFailed": "上传失败：{name}",
+      "voiceStart": "语音输入",
+      "voiceStop": "停止录音"
     },
     "messageParts": {
       "agentProcessing": "Agent 正在处理...",
@@ -658,7 +669,11 @@
     "importUpload": "本地上传",
     "importSuccess": "导入成功",
     "importFailed": "导入失败",
-    "copyPath": "复制路径"
+    "copyPath": "复制路径",
+    "newFile": "新建文件",
+    "newFolder": "新建文件夹",
+    "newFileName": "输入文件名",
+    "newFolderName": "输入文件夹名"
   },
   "terminal": {
     "newTerminal": "新建终端",

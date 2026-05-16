@@ -52,7 +52,16 @@
     "zoomReset": "Reset",
     "showWorkspaceTabs": "Show Workspace Tabs",
     "layout": "Layout",
-    "resetLayout": "Reset to Default"
+    "resetLayout": "Reset to Default",
+    "speech": "Speech Recognition",
+    "speechDescription": "Configure speech recognition provider credentials",
+    "speechProvider": "Provider",
+    "speechTencent": "Tencent Cloud",
+    "speechAppId": "App ID",
+    "speechSecretId": "Secret ID",
+    "speechSecretKey": "Secret Key",
+    "speechNoConfig": "No speech recognition configured",
+    "speechAddConfig": "Add Config"
   },
   "login": {
     "subtitle": "Enter your secret key to continue",
@@ -377,7 +386,9 @@
       "tools": "Tools",
       "noTools": "No tools configured",
       "todos": "Todos",
-      "uploadFailed": "Upload failed: {name}"
+      "uploadFailed": "Upload failed: {name}",
+      "voiceStart": "Voice Input",
+      "voiceStop": "Stop Recording"
     },
     "messageParts": {
       "agentProcessing": "Agent is processing...",
@@ -656,7 +667,11 @@
     "importUpload": "Local Upload",
     "importSuccess": "Import successful",
     "importFailed": "Import failed",
-    "copyPath": "Copy Path"
+    "copyPath": "Copy Path",
+    "newFile": "New File",
+    "newFolder": "New Folder",
+    "newFileName": "Enter file name",
+    "newFolderName": "Enter folder name"
   },
   "terminal": {
     "newTerminal": "New Terminal",

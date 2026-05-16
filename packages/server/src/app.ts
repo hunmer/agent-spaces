@@ -28,6 +28,7 @@ import subscriptionRouter from './routes/subscription.js';
 import agentSseRouter from './routes/agent-sse.js';
 import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
+import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-recognition.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
@@ -116,6 +117,7 @@ app.use('/api/folder', folderRouter);
 app.use('/api/skills', skillRouter);
 app.use('/api/mcps', mcpRouter);
 app.use('/api/subscriptions', subscriptionRouter);
+app.use('/api/speech-recognition', speechRecognitionRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
 const webDir = resolveRuntimeDir('web');
@@ -149,6 +151,18 @@ if (existsSync(webDir)) {
 const server = createServer(app);
 
 const wss = new WebSocketServer({ server, path: '/ws' });
+
+// Speech recognition WebSocket on /ws/speech
+const speechWss = new WebSocketServer({ server, path: '/ws/speech' });
+speechWss.on('connection', (ws, req) => {
+  const token = new URL(req.url || '', `http://localhost:${PORT}`).searchParams.get('token');
+  if (!verifyToken(token)) {
+    ws.close(4003, 'Unauthorized');
+    return;
+  }
+  const configId = new URL(req.url || '', `http://localhost:${PORT}`).searchParams.get('configId') || undefined;
+  handleSpeechStream(ws, configId);
+});
 
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url || '', `http://localhost:${PORT}`);

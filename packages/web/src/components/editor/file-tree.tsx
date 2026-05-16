@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus } from "lucide-react"
 import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback } from "react"
 /**
  * @title React AI File Tree
@@ -36,6 +36,9 @@ interface FileTreeContextType {
   onDelete?: (path: string) => void
   onImport?: (targetPath: string) => void
   onCopyPath?: (path: string) => void
+  onCreateFile?: (targetDir: string) => void
+  onCreateFolder?: (targetDir: string) => void
+  boundDir?: string
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -53,6 +56,9 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onDelete?: (path: string) => void
   onImport?: (targetPath: string) => void
   onCopyPath?: (path: string) => void
+  onCreateFile?: (targetDir: string) => void
+  onCreateFolder?: (targetDir: string) => void
+  boundDir?: string
 }
 
 export const FileTree = ({
@@ -65,6 +71,9 @@ export const FileTree = ({
   onDelete,
   onImport,
   onCopyPath,
+  onCreateFile,
+  onCreateFolder,
+  boundDir,
   className,
   children,
   ...props
@@ -84,7 +93,7 @@ export const FileTree = ({
   }
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, boundDir }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -122,7 +131,7 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, boundDir } = useContext(FileTreeContext)
   const isExpanded = expandedPaths.has(path)
   const isSelected = selectedPath === path
   const t = useTranslations('editor')
@@ -180,9 +189,20 @@ export const FileTreeFolder = ({
             <Upload className="size-4" />
             {t('importFile')}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => { navigator.clipboard.writeText(path); }}>
+          <ContextMenuItem onClick={() => {
+            const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
+            navigator.clipboard.writeText(absPath);
+          }}>
             <Copy className="size-4" />
             {t('copyPath')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onCreateFile?.(path)}>
+            <FilePlus className="size-4" />
+            {t('newFile')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onCreateFolder?.(path)}>
+            <FolderPlus className="size-4" />
+            {t('newFolder')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>

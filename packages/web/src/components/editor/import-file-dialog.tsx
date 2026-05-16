@@ -136,8 +136,8 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
           <DialogTitle>{t("importFile")}</DialogTitle>
           <DialogDescription>{t("importFileDesc")}</DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="url" className="w-full">
-          <TabsList className="w-full">
+        <Tabs defaultValue="url" className="w-full flex flex-col gap-3">
+          <TabsList className="w-full grid grid-cols-3">
             <TabsTrigger value="url" className="gap-1 text-xs">
               <Globe className="size-3" />
               {t("importOnline")}

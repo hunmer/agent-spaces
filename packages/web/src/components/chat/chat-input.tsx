@@ -24,10 +24,12 @@ import {
   IconPuzzle,
   IconTools,
   IconWand,
+  IconMicrophone,
 } from "@tabler/icons-react";
 import { IconChevronUp } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -91,6 +93,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 ) {
   const t = useTranslations('chat');
   const [collapsed, setCollapsed] = useState(false);
+  const { isRecording: isVoiceRecording, start: startVoice, stop: stopVoice } = useSpeechRecognition();
   const [mentionedAgentIds, setMentionedAgentIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -479,6 +482,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     updateChannel(workspaceId, channelId, { pinnedMentionId: newPinnedId });
   }, [mentionedAgentIds, isPinned, workspaceId, channelId, updateChannel]);
 
+  const toggleVoice = useCallback(() => {
+    if (isVoiceRecording) {
+      stopVoice();
+      return;
+    }
+    const onText = (text: string, isFinal: boolean) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      if (isFinal) {
+        const currentText = ed.getText();
+        ed.commands.setContent(currentText + text, { emitUpdate: true });
+        ed.commands.focus('end');
+      }
+    };
+    startVoice(onText);
+  }, [isVoiceRecording, startVoice, stopVoice]);
+
   const chatActions = (
     <>
       <DropdownMenu>
@@ -514,6 +534,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       >
         <IconWand className="size-3" />
         <span className="text-xs">{t('input.autoMode')}</span>
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggleVoice}
+        className={cn("h-7 w-7 p-0 rounded-full border border-border hover:bg-accent", {
+          "bg-red-500/10 text-red-500 border-red-500/30 animate-pulse": isVoiceRecording,
+          "text-muted-foreground": !isVoiceRecording,
+        })}
+        title={isVoiceRecording ? t('input.voiceStop') : t('input.voiceStart')}
+      >
+        <IconMicrophone className="size-3" />
       </Button>
     </>
   );
