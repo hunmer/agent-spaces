@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight } from "lucide-react"
-import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback } from "react"
+import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect } from "react"
 /**
  * @title React AI File Tree
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -73,6 +73,7 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   loadedDirs?: Set<string>
   boundDir?: string
   fileSizeMap?: Record<string, number>
+  refreshInterval?: number
 }
 
 export const FileTree = ({
@@ -94,6 +95,7 @@ export const FileTree = ({
   loadedDirs,
   boundDir,
   fileSizeMap,
+  refreshInterval,
   className,
   children,
   ...props
@@ -111,6 +113,14 @@ export const FileTree = ({
     setInternalExpanded(newExpanded)
     onExpandedChange?.(newExpanded)
   }
+
+  useEffect(() => {
+    if (!refreshInterval || !onLoadDirectory || expandedPaths.size === 0) return
+    const id = setInterval(() => {
+      expandedPaths.forEach(p => onLoadDirectory(p))
+    }, refreshInterval)
+    return () => clearInterval(id)
+  }, [refreshInterval, onLoadDirectory, expandedPaths])
 
   return (
     <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir, fileSizeMap }}>

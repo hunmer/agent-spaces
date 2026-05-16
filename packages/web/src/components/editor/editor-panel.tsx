@@ -346,6 +346,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                     onLoadDirectory={(dirPath) => loadDirectory(workspaceId, dirPath)}
                     boundDir={boundDir}
                     fileSizeMap={fileSizeMap}
+                    refreshInterval={5000}
                   >
                     <FileTreeNodes nodes={filteredTree} />
                   </FileTree>
