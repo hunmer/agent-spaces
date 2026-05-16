@@ -4,12 +4,13 @@ pub fn run() {
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_http::init())
+    // .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_share::init())
+    // .plugin(tauri_plugin_share::init())
     .setup(|app| {
       app.handle().plugin(
         tauri_plugin_log::Builder::default()
-          .level(log::LevelFilter::Info)
+          .level(log::LevelFilter::Trace)
           .build(),
       )?;
       Ok(())
