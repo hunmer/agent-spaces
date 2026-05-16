@@ -12,7 +12,6 @@
     "fs:allow-download-write",
     "dialog:default",
     "dialog:allow-save",
-    "http:default",
     "core:window:allow-set-fullscreen"
   ]
 }

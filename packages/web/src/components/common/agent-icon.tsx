@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { getActiveServerUrl } from '@/lib/server';
+import { resolveServerAssetUrl } from '@/lib/server';
 import { useAgentStore } from '@/stores/agent';
 
 const APIBASE_ICON_MAP: Array<[RegExp, string]> = [
@@ -81,8 +81,7 @@ function resolveIconName(apiBase?: string): string {
 export function getProviderIconUrl(apiBase?: string): string {
   const iconName = resolveIconName(apiBase);
   if (!iconName) return '';
-  const base = getActiveServerUrl() || '';
-  return `${base}/static/provider-icons/${iconName}.svg`;
+  return resolveServerAssetUrl(`/static/provider-icons/${iconName}.svg`);
 }
 
 export interface AgentIconProps {
@@ -104,7 +103,7 @@ export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClic
   const resolvedAvatarUrl = avatarUrl ?? agent?.avatarUrl;
   const resolvedApiBase = apiBase ?? agent?.apiBase;
 
-  const src = (!avatarError && resolvedAvatarUrl)
+  const src = (!avatarError && resolveServerAssetUrl(resolvedAvatarUrl))
     || (!providerError ? getProviderIconUrl(resolvedApiBase) : '');
 
   useEffect(() => {

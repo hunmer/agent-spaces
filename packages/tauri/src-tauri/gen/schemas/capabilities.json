@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"enables the default permissions","local":true,"windows":["main"],"permissions":["core:default","notification:default","fs:default","fs:allow-download-write","dialog:default","dialog:allow-save","http:default","core:window:allow-set-fullscreen"]}}
+{"default":{"identifier":"default","description":"enables the default permissions","local":true,"windows":["main"],"permissions":["core:default","notification:default","fs:default","fs:allow-download-write","dialog:default","dialog:allow-save","core:window:allow-set-fullscreen"]}}

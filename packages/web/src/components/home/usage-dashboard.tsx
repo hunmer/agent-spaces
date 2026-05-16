@@ -16,7 +16,7 @@ import type { AgentUsageDashboard as AgentUsageDashboardData, AgentUsageRecord }
 import { Label, Pie, PieChart } from "recharts"
 
 import { differenceInDays, subDays } from "date-fns"
-import { getActiveServerUrl } from "@/lib/server"
+import { resolveServerAssetUrl } from "@/lib/server"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -50,7 +50,7 @@ const MODEL_ICON_MAP: Array<[RegExp, string]> = [
 function getModelIconUrl(model?: string): string {
   if (!model) return ''
   for (const [re, icon] of MODEL_ICON_MAP) {
-    if (re.test(model)) return `${getActiveServerUrl() || ''}/static/provider-icons/${icon}.svg`
+    if (re.test(model)) return resolveServerAssetUrl(`/static/provider-icons/${icon}.svg`)
   }
   return ''
 }

@@ -81,6 +81,18 @@ export function getActiveServerUrl(): string | null {
   return getActiveServer()?.url ?? null;
 }
 
+export function resolveServerAssetUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  if (/^(?:[a-z][a-z\d+\-.]*:)?\/\//i.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
+    return url;
+  }
+
+  const baseUrl = getActiveServerUrl();
+  if (!baseUrl) return url;
+
+  return `${baseUrl.replace(/\/$/, "")}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 export function setActiveServerCookie(url: string | null) {
   if (url) {
     document.cookie = `${COOKIE_KEY}=${encodeURIComponent(url)}; path=/; max-age=31536000; SameSite=Lax`;
