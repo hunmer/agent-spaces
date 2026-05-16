@@ -41,7 +41,19 @@ export async function generateAgentDesign(userPrompt: string): Promise<AgentDesi
     throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before generating agents.`);
   }
 
+  console.info('[agent-designer] generating agent design', {
+    agentId: AGENT_GENERATOR_PRESET_ID,
+    provider: config.modelProvider ?? inferProvider(config.apiBase),
+    modelId: config.modelId,
+    apiBase: maskUrl(config.apiBase),
+    promptLength: prompt.length,
+  });
+
   const content = await requestDesign(config, prompt);
+  console.info('[agent-designer] model text extracted', {
+    length: content.length,
+    preview: content.slice(0, 500),
+  });
   return normalizeDesign(parseJsonObject(content));
 }
 
@@ -105,7 +117,7 @@ async function requestOpenAICompatible(
     ),
   });
   const body = await readResponseBody(response);
-  if (!response.ok) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
+  if (!response.ok || body.error) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
   return body.text;
 }
 
@@ -126,7 +138,7 @@ async function requestAnthropic(config: ModelConfig, userPrompt: string): Promis
     }),
   });
   const body = await readResponseBody(response);
-  if (!response.ok) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
+  if (!response.ok || body.error) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
   return body.text;
 }
 
@@ -147,7 +159,7 @@ async function requestGemini(config: ModelConfig, userPrompt: string): Promise<s
     }),
   });
   const body = await readResponseBody(response);
-  if (!response.ok) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
+  if (!response.ok || body.error) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
   return body.text;
 }
 
@@ -162,11 +174,21 @@ async function readResponseBody(response: Response): Promise<{ text: string; err
   if (!raw) return { text: '' };
   try {
     const json = JSON.parse(raw) as Record<string, unknown>;
+    console.info('[agent-designer] provider response received', {
+      status: response.status,
+      keys: Object.keys(json),
+      preview: raw.slice(0, 800),
+    });
+    if (isAgentDesignJson(json)) return { text: JSON.stringify(json) };
     return {
       text: extractText(json),
       error: extractError(json),
     };
   } catch {
+    console.info('[agent-designer] provider raw text received', {
+      status: response.status,
+      preview: raw.slice(0, 800),
+    });
     return { text: raw };
   }
 }
@@ -175,10 +197,29 @@ function extractText(json: Record<string, unknown>): string {
   const outputText = json.output_text;
   if (typeof outputText === 'string') return outputText;
 
+  const output = Array.isArray(json.output) ? json.output : [];
+  const responseOutputText = output
+    .flatMap((item) => Array.isArray((item as { content?: unknown }).content) ? (item as { content: unknown[] }).content : [])
+    .map((part) => {
+      const record = part as { text?: unknown; type?: unknown };
+      return typeof record.text === 'string' ? record.text : '';
+    })
+    .filter(Boolean)
+    .join('\n');
+  if (responseOutputText) return responseOutputText;
+
   const choices = Array.isArray(json.choices) ? json.choices : [];
   const firstChoice = choices[0] as Record<string, unknown> | undefined;
+  if (typeof firstChoice?.text === 'string') return firstChoice.text;
   const message = firstChoice?.message as Record<string, unknown> | undefined;
   if (typeof message?.content === 'string') return message.content;
+  if (Array.isArray(message?.content)) {
+    const messageText = message.content
+      .map((part) => typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : '')
+      .filter(Boolean)
+      .join('\n');
+    if (messageText) return messageText;
+  }
 
   const content = Array.isArray(json.content) ? json.content : [];
   const anthropicText = content
@@ -196,7 +237,17 @@ function extractText(json: Record<string, unknown>): string {
     .join('\n');
 }
 
+function isAgentDesignJson(json: Record<string, unknown>): boolean {
+  return typeof json.name === 'string'
+    && typeof json.description === 'string'
+    && typeof json.systemPrompt === 'string';
+}
+
 function extractError(json: Record<string, unknown>): string | undefined {
+  if (json.success === false) {
+    return typeof json.msg === 'string' ? json.msg : 'Provider returned success=false';
+  }
+
   const error = json.error;
   if (typeof error === 'string') return error;
   if (error && typeof error === 'object') {
@@ -211,11 +262,55 @@ function parseJsonObject(text: string): unknown {
   try {
     return JSON.parse(trimmed);
   } catch {
-    const start = trimmed.indexOf('{');
-    const end = trimmed.lastIndexOf('}');
-    if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1));
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
+    if (fenced) return JSON.parse(fenced);
+
+    const candidate = findFirstJsonObject(trimmed);
+    if (candidate) return JSON.parse(candidate);
     throw new Error('Model did not return valid JSON.');
   }
+}
+
+function findFirstJsonObject(text: string): string | null {
+  const starts: number[] = [];
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] === '{') starts.push(index);
+  }
+
+  for (const start of starts) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index += 1) {
+      const char = text[index];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+      if (char === '{') depth += 1;
+      if (char === '}') depth -= 1;
+      if (depth === 0) {
+        const candidate = text.slice(start, index + 1);
+        try {
+          JSON.parse(candidate);
+          return candidate;
+        } catch {
+          break;
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 function normalizeDesign(value: unknown): AgentDesign {
@@ -245,11 +340,21 @@ function joinUrl(base: string, path: string): string {
 function getAnthropicMessagesUrl(apiBase: string): string {
   try {
     const url = new URL(apiBase);
-    if (url.hostname === 'api.anthropic.com' && !url.pathname.endsWith('/messages')) {
+    if (url.pathname.endsWith('/messages')) return apiBase;
+    if (url.hostname === 'api.anthropic.com') {
       return joinUrl(apiBase, '/messages');
     }
+    return joinUrl(apiBase, '/v1/messages');
   } catch {
     return apiBase;
   }
-  return apiBase;
+}
+
+function maskUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return value.slice(0, 120);
+  }
 }

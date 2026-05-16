@@ -40,6 +40,7 @@ router.post('/presets/generate', async (req: Request<{ id: string }>, res: Respo
   try {
     res.json(await generateAgentDesign(prompt));
   } catch (err) {
+    console.error('[agent-designer] generate failed', err);
     res.status(400).json({ error: err instanceof Error ? err.message : 'agent generation failed' });
   }
 });
