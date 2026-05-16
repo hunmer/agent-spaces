@@ -1,7 +1,7 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink } from "lucide-react"
-import { createContext, type HTMLAttributes, type ReactNode, useContext, useState } from "react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy } from "lucide-react"
+import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback } from "react"
 /**
  * @title React AI File Tree
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -23,6 +23,7 @@ import { createContext, type HTMLAttributes, type ReactNode, useContext, useStat
  * ]
  */
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
 import { cn } from "@/lib/utils"
 import { useTranslations } from 'next-intl'
 
@@ -33,6 +34,8 @@ interface FileTreeContextType {
   onFileSelect?: (path: string) => void
   workspaceId?: string
   onDelete?: (path: string) => void
+  onImport?: (targetPath: string) => void
+  onCopyPath?: (path: string) => void
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -48,6 +51,8 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onExpandedChange?: (expanded: Set<string>) => void
   workspaceId?: string
   onDelete?: (path: string) => void
+  onImport?: (targetPath: string) => void
+  onCopyPath?: (path: string) => void
 }
 
 export const FileTree = ({
@@ -58,6 +63,8 @@ export const FileTree = ({
   onExpandedChange,
   workspaceId,
   onDelete,
+  onImport,
+  onCopyPath,
   className,
   children,
   ...props
@@ -77,7 +84,7 @@ export const FileTree = ({
   }
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -115,7 +122,7 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath } = useContext(FileTreeContext)
   const isExpanded = expandedPaths.has(path)
   const isSelected = selectedPath === path
   const t = useTranslations('editor')
@@ -127,44 +134,58 @@ export const FileTreeFolder = ({
 
   return (
     <FileTreeFolderContext.Provider value={{ path, name, isExpanded }}>
-      <Collapsible onOpenChange={() => togglePath(path)} open={isExpanded}>
-        <div className={className} role="treeitem" tabIndex={0} {...props}>
-          <div className="group/folder relative">
-            <CollapsibleTrigger
-              className={cn(
-                "flex w-full items-center gap-1 rounded px-2 py-1 pr-16 text-left transition-colors hover:bg-muted/50",
-                isSelected && "bg-muted",
-              )}
-            >
-              <ChevronRightIcon
-                className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform",
-                  isExpanded && "rotate-90",
-                )}
-              />
-              <FileTreeIcon>
-                {folderIcon ? folderIcon(isExpanded) : isExpanded ? (
-                  <FolderOpenIcon className="size-4 text-blue-500" />
-                ) : (
-                  <FolderIcon className="size-4 text-blue-500" />
-                )}
-              </FileTreeIcon>
-              <FileTreeName>{name}</FileTreeName>
-            </CollapsibleTrigger>
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
-              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
-                <ExternalLink className="size-3 text-muted-foreground" />
-              </button>
-              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
-                <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
-              </button>
-            </div>
+      <ContextMenu>
+        <Collapsible onOpenChange={() => togglePath(path)} open={isExpanded}>
+          <div className={className} role="treeitem" tabIndex={0} {...props}>
+            <ContextMenuTrigger className="contents">
+              <div className="group/folder relative">
+                <CollapsibleTrigger
+                  className={cn(
+                    "flex w-full items-center gap-1 rounded px-2 py-1 pr-16 text-left transition-colors hover:bg-muted/50",
+                    isSelected && "bg-muted",
+                  )}
+                >
+                  <ChevronRightIcon
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground transition-transform",
+                      isExpanded && "rotate-90",
+                    )}
+                  />
+                  <FileTreeIcon>
+                    {folderIcon ? folderIcon(isExpanded) : isExpanded ? (
+                      <FolderOpenIcon className="size-4 text-blue-500" />
+                    ) : (
+                      <FolderIcon className="size-4 text-blue-500" />
+                    )}
+                  </FileTreeIcon>
+                  <FileTreeName>{name}</FileTreeName>
+                </CollapsibleTrigger>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
+                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
+                    <ExternalLink className="size-3 text-muted-foreground" />
+                  </button>
+                  <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
+                    <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </div>
+              </div>
+            </ContextMenuTrigger>
+            <CollapsibleContent>
+              <div className="ml-4 border-l pl-2">{children}</div>
+            </CollapsibleContent>
           </div>
-          <CollapsibleContent>
-            <div className="ml-4 border-l pl-2">{children}</div>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+        </Collapsible>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => onImport?.(path)}>
+            <Upload className="size-4" />
+            {t('importFile')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => { navigator.clipboard.writeText(path); }}>
+            <Copy className="size-4" />
+            {t('copyPath')}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </FileTreeFolderContext.Provider>
   )
 }

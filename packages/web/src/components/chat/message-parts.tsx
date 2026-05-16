@@ -70,7 +70,7 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
   const shouldRenderLegacyContent = messageParts.length === 0 && message.content
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 overflow-hidden">
       {message.attachments?.length ? (
         <MessageAttachments attachments={message.attachments} isUser={isUser} />
       ) : null}
@@ -683,5 +683,5 @@ function UserContent({ content }: { content: string }) {
   if (/<[a-z][\s\S]*>/i.test(content)) {
     return <span className="tiptap tiptap-message" dangerouslySetInnerHTML={{ __html: content }} />
   }
-  return <span className="whitespace-pre-wrap break-words">{content}</span>
+  return <span className="whitespace-pre-wrap break-all">{content}</span>
 }

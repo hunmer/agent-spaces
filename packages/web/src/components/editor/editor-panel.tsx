@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { FileTree, FileTreeFolder, FileTreeFile } from "./file-tree";
 import { SearchPanel } from "./search-panel";
+import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";
 import type { FileNode } from "@agent-spaces/shared";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Ellipsis, Upload, Copy } from "lucide-react";
 import { FileIconImg, FolderIconImg } from "./file-icon";
 import { useTranslations } from 'next-intl';
+import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   return nodes.map((node) =>
@@ -47,6 +50,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const t = useTranslations('editor');
   const [selectedPath, setSelectedPath] = useState<string>();
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(workspaceId));
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importTargetPath, setImportTargetPath] = useState('');
 
   useEffect(() => {
     loadTree(workspaceId);
@@ -95,7 +100,26 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
         </TabsList>
 
         <TabsContent value="files" className="flex-1 min-h-0 mt-0">
-          <div className="flex items-center justify-end px-2 py-1 border-b">
+          <div className="flex items-center justify-end px-2 py-1 border-b gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
+                <Ellipsis className="size-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => { setImportTargetPath(''); setImportDialogOpen(true); }}>
+                  <Upload className="size-4" />
+                  {t('importFile')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  const path = selectedPath || '';
+                  navigator.clipboard.writeText(path);
+                  toast.success(t('copied'));
+                }}>
+                  <Copy className="size-4" />
+                  {t('copyPath')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button
               onClick={() => loadTree(workspaceId)}
               className="p-0.5 hover:bg-accent rounded"
@@ -121,6 +145,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 }}
                 workspaceId={workspaceId}
                 onDelete={handleDelete}
+                onImport={(targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); }}
+                onCopyPath={(path) => { navigator.clipboard.writeText(path); toast.success(t('copied')); }}
               >
                 <FileTreeNodes nodes={tree} />
               </FileTree>
@@ -132,6 +158,13 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           <SearchPanel workspaceId={workspaceId} />
         </TabsContent>
       </Tabs>
+      <ImportFileDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        workspaceId={workspaceId}
+        targetPath={importTargetPath}
+        onImported={() => loadTree(workspaceId)}
+      />
     </div>
   );
 }

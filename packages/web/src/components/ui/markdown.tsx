@@ -52,8 +52,10 @@ interface MarkdownProps {
 
 export function Markdown({ content }: MarkdownProps) {
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-      {content}
-    </ReactMarkdown>
+    <div className="break-all">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }

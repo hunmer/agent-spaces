@@ -92,4 +92,43 @@ export async function deletePath(workspace: Workspace, relPath: string): Promise
   }
 }
 
+export async function writeFileBinary(workspace: Workspace, relPath: string, buffer: Buffer): Promise<boolean> {
+  const abs = resolvePath(workspace, relPath);
+  if (!abs) return false;
+  try {
+    await mkdir(join(abs, '..'), { recursive: true });
+    await writeFile(abs, buffer);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function importFromUrl(workspace: Workspace, url: string, targetDir: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const urlPath = new URL(url).pathname;
+    const filename = decodeURIComponent(urlPath.split('/').pop() || 'downloaded-file');
+    const relPath = targetDir ? `${targetDir}/${filename}` : filename;
+    const ok = await writeFileBinary(workspace, relPath, buffer);
+    return ok ? relPath : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function importFromAbsPath(workspace: Workspace, absPath: string, targetDir: string): Promise<string | null> {
+  try {
+    const content = await readFile(absPath);
+    const filename = absPath.split(/[/\\]/).pop() || 'imported-file';
+    const relPath = targetDir ? `${targetDir}/${filename}` : filename;
+    const ok = await writeFileBinary(workspace, relPath, content);
+    return ok ? relPath : null;
+  } catch {
+    return null;
+  }
+}
+
 export { getWorkspace };

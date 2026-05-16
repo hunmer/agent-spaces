@@ -648,7 +648,15 @@
     "revealInTree": "Reveal in File Tree",
     "copyFilePath": "Copy File Path",
     "copyRelativePath": "Copy Relative Path",
-    "copied": "Copied"
+    "copied": "Copied",
+    "importFile": "Import File",
+    "importFileDesc": "Choose an import method to add files to the current directory",
+    "importOnline": "Online File",
+    "importInternal": "Internal File",
+    "importUpload": "Local Upload",
+    "importSuccess": "Import successful",
+    "importFailed": "Import failed",
+    "copyPath": "Copy Path"
   },
   "terminal": {
     "newTerminal": "New Terminal",

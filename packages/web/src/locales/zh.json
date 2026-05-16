@@ -650,7 +650,15 @@
     "revealInTree": "在文件树中显示",
     "copyFilePath": "复制文件路径",
     "copyRelativePath": "复制相对路径",
-    "copied": "已复制"
+    "copied": "已复制",
+    "importFile": "导入文件",
+    "importFileDesc": "选择导入方式将文件添加到当前目录",
+    "importOnline": "在线文件",
+    "importInternal": "内部文件",
+    "importUpload": "本地上传",
+    "importSuccess": "导入成功",
+    "importFailed": "导入失败",
+    "copyPath": "复制路径"
   },
   "terminal": {
     "newTerminal": "新建终端",

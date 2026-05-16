@@ -119,4 +119,47 @@ router.post('/reveal', async (req: Request<{ id: string }>, res: Response) => {
   });
 });
 
+router.post('/import-url', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const { url, targetDir } = req.body;
+  if (!url) { res.status(400).json({ error: 'url is required' }); return; }
+
+  const result = await fileService.importFromUrl(ws, url, targetDir || '');
+  if (!result) { res.status(500).json({ error: 'Failed to import from URL' }); return; }
+  res.json({ ok: true, path: result });
+});
+
+router.post('/import-path', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const { absPath, targetDir } = req.body;
+  if (!absPath) { res.status(400).json({ error: 'absPath is required' }); return; }
+
+  const result = await fileService.importFromAbsPath(ws, absPath, targetDir || '');
+  if (!result) { res.status(500).json({ error: 'Failed to import file' }); return; }
+  res.json({ ok: true, path: result });
+});
+
+router.post('/upload', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const { targetDir, files } = req.body;
+  if (!Array.isArray(files) || files.length === 0) { res.status(400).json({ error: 'files are required' }); return; }
+
+  const results: string[] = [];
+  for (const f of files) {
+    if (!f.name || !f.content) continue;
+    const buffer = Buffer.from(f.content, 'base64');
+    const relPath = targetDir ? `${targetDir}/${f.name}` : f.name;
+    const ok = await fileService.writeFileBinary(ws, relPath, buffer);
+    if (ok) results.push(relPath);
+  }
+
+  res.json({ ok: true, paths: results });
+});
+
 export default router;
