@@ -1,16 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useIframeTabs, type IframeTab } from "@/stores/iframe-tabs";
+import { useIframeTabs } from "@/stores/iframe-tabs";
 import { useCommandPalette } from "@/stores/command-palette";
-import { Globe, X, Home, ChevronUp } from "lucide-react";
+import { Globe, X, Home } from "lucide-react";
+import { FloatingBall } from "./floating-ball";
 
 // ---------- Link Interceptor ----------
 export function IframeLinkInterceptor() {
   const add = useIframeTabs((s) => s.add);
 
   useEffect(() => {
-    // Intercept <a target="_blank"> cross-origin clicks
     const clickHandler = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest("a");
       if (!anchor || !anchor.href || anchor.target !== "_blank") return;
@@ -27,7 +27,6 @@ export function IframeLinkInterceptor() {
       add(anchor.href, anchor.textContent || undefined);
     };
 
-    // Intercept window.open() cross-origin calls
     const originalOpen = window.open;
     window.open = function (url?: string | URL, target?: string, features?: string): Window | null {
       if (url) {
@@ -54,6 +53,7 @@ export function IframeLinkInterceptor() {
 
 // ---------- Floating Ball ----------
 const BALL_SIZE = 40;
+const MENU_WIDTH = 260;
 
 export function IframeFloatingBall() {
   const { tabs, activeId, setActive, remove, ballVisible } = useIframeTabs();
@@ -61,6 +61,7 @@ export function IframeFloatingBall() {
   const [open, setOpen] = useState(false);
   const ballRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
   const count = tabs.length;
 
@@ -74,7 +75,16 @@ export function IframeFloatingBall() {
     });
   }, [register, ballVisible]);
 
-  const show = count >= 1;
+  const handleClick = useCallback(() => {
+    if (ballRef.current) {
+      const rect = ballRef.current.getBoundingClientRect();
+      setMenuPos({
+        x: Math.max(12, Math.min(rect.left, window.innerWidth - MENU_WIDTH - 12)),
+        y: rect.bottom + 6,
+      });
+    }
+    setOpen((v) => !v);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -87,15 +97,16 @@ export function IframeFloatingBall() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  if (!ballVisible || !show) return null;
+  if (!ballVisible) return null;
 
   return (
     <>
-      <div
+      <FloatingBall
         ref={ballRef}
-        onClick={() => setOpen((v) => !v)}
-        className="fixed z-[99998] flex items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-400 text-white shadow-lg hover:shadow-xl transition-shadow cursor-pointer select-none"
-        style={{ right: 16, top: 12, width: BALL_SIZE, height: BALL_SIZE }}
+        lsKey="iframe-ball:pos"
+        size={BALL_SIZE}
+        onClick={handleClick}
+        className="bg-gradient-to-br from-violet-500 to-violet-400 text-white shadow-lg hover:shadow-xl transition-shadow"
       >
         <Globe size={18} />
         {count > 0 && (
@@ -103,16 +114,15 @@ export function IframeFloatingBall() {
             {count}
           </span>
         )}
-      </div>
+      </FloatingBall>
 
       {open && (
         <div
           ref={menuRef}
           className="fixed z-[99999] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-2xl overflow-hidden"
-          style={{ right: 16, top: 12 + BALL_SIZE + 6, width: 260, maxHeight: "calc(100vh - 80px)" }}
+          style={{ left: menuPos.x, top: menuPos.y, width: MENU_WIDTH, maxHeight: "calc(100vh - 80px)" }}
         >
           <div className="p-1.5">
-            {/* Main page */}
             <TabItem
               icon={<Home size={14} />}
               label="主页面"

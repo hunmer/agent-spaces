@@ -34,7 +34,6 @@ const tabIcons: Record<string, React.ReactNode> = {
   "chat": <MessageSquare size={16} />,
   "issue-detail": <FileText size={16} />,
   "terminal": <TerminalSquare size={16} />,
-  "git-changes": <FileDiff size={16} />,
   "git-commits": <GitCommitHorizontal size={16} />,
   "project-settings": <Settings2 size={16} />,
 };
@@ -60,7 +59,6 @@ const defaultJson: IJsonModel = {
       location: "bottom",
       children: [
         { type: "tab", name: "Terminal", component: "terminal" },
-        { type: "tab", name: "Changes", component: "git-changes" },
         { type: "tab", name: "Commits", component: "git-commits" },
       ],
     },
@@ -206,10 +204,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   useEffect(() => {
     if (!isMobile) return;
     const git = useGitStore.getState();
-    if (activePanel === "git-changes") {
-      git.loadStatus(workspaceId);
-      git.loadDiffs(workspaceId);
-    } else if (activePanel === "git-commits") {
+    if (activePanel === "git-commits") {
       git.loadLog(workspaceId);
     }
   }, [activePanel, workspaceId, isMobile]);
@@ -292,8 +287,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <IssueDetail workspaceId={workspaceId} />;
         case "terminal":
           return <TerminalPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
-        case "git-changes":
-          return <GitCommitsPanel workspaceId={workspaceId} />;
         case "git-commits":
           return <GitCommitsPanel workspaceId={workspaceId} />;
         case "project-settings":
@@ -311,7 +304,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     if (!icon) return;
 
     let badge: React.ReactNode = null;
-    if (comp === 'git-changes' && gitStatus && !gitStatus.clean) {
+    if (comp === 'git-commits' && gitStatus && !gitStatus.clean) {
       const hasStat = gitStatus.insertions > 0 || gitStatus.deletions > 0;
       badge = (
         <span className="ml-1 text-[10px] font-medium leading-none flex items-center gap-0.5">
@@ -323,12 +316,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           ) : (
             <span className="text-orange-500">{gitStatus.files.length}</span>
           )}
-        </span>
-      );
-    } else if (comp === 'git-commits' && gitStatus && gitStatus.ahead > 0) {
-      badge = (
-        <span className="ml-1 text-[10px] font-medium text-blue-400 leading-none">
-          ↑{gitStatus.ahead}
+          {gitStatus.ahead > 0 && <span className="text-blue-400">↑{gitStatus.ahead}</span>}
         </span>
       );
     }
@@ -366,10 +354,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
       // Git 面板数据加载
       const git = useGitStore.getState();
-      if (comp === "git-changes") {
+      if (comp === "git-commits") {
         git.loadStatus(workspaceId);
         git.loadDiffs(workspaceId);
-      } else if (comp === "git-commits") {
         git.loadLog(workspaceId);
       }
     },
@@ -407,8 +394,6 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <CodeEditor workspaceId={workspaceId} />;
     case "terminal":
       return <TerminalPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
-    case "git-changes":
-      return <GitCommitsPanel workspaceId={workspaceId} />;
     case "git-commits":
       return <GitCommitsPanel workspaceId={workspaceId} />;
     case "project-settings":
