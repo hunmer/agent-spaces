@@ -39,6 +39,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
     d(`sdk mcp servers | ${sdkMcpServerNames.join(',') || '-'}`);
 
+    const stderrLines: string[] = [];
+
     try {
       const queryOptions: Options = {
         cwd,
@@ -60,7 +62,10 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         env: buildEnv(this.config, configDir, { baseURL, apiKey }),
         stderr: (data) => {
           const line = data.trim();
-          if (line) d(`stderr: ${line}`);
+          if (line) {
+            stderrLines.push(line);
+            d(`stderr: ${line}`);
+          }
         },
       };
 
@@ -72,6 +77,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let usageLine: string | null = null;
       let usage: AgentRunResult['usage'];
       let costUsd: number | undefined;
+      let sawResult = false;
       const pendingAskUserQuestionToolIds = new Set<string>();
       let waitingForUserAnswer = false;
 
@@ -114,6 +120,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         }
 
         if (message.type === 'result') {
+          sawResult = true;
           turns = message.num_turns;
           tokenCount = countUsageTokens(message.usage);
           usageLine = formatUsageLine(message.usage);
@@ -130,6 +137,23 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       }
 
       const elapsed = Date.now() - startTime;
+      if (!sawResult) {
+        const runtimeError = extractRuntimeError([...stderrLines, ...output])
+          || 'Claude Code execution stopped before reporting a final result';
+        d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${runtimeError}`);
+        appendUnique(output, stderrLines);
+        appendUnique(output, [runtimeError]);
+        return {
+          success: false,
+          summary: 'Claude Code execution failed',
+          artifacts: [],
+          error: runtimeError,
+          output,
+          usage,
+          costUsd,
+        };
+      }
+
       if (waitingForUserAnswer && (!error || isAskUserQuestionAutoResult(error))) {
         d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
         if (usageLine) output.push(usageLine);
@@ -144,13 +168,15 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       }
 
       if (error) {
-        d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${error}`);
+        const runtimeError = extractRuntimeError([error, ...stderrLines, ...output]) || error;
+        d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${runtimeError}`);
+        appendUnique(output, stderrLines);
         if (usageLine) output.push(usageLine);
         return {
           success: false,
           summary: 'Claude Code execution failed',
           artifacts: [],
-          error,
+          error: runtimeError,
           output,
           usage,
           costUsd,
@@ -177,10 +203,13 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     } catch (err) {
       const elapsed = Date.now() - startTime;
       const message = err instanceof Error ? err.message : String(err);
-      d(`failed ${elapsed}ms | ${message}`);
+      const runtimeError = extractRuntimeError([message, ...stderrLines, ...output]) || message;
+      d(`failed ${elapsed}ms | ${runtimeError}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
 
-      return { success: false, summary: 'Claude Code execution failed', artifacts: [], error: message, output };
+      appendUnique(output, stderrLines);
+      appendUnique(output, [runtimeError]);
+      return { success: false, summary: 'Claude Code execution failed', artifacts: [], error: runtimeError, output };
     } finally {
       this.activeQuery?.close();
       this.activeQuery = null;
@@ -202,4 +231,21 @@ function readTotalCostUsd(message: unknown): number | undefined {
   if (!message || typeof message !== 'object') return undefined;
   const value = (message as { total_cost_usd?: unknown }).total_cost_usd;
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function extractRuntimeError(lines: string[]): string | undefined {
+  const text = lines
+    .filter((line) => typeof line === 'string' && line.trim().length > 0)
+    .join('\n');
+  if (!text) return undefined;
+
+  const match = text.match(/(?:API Error|Request rejected|Too Many Requests|rate limit|overloaded|429)[^\n]*/i);
+  return match?.[0]?.trim();
+}
+
+function appendUnique(target: string[], lines: string[]): void {
+  for (const line of lines) {
+    if (!line || target.includes(line)) continue;
+    target.push(line);
+  }
 }

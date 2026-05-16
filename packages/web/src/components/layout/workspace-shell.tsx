@@ -221,10 +221,11 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
   }, [activePanel, workspaceId, isMobile]);
 
-  const isNativeNotificationEnabled = useCallback(() => {
+  const getNativeNotificationConfig = useCallback(() => {
     const ws = useWorkspaceStore.getState().workspaces.find(w => w.id === workspaceId);
     const ns = ws?.notificationSettings;
-    return ns?.enabled && ns.provider === 'native' && ns.native?.permissionGranted;
+    if (!ns?.enabled || ns.provider !== 'native' || !ns.native?.permissionGranted) return null;
+    return ns;
   }, [workspaceId]);
 
   useEffect(() => {
@@ -236,11 +237,18 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       ws.on('issue.updated', (data) => issueStore.upsertIssue(data as Issue)),
       ws.on('issue.status_changed', (data) => {
         issueStore.loadIssues(workspaceId);
-        if (isNativeNotificationEnabled()) {
+        const ns = getNativeNotificationConfig();
+        if (ns) {
           const { from, to } = data as IssueStatusChangedPayload;
-          const title = 'Issue Status Updated';
-          const body = `Status changed: ${from} → ${to}`;
-          sendNativeNotification(title, body);
+          const events = ns.events ?? [];
+          const shouldNotify =
+            (to === 'in_progress' && events.includes('issue_started')) ||
+            (to === 'completed' && events.includes('issue_completed'));
+          if (shouldNotify) {
+            const title = 'Issue Status Updated';
+            const body = `Status changed: ${from} → ${to}`;
+            sendNativeNotification(title, body);
+          }
         }
       }),
       ws.on('task.created', (data) => taskStore.upsertTask(data as Task)),
@@ -250,11 +258,17 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         if (activeIssueId) {
           taskStore.loadTasks(workspaceId, activeIssueId);
         }
-        if (isNativeNotificationEnabled()) {
+        const ns = getNativeNotificationConfig();
+        if (ns) {
           const { from, to } = data as TaskStatusChangedPayload;
-          const title = 'Task Status Updated';
-          const body = `Status changed: ${from} → ${to}`;
-          sendNativeNotification(title, body);
+          const events = ns.events ?? [];
+          const shouldNotify =
+            to === 'completed' && events.includes('issue_task_completed');
+          if (shouldNotify) {
+            const title = 'Task Status Updated';
+            const body = `Status changed: ${from} → ${to}`;
+            sendNativeNotification(title, body);
+          }
         }
       }),
       ws.on('notification.created', (data) => {
@@ -265,7 +279,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }),
     ];
     return () => unsubs.forEach((u) => u());
-  }, [issueStore, taskStore, workspaceId, isNativeNotificationEnabled]);
+  }, [issueStore, taskStore, workspaceId, getNativeNotificationConfig]);
 
   const factory = useCallback(
     (node: TabNode) => {
