@@ -50,9 +50,10 @@ export async function retryIssue(
     return { issue: paused, retried: false, reason: 'issue retry limit reached' };
   }
 
+  const RETRYABLE_STATUSES = ['failed', 'running', 'reviewing', 'retrying', 'waiting_review'];
   const issueTasks = taskService.list(workspaceId, issueId);
   for (const task of issueTasks) {
-    if (task.status !== 'failed') continue;
+    if (!RETRYABLE_STATUSES.includes(task.status)) continue;
     const reset = taskService.resetForRetry(workspaceId, task.id, { resetRetryCount: true });
     if (!reset) continue;
     ctx.broadcast('task.status_changed', { taskId: task.id, from: task.status, to: reset.status });
