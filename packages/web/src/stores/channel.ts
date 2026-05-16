@@ -23,6 +23,7 @@ interface ChannelStore {
   clearMessages: (workspaceId: string, channelId: string) => Promise<void>;
   deleteChannel: (workspaceId: string, channelId: string) => Promise<void>;
   removeChannelLocal: (channelId: string) => void;
+  upsertChannel: (channel: Partial<Channel> & Pick<Channel, 'id'>) => void;
   saveDraft: (workspaceId: string, channelId: string, content: string) => Promise<void>;
   clearDraft: (workspaceId: string, channelId: string) => Promise<void>;
 }
@@ -35,6 +36,14 @@ function getStoredActiveId(workspaceId: string, channels: Channel[]): string | n
     if (saved && channels.some((c) => c.id === saved)) return saved;
   } catch { /* ignore */ }
   return channels[0]?.id ?? null;
+}
+
+function isChannel(channel: Partial<Channel> & Pick<Channel, 'id'>): channel is Channel {
+  return typeof channel.workspaceId === 'string'
+    && typeof channel.name === 'string'
+    && (channel.type === 'general' || channel.type === 'issue' || channel.type === 'agent')
+    && Array.isArray(channel.members)
+    && typeof channel.createdAt === 'string';
 }
 
 export const useChannelStore = create<ChannelStore>((set, get) => ({
@@ -162,6 +171,24 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
         activeChannelId: s.activeChannelId === channelId ? (channels[0]?.id ?? null) : s.activeChannelId,
         messages: rest,
       };
+    });
+  },
+
+  upsertChannel: (channel) => {
+    set((s) => {
+      const idx = s.channels.findIndex((c) => c.id === channel.id);
+      if (idx < 0) {
+        return isChannel(channel) ? { channels: [...s.channels, channel] } : { channels: s.channels };
+      }
+
+      const copy = [...s.channels];
+      const current = copy[idx];
+      copy[idx] = {
+        ...current,
+        ...channel,
+        members: Array.isArray(channel.members) ? channel.members : current.members,
+      };
+      return { channels: copy };
     });
   },
 

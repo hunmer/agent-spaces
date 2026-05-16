@@ -58,7 +58,7 @@ interface ChatPanelProps {
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
-  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages } = useChannelStore();
+  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages, upsertChannel } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
@@ -126,9 +126,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     const unsubChannelUpdated = ws.on('channel.updated', (data: unknown) => {
       const ch = data as { id: string };
       if (ch.id === activeChannelId) {
-        useChannelStore.setState((s) => ({
-          channels: s.channels.map((c) => (c.id === ch.id ? (data as typeof c) : c)),
-        }));
+        upsertChannel(data as Partial<Channel> & Pick<Channel, 'id'>);
       }
     });
     return () => {
@@ -138,7 +136,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
       unsubCleared();
       unsubChannelUpdated();
     };
-  }, [workspaceId, activeChannelId, addMessage, updateMessage, deleteMessage]);
+  }, [workspaceId, activeChannelId, addMessage, updateMessage, deleteMessage, upsertChannel]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

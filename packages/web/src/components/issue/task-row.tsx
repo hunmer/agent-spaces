@@ -43,7 +43,7 @@ export function TaskRow({
     <div
       ref={ref}
       className={[
-        'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30 min-w-0',
+        'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30 shrink-0',
         isDragging && 'opacity-50 shadow-lg scale-105',
         !isDraggable && 'opacity-70',
       ].filter(Boolean).join(' ')}

@@ -43,7 +43,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const tc = useTranslations('common');
   const {
     channels, activeChannelId, messages,
-    loadChannels, createChannel, updateChannel, setActiveChannel,
+    loadChannels, createChannel, updateChannel, setActiveChannel, upsertChannel,
   } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
@@ -59,19 +59,10 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   useEffect(() => {
     const ws = getWS(workspaceId);
     const unsub = ws.on('channel.updated', (data: unknown) => {
-      const ch = data as Channel;
-      useChannelStore.setState((s) => {
-        const idx = s.channels.findIndex((c) => c.id === ch.id);
-        if (idx >= 0) {
-          const copy = [...s.channels];
-          copy[idx] = ch;
-          return { channels: copy };
-        }
-        return { channels: [...s.channels, ch] };
-      });
+      upsertChannel(data as Partial<Channel> & Pick<Channel, 'id'>);
     });
     return () => { unsub(); };
-  }, [workspaceId]);
+  }, [workspaceId, upsertChannel]);
 
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
     const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
