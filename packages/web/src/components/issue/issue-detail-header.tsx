@@ -57,7 +57,7 @@ export function IssueDetailHeader({
             variant="ghost"
             size="icon-sm"
             title={t('detail.openChatChannel') as string}
-            onClick={() => { if (issue?.channelId) useChannelStore.getState().setActiveChannel(issue.channelId); }}
+            onClick={() => { if (issue?.channelId) useChannelStore.getState().ensureAndActivateChannel(workspaceId, issue.channelId); }}
           >
             <MessagesSquare className="size-4" />
           </Button>

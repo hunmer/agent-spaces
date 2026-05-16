@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileTree, FileTreeFolder, FileTreeFile } from "./file-tree";
 import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
@@ -16,6 +16,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWorkspaceStore } from "@/stores/workspace";
+
+function buildFileSizeMap(nodes: FileNode[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  const walk = (list: FileNode[]) => {
+    for (const node of list) {
+      if (node.type === 'file' && node.size != null) {
+        map[node.path] = node.size;
+      }
+      if (node.children) walk(node.children);
+    }
+  };
+  walk(nodes);
+  return map;
+}
 
 function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   return nodes.map((node) =>
@@ -60,6 +74,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importTargetPath, setImportTargetPath] = useState('');
   const [nameDialog, setNameDialog] = useState<{ open: boolean; mode: 'file' | 'folder'; targetDir: string; value: string }>({ open: false, mode: 'file', targetDir: '', value: '' });
+  const fileSizeMap = useMemo(() => buildFileSizeMap(tree), [tree]);
 
   const handleNameConfirm = useCallback(() => {
     const { mode, targetDir, value } = nameDialog;
@@ -184,6 +199,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
                 onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
                 boundDir={boundDir}
+                fileSizeMap={fileSizeMap}
               >
                 <FileTreeNodes nodes={tree} />
               </FileTree>

@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle } from "lucide-react"
 import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback } from "react"
 /**
  * @title React AI File Tree
@@ -24,6 +24,8 @@ import { createContext, type HTMLAttributes, type ReactNode, useContext, useStat
  */
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTranslations } from 'next-intl'
 
@@ -39,6 +41,7 @@ interface FileTreeContextType {
   onCreateFile?: (targetDir: string) => void
   onCreateFolder?: (targetDir: string) => void
   boundDir?: string
+  fileSizeMap?: Record<string, number>
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -59,6 +62,7 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onCreateFile?: (targetDir: string) => void
   onCreateFolder?: (targetDir: string) => void
   boundDir?: string
+  fileSizeMap?: Record<string, number>
 }
 
 export const FileTree = ({
@@ -74,6 +78,7 @@ export const FileTree = ({
   onCreateFile,
   onCreateFolder,
   boundDir,
+  fileSizeMap,
   className,
   children,
   ...props
@@ -93,7 +98,7 @@ export const FileTree = ({
   }
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, boundDir }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, boundDir, fileSizeMap }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -234,10 +239,33 @@ export const FileTreeFile = ({
   children,
   ...props
 }: FileTreeFileProps) => {
-  const { selectedPath, onFileSelect, workspaceId, onDelete } = useContext(FileTreeContext)
+  const { selectedPath, onFileSelect, workspaceId, onDelete, fileSizeMap } = useContext(FileTreeContext)
   const isSelected = selectedPath === path
   const t = useTranslations('editor')
   const tc = useTranslations('common')
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const fileSize = fileSizeMap?.[path]
+  const isLargeFile = fileSize != null && fileSize > 1024 * 1024
+
+  const handleSelect = useCallback(() => {
+    if (isLargeFile) {
+      setConfirmOpen(true)
+      return
+    }
+    onFileSelect?.(path)
+  }, [isLargeFile, onFileSelect, path])
+
+  const handleConfirmOpen = useCallback(() => {
+    setConfirmOpen(false)
+    onFileSelect?.(path)
+  }, [onFileSelect, path])
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
 
   const handleReveal = () => {
     fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
@@ -251,10 +279,10 @@ export const FileTreeFile = ({
           isSelected && "bg-muted",
           className,
         )}
-        onClick={() => onFileSelect?.(path)}
+        onClick={handleSelect}
         onKeyDown={e => {
           if (e.key === "Enter" || e.key === " ") {
-            onFileSelect?.(path)
+            handleSelect()
           }
         }}
         role="treeitem"
@@ -279,6 +307,23 @@ export const FileTreeFile = ({
           </>
         )}
       </div>
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-yellow-500" />
+              {t('fileTooLargeTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            {t('fileTooLargeDesc', { name, size: formatSize(fileSize!) })}
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>{tc('cancel')}</Button>
+            <Button onClick={handleConfirmOpen}>{t('openAnyway')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </FileTreeFileContext.Provider>
   )
 }

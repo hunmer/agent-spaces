@@ -26,6 +26,8 @@ interface ChannelStore {
   upsertChannel: (channel: Partial<Channel> & Pick<Channel, 'id'>) => void;
   saveDraft: (workspaceId: string, channelId: string, content: string) => Promise<void>;
   clearDraft: (workspaceId: string, channelId: string) => Promise<void>;
+  /** Ensure channel exists in store (fetch from server if missing), then activate it */
+  ensureAndActivateChannel: (workspaceId: string, channelId: string) => Promise<void>;
 }
 
 const STORAGE_KEY_PREFIX = 'agent-spaces:channel:';
@@ -215,5 +217,17 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ draft: null }),
     });
+  },
+
+  ensureAndActivateChannel: async (workspaceId, channelId) => {
+    const { channels } = get();
+    if (!channels.some((c) => c.id === channelId)) {
+      const res = await fetch(`/api/workspaces/${workspaceId}/channels`);
+      if (res.ok) {
+        const all: Channel[] = await res.json();
+        set({ channels: all });
+      }
+    }
+    get().setActiveChannel(channelId);
   },
 }));

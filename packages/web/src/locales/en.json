@@ -671,7 +671,10 @@
     "newFile": "New File",
     "newFolder": "New Folder",
     "newFileName": "Enter file name",
-    "newFolderName": "Enter folder name"
+    "newFolderName": "Enter folder name",
+    "fileTooLargeTitle": "Large File",
+    "fileTooLargeDesc": "File \"{name}\" is {size}, which may cause the editor to lag. Open anyway?",
+    "openAnyway": "Open Anyway"
   },
   "terminal": {
     "newTerminal": "New Terminal",
