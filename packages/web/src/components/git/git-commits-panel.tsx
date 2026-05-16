@@ -341,7 +341,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
           const isRemoteHead = i === remoteHeadIndex;
           return (
             <ContextMenu key={entry.hash}>
-              <ContextMenuTrigger asChild>
+              <ContextMenuTrigger>
                 <div
                   className={`px-2 py-1.5 border-b hover:bg-accent cursor-default ${isRemoteHead ? 'border-l-2 border-l-blue-500' : ''}`}
                 >
