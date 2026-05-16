@@ -311,7 +311,7 @@ export async function gitDeleteBranch(workspaceId: string, name: string, force =
   const ws = getWorkspace(workspaceId);
   if (!ws) throw new Error('Workspace not found');
   const git = getGit(ws);
-  await git.deleteBranch(name, force);
+  await git.branch([force ? '-D' : '-d', name]);
 }
 
 export async function gitCreateTag(workspaceId: string, name: string, commitHash?: string): Promise<void> {

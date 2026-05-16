@@ -1,0 +1,125 @@
+---
+sidebar_position: 3
+---
+
+# Agent SSE API
+
+Agent SSE API 提供 HTTP Server-Sent Events 流式调用接口，无需 WebSocket 即可触发 Agent 执行。适用于外部集成、CI/CD 管道和 API 测试场景。
+
+## 接口地址
+
+```
+POST /api/agent-sse/run
+```
+
+## 认证方式
+
+支持三种认证方式（任选其一）：
+
+| 方式 | 参数 |
+|------|------|
+| Bearer Token | `Authorization: Bearer <token>` Header |
+| 自定义 Header | `x-agent-spaces-key: <secret-key>` |
+| Body 参数 | `{ "key": "<secret-key>" }` |
+
+## 请求体
+
+```json
+{
+  "agentId": "string",           // 必填：Agent 预设 ID
+  "workspaceId": "string",       // 可选：工作空间 ID
+  "message": "string",           // 方式一：单条消息
+  "prompt": "string",            // 方式二：Prompt（同 message）
+  "messages": [...],             // 方式三：消息数组
+  "systemPrompt": "string",      // 可选：覆盖系统提示词
+  "maxTurns": 10,                // 可选：最大轮次
+  "skills": ["skill-name"],      // 可选：技能列表
+  "mcps": {...}                  // 可选：MCP 配置
+}
+```
+
+## 响应格式
+
+响应为 SSE 流（`Content-Type: text/event-stream`），事件类型：
+
+| 事件 | 说明 |
+|------|------|
+| `session` | 会话创建信息 |
+| `status` | Agent 状态变更 |
+| `output` | Agent 输出内容 |
+| `tool_use` | 工具调用开始 |
+| `tool_result` | 工具调用结果 |
+| `done` | 执行完成 |
+| `error` | 执行错误 |
+
+### 响应示例
+
+```
+event: session
+data: {"sessionId": "abc-123", "agentId": "agent-1"}
+
+event: output
+data: {"type": "text", "content": "正在分析代码..."}
+
+event: tool_use
+data: {"tool": "Read", "input": {"file_path": "/src/main.ts"}}
+
+event: tool_result
+data: {"tool": "Read", "output": "文件内容..."}
+
+event: done
+data: {"status": "completed", "tokens": {"input": 1500, "output": 800}}
+```
+
+## 使用示例
+
+### curl
+
+```bash
+curl -N -X POST http://localhost:3100/api/agent-sse/run \
+  -H "Content-Type: application/json" \
+  -H "x-agent-spaces-key: your-secret-key" \
+  -d '{"agentId": "agent-1", "workspaceId": "ws-1", "message": "分析项目结构"}'
+```
+
+### Python
+
+```python
+import requests
+
+url = "http://localhost:3100/api/agent-sse/run"
+headers = {"x-agent-spaces-key": "your-secret-key"}
+data = {"agentId": "agent-1", "workspaceId": "ws-1", "message": "修复 Bug"}
+
+with requests.post(url, json=data, headers=headers, stream=True) as resp:
+    for line in resp.iter_lines():
+        if line:
+            print(line.decode())
+```
+
+### Node.js
+
+```javascript
+const response = await fetch('http://localhost:3100/api/agent-sse/run', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-agent-spaces-key': 'your-secret-key',
+  },
+  body: JSON.stringify({
+    agentId: 'agent-1',
+    workspaceId: 'ws-1',
+    message: '重构模块 A',
+  }),
+});
+
+const reader = response.body.getReader();
+// 读取 SSE 流...
+```
+
+## 适用场景
+
+- **CI/CD 集成** — 在构建管道中调用 Agent 执行代码审查或自动修复
+- **外部工具集成** — 从 IDE 插件、CLI 工具或其他应用触发 Agent
+- **API 测试** — 快速测试 Agent 的响应和行为
+- **自动化脚本** — 编写脚本批量调用 Agent 处理任务

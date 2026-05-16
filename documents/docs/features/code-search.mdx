@@ -1,0 +1,77 @@
+---
+sidebar_position: 12
+---
+
+# 代码搜索
+
+Agent Spaces 内置代码搜索功能，支持在编辑器中快速搜索代码内容和文件名。
+
+## 搜索能力
+
+### 代码内容搜索
+
+基于 ripgrep（优先）+ Node.js（回退）实现：
+
+- **正则表达式** — 支持正则匹配模式
+- **文件模式过滤** — 按文件名模式（如 `*.ts`、`*.md`）过滤搜索范围
+- **大小写敏感** — 可选择区分或不区分大小写
+- **结果数量限制** — 可设置最大返回结果数
+
+### 文件名搜索
+
+快速查找工作空间内的文件：
+
+- 按文件名或路径搜索
+- 支持文件和目录类型过滤
+- 返回匹配的文件路径列表
+
+### .gitignore 支持
+
+代码搜索自动解析 `.gitignore` 文件，排除 `node_modules`、`.git` 等目录，确保搜索结果的相关性。
+
+## 使用方式
+
+1. 在编辑器区域点击搜索图标或使用快捷键打开搜索面板
+2. 输入搜索关键词
+3. 可选：勾选正则模式、大小写敏感等选项
+4. 搜索结果实时展示，点击即可跳转到对应文件和行
+
+## API 参考
+
+代码搜索提供两个 REST API 端点：
+
+```
+GET /api/workspaces/:id/search/code?query=<query>&regex=true&caseSensitive=false&filePattern=*.ts
+GET /api/workspaces/:id/search/files?query=<filename>
+```
+
+### 搜索选项参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `query` | string | 搜索关键词（必填） |
+| `regex` | boolean | 启用正则模式 |
+| `caseSensitive` | boolean | 区分大小写 |
+| `filePattern` | string | 文件模式过滤 |
+| `maxResults` | number | 最大结果数 |
+
+### 代码搜索结果
+
+```json
+{
+  "results": [
+    {
+      "file": "src/app.ts",
+      "line": 42,
+      "column": 10,
+      "text": "匹配的文本行",
+      "matchStart": 10,
+      "matchLength": 5
+    }
+  ]
+}
+```
+
+## 搜索引擎选择
+
+系统优先使用系统安装的 ripgrep（`rg` 命令），因为它的搜索速度更快。如果系统未安装 ripgrep，自动回退到 Node.js 实现。

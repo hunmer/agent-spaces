@@ -26,7 +26,9 @@ const sidebars: SidebarsConfig = {
         'features/agent/index',
         'features/notifications',
         'features/dashboard',
+        'features/command-palette',
         'features/project-settings',
+        'features/code-search',
       ],
     },
     {
@@ -35,6 +37,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'advanced/multi-server',
         'advanced/bot-agent',
+        'advanced/agent-sse-api',
       ],
     },
   ],

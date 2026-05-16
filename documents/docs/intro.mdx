@@ -13,9 +13,11 @@ Agent Spaces 是一个**本地多 Agent 协同编程平台**。通过可视化 W
 - **可视化 Workflow 编排** — DAG 拓扑编辑器，拖拽 Agent 节点、连线定义依赖，灵活编排执行流程
 - **多 Agent 协同** — agent、scheduler、task_creator、bot 四种内置角色 + 自定义角色，各司其职
 - **IDE 级别体验** — 集成代码编辑器、终端、Git 操作、议题管理，一站式开发
-- **多运行时支持** — Claude Code、OpenAI Codex、Open Agent SDK 三种 Agent 运行时
+- **多运行时支持** — Claude Code、OpenAI Codex、Open Agent SDK、LangChain 四种 Agent 运行时
 - **实时通知** — 通过飞书、企业微信、Native 通知接收 Agent 状态变更，远程操控
 - **国际化** — 中英文自由切换，本地化体验
+- **Agent SSE API** — HTTP 流式调用 Agent，支持外部集成和 CI/CD
+- **订阅管理** — 智谱、MiniMax、AI Code 余额和配额查询
 
 ## 核心能力
 
@@ -23,15 +25,22 @@ Agent Spaces 是一个**本地多 Agent 协同编程平台**。通过可视化 W
 |------|------|
 | 工作空间管理 | 绑定本地代码目录，支持文件夹浏览和 Git Clone |
 | Workflow 编辑器 | DAG 可视化编排，拖拽 Agent 节点、连线定义依赖，自动布局 |
-| 代码编辑器 | 基于 Monaco Editor 的完整编辑体验 |
-| 终端 | 集成终端，可直接在平台内执行命令 |
+| 代码编辑器 | 基于 Monaco Editor 的完整编辑体验，内置代码搜索和 Model 缓存 |
+| 终端 | 集成终端，支持快捷命令（自定义命令 + 自动重启） |
 | 议题管理 | 创建 Issue 并选择 Workflow 模板，自动编排 Task 执行 |
-| 频道聊天 | @mention Agent 触发对话和任务执行 |
+| 频道聊天 | @mention Agent 触发对话和任务执行，支持语音识别输入 |
 | Git 操作 | 可视化分支管理、提交、合并，Commit Agent 自动生成提交信息 |
 | Agent 编排 | 四种内置角色 + 自定义角色，Workflow 驱动自动化协作 |
-| 通知中心 | 飞书/企业微信/Native 消息推送和远程命令 |
+| 通知中心 | 飞书/企业微信/Native/应用内消息推送和远程命令 |
 | 用量统计 | Token 消耗、费用估算、趋势图表、按模型统计 |
+| 订阅管理 | 智谱/MiniMax/AICode 余额和配额查询 |
+| 代码搜索 | ripgrep 优先 + Node.js 回退，支持正则/文件模式/大小写 |
+| 快捷命令 | 自定义命令 CRUD + 运行/停止/自动重启，终端集成 |
+| 语音识别 | 腾讯语音实时识别，WebSocket 流式传输 |
 | LLM 管理 | 多模型配置、Anthropic Bridge 协议中转 |
+| Agent SSE API | HTTP POST 流式调用 Agent，支持外部集成 |
+| Command Palette | Ctrl+K 快捷面板，全局搜索工作空间/频道/Issue/文件/服务器 |
+| Skill/MCP 管理 | 全局技能和 MCP 配置的 CRUD、导入、同步 |
 | 认证系统 | Secret Key + Bearer Token 认证 |
 
 ## 下一步

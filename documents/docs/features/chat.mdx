@@ -18,6 +18,17 @@ sidebar_position: 4
 - **@mention** — 输入 `@` 触发 Agent 选择器，mention Agent 后会触发其执行
 - **代码块** — 插入代码片段，支持语法高亮
 
+### 语音识别输入
+
+消息编辑器集成语音识别功能，支持通过语音输入消息内容：
+
+1. 点击输入框旁的麦克风按钮
+2. 开始说话，系统通过 WebSocket 实时传输音频到后端
+3. 识别结果实时回显到输入框
+4. 再次点击停止录音
+
+语音识别基于腾讯语音实时识别服务，通过 `useSpeechRecognition` Hook 集成。需在设置页配置腾讯语音凭证后使用。
+
 ### 消息类型
 
 频道中的消息包含多种类型：
@@ -37,6 +48,14 @@ sidebar_position: 4
 
 这种方式适合快速给 Agent 下达指令，不需要创建正式的议题。
 
+### Agent 提问交互
+
+Agent 在执行过程中可以向你提问（AskUserQuestion）：
+
+- Agent 发送包含选项的问题
+- 你选择答案后，Agent 继续执行
+- 适用于需要确认操作或选择方案的场景
+
 ## AI 消息渲染
 
 Agent 的回复消息采用结构化渲染：
@@ -44,4 +63,9 @@ Agent 的回复消息采用结构化渲染：
 - **工具调用链** — 展示 Agent 的完整思考链路，每一步工具调用都清晰可见
 - **工具详情** — 点击工具调用可展开查看输入参数、输出结果、代码 diff
 - **中间输出** — Agent 的推理过程和中间结论
+- **思考过程** — Agent 的思维链展示（reasoning）
+- **子 Agent** — Agent 自主调用的子 agent 信息
+- **Token 使用量** — 每条消息的 input/output Token 统计
 - **最终结论** — Agent 的最终回答或执行结果
+
+消息渲染通过 `MessagePart` 系统实现，支持 text、reasoning、chain、terminal、confirmation、context、subagent、ask_user_question 8 种类型。

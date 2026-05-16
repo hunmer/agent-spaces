@@ -2,11 +2,15 @@
 sidebar_position: 11
 ---
 
-# 项目设置
+# 项目设置与独立设置页
 
-每个工作空间都有独立的设置面板，用于配置工作空间级别的参数。
+Agent Spaces 提供工作空间级别的项目设置和全局独立设置页，用于配置各类参数。
 
-## Prompt 配置
+## 项目设置（工作空间级）
+
+每个工作空间都有独立的项目设置面板：
+
+### Prompt 配置
 
 为工作空间设置自定义系统提示词，影响该工作空间下所有 Agent 的行为：
 
@@ -16,7 +20,7 @@ sidebar_position: 11
 
 这些提示词会自动注入到 Agent 的上下文中，指导 Agent 更好地理解和修改代码。
 
-## 通知配置
+### 通知配置
 
 配置工作空间级别的通知服务：
 
@@ -28,20 +32,20 @@ sidebar_position: 11
 
 详见 [通知中心](/docs/features/notifications)。
 
-## Agent 配置
+### Agent 配置
 
 管理工作空间下的 Agent 预设：
 
 - 添加、编辑、删除 Agent 预设
 - 配置角色（agent / scheduler / task_creator / bot + 自定义）
-- 选择运行时（Claude Code / Codex / Open Agent SDK）
+- 选择运行时（Claude Code / Codex / Open Agent SDK / LangChain）
 - 设置模型和 API Key
 - 自定义系统提示词
 - 配置权限模式（自动批准、需确认等）
 - 设置 MCP 工具和技能
 - 导入/导出预设配置
 
-## LLM 管理
+### LLM 管理
 
 配置可用的 AI 模型：
 
@@ -49,8 +53,17 @@ sidebar_position: 11
 - 设置模型名称和 API 地址
 - 配置模型单价（用于费用估算）
 - 测试模型连通性
+- 配置模型成本（inputPerMillion / outputPerMillion）
 
-## 语言设置
+### 语音识别配置
+
+配置语音识别服务：
+
+- 选择供应商（当前支持腾讯语音）
+- 填写 API 凭证（AppId、SecretId、SecretKey）
+- 保存后即可在聊天输入中使用语音识别
+
+### 语言设置
 
 在设置面板中切换界面语言：
 
@@ -58,5 +71,55 @@ sidebar_position: 11
 - **English** — 英文界面
 
 切换语言即时生效，影响所有界面文本。52 个组件已完成国际化改造。
+
+## 独立设置页
+
+除了工作空间内的项目设置外，Agent Spaces 还提供全局独立设置页，可通过 `/settings` 路由访问：
+
+### Agent 预设管理（/settings/agents）
+
+管理工作空间级别的 Agent 预设列表，支持创建、编辑、删除和测试连接。
+
+### 技能管理（/settings/skills）
+
+全局技能的 CRUD 管理：
+
+- 查看所有已注册的技能
+- 导入新技能文件
+- 同步技能状态
+- 编辑或删除已有技能
+
+### MCP 配置（/settings/mcps）
+
+全局 MCP（Model Context Protocol）配置管理：
+
+- 查看所有已注册的 MCP 配置
+- 导入新 MCP 配置
+- 编辑或删除已有配置
+
+### LLM 模型管理（/settings/models）
+
+全局 LLM 模型配置：
+
+- 添加和管理模型
+- 配置模型成本
+- 设置模型参数
+
+### LLM 供应商管理（/settings/providers）
+
+全局 LLM 供应商配置：
+
+- 添加和管理供应商
+- 配置 API 端点和凭证
+- 测试连接
+
+## 全局 Git 配置
+
+通过 API 设置全局 Git 配置（用户名、邮箱等），所有工作空间共享。
+
+```
+GET /api/git-config    # 获取当前配置
+POST /api/git-config   # 更新配置
+```
 
 详见 [安装部署](/docs/getting-started/installation) 了解项目的技术栈详情。
