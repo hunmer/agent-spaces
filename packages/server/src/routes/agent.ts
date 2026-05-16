@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import type { AgentConfig } from '@agent-spaces/shared';
 import * as agentService from '../services/agent.js';
+import { generateAgentDesign } from '../agents/agent-designer.js';
 
 const router = Router({ mergeParams: true });
 
@@ -27,6 +28,20 @@ router.post('/presets', (req: Request<{ id: string }>, res: Response) => {
   const body = req.body as Omit<Partial<AgentConfig>, 'id'>;
   const preset = agentService.createPreset(req.params.id, body);
   res.status(201).json(preset);
+});
+
+router.post('/presets/generate', async (req: Request<{ id: string }>, res: Response) => {
+  const { prompt } = req.body as { prompt?: string };
+  if (!prompt?.trim()) {
+    res.status(400).json({ error: 'prompt is required' });
+    return;
+  }
+
+  try {
+    res.json(await generateAgentDesign(prompt));
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : 'agent generation failed' });
+  }
 });
 
 router.post('/presets/test-connection', async (req: Request<{ id: string }>, res: Response) => {

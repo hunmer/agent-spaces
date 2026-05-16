@@ -19,6 +19,7 @@ import { ensureDir, getDataDir } from '../storage/json-store.js';
 import { extractUsageFromOutput } from '../storage/usage.js';
 
 const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
+export const AGENT_GENERATOR_PRESET_ID = 'agent-generator';
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [
@@ -64,12 +65,16 @@ export function isValidRole(role: unknown): role is AgentConfig['role'] {
 
 export function listTemplates(): AgentConfig[] {
   const root = getGlobalAgentTemplatesDir();
-  if (!existsSync(root)) return [];
+  if (!existsSync(root)) return [getDefaultAgentGeneratorPreset()];
 
-  return readdirSync(root, { withFileTypes: true })
+  const templates = readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => readAgentTemplate(entry.name))
     .filter((template): template is AgentConfig => Boolean(template));
+  if (!templates.some((template) => template.id === AGENT_GENERATOR_PRESET_ID)) {
+    templates.unshift(getDefaultAgentGeneratorPreset());
+  }
+  return templates;
 }
 
 export async function testConnection(
@@ -609,12 +614,48 @@ function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): v
 
 export function readAgentTemplate(agentId: string): AgentConfig | null {
   const filePath = join(getGlobalAgentTemplateDir(agentId), 'agent.json');
-  if (!existsSync(filePath)) return null;
+  if (!existsSync(filePath)) {
+    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset() : null;
+  }
   try {
     return JSON.parse(readFileSync(filePath, 'utf-8')) as AgentConfig;
   } catch {
-    return null;
+    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset() : null;
   }
+}
+
+function getDefaultAgentGeneratorPreset(): AgentConfig {
+  return {
+    id: AGENT_GENERATOR_PRESET_ID,
+    name: 'Agent Generator',
+    role: 'agent',
+    description: '根据提示词生成其他 Agent 的名称、描述和 Markdown 系统提示。',
+    runtimeKind: 'claude-code',
+    modelProvider: undefined,
+    modelId: '',
+    apiBase: '',
+    apiKey: '',
+    workingDir: '',
+    mcps: {},
+    skills: [],
+    tools: [],
+    systemPrompt: [
+      '# Role',
+      'You are an Agent Spaces agent designer.',
+      '',
+      '# Responsibilities',
+      '- Convert user requirements into production-ready Agent preset metadata.',
+      '- Return only valid JSON with name, description, and systemPrompt.',
+      '- Write the systemPrompt in clear Markdown with role, responsibilities, workflow, constraints, and output expectations.',
+      '',
+      '# Constraints',
+      '- Do not include Markdown code fences around JSON.',
+      '- Keep names concise and descriptions practical.',
+    ].join('\n'),
+    temperature: 0.2,
+    maxTokens: 4096,
+    enabled: true,
+  };
 }
 
 function sanitizeMarkdownFilename(name: string): string {
@@ -624,6 +665,8 @@ function sanitizeMarkdownFilename(name: string): string {
 }
 
 export function deletePreset(workspaceId: string, presetId: string): boolean | null {
+  if (presetId === AGENT_GENERATOR_PRESET_ID) return false;
+
   const ws = getWorkspace(workspaceId);
   if (!ws) return null;
 
@@ -720,6 +763,8 @@ export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>)
 }
 
 export function deleteGlobalPreset(presetId: string): boolean {
+  if (presetId === AGENT_GENERATOR_PRESET_ID) return false;
+
   const templateDir = getGlobalAgentTemplateDir(presetId);
   if (!existsSync(templateDir)) return false;
 

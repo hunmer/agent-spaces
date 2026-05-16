@@ -7,11 +7,13 @@ import { useAgentStore } from "@/stores/agent";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +27,7 @@ import {
   Bot,
   ChevronDown,
   Plus,
+  WandSparkles,
 } from "lucide-react";
 import {
   type AgentPreset,
@@ -42,6 +45,8 @@ import {
 } from "./agent-shared";
 import { AgentList } from "./agent-list";
 import { AgentDetail } from "./agent-detail";
+
+const AGENT_GENERATOR_PRESET_ID = "agent-generator";
 
 export function AgentDialog({
   open,
@@ -64,12 +69,17 @@ export function AgentDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generatePrompt, setGeneratePrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const roleFilterSet = roleFilter
     ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
     : null;
-  const visibleAgents = roleFilterSet ? agents.filter((agent) => roleFilterSet.has(agent.role)) : agents;
+  const visibleAgents = roleFilterSet
+    ? agents.filter((agent) => agent.id === AGENT_GENERATOR_PRESET_ID || roleFilterSet.has(agent.role))
+    : agents;
   const addRoleOptions = roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS;
 
   useEffect(() => {
@@ -190,7 +200,47 @@ export function AgentDialog({
     setEditDraft({ ...draft });
   };
 
+  const createGeneratedAgentBase = () => (
+    addRoleOptions[0] ? newAgentDraft(addRoleOptions[0]) : newEmptyAgent()
+  );
+
+  const handleGenerateAgent = async () => {
+    const prompt = generatePrompt.trim();
+    if (!prompt) return;
+
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/agents/presets/generate', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json() as Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string };
+      if (!res.ok) throw new Error(data.error || "Failed to generate agent");
+
+      const base = editDraft ?? createGeneratedAgentBase();
+      const draft: AgentPreset = {
+        ...base,
+        name: data.name?.trim() || base.name,
+        description: data.description?.trim() || base.description,
+        systemPrompt: data.systemPrompt?.trim() || base.systemPrompt,
+      };
+      setSelectedAgent(draft);
+      setEditDraft(draft);
+      setGenerateOpen(false);
+      setGeneratePrompt("");
+      setTestResult(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "智能创建 Agent 失败");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleToggleEnabled = async (id: string) => {
+    if (id === AGENT_GENERATOR_PRESET_ID) return;
+
     // 同步本地 agents 状态
     setAgents((prev) =>
       prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)),
@@ -200,6 +250,8 @@ export function AgentDialog({
   };
 
   const handleDeleteAgent = async (id: string) => {
+    if (id === AGENT_GENERATOR_PRESET_ID) return;
+
     if (id.startsWith("draft-")) {
       setSelectedAgent(null);
       setEditDraft(null);
@@ -302,46 +354,62 @@ export function AgentDialog({
                 : t('dialog.listDescription')}
             </DialogDescription>
           </DialogHeader>
+          {selectedAgent && (
+            <Button variant="outline" size="sm" disabled={saving || generating} onClick={() => setGenerateOpen(true)}>
+              <WandSparkles className="size-3.5" />
+              智能创建
+            </Button>
+          )}
           {!selectedAgent && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button variant="outline" size="sm" disabled={saving}>
-                    <Plus className="size-3.5" />
-                    {t('dialog.add')}
-                    <ChevronDown className="size-3.5" />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent side="bottom" align="end" className="w-44">
-                <DropdownMenuGroup>
-                  {!roleFilterSet && (
-                    <DropdownMenuItem
-                      className="gap-2"
-                      onClick={() => handleAddAgent("empty")}
-                    >
-                      <span className="size-2 rounded-full bg-muted" />
-                      <span>{t('dialog.addEmpty')}</span>
-                    </DropdownMenuItem>
-                  )}
-                  {ROLE_OPTIONS.map((role) => (
-                    <DropdownMenuItem
-                      key={role}
-                      className="gap-2"
-                      onClick={() => handleAddAgent(role)}
-                    >
-                      <span className={cn("size-2 rounded-full", ROLE_COLORS[role].split(" ")[0])} />
-                      <span className="capitalize">{t(`role.${role}.name`)}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={saving || generating} onClick={() => setGenerateOpen(true)}>
+                <WandSparkles className="size-3.5" />
+                智能创建
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button variant="outline" size="sm" disabled={saving}>
+                      <Plus className="size-3.5" />
+                      {t('dialog.add')}
+                      <ChevronDown className="size-3.5" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent side="bottom" align="end" className="w-44">
+                  <DropdownMenuGroup>
+                    {!roleFilterSet && (
+                      <DropdownMenuItem
+                        className="gap-2"
+                        onClick={() => handleAddAgent("empty")}
+                      >
+                        <span className="size-2 rounded-full bg-muted" />
+                        <span>{t('dialog.addEmpty')}</span>
+                      </DropdownMenuItem>
+                    )}
+                    {ROLE_OPTIONS.map((role) => (
+                      <DropdownMenuItem
+                        key={role}
+                        className="gap-2"
+                        onClick={() => handleAddAgent(role)}
+                      >
+                        <span className={cn("size-2 rounded-full", ROLE_COLORS[role].split(" ")[0])} />
+                        <span className="capitalize">{t(`role.${role}.name`)}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
       )}
       {standalone && !selectedAgent && (
-        <div className="flex items-center justify-end px-5 py-3 border-b">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-b">
+          <Button variant="outline" size="sm" disabled={saving || generating} onClick={() => setGenerateOpen(true)}>
+            <WandSparkles className="size-3.5" />
+            智能创建
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -387,6 +455,10 @@ export function AgentDialog({
             <h2 className="text-base font-medium truncate">{editDraft?.name ?? ""}</h2>
             <p className="text-xs text-muted-foreground">{t('dialog.editDescription')}</p>
           </div>
+          <Button variant="outline" size="sm" disabled={saving || generating} onClick={() => setGenerateOpen(true)}>
+            <WandSparkles className="size-3.5" />
+            智能创建
+          </Button>
         </div>
       )}
 
@@ -433,6 +505,31 @@ export function AgentDialog({
           </Button>
         </div>
       )}
+
+      <Dialog open={generateOpen} onOpenChange={setGenerateOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>智能创建 Agent</DialogTitle>
+            <DialogDescription>
+              输入 Agent 的职责、使用场景和约束，系统会生成名称、描述和 Markdown 系统提示。
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={generatePrompt}
+            onChange={(e) => setGeneratePrompt(e.target.value)}
+            placeholder="例如：创建一个代码评审 Agent，专注发现 TypeScript/React 项目中的缺陷、回归风险和缺失测试。"
+            className="min-h-32 text-sm"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGenerateOpen(false)} disabled={generating}>
+              {tc('cancel')}
+            </Button>
+            <Button onClick={handleGenerateAgent} disabled={generating || !generatePrompt.trim()}>
+              {generating ? "生成中..." : "生成"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 
