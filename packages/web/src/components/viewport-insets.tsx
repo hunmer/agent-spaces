@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
+import { isTauriEnvironment } from "@/lib/native-notification";
+
+function getAndroidTauriTopInset() {
+  if (!isTauriEnvironment()) return 0;
+  if (!/Android/i.test(navigator.userAgent)) return 0;
+
+  return window.AgentSpacesStatusBar?.getTopInset?.() ?? 0;
+}
 
 function updateViewportInsets() {
   const root = document.documentElement;
@@ -12,6 +20,7 @@ function updateViewportInsets() {
 
   root.style.setProperty("--app-viewport-height", `${viewportHeight}px`);
   root.style.setProperty("--keyboard-inset-height", `${keyboardHeight}px`);
+  root.style.setProperty("--app-top-inset", `${getAndroidTauriTopInset()}px`);
 }
 
 export function ViewportInsets() {

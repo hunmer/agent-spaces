@@ -50,5 +50,14 @@ class MainActivity : TauriActivity() {
                 activity.applyStatusBarTheme(theme)
             }
         }
+
+        @JavascriptInterface
+        fun getTopInset(): Float {
+            val resourceId = activity.resources.getIdentifier("status_bar_height", "dimen", "android")
+            if (resourceId <= 0) return 0f
+
+            val heightPx = activity.resources.getDimensionPixelSize(resourceId)
+            return heightPx / activity.resources.displayMetrics.density
+        }
     }
 }

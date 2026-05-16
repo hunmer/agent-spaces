@@ -31,6 +31,7 @@ declare global {
   interface Window {
     AgentSpacesStatusBar?: {
       setTheme: (theme: 'light' | 'dark') => void;
+      getTopInset?: () => number;
     };
   }
 }

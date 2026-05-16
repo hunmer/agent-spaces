@@ -67,6 +67,7 @@
 
 :root {
   --app-viewport-height: 100dvh;
+  --app-top-inset: 0px;
   --keyboard-inset-height: 0px;
   --background: #ffffff;
   --foreground: #222222;
@@ -142,10 +143,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    padding-top: var(--app-top-inset);
   }
   html,
   body {
-    height: var(--app-viewport-height);
+    height: calc(var(--app-viewport-height) - var(--app-top-inset));
   }
   h1, h2, h3 {
     font-family: var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
