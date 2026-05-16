@@ -3,6 +3,7 @@ import { join, resolve, relative, isAbsolute } from 'node:path';
 import type { FileNode } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
+import { createGitignoreFilter } from './gitignore.js';
 
 const IGNORED_DIRS = new Set(['.git', 'node_modules', '.next', '.DS_Store']);
 
@@ -18,6 +19,9 @@ export async function readTree(workspace: Workspace, relPath = ''): Promise<File
   const dirPath = resolvePath(workspace, relPath);
   if (!dirPath) return [];
 
+  const baseDir = resolve(workspace.boundDirs[0]);
+  const ig = await createGitignoreFilter(baseDir);
+
   const entries = await readdir(dirPath, { withFileTypes: true });
   const nodes: FileNode[] = [];
 
@@ -26,6 +30,9 @@ export async function readTree(workspace: Workspace, relPath = ''): Promise<File
 
     const fullPath = join(dirPath, entry.name);
     const entryRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
+
+    if (ig.isIgnored(entryRelPath, entry.name, entry.isDirectory())) continue;
+
     const s = await stat(fullPath);
 
     if (entry.isDirectory()) {

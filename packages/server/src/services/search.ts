@@ -4,6 +4,7 @@ import { readdir, stat, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import type { Workspace, CodeSearchResult, FileSearchResult, SearchCodeOptions } from '@agent-spaces/shared';
 import { resolvePath } from './file.js';
+import { createGitignoreFilter, type IgnoreFilter } from './gitignore.js';
 
 const IGNORED_DIRS = new Set(['.git', 'node_modules', '.next', '.DS_Store', '__pycache__', '.turbo', 'dist', 'build', '.cache']);
 const BINARY_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.mp3', '.mp4', '.zip', '.tar', '.gz', '.wasm']);
@@ -96,6 +97,8 @@ async function searchWithNodeJs(basePath: string, options: SearchCodeOptions): P
     return [];
   }
 
+  const ig = await createGitignoreFilter(basePath);
+
   async function walk(dir: string): Promise<void> {
     if (results.length >= maxResults) return;
     const entries = await readdir(dir, { withFileTypes: true });
@@ -104,6 +107,9 @@ async function searchWithNodeJs(basePath: string, options: SearchCodeOptions): P
       if (IGNORED_DIRS.has(entry.name)) continue;
 
       const fullPath = join(dir, entry.name);
+      const relPath = relative(basePath, fullPath);
+      if (ig.isIgnored(relPath, entry.name, entry.isDirectory())) continue;
+
       if (entry.isDirectory()) {
         await walk(fullPath);
       } else if (entry.isFile()) {
@@ -149,7 +155,7 @@ async function searchWithNodeJs(basePath: string, options: SearchCodeOptions): P
 
 // --- file name search ---
 
-async function walkForFiles(dir: string, query: string, results: FileSearchResult[], basePath: string, limit: number): Promise<void> {
+async function walkForFiles(dir: string, query: string, results: FileSearchResult[], basePath: string, limit: number, ig: IgnoreFilter): Promise<void> {
   if (results.length >= limit) return;
   const entries = await readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
@@ -158,6 +164,7 @@ async function walkForFiles(dir: string, query: string, results: FileSearchResul
 
     const fullPath = join(dir, entry.name);
     const relPath = relative(basePath, fullPath);
+    if (ig.isIgnored(relPath, entry.name, entry.isDirectory())) continue;
 
     if (entry.name.toLowerCase().includes(query.toLowerCase())) {
       results.push({
@@ -168,7 +175,7 @@ async function walkForFiles(dir: string, query: string, results: FileSearchResul
     }
 
     if (entry.isDirectory()) {
-      await walkForFiles(fullPath, query, results, basePath, limit);
+      await walkForFiles(fullPath, query, results, basePath, limit, ig);
     }
   }
 }
@@ -192,8 +199,9 @@ export async function searchFiles(workspace: Workspace, query: string): Promise<
   const basePath = resolvePath(workspace, '');
   if (!basePath) return [];
 
+  const ig = await createGitignoreFilter(basePath);
   const results: FileSearchResult[] = [];
-  await walkForFiles(basePath, query, results, basePath, 100);
+  await walkForFiles(basePath, query, results, basePath, 100, ig);
   return results;
 }
 
