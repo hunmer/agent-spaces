@@ -15,7 +15,8 @@ router.get('/tree', async (req: Request<{ id: string }>, res: Response) => {
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const path = (req.query.path as string) || '';
-  const tree = await fileService.readTree(ws, path);
+  const depth = parseInt(req.query.depth as string) || undefined;
+  const tree = await fileService.readTree(ws, path, depth);
   res.json(tree);
 });
 

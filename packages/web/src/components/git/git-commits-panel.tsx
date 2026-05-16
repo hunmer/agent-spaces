@@ -100,6 +100,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const [gitignoreContent, setGitignoreContent] = useState("");
   const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
   const [gitignoreSaving, setGitignoreSaving] = useState(false);
+  const [discardConfirm, setDiscardConfirm] = useState<{ type: 'single'; path: string } | { type: 'all' } | null>(null);
 
   const ahead = status?.ahead ?? 0;
   const behind = status?.behind ?? 0;
@@ -206,13 +207,24 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     e.stopPropagation(); openFile(workspaceId, path);
   }, [workspaceId, openFile]);
 
-  const handleDiscard = useCallback(async (e: React.MouseEvent, path: string) => {
-    e.stopPropagation(); await discard(workspaceId, path); refresh();
-  }, [workspaceId, discard, refresh]);
+  const handleDiscard = useCallback((e: React.MouseEvent, path: string) => {
+    e.stopPropagation(); setDiscardConfirm({ type: 'single', path });
+  }, []);
 
-  const handleDiscardAll = useCallback(async () => {
-    await discardAll(workspaceId); refresh();
-  }, [workspaceId, discardAll, refresh]);
+  const handleDiscardAll = useCallback(() => {
+    setDiscardConfirm({ type: 'all' });
+  }, []);
+
+  const confirmDiscard = useCallback(async () => {
+    if (!discardConfirm) return;
+    if (discardConfirm.type === 'single') {
+      await discard(workspaceId, discardConfirm.path);
+    } else {
+      await discardAll(workspaceId);
+    }
+    setDiscardConfirm(null);
+    refresh();
+  }, [workspaceId, discardConfirm, discard, discardAll, refresh]);
 
   // ---- gitignore ----
   const openGitignore = useCallback(async () => {
@@ -597,6 +609,23 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             <DialogTitle>{t('settingsTitle')}</DialogTitle>
           </DialogHeader>
           <GitSettingsForm scope="local" workspaceId={workspaceId} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!discardConfirm} onOpenChange={(open) => !open && setDiscardConfirm(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{discardConfirm?.type === 'all' ? tChanges('discardAll') : tChanges('discard')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {discardConfirm?.type === 'all'
+              ? tChanges('confirmDiscardAll')
+              : tChanges('confirmDiscardFile', { file: discardConfirm?.type === 'single' ? discardConfirm.path : '' })}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscardConfirm(null)}>{tc('cancel')}</Button>
+            <Button variant="destructive" onClick={confirmDiscard}>{tChanges('discard')}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

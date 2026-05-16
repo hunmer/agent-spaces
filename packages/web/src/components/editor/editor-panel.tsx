@@ -108,7 +108,7 @@ interface EditorPanelProps {
 }
 
 export function EditorPanel({ workspaceId }: EditorPanelProps) {
-  const { tree, treeLoading, loadTree, openFile, openFiles, revealPath, clearRevealPath } = useEditorStore();
+  const { tree, treeLoading, loadTree, loadDirectory, openFile, openFiles, revealPath, clearRevealPath } = useEditorStore();
   const workspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId));
   const boundDir = workspace?.boundDirs?.[0] || '';
   const t = useTranslations('editor');
@@ -158,9 +158,15 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   }, []);
 
   useEffect(() => {
-    loadTree(workspaceId);
-    setExpandedPaths(loadExpandedPaths(workspaceId));
-  }, [workspaceId, loadTree]);
+    const saved = loadExpandedPaths(workspaceId);
+    setExpandedPaths(saved);
+    loadTree(workspaceId).then(() => {
+      // Reload children for previously expanded directories
+      for (const dir of saved) {
+        loadDirectory(workspaceId, dir);
+      }
+    });
+  }, [workspaceId, loadTree, loadDirectory]);
 
   const handleExpandedChange = useCallback((newExpanded: Set<string>) => {
     setExpandedPaths(newExpanded);
@@ -235,9 +241,15 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
       saveExpandedPaths(workspaceId, next);
       return next;
     });
-    setSelectedPath(revealPath);
-    clearRevealPath();
-  }, [revealPath, workspaceId, clearRevealPath]);
+    // Load each parent directory to ensure children are available
+    (async () => {
+      for (const d of dirsToExpand) {
+        await loadDirectory(workspaceId, d);
+      }
+      setSelectedPath(revealPath);
+      clearRevealPath();
+    })();
+  }, [revealPath, workspaceId, loadDirectory, clearRevealPath]);
 
   return (
     <div className="flex flex-col h-full">
@@ -331,6 +343,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                     onRename={handleRename}
                     onMove={handleMove}
                     onCopyItem={handleCopy}
+                    onLoadDirectory={(dirPath) => loadDirectory(workspaceId, dirPath)}
                     boundDir={boundDir}
                     fileSizeMap={fileSizeMap}
                   >

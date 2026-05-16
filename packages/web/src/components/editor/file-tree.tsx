@@ -43,6 +43,8 @@ interface FileTreeContextType {
   onRename?: (path: string) => void
   onMove?: (path: string) => void
   onCopyItem?: (path: string) => void
+  onLoadDirectory?: (path: string) => void
+  loadedDirs?: Set<string>
   boundDir?: string
   fileSizeMap?: Record<string, number>
 }
@@ -67,6 +69,8 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onRename?: (path: string) => void
   onMove?: (path: string) => void
   onCopyItem?: (path: string) => void
+  onLoadDirectory?: (path: string) => void
+  loadedDirs?: Set<string>
   boundDir?: string
   fileSizeMap?: Record<string, number>
 }
@@ -86,6 +90,8 @@ export const FileTree = ({
   onRename,
   onMove,
   onCopyItem,
+  onLoadDirectory,
+  loadedDirs,
   boundDir,
   fileSizeMap,
   className,
@@ -107,7 +113,7 @@ export const FileTree = ({
   }
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, boundDir, fileSizeMap }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir, fileSizeMap }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -145,11 +151,20 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, boundDir } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir } = useContext(FileTreeContext)
   const isExpanded = expandedPaths.has(path)
   const isSelected = selectedPath === path
+  const isLoading = loadedDirs?.has(path)
   const t = useTranslations('editor')
   const tc = useTranslations('common')
+
+  const handleOpenChange = () => {
+    const willExpand = !isExpanded
+    togglePath(path)
+    if (willExpand && !loadedDirs?.has(path) && onLoadDirectory) {
+      onLoadDirectory(path)
+    }
+  }
 
   const handleReveal = () => {
     fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
@@ -158,7 +173,7 @@ export const FileTreeFolder = ({
   return (
     <FileTreeFolderContext.Provider value={{ path, name, isExpanded }}>
       <ContextMenu>
-        <Collapsible onOpenChange={() => togglePath(path)} open={isExpanded}>
+        <Collapsible onOpenChange={handleOpenChange} open={isExpanded}>
           <div className={className} role="treeitem" tabIndex={0} {...props}>
             <ContextMenuTrigger className="contents">
               <div className="group/folder relative">
@@ -182,6 +197,7 @@ export const FileTreeFolder = ({
                     )}
                   </FileTreeIcon>
                   <FileTreeName>{name}</FileTreeName>
+                  {isLoading && <span className="size-3 border border-muted-foreground border-t-transparent rounded-full animate-spin" />}
                 </CollapsibleTrigger>
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
                   <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>

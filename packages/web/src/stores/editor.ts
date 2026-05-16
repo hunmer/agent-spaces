@@ -16,12 +16,14 @@ interface JumpPosition {
 interface EditorState {
   tree: FileNode[];
   treeLoading: boolean;
+  loadingDirs: Set<string>;
   openFiles: OpenFile[];
   activeFilePath: string | null;
   pendingJump: JumpPosition | null;
   revealPath: string | null;
 
   loadTree: (workspaceId: string) => Promise<void>;
+  loadDirectory: (workspaceId: string, dirPath: string) => Promise<void>;
   openFile: (workspaceId: string, path: string) => Promise<void>;
   saveFile: (workspaceId: string, path: string) => Promise<void>;
   updateContent: (path: string, content: string) => void;
@@ -47,6 +49,7 @@ function debouncedSave(workspaceId: string) {
 export const useEditorStore = create<EditorState>((set, get) => ({
   tree: [],
   treeLoading: false,
+  loadingDirs: new Set(),
   openFiles: [],
   activeFilePath: null,
   pendingJump: null,
@@ -55,11 +58,45 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadTree: async (workspaceId) => {
     set({ treeLoading: true });
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/files/tree`);
+      const res = await fetch(`/api/workspaces/${workspaceId}/files/tree?depth=1`);
       const tree = await res.json();
       set({ tree, treeLoading: false });
     } catch {
       set({ treeLoading: false });
+    }
+  },
+
+  loadDirectory: async (workspaceId, dirPath) => {
+    const { tree, loadingDirs } = get();
+    const findNode = (nodes: FileNode[]): FileNode | undefined => {
+      for (const node of nodes) {
+        if (node.path === dirPath) return node;
+        if (node.children) { const found = findNode(node.children); if (found) return found; }
+      }
+      return undefined;
+    };
+    if (findNode(tree)?.children !== undefined || loadingDirs.has(dirPath)) return;
+
+    const newLoading = new Set(loadingDirs);
+    newLoading.add(dirPath);
+    set({ loadingDirs: newLoading });
+
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/files/tree?path=${encodeURIComponent(dirPath)}&depth=1`);
+      const children = await res.json();
+      const mergeChildren = (nodes: FileNode[]): FileNode[] =>
+        nodes.map(node => {
+          if (node.path === dirPath) return { ...node, children };
+          if (node.children) return { ...node, children: mergeChildren(node.children) };
+          return node;
+        });
+      const newLoading2 = new Set(get().loadingDirs);
+      newLoading2.delete(dirPath);
+      set({ tree: mergeChildren(get().tree), loadingDirs: newLoading2 });
+    } catch {
+      const newLoading2 = new Set(get().loadingDirs);
+      newLoading2.delete(dirPath);
+      set({ loadingDirs: newLoading2 });
     }
   },
 

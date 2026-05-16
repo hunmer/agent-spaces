@@ -15,7 +15,7 @@ export function resolvePath(workspace: Workspace, relPath: string): string | nul
   return abs;
 }
 
-export async function readTree(workspace: Workspace, relPath = ''): Promise<FileNode[]> {
+export async function readTree(workspace: Workspace, relPath = '', depth = Infinity): Promise<FileNode[]> {
   const dirPath = resolvePath(workspace, relPath);
   if (!dirPath) return [];
 
@@ -36,12 +36,11 @@ export async function readTree(workspace: Workspace, relPath = ''): Promise<File
     const s = await stat(fullPath);
 
     if (entry.isDirectory()) {
-      const children = await readTree(workspace, entryRelPath);
       nodes.push({
         name: entry.name,
         path: entryRelPath,
         type: 'directory',
-        children,
+        children: depth > 1 ? await readTree(workspace, entryRelPath, depth - 1) : undefined,
       });
     } else {
       nodes.push({
