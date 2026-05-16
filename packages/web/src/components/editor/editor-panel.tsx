@@ -15,6 +15,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FolderPicker } from "@/components/ui/folder-picker";
 import { useWorkspaceStore } from "@/stores/workspace";
 
 function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
@@ -190,27 +191,34 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
 
   const handleMove = useCallback((path: string) => {
     const dir = path.substring(0, path.lastIndexOf('/'));
-    setMoveDialog({ open: true, path, value: dir, mode: 'move' });
-  }, []);
+    const absDir = dir ? boundDir.replace(/\/+$/, '') + '/' + dir : boundDir.replace(/\/+$/, '');
+    setMoveDialog({ open: true, path, value: absDir, mode: 'move' });
+  }, [boundDir]);
 
   const handleCopy = useCallback((path: string) => {
     const dir = path.substring(0, path.lastIndexOf('/'));
-    setMoveDialog({ open: true, path, value: dir, mode: 'copy' });
-  }, []);
+    const absDir = dir ? boundDir.replace(/\/+$/, '') + '/' + dir : boundDir.replace(/\/+$/, '');
+    setMoveDialog({ open: true, path, value: absDir, mode: 'copy' });
+  }, [boundDir]);
 
   const handleMoveConfirm = useCallback(async () => {
     const { path: srcPath, value, mode } = moveDialog;
     if (!value.trim()) return;
+    const base = boundDir.replace(/\/+$/, '');
+    let destRelPath = value.trim();
+    if (destRelPath.startsWith(base)) {
+      destRelPath = destRelPath.slice(base.length).replace(/^\/+/, '');
+    }
     const name = srcPath.split('/').pop() || '';
-    const destPath = value.trim() === '' ? name : `${value.trim()}/${name}`;
+    const newRelPath = destRelPath ? `${destRelPath}/${name}` : name;
     const endpoint = mode === 'copy' ? '/files/copy' : '/files/rename';
-    const body = mode === 'copy' ? { srcPath, destPath } : { oldPath: srcPath, newPath: destPath };
+    const body = mode === 'copy' ? { srcPath, destPath: newRelPath } : { oldPath: srcPath, newPath: newRelPath };
     const res = await fetch(`/api/workspaces/${workspaceId}${endpoint}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     if (res.ok) { loadTree(workspaceId); setMoveDialog(p => ({ ...p, open: false })); }
-  }, [moveDialog, workspaceId, loadTree]);
+  }, [moveDialog, workspaceId, loadTree, boundDir]);
 
   useEffect(() => {
     if (!revealPath) return;
@@ -420,16 +428,14 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
         </DialogContent>
       </Dialog>
       <Dialog open={moveDialog.open} onOpenChange={(v) => setMoveDialog((p) => ({ ...p, open: v }))}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>{moveDialog.mode === 'move' ? t('moveTitle') : t('copyTitle')}</DialogTitle>
           </DialogHeader>
-          <Input
-            autoFocus
-            placeholder={moveDialog.mode === 'move' ? t('movePlaceholder') : t('copyPlaceholder')}
+          <FolderPicker
             value={moveDialog.value}
-            onChange={(e) => setMoveDialog((p) => ({ ...p, value: e.target.value }))}
-            onKeyDown={(e) => e.key === 'Enter' && handleMoveConfirm()}
+            onChange={(v) => setMoveDialog((p) => ({ ...p, value: v }))}
+            placeholder={moveDialog.mode === 'move' ? t('movePlaceholder') : t('copyPlaceholder')}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setMoveDialog((p) => ({ ...p, open: false }))}>{tc('cancel')}</Button>

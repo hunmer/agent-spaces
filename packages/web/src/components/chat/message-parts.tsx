@@ -1,7 +1,8 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { CheckIcon, CheckCircle2Icon, ChevronDownIcon, CircleIcon, CopyIcon, FileTextIcon, HelpCircleIcon, MessageSquareTextIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { BookOpenIcon, BotIcon, CheckIcon, CheckCircle2Icon, ChevronDownIcon, CircleIcon, CopyIcon, FileEditIcon, FileTextIcon, FolderSearchIcon, GlobeIcon, HelpCircleIcon, MessageSquareTextIcon, PencilIcon, CircleHelpIcon, SearchIcon, SquareCheckIcon, TerminalIcon, WrenchIcon, WebhookIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Markdown } from "@/components/ui/markdown"
@@ -358,6 +359,31 @@ function countCharacters(text: string) {
   return Array.from(text.trim()).length
 }
 
+const toolIconMap: Record<string, LucideIcon> = {
+  Read: BookOpenIcon,
+  Write: FileTextIcon,
+  Edit: PencilIcon,
+  MultiEdit: FileEditIcon,
+  Bash: TerminalIcon,
+  TodoWrite: SquareCheckIcon,
+  Grep: SearchIcon,
+  Glob: FolderSearchIcon,
+  Search: SearchIcon,
+  SemanticSearch: SearchIcon,
+  WebSearch: GlobeIcon,
+  WebFetch: WebhookIcon,
+  Fetch: WebhookIcon,
+  Task: MessageSquareTextIcon,
+  Agent: BotIcon,
+  AskUserQuestion: CircleHelpIcon,
+}
+
+function getToolIcon(toolName?: string, status?: "complete" | "active"): LucideIcon {
+  if (toolName && toolIconMap[toolName]) return toolIconMap[toolName]
+  if (toolName?.startsWith("mcp__") || toolName?.startsWith("mcp-")) return WrenchIcon
+  return status === "complete" ? CheckCircle2Icon : CircleIcon
+}
+
 function ToolStep({
   chain,
   message,
@@ -421,7 +447,7 @@ function ToolStep({
 
   return (
     <ChainOfThoughtStep
-      icon={status === "complete" ? CheckCircle2Icon : CircleIcon}
+      icon={getToolIcon(chain.toolName, status)}
       label={
         <div className="group/tool-step flex min-w-0 flex-wrap items-center gap-1.5">
           <span>{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
