@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useIframeTabs } from "@/stores/iframe-tabs";
+import { useIframeTabs, type IframeSize } from "@/stores/iframe-tabs";
 import { useCommandPalette } from "@/stores/command-palette";
-import { Globe, X, Home, Plus, Trash2, Bookmark } from "lucide-react";
+import { Globe, X, Home, Plus, Trash2, Bookmark, Monitor, Smartphone } from "lucide-react";
 import { FloatingBall } from "./floating-ball";
+import { FloatingPanel } from "./floating-panel";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const SIZE_OPTIONS: { value: IframeSize; label: string; icon: React.ReactNode }[] = [
+  { value: "full", label: "全屏", icon: <Monitor size={14} /> },
+  { value: "4:3", label: "4:3", icon: <Monitor size={14} /> },
+  { value: "9:16", label: "9:16", icon: <Smartphone size={14} /> },
+];
+
+const SIZE_DEFAULTS: Record<string, { w: number; h: number }> = {
+  "9:16": { w: 375, h: 667 },
+  "4:3": { w: 640, h: 480 },
+};
 
 // ---------- Link Interceptor ----------
 export function IframeLinkInterceptor() {
@@ -66,12 +78,24 @@ const BALL_SIZE = 40;
 const MENU_WIDTH = 260;
 
 export function IframeFloatingBall() {
-  const { tabs, activeId, setActive, remove, ballVisible, bookmarks, loadBookmarks, addBookmark, removeBookmark, add } = useIframeTabs();
+  const {
+    tabs,
+    activeId,
+    setActive,
+    remove,
+    ballVisible,
+    bookmarks,
+    loadBookmarks,
+    addBookmark,
+    removeBookmark,
+    add,
+  } = useIframeTabs();
   const register = useCommandPalette((s) => s.register);
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [size, setSize] = useState<IframeSize>("full");
   const [saving, setSaving] = useState(false);
   const ballRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -118,13 +142,14 @@ export function IframeFloatingBall() {
   const handleAddBookmark = async () => {
     if (!title.trim() || !url.trim()) return;
     setSaving(true);
-    const bookmark = await addBookmark(title.trim(), url.trim());
+    const bookmark = await addBookmark(title.trim(), url.trim(), size);
     setSaving(false);
     if (bookmark) {
-      const tabId = add(bookmark.url, bookmark.title);
+      const tabId = add(bookmark.url, bookmark.title, bookmark.size);
       setActive(tabId);
       setTitle("");
       setUrl("");
+      setSize("full");
       setDialogOpen(false);
       setOpen(false);
     }
@@ -153,7 +178,12 @@ export function IframeFloatingBall() {
         <div
           ref={menuRef}
           className="fixed z-[99999] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-2xl overflow-hidden"
-          style={{ left: menuPos.x, top: menuPos.y, width: MENU_WIDTH, maxHeight: "calc(100vh - 80px)" }}
+          style={{
+            left: menuPos.x,
+            top: menuPos.y,
+            width: MENU_WIDTH,
+            maxHeight: "calc(100vh - 80px)",
+          }}
         >
           <div className="p-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 140px)" }}>
             <TabItem
@@ -190,10 +220,10 @@ export function IframeFloatingBall() {
                   <TabItem
                     key={bm.id}
                     icon={<Bookmark size={14} />}
-                    label={bm.title}
+                    label={`${bm.title}${bm.size !== "full" ? ` (${bm.size})` : ""}`}
                     active={false}
                     onClick={() => {
-                      const tabId = add(bm.url, bm.title);
+                      const tabId = add(bm.url, bm.title, bm.size);
                       setActive(tabId);
                       setOpen(false);
                     }}
@@ -239,6 +269,25 @@ export function IframeFloatingBall() {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>尺寸</Label>
+              <div className="flex gap-2">
+                {SIZE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSize(opt.value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm border transition-colors ${
+                      size === opt.value
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300"
+                        : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    {opt.icon}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -309,19 +358,44 @@ function TabItem({
 
 // ---------- Iframe Overlay ----------
 export function IframeOverlay() {
-  const { tabs, activeId } = useIframeTabs();
+  const { tabs, activeId, setActive } = useIframeTabs();
   const activeTab = tabs.find((t) => t.id === activeId) ?? null;
 
   if (!activeTab) return null;
 
+  const size = activeTab.size || "full";
+
+  // Full screen mode
+  if (size === "full") {
+    return (
+      <div className="fixed inset-0 z-[99990] bg-white dark:bg-zinc-900">
+        <iframe
+          src={activeTab.url}
+          className="w-full h-full border-none"
+          title={activeTab.title}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+        />
+      </div>
+    );
+  }
+
+  // Floating panel mode
+  const defaults = SIZE_DEFAULTS[size] || SIZE_DEFAULTS["4:3"]!;
+
   return (
-    <div className="fixed inset-0 z-[99990] bg-white dark:bg-zinc-900" style={{ paddingTop: 0 }}>
+    <FloatingPanel
+      id={`iframe-overlay:${activeTab.id}`}
+      title={activeTab.title}
+      defaultWidth={defaults.w}
+      defaultHeight={defaults.h}
+      onClose={() => setActive(null)}
+    >
       <iframe
         src={activeTab.url}
         className="w-full h-full border-none"
         title={activeTab.title}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
       />
-    </div>
+    </FloatingPanel>
   );
 }

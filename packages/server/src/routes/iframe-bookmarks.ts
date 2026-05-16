@@ -9,12 +9,12 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 router.post('/', (req: Request, res: Response) => {
-  const { title, url } = req.body;
+  const { title, url, size } = req.body;
   if (!title || !url) {
     res.status(400).json({ error: 'title and url are required' });
     return;
   }
-  res.status(201).json(store.addBookmark({ title, url }));
+  res.status(201).json(store.addBookmark({ title, url, size }));
 });
 
 router.delete('/:id', (req: Request<{ id: string }>, res: Response) => {
