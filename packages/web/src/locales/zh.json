@@ -676,7 +676,10 @@
     "newFolderName": "输入文件夹名",
     "fileTooLargeTitle": "文件过大",
     "fileTooLargeDesc": "文件 \"{name}\" 大小为 {size}，可能导致编辑器卡顿。是否继续打开？",
-    "openAnyway": "仍然打开"
+    "openAnyway": "仍然打开",
+    "allFiles": "所有文件",
+    "recentlyAdded": "最近添加",
+    "recentlyOpened": "最近打开"
   },
   "terminal": {
     "newTerminal": "新建终端",

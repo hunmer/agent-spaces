@@ -674,7 +674,10 @@
     "newFolderName": "Enter folder name",
     "fileTooLargeTitle": "Large File",
     "fileTooLargeDesc": "File \"{name}\" is {size}, which may cause the editor to lag. Open anyway?",
-    "openAnyway": "Open Anyway"
+    "openAnyway": "Open Anyway",
+    "allFiles": "All Files",
+    "recentlyAdded": "Recently Added",
+    "recentlyOpened": "Recently Opened"
   },
   "terminal": {
     "newTerminal": "New Terminal",
