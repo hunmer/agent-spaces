@@ -201,7 +201,7 @@ export const FileTreeFolder = ({
                   className={cn(
                     "flex w-full items-center gap-1 rounded px-2 py-1 pr-16 text-left transition-colors hover:bg-muted/50",
                     isSelected && "bg-muted",
-                    ignored && "opacity-50",
+                    isIgnored && "opacity-50",
                   )}
                 >
                   <ChevronRightIcon
@@ -317,6 +317,8 @@ export const FileTreeFile = ({
   ...props
 }: FileTreeFileProps) => {
   const { selectedPath, onFileSelect, workspaceId, onDelete, onRename, onMove, onCopyItem, fileSizeMap } = useContext(FileTreeContext)
+  const parentFolder = useContext(FileTreeFolderContext)
+  const isIgnored = ignored || parentFolder.ignored
   const isSelected = selectedPath === path
   const t = useTranslations('editor')
   const tc = useTranslations('common')
@@ -357,7 +359,7 @@ export const FileTreeFile = ({
             className={cn(
               "group/file flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
               isSelected && "bg-muted",
-              ignored && "opacity-50",
+              isIgnored && "opacity-50",
               className,
             )}
             onClick={handleSelect}

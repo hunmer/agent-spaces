@@ -149,6 +149,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -160,26 +161,72 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     }
   }, [activeFilePath, saveFile, workspaceId]);
 
+  const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
+    editor.updateOptions({ readOnly, domReadOnly: readOnly });
+
+    const textarea = editor.getDomNode()?.querySelector('textarea');
+    if (textarea) {
+      textarea.inputMode = readOnly ? 'none' : 'text';
+      textarea.tabIndex = readOnly ? -1 : 0;
+      textarea.toggleAttribute('readonly', readOnly);
+      if (readOnly) {
+        textarea.blur();
+      }
+    }
+  }, []);
+
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, _monaco: typeof Monaco) => {
     editorRef.current = editor;
     setupLanguageDefaults();
+    syncReadOnly(editor, isReadOnly);
 
     editor.addCommand(
       2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
       () => handleSave()
     );
-  }, [handleSave]);
+  }, [handleSave, isReadOnly, syncReadOnly]);
 
   // Sync readOnly state with Monaco editor
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.updateOptions({ readOnly: isReadOnly, domReadOnly: isReadOnly });
-    // Mobile: prevent keyboard popup in read-only mode
-    const textarea = editor.getDomNode()?.querySelector('textarea');
-    if (textarea) {
-      textarea.inputMode = isReadOnly ? 'none' : 'text';
-    }
+    syncReadOnly(editor, isReadOnly);
+  }, [isReadOnly, syncReadOnly]);
+
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container || !isReadOnly) return;
+
+    const preventReadOnlyFocus = (event: Event) => {
+      if (event.type === 'pointerdown' && 'pointerType' in event && event.pointerType === 'mouse') {
+        return;
+      }
+      const editor = editorRef.current;
+      const target = event.target as Node | null;
+      if (!editor || !target) return;
+      if (!editor.getDomNode()?.contains(target)) return;
+
+      event.preventDefault();
+      editor.getDomNode()?.querySelector('textarea')?.blur();
+    };
+
+    const blurReadOnlyInput = (event: FocusEvent) => {
+      const editor = editorRef.current;
+      const target = event.target as HTMLElement | null;
+      if (!editor || !target) return;
+      if (!editor.getDomNode()?.contains(target)) return;
+      if (target.tagName === 'TEXTAREA') {
+        target.blur();
+      }
+    };
+
+    container.addEventListener('pointerdown', preventReadOnlyFocus, { capture: true });
+    container.addEventListener('focusin', blurReadOnlyInput, { capture: true });
+
+    return () => {
+      container.removeEventListener('pointerdown', preventReadOnlyFocus, { capture: true });
+      container.removeEventListener('focusin', blurReadOnlyInput, { capture: true });
+    };
   }, [isReadOnly]);
 
   // Register model + preload directory when active file changes
@@ -199,9 +246,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
     editor.revealLineInCenter(line);
     editor.setPosition({ lineNumber: line, column: column || 1 });
-    editor.focus();
+    if (!isReadOnly) {
+      editor.focus();
+    }
     clearPendingJump();
-  }, [pendingJump, clearPendingJump]);
+  }, [pendingJump, clearPendingJump, isReadOnly]);
 
   const modelPath = activeFilePath
     ? `/${workspaceId}/${activeFilePath}`
@@ -211,7 +260,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
       <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} />
-      <div className="flex-1 min-h-0">
+      <div ref={editorContainerRef} className="flex-1 min-h-0">
         {activeFile ? (
           <MonacoEditor
             height="100%"
@@ -227,6 +276,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               padding: { top: 8 },
               renderLineHighlight: "gutter",
               readOnly: isReadOnly,
+              domReadOnly: isReadOnly,
             }}
             theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
           />
