@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Network, Settings2 } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2 } from "lucide-react";
 
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
@@ -11,9 +11,7 @@ import { ChannelList } from "@/components/chat/channel-list";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { IssueList } from "@/components/issue/issue-list";
 import { IssueDetail } from "@/components/issue/issue-detail";
-import { GitChangesPanel } from "@/components/git/git-changes-panel";
 import { GitCommitsPanel } from "@/components/git/git-commits-panel";
-import { GitGraphPanel } from "@/components/git/git-graph-panel";
 import { ProjectSettingsPanel } from "@/components/settings/project-settings-panel";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
@@ -38,7 +36,6 @@ const tabIcons: Record<string, React.ReactNode> = {
   "terminal": <TerminalSquare size={16} />,
   "git-changes": <FileDiff size={16} />,
   "git-commits": <GitCommitHorizontal size={16} />,
-  "git-graph": <Network size={16} />,
   "project-settings": <Settings2 size={16} />,
 };
 
@@ -65,7 +62,6 @@ const defaultJson: IJsonModel = {
         { type: "tab", name: "Terminal", component: "terminal" },
         { type: "tab", name: "Changes", component: "git-changes" },
         { type: "tab", name: "Commits", component: "git-commits" },
-        { type: "tab", name: "Graph", component: "git-graph" },
       ],
     },
   ],
@@ -215,9 +211,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       git.loadDiffs(workspaceId);
     } else if (activePanel === "git-commits") {
       git.loadLog(workspaceId);
-    } else if (activePanel === "git-graph") {
-      git.loadLog(workspaceId);
-      git.loadStatus(workspaceId);
     }
   }, [activePanel, workspaceId, isMobile]);
 
@@ -300,11 +293,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         case "terminal":
           return <TerminalPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
         case "git-changes":
-          return <GitChangesPanel workspaceId={workspaceId} />;
+          return <GitCommitsPanel workspaceId={workspaceId} />;
         case "git-commits":
           return <GitCommitsPanel workspaceId={workspaceId} />;
-        case "git-graph":
-          return <GitGraphPanel workspaceId={workspaceId} />;
         case "project-settings":
           return <ProjectSettingsPanel workspaceId={workspaceId} />;
         default:
@@ -330,12 +321,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       badge = (
         <span className="ml-0.5 text-[10px] font-medium text-blue-500 leading-none">
           ↑{gitStatus.ahead}
-        </span>
-      );
-    } else if (comp === 'git-graph' && gitStatus) {
-      badge = (
-        <span className="ml-0.5 text-[10px] font-medium text-muted-foreground leading-none max-w-[80px] truncate">
-          {gitStatus.branch}
         </span>
       );
     }
@@ -378,9 +363,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         git.loadDiffs(workspaceId);
       } else if (comp === "git-commits") {
         git.loadLog(workspaceId);
-      } else if (comp === "git-graph") {
-        git.loadLog(workspaceId);
-        git.loadStatus(workspaceId);
       }
     },
     [workspaceId],
@@ -418,11 +400,9 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
     case "terminal":
       return <TerminalPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
     case "git-changes":
-      return <GitChangesPanel workspaceId={workspaceId} />;
+      return <GitCommitsPanel workspaceId={workspaceId} />;
     case "git-commits":
       return <GitCommitsPanel workspaceId={workspaceId} />;
-    case "git-graph":
-      return <GitGraphPanel workspaceId={workspaceId} />;
     case "project-settings":
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
     default:

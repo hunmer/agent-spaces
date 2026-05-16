@@ -19,7 +19,6 @@ const mobileTabItems = [
   // Git
   { id: "git-changes", icon: FileDiff, group: "git" },
   { id: "git-commits", icon: GitCommitHorizontal, group: "git" },
-  { id: "git-graph", icon: Network, group: "git" },
   // 设置
   { id: "project-settings", icon: Settings2, group: "settings" },
 ] as const;

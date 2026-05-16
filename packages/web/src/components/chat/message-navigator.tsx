@@ -9,8 +9,10 @@ interface MessageNavigatorProps {
   messages: Message[];
 }
 
-function getPlainText(html: string, maxLen: number): string {
-  const plain = /<[a-z][\s\S]*>/i.test(html) ? html.replace(/<[^>]*>/g, '') : html;
+function getPreviewText(msg: Message, maxLen: number): string {
+  const textPart = msg.parts?.find(p => p.type === 'text');
+  const raw = textPart ? textPart.text : msg.content;
+  const plain = /<[a-z][\s\S]*>/i.test(raw) ? raw.replace(/<[^>]*>/g, '') : raw;
   return plain.length > maxLen ? plain.slice(0, maxLen) + '...' : plain;
 }
 
@@ -93,7 +95,7 @@ export function MessageNavigator({ messages }: MessageNavigatorProps) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-            {getPlainText(messages[activeIndex].content, 150)}
+            {getPreviewText(messages[activeIndex], 150)}
           </p>
         </div>
       )}
