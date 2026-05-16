@@ -12,6 +12,9 @@ import { useTranslations } from 'next-intl';
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useWorkspaceStore } from "@/stores/workspace";
 
 function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
@@ -51,10 +54,29 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const workspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId));
   const boundDir = workspace?.boundDirs?.[0] || '';
   const t = useTranslations('editor');
+  const tc = useTranslations('common');
   const [selectedPath, setSelectedPath] = useState<string>();
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(workspaceId));
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importTargetPath, setImportTargetPath] = useState('');
+  const [nameDialog, setNameDialog] = useState<{ open: boolean; mode: 'file' | 'folder'; targetDir: string; value: string }>({ open: false, mode: 'file', targetDir: '', value: '' });
+
+  const handleNameConfirm = useCallback(() => {
+    const { mode, targetDir, value } = nameDialog;
+    if (!value.trim()) return;
+    const name = value.trim();
+    const relPath = targetDir ? targetDir + '/' + name : name;
+    const fullPath = mode === 'folder' ? relPath + '/.gitkeep' : relPath;
+    fetch(`/api/workspaces/${workspaceId}/files/content`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: fullPath, content: '' }),
+    }).then(() => { loadTree(workspaceId); setNameDialog((p) => ({ ...p, open: false })); });
+  }, [nameDialog, workspaceId, loadTree]);
+
+  const openNameDialog = useCallback((mode: 'file' | 'folder', targetDir: string) => {
+    setNameDialog({ open: true, mode, targetDir, value: '' });
+  }, []);
 
   useEffect(() => {
     loadTree(workspaceId);
@@ -122,27 +144,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                   <Copy className="size-4" />
                   {t('copyPath')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  const name = prompt(t('newFileName'));
-                  if (!name) return;
-                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: name, content: '' }),
-                  }).then(() => loadTree(workspaceId));
-                }}>
+                <DropdownMenuItem onClick={() => openNameDialog('file', '')}>
                   <FilePlus className="size-4" />
                   {t('newFile')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  const name = prompt(t('newFolderName'));
-                  if (!name) return;
-                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: name + '/.gitkeep', content: '' }),
-                  }).then(() => loadTree(workspaceId));
-                }}>
+                <DropdownMenuItem onClick={() => openNameDialog('folder', '')}>
                   <FolderPlus className="size-4" />
                   {t('newFolder')}
                 </DropdownMenuItem>
@@ -175,24 +181,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 onDelete={handleDelete}
                 onImport={(targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); }}
                 onCopyPath={(path) => { navigator.clipboard.writeText(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
-                onCreateFile={(targetDir) => {
-                  const name = prompt(t('newFileName'));
-                  if (!name) return;
-                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: targetDir ? targetDir + '/' + name : name, content: '' }),
-                  }).then(() => loadTree(workspaceId));
-                }}
-                onCreateFolder={(targetDir) => {
-                  const name = prompt(t('newFolderName'));
-                  if (!name) return;
-                  fetch(`/api/workspaces/${workspaceId}/files/content`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: targetDir ? targetDir + '/' + name + '/.gitkeep' : name + '/.gitkeep', content: '' }),
-                  }).then(() => loadTree(workspaceId));
-                }}
+                onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
+                onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
                 boundDir={boundDir}
               >
                 <FileTreeNodes nodes={tree} />
@@ -212,6 +202,24 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
         targetPath={importTargetPath}
         onImported={() => loadTree(workspaceId)}
       />
+      <Dialog open={nameDialog.open} onOpenChange={(v) => setNameDialog((p) => ({ ...p, open: v }))}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>{nameDialog.mode === 'file' ? t('newFile') : t('newFolder')}</DialogTitle>
+          </DialogHeader>
+          <Input
+            autoFocus
+            placeholder={nameDialog.mode === 'file' ? t('newFileName') : t('newFolderName')}
+            value={nameDialog.value}
+            onChange={(e) => setNameDialog((p) => ({ ...p, value: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && handleNameConfirm()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNameDialog((p) => ({ ...p, open: false }))}>{tc('cancel')}</Button>
+            <Button onClick={handleNameConfirm} disabled={!nameDialog.value.trim()}>{tc('create')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

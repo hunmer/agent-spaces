@@ -430,7 +430,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                 <Tabs
                   value={notificationSettings.provider}
                   onValueChange={(provider) => patchNotifications({ provider: provider as NotificationProvider })}
-                >
+                  className="flex flex-col">
                   <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="lark">{t('notifications.lark')}</TabsTrigger>
                     <TabsTrigger value="wechat">{t('notifications.wechat')}</TabsTrigger>
