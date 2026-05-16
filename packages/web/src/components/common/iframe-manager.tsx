@@ -9,7 +9,8 @@ export function IframeLinkInterceptor() {
   const add = useIframeTabs((s) => s.add);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    // Intercept <a target="_blank"> cross-origin clicks
+    const clickHandler = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest("a");
       if (!anchor || !anchor.href || anchor.target !== "_blank") return;
 
@@ -25,8 +26,26 @@ export function IframeLinkInterceptor() {
       add(anchor.href, anchor.textContent || undefined);
     };
 
-    document.addEventListener("click", handler, true);
-    return () => document.removeEventListener("click", handler, true);
+    // Intercept window.open() cross-origin calls
+    const originalOpen = window.open;
+    window.open = function (url?: string | URL, target?: string, features?: string): Window | null {
+      if (url) {
+        try {
+          const resolved = typeof url === "string" ? new URL(url, window.location.href) : url;
+          if (resolved.origin !== window.location.origin) {
+            add(resolved.href);
+            return null;
+          }
+        } catch {}
+      }
+      return originalOpen.call(this, url, target, features);
+    };
+
+    document.addEventListener("click", clickHandler, true);
+    return () => {
+      document.removeEventListener("click", clickHandler, true);
+      window.open = originalOpen;
+    };
   }, [add]);
 
   return null;

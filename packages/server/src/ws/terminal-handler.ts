@@ -12,7 +12,7 @@ export function handleTerminalEvent(
   switch (event) {
     case 'terminal.create': {
       const payload = data as TerminalCreatePayload;
-      const cwd = payload.cwd || process.env.HOME || '/tmp';
+      const cwd = payload.cwd || process.env.HOME || process.env.USERPROFILE || (process.platform === 'win32' ? process.env.SYSTEMROOT || 'C:\\' : '/tmp');
       const sessionId = ptyService.createSession(
         workspaceId,
         cwd,

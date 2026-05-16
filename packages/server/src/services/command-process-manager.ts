@@ -1,4 +1,6 @@
 // packages/server/src/services/command-process-manager.ts
+import { statSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { CommandProcess } from '@agent-spaces/shared';
 import * as ptyService from './pty.js';
 import * as commandService from './command.js';
@@ -20,7 +22,13 @@ export function runCommand(workspaceId: string, commandId: string): string {
   if (!command) throw new Error('Command not found');
 
   const workspace = getWorkspace(workspaceId);
-  const cwd = command.cwd || workspace?.boundDirs[0] || process.env.HOME || '/tmp';
+  const rawCwd = command.cwd || workspace?.boundDirs[0] || process.env.HOME || process.env.USERPROFILE || (process.platform === 'win32' ? process.env.SYSTEMROOT || 'C:\\' : '/tmp');
+  let cwd: string;
+  try {
+    cwd = statSync(rawCwd).isFile() ? dirname(rawCwd) : rawCwd;
+  } catch {
+    cwd = rawCwd;
+  }
   const shell = command.shell;
   const env = command.env;
   console.log(`[command] runCommand: workspace=${workspaceId} command=${commandId} cwd=${cwd} shell=${shell} cmd=${command.command}`);
