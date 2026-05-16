@@ -30,6 +30,7 @@ interface IframeTabsState {
   toggleBall: () => void;
   loadBookmarks: () => Promise<void>;
   addBookmark: (title: string, url: string, size: IframeSize) => Promise<IframeBookmark | null>;
+  updateBookmark: (id: string, data: { title?: string; url?: string; size?: IframeSize }) => Promise<IframeBookmark | null>;
   removeBookmark: (id: string) => Promise<void>;
 }
 
@@ -87,6 +88,22 @@ export const useIframeTabs = create<IframeTabsState>((set, get) => ({
       const bookmark: IframeBookmark = await res.json();
       set((s) => ({ bookmarks: [...s.bookmarks, bookmark] }));
       return bookmark;
+    } catch {
+      return null;
+    }
+  },
+
+  updateBookmark: async (id, data) => {
+    try {
+      const res = await fetchWithAuth(`/api/iframe-bookmarks/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) return null;
+      const updated: IframeBookmark = await res.json();
+      set((s) => ({ bookmarks: s.bookmarks.map((b) => (b.id === id ? updated : b)) }));
+      return updated;
     } catch {
       return null;
     }

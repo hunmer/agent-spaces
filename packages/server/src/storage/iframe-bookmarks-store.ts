@@ -35,6 +35,17 @@ export function addBookmark(data: { title: string; url: string; size?: IframeSiz
   return bookmark;
 }
 
+export function updateBookmark(id: string, data: { title?: string; url?: string; size?: IframeSize }): IframeBookmark | null {
+  const bookmarks = listBookmarks();
+  const idx = bookmarks.findIndex((b) => b.id === id);
+  if (idx === -1) return null;
+  if (data.title !== undefined) bookmarks[idx]!.title = data.title.trim();
+  if (data.url !== undefined) bookmarks[idx]!.url = data.url.trim();
+  if (data.size !== undefined) bookmarks[idx]!.size = data.size;
+  writeJsonFile(filePath(), bookmarks);
+  return bookmarks[idx]!;
+}
+
 export function removeBookmark(id: string): boolean {
   const bookmarks = listBookmarks();
   const next = bookmarks.filter((b) => b.id !== id);

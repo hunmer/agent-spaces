@@ -17,6 +17,16 @@ router.post('/', (req: Request, res: Response) => {
   res.status(201).json(store.addBookmark({ title, url, size }));
 });
 
+router.put('/:id', (req: Request<{ id: string }>, res: Response) => {
+  const { title, url, size } = req.body;
+  const updated = store.updateBookmark(req.params.id, { title, url, size });
+  if (!updated) {
+    res.status(404).json({ error: 'bookmark not found' });
+    return;
+  }
+  res.json(updated);
+});
+
 router.delete('/:id', (req: Request<{ id: string }>, res: Response) => {
   const ok = store.removeBookmark(req.params.id);
   if (!ok) {

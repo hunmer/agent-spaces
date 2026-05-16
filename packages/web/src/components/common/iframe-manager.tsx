@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIframeTabs, type IframeSize } from "@/stores/iframe-tabs";
 import { useCommandPalette } from "@/stores/command-palette";
-import { Globe, X, Home, Plus, Trash2, Bookmark, Monitor, Smartphone } from "lucide-react";
+import { Globe, X, Home, Plus, Trash2, Bookmark, Monitor, Smartphone, Pencil } from "lucide-react";
 import { FloatingBall } from "./floating-ball";
 import { FloatingPanel } from "./floating-panel";
 import {
@@ -87,12 +87,14 @@ export function IframeFloatingBall() {
     bookmarks,
     loadBookmarks,
     addBookmark,
+    updateBookmark,
     removeBookmark,
     add,
   } = useIframeTabs();
   const register = useCommandPalette((s) => s.register);
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [size, setSize] = useState<IframeSize>("full");
@@ -142,6 +144,20 @@ export function IframeFloatingBall() {
   const handleAddBookmark = async () => {
     if (!title.trim() || !url.trim()) return;
     setSaving(true);
+
+    if (editingId) {
+      const updated = await updateBookmark(editingId, { title: title.trim(), url: url.trim(), size });
+      setSaving(false);
+      if (updated) {
+        setEditingId(null);
+        setTitle("");
+        setUrl("");
+        setSize("full");
+        setDialogOpen(false);
+      }
+      return;
+    }
+
     const bookmark = await addBookmark(title.trim(), url.trim(), size);
     setSaving(false);
     if (bookmark) {
@@ -153,6 +169,22 @@ export function IframeFloatingBall() {
       setDialogOpen(false);
       setOpen(false);
     }
+  };
+
+  const openEditDialog = (bm: { id: string; title: string; url: string; size: IframeSize }) => {
+    setEditingId(bm.id);
+    setTitle(bm.title);
+    setUrl(bm.url);
+    setSize(bm.size);
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingId(null);
+    setTitle("");
+    setUrl("");
+    setSize("full");
   };
 
   if (!ballVisible) return null;
@@ -228,6 +260,7 @@ export function IframeFloatingBall() {
                       setOpen(false);
                     }}
                     onDelete={() => removeBookmark(bm.id)}
+                    onEdit={() => openEditDialog(bm)}
                   />
                 ))}
               </>
@@ -246,10 +279,10 @@ export function IframeFloatingBall() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) closeDialog(); else setDialogOpen(true); }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>添加 Iframe</DialogTitle>
+            <DialogTitle>{editingId ? "编辑 Iframe" : "添加 Iframe"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
@@ -291,11 +324,11 @@ export function IframeFloatingBall() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={closeDialog}>
               取消
             </Button>
             <Button onClick={handleAddBookmark} disabled={!title.trim() || !url.trim() || saving}>
-              {saving ? "添加中..." : "添加"}
+              {saving ? (editingId ? "保存中..." : "添加中...") : editingId ? "保存" : "添加"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -310,6 +343,7 @@ function TabItem({
   active,
   onClick,
   onClose,
+  onEdit,
   onDelete,
 }: {
   icon: React.ReactNode;
@@ -317,6 +351,7 @@ function TabItem({
   active: boolean;
   onClick: () => void;
   onClose?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 }) {
   return (
@@ -330,6 +365,17 @@ function TabItem({
     >
       <span className="shrink-0 opacity-60">{icon}</span>
       <span className="truncate flex-1">{label}</span>
+      {onEdit && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          className="shrink-0 opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded p-0.5 transition-opacity"
+        >
+          <Pencil size={12} />
+        </button>
+      )}
       {onClose && (
         <button
           onClick={(e) => {
