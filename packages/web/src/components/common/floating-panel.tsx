@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { X, Minimize2 } from "lucide-react";
 
 interface FloatingPanelProps {
   id: string;
@@ -11,6 +11,7 @@ interface FloatingPanelProps {
   minWidth?: number;
   minHeight?: number;
   onClose: () => void;
+  onMinimize?: () => void;
   children: ReactNode;
   className?: string;
   zIndex?: number;
@@ -54,11 +55,14 @@ export function FloatingPanel({
   minWidth = DEFAULT_MIN_W,
   minHeight = DEFAULT_MIN_H,
   onClose,
+  onMinimize,
   children,
   className,
   zIndex = 99991,
 }: FloatingPanelProps) {
   const [mounted, setMounted] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const dragMoved = useRef(false);
   const rectRef = useRef<Rect>({
     x: Math.max(20, (typeof window !== "undefined" ? window.innerWidth : 1200) - defaultWidth) / 2,
     y: Math.max(40, (typeof window !== "undefined" ? window.innerHeight : 800) - defaultHeight) / 2,
@@ -106,6 +110,10 @@ export function FloatingPanel({
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (dragStart.current) {
+        const dx = e.clientX - dragStart.current.mx;
+        const dy = e.clientY - dragStart.current.my;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved.current = true;
+
         const { mx, my, r } = dragStart.current;
         const next: Rect = {
           ...r,
@@ -146,7 +154,14 @@ export function FloatingPanel({
     };
 
     const onUp = () => {
-      if (dragStart.current || resizeStart.current) {
+      if (dragStart.current) {
+        if (!dragMoved.current) {
+          setCollapsed((c) => !c);
+        } else {
+          saveRect(id, rectRef.current);
+        }
+      }
+      if (resizeStart.current) {
         saveRect(id, rectRef.current);
       }
       dragStart.current = null;
@@ -164,6 +179,7 @@ export function FloatingPanel({
   const onDragDown = useCallback(
     (e: React.PointerEvent) => {
       e.preventDefault();
+      dragMoved.current = false;
       dragStart.current = { mx: e.clientX, my: e.clientY, r: { ...rectRef.current } };
     },
     [],
@@ -180,12 +196,11 @@ export function FloatingPanel({
 
   if (!mounted) return null;
 
-  const cursors: Record<Corner, string> = { nw: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", se: "nwse-resize" };
   const positions: Record<Corner, React.CSSProperties> = {
-    nw: { top: -4, left: -4, cursor: cursors.nw },
-    ne: { top: -4, right: -4, cursor: cursors.ne },
-    sw: { bottom: -4, left: -4, cursor: cursors.sw },
-    se: { bottom: -4, right: -4, cursor: cursors.se },
+    nw: { top: -4, left: -4, cursor: "nwse-resize" },
+    ne: { top: -4, right: -4, cursor: "nesw-resize" },
+    sw: { bottom: -4, left: -4, cursor: "nesw-resize" },
+    se: { bottom: -4, right: -4, cursor: "nwse-resize" },
   };
 
   return (
@@ -193,7 +208,7 @@ export function FloatingPanel({
       className={`fixed flex flex-col bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-2xl overflow-hidden ${
         className ?? ""
       }`}
-      style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex }}
+      style={{ left: rect.x, top: rect.y, width: rect.w, height: collapsed ? undefined : rect.h, zIndex }}
     >
       {/* Title bar */}
       <div
@@ -202,33 +217,46 @@ export function FloatingPanel({
         style={{ touchAction: "none" }}
       >
         <span className="text-sm font-medium truncate text-gray-700 dark:text-gray-300">{title}</span>
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={onClose}
-          className="shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400"
-        >
-          <X size={14} />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {onMinimize && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onMinimize}
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400"
+              title="最小化为悬浮球"
+            >
+              <Minimize2 size={13} />
+            </button>
+          )}
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onClose}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">{children}</div>
+      {!collapsed && <div className="flex-1 overflow-hidden">{children}</div>}
 
       {/* Corner resize handles */}
-      {(["nw", "ne", "sw", "se"] as Corner[]).map((c) => (
-        <div
-          key={c}
-          onPointerDown={onResizeDown(c)}
-          className="absolute"
-          style={{
-            ...positions[c],
-            width: 14,
-            height: 14,
-            touchAction: "none",
-            zIndex: 10,
-          }}
-        />
-      ))}
+      {!collapsed &&
+        (["nw", "ne", "sw", "se"] as Corner[]).map((c) => (
+          <div
+            key={c}
+            onPointerDown={onResizeDown(c)}
+            className="absolute"
+            style={{
+              ...positions[c],
+              width: 14,
+              height: 14,
+              touchAction: "none",
+              zIndex: 10,
+            }}
+          />
+        ))}
     </div>
   );
 }

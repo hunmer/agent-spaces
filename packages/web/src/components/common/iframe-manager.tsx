@@ -360,10 +360,32 @@ function TabItem({
 export function IframeOverlay() {
   const { tabs, activeId, setActive } = useIframeTabs();
   const activeTab = tabs.find((t) => t.id === activeId) ?? null;
+  const [minimizedId, setMinimizedId] = useState<string | null>(null);
+
+  // When active tab changes, clear minimized state
+  useEffect(() => {
+    if (activeId !== minimizedId) {
+      setMinimizedId(null);
+    }
+  }, [activeId]);
 
   if (!activeTab) return null;
 
   const size = activeTab.size || "full";
+
+  // Minimized: show floating ball, click to restore
+  if (minimizedId === activeTab.id) {
+    return (
+      <FloatingBall
+        lsKey={`iframe-panel-ball:${activeTab.id}`}
+        size={40}
+        onClick={() => setMinimizedId(null)}
+        className="bg-gradient-to-br from-violet-500 to-violet-400 text-white shadow-lg hover:shadow-xl transition-shadow"
+      >
+        <Globe size={18} />
+      </FloatingBall>
+    );
+  }
 
   // Full screen mode
   if (size === "full") {
@@ -389,6 +411,7 @@ export function IframeOverlay() {
       defaultWidth={defaults.w}
       defaultHeight={defaults.h}
       onClose={() => setActive(null)}
+      onMinimize={() => setMinimizedId(activeTab.id)}
     >
       <iframe
         src={activeTab.url}
