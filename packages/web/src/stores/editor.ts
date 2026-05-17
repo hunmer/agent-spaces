@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import type { FileNode, GitDiffResult } from '@agent-spaces/shared';
 
-interface OpenFile {
+export interface OpenFile {
   path: string;
   name: string;
   content: string;
   modified: boolean;
+  pinned?: boolean;
 }
 
 export const COMMIT_DIFF_PREFIX = '__commit_diff__:';
@@ -48,6 +49,11 @@ interface EditorState {
   saveEditorState: (workspaceId: string) => Promise<void>;
   openCommitDiff: (workspaceId: string, hash: string, message: string, diffs: GitDiffResult[]) => void;
   closeCommitDiff: (workspaceId: string, hash: string) => void;
+  togglePin: (workspaceId: string, path: string) => void;
+  reorderFiles: (workspaceId: string, paths: string[]) => void;
+  closeOthers: (workspaceId: string, path: string) => void;
+  closeToLeft: (workspaceId: string, path: string) => void;
+  closeToRight: (workspaceId: string, path: string) => void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -260,5 +266,54 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   closeCommitDiff: (workspaceId, hash) => {
     const path = COMMIT_DIFF_PREFIX + hash;
     get().closeFile(workspaceId, path);
+  },
+
+  togglePin: (workspaceId, path) => {
+    set((s) => {
+      const files = s.openFiles.map((f) =>
+        f.path === path ? { ...f, pinned: !f.pinned } : f
+      );
+      const pinned = files.filter((f) => f.pinned);
+      const unpinned = files.filter((f) => !f.pinned);
+      return { openFiles: [...pinned, ...unpinned] };
+    });
+    debouncedSave(workspaceId);
+  },
+
+  reorderFiles: (workspaceId, paths) => {
+    set((s) => {
+      const fileMap = new Map(s.openFiles.map((f) => [f.path, f]));
+      const reordered = paths.map((p) => fileMap.get(p)!).filter(Boolean);
+      return { openFiles: reordered };
+    });
+    debouncedSave(workspaceId);
+  },
+
+  closeOthers: (workspaceId, path) => {
+    set((s) => {
+      const files = s.openFiles.filter((f) => f.path === path || f.pinned);
+      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path };
+    });
+    debouncedSave(workspaceId);
+  },
+
+  closeToLeft: (workspaceId, path) => {
+    set((s) => {
+      const idx = s.openFiles.findIndex((f) => f.path === path);
+      if (idx <= 0) return s;
+      const files = s.openFiles.filter((f, i) => i >= idx || f.pinned);
+      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path };
+    });
+    debouncedSave(workspaceId);
+  },
+
+  closeToRight: (workspaceId, path) => {
+    set((s) => {
+      const idx = s.openFiles.findIndex((f) => f.path === path);
+      if (idx < 0 || idx >= s.openFiles.length - 1) return s;
+      const files = s.openFiles.filter((f, i) => i <= idx || f.pinned);
+      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path };
+    });
+    debouncedSave(workspaceId);
   },
 }));

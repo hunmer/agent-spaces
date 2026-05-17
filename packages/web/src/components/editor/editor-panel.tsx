@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { FolderPicker } from "@/components/ui/folder-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useMobilePanelStore } from "@/stores/mobile-panel";
 
 function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
   if (!query) return nodes;
@@ -370,7 +371,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       {displayTree.map(node => (
                         <button
                           key={node.path}
-                          onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); }}
+                          onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
                           className={`w-full flex items-center gap-1.5 px-3 py-[3px] text-xs hover:bg-accent/50 transition-colors ${selectedPath === node.path ? 'bg-accent' : ''}`}
                         >
                           <FileIconImg name={node.name} />
@@ -410,6 +411,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       onFileSelect={(path) => {
                         setSelectedPath(path);
                         openFile(workspaceId, path);
+                        useMobilePanelStore.getState().setActivePanel('code-editor');
                       }}
                       workspaceId={workspaceId}
                       onDelete={handleDelete}
@@ -440,7 +442,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 ) : filtered.map(node => (
                   <button
                     key={node.path}
-                    onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); }}
+                    onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
                     className={`w-full flex items-center gap-1.5 px-3 py-[3px] text-xs hover:bg-accent/50 transition-colors ${selectedPath === node.path ? 'bg-accent' : ''}`}
                   >
                     <FileIconImg name={node.name} />
