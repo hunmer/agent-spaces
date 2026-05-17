@@ -25,23 +25,31 @@ mkdirSync(dirname(serverDistWeb), { recursive: true });
 cpSync(webOut, serverDistWeb, { recursive: true });
 
 const tauriWeb = resolve(root, 'packages/tauri/web');
-if (existsSync(tauriWeb)) {
-  rmSync(tauriWeb, { recursive: true, force: true });
+const tauriProject = resolve(root, 'packages/tauri');
+const copiedTargets = ['packages/server/web', 'packages/server/dist/web'];
+if (existsSync(tauriProject)) {
+  if (existsSync(tauriWeb)) {
+    rmSync(tauriWeb, { recursive: true, force: true });
+  }
+  cpSync(webOut, tauriWeb, { recursive: true });
+  copiedTargets.push('packages/tauri/web');
 }
-cpSync(webOut, tauriWeb, { recursive: true });
 
 const flutterWeb = resolve(root, 'packages/flutter/assets/web');
-if (existsSync(flutterWeb)) {
-  rmSync(flutterWeb, { recursive: true, force: true });
-}
-cpSync(webOut, flutterWeb, { recursive: true });
-
 const flutterPubspec = resolve(root, 'packages/flutter/pubspec.yaml');
-const webAssetDirs = listAssetDirs(flutterWeb, 'assets/web');
-updateFlutterAssets(flutterPubspec, webAssetDirs);
+if (existsSync(flutterPubspec)) {
+  if (existsSync(flutterWeb)) {
+    rmSync(flutterWeb, { recursive: true, force: true });
+  }
+  cpSync(webOut, flutterWeb, { recursive: true });
+  copiedTargets.push('packages/flutter/assets/web');
 
-console.log('[copy-web] packages/web/out -> packages/server/web + packages/server/dist/web + packages/tauri/web + packages/flutter/assets/web');
-console.log(`[copy-web] updated packages/flutter/pubspec.yaml with ${webAssetDirs.length} stable web asset directories`);
+  const webAssetDirs = listAssetDirs(flutterWeb, 'assets/web');
+  updateFlutterAssets(flutterPubspec, webAssetDirs);
+  console.log(`[copy-web] updated packages/flutter/pubspec.yaml with ${webAssetDirs.length} stable web asset directories`);
+}
+
+console.log(`[copy-web] packages/web/out -> ${copiedTargets.join(' + ')}`);
 
 function listAssetDirs(absDir, assetPath) {
   const dirs = shouldIncludeAssetDir(assetPath) ? [`${assetPath}/`] : [];

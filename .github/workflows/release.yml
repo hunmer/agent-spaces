@@ -144,11 +144,22 @@ jobs:
         working-directory: packages/flutter
         run: flutter build windows --release
 
+      - name: Package Windows
+        shell: pwsh
+        run: |
+          $releaseDir = "packages/flutter/build/windows/x64/runner/Release"
+          $zipPath = "packages/flutter/AgentSpaces-windows.zip"
+          if (!(Test-Path $releaseDir)) {
+            Write-Error "Could not find Windows release directory: $releaseDir"
+            exit 1
+          }
+          Compress-Archive -Path "$releaseDir/*" -DestinationPath $zipPath -Force
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: packages/flutter/build/windows/x64/runner/Release/*
+          path: packages/flutter/AgentSpaces-windows.zip
 
   build-android:
     needs: build-web-assets
@@ -222,6 +233,6 @@ jobs:
           files: |
             artifacts/macos/**/*.app
             artifacts/ios/*.ipa
-            artifacts/windows/**/*.exe
+            artifacts/windows/*.zip
             artifacts/android/**/*.apk
             artifacts/android/**/*.aab
