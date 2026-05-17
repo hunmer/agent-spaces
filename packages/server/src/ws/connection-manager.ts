@@ -38,6 +38,18 @@ export function broadcastToWorkspace(workspaceId: string, event: string, data: u
   publishWorkspaceEvent(workspaceId, event, data);
 }
 
+export function broadcastToAll(event: string, data: unknown) {
+  if (connections.size === 0) return;
+  const payload = JSON.stringify({
+    event,
+    timestamp: new Date().toISOString(),
+    data,
+  });
+  for (const [ws] of connections) {
+    if (ws.readyState === 1) ws.send(payload);
+  }
+}
+
 export function getConnectionCount() {
   return connections.size;
 }

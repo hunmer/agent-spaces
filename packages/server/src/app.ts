@@ -32,6 +32,7 @@ import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-rec
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
+import { broadcastToAll } from './ws/connection-manager.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
 import { startPersistedNotificationServices } from './services/notification-hub/index.js';
@@ -50,6 +51,18 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: '50mb' }));
 app.use('/api/agent-sse', agentSseRouter);
+
+// Inspector track endpoint (no auth - called by dom-inspector-hook from external apps)
+app.post('/api/inspector/track', (req, res) => {
+  const { path, line, column } = req.body as { path?: string; line?: number; column?: number };
+  if (!path || line == null) {
+    res.status(400).json({ error: 'path and line are required' });
+    return;
+  }
+  broadcastToAll('inspector.jump', { path, line, column: column ?? 1 });
+  res.json({ ok: true });
+});
+
 app.use('/api', authMiddleware);
 
 // Serve static files from public/

@@ -53,7 +53,9 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         child: Row(
           children: [
             const Spacer(),
-            _MoreMenuButton(onNewTab: () => _showNewTabDialog(context, notifier)),
+            _MoreMenuButton(
+              onNewTab: () => _showNewTabDialog(context, notifier),
+            ),
           ],
         ),
       );
@@ -85,8 +87,10 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
                 vertical: 4,
               ),
               onTap: (index) {
-                if (index < tabCount)
+                _hideKeyboard();
+                if (index < tabCount) {
                   notifier.setActiveTab(state.tabs[index].id);
+                }
               },
               tabs: state.tabs.map((tab) {
                 return Tab(
@@ -240,6 +244,11 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         );
       }
     });
+  }
+
+  void _hideKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
   }
 
   void _showNewTabDialog(BuildContext context, BrowserNotifier notifier) {

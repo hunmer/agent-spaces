@@ -313,6 +313,11 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       ws.on('notification.cleared', () => {
         notificationStore.reset();
       }),
+      ws.on('inspector.jump', (data) => {
+        const { path, line, column } = data as { path: string; line: number; column?: number };
+        const normalized = path.startsWith('/') ? path.slice(1) : path;
+        useEditorStore.getState().jumpToPosition(workspaceId, normalized, line, column);
+      }),
     ];
     return () => unsubs.forEach((u) => u());
   }, [issueStore, taskStore, workspaceId, getNativeNotificationConfig, formatOngoingTaskNotificationBody]);

@@ -23,8 +23,12 @@ class NotificationService {
     _log.i('NotificationService initialized');
   }
 
+  Future<bool> isAllowed() async {
+    return await AwesomeNotifications().isNotificationAllowed();
+  }
+
   Future<bool> requestPermission() async {
-    final isAllowed = await AwesomeNotifications().isNotificationAllowed();
+    final isAllowed = await this.isAllowed();
     if (!isAllowed) {
       return await AwesomeNotifications().requestPermissionToSendNotifications();
     }
@@ -38,6 +42,11 @@ class NotificationService {
     bool ongoing = false,
     Map<String, String?>? payload,
   }) async {
+    final isAllowed = await requestPermission();
+    if (!isAllowed) {
+      throw Exception('Notifications are disabled');
+    }
+
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: id ?? DateTime.now().millisecond,

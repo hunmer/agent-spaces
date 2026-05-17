@@ -53,6 +53,15 @@ import { useMobilePanelStore } from "@/stores/mobile-panel";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
 
+const PERMISSIONS_DIALOG_SEEN_KEY = "agentSpacesPermissionsDialogSeen";
+
+function shouldShowPermissionsDialog() {
+  if (typeof window === "undefined") return false;
+  if (localStorage.getItem(PERMISSIONS_DIALOG_SEEN_KEY) === "true") return false;
+  localStorage.setItem(PERMISSIONS_DIALOG_SEEN_KEY, "true");
+  return true;
+}
+
 function buildWorkspaceHref(id: string) {
   return `/workspace/${id}`;
 }
@@ -73,7 +82,11 @@ export function DashboardSidebar() {
   const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace);
   const removeWorkspace = useWorkspaceStore((store) => store.removeWorkspace);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [showInitialPermissionsDialog] = useState(shouldShowPermissionsDialog);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(showInitialPermissionsDialog);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<"appearance" | "permissions" | undefined>(
+    showInitialPermissionsDialog ? "permissions" : undefined,
+  );
   const [modelsDialogOpen, setModelsDialogOpen] = useState(false);
   const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
@@ -264,7 +277,7 @@ export function DashboardSidebar() {
             { title: ts('nav.providers'), link: "/settings/providers", icon: <Server className="size-3.5" /> },
           ]
         : [
-            { title: ts('nav.general'), link: "#", onClick: () => setSettingsDialogOpen(true) },
+            { title: ts('nav.general'), link: "#", onClick: () => { setSettingsInitialTab("appearance"); setSettingsDialogOpen(true); } },
             { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
             { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
             { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
@@ -318,7 +331,12 @@ export function DashboardSidebar() {
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
       <SkillsDialog open={skillsDialogOpen} onOpenChange={setSkillsDialogOpen} />
       <McpsDialog open={mcpsDialogOpen} onOpenChange={setMcpsDialogOpen} />
-      <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
+      <SettingsDialog
+        key={settingsInitialTab ?? "default"}
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        initialTab={settingsInitialTab}
+      />
       <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
       <ProvidersDialog
         open={providersDialogOpen}

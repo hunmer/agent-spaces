@@ -27,7 +27,7 @@ final _jsBridge = JsBridge(
         );
         return true;
       case 'getNotificationPermission':
-        return true;
+        return await _notificationService.isAllowed();
       case 'requestNotificationPermission':
         return await _notificationService.requestPermission();
       default:
