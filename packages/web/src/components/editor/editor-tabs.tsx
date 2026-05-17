@@ -87,7 +87,7 @@ function SortableTab({
           {...listeners}
           className={cn(
             "flex items-center gap-1 px-3 py-1.5 text-xs border-r cursor-grab shrink-0 select-none",
-            isActive ? "bg-background text-foreground" : "text-muted-foreground hover:bg-accent",
+            isActive ? "bg-background text-foreground border-b-2 border-b-primary" : "text-muted-foreground hover:bg-accent",
             isDragging && "opacity-50 shadow-lg z-10",
             file.pinned && "border-l-2 border-l-primary/60",
           )}

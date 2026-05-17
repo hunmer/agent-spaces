@@ -45,6 +45,7 @@ interface EditorState {
   clearPendingJump: () => void;
   setRevealPath: (path: string | null) => void;
   clearRevealPath: () => void;
+  resetEditorState: () => void;
   loadEditorState: (workspaceId: string) => Promise<void>;
   saveEditorState: (workspaceId: string) => Promise<void>;
   openCommitDiff: (workspaceId: string, hash: string, message: string, diffs: GitDiffResult[]) => void;
@@ -58,9 +59,16 @@ interface EditorState {
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+function clearPendingSave() {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+}
+
 function debouncedSave(workspaceId: string) {
-  if (saveTimer) clearTimeout(saveTimer);
+  clearPendingSave();
   saveTimer = setTimeout(() => {
+    saveTimer = null;
     useEditorStore.getState().saveEditorState(workspaceId);
   }, 500);
 }
@@ -199,12 +207,30 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setRevealPath: (path) => set({ revealPath: path }),
   clearRevealPath: () => set({ revealPath: null }),
 
+  resetEditorState: () => {
+    clearPendingSave();
+    set({
+      tree: [],
+      treeLoading: false,
+      loadingDirs: new Set(),
+      openFiles: [],
+      activeFilePath: null,
+      pendingJump: null,
+      revealPath: null,
+      commitDiffs: {},
+    });
+  },
+
   loadEditorState: async (workspaceId) => {
+    get().resetEditorState();
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/files/editor-state`);
       const state = await res.json();
       const { openFilePaths = [], activeFilePath = null, pinnedPaths = [] } = state;
-      if (openFilePaths.length === 0) return;
+      if (openFilePaths.length === 0) {
+        set({ openFiles: [], activeFilePath: null });
+        return;
+      }
 
       const pinnedSet = new Set(pinnedPaths);
       const openFiles: OpenFile[] = [];
@@ -225,9 +251,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         : openFiles.length > 0
           ? openFiles[openFiles.length - 1].path
           : null;
-      set({ openFiles, activeFilePath: active });
+      set({ openFiles, activeFilePath: active, commitDiffs: {} });
     } catch {
-      // no saved state, fine
+      set({ openFiles: [], activeFilePath: null, commitDiffs: {} });
     }
   },
 

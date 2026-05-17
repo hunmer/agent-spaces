@@ -176,6 +176,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       saveFile(workspaceId, activeFilePath);
     }
   }, [activeFilePath, saveFile, workspaceId]);
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
     editor.updateOptions({ readOnly, domReadOnly: readOnly });
@@ -199,9 +201,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
     editor.addCommand(
       2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
-      () => handleSave()
+      () => handleSaveRef.current()
     );
-  }, [handleSave, isReadOnly, syncReadOnly]);
+  }, [isReadOnly, syncReadOnly]);
 
   // Sync readOnly state with Monaco editor
   useEffect(() => {

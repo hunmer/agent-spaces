@@ -28,6 +28,7 @@ import {
 import { useTranslations } from "next-intl";
 import { ServerFormDialog } from "./server-form-dialog";
 import { ServerManagerDialog } from "./server-manager-dialog";
+import { useEditorStore } from "@/stores/editor";
 
 export function ServerSwitcher() {
   const { isMobile } = useSidebar();
@@ -42,6 +43,7 @@ export function ServerSwitcher() {
   const activeServer = servers.find((s) => s.id === activeId) || servers[0];
 
   const switchServer = (server: ServerConfig) => {
+    useEditorStore.getState().resetEditorState();
     setActiveId(server.id);
     saveActiveId(server.id);
     setActiveServerCookie(server.url);
