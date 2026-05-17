@@ -346,22 +346,91 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 function getLanguage(path: string): string {
   const ext = path.split(".").pop()?.toLowerCase();
   const map: Record<string, string> = {
+    // Web
     ts: "typescript",
     tsx: "typescript",
     js: "javascript",
     jsx: "javascript",
     json: "json",
-    md: "markdown",
+    jsonc: "json",
     css: "css",
+    scss: "scss",
+    less: "less",
     html: "html",
+    htm: "html",
+    vue: "html",
+    svg: "xml",
+    xml: "xml",
+    // Data / Config
     yaml: "yaml",
     yml: "yaml",
+    toml: "ini",
+    ini: "ini",
+    env: "ini",
+    // Scripting
     py: "python",
-    rs: "rust",
-    go: "go",
-    sql: "sql",
+    pyw: "python",
+    rb: "ruby",
+    pl: "perl",
+    pm: "perl",
+    php: "php",
+    lua: "lua",
     sh: "shell",
     bash: "shell",
+    zsh: "shell",
+    fish: "shell",
+    ps1: "powershell",
+    psm1: "powershell",
+    bat: "bat",
+    cmd: "bat",
+    // Systems
+    rs: "rust",
+    go: "go",
+    c: "c",
+    h: "c",
+    cpp: "cpp",
+    cc: "cpp",
+    cxx: "cpp",
+    hpp: "cpp",
+    hh: "cpp",
+    hxx: "cpp",
+    cs: "csharp",
+    java: "java",
+    kt: "kotlin",
+    kts: "kotlin",
+    swift: "swift",
+    dart: "dart",
+    scala: "scala",
+    // Functional
+    hs: "haskell",
+    lhs: "haskell",
+    ex: "elixir",
+    exs: "elixir",
+    erl: "erlang",
+    clj: "clojure",
+    cljs: "clojure",
+    // JVM
+    groovy: "groovy",
+    gradle: "groovy",
+    // Markup / Docs
+    md: "markdown",
+    mdx: "markdown",
+    tex: "latex",
+    // Database
+    sql: "sql",
+    graphql: "graphql",
+    gql: "graphql",
+    // Other
+    dockerfile: "dockerfile",
+    r: "r",
+    d: "d",
+    zig: "zig",
   };
+  // Dockerfile / Makefile by filename
+  const name = path.split("/").pop()?.toLowerCase() || "";
+  if (name === "dockerfile" || name.startsWith("dockerfile.")) return "dockerfile";
+  if (name === "makefile" || name === "gnumakefile") return "makefile";
+  if (name === "cmakelists.txt" || name.endsWith(".cmake")) return "cmake";
+  if (name === ".gitignore" || name === ".dockerignore" || name === ".eslintignore") return "plaintext";
   return map[ext || ""] || "plaintext";
 }

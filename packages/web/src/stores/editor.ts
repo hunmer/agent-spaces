@@ -170,7 +170,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   updateContent: (path, content) => {
     set((s) => ({
       openFiles: s.openFiles.map((f) =>
-        f.path === path ? { ...f, content, modified: true } : f
+        f.path === path ? { ...f, content, modified: f.content !== content } : f
       ),
     }));
   },
