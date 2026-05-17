@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -166,7 +167,7 @@ class _HomePageState extends State<_HomePage> {
               _ActionCard(
                 icon: Icons.lan,
                 title: '扫描局域网',
-                subtitle: '扫描 192.168.0/1.x 和 10.0.0.x 网段',
+                subtitle: '扫描 WiFi 所在网段',
                 enabled: !_scanning,
                 onTap: () => _scanLAN(),
               ),
@@ -201,10 +202,13 @@ class _HomePageState extends State<_HomePage> {
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       client.close();
+      developer.log('health check $url -> ${response.statusCode} body=$body', name: 'scan');
       if (response.statusCode == 200 && body.contains('"status":"ok"')) {
         return 'http://$host:$port';
       }
-    } catch (_) {}
+    } catch (e) {
+      developer.log('health check $url FAILED: $e', name: 'scan');
+    }
     return null;
   }
 
@@ -267,13 +271,43 @@ class _HomePageState extends State<_HomePage> {
     });
   }
 
+  Future<String?> _getWifiSubnet() async {
+    try {
+      final interfaces = await NetworkInterface.list();
+      developer.log('found ${interfaces.length} interfaces', name: 'scan');
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          developer.log('  ${iface.name}: ${addr.address} (${addr.type}) loopback=${addr.isLoopback}', name: 'scan');
+          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
+            final parts = addr.address.split('.');
+            if (parts.length == 4) {
+              final subnet = '${parts[0]}.${parts[1]}.${parts[2]}';
+              developer.log('  -> using subnet: $subnet', name: 'scan');
+              return subnet;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      developer.log('getWifiSubnet FAILED: $e', name: 'scan');
+    }
+    return null;
+  }
+
   Future<void> _scanLAN() async {
     setState(() {
       _scanning = true;
       _progress = 0;
-      _scanStatus = '快速检测本机...';
+      _scanStatus = '获取 WiFi 地址...';
       _foundUrl = null;
     });
+
+    final subnet = await _getWifiSubnet();
+    if (subnet == null) {
+      if (mounted) setState(() { _scanning = false; _scanStatus = '无法获取 WiFi 地址'; });
+      return;
+    }
+    developer.log('LAN scan subnet=$subnet', name: 'scan');
 
     final quick = await _quickCheck();
     if (quick != null) {
@@ -281,14 +315,7 @@ class _HomePageState extends State<_HomePage> {
       return;
     }
 
-    const fixedPrefixes = ['192.168.0', '192.168.1', '10.0.0'];
-
-    final allHosts = <String>[];
-    for (final prefix in fixedPrefixes) {
-      for (int i = 1; i < 255; i++) {
-        allHosts.add('$prefix.$i');
-      }
-    }
+    final allHosts = List.generate(254, (i) => '$subnet.${i + 1}');
 
     setState(() => _scanStatus = '扫描 ${allHosts.length} 个地址...');
 

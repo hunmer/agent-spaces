@@ -1,26 +1,32 @@
-import { getActiveServer, getActiveServerUrl } from './server';
+import { getActiveServer, getActiveServerUrl, loadActiveId } from './server';
 import { toStaticHref } from './navigate';
 import { isLoginPath } from './routes';
 
 const TOKEN_KEY = 'agent-spaces-token';
 const VERIFIED_KEY = 'agent-spaces-auth-verified';
 
+function getTokenKey(): string {
+  return `${TOKEN_KEY}:${loadActiveId()}`;
+}
+
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(TOKEN_KEY);
+  const stored = localStorage.getItem(getTokenKey());
   if (stored !== null) return stored;
+  // fallback to server config secret
   const serverSecret = getActiveServer()?.secret;
   if (serverSecret !== undefined) return serverSecret;
   return null;
 }
 
 export function setToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(getTokenKey(), token);
   localStorage.setItem(VERIFIED_KEY, '1');
+  localStorage.removeItem(TOKEN_KEY); // cleanup legacy global token
 }
 
 export function removeToken() {
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(getTokenKey());
   localStorage.removeItem(VERIFIED_KEY);
 }
 

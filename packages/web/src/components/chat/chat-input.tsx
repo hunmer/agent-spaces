@@ -25,6 +25,7 @@ import {
   IconTools,
   IconWand,
   IconMicrophone,
+  IconUserPlus,
 } from "@tabler/icons-react";
 import { IconChevronUp } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -61,6 +62,8 @@ import {
   type AttachmentData,
 } from "./attachments";
 import { AgentIcon } from "@/components/common/agent-icon";
+import { AddMemberDialog } from "./add-member-dialog";
+import { getAgentDisplayName, normalizeChannelMembersToAgentIds } from "@/lib/agent-members";
 
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools" | "avatarUrl">;
 type DisplayTodoItem = TodoItem & { title?: string; content?: string };
@@ -109,6 +112,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const channelRef = useRef(channel);
 
   const { saveDraft, clearDraft, updateChannel } = useChannelStore();
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
   const pinnedMentionId = channel.pinnedMentionId;
   const isPinned = pinnedMentionId === mentionedAgentIds[0] && !!pinnedMentionId;
 
@@ -572,6 +576,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           {/* Agent quick bar */}
           {sortedAgents.length > 0 && (
             <div className="flex items-center gap-1 mb-1.5 overflow-x-auto scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setAddMemberOpen(true)}
+                className="shrink-0 inline-flex items-center justify-center size-6 rounded-full text-muted-foreground border border-dashed border-muted-foreground/40 hover:bg-accent hover:text-foreground transition-all"
+                title={t('input.manageMembers')}
+              >
+                <IconUserPlus className="size-3.5" />
+              </button>
               {sortedAgents.map((agent) => {
                 const isActive = agent.id === activeAgent?.id;
                 return (

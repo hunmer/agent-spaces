@@ -8,7 +8,12 @@ function ensureChannel(workspaceId: string, issue: Issue): void {
   ensureRetryDefaults(workspaceId, issue);
   const existingChannel = issue.channelId ? channelService.getChannel(workspaceId, issue.channelId) : undefined;
   const issueMembers = issue.members || [];
-  const channelMembers = issueMembers.length > 0 ? issueMembers : (existingChannel?.members ?? []);
+  const fallbackChannelMembers = existingChannel?.members ?? [];
+  const channelMembers = issueMembers.length > 0 ? issueMembers : fallbackChannelMembers;
+  if (issueMembers.length === 0 && fallbackChannelMembers.length > 0) {
+    issue.members = [...fallbackChannelMembers];
+    updateIssue(issue);
+  }
   if (issue.channelId) {
     channelService.updateChannel(workspaceId, issue.channelId, { type: 'issue', issueId: issue.id, members: channelMembers });
     return;
@@ -88,6 +93,7 @@ export function createForChannel(
 
   const now = new Date().toISOString();
   const issueId = uuid();
+  const issueMembers = input.members ?? channel.members ?? [];
   const issue: Issue = {
     id: issueId,
     workspaceId,
@@ -96,7 +102,7 @@ export function createForChannel(
     description: input.description,
     status: input.status ?? 'draft',
     tasks: [],
-    members: [],
+    members: [...issueMembers],
     retryCount: 0,
     maxRetries: 3,
     createdAt: now,
@@ -107,6 +113,7 @@ export function createForChannel(
     name: input.title,
     type: 'issue',
     issueId,
+    members: issueMembers,
   });
   return issue;
 }
