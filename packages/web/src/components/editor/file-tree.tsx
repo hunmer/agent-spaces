@@ -44,7 +44,7 @@ interface FileTreeContextType {
   onMove?: (path: string) => void
   onCopyItem?: (path: string) => void
   onLoadDirectory?: (path: string) => void
-  loadedDirs?: Set<string>
+  loadingDirs?: Set<string>
   boundDir?: string
   fileSizeMap?: Record<string, number>
   ignoredPaths?: Set<string>
@@ -71,7 +71,7 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onMove?: (path: string) => void
   onCopyItem?: (path: string) => void
   onLoadDirectory?: (path: string) => void
-  loadedDirs?: Set<string>
+  loadingDirs?: Set<string>
   boundDir?: string
   fileSizeMap?: Record<string, number>
   refreshInterval?: number
@@ -168,13 +168,12 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir } = useContext(FileTreeContext)
   const parentFolder = useContext(FileTreeFolderContext)
   const isExpanded = expandedPaths.has(path)
   const isIgnored = ignored || parentFolder.ignored
   const isSelected = selectedPath === path
-  const isLoaded = loadedDirs?.has(path)
-  const isLoading = isExpanded && !isLoaded && !!onLoadDirectory
+  const isLoading = !!loadingDirs?.has(path)
   const t = useTranslations('editor')
   const tc = useTranslations('common')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -182,7 +181,7 @@ export const FileTreeFolder = ({
   const handleOpenChange = () => {
     const willExpand = !isExpanded
     togglePath(path)
-    if (willExpand && !loadedDirs?.has(path) && onLoadDirectory) {
+    if (willExpand && onLoadDirectory) {
       onLoadDirectory(path)
     }
   }

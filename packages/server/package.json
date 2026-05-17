@@ -34,6 +34,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "langchain": "^1.4.0",
+    "minimatch": "^10.2.5",
     "node-pty": "^1.1.0",
     "simple-git": "^3.36.0",
     "uuid": "^11.1.0",
@@ -43,6 +44,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.2",
+    "@types/minimatch": "^6.0.0",
     "@types/node": "^20.19.39",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",

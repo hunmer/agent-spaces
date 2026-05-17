@@ -27,7 +27,7 @@ import {
   IconMicrophone,
   IconUserPlus,
 } from "@tabler/icons-react";
-import { IconChevronUp } from "@tabler/icons-react";
+import { IconChevronUp, IconBell, IconBellOff } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
@@ -575,9 +575,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       </div>
       {!collapsed && (
         <div className="border-t px-4 py-2">
-          {/* Agent quick bar */}
+          {/* Agent quick bar + notify toggle */}
           {
-            <div className="flex items-center gap-1 mb-1.5 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 mb-1.5">
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
               <button
                 type="button"
                 onClick={() => setAddMemberOpen(true)}
@@ -627,6 +628,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                   </button>
                 );
               })}
+            </div>
+              <button
+                type="button"
+                onClick={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
+                className={cn(
+                  "shrink-0 inline-flex items-center gap-1 h-6 px-1.5 rounded-full text-xs transition-all",
+                  channel.notifyOnComplete
+                    ? "bg-primary/10 text-primary border border-primary/30"
+                    : "text-muted-foreground border border-transparent hover:bg-accent"
+                )}
+                title={t('input.notifyOnComplete')}
+              >
+                {channel.notifyOnComplete ? <IconBell className="size-3" /> : <IconBellOff className="size-3" />}
+              </button>
             </div>
           }
 

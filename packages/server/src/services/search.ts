@@ -2,6 +2,7 @@
 import { execSync } from 'node:child_process';
 import { readdir, stat, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { minimatch } from 'minimatch';
 import type { Workspace, CodeSearchResult, FileSearchResult, SearchCodeOptions } from '@agent-spaces/shared';
 import { resolvePath } from './file.js';
 import { createGitignoreFilter, type IgnoreFilter } from './gitignore.js';
@@ -118,10 +119,7 @@ async function searchWithNodeJs(basePath: string, options: SearchCodeOptions): P
         const s = await stat(fullPath);
         if (s.size > MAX_FILE_SIZE) continue;
 
-        if (options.filePattern) {
-          const pattern = options.filePattern.replace(/\*/g, '');
-          if (!entry.name.includes(pattern) && !fullPath.includes(pattern)) continue;
-        }
+        if (options.filePattern && !minimatch(relPath, options.filePattern)) continue;
 
         try {
           const content = await readFile(fullPath, 'utf-8');

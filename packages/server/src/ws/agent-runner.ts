@@ -469,6 +469,7 @@ export async function runMentionedAgent(
     });
     broadcastToWorkspace(workspaceId, 'agent.completed', {
       agentId: session.id,
+      channelId,
       result: {
         success: result.success,
         summary: result.summary,

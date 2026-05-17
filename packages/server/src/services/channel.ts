@@ -49,7 +49,7 @@ export function createChannel(
 export function updateChannel(
   workspaceId: string,
   channelId: string,
-  data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'archived'>>,
+  data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'notifyOnComplete' | 'archived'>>,
 ): Channel | null {
   const channels = listChannels(workspaceId);
   const idx = channels.findIndex((c) => c.id === channelId);
@@ -61,6 +61,7 @@ export function updateChannel(
   if (Object.hasOwn(data, 'pinnedMentionId')) channels[idx].pinnedMentionId = data.pinnedMentionId;
   if (Object.hasOwn(data, 'draft')) channels[idx].draft = data.draft;
   if (Object.hasOwn(data, 'todos')) channels[idx].todos = data.todos;
+  if (Object.hasOwn(data, 'notifyOnComplete')) channels[idx].notifyOnComplete = data.notifyOnComplete;
   if (Object.hasOwn(data, 'archived')) channels[idx].archived = data.archived;
   writeJsonFile(channelsPath(workspaceId), channels);
   return channels[idx];

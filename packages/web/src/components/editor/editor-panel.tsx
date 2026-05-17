@@ -110,7 +110,7 @@ interface EditorPanelProps {
 }
 
 export function EditorPanel({ workspaceId }: EditorPanelProps) {
-  const { tree, treeLoading, loadTree, loadDirectory, openFile, openFiles, revealPath, clearRevealPath } = useEditorStore();
+  const { tree, treeLoading, loadTree, loadDirectory, openFile, openFiles, revealPath, clearRevealPath, loadingDirs } = useEditorStore();
   const workspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId));
   const boundDir = workspace?.boundDirs?.[0] || '';
   const t = useTranslations('editor');
@@ -423,6 +423,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       onMove={handleMove}
                       onCopyItem={handleCopy}
                       onLoadDirectory={(dirPath) => loadDirectory(workspaceId, dirPath)}
+                      loadingDirs={loadingDirs}
                       boundDir={boundDir}
                       fileSizeMap={fileSizeMap}
                       refreshInterval={5000}

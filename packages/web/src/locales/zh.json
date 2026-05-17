@@ -398,7 +398,8 @@
       "uploadFailed": "上传失败：{name}",
       "voiceStart": "语音输入",
       "voiceStop": "停止录音",
-      "manageMembers": "管理频道成员"
+      "manageMembers": "管理频道成员",
+      "notifyOnComplete": "AI 回复完成时通知"
     },
     "messageParts": {
       "agentProcessing": "Agent 正在处理...",
