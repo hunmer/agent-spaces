@@ -1,11 +1,11 @@
 {
-  "version": "1.5.0",
-  "timestamp": "2026-05-16T17:36:40+08:00",
+  "version": "1.6.0",
+  "timestamp": "2026-05-17T15:04:39+08:00",
   "project": {
     "name": "agent-spaces",
-    "type": "pnpm-monorepo",
-    "language": "TypeScript",
-    "description": "多 Agent 协同编程平台（含四运行时 Agent 编排、Workflow DAG 可视化编排、i18n 中英文切换、通知中心、用量统计、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette）"
+    "type": "pnpm-monorepo + flutter",
+    "language": "TypeScript + Dart",
+    "description": "多 Agent 协同编程平台（含四运行时 Agent 编排、Workflow DAG 可视化编排、i18n 中英文切换、通知中心、用量统计、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、Flutter 多平台客户端）"
   },
   "modules": [
     {
@@ -340,6 +340,45 @@
         "percentage": 100,
         "gaps": []
       }
+    },
+    {
+      "name": "flutter",
+      "path": "packages/flutter",
+      "packageId": "agent_spaces",
+      "language": "Dart",
+      "role": "Flutter 多平台原生壳应用（Android/iOS/macOS/Windows/Web），内嵌 InAppWebView 加载 Web 前端，提供原生通知、设备模拟、书签管理、内网服务器发现、JS Bridge 双向通信、控制台日志捕获、Tab 管理",
+      "entry": "lib/main.dart",
+      "types": ["BrowserTab", "DeviceProfile", "DeviceType", "Bookmark", "AppSettings", "BrowserState", "ConsoleLog", "ConsoleLogState"],
+      "api": [],
+      "tests": ["test/widget_test.dart"],
+      "importantPaths": [
+        "packages/flutter/lib/main.dart",
+        "packages/flutter/lib/models/browser_tab.dart",
+        "packages/flutter/lib/models/bookmark.dart",
+        "packages/flutter/lib/providers/browser_provider.dart",
+        "packages/flutter/lib/providers/bookmark_provider.dart",
+        "packages/flutter/lib/providers/settings_provider.dart",
+        "packages/flutter/lib/providers/console_log_provider.dart",
+        "packages/flutter/lib/screens/home_screen.dart",
+        "packages/flutter/lib/screens/bookmarks_screen.dart",
+        "packages/flutter/lib/screens/settings_screen.dart",
+        "packages/flutter/lib/screens/about_screen.dart",
+        "packages/flutter/lib/widgets/webview_panel.dart",
+        "packages/flutter/lib/widgets/browser_tab_bar.dart",
+        "packages/flutter/lib/widgets/device_selector.dart",
+        "packages/flutter/lib/services/storage_service.dart",
+        "packages/flutter/lib/services/notification_service.dart",
+        "packages/flutter/lib/services/webview_service.dart",
+        "packages/flutter/lib/bridge/js_bridge.dart",
+        "packages/flutter/pubspec.yaml"
+      ],
+      "claudeMd": "packages/flutter/CLAUDE.md",
+      "coverage": {
+        "scanned": 18,
+        "total": 18,
+        "percentage": 100,
+        "gaps": []
+      }
     }
   ],
   "docs": [
@@ -445,8 +484,8 @@
     "Dockerfile.server"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 339,
-    "scannedFiles": 339,
+    "totalSourceFiles": 357,
+    "scannedFiles": 357,
     "coveragePercentage": 100,
     "ignoredDirectories": [
       "node_modules",
@@ -454,144 +493,67 @@
       "dist",
       ".git",
       ".agent-spaces-data",
-      "packages/server/public"
+      "packages/server/public",
+      ".dart_tool",
+      "build"
     ],
     "truncated": false,
     "gapDetails": [],
     "moduleBreakdown": {
       "shared": { "total": 18, "scanned": 18, "percentage": 100 },
       "server": { "total": 106, "scanned": 106, "percentage": 100 },
-      "web": { "total": 215, "scanned": 215, "percentage": 100 }
+      "web": { "total": 215, "scanned": 215, "percentage": 100 },
+      "flutter": { "total": 18, "scanned": 18, "percentage": 100 }
     }
   },
   "changesFromPrevious": {
-    "previousVersion": "1.4.0",
-    "previousTimestamp": "2026-05-08T17:18:31+08:00",
-    "summary": "大量新增功能：第四运行时 LangChain、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Agent Designer、应用内通知、Skill/MCP 管理、用户设置、Command Palette、Iframe 管理、独立设置页、Monaco Models 增强、WS 重构（handler 拆分）。文件总数 254->339（+85），其中 shared 13->18、server 73->106、web 168->215。",
+    "previousVersion": "1.5.0",
+    "previousTimestamp": "2026-05-16T17:36:40+08:00",
+    "summary": "新增 Flutter 客户端模块（packages/flutter，18 个 Dart 源文件）。基于 Flutter 3.10 + Riverpod + InAppWebView 的多平台原生壳应用。文件总数 339->357（+18），新增模块 flutter 18 文件。",
     "newFiles": {
-      "shared": [
-        "src/types/command.ts (QuickCommand/CommandProcess/CommandProcessEvent)",
-        "src/types/subscription.ts (SubscriptionProvider/SubscriptionConfig/SubscriptionQuota/SubscriptionLimit)",
-        "src/types/search.ts (CodeSearchResult/FileSearchResult/SearchCodeOptions)",
-        "src/types/notification.ts (NotificationType/AppNotification)",
-        "src/types/speech.ts (SpeechRecognitionProvider/SpeechRecognitionConfig/SpeechRecognitionResult/TencentSpeechCredentials)"
-      ],
-      "server": [
-        "src/adapters/langchain-runtime.ts (LangChain.js runtime)",
-        "src/agents/agent-designer.ts (AI agent preset generator)",
-        "src/routes/agent-sse.ts (HTTP SSE agent execution)",
-        "src/routes/command.ts (quick command CRUD + run/stop)",
-        "src/routes/search.ts (code/file search)",
-        "src/routes/subscription.ts (subscription CRUD + quota)",
-        "src/routes/speech-recognition.ts (speech config CRUD + WS handler)",
-        "src/routes/skill.ts (global skill management)",
-        "src/routes/mcp.ts (global MCP management)",
-        "src/routes/notification.ts (app notification CRUD)",
-        "src/services/langchain-runtime.ts -> adapters/langchain-runtime.ts",
-        "src/services/command.ts (quick command CRUD service)",
-        "src/services/command-process-manager.ts (process lifecycle)",
-        "src/services/search.ts (ripgrep + Node.js code search)",
-        "src/services/gitignore.ts (.gitignore filter)",
-        "src/services/notification-center.ts (app notifications)",
-        "src/services/skill.ts (global skill management service)",
-        "src/services/mcp.ts (global MCP management service)",
-        "src/services/subscription/base.ts (SubscriptionProviderBase)",
-        "src/services/subscription/index.ts (provider registry)",
-        "src/services/subscription/zhipu.ts (ZhiPu quota)",
-        "src/services/subscription/minimax.ts (MiniMax quota)",
-        "src/services/subscription/aicode.ts (AI Code balance)",
-        "src/services/speech-recognition/base.ts (SpeechRecognitionProviderBase)",
-        "src/services/speech-recognition/index.ts (provider registry)",
-        "src/services/speech-recognition/tencent.ts (Tencent speech)",
-        "src/storage/command-store.ts (command persistence)",
-        "src/storage/subscription-store.ts (subscription persistence)",
-        "src/storage/speech-recognition-store.ts (speech config persistence)",
-        "src/storage/user-settings-store.ts (user settings persistence)",
-        "src/ws/agent-runner.ts (extracted from handler.ts)",
-        "src/ws/message-parts.ts (extracted from agent-message-parts.ts)",
-        "src/ws/agent-prompt.ts (extracted from handler.ts)",
-        "src/ws/html-utils.ts (HTML text sanitization)"
-      ],
-      "web": [
-        "src/app/settings/layout.tsx",
-        "src/app/settings/page.tsx",
-        "src/app/settings/agents/page.tsx",
-        "src/app/settings/skills/page.tsx",
-        "src/app/settings/mcps/page.tsx",
-        "src/app/settings/models/page.tsx",
-        "src/app/settings/providers/page.tsx",
-        "src/components/command-palette.tsx",
-        "src/components/zoom-wrapper.tsx",
-        "src/components/viewport-insets.tsx",
-        "src/components/common/console-panel.tsx",
-        "src/components/common/iframe-manager.tsx",
-        "src/components/common/member-picker.tsx",
-        "src/components/editor/search-panel.tsx",
-        "src/components/editor/import-file-dialog.tsx",
-        "src/components/terminal/command-dialog.tsx",
-        "src/components/terminal/command-sidebar.tsx",
-        "src/components/terminal/virtual-keyboard.tsx",
-        "src/components/terminal/terminal-toolbar.tsx",
-        "src/components/terminal/terminal-utils.ts",
-        "src/components/terminal/import-commands-dialog.tsx",
-        "src/components/home/subscription-panel.tsx",
-        "src/components/home/subscription-dialog.tsx",
-        "src/components/sidebar/skills-dialog.tsx",
-        "src/components/sidebar/mcps-dialog.tsx",
-        "src/components/sidebar/notification-center-dialog.tsx",
-        "src/components/sidebar/nav-notifications.tsx",
-        "src/components/settings/settings-page-layout.tsx",
-        "src/components/git/git-settings-form.tsx",
-        "src/components/ui/command.tsx",
-        "src/components/ui/navigation-menu.tsx",
-        "src/components/ui/file-upload.tsx",
-        "src/components/ui/input-group.tsx",
-        "src/stores/command.ts",
-        "src/stores/command-palette.ts",
-        "src/stores/notification.ts",
-        "src/stores/iframe-tabs.ts",
-        "src/stores/search-commands/index.ts",
-        "src/stores/search-commands/types.ts",
-        "src/stores/search-commands/workspace-search.ts",
-        "src/stores/search-commands/channel-search.ts",
-        "src/stores/search-commands/file-search.ts",
-        "src/stores/search-commands/issue-search.ts",
-        "src/stores/search-commands/server-search.ts",
-        "src/lib/monaco-models.ts",
-        "src/lib/api-polyfill.ts",
-        "src/lib/navigate.ts",
-        "src/lib/routes.ts",
-        "src/hooks/use-speech-recognition.ts",
-        "src/hooks/use-user-avatar.ts"
-      ],
-      "docs": [
-        "docs/superpowers/specs/2026-05-08-quick-command-design.md",
-        "docs/superpowers/specs/2026-05-14-editor-search-and-monaco-models-design.md",
-        "docs/superpowers/plans/2026-05-08-quick-command.md",
-        "docs/superpowers/plans/2026-05-14-editor-search-and-monaco-models.md"
+      "flutter": [
+        "lib/main.dart (App entry + GoRouter)",
+        "lib/models/browser_tab.dart (BrowserTab + DeviceProfile + DeviceType)",
+        "lib/models/bookmark.dart (Bookmark + AppSettings)",
+        "lib/providers/browser_provider.dart (BrowserState + BrowserNotifier)",
+        "lib/providers/bookmark_provider.dart (BookmarkNotifier)",
+        "lib/providers/settings_provider.dart (SettingsNotifier)",
+        "lib/providers/console_log_provider.dart (ConsoleLogNotifier)",
+        "lib/screens/home_screen.dart (HomeScreen)",
+        "lib/screens/bookmarks_screen.dart (BookmarksScreen)",
+        "lib/screens/settings_screen.dart (SettingsScreen)",
+        "lib/screens/about_screen.dart (AboutScreen)",
+        "lib/widgets/webview_panel.dart (WebViewPanel + HomePage + WebViewInstance)",
+        "lib/widgets/browser_tab_bar.dart (BrowserTabBar + ConsoleSheet)",
+        "lib/widgets/device_selector.dart (DeviceSelector)",
+        "lib/services/storage_service.dart (SharedPreferences persistence)",
+        "lib/services/notification_service.dart (awesome_notifications)",
+        "lib/services/webview_service.dart (InAppWebViewController registry)",
+        "lib/bridge/js_bridge.dart (Flutter <-> WebView bridge)"
       ]
     },
-    "typeChanges": {
-      "shared/command.ts": "New file: QuickCommand + CommandProcess + CommandProcessEvent",
-      "shared/subscription.ts": "New file: SubscriptionProvider + SubscriptionConfig + SubscriptionQuota + SubscriptionLimit",
-      "shared/search.ts": "New file: CodeSearchResult + FileSearchResult + SearchCodeOptions",
-      "shared/notification.ts": "New file: NotificationType + AppNotification",
-      "shared/speech.ts": "New file: SpeechRecognitionProvider + SpeechRecognitionConfig + SpeechRecognitionResult + TencentSpeechCredentials",
-      "shared/events.ts": "ServerEventMap added command.started/stopped/restarted + notification.created/cleared events (23->26)"
-    },
     "dependencyChanges": {
-      "server": {
-        "added": ["langchain ^1.4.0", "@langchain/openai ^1.4.5", "@langchain/anthropic ^1.3.29", "@langchain/google-genai ^2.1.30"],
-        "removed": []
-      },
-      "web": {
-        "added": ["cmdk ^1.1.1", "@dnd-kit/react ^0.4.0", "@base-ui/react ^1.4.1", "@emotion/is-prop-valid ^1.4.0"],
+      "flutter": {
+        "added": [
+          "flutter_inappwebview ^6.1.5",
+          "awesome_notifications ^0.11.0",
+          "flutter_riverpod ^2.6.1",
+          "riverpod_annotation ^2.6.1",
+          "go_router ^14.8.1",
+          "shared_preferences ^2.5.3",
+          "logger ^2.5.0",
+          "path_provider ^2.1.5",
+          "url_launcher ^6.3.1",
+          "share_plus ^10.1.4",
+          "uuid ^4.5.1",
+          "buttons_tabbar ^1.3.15"
+        ],
         "removed": []
       }
     }
   },
   "nextSteps": {
-    "description": "全部核心模块已完整扫描（339/339 文件，100% 覆盖率）。",
+    "description": "全部核心模块已完整扫描（357/357 文件，100% 覆盖率），包括新增 Flutter 客户端。",
     "suggestions": [
       "LangChain Runtime 测试覆盖（provider-neutral createAgent、多供应商凭证注入）",
       "Agent SSE API 测试（SSE 流格式、认证、多消息格式）",
@@ -599,6 +561,9 @@
       "语音识别测试（WebSocket 流式会话、腾讯 SDK 集成）",
       "快捷命令测试（CRUD + autoRestart + 进程管理）",
       "代码搜索测试（ripgrep + Node.js 回退、.gitignore 过滤）",
+      "Flutter Provider 单元测试（BrowserNotifier/BookmarkNotifier 状态变更）",
+      "Flutter JsBridge 集成测试（事件收发、RPC 调用、Promise 回调）",
+      "Flutter Widget 测试（TabBar 交互、BookmarksScreen CRUD 对话框）",
       "ws/agent-runner.ts 634 行进一步模块化拆分",
       "i18n 翻译 key 完整性校验工具（对比 en.json 和 zh.json）"
     ]

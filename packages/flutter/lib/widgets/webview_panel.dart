@@ -555,6 +555,58 @@ class _WebViewInstanceState extends ConsumerState<_WebViewInstance> {
   InAppWebViewController? _controller;
   String _lastUrl = '';
 
+  static const _keyboardViewportScript = '''
+    (function() {
+      if (window.__agentSpacesKeyboardViewportInstalled) {
+        return;
+      }
+      window.__agentSpacesKeyboardViewportInstalled = true;
+
+      var selectors = 'input, textarea, select, [contenteditable="true"]';
+      var pendingFrame = 0;
+
+      function getFocusedEditable() {
+        var element = document.activeElement;
+        if (!element || !element.matches || !element.matches(selectors)) {
+          return null;
+        }
+        return element;
+      }
+
+      function scrollFocusedEditableIntoView() {
+        if (pendingFrame) {
+          window.cancelAnimationFrame(pendingFrame);
+        }
+        pendingFrame = window.requestAnimationFrame(function() {
+          pendingFrame = 0;
+          var element = getFocusedEditable();
+          if (!element) {
+            return;
+          }
+
+          element.scrollIntoView({
+            block: 'center',
+            inline: 'nearest',
+            behavior: 'smooth'
+          });
+        });
+      }
+
+      window.addEventListener('focusin', function(event) {
+        if (event.target && event.target.matches && event.target.matches(selectors)) {
+          window.setTimeout(scrollFocusedEditableIntoView, 80);
+        }
+      }, true);
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scrollFocusedEditableIntoView);
+        window.visualViewport.addEventListener('scroll', scrollFocusedEditableIntoView);
+      } else {
+        window.addEventListener('resize', scrollFocusedEditableIntoView);
+      }
+    })();
+  ''';
+
   @override
   void initState() {
     super.initState();
@@ -602,6 +654,7 @@ class _WebViewInstanceState extends ConsumerState<_WebViewInstance> {
         _webViewService.registerController(widget.tab.id, controller);
         _jsBridge.registerHandlers(controller);
         await controller.evaluateJavascript(source: _jsBridge.injectionScript);
+        await controller.evaluateJavascript(source: _keyboardViewportScript);
       },
       onLoadStop: (controller, url) async {
         if (url != null) {
@@ -619,6 +672,7 @@ class _WebViewInstanceState extends ConsumerState<_WebViewInstance> {
           );
         }
         await controller.evaluateJavascript(source: _jsBridge.injectionScript);
+        await controller.evaluateJavascript(source: _keyboardViewportScript);
       },
       onConsoleMessage: (_, consoleMessage) {
         ref.read(consoleLogProvider.notifier).addLog(
@@ -630,22 +684,34 @@ class _WebViewInstanceState extends ConsumerState<_WebViewInstance> {
 
     if (isConstrained) {
       return Center(
-        child: Container(
-          width: device.width,
-          height: device.height,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final viewportWidth = constraints.maxWidth;
+            final viewportHeight = constraints.maxHeight;
+            final scale = [
+              1.0,
+              viewportWidth / device.width,
+              viewportHeight / device.height,
+            ].reduce((value, element) => value < element ? value : element);
+
+            return Container(
+              width: device.width * scale,
+              height: device.height * scale,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: webView,
+              clipBehavior: Clip.antiAlias,
+              child: webView,
+            );
+          },
         ),
       );
     }

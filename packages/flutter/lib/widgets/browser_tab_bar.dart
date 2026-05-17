@@ -53,9 +53,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         child: Row(
           children: [
             const Spacer(),
-            _AddTabButton(onTap: () => _showNewTabDialog(context, notifier)),
-            _MoreMenuButton(),
-            const SizedBox(width: 4),
+            _MoreMenuButton(onNewTab: () => _showNewTabDialog(context, notifier)),
           ],
         ),
       );
@@ -134,8 +132,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
               }).toList(),
             ),
           ),
-          _AddTabButton(onTap: () => _showNewTabDialog(context, notifier)),
-          _MoreMenuButton(),
+          _MoreMenuButton(onNewTab: () => _showNewTabDialog(context, notifier)),
           const SizedBox(width: 4),
         ],
       ),
@@ -389,6 +386,10 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
 }
 
 class _MoreMenuButton extends ConsumerWidget {
+  final VoidCallback? onNewTab;
+
+  const _MoreMenuButton({this.onNewTab});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -404,6 +405,18 @@ class _MoreMenuButton extends ConsumerWidget {
       ),
       offset: const Offset(0, 40),
       itemBuilder: (_) => [
+        if (onNewTab != null)
+          const PopupMenuItem(
+            value: 'new_tab',
+            height: 36,
+            child: Row(
+              children: [
+                Icon(Icons.add, size: 16),
+                SizedBox(width: 8),
+                Text('新建标签页', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
         const PopupMenuItem(
           value: 'bookmarks',
           height: 36,
@@ -428,35 +441,14 @@ class _MoreMenuButton extends ConsumerWidget {
         ),
       ],
       onSelected: (value) {
-        if (value == 'bookmarks') {
+        if (value == 'new_tab') {
+          onNewTab?.call();
+        } else if (value == 'bookmarks') {
           context.push('/bookmarks');
         } else if (value == 'settings') {
           context.push('/settings');
         }
       },
-    );
-  }
-}
-
-class _AddTabButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _AddTabButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(
-        Icons.add,
-        size: 18,
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
-      style: IconButton.styleFrom(
-        minimumSize: const Size(32, 32),
-        padding: EdgeInsets.zero,
-      ),
     );
   }
 }
