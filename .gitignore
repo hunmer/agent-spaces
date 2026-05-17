@@ -17,3 +17,4 @@ documents/build/
 .npmrc
 packages/tauri/web/
 packages/tauri/src-tauri/target/
+packages/flutter/assets/web/

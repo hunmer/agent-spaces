@@ -29,7 +29,7 @@ if (existsSync(tauriWeb)) {
 }
 cpSync(webOut, tauriWeb, { recursive: true });
 
-const flutterWeb = resolve(root, 'packages/flutter/web');
+const flutterWeb = resolve(root, 'packages/flutter/assets/web');
 if (existsSync(flutterWeb)) {
   rmSync(flutterWeb, { recursive: true, force: true });
 }

@@ -155,7 +155,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _checkLocalWeb() async {
     try {
-      await rootBundle.load('web/index.html');
+      await rootBundle.load('assets/web/index.html');
       if (mounted) setState(() => _hasLocalWeb = true);
     } catch (_) {}
   }
