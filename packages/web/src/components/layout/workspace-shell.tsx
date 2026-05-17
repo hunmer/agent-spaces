@@ -315,8 +315,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }),
       ws.on('inspector.jump', (data) => {
         const { path, line, column } = data as { path: string; line: number; column?: number };
-        const normalized = path.startsWith('/') ? path.slice(1) : path;
-        useEditorStore.getState().jumpToPosition(workspaceId, normalized, line, column);
+        useEditorStore.getState().jumpToPosition(workspaceId, path, line, column);
       }),
     ];
     return () => unsubs.forEach((u) => u());

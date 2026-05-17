@@ -1,4 +1,5 @@
 import { readdir, stat, readFile, writeFile, mkdir, rm, rename as fsRename } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute, dirname } from 'node:path';
 import type { FileNode } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
@@ -8,6 +9,9 @@ import { createGitignoreFilter } from './gitignore.js';
 const IGNORED_DIRS = new Set(['.git', 'node_modules', '.next', '.DS_Store']);
 
 export function resolvePath(workspace: Workspace, relPath: string): string | null {
+  if (isAbsolute(relPath)) {
+    return existsSync(relPath) ? relPath : null;
+  }
   const base = resolve(workspace.boundDirs[0]);
   const abs = resolve(base, relPath);
   const rel = relative(base, abs);
