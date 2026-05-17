@@ -2,6 +2,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:logger/logger.dart';
 
 class WebViewService {
+  static final instance = WebViewService._();
+  WebViewService._();
   static final _log = Logger(printer: PrettyPrinter(methodCount: 0));
   final Map<String, InAppWebViewController> _controllers = {};
 
@@ -41,5 +43,11 @@ class WebViewService {
     final ctrl = _controllers[tabId];
     if (ctrl == null) return null;
     return ctrl.getTitle();
+  }
+
+  Future<void> reload(String tabId) async {
+    final ctrl = _controllers[tabId];
+    if (ctrl == null) return;
+    await ctrl.reload();
   }
 }

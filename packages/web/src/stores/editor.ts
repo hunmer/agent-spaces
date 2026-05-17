@@ -30,6 +30,7 @@ interface EditorState {
   treeLoading: boolean;
   loadingDirs: Set<string>;
   openFiles: OpenFile[];
+  modifiedFileContents: Record<string, string>;
   activeFilePath: string | null;
   pendingJump: JumpPosition | null;
   revealPath: string | null;
@@ -75,11 +76,16 @@ function debouncedSave(workspaceId: string) {
   }, 500);
 }
 
+function normalizeContent(content: string): string {
+  return content.replace(/\r\n?/g, '\n');
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   tree: [],
   treeLoading: false,
   loadingDirs: new Set(),
   openFiles: [],
+  modifiedFileContents: {},
   activeFilePath: null,
   pendingJump: null,
   revealPath: null,
@@ -154,16 +160,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   saveFile: async (workspaceId, path) => {
     const file = get().openFiles.find((f) => f.path === path);
     if (!file) return;
+    const content = get().modifiedFileContents[path] ?? file.content;
 
     await fetch(`/api/workspaces/${workspaceId}/files/content`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, content: file.content }),
+      body: JSON.stringify({ path, content }),
     });
 
     set((s) => ({
       openFiles: s.openFiles.map((f) =>
-        f.path === path ? { ...f, modified: false } : f
+        f.path === path ? { ...f, content, modified: false } : f
+      ),
+      modifiedFileContents: Object.fromEntries(
+        Object.entries(s.modifiedFileContents).filter(([filePath]) => filePath !== path)
       ),
     }));
   },
@@ -172,11 +182,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => ({
       openFiles: s.openFiles.map((f) => {
         if (f.path !== path) return f;
-        // Monaco normalizes \r\n to \n, so compare normalized content
-        const normalize = (s: string) => s.replace(/\r\n?/g, '\n');
-        const contentChanged = normalize(f.content) !== normalize(content);
-        return { ...f, content, modified: contentChanged };
+        return { ...f, modified: normalizeContent(f.content) !== normalizeContent(content) };
       }),
+      modifiedFileContents: (() => {
+        const file = s.openFiles.find((f) => f.path === path);
+        if (!file) return s.modifiedFileContents;
+        const next = { ...s.modifiedFileContents };
+        if (normalizeContent(file.content) === normalizeContent(content)) {
+          delete next[path];
+        } else {
+          next[path] = content;
+        }
+        return next;
+      })(),
     }));
   },
 
@@ -209,7 +227,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (isCommitDiffPath(path)) {
         delete newCommitDiffs[getCommitHashFromPath(path)];
       }
-      return { openFiles: files, activeFilePath: active, commitDiffs: newCommitDiffs };
+      const modifiedFileContents = { ...s.modifiedFileContents };
+      delete modifiedFileContents[path];
+      return { openFiles: files, activeFilePath: active, commitDiffs: newCommitDiffs, modifiedFileContents };
     });
     debouncedSave(workspaceId);
   },
@@ -236,6 +256,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       treeLoading: false,
       loadingDirs: new Set(),
       openFiles: [],
+      modifiedFileContents: {},
       activeFilePath: null,
       pendingJump: null,
       revealPath: null,
@@ -250,7 +271,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const state = await res.json();
       const { openFilePaths = [], activeFilePath = null, pinnedPaths = [] } = state;
       if (openFilePaths.length === 0) {
-        set({ openFiles: [], activeFilePath: null });
+        set({ openFiles: [], activeFilePath: null, modifiedFileContents: {} });
         return;
       }
 
@@ -273,9 +294,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         : openFiles.length > 0
           ? openFiles[openFiles.length - 1].path
           : null;
-      set({ openFiles, activeFilePath: active, commitDiffs: {} });
+      set({ openFiles, activeFilePath: active, commitDiffs: {}, modifiedFileContents: {} });
     } catch {
-      set({ openFiles: [], activeFilePath: null, commitDiffs: {} });
+      set({ openFiles: [], activeFilePath: null, commitDiffs: {}, modifiedFileContents: {} });
     }
   },
 
@@ -339,7 +360,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   closeOthers: (workspaceId, path) => {
     set((s) => {
       const files = s.openFiles.filter((f) => f.path === path || f.pinned);
-      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path };
+      const openPaths = new Set(files.map((f) => f.path));
+      const modifiedFileContents = Object.fromEntries(
+        Object.entries(s.modifiedFileContents).filter(([filePath]) => openPaths.has(filePath))
+      );
+      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path, modifiedFileContents };
     });
     debouncedSave(workspaceId);
   },
@@ -349,7 +374,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const idx = s.openFiles.findIndex((f) => f.path === path);
       if (idx <= 0) return s;
       const files = s.openFiles.filter((f, i) => i >= idx || f.pinned);
-      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path };
+      const openPaths = new Set(files.map((f) => f.path));
+      const modifiedFileContents = Object.fromEntries(
+        Object.entries(s.modifiedFileContents).filter(([filePath]) => openPaths.has(filePath))
+      );
+      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path, modifiedFileContents };
     });
     debouncedSave(workspaceId);
   },
@@ -359,7 +388,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const idx = s.openFiles.findIndex((f) => f.path === path);
       if (idx < 0 || idx >= s.openFiles.length - 1) return s;
       const files = s.openFiles.filter((f, i) => i <= idx || f.pinned);
-      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path };
+      const openPaths = new Set(files.map((f) => f.path));
+      const modifiedFileContents = Object.fromEntries(
+        Object.entries(s.modifiedFileContents).filter(([filePath]) => openPaths.has(filePath))
+      );
+      return { openFiles: files, activeFilePath: files.some((f) => f.path === s.activeFilePath) ? s.activeFilePath : path, modifiedFileContents };
     });
     debouncedSave(workspaceId);
   },

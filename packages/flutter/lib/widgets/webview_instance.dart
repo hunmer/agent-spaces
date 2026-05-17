@@ -8,7 +8,7 @@ import '../providers/console_log_provider.dart';
 import '../services/notification_service.dart';
 import '../services/webview_service.dart';
 
-final _webViewService = WebViewService();
+final _webViewService = WebViewService.instance;
 final _notificationService = NotificationService();
 
 Future<dynamic> _handleBridgeInvoke(String method, dynamic args) async {

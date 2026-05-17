@@ -157,7 +157,7 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
 }
 
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
-  const { openFiles, activeFilePath, updateContent, saveFile, refreshFile, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
+  const { openFiles, modifiedFileContents, activeFilePath, updateContent, saveFile, refreshFile, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -170,6 +170,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const [jumpRetryTick, setJumpRetryTick] = useState(0);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
+  const activeContent = activeFile ? modifiedFileContents[activeFile.path] ?? activeFile.content : "";
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
   const commitDiffData = isCommitDiff && activeFilePath ? commitDiffs[getCommitHashFromPath(activeFilePath)] : null;
 
@@ -266,10 +267,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => {
     if (!activeFile || !activeFilePath) return;
 
-    lastSetContent.current = activeFile.content;
-    getOrCreateModel(workspaceId, activeFilePath, activeFile.content);
+    lastSetContent.current = activeContent;
+    getOrCreateModel(workspaceId, activeFilePath, activeContent);
     preloadDirectory(workspaceId, activeFilePath);
-  }, [activeFilePath, workspaceId]); // intentional: don't depend on activeFile to avoid loop
+  }, [activeFilePath, activeContent, workspaceId]);
 
   // Handle pending jump from search results
   useEffect(() => {
@@ -313,7 +314,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
           <MonacoEditor
             height="100%"
             language={getLanguage(activeFile.path)}
-            value={activeFile.content}
+            value={activeContent}
             path={modelPath}
             onChange={(value) => {
               const v = value || "";

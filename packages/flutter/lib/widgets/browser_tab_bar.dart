@@ -7,6 +7,7 @@ import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import '../providers/bookmark_provider.dart';
 import '../providers/console_log_provider.dart';
+import '../services/webview_service.dart';
 
 class BrowserTabBar extends ConsumerStatefulWidget {
   const BrowserTabBar({super.key});
@@ -207,6 +208,17 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
           ),
         ),
         const PopupMenuItem<String>(
+          value: 'refresh',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.refresh, size: 16),
+              SizedBox(width: 8),
+              Text('刷新', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
           value: 'console',
           height: 36,
           child: Row(
@@ -236,6 +248,8 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
             deviceType: tab.device.type,
           );
         }
+      } else if (value == 'refresh') {
+        WebViewService.instance.reload(tab.id);
       } else if (value == 'console') {
         showModalBottomSheet(
           context: context,
