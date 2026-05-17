@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/storage_service.dart';
 import '../widgets/browser_tab_bar.dart';
 import '../widgets/webview_panel.dart';
 
@@ -25,10 +26,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    final settings = ref.read(settingsProvider);
-    final notifier = ref.read(browserProvider.notifier);
-    notifier.setRestoreOnStartup(settings.restoreTabsOnStartup);
-    await notifier.init();
+    final settings = await StorageService.loadSettings();
+    ref.read(settingsProvider.notifier).load(settings);
+
+    final browserNotifier = ref.read(browserProvider.notifier);
+    browserNotifier.setRestoreOnStartup(settings.restoreTabsOnStartup);
+    await browserNotifier.init();
   }
 
   @override

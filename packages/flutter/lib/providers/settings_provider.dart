@@ -9,6 +9,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = await StorageService.loadSettings();
   }
 
+  void load(AppSettings s) => state = s;
+
   void setRestoreTabsOnStartup(bool value) {
     state = AppSettings(restoreTabsOnStartup: value);
     StorageService.saveSettings(state);
