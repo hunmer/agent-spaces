@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -32,6 +33,17 @@ class SettingsScreen extends ConsumerWidget {
             ),
             value: settings.restoreTabsOnStartup,
             onChanged: (v) => notifier.setRestoreTabsOnStartup(v),
+          ),
+          _SectionHeader(title: '其他'),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.info_outline, size: 20),
+            title: const Text('关于', style: TextStyle(fontSize: 13)),
+            subtitle: Text(
+              '版本 0.1.0',
+              style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+            ),
+            onTap: () => context.push('/about'),
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../bridge/js_bridge.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
@@ -195,6 +196,14 @@ class _HomePageState extends State<_HomePage> {
                 subtitle: '输入服务器地址并设为默认',
                 enabled: !_scanning,
                 onTap: () => _showManualInput(),
+              ),
+              const SizedBox(height: 12),
+              _ActionCard(
+                icon: Icons.info_outline,
+                title: '关于 Agent Spaces',
+                subtitle: '版本信息与项目链接',
+                enabled: true,
+                onTap: () => context.push('/about'),
               ),
             ],
           ),
