@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { tauriNavigate } from "@/lib/navigate";
+import { tauriNavigate, toStaticHref } from "@/lib/navigate";
 import {
   Sidebar,
   SidebarContent,
@@ -157,7 +157,7 @@ export function DashboardSidebar() {
         label: 'Open Workflow Settings',
         group: 'Settings',
         icon: GitBranch,
-        action: () => { window.location.href = '/workflows'; },
+        action: () => { window.location.href = toStaticHref('/workflows'); },
       },
     ];
     return registerCommands(cmds);
