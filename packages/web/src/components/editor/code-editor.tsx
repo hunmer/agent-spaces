@@ -172,6 +172,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       textarea.inputMode = readOnly ? 'none' : 'text';
       textarea.tabIndex = readOnly ? -1 : 0;
       textarea.toggleAttribute('readonly', readOnly);
+      textarea.toggleAttribute('disabled', readOnly);
       if (readOnly) {
         textarea.blur();
       }
@@ -201,7 +202,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     if (!container || !isReadOnly) return;
 
     const preventReadOnlyFocus = (event: Event) => {
-      if (event.type === 'pointerdown' && 'pointerType' in event && event.pointerType === 'mouse') {
+      const isMousePointer = event.type === 'pointerdown'
+        && 'pointerType' in event
+        && event.pointerType === 'mouse';
+      if (isMousePointer) {
         return;
       }
       const editor = editorRef.current;
@@ -210,6 +214,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       if (!editor.getDomNode()?.contains(target)) return;
 
       event.preventDefault();
+      event.stopPropagation();
+      if ('stopImmediatePropagation' in event) {
+        event.stopImmediatePropagation();
+      }
       editor.getDomNode()?.querySelector('textarea')?.blur();
     };
 
@@ -223,10 +231,12 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       }
     };
 
+    container.addEventListener('touchstart', preventReadOnlyFocus, { capture: true });
     container.addEventListener('pointerdown', preventReadOnlyFocus, { capture: true });
     container.addEventListener('focusin', blurReadOnlyInput, { capture: true });
 
     return () => {
+      container.removeEventListener('touchstart', preventReadOnlyFocus, { capture: true });
       container.removeEventListener('pointerdown', preventReadOnlyFocus, { capture: true });
       container.removeEventListener('focusin', blurReadOnlyInput, { capture: true });
     };

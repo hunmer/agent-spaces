@@ -22,7 +22,8 @@ interface MemberPickerProps {
   filter?: (candidate: MemberCandidate) => boolean;
 }
 
-const DEFAULT_FILTER = (c: MemberCandidate) => !['scheduler', 'task_creator', 'bot'].includes(c.description || '');
+const DEFAULT_FILTER = (c: MemberCandidate) =>
+  !['scheduler', 'task_creator', 'bot'].includes(c.description || '') && c.id !== 'agent-generator';
 
 export function MemberPicker({
   candidates,
