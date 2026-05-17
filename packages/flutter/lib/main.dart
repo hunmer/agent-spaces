@@ -8,11 +8,13 @@ import 'screens/home_screen.dart';
 import 'screens/bookmarks_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/about_screen.dart';
+import 'services/notification_service.dart';
 
 final localWebServer = InAppLocalhostServer(port: 8080, documentRoot: 'assets/web');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().initialize();
   await localWebServer.start();
   runApp(const ProviderScope(child: AgentSpacesApp()));
 }

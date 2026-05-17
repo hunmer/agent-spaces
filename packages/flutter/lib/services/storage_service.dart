@@ -9,6 +9,7 @@ class StorageService {
   static const _tabsKey = 'saved_tabs';
   static const _activeTabKey = 'saved_active_tab';
   static const _homeUrlKey = 'home_url';
+  static const _permissionDialogSeenKey = 'permission_dialog_seen';
 
   static SharedPreferences? _instance;
 
@@ -87,5 +88,15 @@ class StorageService {
   static Future<String?> loadHomeUrl() async {
     final prefs = await _prefs;
     return prefs.getString(_homeUrlKey);
+  }
+
+  static Future<bool> hasSeenPermissionDialog() async {
+    final prefs = await _prefs;
+    return prefs.getBool(_permissionDialogSeenKey) ?? false;
+  }
+
+  static Future<void> markPermissionDialogSeen() async {
+    final prefs = await _prefs;
+    await prefs.setBool(_permissionDialogSeenKey, true);
   }
 }

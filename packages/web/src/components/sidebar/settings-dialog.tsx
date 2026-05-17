@@ -16,23 +16,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor, Languages, RotateCcw, User, Palette, Globe, Shield, Mic, GitBranch, Bell, CheckCircle2, AlertCircle } from "lucide-react";
+import { Sun, Moon, Monitor, Languages, RotateCcw, User, Palette, Globe, Shield, Mic, GitBranch } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
 import { getToken, removeToken, authHeaders } from "@/lib/auth";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
-import {
-  getNotificationPermission,
-  isNativeEnvironment,
-  requestNotificationPermission,
-  type NotificationPermissionStatus,
-} from "@/lib/native-notification";
+import { isNativeEnvironment } from "@/lib/native-notification";
 
 const tabs = [
   { key: "appearance", icon: Palette },
-  { key: "permissions", icon: Shield },
   { key: "language", icon: Globe },
   { key: "account", icon: User },
   { key: "security", icon: Shield },
@@ -46,19 +40,17 @@ export function SettingsDialog({
   open,
   onOpenChange,
   standalone,
-  initialTab,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   standalone?: boolean;
-  initialTab?: TabKey;
 }) {
   const { theme, setTheme } = useTheme();
   const t = useTranslations('settings');
   const tc = useTranslations('common');
   const { locale, setLocale } = useLocale();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? "appearance");
+  const [activeTab, setActiveTab] = useState<TabKey>("appearance");
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("userAvatarUrl");
@@ -157,7 +149,6 @@ export function SettingsDialog({
 
   const tabLabels: Record<TabKey, string> = {
     appearance: t('theme'),
-    permissions: t('permissions'),
     language: t('language'),
     account: t('userAvatar'),
     security: t('security'),
@@ -264,9 +255,6 @@ export function SettingsDialog({
             </div>
           </div>
         );
-
-      case "permissions":
-        return <PermissionsSettings />;
 
       case "language":
         return (
@@ -407,95 +395,6 @@ function GitSettings() {
           Git
         </label>
         <GitSettingsForm scope="global" />
-      </div>
-    </div>
-  );
-}
-
-function PermissionsSettings() {
-  const t = useTranslations('settings');
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionStatus>('default');
-  const [checking, setChecking] = useState(true);
-  const [requesting, setRequesting] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    getNotificationPermission()
-      .then((status) => {
-        if (!cancelled) setNotificationPermission(status);
-      })
-      .finally(() => {
-        if (!cancelled) setChecking(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const requestPermission = async () => {
-    setRequesting(true);
-    try {
-      setNotificationPermission(await requestNotificationPermission());
-    } finally {
-      setRequesting(false);
-    }
-  };
-
-  const statusLabel = {
-    granted: t('permissionGranted'),
-    denied: t('permissionDenied'),
-    default: t('permissionDefault'),
-    unsupported: t('permissionUnsupported'),
-  }[notificationPermission];
-
-  const statusClassName = {
-    granted: 'text-emerald-600',
-    denied: 'text-destructive',
-    default: 'text-amber-600',
-    unsupported: 'text-muted-foreground',
-  }[notificationPermission];
-
-  const StatusIcon = notificationPermission === 'granted' ? CheckCircle2 : AlertCircle;
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
-          {t('permissions')}
-        </label>
-        <div className="rounded-lg border">
-          <div className="flex items-center justify-between gap-3 p-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <Bell className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-medium">{t('permissionNotifications')}</div>
-                <div className="mt-0.5 flex items-center gap-1.5 text-xs">
-                  <StatusIcon className={cn("size-3.5", statusClassName)} />
-                  <span className={statusClassName}>
-                    {checking ? t('permissionChecking') : statusLabel}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {notificationPermission !== 'granted' && notificationPermission !== 'unsupported' && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={requestPermission}
-                disabled={requesting || checking || notificationPermission === 'denied'}
-              >
-                {requesting ? t('permissionRequesting') : t('permissionRequest')}
-              </Button>
-            )}
-          </div>
-        </div>
-        {notificationPermission === 'denied' && (
-          <p className="mt-2 text-xs text-muted-foreground">{t('permissionDeniedHint')}</p>
-        )}
       </div>
     </div>
   );
