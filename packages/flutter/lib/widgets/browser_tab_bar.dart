@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import '../providers/bookmark_provider.dart';
+import '../providers/console_log_provider.dart';
 
 class BrowserTabBar extends ConsumerWidget {
   const BrowserTabBar({super.key});
@@ -67,15 +69,26 @@ class _MoreMenuButton extends ConsumerWidget {
       offset: const Offset(0, 40),
       itemBuilder: (_) => [
         const PopupMenuItem(value: 'bookmarks', height: 36, child: Row(children: [Icon(Icons.bookmark_outline, size: 16), SizedBox(width: 8), Text('书签', style: TextStyle(fontSize: 13))])),
+        const PopupMenuItem(value: 'console', height: 36, child: Row(children: [Icon(Icons.terminal, size: 16), SizedBox(width: 8), Text('查看控制台', style: TextStyle(fontSize: 13))])),
         const PopupMenuItem(value: 'settings', height: 36, child: Row(children: [Icon(Icons.settings, size: 16), SizedBox(width: 8), Text('设置', style: TextStyle(fontSize: 13))])),
       ],
       onSelected: (value) {
         if (value == 'bookmarks') {
           context.push('/bookmarks');
+        } else if (value == 'console') {
+          _showConsoleSheet(context, ref);
         } else if (value == 'settings') {
           context.push('/settings');
         }
       },
+    );
+  }
+
+  void _showConsoleSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _ConsoleSheet(),
     );
   }
 }
@@ -349,5 +362,125 @@ class _FaviconIcon extends StatelessWidget {
         errorBuilder: (context, error, stackTrace) => Icon(Icons.language, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );
+  }
+}
+
+class _ConsoleSheet extends ConsumerWidget {
+  const _ConsoleSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(consoleLogProvider);
+    final notifier = ref.read(consoleLogProvider.notifier);
+    final theme = Theme.of(context);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (context, scrollController) {
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+              child: Row(
+                children: [
+                  Text('控制台', style: theme.textTheme.titleSmall),
+                  const Spacer(),
+                  Switch(
+                    value: state.capturing,
+                    onChanged: (v) => notifier.setCapturing(v),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  const SizedBox(width: 8),
+                  Text('捕获日志', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    onPressed: state.logs.isEmpty
+                        ? null
+                        : () {
+                            Clipboard.setData(ClipboardData(text: notifier.allLogsText));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('已复制'), duration: Duration(seconds: 1)),
+                            );
+                          },
+                    icon: const Icon(Icons.copy, size: 18),
+                    tooltip: '复制所有日志',
+                    style: IconButton.styleFrom(minimumSize: const Size(32, 32), padding: EdgeInsets.zero),
+                  ),
+                  IconButton(
+                    onPressed: state.logs.isEmpty ? null : notifier.clearLogs,
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    tooltip: '清空日志',
+                    style: IconButton.styleFrom(minimumSize: const Size(32, 32), padding: EdgeInsets.zero),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: state.logs.isEmpty
+                  ? Center(
+                      child: Text(
+                        state.capturing ? '暂无日志' : '开启捕获以记录控制台日志',
+                        style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      itemCount: state.logs.length,
+                      itemBuilder: (_, i) {
+                        final log = state.logs[i];
+                        final color = _levelColor(log.level, theme);
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${log.formattedTime} ',
+                                style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: theme.colorScheme.onSurfaceVariant),
+                              ),
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Text(
+                                  log.level.toUpperCase(),
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  log.message,
+                                  style: TextStyle(fontSize: 12, fontFamily: 'monospace', color: color),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _levelColor(String level, ThemeData theme) {
+    return switch (level) {
+      'error' => Colors.red,
+      'warning' => Colors.orange,
+      'debug' => Colors.grey,
+      'info' => theme.colorScheme.primary,
+      _ => theme.colorScheme.onSurface,
+    };
   }
 }

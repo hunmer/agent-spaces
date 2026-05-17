@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridge/js_bridge.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
+import '../providers/console_log_provider.dart';
 import '../services/notification_service.dart';
 import '../services/webview_service.dart';
 
@@ -69,7 +70,7 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
   }
 }
 
-class _WebViewInstance extends StatefulWidget {
+class _WebViewInstance extends ConsumerStatefulWidget {
   final BrowserTab tab;
   final void Function(String tabId, String title, String url, String? faviconUrl) onTitleChanged;
 
@@ -80,10 +81,10 @@ class _WebViewInstance extends StatefulWidget {
   });
 
   @override
-  State<_WebViewInstance> createState() => _WebViewInstanceState();
+  ConsumerState<_WebViewInstance> createState() => _WebViewInstanceState();
 }
 
-class _WebViewInstanceState extends State<_WebViewInstance> {
+class _WebViewInstanceState extends ConsumerState<_WebViewInstance> {
   InAppWebViewController? _controller;
 
   @override
@@ -133,6 +134,12 @@ class _WebViewInstanceState extends State<_WebViewInstance> {
           );
         }
         await controller.evaluateJavascript(source: _jsBridge.injectionScript);
+      },
+      onConsoleMessage: (_, consoleMessage) {
+        ref.read(consoleLogProvider.notifier).addLog(
+              consoleMessage.message,
+              consoleMessage.messageLevel.toString().split('.').last,
+            );
       },
     );
 
