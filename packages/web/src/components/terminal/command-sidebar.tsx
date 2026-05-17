@@ -6,19 +6,25 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Input } from '@/components/ui/input';
 import type { QuickCommand } from '@agent-spaces/shared';
 
-function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete }: {
+function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, onSelect }: {
   command: QuickCommand; running: boolean;
   onRun: () => void; onClose: () => void; onEdit: () => void; onDelete: () => void;
+  onSelect: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
-      className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-accent group cursor-default"
+      onClick={running ? onSelect : undefined}
+      className={`flex items-center gap-1 px-2 py-1 text-xs hover:bg-accent group ${running ? 'cursor-pointer' : 'cursor-default'}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <button
-        onClick={running ? onClose : onRun}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (running) onClose();
+          else onRun();
+        }}
         className={`shrink-0 p-0.5 rounded ${running ? 'text-green-500 hover:text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
       >
         {running ? <X size={12} /> : <Play size={12} />}
@@ -27,8 +33,18 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete }:
       {running && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
       {hovered && (
         <>
-          <button onClick={onEdit} className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground"><Pencil size={11} /></button>
-          <button onClick={onDelete} className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive"><Trash2 size={11} /></button>
+          <button
+            onClick={(event) => { event.stopPropagation(); onEdit(); }}
+            className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground"
+          >
+            <Pencil size={11} />
+          </button>
+          <button
+            onClick={(event) => { event.stopPropagation(); onDelete(); }}
+            className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 size={11} />
+          </button>
         </>
       )}
     </div>
@@ -39,7 +55,7 @@ export function CommandSidebar({
   search, onSearchChange, commands, customCommands, folderGroups,
   customOpen, onCustomOpenChange, collapsedFolders, onToggleFolder,
   onImport, onAddCommand, workspaceId, isRunning, runningMap,
-  removeSession, run, remove, setEditingCommand, setDialogOpen, tc,
+  removeSession, run, remove, setEditingCommand, setDialogOpen, onSelectSession, tc,
 }: {
   search: string;
   onSearchChange: (v: string) => void;
@@ -60,6 +76,7 @@ export function CommandSidebar({
   remove: (wid: string, cid: string) => void;
   setEditingCommand: (cmd: QuickCommand | undefined) => void;
   setDialogOpen: (open: boolean) => void;
+  onSelectSession: (sessionId: string) => void;
   tc: (key: string) => string;
 }) {
   return (
@@ -122,6 +139,10 @@ export function CommandSidebar({
                         const s = runningMap[cmd.id];
                         if (s) removeSession(s.sessionId);
                       }}
+                      onSelect={() => {
+                        const s = runningMap[cmd.id];
+                        if (s) onSelectSession(s.sessionId);
+                      }}
                       onEdit={() => { setEditingCommand(cmd); setDialogOpen(true); }}
                       onDelete={() => remove(workspaceId, cmd.id)}
                     />
@@ -157,6 +178,10 @@ export function CommandSidebar({
                       onClose={() => {
                         const s = runningMap[cmd.id];
                         if (s) removeSession(s.sessionId);
+                      }}
+                      onSelect={() => {
+                        const s = runningMap[cmd.id];
+                        if (s) onSelectSession(s.sessionId);
                       }}
                       onEdit={() => { setEditingCommand(cmd); setDialogOpen(true); }}
                       onDelete={() => remove(workspaceId, cmd.id)}

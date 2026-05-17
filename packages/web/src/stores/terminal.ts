@@ -107,6 +107,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
       onRestored?.();
     });
+    ws.on('connected', () => {
+      ws.send('terminal.list', {});
+    });
+    ws.send('terminal.list', {});
   },
 
   createSession: (shell?: string, cwd?: string) => {

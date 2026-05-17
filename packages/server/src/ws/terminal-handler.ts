@@ -3,12 +3,29 @@ import type { ClientEventName, TerminalCreatePayload, TerminalInputPayload, Term
 import * as ptyService from '../services/pty.js';
 import { broadcastToWorkspace } from './connection-manager.js';
 
+export function sendTerminalSessions(ws: WebSocket, workspaceId: string) {
+  const existingSessions = ptyService.getSessionsByWorkspace(workspaceId);
+  ws.send(JSON.stringify({
+    event: 'terminal.sessions',
+    workspaceId,
+    timestamp: new Date().toISOString(),
+    data: {
+      sessions: existingSessions.map(s => ({ sessionId: s.id, cwd: s.cwd, shell: s.shell, buffer: s.buffer.join('') })),
+    },
+  }));
+}
+
 export function handleTerminalEvent(
-  _ws: WebSocket,
+  ws: WebSocket,
   workspaceId: string,
-  event: ClientEventName,
+  event: ClientEventName | 'terminal.list',
   data: unknown,
 ) {
+  if (event === 'terminal.list') {
+    sendTerminalSessions(ws, workspaceId);
+    return;
+  }
+
   switch (event) {
     case 'terminal.create': {
       const payload = data as TerminalCreatePayload;

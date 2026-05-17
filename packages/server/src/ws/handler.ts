@@ -1,8 +1,7 @@
 import type { WebSocket } from 'ws';
 import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
-import { handleTerminalEvent } from './terminal-handler.js';
-import * as ptyService from '../services/pty.js';
+import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
 import { appendMessageReply, createMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
 import * as agentService from '../services/agent.js';
@@ -31,15 +30,7 @@ export function handleConnection(ws: WebSocket, workspaceId: string) {
   }));
 
   // Send existing terminal sessions for reconnection
-  const existingSessions = ptyService.getSessionsByWorkspace(workspaceId);
-  ws.send(JSON.stringify({
-    event: 'terminal.sessions',
-    workspaceId,
-    timestamp: new Date().toISOString(),
-    data: {
-      sessions: existingSessions.map(s => ({ sessionId: s.id, cwd: s.cwd, shell: s.shell, buffer: s.buffer.join('') })),
-    },
-  }));
+  sendTerminalSessions(ws, workspaceId);
 
   ws.on('message', (raw) => {
     try {
@@ -57,12 +48,13 @@ export function handleConnection(ws: WebSocket, workspaceId: string) {
 }
 
 // Register terminal handlers
-const terminalEvents: ClientEventName[] = [
+const terminalEvents = [
+  'terminal.list',
   'terminal.create',
   'terminal.input',
   'terminal.resize',
   'terminal.close',
-];
+] as const;
 
 for (const evt of terminalEvents) {
   registerHandler(evt, (ws, workspaceId, data) => {

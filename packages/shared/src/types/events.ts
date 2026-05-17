@@ -94,6 +94,7 @@ export interface TaskOutputPayload {
 // ---- Client → Server Event Map ----
 
 export type ClientEventMap = {
+  'terminal.list': Record<string, never>;
   'terminal.create': TerminalCreatePayload;
   'terminal.input': TerminalInputPayload;
   'terminal.resize': TerminalResizePayload;

@@ -229,6 +229,10 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 remove={remove}
                 setEditingCommand={setEditingCommand}
                 setDialogOpen={(open) => { setDialogOpen(open); if (!open) return; }}
+                onSelectSession={(sessionId) => {
+                  setActive(sessionId);
+                  setCommandPopoverOpen(false);
+                }}
                 tc={tc}
               />
             </PopoverContent>
@@ -260,6 +264,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             remove={remove}
             setEditingCommand={setEditingCommand}
             setDialogOpen={setDialogOpen}
+            onSelectSession={setActive}
             tc={tc}
           />
         </div>
