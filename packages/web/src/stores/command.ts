@@ -44,6 +44,10 @@ export const useCommandStore = create<CommandStore>((set, get) => ({
       runningMap[p.commandId] = { sessionId: p.sessionId, status: p.status };
     }
     set({ commands, runningMap, loaded: true });
+    for (const p of processes) {
+      const cmd = commands.find((c: QuickCommand) => c.id === p.commandId);
+      if (cmd) useTerminalStore.getState().setSessionName(p.sessionId, cmd.name);
+    }
     get().attachWS(workspaceId);
   },
 

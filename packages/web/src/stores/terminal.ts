@@ -23,6 +23,7 @@ interface TerminalState {
   sessions: TerminalSession[];
   activeId: string | null;
   ws: WorkspaceWS | null;
+  workspaceId: string | null;
   _initialized: boolean;
   _restored: boolean;
 
@@ -39,13 +40,25 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   sessions: [],
   activeId: null,
   ws: null,
+  workspaceId: null,
   _initialized: false,
   _restored: false,
 
   init: (ws, onRestored) => {
     const state = get();
     if (state._initialized && state.ws === ws) return;
-    set({ ws, _initialized: true, _restored: false });
+    const workspaceChanged = state.workspaceId !== ws.workspaceId;
+    if (workspaceChanged) {
+      sessionBufferCache.clear();
+    }
+    set({
+      ws,
+      workspaceId: ws.workspaceId,
+      sessions: workspaceChanged ? [] : state.sessions,
+      activeId: workspaceChanged ? null : state.activeId,
+      _initialized: true,
+      _restored: false,
+    });
     ws.on('terminal.created', (data) => {
       const { sessionId, cwd, shell } = data as { sessionId: string; cwd: string; shell?: string };
       set((s) => {
@@ -67,19 +80,28 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
     });
     ws.on('terminal.sessions', (data) => {
-      const { sessions: remoteSessions } = data as { sessions: Array<{ sessionId: string; cwd: string; buffer?: string }> };
+      const { sessions: remoteSessions } = data as {
+        sessions: Array<{ sessionId: string; cwd: string; shell?: string; buffer?: string }>;
+      };
       set((s) => {
-        const existing = new Set(s.sessions.map(t => t.id));
-        const merged = [...s.sessions];
+        const previousById = new Map(s.sessions.map(t => [t.id, t]));
+        const sessions = remoteSessions.map((rs) => {
+          const previous = previousById.get(rs.sessionId);
+          if (rs.buffer) sessionBufferCache.set(rs.sessionId, rs.buffer);
+          return {
+            ...previous,
+            id: rs.sessionId,
+            cwd: rs.cwd,
+            shell: rs.shell ?? previous?.shell,
+          };
+        });
+        const hasActive = s.activeId ? sessions.some((t) => t.id === s.activeId) : false;
         for (const rs of remoteSessions) {
-          if (!existing.has(rs.sessionId)) {
-            merged.push({ id: rs.sessionId, cwd: rs.cwd });
-            if (rs.buffer) sessionBufferCache.set(rs.sessionId, rs.buffer);
-          }
+          if (!rs.buffer) sessionBufferCache.delete(rs.sessionId);
         }
         return {
-          sessions: merged,
-          activeId: s.activeId ?? merged[0]?.id ?? null,
+          sessions,
+          activeId: hasActive ? s.activeId : sessions[0]?.id ?? null,
           _restored: true,
         };
       });

@@ -42,6 +42,15 @@ export interface TerminalClosedPayload {
   exitCode?: number;
 }
 
+export interface TerminalSessionsPayload {
+  sessions: Array<{
+    sessionId: string;
+    cwd: string;
+    shell?: string;
+    buffer?: string;
+  }>;
+}
+
 // ---- Agent Events ----
 
 export interface AgentStatusChangedPayload {
@@ -101,6 +110,7 @@ export type ClientEventMap = {
 export type ServerEventMap = {
   'connected': { workspaceId: string };
   'terminal.created': TerminalCreatePayload;
+  'terminal.sessions': TerminalSessionsPayload;
   'terminal.output': TerminalOutputPayload;
   'terminal.closed': TerminalClosedPayload;
   'channel.message': import('./channel.js').Message;

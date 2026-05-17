@@ -131,10 +131,13 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
       requestAnimationFrame(() => fit.fit());
 
       terminalRegistry.set(sessionId, { xterm, fit });
+    }
 
-      // Restore buffered output for reconnected sessions
-      const buffer = consumeSessionBuffer(sessionId);
-      if (buffer) xterm.write(buffer);
+    // Restore buffered output supplied by the server for reconnected sessions.
+    const buffer = consumeSessionBuffer(sessionId);
+    if (buffer) {
+      if (cached) xterm.clear();
+      xterm.write(buffer);
     }
 
     xtermRef.current = xterm;

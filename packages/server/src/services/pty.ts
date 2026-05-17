@@ -9,6 +9,7 @@ interface PtySession {
   pty: pty.IPty;
   workspaceId: string;
   cwd: string;
+  shell: string;
   buffer: string[];
   output: string;
 }
@@ -22,8 +23,12 @@ export function createSession(
   onExit: (sessionId: string, exitCode: number) => void,
   shell?: string,
   env?: Record<string, string>,
+  sessionId?: string,
 ): string {
-  const id = uuid();
+  const id = sessionId || uuid();
+  if (sessions.has(id)) {
+    throw new Error(`Terminal session already exists: ${id}`);
+  }
   const resolvedShell = shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh') || '/bin/sh';
   const ptyEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) {
@@ -38,7 +43,7 @@ export function createSession(
     env: ptyEnv,
   });
 
-  const session: PtySession = { id, pty: ptyProcess, workspaceId, cwd, buffer: [], output: '' };
+  const session: PtySession = { id, pty: ptyProcess, workspaceId, cwd, shell: resolvedShell, buffer: [], output: '' };
 
   ptyProcess.onData((data) => {
     session.buffer.push(data);

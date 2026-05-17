@@ -23,8 +23,11 @@ export function handleTerminalEvent(
           broadcastToWorkspace(workspaceId, 'terminal.closed', { sessionId: id, exitCode });
         },
         payload.shell,
+        undefined,
+        payload.sessionId,
       );
-      broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell: payload.shell });
+      const session = ptyService.getSession(sessionId);
+      broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell: session?.shell ?? payload.shell });
       break;
     }
     case 'terminal.input': {

@@ -37,7 +37,7 @@ export function handleConnection(ws: WebSocket, workspaceId: string) {
     workspaceId,
     timestamp: new Date().toISOString(),
     data: {
-      sessions: existingSessions.map(s => ({ sessionId: s.id, cwd: s.cwd, buffer: s.buffer.join('') })),
+      sessions: existingSessions.map(s => ({ sessionId: s.id, cwd: s.cwd, shell: s.shell, buffer: s.buffer.join('') })),
     },
   }));
 
