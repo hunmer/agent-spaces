@@ -1,7 +1,12 @@
-FROM node:22 AS builder
+ARG NODE_VERSION=22.14.0
+ARG PNPM_VERSION=10.17.1
 
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm install -g pnpm && \
+FROM node:${NODE_VERSION} AS builder
+
+ARG PNPM_VERSION
+
+RUN corepack enable && \
+    corepack prepare pnpm@${PNPM_VERSION} --activate && \
     pnpm config set registry https://registry.npmmirror.com
 
 WORKDIR /app
@@ -16,8 +21,7 @@ ENV CI=true
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_STATIC_EXPORT=1
 
-RUN printf '\nonlyBuiltDependencies[]=esbuild\nonlyBuiltDependencies[]=sharp\nonlyBuiltDependencies[]=node-pty\nonlyBuiltDependencies[]=protobufjs\n' >> .npmrc && \
-    pnpm install --frozen-lockfile && \
+RUN pnpm install --frozen-lockfile && \
     pnpm --filter @agent-spaces/shared build && \
     pnpm --filter @agent-spaces/server build && \
     pnpm --filter @agent-spaces/web build && \
@@ -27,7 +31,7 @@ RUN printf '\nonlyBuiltDependencies[]=esbuild\nonlyBuiltDependencies[]=sharp\non
 RUN pnpm store prune && \
     rm -rf packages/shared/src packages/server/src packages/web/src packages/web/out packages/web/.next
 
-FROM node:22
+FROM node:${NODE_VERSION}
 
 WORKDIR /app/packages/server
 
