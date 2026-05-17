@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight } from "lucide-react"
-import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect } from "react"
+import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 /**
  * @title React AI File Tree
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -132,7 +132,7 @@ export const FileTree = ({
         role="tree"
         {...props}
       >
-        <div className="p-2 flex-1 min-h-0 overflow-y-auto">{children}</div>
+        <div className="p-2 flex-1 min-h-0 overflow-y-auto overflow-x-auto">{children}</div>
       </div>
     </FileTreeContext.Provider>
   )
@@ -324,6 +324,13 @@ export const FileTreeFile = ({
   const tc = useTranslations('common')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const itemRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (isSelected && itemRef.current) {
+      itemRef.current.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+  }, [isSelected])
 
   const fileSize = fileSizeMap?.[path]
   const isLargeFile = fileSize != null && fileSize > 1024 * 1024
@@ -356,6 +363,7 @@ export const FileTreeFile = ({
       <ContextMenu>
         <ContextMenuTrigger className="contents">
           <div
+            ref={itemRef}
             className={cn(
               "group/file flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
               isSelected && "bg-muted",

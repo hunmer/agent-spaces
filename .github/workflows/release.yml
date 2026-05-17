@@ -65,11 +65,22 @@ jobs:
         working-directory: packages/flutter
         run: flutter build macos --release
 
+      - name: Package macOS
+        run: |
+          APP_PATH=$(find packages/flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Could not find built .app"
+            find packages/flutter/build/macos -name "*.app" || true
+            exit 1
+          fi
+          echo "Using app bundle: $APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" packages/flutter/AgentSpaces-macos.zip
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: packages/flutter/build/macos/Build/Products/Release/*.app
+          path: packages/flutter/AgentSpaces-macos.zip
 
   build-ios:
     needs: build-web-assets
@@ -231,7 +242,7 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            artifacts/macos/**/*.app
+            artifacts/macos/*.zip
             artifacts/ios/*.ipa
             artifacts/windows/*.zip
             artifacts/android/**/*.apk
