@@ -1,6 +1,6 @@
 {
   "name": "agent-spaces",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @agent-spaces/server dev\" \"pnpm --filter @agent-spaces/web dev\"",

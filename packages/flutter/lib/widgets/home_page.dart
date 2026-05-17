@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'home_cards.dart';
 
@@ -155,13 +154,19 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _checkLocalWeb() async {
     try {
-      await rootBundle.load('assets/web/index.html');
-      if (mounted) setState(() => _hasLocalWeb = true);
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(milliseconds: 500);
+      final request = await client.getUrl(Uri.parse('http://localhost:8080/index.html'));
+      final response = await request.close();
+      client.close();
+      if (response.statusCode == 200 && mounted) {
+        setState(() => _hasLocalWeb = true);
+      }
     } catch (_) {}
   }
 
   void _openLocal() {
-    widget.onServerFound('flutter_assets://web/index.html');
+    widget.onServerFound('http://localhost:8080/index.html');
   }
 
   void _stopScan() {

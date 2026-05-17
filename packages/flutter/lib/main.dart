@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'providers/bookmark_provider.dart';
@@ -8,8 +9,11 @@ import 'screens/bookmarks_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/about_screen.dart';
 
-void main() {
+final localWebServer = InAppLocalhostServer(port: 8080, documentRoot: 'assets/web');
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await localWebServer.start();
   runApp(const ProviderScope(child: AgentSpacesApp()));
 }
 
