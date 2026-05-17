@@ -397,7 +397,8 @@
       "todos": "待办",
       "uploadFailed": "上传失败：{name}",
       "voiceStart": "语音输入",
-      "voiceStop": "停止录音"
+      "voiceStop": "停止录音",
+      "manageMembers": "管理频道成员"
     },
     "messageParts": {
       "agentProcessing": "Agent 正在处理...",

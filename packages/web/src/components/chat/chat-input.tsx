@@ -796,6 +796,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </div>
         </div>
       )}
+
+      <AddMemberDialog
+        open={addMemberOpen}
+        onOpenChange={setAddMemberOpen}
+        candidates={agents.filter(a => a.enabled !== false).map(a => ({
+          id: a.id,
+          label: getAgentDisplayName(a),
+          description: a.role,
+        }))}
+        defaultSelected={channel.members}
+        onAdd={(newMembers) => {
+          const enabled = agents.filter(a => a.enabled !== false);
+          updateChannel(workspaceId, channelId, {
+            members: normalizeChannelMembersToAgentIds(enabled, newMembers),
+          });
+        }}
+      />
     </>
   );
 });

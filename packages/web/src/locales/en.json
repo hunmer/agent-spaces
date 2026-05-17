@@ -395,7 +395,8 @@
       "todos": "Todos",
       "uploadFailed": "Upload failed: {name}",
       "voiceStart": "Voice Input",
-      "voiceStop": "Stop Recording"
+      "voiceStop": "Stop Recording",
+      "manageMembers": "Manage channel members"
     },
     "messageParts": {
       "agentProcessing": "Agent is processing...",

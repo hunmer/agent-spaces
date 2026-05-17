@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -95,6 +94,7 @@ class _HomePage extends StatefulWidget {
 class _HomePageState extends State<_HomePage> {
   String _scanStatus = '';
   bool _scanning = false;
+  bool _scanCancelled = false;
   double _progress = 0;
   String? _foundUrl;
   String? _localFoundUrl; // 内网自动扫描结果
@@ -134,9 +134,26 @@ class _HomePageState extends State<_HomePage> {
               if (_scanning) ...[
                 LinearProgressIndicator(value: _progress > 0 ? _progress : null),
                 const SizedBox(height: 8),
-                Text(
-                  _scanStatus,
-                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _scanStatus,
+                        style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: _stopScan,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('停止', style: TextStyle(fontSize: 13)),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],
@@ -193,6 +210,15 @@ class _HomePageState extends State<_HomePage> {
     }
   }
 
+  void _stopScan() {
+    _scanCancelled = true;
+    setState(() {
+      _scanning = false;
+      _scanStatus = '';
+      _progress = 0;
+    });
+  }
+
   Future<String?> _checkHealth(String host, int port) async {
     final url = 'http://$host:$port/api/health';
     try {
@@ -202,12 +228,12 @@ class _HomePageState extends State<_HomePage> {
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       client.close();
-      developer.log('health check $url -> ${response.statusCode} body=$body', name: 'scan');
+      debugPrint('[scan] health check $url -> ${response.statusCode} body=$body');
       if (response.statusCode == 200 && body.contains('"status":"ok"')) {
         return 'http://$host:$port';
       }
     } catch (e) {
-      developer.log('health check $url FAILED: $e', name: 'scan');
+      debugPrint('[scan] health check $url FAILED: $e');
     }
     return null;
   }
@@ -234,6 +260,7 @@ class _HomePageState extends State<_HomePage> {
   }
 
   Future<void> _scanLocal() async {
+    _scanCancelled = false;
     setState(() {
       _scanning = true;
       _progress = 0;
@@ -257,6 +284,7 @@ class _HomePageState extends State<_HomePage> {
     setState(() => _scanStatus = '扫描本机端口...');
 
     for (int port = 3000; port <= 3010; port++) {
+      if (_scanCancelled) return;
       final r = await _checkHealth('127.0.0.1', port);
       if (r != null) {
         if (mounted) setState(() { _scanning = false; _foundUrl = r; _localFoundUrl = r; _scanStatus = ''; });
@@ -274,27 +302,37 @@ class _HomePageState extends State<_HomePage> {
   Future<String?> _getWifiSubnet() async {
     try {
       final interfaces = await NetworkInterface.list();
-      developer.log('found ${interfaces.length} interfaces', name: 'scan');
+      debugPrint('[scan] found ${interfaces.length} interfaces');
+      String? wifiSubnet;
+      String? fallbackSubnet;
       for (final iface in interfaces) {
         for (final addr in iface.addresses) {
-          developer.log('  ${iface.name}: ${addr.address} (${addr.type}) loopback=${addr.isLoopback}', name: 'scan');
+          debugPrint('[scan]   ${iface.name}: ${addr.address} (${addr.type}) loopback=${addr.isLoopback}');
           if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
             final parts = addr.address.split('.');
             if (parts.length == 4) {
               final subnet = '${parts[0]}.${parts[1]}.${parts[2]}';
-              developer.log('  -> using subnet: $subnet', name: 'scan');
-              return subnet;
+              final isWifi = iface.name.startsWith('wlan') || iface.name.startsWith('en0');
+              if (isWifi) {
+                debugPrint('[scan]   -> WiFi subnet: $subnet (${iface.name})');
+                wifiSubnet = subnet;
+              }
+              fallbackSubnet ??= subnet;
             }
           }
         }
       }
+      final result = wifiSubnet ?? fallbackSubnet;
+      if (result != null) debugPrint('[scan]   -> selected subnet: $result');
+      return result;
     } catch (e) {
-      developer.log('getWifiSubnet FAILED: $e', name: 'scan');
+      debugPrint('[scan] getWifiSubnet FAILED: $e');
     }
     return null;
   }
 
   Future<void> _scanLAN() async {
+    _scanCancelled = false;
     setState(() {
       _scanning = true;
       _progress = 0;
@@ -307,7 +345,7 @@ class _HomePageState extends State<_HomePage> {
       if (mounted) setState(() { _scanning = false; _scanStatus = '无法获取 WiFi 地址'; });
       return;
     }
-    developer.log('LAN scan subnet=$subnet', name: 'scan');
+    debugPrint('[scan] LAN scan subnet=$subnet');
 
     final quick = await _quickCheck();
     if (quick != null) {
@@ -322,13 +360,15 @@ class _HomePageState extends State<_HomePage> {
     const batchSize = 20;
     int checked = 0;
     for (int i = 0; i < allHosts.length; i += batchSize) {
+      if (_scanCancelled) return;
       final batch = allHosts.sublist(i, i + batchSize > allHosts.length ? allHosts.length : i + batchSize);
       final results = await Future.wait(batch.map((host) => _checkHealth(host, 3000)));
       checked += batch.length;
 
+      if (_scanCancelled) return;
       final found = results.where((r) => r != null).firstOrNull;
       if (found != null) {
-        if (mounted) setState(() { _scanning = false; _foundUrl = found; _scanStatus = ''; });
+        if (mounted) setState(() { _scanning = false; _foundUrl = found; _localFoundUrl = found; _scanStatus = ''; });
         return;
       }
 
@@ -340,7 +380,7 @@ class _HomePageState extends State<_HomePage> {
       }
     }
 
-    if (mounted) setState(() { _scanning = false; _scanStatus = '未在局域网发现服务器'; });
+    if (mounted && !_scanCancelled) setState(() { _scanning = false; _scanStatus = '未在局域网发现服务器'; });
   }
 
   void _showManualInput() {
