@@ -669,6 +669,8 @@
     "exitFullscreen": "Exit Fullscreen",
     "enableEdit": "Enable Editing",
     "disableEdit": "Set Read-only",
+    "enableWordWrap": "Word Wrap",
+    "disableWordWrap": "Disable Word Wrap",
     "revealInTree": "Reveal in File Tree",
     "copyFilePath": "Copy File Path",
     "copyRelativePath": "Copy Relative Path",

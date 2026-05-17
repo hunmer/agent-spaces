@@ -54,13 +54,15 @@ interface CodeEditorProps {
   workspaceId: string;
 }
 
-function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen }: {
+function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap }: {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
   workspaceId: string;
   isReadOnly: boolean;
   onToggleReadOnly: () => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
+  wordWrap: boolean;
+  onToggleWordWrap: () => void;
 }) {
   const { saveFile, activeFilePath } = useEditorStore();
   const t = useTranslations('editor');
@@ -130,6 +132,10 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
             {isFullscreen ? t('exitFullscreen') : t('menuFullscreen')}
             <DropdownMenuShortcut>⌃⌘F</DropdownMenuShortcut>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onToggleWordWrap}>
+            {wordWrap ? t('disableWordWrap') : t('enableWordWrap')}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -153,6 +159,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
@@ -197,21 +204,27 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     syncReadOnly(editor, isReadOnly);
   }, [isReadOnly, syncReadOnly]);
 
+  // Sync wordWrap with Monaco editor
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.updateOptions({ wordWrap: wordWrap ? 'on' : 'off' });
+  }, [wordWrap]);
+
   useEffect(() => {
     const container = editorContainerRef.current;
     if (!container || !isReadOnly) return;
 
     const preventReadOnlyFocus = (event: Event) => {
-      const isMousePointer = event.type === 'pointerdown'
-        && 'pointerType' in event
-        && event.pointerType === 'mouse';
-      if (isMousePointer) {
-        return;
-      }
       const editor = editorRef.current;
       const target = event.target as Node | null;
       if (!editor || !target) return;
       if (!editor.getDomNode()?.contains(target)) return;
+
+      // Only block touch events that would focus the textarea — allow mouse pointer for scrolling
+      if (event.type === 'pointerdown' && 'pointerType' in event && (event as PointerEvent).pointerType === 'mouse') {
+        return;
+      }
 
       event.preventDefault();
       event.stopPropagation();
@@ -272,7 +285,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
-      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} />
+      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} />
       <div ref={editorContainerRef} className="flex-1 min-h-0">
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
@@ -292,6 +305,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               renderLineHighlight: "gutter",
               readOnly: isReadOnly,
               domReadOnly: isReadOnly,
+              wordWrap: wordWrap ? 'on' : 'off',
             }}
             theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
           />

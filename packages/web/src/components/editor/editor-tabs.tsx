@@ -161,8 +161,6 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
     useSensor(KeyboardSensor),
   );
 
-  if (openFiles.length === 0) return null;
-
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     toast.success(t('copied'));
@@ -203,29 +201,22 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
     const toIdx = files.findIndex((f) => f.path === String(over.id));
     if (fromIdx === -1 || toIdx === -1) return;
 
-    const reordered = arrayMove(files, fromIdx, toIdx).map((f, i, arr) => {
-      // Check neighbors to determine pin status
-      const hasPinnedLeft = i > 0 && arr[i - 1].pinned;
-      const hasPinnedRight = i < arr.length - 1 && arr[i + 1].pinned;
-      const hasUnpinnedLeft = i > 0 && !arr[i - 1].pinned;
-      const hasUnpinnedRight = i < arr.length - 1 && !arr[i + 1].pinned;
+    const reordered = arrayMove(files, fromIdx, toIdx);
+    const newIdx = reordered.findIndex((f) => f.path === String(active.id));
+    const moved = reordered[newIdx];
 
-      if (i === fromIdx) {
-        // Only update the moved item's pin status
-        if (f.pinned && (hasUnpinnedLeft || hasUnpinnedRight) && !hasPinnedLeft && !hasPinnedRight) {
-          return { ...f, pinned: false };
-        }
-        if (!f.pinned && (hasPinnedLeft || hasPinnedRight) && !hasUnpinnedLeft && !hasUnpinnedRight) {
-          return { ...f, pinned: true };
-        }
-      }
-      return f;
-    });
+    const leftPinned = newIdx > 0 && reordered[newIdx - 1].pinned;
+    const rightPinned = !leftPinned && newIdx < reordered.length - 1 && reordered[newIdx + 1].pinned;
+    if (moved) {
+      reordered[newIdx] = { ...moved, pinned: leftPinned || rightPinned };
+    }
 
     const pinned = reordered.filter((f) => f.pinned);
     const unpinned = reordered.filter((f) => !f.pinned);
-    reorderFiles(workspaceId, [...pinned, ...unpinned].map((f) => f.path));
+    reorderFiles(workspaceId, [...pinned, ...unpinned]);
   }, [workspaceId, reorderFiles]);
+
+  if (openFiles.length === 0) return null;
 
   return (
     <>

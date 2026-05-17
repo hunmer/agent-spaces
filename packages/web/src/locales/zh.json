@@ -671,6 +671,8 @@
     "exitFullscreen": "退出全屏",
     "enableEdit": "启用编辑",
     "disableEdit": "设为只读",
+    "enableWordWrap": "自动换行",
+    "disableWordWrap": "取消自动换行",
     "revealInTree": "在文件树中显示",
     "copyFilePath": "复制文件路径",
     "copyRelativePath": "复制相对路径",

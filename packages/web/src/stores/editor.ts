@@ -50,7 +50,7 @@ interface EditorState {
   openCommitDiff: (workspaceId: string, hash: string, message: string, diffs: GitDiffResult[]) => void;
   closeCommitDiff: (workspaceId: string, hash: string) => void;
   togglePin: (workspaceId: string, path: string) => void;
-  reorderFiles: (workspaceId: string, paths: string[]) => void;
+  reorderFiles: (workspaceId: string, files: OpenFile[]) => void;
   closeOthers: (workspaceId: string, path: string) => void;
   closeToLeft: (workspaceId: string, path: string) => void;
   closeToRight: (workspaceId: string, path: string) => void;
@@ -203,9 +203,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/files/editor-state`);
       const state = await res.json();
-      const { openFilePaths = [], activeFilePath = null } = state;
+      const { openFilePaths = [], activeFilePath = null, pinnedPaths = [] } = state;
       if (openFilePaths.length === 0) return;
 
+      const pinnedSet = new Set(pinnedPaths);
       const openFiles: OpenFile[] = [];
       for (const path of openFilePaths) {
         try {
@@ -214,7 +215,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           );
           const data = await fileRes.json();
           const name = path.split('/').pop() || path;
-          openFiles.push({ path, name, content: data.content, modified: false });
+          openFiles.push({ path, name, content: data.content, modified: false, pinned: pinnedSet.has(path) || undefined });
         } catch {
           // file may have been deleted, skip
         }
@@ -234,6 +235,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { openFiles, activeFilePath } = get();
     const realFiles = openFiles.filter(f => !isCommitDiffPath(f.path));
     const realActive = activeFilePath && !isCommitDiffPath(activeFilePath) ? activeFilePath : null;
+    const pinnedPaths = realFiles.filter(f => f.pinned).map(f => f.path);
     try {
       await fetch(`/api/workspaces/${workspaceId}/files/editor-state`, {
         method: 'PUT',
@@ -241,6 +243,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         body: JSON.stringify({
           openFilePaths: realFiles.map(f => f.path),
           activeFilePath: realActive,
+          pinnedPaths,
         }),
       });
     } catch {
@@ -280,12 +283,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     debouncedSave(workspaceId);
   },
 
-  reorderFiles: (workspaceId, paths) => {
-    set((s) => {
-      const fileMap = new Map(s.openFiles.map((f) => [f.path, f]));
-      const reordered = paths.map((p) => fileMap.get(p)!).filter(Boolean);
-      return { openFiles: reordered };
-    });
+  reorderFiles: (workspaceId, files) => {
+    set({ openFiles: files });
     debouncedSave(workspaceId);
   },
 
