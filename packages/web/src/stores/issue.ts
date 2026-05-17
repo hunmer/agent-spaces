@@ -103,6 +103,12 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/start`, {
       method: 'POST',
     });
+    if (!res.ok) {
+      const data = await res.json();
+      const { toast } = await import('sonner');
+      toast.error(data.error || data.message || 'Failed to start issue');
+      return;
+    }
     const issue: Issue = await res.json();
     get().upsertIssue(issue);
   },

@@ -42,7 +42,6 @@ export async function runIssueAutomation(
   }
 
   console.warn(`[issue-runner] no workflow configured for issue workspaceId=${workspaceId} issueId=${issueId}`);
-  markIssueError(workspaceId, issueId, 'No workflow configured for issue', ctx);
 }
 
 export function hasActiveIssueAutomation(workspaceId: string): boolean {

@@ -8,6 +8,7 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { stopChannelRuns } from '../ws/agent-runner.js';
 
 import * as agentService from '../services/agent.js';
+import * as taskService from '../services/task.js';
 import { retryIssue } from '../services/issue-retry.js';
 import { hasActiveIssueAutomation, runIssueAutomation } from '../agents/issue-agent-runner.js';
 import * as workflowService from '../services/workflow.js';
@@ -86,6 +87,17 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
   const workspaceId = req.params.id;
   const { issueId } = req.params;
   const before = issueService.getById(workspaceId, issueId);
+  if (!before) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+  // Pre-check: must have workflow or existing tasks
+  const hasWorkflow = Boolean(before.workflowId);
+  const existingTasks = taskService.list(workspaceId, issueId);
+  if (!hasWorkflow && existingTasks.length === 0) {
+    res.status(400).json({ error: 'No workflow or tasks configured for this issue' });
+    return;
+  }
   const issue = issueService.updateStatus(workspaceId, issueId, 'planned');
   if (!issue) {
     res.status(404).json({ error: 'issue not found' });

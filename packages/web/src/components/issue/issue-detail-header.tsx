@@ -107,7 +107,7 @@ export function IssueDetailHeader({
       )}
       {issue.status === 'draft' && (
         <div className="mt-2">
-          <Button size="sm" variant="outline" disabled={issueTasks.length === 0} onClick={() => startIssue(workspaceId, issue.id)}>
+          <Button size="sm" variant="outline" onClick={() => startIssue(workspaceId, issue.id)}>
             <Play className="h-3 w-3 mr-1" />
             {t('detail.start')}
           </Button>

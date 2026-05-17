@@ -38,6 +38,5 @@ export function toStaticHref(href: string) {
     return `/workspace/_.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
   }
 
-  const target = path.endsWith(".html") ? path : `${path}.html`;
-  return `${target}${queryString ? `?${queryString}` : ""}${hash ? `#${hash}` : ""}`;
+  return `${path}${queryString ? `?${queryString}` : ""}${hash ? `#${hash}` : ""}`;
 }

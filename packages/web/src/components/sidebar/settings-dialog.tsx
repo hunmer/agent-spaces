@@ -347,15 +347,15 @@ export function SettingsDialog({
   };
 
   const sidebar = (
-    <div className="flex min-h-0 flex-1">
-      <div className="w-36 border-r flex flex-col py-3 px-2 shrink-0 overflow-y-auto">
+    <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+      <div className="flex sm:flex-col sm:w-36 sm:border-r sm:py-3 sm:px-2 shrink-0 overflow-x-auto border-b sm:border-b-0 gap-1 px-2 py-2">
         {tabs.map(({ key, icon: Icon }) => (
           <button
             key={key}
             type="button"
             onClick={() => setActiveTab(key)}
             className={cn(
-              "flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium transition-colors text-left",
+              "flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium transition-colors whitespace-nowrap",
               activeTab === key
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
