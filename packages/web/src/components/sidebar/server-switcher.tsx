@@ -45,7 +45,7 @@ export function ServerSwitcher() {
     setActiveId(server.id);
     saveActiveId(server.id);
     setActiveServerCookie(server.url);
-    window.location.reload();
+    window.location.href = "/";
   };
 
   const removeServer = (id: string) => {
