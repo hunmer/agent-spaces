@@ -45,27 +45,23 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(browserProvider);
+    final activeIndex = state.tabs.indexWhere((t) => t.id == state.activeTabId);
 
-    return Stack(
+    if (state.tabs.isEmpty) return const SizedBox.shrink();
+
+    return IndexedStack(
+      index: activeIndex >= 0 ? activeIndex : 0,
       children: state.tabs.map((tab) {
-        final isVisible = tab.id == state.activeTabId;
-        return Visibility(
-          visible: isVisible,
-          maintainState: true,
-          maintainSize: false,
-          maintainAnimation: false,
-          child: _WebViewInstance(
-            key: ValueKey(tab.id),
-            tab: tab,
-            isVisible: isVisible,
-            onTitleChanged: (tabId, title, url) {
-              ref.read(browserProvider.notifier).updateTab(
-                    tabId,
-                    title: title,
-                    url: url,
-                  );
-            },
-          ),
+        return _WebViewInstance(
+          key: ValueKey(tab.id),
+          tab: tab,
+          onTitleChanged: (tabId, title, url) {
+            ref.read(browserProvider.notifier).updateTab(
+                  tabId,
+                  title: title,
+                  url: url,
+                );
+          },
         );
       }).toList(),
     );
@@ -74,13 +70,11 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
 
 class _WebViewInstance extends StatefulWidget {
   final BrowserTab tab;
-  final bool isVisible;
   final void Function(String tabId, String title, String url) onTitleChanged;
 
   const _WebViewInstance({
     super.key,
     required this.tab,
-    required this.isVisible,
     required this.onTitleChanged,
   });
 

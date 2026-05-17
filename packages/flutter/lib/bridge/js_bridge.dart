@@ -9,6 +9,8 @@ class JsBridge {
     window.__FLUTTER_INTERNALS__ = true;
     window.__flutterBridge = {
       _handlers: {},
+      _pending: {},
+      _id: 0,
       on: function(event, handler) {
         this._handlers[event] = handler;
       },
@@ -16,7 +18,18 @@ class JsBridge {
         window.flutter_inappwebview.callHandler('bridgeEvent', JSON.stringify({event: event, data: data}));
       },
       invoke: function(method, args) {
-        window.flutter_inappwebview.callHandler('bridgeInvoke', JSON.stringify({method: method, args: args}));
+        var id = ++this._id;
+        return new Promise(function(resolve) {
+          window.__flutterBridge._pending[id] = resolve;
+          window.flutter_inappwebview.callHandler('bridgeInvoke', JSON.stringify({id: id, method: method, args: args}));
+        });
+      },
+      _resolve: function(id, result) {
+        var resolve = this._pending[id];
+        if (resolve) {
+          delete this._pending[id];
+          resolve(result);
+        }
       }
     };
     window.isFlutterEnvironment = function() { return true; };
@@ -51,20 +64,27 @@ class JsBridge {
 
     controller.addJavaScriptHandler(
       handlerName: 'bridgeInvoke',
-      callback: (args) async {
-        if (args.isEmpty) return null;
-        try {
-          final Map<String, dynamic> msg = jsonDecode(args[0]);
-          final method = msg['method'] as String?;
-          final methodArgs = msg['args'];
-          if (method != null) {
-            _log.i('Bridge invoke: $method');
-            return await onInvoke?.call(method, methodArgs);
+      callback: (args) {
+        if (args.isEmpty) return;
+        () async {
+          try {
+            final Map<String, dynamic> msg = jsonDecode(args[0]);
+            final id = msg['id'];
+            final method = msg['method'] as String?;
+            final methodArgs = msg['args'];
+            if (method != null) {
+              _log.i('Bridge invoke: $method');
+              final result = await onInvoke?.call(method, methodArgs);
+              // Resolve the JS promise by evaluating script
+              final json = jsonEncode(result);
+              await controller.evaluateJavascript(
+                source: 'window.__flutterBridge._resolve($id, $json);',
+              );
+            }
+          } catch (e) {
+            _log.e('Bridge invoke error: $e');
           }
-        } catch (e) {
-          _log.e('Bridge invoke error: $e');
-        }
-        return null;
+        }();
       },
     );
   }
@@ -78,7 +98,7 @@ class JsBridge {
     await controller.evaluateJavascript(
       source: '''
         if (window.__flutterBridge && window.__flutterBridge._handlers['$event']) {
-          window.__flutterBridge._handlers['$event'](${jsonEncode(json)});
+          window.__flutterBridge._handlers['$event']($json);
         }
       ''',
     );
