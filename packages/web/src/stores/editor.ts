@@ -39,6 +39,7 @@ interface EditorState {
   openFile: (workspaceId: string, path: string) => Promise<void>;
   saveFile: (workspaceId: string, path: string) => Promise<void>;
   updateContent: (path: string, content: string) => void;
+  refreshFile: (workspaceId: string, path: string) => Promise<void>;
   closeFile: (workspaceId: string, path: string) => void;
   setActiveFile: (workspaceId: string, path: string | null) => void;
   jumpToPosition: (workspaceId: string, path: string, line: number, column?: number) => Promise<void>;
@@ -172,6 +173,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         f.path === path ? { ...f, content, modified: true } : f
       ),
     }));
+  },
+
+  refreshFile: async (workspaceId, path) => {
+    const file = get().openFiles.find(f => f.path === path);
+    if (!file || file.modified) return;
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`);
+      const data = await res.json();
+      if (data.content !== file.content) {
+        set(s => ({
+          openFiles: s.openFiles.map(f =>
+            f.path === path ? { ...f, content: data.content } : f
+          ),
+        }));
+      }
+    } catch {}
   },
 
   closeFile: (workspaceId, path) => {

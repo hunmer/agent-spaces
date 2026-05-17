@@ -157,7 +157,7 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
 }
 
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
-  const { openFiles, activeFilePath, updateContent, saveFile, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
+  const { openFiles, activeFilePath, updateContent, saveFile, refreshFile, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -204,6 +204,15 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       () => handleSaveRef.current()
     );
   }, [isReadOnly, syncReadOnly]);
+
+  // Poll for external file changes (skip if user has unsaved edits)
+  useEffect(() => {
+    if (!activeFilePath || !activeFile || activeFile.modified || isCommitDiff) return;
+    const timer = setInterval(() => {
+      refreshFile(workspaceId, activeFilePath);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [activeFilePath, activeFile?.modified, isCommitDiff, workspaceId, refreshFile]);
 
   // Sync readOnly state with Monaco editor
   useEffect(() => {
