@@ -5,7 +5,7 @@ import "@/lib/monaco-loader";
 import { useEffect, useCallback, useState, useRef } from "react";
 import {
   Upload, Download, Loader2, GitCommitHorizontal, RefreshCw,
-  FileCode, FileText, RotateCcw, Trash2, ChevronDown, GitBranch,
+  FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
   EyeOff, Sparkles, Settings2,
 } from "lucide-react";
 import { useGitStore } from "@/stores/git";
@@ -439,9 +439,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
           )}
           <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground" title={tc('refresh')}>
             <RefreshCw size={13} />
-          </button>
-          <button onClick={openGitignore} className="p-1 text-muted-foreground hover:text-foreground" title={tChanges('editGitignore')}>
-            <FileText size={13} />
           </button>
         </div>
 

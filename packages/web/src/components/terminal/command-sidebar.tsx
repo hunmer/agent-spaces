@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, Search, Download, Play, Pencil, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, X, Search, Upload, Play, Pencil, Trash2 } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import type { QuickCommand } from '@agent-spaces/shared';
@@ -85,7 +85,7 @@ export function CommandSidebar({
           className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
           title={tc('import')}
         >
-          <Download size={13} />
+          <Upload size={13} />
         </button>
       </div>
 
