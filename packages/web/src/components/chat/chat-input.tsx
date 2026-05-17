@@ -42,6 +42,7 @@ import { useDropzone } from "react-dropzone";
 import { ComposerShell } from "@/components/composer/composer-shell";
 import { createSuggestionRenderer } from "@/components/composer/create-suggestion-renderer";
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
+import { createFileSearchExtension } from "@/components/composer/create-file-search-extension";
 import {
   BUILT_IN_AGENT_TOOLS,
   type AgentConfig,
@@ -320,6 +321,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     []
   );
 
+  const fileSearchExtension = useMemo(
+    () => createFileSearchExtension(workspaceId),
+    [workspaceId]
+  );
+
   const submitRef = useRef(submitCurrentMessage);
   submitRef.current = submitCurrentMessage;
 
@@ -333,6 +339,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         }),
         mentionExtension,
         slashExtension,
+        fileSearchExtension,
       ],
       editorProps: {
         attributes: {
@@ -381,7 +388,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         scheduleDraftSave(editor.getHTML());
       },
     },
-    [mentionExtension, slashExtension, channelName]
+    [mentionExtension, slashExtension, fileSearchExtension, channelName]
   );
 
   useEffect(() => {

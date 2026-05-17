@@ -1,3 +1,4 @@
+import 'package:buttons_tabbar/buttons_tabbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,14 +8,41 @@ import '../providers/browser_provider.dart';
 import '../providers/bookmark_provider.dart';
 import '../providers/console_log_provider.dart';
 
-class BrowserTabBar extends ConsumerWidget {
+class BrowserTabBar extends ConsumerStatefulWidget {
   const BrowserTabBar({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BrowserTabBar> createState() => _BrowserTabBarState();
+}
+
+class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
+    with TickerProviderStateMixin {
+  TabController? _controller;
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(browserProvider);
     final notifier = ref.read(browserProvider.notifier);
     final theme = Theme.of(context);
+    final tabCount = state.tabs.length;
+    final activeIndex = state.tabs
+        .indexWhere((t) => t.id == state.activeTabId)
+        .clamp(0, tabCount > 0 ? tabCount - 1 : 0);
+
+    if (_controller?.length != tabCount) {
+      _controller?.dispose();
+      _controller = tabCount > 0
+          ? TabController(length: tabCount, initialIndex: activeIndex, vsync: this)
+          : null;
+    }
+
+    if (tabCount == 0 || _controller == null) return const SizedBox.shrink();
 
     return Container(
       height: 40,
@@ -22,32 +50,61 @@ class BrowserTabBar extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: List.generate(state.tabs.length, (index) {
-                  final tab = state.tabs[index];
-                  final isActive = tab.id == state.activeTabId;
-                  return Padding(
-                    padding: EdgeInsets.only(right: index < state.tabs.length - 1 ? 2 : 0),
-                    child: _TabChip(
-                      tab: tab,
-                      isActive: isActive,
-                      canClose: state.tabs.length > 1,
-                      onTap: () => notifier.setActiveTab(tab.id),
-                      onClose: () => notifier.closeTab(tab.id),
-                      onNavigate: (url) {
-                        final normalized = url.startsWith('http') ? url : 'http://$url';
-                        notifier.updateTab(tab.id, url: normalized);
-                      },
-                      onSwitchDevice: (device) {
-                        notifier.setDevice(device, tab.id);
-                      },
-                    ),
-                  );
-                }),
+            child: ButtonsTabBar(
+              controller: _controller,
+              backgroundColor: theme.colorScheme.primaryContainer,
+              unselectedBackgroundColor: theme.colorScheme.surface,
+              labelStyle: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onPrimaryContainer,
               ),
+              unselectedLabelStyle: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurface,
+              ),
+              borderWidth: 0,
+              radius: 8,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              buttonMargin: const EdgeInsets.symmetric(horizontal: 1, vertical: 4),
+              onTap: (index) {
+                if (index < tabCount) notifier.setActiveTab(state.tabs[index].id);
+              },
+              tabs: state.tabs.map((tab) {
+                return Tab(
+                  child: GestureDetector(
+                    onLongPressStart: (details) =>
+                        _showContextMenu(context, ref, tab, details.globalPosition),
+                    onSecondaryTapUp: (details) =>
+                        _showContextMenu(context, ref, tab, details.globalPosition),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _FaviconIcon(url: tab.effectiveFaviconUrl),
+                        const SizedBox(width: 6),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 80),
+                          child: Text(
+                            tab.title,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        if (state.tabs.length > 1) ...[
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () => notifier.closeTab(tab.id),
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
           _AddTabButton(onTap: () => notifier.addTab()),
@@ -56,6 +113,138 @@ class BrowserTabBar extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showContextMenu(BuildContext context, WidgetRef ref, BrowserTab tab, Offset position) {
+    final notifier = ref.read(browserProvider.notifier);
+    final bookmarkNotifier = ref.read(bookmarkProvider.notifier);
+    final isBookmarked = bookmarkNotifier.isBookmarked(tab.url);
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
+      items: [
+        const PopupMenuItem<String>(
+          value: 'navigate',
+          height: 36,
+          child: Row(children: [Icon(Icons.open_in_browser, size: 16), SizedBox(width: 8), Text('跳转', style: TextStyle(fontSize: 13))]),
+        ),
+        PopupMenuItem<String>(
+          value: 'device',
+          height: 36,
+          child: Row(children: [
+            Icon(_deviceIcon(tab.device.type), size: 16),
+            const SizedBox(width: 8),
+            const Text('切换设备', style: TextStyle(fontSize: 13)),
+            const Spacer(),
+            Text(tab.device.name, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+          ]),
+        ),
+        PopupMenuItem<String>(
+          value: 'bookmark',
+          height: 36,
+          child: Row(children: [
+            Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_outline, size: 16),
+            const SizedBox(width: 8),
+            Text(isBookmarked ? '从书签移除' : '添加到书签', style: const TextStyle(fontSize: 13)),
+          ]),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'navigate') {
+        _showNavigateDialog(context, tab, notifier);
+      } else if (value == 'device') {
+        _showDeviceMenu(context, tab, notifier);
+      } else if (value == 'bookmark') {
+        if (isBookmarked) {
+          final bm = bookmarkNotifier.findByUrl(tab.url);
+          if (bm != null) bookmarkNotifier.removeBookmark(bm.id);
+        } else {
+          bookmarkNotifier.addBookmark(name: tab.title, url: tab.url, deviceType: tab.device.type);
+        }
+      }
+    });
+  }
+
+  void _showNavigateDialog(BuildContext context, BrowserTab tab, BrowserNotifier notifier) {
+    final controller = TextEditingController(text: tab.url);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('跳转', style: TextStyle(fontSize: 15)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(fontSize: 13),
+          decoration: const InputDecoration(
+            isDense: true,
+            hintText: '输入 URL',
+            prefixIcon: Icon(Icons.language, size: 16),
+          ),
+          onSubmitted: (url) {
+            if (url.isNotEmpty) {
+              final normalized = url.startsWith('http') ? url : 'http://$url';
+              notifier.updateTab(tab.id, url: normalized);
+              Navigator.of(ctx).pop();
+            }
+          },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+          TextButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                final normalized = controller.text.startsWith('http') ? controller.text : 'http://${controller.text}';
+                notifier.updateTab(tab.id, url: normalized);
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: const Text('跳转'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeviceMenu(BuildContext context, BrowserTab tab, BrowserNotifier notifier) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('切换设备', style: TextStyle(fontSize: 15)),
+        children: DeviceProfile.defaults.map((d) {
+          final selected = d.type == tab.device.type;
+          return SimpleDialogOption(
+            onPressed: () {
+              notifier.setDevice(d, tab.id);
+              Navigator.of(ctx).pop();
+            },
+            child: Row(
+              children: [
+                Icon(_deviceIcon(d.type), size: 18),
+                const SizedBox(width: 12),
+                Text(
+                  '${d.name} (${d.width.toInt()}x${d.height.toInt()})',
+                  style: TextStyle(fontSize: 13, fontWeight: selected ? FontWeight.w600 : FontWeight.normal),
+                ),
+                if (selected) ...[
+                  const Spacer(),
+                  Icon(Icons.check, size: 16, color: Theme.of(context).colorScheme.primary),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  IconData _deviceIcon(DeviceType type) {
+    return switch (type) {
+      DeviceType.phone => Icons.phone_android,
+      DeviceType.tablet => Icons.tablet,
+      DeviceType.desktop => Icons.desktop_windows,
+    };
   }
 }
 
@@ -93,242 +282,6 @@ class _MoreMenuButton extends ConsumerWidget {
       isScrollControlled: true,
       builder: (_) => const _ConsoleSheet(),
     );
-  }
-}
-
-class _TabChip extends ConsumerWidget {
-  final BrowserTab tab;
-  final bool isActive;
-  final bool canClose;
-  final VoidCallback onTap;
-  final VoidCallback onClose;
-  final void Function(String url) onNavigate;
-  final void Function(DeviceProfile device) onSwitchDevice;
-
-  const _TabChip({
-    required this.tab,
-    required this.isActive,
-    required this.canClose,
-    required this.onTap,
-    required this.onClose,
-    required this.onNavigate,
-    required this.onSwitchDevice,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return Material(
-      color: isActive
-          ? theme.colorScheme.primaryContainer
-          : theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: () {
-          final box = context.findRenderObject() as RenderBox;
-          final offset = box.localToGlobal(Offset.zero);
-          _showContextMenu(context, ref, Offset(offset.dx + box.size.width / 2, offset.dy + box.size.height));
-        },
-        onSecondaryTapUp: (details) =>
-            _showContextMenu(context, ref, details.globalPosition),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _FaviconIcon(url: tab.effectiveFaviconUrl),
-              const SizedBox(width: 6),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 100),
-                child: Text(
-                  tab.title,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isActive
-                        ? theme.colorScheme.onPrimaryContainer
-                        : theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              if (canClose) ...[
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: onClose,
-                  child: Icon(
-                    Icons.close,
-                    size: 14,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showContextMenu(BuildContext context, WidgetRef ref, Offset position) {
-    final bookmarkNotifier = ref.read(bookmarkProvider.notifier);
-    final isBookmarked = bookmarkNotifier.isBookmarked(tab.url);
-
-    showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx,
-        position.dy,
-        position.dx + 1,
-        position.dy + 1,
-      ),
-      items: [
-        const PopupMenuItem<String>(
-          value: 'navigate',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(Icons.open_in_browser, size: 16),
-              SizedBox(width: 8),
-              Text('跳转', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'device',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(_deviceIcon(tab.device.type), size: 16),
-              const SizedBox(width: 8),
-              const Text('切换设备', style: TextStyle(fontSize: 13)),
-              const Spacer(),
-              Text(
-                tab.device.name,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'bookmark',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_outline, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                isBookmarked ? '从书签移除' : '添加到书签',
-                style: const TextStyle(fontSize: 13),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ).then((value) {
-      if (value == 'navigate') {
-        _showNavigateDialog(context);
-      } else if (value == 'device') {
-        _showDeviceMenu(context);
-      } else if (value == 'bookmark') {
-        if (isBookmarked) {
-          final bm = bookmarkNotifier.findByUrl(tab.url);
-          if (bm != null) bookmarkNotifier.removeBookmark(bm.id);
-        } else {
-          bookmarkNotifier.addBookmark(
-            name: tab.title,
-            url: tab.url,
-            deviceType: tab.device.type,
-          );
-        }
-      }
-    });
-  }
-
-  void _showNavigateDialog(BuildContext context) {
-    final controller = TextEditingController(text: tab.url);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('跳转', style: TextStyle(fontSize: 15)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(fontSize: 13),
-          decoration: const InputDecoration(
-            isDense: true,
-            hintText: '输入 URL',
-            prefixIcon: Icon(Icons.language, size: 16),
-          ),
-          onSubmitted: (url) {
-            if (url.isNotEmpty) {
-              onNavigate(url);
-              Navigator.of(ctx).pop();
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                onNavigate(controller.text);
-                Navigator.of(ctx).pop();
-              }
-            },
-            child: const Text('跳转'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeviceMenu(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('切换设备', style: TextStyle(fontSize: 15)),
-        children: DeviceProfile.defaults.map((d) {
-          final selected = d.type == tab.device.type;
-          return SimpleDialogOption(
-            onPressed: () {
-              onSwitchDevice(d);
-              Navigator.of(ctx).pop();
-            },
-            child: Row(
-              children: [
-                Icon(_deviceIcon(d.type), size: 18),
-                const SizedBox(width: 12),
-                Text(
-                  '${d.name} (${d.width.toInt()}x${d.height.toInt()})',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-                if (selected) ...[
-                  const Spacer(),
-                  Icon(Icons.check, size: 16, color: Theme.of(context).colorScheme.primary),
-                ],
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  IconData _deviceIcon(DeviceType type) {
-    return switch (type) {
-      DeviceType.phone => Icons.phone_android,
-      DeviceType.tablet => Icons.tablet,
-      DeviceType.desktop => Icons.desktop_windows,
-    };
   }
 }
 
