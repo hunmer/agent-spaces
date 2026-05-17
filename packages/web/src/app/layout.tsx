@@ -5,7 +5,6 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
-import { IframeLinkInterceptor, IframeFloatingBall, IframeOverlay } from "@/components/common/iframe-manager";
 import { ViewportInsets } from "@/components/viewport-insets";
 import { ZoomWrapper } from "@/components/zoom-wrapper";
 import { CommandPalette } from "@/components/command-palette";
@@ -71,9 +70,6 @@ export default function RootLayout({
               <Toaster richColors position="bottom-right" />
             </AuthGuard>
             <ConsolePanel />
-            <IframeLinkInterceptor />
-            <IframeFloatingBall />
-            <IframeOverlay />
           </LocaleProvider>
         </ThemeProvider>
         </ZoomWrapper>

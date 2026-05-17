@@ -28,7 +28,6 @@ import subscriptionRouter from './routes/subscription.js';
 import agentSseRouter from './routes/agent-sse.js';
 import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
-import iframeBookmarksRouter from './routes/iframe-bookmarks.js';
 import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-recognition.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
@@ -135,7 +134,6 @@ app.use('/api/skills', skillRouter);
 app.use('/api/mcps', mcpRouter);
 app.use('/api/subscriptions', subscriptionRouter);
 app.use('/api/speech-recognition', speechRecognitionRouter);
-app.use('/api/iframe-bookmarks', iframeBookmarksRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
 const webDir = resolveRuntimeDir('web');
