@@ -54,7 +54,7 @@ interface CodeEditorProps {
   workspaceId: string;
 }
 
-function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap }: {
+function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap, minimap, onToggleMinimap }: {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
   workspaceId: string;
   isReadOnly: boolean;
@@ -63,6 +63,8 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
   onToggleFullscreen: () => void;
   wordWrap: boolean;
   onToggleWordWrap: () => void;
+  minimap: boolean;
+  onToggleMinimap: () => void;
 }) {
   const { saveFile, activeFilePath } = useEditorStore();
   const t = useTranslations('editor');
@@ -136,6 +138,9 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
           <DropdownMenuItem onClick={onToggleWordWrap}>
             {wordWrap ? t('disableWordWrap') : t('enableWordWrap')}
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={onToggleMinimap}>
+            {minimap ? t('disableMinimap') : t('enableMinimap')}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -160,6 +165,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
+  const [minimap, setMinimap] = useState(() => localStorage.getItem('editor-minimap') === 'true');
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
@@ -210,6 +216,13 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     if (!editor) return;
     editor.updateOptions({ wordWrap: wordWrap ? 'on' : 'off' });
   }, [wordWrap]);
+
+  // Sync minimap with Monaco editor
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.updateOptions({ minimap: { enabled: minimap } });
+  }, [minimap]);
 
   useEffect(() => {
     const container = editorContainerRef.current;
@@ -285,7 +298,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
-      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} />
+      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} />
       <div ref={editorContainerRef} className="flex-1 min-h-0">
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
@@ -299,7 +312,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             onMount={handleMount}
             options={{
               fontSize: 13,
-              minimap: { enabled: false },
+              minimap: { enabled: minimap },
               scrollBeyondLastLine: false,
               padding: { top: 8 },
               renderLineHighlight: "gutter",

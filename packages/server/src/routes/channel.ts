@@ -20,8 +20,7 @@ router.get('/', (req: Request<ChannelParams>, res: Response) => {
 // POST /api/workspaces/:id/channels
 router.post('/', (req: Request<ChannelParams>, res: Response) => {
   const { name, type, members } = req.body;
-  if (!name) { res.status(400).json({ error: 'name required' }); return; }
-  const channel = createChannel(req.params.id, { name, type: type || 'general', members });
+  const channel = createChannel(req.params.id, { name: name || 'General', type: type || 'general', members });
   broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   res.status(201).json(channel);
 });

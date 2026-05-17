@@ -574,7 +574,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       {!collapsed && (
         <div className="border-t px-4 py-2">
           {/* Agent quick bar */}
-          {sortedAgents.length > 0 && (
+          {
             <div className="flex items-center gap-1 mb-1.5 overflow-x-auto scrollbar-none">
               <button
                 type="button"
@@ -626,7 +626,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 );
               })}
             </div>
-          )}
+          }
 
           <ComposerShell
             editor={editor}

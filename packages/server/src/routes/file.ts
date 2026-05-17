@@ -74,10 +74,10 @@ router.put('/editor-state', async (req: Request<{ id: string }>, res: Response) 
   const ws = fileService.getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
-  const { openFilePaths, activeFilePath } = req.body;
+  const { openFilePaths, activeFilePath, pinnedPaths } = req.body;
   if (!Array.isArray(openFilePaths)) { res.status(400).json({ error: 'openFilePaths is required' }); return; }
 
-  const ok = await fileService.writeFileContent(ws, EDITOR_STATE_PATH, JSON.stringify({ openFilePaths, activeFilePath }, null, 2));
+  const ok = await fileService.writeFileContent(ws, EDITOR_STATE_PATH, JSON.stringify({ openFilePaths, activeFilePath, pinnedPaths: pinnedPaths ?? [] }, null, 2));
   if (!ok) { res.status(500).json({ error: 'Failed to save editor state' }); return; }
   res.json({ ok: true });
 });

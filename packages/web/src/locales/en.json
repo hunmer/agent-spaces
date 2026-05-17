@@ -671,6 +671,8 @@
     "disableEdit": "Set Read-only",
     "enableWordWrap": "Word Wrap",
     "disableWordWrap": "Disable Word Wrap",
+    "enableMinimap": "Minimap",
+    "disableMinimap": "Disable Minimap",
     "revealInTree": "Reveal in File Tree",
     "copyFilePath": "Copy File Path",
     "copyRelativePath": "Copy Relative Path",
