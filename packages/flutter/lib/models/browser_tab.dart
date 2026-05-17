@@ -72,6 +72,15 @@ class BrowserTab {
 
   String get effectiveFaviconUrl => faviconUrl ?? '';
 
+  factory BrowserTab.fromSaved(Map<String, dynamic> json) => BrowserTab(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        url: json['url'] as String,
+        faviconUrl: json['faviconUrl'] as String?,
+        device: DeviceProfile.fromType(DeviceType.values[json['deviceType'] as int]),
+        createdAt: DateTime.parse(json['createdAt'] as String),
+      );
+
   BrowserTab copyWith({
     String? title,
     String? url,

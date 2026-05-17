@@ -15,91 +15,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: 22
-          cache: pnpm
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin
+          flutter-version: '3.38.x'
+          channel: 'stable'
+          cache: true
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build shared & server
-        run: pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build
-
-      - name: Build web
-        run: pnpm --filter @agent-spaces/web build
-        env:
-          NEXT_STATIC_EXPORT: 1
-
-      - name: Copy web dist
-        run: node scripts/copy-web.mjs
+        run: flutter pub get
+        working-directory: packages/flutter
 
       - name: Build macOS
-        working-directory: packages/tauri
-        run: pnpm build:macos
+        working-directory: packages/flutter
+        run: flutter build macos --release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: |
-            packages/tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-            packages/tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
+          path: packages/flutter/build/macos/Build/Products/Release/*.app
 
   build-ios:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: 22
-          cache: pnpm
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios
+          flutter-version: '3.38.x'
+          channel: 'stable'
+          cache: true
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: flutter pub get
+        working-directory: packages/flutter
 
-      - name: Build shared & server
-        run: pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build
-
-      - name: Build web
-        run: pnpm --filter @agent-spaces/web build
-        env:
-          NEXT_STATIC_EXPORT: 1
-
-      - name: Copy web dist
-        run: node scripts/copy-web.mjs
-
-      - name: Build iOS (unsigned)
-        working-directory: packages/tauri
-        env:
-          CODE_SIGN_IDENTITY: ""
-          CODE_SIGNING_REQUIRED: "NO"
-          CODE_SIGNING_ALLOWED: "NO"
-          DEVELOPMENT_TEAM: ""
-        run: pnpm tauri ios build --target aarch64 --no-sign --ci
+      - name: Build iOS (no-codesign)
+        working-directory: packages/flutter
+        run: flutter build ios --release --no-codesign
 
       - name: Package IPA
         run: |
-          APP_PATH=$(find packages/tauri/src-tauri/gen/apple -name "Agent Spaces.app" -path "*.xcarchive/Products/Applications/*" | head -1)
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find packages/tauri/src-tauri/gen/apple -name "Agent Spaces.app" -path "*/Release-iphoneos/*" | head -1)
-          fi
+          APP_PATH=$(find packages/flutter/build/ios/iphoneos -name "Runner.app" | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "Could not find built .app"
-            find packages/tauri/src-tauri/gen/apple -name "*.app" || true
+            find packages/flutter/build -name "*.app" || true
             exit 1
           fi
           echo "Using app bundle: $APP_PATH"
@@ -107,116 +67,84 @@ jobs:
           mkdir -p "$IPA_DIR/Payload"
           cp -r "$APP_PATH" "$IPA_DIR/Payload/"
           cd "$IPA_DIR"
-          zip -r "$GITHUB_WORKSPACE/packages/tauri/Agent Spaces.ipa" Payload
+          zip -r "$GITHUB_WORKSPACE/packages/flutter/AgentSpaces.ipa" Payload
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios
-          path: packages/tauri/Agent Spaces.ipa
+          path: packages/flutter/AgentSpaces.ipa
 
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: 22
-          cache: pnpm
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-msvc
+          flutter-version: '3.38.x'
+          channel: 'stable'
+          cache: true
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build shared & server
-        run: pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build
-
-      - name: Build web
-        run: pnpm --filter @agent-spaces/web build
-        env:
-          NEXT_STATIC_EXPORT: 1
-
-      - name: Copy web dist
-        run: node scripts/copy-web.mjs
+        run: flutter pub get
+        working-directory: packages/flutter
 
       - name: Build Windows
-        working-directory: packages/tauri
-        run: pnpm build:windows
+        working-directory: packages/flutter
+        run: flutter build windows --release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: |
-            packages/tauri/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-            packages/tauri/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+          path: packages/flutter/build/windows/x64/runner/Release/*
 
   build-android:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android
 
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install NDK
-        run: sdkmanager "ndk;28.0.13004108"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.x'
+          channel: 'stable'
+          cache: true
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build shared & server
-        run: pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build
-
-      - name: Build web
-        run: pnpm --filter @agent-spaces/web build
-        env:
-          NEXT_STATIC_EXPORT: 1
-
-      - name: Copy web dist
-        run: node scripts/copy-web.mjs
+        run: flutter pub get
+        working-directory: packages/flutter
 
       - name: Decode keystore
-        working-directory: packages/tauri/src-tauri/gen/android/app
-        run: |
-          echo -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode -o release-key.jks
+        working-directory: packages/flutter/android/app
+        run: echo -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release-key.jks
 
-      - name: Build Android
-        working-directory: packages/tauri
+      - name: Build Android APK
+        working-directory: packages/flutter
+        run: flutter build apk --release
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: pnpm build:android
+
+      - name: Build Android AAB
+        working-directory: packages/flutter
+        run: flutter build appbundle --release
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android
           path: |
-            packages/tauri/src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
-            packages/tauri/src-tauri/gen/android/app/build/outputs/bundle/universalRelease/*.aab
+            packages/flutter/build/app/outputs/flutter-apk/*.apk
+            packages/flutter/build/app/outputs/bundle/release/*.aab
 
   release:
     needs: [build-macos, build-ios, build-windows, build-android]
@@ -235,9 +163,8 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            artifacts/macos/**/*.dmg
+            artifacts/macos/**/*.app
             artifacts/ios/*.ipa
             artifacts/windows/**/*.exe
-            artifacts/windows/**/*.msi
             artifacts/android/**/*.apk
             artifacts/android/**/*.aab
