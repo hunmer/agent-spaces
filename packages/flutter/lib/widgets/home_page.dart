@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'home_cards.dart';
 
@@ -21,6 +22,7 @@ class _HomePageState extends State<HomePage> {
   double _progress = 0;
   String? _foundUrl;
   String? _localFoundUrl;
+  bool _hasLocalWeb = false;
 
   @override
   void initState() {
@@ -88,6 +90,14 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 12),
               ],
               ActionCard(
+                icon: Icons.folder_open,
+                title: '打开本地',
+                subtitle: _hasLocalWeb ? '加载内置的 Web 前端（无需服务器）' : '未找到本地 Web 资源',
+                enabled: !_scanning && _hasLocalWeb,
+                onTap: _openLocal,
+              ),
+              const SizedBox(height: 12),
+              ActionCard(
                 icon: Icons.wifi,
                 title: '扫描内网',
                 subtitle: _localFoundUrl != null
@@ -135,10 +145,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _autoScanLocal() async {
+    await _checkLocalWeb();
+    if (!mounted) return;
     final result = await _quickCheck();
     if (mounted && result != null) {
       setState(() => _localFoundUrl = result);
     }
+  }
+
+  Future<void> _checkLocalWeb() async {
+    try {
+      await rootBundle.load('web/index.html');
+      if (mounted) setState(() => _hasLocalWeb = true);
+    } catch (_) {}
+  }
+
+  void _openLocal() {
+    widget.onServerFound('flutter_assets://web/index.html');
   }
 
   void _stopScan() {

@@ -104,6 +104,8 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
   InAppWebViewController? _controller;
   String _lastUrl = '';
 
+  bool get _isAssetUrl => widget.tab.url.startsWith('flutter_assets://');
+
   @override
   void initState() {
     super.initState();
@@ -123,9 +125,16 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
     super.didUpdateWidget(oldWidget);
     if (widget.tab.url != _lastUrl && _controller != null) {
       _lastUrl = widget.tab.url;
-      _controller!.loadUrl(
-        urlRequest: URLRequest(url: WebUri(widget.tab.url)),
-      );
+      _loadUrl(_controller!);
+    }
+  }
+
+  void _loadUrl(InAppWebViewController controller) {
+    if (_isAssetUrl) {
+      final assetPath = 'assets/${widget.tab.url.replaceFirst('flutter_assets://', '')}';
+      controller.loadFlutterAsset(assetKey: assetPath);
+    } else {
+      controller.loadUrl(urlRequest: URLRequest(url: WebUri(widget.tab.url)));
     }
   }
 
@@ -135,7 +144,27 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
     final isConstrained = device.type != DeviceType.desktop;
 
     Widget webView = InAppWebView(
-      initialUrlRequest: URLRequest(url: WebUri(widget.tab.url)),
+      initialUrlRequest: _isAssetUrl ? null : URLRequest(url: WebUri(widget.tab.url)),
+      initialSettings: InAppWebViewSettings(
+        userAgent: device.userAgentSuffix.isEmpty
+            ? null
+            : device.userAgentSuffix,
+        supportZoom: true,
+        builtInZoomControls: false,
+        useHybridComposition: true,
+        allowsInlineMediaPlayback: true,
+        mediaPlaybackRequiresUserGesture: false,
+      ),
+      onWebViewCreated: (controller) async {
+        _controller = controller;
+        _webViewService.registerController(widget.tab.id, controller);
+        _jsBridge.registerHandlers(controller);
+        await controller.evaluateJavascript(source: _jsBridge.injectionScript);
+        await controller.evaluateJavascript(source: _keyboardViewportScript);
+        if (_isAssetUrl) {
+          _loadUrl(controller);
+        }
+      },
       initialSettings: InAppWebViewSettings(
         userAgent: device.userAgentSuffix.isEmpty
             ? null

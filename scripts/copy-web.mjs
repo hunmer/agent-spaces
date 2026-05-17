@@ -29,4 +29,10 @@ if (existsSync(tauriWeb)) {
 }
 cpSync(webOut, tauriWeb, { recursive: true });
 
-console.log('[copy-web] packages/web/out -> packages/server/web + packages/server/dist/web + packages/tauri/web');
+const flutterWeb = resolve(root, 'packages/flutter/web');
+if (existsSync(flutterWeb)) {
+  rmSync(flutterWeb, { recursive: true, force: true });
+}
+cpSync(webOut, flutterWeb, { recursive: true });
+
+console.log('[copy-web] packages/web/out -> packages/server/web + packages/server/dist/web + packages/tauri/web + packages/flutter/web');
