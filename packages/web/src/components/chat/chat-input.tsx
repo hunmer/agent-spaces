@@ -491,9 +491,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       const ed = editorRef.current;
       if (!ed) return;
       if (isFinal) {
-        const currentText = ed.getText();
-        ed.commands.setContent(currentText + text, { emitUpdate: true });
-        ed.commands.focus('end');
+        ed.chain().focus().insertContent(text).run();
       }
     };
     startVoice(onText);
