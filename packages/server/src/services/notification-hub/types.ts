@@ -4,7 +4,8 @@ export type NotificationBroadcastEvent =
   | 'issuse_status_change'
   | 'issue_status_change'
   | 'issue_task_start'
-  | 'issue_task_done';
+  | 'issue_task_done'
+  | 'channel_agent_completed';
 
 export interface BroadcastEnvelope {
   event: NotificationBroadcastEvent;
