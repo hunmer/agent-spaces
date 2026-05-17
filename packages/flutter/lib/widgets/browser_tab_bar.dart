@@ -42,7 +42,20 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
           : null;
     }
 
-    if (tabCount == 0 || _controller == null) return const SizedBox.shrink();
+    if (tabCount == 0) {
+      return Container(
+        height: 40,
+        color: theme.colorScheme.surfaceContainer,
+        child: Row(
+          children: [
+            const Spacer(),
+            _AddTabButton(onTap: () => notifier.addTab()),
+            _MoreMenuButton(),
+            const SizedBox(width: 4),
+          ],
+        ),
+      );
+    }
 
     return Container(
       height: 40,
@@ -89,17 +102,15 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
                             style: const TextStyle(fontSize: 12),
                           ),
                         ),
-                        if (state.tabs.length > 1) ...[
-                          const SizedBox(width: 4),
-                          GestureDetector(
-                            onTap: () => notifier.closeTab(tab.id),
-                            child: Icon(
-                              Icons.close,
-                              size: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () => notifier.closeTab(tab.id),
+                          child: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
@@ -151,6 +162,8 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         ),
       ],
     ).then((value) {
+      if (!context.mounted) return;
+
       if (value == 'navigate') {
         _showNavigateDialog(context, tab, notifier);
       } else if (value == 'device') {

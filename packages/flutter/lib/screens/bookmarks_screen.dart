@@ -34,7 +34,7 @@ class BookmarksScreen extends ConsumerWidget {
             )
           : ListView.separated(
               itemCount: bookmarks.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final bm = bookmarks[index];
                 return ListTile(
@@ -93,7 +93,7 @@ class BookmarksScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<DeviceType>(
-                value: deviceType,
+                initialValue: deviceType,
                 isDense: true,
                 decoration: const InputDecoration(
                   isDense: true,

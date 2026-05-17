@@ -42,6 +42,11 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
   BrowserNotifier() : super(const BrowserState());
 
   Future<void> init() async {
+    final savedHomeUrl = await StorageService.loadHomeUrl();
+    if (savedHomeUrl != null) {
+      state = state.copyWith(homeUrl: savedHomeUrl);
+    }
+
     if (_restoreOnStartup) {
       final savedTabs = await StorageService.loadTabs();
       final savedActiveId = await StorageService.loadActiveTabId();
@@ -53,19 +58,10 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
         return;
       }
     }
-    _addInitialTab();
+    // Don't auto-create tab - show homepage instead
   }
 
   void setRestoreOnStartup(bool value) => _restoreOnStartup = value;
-
-  void _addInitialTab() {
-    final tab = BrowserTab(
-      id: _uuid.v4(),
-      title: 'Agent Spaces',
-      url: state.homeUrl,
-    );
-    state = state.copyWith(tabs: [tab], activeTabId: tab.id);
-  }
 
   void addTab({String? url, String? title, DeviceProfile? device}) {
     final tab = BrowserTab(
@@ -82,11 +78,10 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
   }
 
   void closeTab(String tabId) {
-    if (state.tabs.length <= 1) return;
-    final idx = state.tabs.indexWhere((t) => t.id == tabId);
     final newTabs = state.tabs.where((t) => t.id != tabId).toList();
-    String newActiveId = state.activeTabId;
-    if (state.activeTabId == tabId) {
+    String newActiveId = '';
+    if (newTabs.isNotEmpty) {
+      final idx = state.tabs.indexWhere((t) => t.id == tabId);
       final newIdx = idx < newTabs.length ? idx : newTabs.length - 1;
       newActiveId = newTabs[newIdx].id;
     }
@@ -119,6 +114,7 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
 
   void setHomeUrl(String url) {
     state = state.copyWith(homeUrl: url);
+    StorageService.saveHomeUrl(url);
   }
 
   void _persistTabs() {

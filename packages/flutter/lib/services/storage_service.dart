@@ -8,6 +8,7 @@ class StorageService {
   static const _settingsKey = 'app_settings';
   static const _tabsKey = 'saved_tabs';
   static const _activeTabKey = 'saved_active_tab';
+  static const _homeUrlKey = 'home_url';
 
   static SharedPreferences? _instance;
 
@@ -76,5 +77,15 @@ class StorageService {
   static Future<String?> loadActiveTabId() async {
     final prefs = await _prefs;
     return prefs.getString(_activeTabKey);
+  }
+
+  static Future<void> saveHomeUrl(String url) async {
+    final prefs = await _prefs;
+    await prefs.setString(_homeUrlKey, url);
+  }
+
+  static Future<String?> loadHomeUrl() async {
+    final prefs = await _prefs;
+    return prefs.getString(_homeUrlKey);
   }
 }

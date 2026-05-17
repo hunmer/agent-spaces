@@ -1,4 +1,5 @@
 import { Extension, type Editor } from '@tiptap/core';
+import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 
 import { createSuggestionRenderer } from './create-suggestion-renderer';
@@ -10,6 +11,8 @@ type FileSearchItem = {
   title: string;
   description: string;
 };
+
+const fileSearchPluginKey = new PluginKey('fileSearchSuggestion');
 
 export function createFileSearchExtension(workspaceId: string) {
   let abortController: AbortController | null = null;
@@ -65,6 +68,7 @@ export function createFileSearchExtension(workspaceId: string) {
     addProseMirrorPlugins() {
       return [
         Suggestion({
+          pluginKey: fileSearchPluginKey,
           editor: this.editor,
           ...this.options.suggestion,
         }),

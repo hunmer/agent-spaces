@@ -5,6 +5,8 @@ import 'package:agent_spaces/main.dart';
 void main() {
   testWidgets('App builds without error', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: AgentSpacesApp()));
-    expect(find.text('Agent Spaces'), findsWidgets);
+
+    expect(find.byType(AgentSpacesApp), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
