@@ -224,10 +224,50 @@ const MonacoEditor = dynamic(
   { ssr: false, loading: () => <EditorLoadingFallback /> }
 );
 
+function hasSingleWordSelection(editor: Monaco.editor.IStandaloneCodeEditor | null) {
+  const model = editor?.getModel();
+  const selection = editor?.getSelection();
+  if (!model || !selection || selection.isEmpty()) return false;
+  if (selection.startLineNumber !== selection.endLineNumber) return false;
+
+  const selectedText = model.getValueInRange(selection);
+  if (!selectedText || /\s/.test(selectedText)) return false;
+
+  const word = model.getWordAtPosition({
+    lineNumber: selection.startLineNumber,
+    column: selection.startColumn,
+  });
+  if (!word || word.word !== selectedText) return false;
+
+  return selection.startColumn === word.startColumn && selection.endColumn === word.endColumn;
+}
+
+function getSingleWordSelectionMenuState(editor: Monaco.editor.IStandaloneCodeEditor | null): MobileReadonlyMenuState | null {
+  const model = editor?.getModel();
+  const selection = editor?.getSelection();
+  const editorNode = editor?.getDomNode();
+  if (!editor || !model || !selection || !editorNode || !hasSingleWordSelection(editor)) return null;
+
+  const visiblePosition = editor.getScrolledVisiblePosition({
+    lineNumber: selection.endLineNumber,
+    column: selection.endColumn,
+  });
+  const editorRect = editorNode.getBoundingClientRect();
+  const selectedText = model.getValueInRange(selection);
+
+  return {
+    x: visiblePosition ? editorRect.left + visiblePosition.left : editorRect.left + editorRect.width / 2,
+    y: visiblePosition ? editorRect.top + visiblePosition.top + visiblePosition.height : editorRect.top + editorRect.height / 2,
+    selectedText,
+    canNavigate: true,
+  };
+}
+
 interface MobileReadonlyMenuState {
   x: number;
   y: number;
   selectedText: string;
+  canNavigate?: boolean;
 }
 
 interface MobileLongPressState {
@@ -377,6 +417,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const mobileReadonlyMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileLongPressRef = useRef<MobileLongPressState | null>(null);
   const mobileSelectionMenuTimerRef = useRef<number | null>(null);
+  const mobileMonacoSelectionMenuTimerRef = useRef<number | null>(null);
+  const allowMobileEditorFocusRef = useRef(false);
   const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const favoriteDecorationsRef = useRef<string[]>([]);
@@ -409,6 +451,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       window.clearTimeout(mobileSelectionMenuTimerRef.current);
       mobileSelectionMenuTimerRef.current = null;
     }
+    if (mobileMonacoSelectionMenuTimerRef.current != null) {
+      window.clearTimeout(mobileMonacoSelectionMenuTimerRef.current);
+      mobileMonacoSelectionMenuTimerRef.current = null;
+    }
     setMobileSelectionMode(false);
     setMobileReadonlyMenu(null);
     setMobileSelectionPreMetrics(null);
@@ -424,10 +470,12 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       x: event.clientX,
       y: event.clientY,
       selectedText: '',
+      canNavigate: hasSingleWordSelection(editorRef.current),
     });
   }, [mobileSelectionMode, showMobileReadonlyOverlay]);
 
   const handleMobileReadonlyFocus = useCallback(() => {
+    if (allowMobileEditorFocusRef.current) return;
     if (!showMobileReadonlyOverlay || mobileSelectionMode) return;
     blurEditorActiveElement(editorRef.current);
   }, [mobileSelectionMode, showMobileReadonlyOverlay]);
@@ -447,9 +495,28 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     }
   }, []);
 
+  const clearMobileMonacoSelectionMenuTimer = useCallback(() => {
+    if (mobileMonacoSelectionMenuTimerRef.current != null) {
+      window.clearTimeout(mobileMonacoSelectionMenuTimerRef.current);
+      mobileMonacoSelectionMenuTimerRef.current = null;
+    }
+  }, []);
+
   const handleMobileReadonlyPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!showMobileReadonlyOverlay || mobileSelectionMode || event.pointerType === 'mouse') return;
     if (mobileReadonlyMenuRef.current?.contains(event.target as Node)) return;
+    const editor = editorRef.current;
+    const target = editor?.getTargetAtClientPoint(event.clientX, event.clientY);
+    const selection = editor?.getSelection();
+    if (selection && target?.position && !selection.isEmpty() && selection.containsPosition(target.position)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const menuState = getSingleWordSelectionMenuState(editor);
+      if (menuState) {
+        setMobileReadonlyMenu(menuState);
+      }
+      return;
+    }
     setMobileReadonlyMenu(null);
     clearMobileLongPress();
     const x = event.clientX;
@@ -459,7 +526,12 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       y,
       timer: window.setTimeout(() => {
         blurEditorActiveElement(editorRef.current);
-        setMobileReadonlyMenu({ x, y, selectedText: '' });
+        setMobileReadonlyMenu({
+          x,
+          y,
+          selectedText: '',
+          canNavigate: hasSingleWordSelection(editor),
+        });
         mobileLongPressRef.current = null;
       }, 520),
     };
@@ -528,6 +600,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
       y: rect ? rect.bottom : window.innerHeight / 2,
       selectedText,
+      canNavigate: hasSingleWordSelection(editorRef.current),
     });
   }, [mobileSelectionMode]);
 
@@ -591,9 +664,31 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const runMobileEditorAction = useCallback((actionId: string) => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.getAction(actionId)?.run();
-    closeMobileSelectionMode();
-  }, [closeMobileSelectionMode]);
+    const selection = editor.getSelection();
+    const position = selection?.getStartPosition();
+    setMobileReadonlyMenu(null);
+    allowMobileEditorFocusRef.current = true;
+    if (selection) editor.setSelection(selection);
+    if (position) editor.setPosition(position);
+    editor.focus();
+    requestAnimationFrame(() => {
+      editor.trigger('agentSpaces.mobileContextMenu', actionId, undefined);
+      window.setTimeout(() => {
+        const currentPosition = editor.getPosition();
+        if (currentPosition) {
+          editor.setSelection({
+            startLineNumber: currentPosition.lineNumber,
+            startColumn: currentPosition.column,
+            endLineNumber: currentPosition.lineNumber,
+            endColumn: currentPosition.column,
+          });
+        }
+        setMobileReadonlyMenu(null);
+        allowMobileEditorFocusRef.current = false;
+        blurEditorActiveElement(editor);
+      }, 250);
+    });
+  }, []);
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
     editor.updateOptions({ readOnly, domReadOnly: readOnly });
@@ -877,6 +972,35 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     pre.scrollTop = mobileSelectionPreMetrics.scrollTop;
   }, [mobileSelectionMode, mobileSelectionPreMetrics]);
 
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || !showMobileReadonlyOverlay || mobileSelectionMode) {
+      clearMobileMonacoSelectionMenuTimer();
+      return;
+    }
+
+    const disposable = editor.onDidChangeCursorSelection(() => {
+      clearMobileMonacoSelectionMenuTimer();
+      if (!hasSingleWordSelection(editor)) {
+        setMobileReadonlyMenu((menu) => (menu?.canNavigate ? null : menu));
+        return;
+      }
+
+      mobileMonacoSelectionMenuTimerRef.current = window.setTimeout(() => {
+        mobileMonacoSelectionMenuTimerRef.current = null;
+        const menuState = getSingleWordSelectionMenuState(editor);
+        if (menuState) {
+          setMobileReadonlyMenu(menuState);
+        }
+      }, 500);
+    });
+
+    return () => {
+      disposable.dispose();
+      clearMobileMonacoSelectionMenuTimer();
+    };
+  }, [clearMobileMonacoSelectionMenuTimer, editorReadyTick, mobileSelectionMode, showMobileReadonlyOverlay]);
+
   // Sync wordWrap with Monaco editor
   useEffect(() => {
     const editor = editorRef.current;
@@ -1052,20 +1176,24 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                 >
                   复制代码
                 </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-                  onClick={() => runMobileEditorAction('agentSpaces.showDefinition')}
-                >
-                  Go to Definition
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-                  onClick={() => runMobileEditorAction('agentSpaces.showReferences')}
-                >
-                  Go to References
-                </button>
+                {mobileReadonlyMenu.canNavigate ? (
+                  <>
+                    <button
+                      type="button"
+                      className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                      onClick={() => runMobileEditorAction('editor.action.revealDefinition')}
+                    >
+                      Go to Definition
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                      onClick={() => runMobileEditorAction('editor.action.goToReferences')}
+                    >
+                      Go to References
+                    </button>
+                  </>
+                ) : null}
                 {monacoBuiltinActions.map((action) => (
                   <button
                     key={action.id}
