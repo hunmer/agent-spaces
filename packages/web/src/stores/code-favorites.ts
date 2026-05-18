@@ -1,17 +1,7 @@
 import { create } from 'zustand';
+import { fetchWithAuth } from '@/lib/auth';
 
-export interface CodeFavorite {
-  id: string;
-  path: string;
-  line: number;
-  column: number;
-  endLine: number;
-  endColumn: number;
-  label?: string;
-  snippet?: string;
-  createdAt: number;
-  workspaceId: string;
-}
+export type { CodeFavorite } from '@agent-spaces/shared';
 
 export interface PendingFavorite {
   workspaceId: string;
@@ -28,57 +18,74 @@ interface CodeFavoritesState {
   favorites: CodeFavorite[];
   loadedWorkspaceId: string | null;
   pendingFavorite: PendingFavorite | null;
-  load: (workspaceId: string) => void;
-  addFavorite: (fav: Omit<CodeFavorite, 'id' | 'createdAt'>) => void;
-  removeFavorite: (id: string) => void;
-  clearFavorites: (workspaceId: string) => void;
+  load: (workspaceId: string) => Promise<void>;
+  addFavorite: (fav: Omit<CodeFavorite, 'id' | 'createdAt'>) => Promise<void>;
+  removeFavorite: (id: string) => Promise<void>;
+  clearFavorites: (workspaceId: string) => Promise<void>;
   setPendingFavorite: (pending: PendingFavorite | null) => void;
 }
 
-const STORAGE_KEY_PREFIX = 'code-favorites-';
+import type { CodeFavorite } from '@agent-spaces/shared';
 
 export const useCodeFavoritesStore = create<CodeFavoritesState>((set, get) => ({
   favorites: [],
   loadedWorkspaceId: null,
   pendingFavorite: null,
 
-  load: (workspaceId) => {
+  load: async (workspaceId) => {
     const { loadedWorkspaceId } = get();
     if (loadedWorkspaceId === workspaceId) return;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY_PREFIX + workspaceId);
-      const favorites = raw ? JSON.parse(raw) : [];
-      set({ favorites, loadedWorkspaceId: workspaceId });
+      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/code-favorites`);
+      if (res.ok) {
+        const favorites = await res.json();
+        set({ favorites, loadedWorkspaceId: workspaceId });
+      } else {
+        set({ favorites: [], loadedWorkspaceId: workspaceId });
+      }
     } catch {
       set({ favorites: [], loadedWorkspaceId: workspaceId });
     }
   },
 
-  addFavorite: (fav) => {
-    const id = `${fav.path}:${fav.line}:${Date.now()}`;
-    const entry: CodeFavorite = { ...fav, id, createdAt: Date.now() };
-    set((s) => {
-      const favorites = [entry, ...s.favorites];
-      if (s.loadedWorkspaceId) {
-        localStorage.setItem(STORAGE_KEY_PREFIX + s.loadedWorkspaceId, JSON.stringify(favorites));
+  addFavorite: async (fav) => {
+    const { loadedWorkspaceId } = get();
+    if (!loadedWorkspaceId) return;
+    try {
+      const res = await fetchWithAuth(`/api/workspaces/${loadedWorkspaceId}/code-favorites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fav),
+      });
+      if (res.ok) {
+        const entry = await res.json();
+        set((s) => ({ favorites: [entry, ...s.favorites] }));
       }
-      return { favorites };
-    });
+    } catch { /* ignore */ }
   },
 
-  removeFavorite: (id) => {
-    set((s) => {
-      const favorites = s.favorites.filter((f) => f.id !== id);
-      if (s.loadedWorkspaceId) {
-        localStorage.setItem(STORAGE_KEY_PREFIX + s.loadedWorkspaceId, JSON.stringify(favorites));
+  removeFavorite: async (id) => {
+    const { loadedWorkspaceId } = get();
+    if (!loadedWorkspaceId) return;
+    try {
+      const res = await fetchWithAuth(`/api/workspaces/${loadedWorkspaceId}/code-favorites/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        set((s) => ({ favorites: s.favorites.filter((f) => f.id !== id) }));
       }
-      return { favorites };
-    });
+    } catch { /* ignore */ }
   },
 
-  clearFavorites: (workspaceId) => {
-    localStorage.removeItem(STORAGE_KEY_PREFIX + workspaceId);
-    set({ favorites: [], loadedWorkspaceId: workspaceId });
+  clearFavorites: async (workspaceId) => {
+    try {
+      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/code-favorites`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        set({ favorites: [], loadedWorkspaceId: workspaceId });
+      }
+    } catch { /* ignore */ }
   },
 
   setPendingFavorite: (pending) => set({ pendingFavorite: pending }),

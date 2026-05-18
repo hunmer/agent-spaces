@@ -26,19 +26,19 @@ export function MobileTabBar() {
 
   return (
     <div className="relative shrink-0 bg-background">
-      <div className="flex items-center h-10 border-b px-1 gap-0.5 shrink-0 overflow-x-auto md:hidden">
+      <div className="flex items-center h-10 border-b px-1 gap-2 shrink-0 overflow-x-auto overflow-y-visible md:hidden">
         {TAB_ITEMS.map((tab, i) => {
           const Icon = tab.icon;
           const prevGroup = i > 0 ? TAB_ITEMS[i - 1].group : null;
           const showDivider = prevGroup !== null && prevGroup !== tab.group;
           const { trailing, badge } = getTabBadge(tab.id, gitStatus, terminalSessions, channelMessages, tasks);
           return (
-            <div key={tab.id} className="flex items-center shrink-0">
+            <div key={tab.id} className="flex items-center shrink-0 overflow-visible">
               {showDivider && <div className="w-px h-4 bg-border mx-0.5" />}
               <button
                 onClick={() => handleTabClick(tab.id)}
                 className={cn(
-                  "flex items-center justify-center size-8 rounded-md transition-colors",
+                  "relative flex items-center justify-center size-8 rounded-md transition-colors",
                   activePanel === tab.id
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50"
