@@ -6,6 +6,7 @@ const MAX_PRELOAD_SIZE = 500 * 1024; // 500KB
 
 const modelCache = new Map<string, MonacoEditor.ITextModel>();
 const preloadedDirs = new Set<string>();
+let languageDefaultsConfigured = false;
 
 function getLanguageFromPath(path: string): string {
   const name = path.split('/').pop()?.toLowerCase() || '';
@@ -57,7 +58,10 @@ function getLanguageFromPath(path: string): string {
   return map[ext] || 'plaintext';
 }
 
-function toUri(workspaceId: string, filePath: string): Uri {
+function toUri(workspaceId: string, filePath: string, workspaceRoot?: string): Uri {
+  if (workspaceRoot) {
+    return Uri.file(`${workspaceRoot.replace(/\/+$/, '')}/${filePath}`);
+  }
   return Uri.parse(`file:///workspace/${workspaceId}/${filePath}`);
 }
 
@@ -65,9 +69,10 @@ export function getOrCreateModel(
   workspaceId: string,
   filePath: string,
   content: string | undefined,
+  workspaceRoot?: string,
 ): MonacoEditor.ITextModel {
   const safeContent = content ?? '';
-  const uri = toUri(workspaceId, filePath);
+  const uri = toUri(workspaceId, filePath, workspaceRoot);
   let model = MonacoEditor.getModel(uri);
 
   if (!model) {
@@ -87,13 +92,14 @@ export function getModel(workspaceId: string, filePath: string): MonacoEditor.IT
   return MonacoEditor.getModel(uri);
 }
 
-export function getModelUri(workspaceId: string, filePath: string): Uri {
-  return toUri(workspaceId, filePath);
+export function getModelUri(workspaceId: string, filePath: string, workspaceRoot?: string): Uri {
+  return toUri(workspaceId, filePath, workspaceRoot);
 }
 
 export async function preloadDirectory(
   workspaceId: string,
   filePath: string,
+  workspaceRoot?: string,
 ): Promise<void> {
   const dir = filePath.split('/').slice(0, -1).join('/');
   const cacheKey = `${workspaceId}:${dir}`;
@@ -120,7 +126,7 @@ export async function preloadDirectory(
       if (!PRELOAD_EXTENSIONS.includes(ext)) continue;
       if (node.size && node.size > MAX_PRELOAD_SIZE) { skipped.push(`${node.name} (${(node.size / 1024).toFixed(0)}KB)`); continue; }
 
-      const uri = toUri(workspaceId, node.path);
+      const uri = toUri(workspaceId, node.path, workspaceRoot);
       if (MonacoEditor.getModel(uri)) { skipped.push(`${node.name} (exists)`); continue; }
 
       try {
@@ -129,7 +135,7 @@ export async function preloadDirectory(
         );
         const data = await contentRes.json();
         if (data.content !== undefined) {
-          getOrCreateModel(workspaceId, node.path, data.content);
+          getOrCreateModel(workspaceId, node.path, data.content, workspaceRoot);
           count++;
         }
       } catch (e) { skipped.push(`${node.name} (fetch error)`); }
@@ -159,7 +165,28 @@ export function disposeAll(): void {
 export function setupLanguageDefaults(): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ts = (languages.typescript as any);
-  if (!ts) return;
+  if (!ts || languageDefaultsConfigured) return;
+  languageDefaultsConfigured = true;
+
+  const compilerOptions = {
+    target: ts.ScriptTarget?.ES2020,
+    module: ts.ModuleKind?.ESNext,
+    moduleResolution: ts.ModuleResolutionKind?.NodeJs,
+    jsx: ts.JsxEmit?.ReactJSX,
+    allowNonTsExtensions: true,
+    allowJs: true,
+    checkJs: false,
+    esModuleInterop: true,
+    skipLibCheck: true,
+    resolveJsonModule: true,
+    typeRoots: ['node_modules/@types'],
+    paths: {
+      '@/*': ['src/*'],
+    },
+  };
+
+  ts.typescriptDefaults?.setCompilerOptions(compilerOptions);
+  ts.javascriptDefaults?.setCompilerOptions(compilerOptions);
   ts.typescriptDefaults?.setEagerModelSync(true);
   ts.javascriptDefaults?.setEagerModelSync(true);
   ts.typescriptDefaults?.setDiagnosticsOptions({

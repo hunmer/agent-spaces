@@ -8,11 +8,14 @@ import { EditorTabs } from "./editor-tabs";
 import { useTheme } from "@/components/theme-provider";
 import { useTranslations } from 'next-intl';
 import { CommitDiffViewer } from "@/components/git/commit-diff-viewer";
+import { useWorkspaceStore } from "@/stores/workspace";
 import {
+  getModelUri,
   getOrCreateModel,
   preloadDirectory,
   setupLanguageDefaults,
 } from "@/lib/monaco-models";
+import { startTypeScriptLanguageClient, stopTypeScriptLanguageClient } from "@/lib/monaco-language-client";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -34,6 +37,21 @@ function getFilePathFromModelPath(modelPath: string | undefined, workspaceId: st
     return decodeURIComponent(modelPath.slice(plainPrefix.length));
   }
   return null;
+}
+
+function getFilePathFromModelUri(
+  modelUri: Monaco.Uri | undefined,
+  workspaceId: string,
+  workspaceRoot?: string,
+): string | null {
+  if (!modelUri) return null;
+
+  const rootPath = workspaceRoot?.replace(/\/+$/, '');
+  if (rootPath && modelUri.path.startsWith(`${rootPath}/`)) {
+    return decodeURIComponent(modelUri.path.slice(rootPath.length + 1));
+  }
+
+  return getFilePathFromModelPath(modelUri.path, workspaceId);
 }
 
 if (typeof window !== "undefined" && !navigator.clipboard?.write) {
@@ -173,6 +191,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const { openFiles, modifiedFileContents, activeFilePath, updateContent, saveFile, refreshFile, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
+  const workspaceRoot = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)?.boundDirs?.[0]);
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(true);
@@ -213,6 +232,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, _monaco: typeof Monaco) => {
     editorRef.current = editor;
     setupLanguageDefaults();
+    if (workspaceRoot) {
+      startTypeScriptLanguageClient(workspaceId, workspaceRoot);
+    }
     syncReadOnly(editor, isReadOnly);
     setEditorReadyTick((tick) => tick + 1);
 
@@ -220,7 +242,16 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
       () => handleSaveRef.current()
     );
-  }, [isReadOnly, syncReadOnly]);
+  }, [isReadOnly, syncReadOnly, workspaceId, workspaceRoot]);
+
+  useEffect(() => {
+    if (!editorRef.current || !workspaceRoot) return;
+    startTypeScriptLanguageClient(workspaceId, workspaceRoot);
+  }, [workspaceId, workspaceRoot]);
+
+  useEffect(() => {
+    return () => stopTypeScriptLanguageClient(workspaceId);
+  }, [workspaceId]);
 
   // Poll for external file changes (skip if user has unsaved edits)
   useEffect(() => {
@@ -277,9 +308,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => {
     if (!activeFile || !activeFilePath) return;
 
-    getOrCreateModel(workspaceId, activeFilePath, activeContent);
-    preloadDirectory(workspaceId, activeFilePath);
-  }, [activeFilePath, activeContent, workspaceId]);
+    getOrCreateModel(workspaceId, activeFilePath, activeContent, workspaceRoot);
+    preloadDirectory(workspaceId, activeFilePath, workspaceRoot);
+  }, [activeFilePath, activeContent, workspaceId, workspaceRoot]);
 
   // Handle pending jump from search results
   useEffect(() => {
@@ -288,7 +319,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     const { line, column, path } = pendingJump;
     const editor = editorRef.current;
     const model = editor.getModel();
-    const expectedModelPath = `/${workspaceId}/${path}`;
+    const expectedModelPath = getModelUri(workspaceId, path, workspaceRoot).path;
     if (!model || model.uri.path !== expectedModelPath) {
       const retryTimer = window.setTimeout(() => {
         setJumpRetryTick((tick) => tick + 1);
@@ -306,10 +337,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       editor.focus();
     }
     clearPendingJump();
-  }, [pendingJump, activeFilePath, workspaceId, editorReadyTick, jumpRetryTick, clearPendingJump, isReadOnly]);
+  }, [pendingJump, activeFilePath, workspaceId, workspaceRoot, editorReadyTick, jumpRetryTick, clearPendingJump, isReadOnly]);
 
   const modelPath = activeFilePath
-    ? `/${workspaceId}/${activeFilePath}`
+    ? getModelUri(workspaceId, activeFilePath, workspaceRoot).toString()
     : undefined;
 
   return (
@@ -328,9 +359,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             onChange={(value, event) => {
               if (event.isFlush) return;
               const v = value || "";
-              const modelFilePath = getFilePathFromModelPath(
-                editorRef.current?.getModel()?.uri.path,
+              const modelFilePath = getFilePathFromModelUri(
+                editorRef.current?.getModel()?.uri,
                 workspaceId,
+                workspaceRoot,
               );
               if (!modelFilePath || modelFilePath !== activeFile.path) return;
               updateContent(modelFilePath, v);

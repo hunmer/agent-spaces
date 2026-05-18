@@ -49,6 +49,7 @@ export function getTabBadge(
   gitStatus: { clean: boolean; insertions: number; deletions: number; files: unknown[]; ahead: number } | null | undefined,
   terminalSessions: unknown[],
   channelMessages: Record<string, { status?: string }[]>,
+  tasks: { status: string }[],
 ): BadgeResult {
   if (comp === 'git-commits' && gitStatus && !gitStatus.clean) {
     const hasStat = gitStatus.insertions > 0 || gitStatus.deletions > 0;
@@ -84,20 +85,28 @@ export function getTabBadge(
     };
   }
 
-  if (comp === 'channel-list' || comp === 'issue-detail') {
+  const runningBadge = (
+    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+    </span>
+  );
+
+  if (comp === 'channel-list') {
     const hasRunning = Object.values(channelMessages).some((msgs) =>
       msgs.some((m) => m.status === 'streaming' || m.status === 'pending')
     );
     if (hasRunning) {
-      return {
-        trailing: null,
-        badge: (
-          <span className="absolute -top-1 -right-1 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-          </span>
-        ),
-      };
+      return { trailing: null, badge: runningBadge };
+    }
+  }
+
+  if (comp === 'issue-detail') {
+    const hasRunning = tasks.some((t) =>
+      t.status === 'pending' || t.status === 'running' || t.status === 'retrying' || t.status === 'waiting_review'
+    );
+    if (hasRunning) {
+      return { trailing: null, badge: runningBadge };
     }
   }
 
@@ -110,10 +119,11 @@ export function renderTabIcon(
   gitStatus: Parameters<typeof getTabBadge>[1],
   terminalSessions: Parameters<typeof getTabBadge>[2],
   channelMessages: Parameters<typeof getTabBadge>[3],
+  tasks: Parameters<typeof getTabBadge>[4],
 ) {
   const icon = TAB_ICONS[comp];
   if (!icon) return null;
-  const { trailing, badge } = getTabBadge(comp, gitStatus, terminalSessions, channelMessages);
+  const { trailing, badge } = getTabBadge(comp, gitStatus, terminalSessions, channelMessages, tasks);
   return (
     <span title={name} className="flex items-center justify-center">
       <span className="relative">

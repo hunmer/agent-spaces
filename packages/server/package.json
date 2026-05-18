@@ -37,7 +37,9 @@
     "minimatch": "^10.2.5",
     "node-pty": "^1.1.0",
     "simple-git": "^3.36.0",
+    "typescript-language-server": "^5.2.0",
     "uuid": "^11.1.0",
+    "vscode-ws-jsonrpc": "^3.5.0",
     "ws": "^8.18.2",
     "zod": "^4.0.0"
   },

@@ -357,12 +357,13 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     [boundDirs, workspaceId],
   );
 
+  const tasks = useTaskStore((s) => s.tasks);
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const comp = node.getComponent();
     if (!comp) return;
-    const content = renderTabIcon(comp, node.getName(), gitStatus, terminalSessions, channelMessages);
+    const content = renderTabIcon(comp, node.getName(), gitStatus, terminalSessions, channelMessages, tasks);
     if (content) renderValues.content = content;
-  }, [gitStatus, terminalSessions, channelMessages]);
+  }, [gitStatus, terminalSessions, channelMessages, tasks]);
 
   const onModelChange = useCallback(
     (_model: Model, action: Action) => {

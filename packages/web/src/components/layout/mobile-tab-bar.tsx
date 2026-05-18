@@ -4,6 +4,7 @@ import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useGitStore } from "@/stores/git";
 import { useTerminalStore } from "@/stores/terminal";
 import { useChannelStore } from "@/stores/channel";
+import { useTaskStore } from "@/stores/task";
 import { cn } from "@/lib/utils";
 import { TAB_ITEMS, RIGHT_TO_LEFT_TAB_MAP, getTabBadge } from "./tab-config";
 
@@ -12,6 +13,7 @@ export function MobileTabBar() {
   const gitStatus = useGitStore((s) => s.status);
   const terminalSessions = useTerminalStore((s) => s.sessions);
   const channelMessages = useChannelStore((s) => s.messages);
+  const tasks = useTaskStore((s) => s.tasks);
 
   const handleTabClick = (id: string) => {
     setActivePanel(id as typeof activePanel);
@@ -29,7 +31,7 @@ export function MobileTabBar() {
           const Icon = tab.icon;
           const prevGroup = i > 0 ? TAB_ITEMS[i - 1].group : null;
           const showDivider = prevGroup !== null && prevGroup !== tab.group;
-          const { trailing, badge } = getTabBadge(tab.id, gitStatus, terminalSessions, channelMessages);
+          const { trailing, badge } = getTabBadge(tab.id, gitStatus, terminalSessions, channelMessages, tasks);
           return (
             <div key={tab.id} className="flex items-center shrink-0">
               {showDivider && <div className="w-px h-4 bg-border mx-0.5" />}

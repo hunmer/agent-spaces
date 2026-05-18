@@ -115,6 +115,8 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
   InAppWebViewController? _controller;
   String _lastUrl = '';
   late final JsBridge _jsBridge;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -154,7 +156,9 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
       settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
     );
 
-    Widget webView = InAppWebView(
+    Widget webView = Stack(
+      children: [
+        InAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(widget.tab.url)),
       initialSettings: InAppWebViewSettings(
         userAgent: device.userAgentSuffix.isEmpty
@@ -175,6 +179,9 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
         await controller.evaluateJavascript(source: _keyboardViewportScript);
       },
       onLoadStop: (controller, url) async {
+        if (mounted && _isLoading) {
+          setState(() => _isLoading = false);
+        }
         if (url != null) {
           final title = await controller.getTitle();
           final favicons = await controller.getFavicons();
@@ -202,6 +209,12 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
       },
       onReceivedError: (_, request, error) {
         if (request.isForMainFrame != true) return;
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = error.description;
+          });
+        }
         ref
             .read(consoleLogProvider.notifier)
             .addLog(
@@ -211,6 +224,12 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
       },
       onReceivedHttpError: (_, request, response) {
         if (request.isForMainFrame != true) return;
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'HTTP ${response.statusCode} ${response.reasonPhrase}';
+          });
+        }
         ref
             .read(consoleLogProvider.notifier)
             .addLog(
@@ -218,6 +237,21 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
               'error',
             );
       },
+    ),
+    if (_isLoading)
+      const _LoadingPlaceholder(),
+    if (_errorMessage != null)
+      _ErrorPlaceholder(
+        message: _errorMessage!,
+        onRetry: () {
+          setState(() {
+            _isLoading = true;
+            _errorMessage = null;
+          });
+          _controller?.loadUrl(urlRequest: URLRequest(url: WebUri(widget.tab.url)));
+        },
+      ),
+    ],
     );
 
     if (isConstrained) {
@@ -255,5 +289,61 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
     }
 
     return SizedBox.expand(child: webView);
+  }
+}
+
+class _LoadingPlaceholder extends StatelessWidget {
+  const _LoadingPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: const Center(
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    );
+  }
+}
+
+class _ErrorPlaceholder extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorPlaceholder({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off, size: 48, color: theme.disabledColor),
+              const SizedBox(height: 12),
+              Text(
+                '加载失败',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.disabledColor),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton.tonal(
+                onPressed: onRetry,
+                child: const Text('重试'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
