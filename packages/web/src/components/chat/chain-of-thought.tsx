@@ -21,6 +21,20 @@ interface ChainOfThoughtContextValue {
 
 const ChainOfThoughtContext = createContext<ChainOfThoughtContextValue | null>(null)
 
+export function isIgnorableChainOfThoughtText(text: string) {
+  const raw = text.trim()
+  const trimmed = stripSubagentProgressPrefix(raw)
+  const isSubagentProgress = trimmed !== raw
+  return /^Claude$/i.test(trimmed)
+    || /^(Reading|Searching)(\.{1,3}|…)?$/i.test(trimmed)
+    || (isSubagentProgress && /^(Reading|Searching)\s+\S.+$/i.test(trimmed))
+    || /^(Read|Search|Grep|Glob|SemanticSearch|WebSearch)\s+running\s+\(\d+s\)$/i.test(trimmed)
+}
+
+function stripSubagentProgressPrefix(text: string) {
+  return text.replace(/^\[[^\]]+\]\s+subagent progress\s+\|\s*/i, "")
+}
+
 const useChainOfThought = () => {
   const context = useContext(ChainOfThoughtContext)
   if (!context) {

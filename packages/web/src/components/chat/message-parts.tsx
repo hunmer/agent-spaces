@@ -33,6 +33,7 @@ import {
   ChainOfThought,
   ChainOfThoughtContent,
   ChainOfThoughtHeader,
+  isIgnorableChainOfThoughtText,
 } from "./chain-of-thought"
 import { Terminal } from "./terminal"
 import { AiMessageStep, ToolStep } from "./message-tool-step"
@@ -95,12 +96,17 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
         </ChainOfThought>
       )
     case "chain":
-      const visibleChainStepCount = part.chains.filter((chain) => chain.kind !== "message").length
+      const visibleChains = part.chains.filter((chain) => {
+        const text = chain.text ?? chain.description ?? chain.title
+        return !isIgnorableChainOfThoughtText(text)
+      })
+      const visibleChainStepCount = visibleChains.filter((chain) => chain.kind !== "message").length
+      if (visibleChains.length === 0) return null
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
           <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{t('messageParts.chainSteps', { count: visibleChainStepCount })}</ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
-            {part.chains.map((chain) => {
+            {visibleChains.map((chain) => {
               const completed = chain.status === "completed"
               if (chain.kind === "message") {
                 return (
@@ -157,17 +163,18 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
     case "context":
       return null
     case "subagent":
+      const output = part.output && !isIgnorableChainOfThoughtText(part.output) ? part.output : undefined
       return (
         <Agent>
           <AgentHeader name={part.name} model={part.model} />
-          {(part.instructions || part.output || part.tools?.length) ? (
+          {(part.instructions || output || part.tools?.length) ? (
             <AgentContent>
               {part.instructions ? <AgentInstructions>{part.instructions}</AgentInstructions> : null}
-              {part.output ? (
+              {output ? (
                 <div className="space-y-2">
                   <span className="font-medium text-muted-foreground text-sm">{t('messageParts.result')}</span>
                   <div className="rounded-md bg-muted/50 p-3 text-sm">
-                    <Markdown content={part.output} />
+                    <Markdown content={output} />
                   </div>
                 </div>
               ) : null}

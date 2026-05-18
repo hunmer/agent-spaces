@@ -544,10 +544,17 @@ function isToolLikeLine(line: string): boolean {
 }
 
 function isIgnorableToolProgressLine(line: string): boolean {
-  const trimmed = line.trim();
+  const raw = line.trim();
+  const trimmed = stripSubagentProgressPrefix(raw);
+  const isSubagentProgress = trimmed !== raw;
   return /^Claude$/i.test(trimmed)
     || /^(Reading|Searching)(\.{1,3}|…)?$/i.test(trimmed)
+    || (isSubagentProgress && /^(Reading|Searching)\s+\S.+$/i.test(trimmed))
     || /^(Read|Search|Grep|Glob|SemanticSearch|WebSearch)\s+running\s+\(\d+s\)$/i.test(trimmed);
+}
+
+function stripSubagentProgressPrefix(line: string): string {
+  return line.replace(/^\[[^\]]+\]\s+subagent progress\s+\|\s*/i, '');
 }
 
 function isFinalAnswerLine(line: string): boolean {
