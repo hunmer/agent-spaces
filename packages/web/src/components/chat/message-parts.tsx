@@ -224,6 +224,8 @@ function aggregateTokenUsage(parts: ContextPart[]) {
 function AgentContextPanel({ part }: { part: ContextPart }) {
   const agent = part.agentContext
   const usage = toContextUsage(part)
+  const effectiveTokens = usage.inputTokens + usage.outputTokens + usage.reasoningTokens
+  const cacheShare = usage.totalTokens > 0 ? usage.cachedInputTokens / usage.totalTokens : 0
   const outputValue = formatOutputItems(agent?.outputItems) ?? agent?.output
   const outputStats = getOutputItemsStats(agent?.outputItems) ?? getTextStats(agent?.output)
   const textBlocks = [
@@ -242,12 +244,13 @@ function AgentContextPanel({ part }: { part: ContextPart }) {
         {(agent?.model || part.modelId) ? <Badge variant="outline">{agent?.model || part.modelId}</Badge> : null}
         {agent?.sessionId ? <span className="font-mono text-[11px] text-muted-foreground">{agent.sessionId}</span> : null}
       </div>
-      <div className="grid gap-2 sm:grid-cols-5">
-        <TokenMetric label="总 token" value={usage.totalTokens} />
-        <TokenMetric label="输入" value={usage.inputTokens} />
+      <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <TokenMetric label="有效上下文" value={effectiveTokens} helper="输入 + 输出 + 推理，不含缓存命中" emphasize />
+        <TokenMetric label="总用量（含缓存）" value={usage.totalTokens} helper="provider usage total" />
+        <TokenMetric label="新输入" value={usage.inputTokens} />
         <TokenMetric label="输出" value={usage.outputTokens} />
         <TokenMetric label="推理" value={usage.reasoningTokens} />
-        <TokenMetric label="缓存输入" value={usage.cachedInputTokens} />
+        <TokenMetric label="缓存输入" value={usage.cachedInputTokens} helper={`${formatPercent(cacheShare)} of total`} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ContextTextBlock {...textBlocks[0]} totalTokens={totalBlockTokens} />
@@ -259,11 +262,12 @@ function AgentContextPanel({ part }: { part: ContextPart }) {
   )
 }
 
-function TokenMetric({ label, value }: { label: string; value?: number }) {
+function TokenMetric({ label, value, helper, emphasize }: { label: string; value?: number; helper?: string; emphasize?: boolean }) {
   return (
-    <div className="rounded-md border bg-muted/30 p-3">
+    <div className={cn("rounded-md border bg-muted/30 p-3", emphasize && "border-primary/30 bg-primary/5")}>
       <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="mt-1 font-mono text-sm">{formatTokenCount(value ?? 0)}</div>
+      <div className={cn("mt-1 font-mono text-sm", emphasize && "font-semibold text-primary")}>{formatTokenCount(value ?? 0)}</div>
+      {helper ? <div className="mt-1 text-[10px] text-muted-foreground">{helper}</div> : null}
     </div>
   )
 }
@@ -668,10 +672,10 @@ function ToolStep({
     <ChainOfThoughtStep
       icon={getToolIcon(chain.toolName, status)}
       label={
-        <div className="group/tool-step flex min-w-0 flex-wrap items-center gap-1.5">
-          <span>{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
+        <div className="group/tool-step flex min-w-0 items-center gap-1.5 overflow-hidden">
+          <span className="shrink-0">{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
           {chain.description ? (
-            <span className="min-w-0 max-w-72 truncate text-muted-foreground text-xs">
+            <span className="min-w-0 shrink truncate text-muted-foreground text-xs">
               {chain.description}
             </span>
           ) : null}
@@ -680,33 +684,35 @@ function ToolStep({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-6 max-w-full gap-1 px-1.5 text-xs"
+              className="h-6 max-w-48 shrink gap-1 px-1.5 text-xs"
               onClick={handleOpenFile}
             >
-              <FileTextIcon className="size-3" />
-              <span className="max-w-52 truncate">{chain.filePath}</span>
+              <FileTextIcon className="size-3 shrink-0" />
+              <span className="truncate">{chain.filePath}</span>
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="ml-auto size-5 shrink-0 opacity-0 transition-opacity group-hover/tool-step:opacity-100 focus-visible:opacity-100"
-            onClick={handleCopy}
-          >
-            {copied ? <CheckIcon className="size-3 text-green-500" /> : <CopyIcon className="size-3" />}
-          </Button>
-          {chain.detailId ? (
+          <div className="ml-auto flex shrink-0 items-center">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-5 shrink-0"
-              onClick={handleToggleDetail}
+              className="size-5 opacity-0 transition-opacity group-hover/tool-step:opacity-100 focus-visible:opacity-100"
+              onClick={handleCopy}
             >
-              <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+              {copied ? <CheckIcon className="size-3 text-green-500" /> : <CopyIcon className="size-3" />}
             </Button>
-          ) : null}
+            {chain.detailId ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-5"
+                onClick={handleToggleDetail}
+              >
+                <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+              </Button>
+            ) : null}
+          </div>
         </div>
       }
       description={chain.command}
