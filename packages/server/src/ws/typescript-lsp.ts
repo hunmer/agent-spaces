@@ -1,11 +1,27 @@
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
 import type { WebSocket } from 'ws';
 import { createServerProcess, createWebSocketConnection, forward } from 'vscode-ws-jsonrpc/server';
 import type { IWebSocket } from 'vscode-ws-jsonrpc';
 import { getById as getWorkspaceById } from '../services/workspace.js';
 
 const require = createRequire(import.meta.url);
+
+function resolveTypeScriptRoot(rootDir: string): string {
+  const candidates = [
+    rootDir,
+    join(rootDir, 'packages/web'),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, 'tsconfig.json')) || existsSync(join(candidate, 'jsconfig.json'))) {
+      return candidate;
+    }
+  }
+
+  return rootDir;
+}
 
 function closeWithReason(ws: WebSocket, code: number, reason: string): void {
   try {
@@ -46,6 +62,13 @@ export function handleTypeScriptLspConnection(ws: WebSocket, workspaceId: string
     return;
   }
 
+  const tsRootDir = resolveTypeScriptRoot(rootDir);
+  console.info('[typescript-lsp] starting', {
+    workspaceId,
+    rootDir,
+    tsRootDir,
+  });
+
   const socketConnection = createWebSocketConnection(toRpcSocket(ws));
   const serverConnection = createServerProcess(
     'TypeScript',
@@ -55,7 +78,7 @@ export function handleTypeScriptLspConnection(ws: WebSocket, workspaceId: string
       '--stdio',
     ],
     {
-      cwd: rootDir,
+      cwd: tsRootDir,
       env: {
         ...process.env,
         TSS_LOG: process.env.TSS_LOG ?? '-level off',

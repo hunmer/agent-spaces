@@ -19,6 +19,11 @@ export function resolvePath(workspace: Workspace, relPath: string): string | nul
   return abs;
 }
 
+export function fileExists(workspace: Workspace, relPath: string): boolean {
+  const abs = resolvePath(workspace, relPath);
+  return !!abs && existsSync(abs);
+}
+
 export async function readTree(workspace: Workspace, relPath = '', depth = Infinity): Promise<FileNode[]> {
   const dirPath = resolvePath(workspace, relPath);
   if (!dirPath) return [];

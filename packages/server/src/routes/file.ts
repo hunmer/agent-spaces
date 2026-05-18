@@ -32,6 +32,16 @@ router.get('/content', async (req: Request<{ id: string }>, res: Response) => {
   res.json(result);
 });
 
+router.get('/exists', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const path = req.query.path as string;
+  if (!path) { res.status(400).json({ error: 'path is required' }); return; }
+
+  res.json({ exists: fileService.fileExists(ws, path) });
+});
+
 router.put('/content', async (req: Request<{ id: string }>, res: Response) => {
   const ws = fileService.getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }

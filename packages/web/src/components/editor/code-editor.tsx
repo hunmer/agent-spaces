@@ -63,16 +63,136 @@ function inferWorkspaceRootFromModelUri(
   return decodeURIComponent(modelUri.path.slice(0, -suffix.length));
 }
 
-if (typeof window !== "undefined" && !navigator.clipboard?.write) {
+const RESOLVABLE_EXTENSIONS = ['', '.tsx', '.ts', '.jsx', '.js', '.mjs', '.cjs', '.json'];
+const RESOLVABLE_INDEX_FILES = ['index.tsx', 'index.ts', 'index.jsx', 'index.js', 'index.mjs', 'index.cjs', 'index.json'];
+
+function normalizeRelativePath(path: string): string | null {
+  const parts: string[] = [];
+  for (const part of path.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      if (parts.length === 0) return null;
+      parts.pop();
+    } else {
+      parts.push(part);
+    }
+  }
+  return parts.join('/');
+}
+
+async function fileExists(workspaceId: string, path: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/workspaces/${workspaceId}/files/exists?path=${encodeURIComponent(path)}`);
+    const data = await res.json();
+    return Boolean(data.exists);
+  } catch {
+    return false;
+  }
+}
+
+async function resolveExistingModulePath(workspaceId: string, basePath: string): Promise<string | null> {
+  for (const ext of RESOLVABLE_EXTENSIONS) {
+    const candidate = `${basePath}${ext}`;
+    if (await fileExists(workspaceId, candidate)) return candidate;
+  }
+
+  for (const filename of RESOLVABLE_INDEX_FILES) {
+    const candidate = `${basePath}/${filename}`;
+    if (await fileExists(workspaceId, candidate)) return candidate;
+  }
+
+  return null;
+}
+
+function getImportSpecifierAtLine(model: Monaco.editor.ITextModel, lineNumber: number): string | null {
+  const line = model.getLineContent(lineNumber);
+  const match = line.match(/\bfrom\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|require\s*\(\s*['"]([^'"]+)['"]\s*\)|^\s*import\s+['"]([^'"]+)['"]/);
+  return match?.[1] || match?.[2] || match?.[3] || match?.[4] || null;
+}
+
+async function resolveImportSpecifierPath(
+  workspaceId: string,
+  sourcePath: string,
+  specifier: string,
+): Promise<string | null> {
+  if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return null;
+
+  const sourceDir = sourcePath.split('/').slice(0, -1).join('/');
+  const srcIndex = sourcePath.split('/').lastIndexOf('src');
+  const srcRoot = srcIndex >= 0 ? sourcePath.split('/').slice(0, srcIndex + 1).join('/') : 'src';
+  const basePath = specifier.startsWith('@/')
+    ? `${srcRoot}/${specifier.slice(2)}`
+    : `${sourceDir}/${specifier}`;
+
+  const normalized = normalizeRelativePath(basePath);
+  return normalized ? resolveExistingModulePath(workspaceId, normalized) : null;
+}
+
+async function readWorkspaceFile(workspaceId: string, path: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.content === 'string' ? data.content : null;
+  } catch {
+    return null;
+  }
+}
+
+function findExportedSymbolPosition(content: string, symbolName: string): { line: number; column: number; endColumn: number } | null {
+  const escaped = symbolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const patterns = [
+    new RegExp(`\\bexport\\s+default\\s+function\\s+(${escaped})\\b`),
+    new RegExp(`\\bexport\\s+function\\s+(${escaped})\\b`),
+    new RegExp(`\\bexport\\s+(?:const|let|var|class)\\s+(${escaped})\\b`),
+    new RegExp(`\\bfunction\\s+(${escaped})\\b`),
+    new RegExp(`\\b(?:const|let|var|class)\\s+(${escaped})\\b`),
+    new RegExp(`\\bexport\\s+default\\s+(${escaped})\\b`),
+  ];
+  const lines = content.split(/\r?\n/);
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    for (const pattern of patterns) {
+      const match = pattern.exec(line);
+      if (!match || match.index == null) continue;
+      const symbolIndex = match[1] ? line.indexOf(match[1], match.index) : match.index;
+      if (symbolIndex < 0) continue;
+      return {
+        line: lineIndex + 1,
+        column: symbolIndex + 1,
+        endColumn: symbolIndex + symbolName.length + 1,
+      };
+    }
+  }
+
+  return null;
+}
+
+if (typeof window !== "undefined") {
+  const currentClipboard = navigator.clipboard;
+  const originalWriteText = currentClipboard?.writeText?.bind(currentClipboard);
+  const originalWrite = currentClipboard?.write?.bind(currentClipboard);
+
   Object.defineProperty(navigator, "clipboard", {
     value: {
-      ...navigator.clipboard,
-      writeText: navigator.clipboard?.writeText ?? ((text: string) => Promise.resolve()),
-      write: (items: ClipboardItem[]) => {
+      ...currentClipboard,
+      writeText: (text: string) =>
+        (originalWriteText?.(text) ?? Promise.resolve()).catch(() => undefined),
+      write: async (items: ClipboardItem[]) => {
+        try {
+          if (originalWrite) {
+            await originalWrite(items);
+            return;
+          }
+        } catch {
+          // Some embedded browsers expose Clipboard.write but disallow it.
+        }
+
         const textItem = items[0]?.getType("text/plain");
-        return textItem
-          ? textItem.then((blob) => blob.text()).then((text) => navigator.clipboard.writeText(text))
-          : Promise.resolve();
+        if (!textItem) return;
+        const text = await textItem.then((blob) => blob.text());
+        await (originalWriteText?.(text) ?? Promise.resolve()).catch(() => undefined);
       },
     },
     writable: true,
@@ -247,11 +367,30 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     navigationDisposablesRef.current = [];
 
     navigationDisposablesRef.current.push(
+      editor.onContextMenu((event) => {
+        const position = event.target.position;
+        if (!position) return;
+        editor.setPosition(position);
+        console.info('[monaco-navigation] context menu position', {
+          uri: editor.getModel()?.uri.toString(),
+          lineNumber: position.lineNumber,
+          column: position.column,
+          word: editor.getModel()?.getWordAtPosition(position)?.word,
+        });
+      }),
       monaco.editor.registerEditorOpener({
         openCodeEditor: async (source, resource, selectionOrPosition) => {
           const inferredRoot = inferWorkspaceRootFromModelUri(source.getModel()?.uri, activeFilePath);
           const targetPath = getFilePathFromModelUri(resource, workspaceId, workspaceRoot, inferredRoot);
-          if (!targetPath) return false;
+          if (!targetPath) {
+            console.warn('[monaco-navigation] failed to map target uri', {
+              uri: resource.toString(),
+              workspaceRoot,
+              inferredRoot,
+              activeFilePath,
+            });
+            return false;
+          }
 
           const sourcePath = getFilePathFromModelUri(source.getModel()?.uri, workspaceId, workspaceRoot, inferredRoot);
           const line = selectionOrPosition && 'lineNumber' in selectionOrPosition
@@ -260,6 +399,52 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
           const column = selectionOrPosition && 'column' in selectionOrPosition
             ? selectionOrPosition.column
             : selectionOrPosition?.startColumn;
+
+          console.info('[monaco-navigation] open target', {
+            uri: resource.toString(),
+            targetPath,
+            sourcePath,
+            line,
+            column,
+          });
+
+          if (sourcePath === targetPath && line) {
+            const model = source.getModel();
+            const specifier = model ? getImportSpecifierAtLine(model, line) : null;
+            const resolvedPath = specifier
+              ? await resolveImportSpecifierPath(workspaceId, sourcePath, specifier)
+              : null;
+
+            if (resolvedPath && resolvedPath !== sourcePath) {
+              const symbolName = model?.getWordAtPosition(source.getPosition() ?? { lineNumber: line, column: column || 1 })?.word;
+              const targetContent = symbolName ? await readWorkspaceFile(workspaceId, resolvedPath) : null;
+              const symbolPosition = targetContent && symbolName
+                ? findExportedSymbolPosition(targetContent, symbolName)
+                : null;
+              console.info('[monaco-navigation] resolved import target', {
+                specifier,
+                sourcePath,
+                resolvedPath,
+                symbolName,
+                symbolPosition,
+              });
+              window.setTimeout(() => {
+                void jumpToPosition(
+                  workspaceId,
+                  resolvedPath,
+                  symbolPosition?.line ?? 1,
+                  symbolPosition?.column ?? 1,
+                  symbolPosition?.line,
+                  symbolPosition?.endColumn,
+                ).then(() => {
+                  console.info('[monaco-navigation] jumped to resolved import target', {
+                    resolvedPath,
+                  });
+                });
+              }, 0);
+              return true;
+            }
+          }
 
           if (!line) {
             await useEditorStore.getState().openFile(workspaceId, targetPath);
@@ -272,16 +457,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             return true;
           }
 
-          await jumpToPosition(workspaceId, targetPath, line, column);
+          window.setTimeout(() => {
+            void jumpToPosition(workspaceId, targetPath, line, column);
+          }, 0);
           return true;
         },
-      }),
-      editor.addAction({
-        id: 'agentSpaces.goToDefinition',
-        label: 'Go to Definition',
-        contextMenuGroupId: 'navigation',
-        contextMenuOrder: 1.1,
-        run: (currentEditor) => currentEditor.getAction('editor.action.revealDefinition')?.run(),
       }),
       editor.addAction({
         id: 'agentSpaces.showDefinition',
@@ -289,14 +469,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 1.11,
         run: (currentEditor) => currentEditor.getAction('editor.action.peekDefinition')?.run(),
-      }),
-      editor.addAction({
-        id: 'agentSpaces.goToReferences',
-        label: 'Go to References',
-        keybindings: [monaco.KeyMod.Shift | monaco.KeyCode.F12],
-        contextMenuGroupId: 'navigation',
-        contextMenuOrder: 1.45,
-        run: (currentEditor) => currentEditor.getAction('editor.action.goToReferences')?.run(),
       }),
       editor.addAction({
         id: 'agentSpaces.showReferences',
@@ -445,7 +617,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => {
     if (!pendingJump || !activeFilePath || pendingJump.path !== activeFilePath || !editorRef.current) return;
 
-    const { line, column, path } = pendingJump;
+    const { line, column, endLine, endColumn, path } = pendingJump;
     const editor = editorRef.current;
     const model = editor.getModel();
     const expectedModelPath = getModelUri(workspaceId, path, workspaceRoot).path;
@@ -460,8 +632,28 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     const maxColumn = model.getLineMaxColumn(lineNumber);
     const columnNumber = Math.min(Math.max(1, column || 1), maxColumn);
 
+    const endLineNumber = endLine ? Math.min(Math.max(1, endLine), model.getLineCount()) : lineNumber;
+    const endColumnNumber = endColumn
+      ? Math.min(Math.max(1, endColumn), model.getLineMaxColumn(endLineNumber))
+      : columnNumber;
+    const selection = {
+      startLineNumber: lineNumber,
+      startColumn: columnNumber,
+      endLineNumber,
+      endColumn: endColumnNumber,
+    };
+
+    editor.setSelection(selection);
     editor.setPosition({ lineNumber, column: columnNumber });
     editor.revealLineInCenter(lineNumber);
+    const highlights = editor.createDecorationsCollection([{
+      range: selection,
+      options: {
+        className: 'symbolHighlight',
+        stickiness: 1,
+      },
+    }]);
+    window.setTimeout(() => highlights.clear(), 700);
     if (!isReadOnly) {
       editor.focus();
     }

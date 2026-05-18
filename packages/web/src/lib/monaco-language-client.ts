@@ -51,6 +51,11 @@ export function startTypeScriptLanguageClient(workspaceId: string, workspaceRoot
 
   const webSocket = new WebSocket(getLanguageServerUrl(workspaceId));
   webSocket.onopen = async () => {
+    console.info('[monaco-language-client] TypeScript websocket opened', {
+      workspaceId,
+      workspaceRoot,
+    });
+
     await ensureVscodeApi();
 
     const socket = toSocket(webSocket);

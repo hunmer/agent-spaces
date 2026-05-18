@@ -23,6 +23,8 @@ interface JumpPosition {
   path: string;
   line: number;
   column?: number;
+  endLine?: number;
+  endColumn?: number;
 }
 
 interface EditorState {
@@ -44,7 +46,7 @@ interface EditorState {
   refreshFile: (workspaceId: string, path: string) => Promise<void>;
   closeFile: (workspaceId: string, path: string) => void;
   setActiveFile: (workspaceId: string, path: string | null) => void;
-  jumpToPosition: (workspaceId: string, path: string, line: number, column?: number) => Promise<void>;
+  jumpToPosition: (workspaceId: string, path: string, line: number, column?: number, endLine?: number, endColumn?: number) => Promise<void>;
   clearPendingJump: () => void;
   setRevealPath: (path: string | null) => void;
   clearRevealPath: () => void;
@@ -239,9 +241,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     debouncedSave(workspaceId);
   },
 
-  jumpToPosition: async (workspaceId, path, line, column) => {
+  jumpToPosition: async (workspaceId, path, line, column, endLine, endColumn) => {
     await get().openFile(workspaceId, path);
-    set({ pendingJump: { path, line, column } });
+    set({ pendingJump: { path, line, column, endLine, endColumn } });
   },
 
   clearPendingJump: () => set({ pendingJump: null }),
