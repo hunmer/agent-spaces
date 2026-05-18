@@ -109,6 +109,18 @@ export interface MessageAgentContext {
   userPrompt?: string;
   fullPrompt?: string;
   output?: string;
+  outputItems?: MessageAgentOutputItem[];
+}
+
+export interface MessageAgentOutputItem {
+  id: string;
+  type: 'output' | 'tool_use' | 'tool_result';
+  title?: string;
+  toolUseId?: string;
+  toolName?: string;
+  text: string;
+  characters: number;
+  tokens: number;
 }
 
 export interface MessageTool {

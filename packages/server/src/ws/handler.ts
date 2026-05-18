@@ -85,9 +85,11 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
 
     const agentId = updated.senderId !== 'user' ? updated.senderId : undefined;
     if (agentId) {
+      const latestReplyId = updated.replies?.at(-1)?.id;
       void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
         messageId: updated.id,
         appendUserMessage: stripHtml(content),
+        excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
       });
     }
     return;
@@ -102,7 +104,9 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
 
   const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
   for (const agentId of agentIds) {
-    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content));
+    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
+      excludeHistoryMessageIds: [message.id],
+    });
   }
 });
 

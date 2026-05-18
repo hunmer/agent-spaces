@@ -1,4 +1,4 @@
-import type { Channel, MessageChain, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
+import type { Channel, MessageAgentOutputItem, MessageChain, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import type { ToolDetail } from '../services/tool-detail.js';
 
 export interface PendingAskUserQuestion {
@@ -25,6 +25,7 @@ export function buildAgentMessageParts(input: {
   skills: string[];
   builtInTools?: BuiltInToolContext[];
   output: string[];
+  outputItems?: MessageAgentOutputItem[];
   reasoning?: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   toolDetails?: Map<string, ToolDetail>;
   askUserQuestions?: PendingAskUserQuestion[];
@@ -94,6 +95,7 @@ export function buildAgentMessageParts(input: {
         userPrompt: input.userPrompt,
         fullPrompt: input.fullPrompt,
         output: lines.join('\n'),
+        outputItems: input.outputItems,
       },
     });
   }

@@ -224,12 +224,14 @@ function aggregateTokenUsage(parts: ContextPart[]) {
 function AgentContextPanel({ part }: { part: ContextPart }) {
   const agent = part.agentContext
   const usage = toContextUsage(part)
+  const outputValue = formatOutputItems(agent?.outputItems) ?? agent?.output
+  const outputStats = getOutputItemsStats(agent?.outputItems) ?? getTextStats(agent?.output)
   const textBlocks = [
     { key: "systemPrompt", title: "提示词信息", value: agent?.systemPrompt, empty: "此 agent 未配置独立 system prompt。" },
     { key: "userPrompt", title: "输入信息", value: agent?.userPrompt, empty: "旧消息未记录用户输入。" },
     { key: "fullPrompt", title: "完整上下文", value: agent?.fullPrompt, empty: "旧消息未记录完整 prompt。", tall: true },
-    { key: "output", title: "输出信息", value: agent?.output, empty: "暂无输出信息。", tall: true },
-  ].map((block) => ({ ...block, stats: getTextStats(block.value) }))
+    { key: "output", title: "输出信息", value: outputValue, empty: "暂无输出信息。", tall: true, stats: outputStats },
+  ].map((block) => ({ ...block, stats: block.stats ?? getTextStats(block.value) }))
   const totalBlockTokens = textBlocks.reduce((sum, block) => sum + block.stats.tokens, 0)
 
   return (
@@ -307,6 +309,28 @@ function ContextTextBlock({
 interface TextStats {
   characters: number
   tokens: number
+}
+
+function formatOutputItems(items?: NonNullable<NonNullable<ContextPart["agentContext"]>["outputItems"]>) {
+  if (!items?.length) return undefined
+  return JSON.stringify(items.map((item) => ({
+    id: item.id,
+    type: item.type,
+    title: item.title,
+    toolUseId: item.toolUseId,
+    toolName: item.toolName,
+    characters: item.characters,
+    tokens: item.tokens,
+    text: item.text,
+  })), null, 2)
+}
+
+function getOutputItemsStats(items?: NonNullable<NonNullable<ContextPart["agentContext"]>["outputItems"]>): TextStats | undefined {
+  if (!items?.length) return undefined
+  return items.reduce<TextStats>((stats, item) => ({
+    characters: stats.characters + (item.characters ?? 0),
+    tokens: stats.tokens + (item.tokens ?? 0),
+  }), { characters: 0, tokens: 0 })
 }
 
 function getTextStats(value?: string): TextStats {

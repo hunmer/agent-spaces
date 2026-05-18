@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { Channel, Message } from '@agent-spaces/shared';
+import type { Channel, Message, MessageAgentOutputItem } from '@agent-spaces/shared';
 import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
@@ -37,6 +37,8 @@ interface RunMentionedAgentOptions {
   seedOutput?: string[];
   seedQuestions?: PendingAskUserQuestion[];
   appendUserMessage?: string;
+  excludeHistoryMessageIds?: string[];
+  excludeHistoryReplyIds?: string[];
 }
 
 // --- State ---
@@ -278,9 +280,20 @@ export async function runMentionedAgent(
       runtime,
     };
     trackChannelRun(workspaceId, channelId, activeRun);
-    const history = listMessages(workspaceId, channelId, { limit: 20 });
+    const history = filterPromptHistory(listMessages(workspaceId, channelId, { limit: 20 }), {
+      excludeMessageIds: [
+        ...(!existingMessage ? [pending.id] : []),
+        ...(options.excludeHistoryMessageIds ?? []),
+      ],
+      excludeReplyIds: options.excludeHistoryReplyIds,
+    });
     agentPrompt = buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, runtimePromptConfig);
     const liveOutput: string[] = [...(options.seedOutput ?? [])];
+    const liveOutputItems: MessageAgentOutputItem[] = liveOutput.map((line, index) => buildOutputItem({
+      id: `seed-${index}`,
+      type: 'output',
+      text: line,
+    }));
     const askUserQuestions: PendingAskUserQuestion[] = [...(options.seedQuestions ?? [])];
     const toolDetails = new Map<string, ToolDetail>();
     const toolUseDetailIds = new Map<string, string>();
@@ -305,6 +318,7 @@ export async function runMentionedAgent(
         skills: runtimePromptConfig.skills,
         builtInTools: runtimePromptConfig.builtInTools,
         output: liveOutput,
+        outputItems: liveOutputItems,
         reasoning: liveReasoning,
         toolDetails,
         askUserQuestions,
@@ -380,6 +394,14 @@ export async function runMentionedAgent(
           });
           saveToolDetails(workspaceId, channelId, Array.from(toolDetails.values()));
           liveOutput.push(event.line);
+          liveOutputItems.push(buildOutputItem({
+            id: event.id,
+            type: 'tool_use',
+            title: summarizeToolLine(event.line, workspace?.boundDirs?.[0]).title,
+            toolUseId: event.id,
+            toolName: event.name,
+            text: event.line,
+          }));
           broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.line });
           broadcastLiveParts();
           return;
@@ -407,10 +429,23 @@ export async function runMentionedAgent(
             detail.updatedAt = new Date().toISOString();
             saveToolDetails(workspaceId, channelId, [detail]);
           }
+          liveOutputItems.push(buildOutputItem({
+            id: `result-${event.toolUseId ?? liveOutputItems.length}`,
+            type: 'tool_result',
+            title: detail?.title || detail?.raw || 'Tool result',
+            toolUseId: event.toolUseId,
+            text: serializeToolResult(event.result),
+          }));
+          broadcastLiveParts();
           return;
         }
         if (event.type !== 'output') return;
         liveOutput.push(event.line);
+        liveOutputItems.push(buildOutputItem({
+          id: `output-${liveOutputItems.length}`,
+          type: 'output',
+          text: event.line,
+        }));
         broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.line });
         broadcastLiveParts();
       },
@@ -435,6 +470,7 @@ export async function runMentionedAgent(
         mcpServers: runtimePromptConfig.mcpServers,
         skills: runtimePromptConfig.skills,
         output: waitingOutput,
+        outputItems: liveOutputItems,
         reasoning: liveReasoning,
         toolDetails,
         askUserQuestions,
@@ -506,6 +542,11 @@ export async function runMentionedAgent(
       skills: runtimePromptConfig.skills,
       builtInTools: runtimePromptConfig.builtInTools,
       output: displayOutput,
+      outputItems: liveOutputItems.length ? liveOutputItems : displayOutput.map((line, index) => buildOutputItem({
+        id: `result-output-${index}`,
+        type: 'output',
+        text: line,
+      })),
       reasoning: liveReasoning,
       toolDetails,
       askUserQuestions,
@@ -552,6 +593,11 @@ export async function runMentionedAgent(
       skills: runtimePromptConfig.skills,
       builtInTools: runtimePromptConfig.builtInTools,
       output: [error],
+      outputItems: [buildOutputItem({
+        id: 'error',
+        type: 'output',
+        text: error,
+      })],
       reasoning: liveReasoning,
       toolDetails: new Map(),
       askUserQuestions: [],
@@ -624,6 +670,27 @@ function untrackChannelRun(workspaceId: string, channelId: string, agentId: stri
   if (!runs) return;
   runs.delete(agentId);
   if (runs.size === 0) activeChannelRuns.delete(key);
+}
+
+function filterPromptHistory(
+  messages: Message[],
+  options: {
+    excludeMessageIds?: string[];
+    excludeReplyIds?: string[];
+  },
+): Message[] {
+  const excludeMessageIds = new Set(options.excludeMessageIds ?? []);
+  const excludeReplyIds = new Set(options.excludeReplyIds ?? []);
+
+  return messages
+    .filter((message) => !excludeMessageIds.has(message.id))
+    .map((message) => {
+      if (!message.replies?.length || excludeReplyIds.size === 0) return message;
+      return {
+        ...message,
+        replies: message.replies.filter((reply) => !excludeReplyIds.has(reply.id)),
+      };
+    });
 }
 
 function buildContinuationParts(
@@ -701,4 +768,52 @@ function stripAskUserQuestionErrorLines(output: string[]): string[] {
 
 function isAskUserQuestionError(error: string): boolean {
   return /Answer questions\?/i.test(error);
+}
+
+function buildOutputItem(input: {
+  id: string;
+  type: MessageAgentOutputItem['type'];
+  text: string;
+  title?: string;
+  toolUseId?: string;
+  toolName?: string;
+}): MessageAgentOutputItem {
+  const text = clipOutputText(input.text);
+  return {
+    id: input.id,
+    type: input.type,
+    title: input.title,
+    toolUseId: input.toolUseId,
+    toolName: input.toolName,
+    text,
+    characters: countCharacters(text),
+    tokens: estimateTextTokens(text),
+  };
+}
+
+function serializeToolResult(result: unknown): string {
+  const text = typeof result === 'string'
+    ? result
+    : JSON.stringify(result, null, 2);
+  if (!text) return String(result);
+  return clipOutputText(text);
+}
+
+function clipOutputText(text: string): string {
+  const maxLength = 40_000;
+  return text.length > maxLength
+    ? `${text.slice(0, maxLength)}\n... truncated ${text.length - maxLength} chars`
+    : text;
+}
+
+function countCharacters(text: string): number {
+  return Array.from(text).length;
+}
+
+function estimateTextTokens(text: string): number {
+  if (!text.trim()) return 0;
+  const cjkChars = text.match(/[\u3400-\u9fff\uf900-\ufaff]/g)?.length ?? 0;
+  const nonCjkText = text.replace(/[\u3400-\u9fff\uf900-\ufaff]/g, ' ');
+  const words = nonCjkText.match(/[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g)?.length ?? 0;
+  return Math.max(1, Math.ceil(cjkChars + words * 0.75));
 }
