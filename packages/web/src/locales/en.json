@@ -39,7 +39,12 @@
     "timeEarlier": "Earlier",
     "groupNone": "No Grouping",
     "groupByTime": "Group by Time",
-    "groupByStatus": "Group by Status"
+    "groupByStatus": "Group by Status",
+    "sortByCreated": "By Created Time",
+    "sortByLastReply": "By Last Reply",
+    "sortByStatus": "By Status",
+    "sortAsc": "Ascending",
+    "sortDesc": "Descending"
   },
   "settings": {
     "title": "Settings",

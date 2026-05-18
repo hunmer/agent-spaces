@@ -11,7 +11,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, CircleDot, Pencil, Trash2, CircleAlert, Archive, ArchiveRestore, MoreHorizontal, ChevronRight, Check } from 'lucide-react';
+import { Plus, CircleDot, Pencil, Trash2, CircleAlert, Archive, ArchiveRestore, MoreHorizontal, ChevronRight, Check, ArrowUpDown } from 'lucide-react';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { CreateIssueDialog } from './create-issue-dialog';
@@ -67,6 +67,8 @@ export function IssueList({ workspaceId }: IssueListProps) {
   const [groupMode, setGroupMode] = useState<GroupMode>('status');
   const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
   const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
+  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'status'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const t = useTranslations('issue');
   const tc = useTranslations('common');
 
@@ -82,16 +84,39 @@ export function IssueList({ workspaceId }: IssueListProps) {
   const activeIssues = useMemo(() => issues.filter((i) => i.status !== 'archived'), [issues]);
   const archivedIssues = useMemo(() => issues.filter((i) => i.status === 'archived'), [issues]);
 
+  const sortedActiveIssues = useMemo(() => {
+    const sorted = [...activeIssues];
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'createdAt':
+          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'updatedAt':
+          cmp = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+        case 'status': {
+          const ai = GROUP_ORDER.indexOf(a.status);
+          const bi = GROUP_ORDER.indexOf(b.status);
+          cmp = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+          break;
+        }
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    return sorted;
+  }, [activeIssues, sortField, sortOrder]);
+
   const grouped = GROUP_ORDER
     .map((status) => ({
       status,
-      items: activeIssues.filter((i) => i.status === status),
+      items: sortedActiveIssues.filter((i) => i.status === status),
     }))
     .filter((g) => g.items.length > 0);
 
   const timeGroups = useMemo(() => {
     const groups: Record<string, Issue[]> = {};
-    for (const issue of activeIssues) {
+    for (const issue of sortedActiveIssues) {
       const key = getTimeGroup(issue.createdAt);
       if (!groups[key]) groups[key] = [];
       groups[key].push(issue);
@@ -99,7 +124,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
     return TIME_GROUP_ORDER
       .filter(k => groups[k]?.length)
       .map(k => ({ key: k, label: tc(TIME_LABEL_KEYS[k]), items: groups[k]! }));
-  }, [activeIssues, tc]);
+  }, [sortedActiveIssues, tc]);
 
   const renderIssueItem = (issue: Issue) => (
     <ContextMenu key={issue.id}>
@@ -183,6 +208,27 @@ export function IssueList({ workspaceId }: IssueListProps) {
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
+              <ArrowUpDown className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              {([
+                { field: 'createdAt' as const, label: tc('sortByCreated') },
+                { field: 'updatedAt' as const, label: tc('sortByLastReply') },
+                { field: 'status' as const, label: tc('sortByStatus') },
+              ]).map(({ field, label }) => (
+                <DropdownMenuItem key={field} onClick={() => {
+                  if (sortField === field) setSortOrder((o) => o === 'asc' ? 'desc' : 'asc');
+                  else { setSortField(field); setSortOrder('desc'); }
+                }}>
+                  {sortField === field && <Check className="size-3.5" />}
+                  {label}
+                  {sortField === field && <span className="ml-auto text-[10px] text-muted-foreground">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
               <MoreHorizontal className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
@@ -227,7 +273,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
             </Button>
           </div>
         )}
-        {groupMode === 'none' && activeIssues.map((issue) => renderIssueItem(issue))}
+        {groupMode === 'none' && sortedActiveIssues.map((issue) => renderIssueItem(issue))}
         {groupMode === 'status' && grouped.map((group) => (
           <Collapsible key={group.status} open={groupOpen[group.status] !== false} onOpenChange={(open) => setGroupOpen((prev) => ({ ...prev, [group.status]: open }))}>
             <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">

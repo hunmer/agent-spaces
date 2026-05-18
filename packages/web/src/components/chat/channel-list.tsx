@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
-import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2, Check } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2, Check, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -76,6 +76,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const [groupMode, setGroupMode] = useState<GroupMode>('none');
   const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
   const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
+  const [sortField, setSortField] = useState<'createdAt' | 'lastReply' | 'type'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [initialLoading, setInitialLoading] = useState(true);
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
@@ -83,11 +85,34 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const activeChannels = useMemo(() => channels.filter((c) => !c.archived), [channels]);
   const archivedChannels = useMemo(() => channels.filter((c) => c.archived), [channels]);
 
+  const sortedActiveChannels = useMemo(() => {
+    const sorted = [...activeChannels];
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'createdAt':
+          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'lastReply': {
+          const aLast = messages[a.id]?.at(-1)?.createdAt;
+          const bLast = messages[b.id]?.at(-1)?.createdAt;
+          cmp = (aLast ? new Date(aLast).getTime() : 0) - (bLast ? new Date(bLast).getTime() : 0);
+          break;
+        }
+        case 'type':
+          cmp = a.type.localeCompare(b.type);
+          break;
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    return sorted;
+  }, [activeChannels, sortField, sortOrder, messages]);
+
   const channelGroups = useMemo(() => {
     if (groupMode === 'none') return null;
     if (groupMode === 'time') {
       const groups: Record<string, Channel[]> = {};
-      for (const ch of activeChannels) {
+      for (const ch of sortedActiveChannels) {
         const key = getTimeGroup(ch.createdAt);
         if (!groups[key]) groups[key] = [];
         groups[key].push(ch);
@@ -98,9 +123,9 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     }
     const types: Channel['type'][] = ['general', 'issue', 'agent'];
     return types
-      .filter(type => activeChannels.some(ch => ch.type === type))
-      .map(type => ({ key: type, label: t(`channel.${type}`), items: activeChannels.filter(ch => ch.type === type) }));
-  }, [groupMode, activeChannels, tc, t]);
+      .filter(type => sortedActiveChannels.some(ch => ch.type === type))
+      .map(type => ({ key: type, label: t(`channel.${type}`), items: sortedActiveChannels.filter(ch => ch.type === type) }));
+  }, [groupMode, sortedActiveChannels, tc, t]);
 
   useEffect(() => {
     setInitialLoading(true);
@@ -219,6 +244,27 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
+              <ArrowUpDown className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              {([
+                { field: 'createdAt' as const, label: tc('sortByCreated') },
+                { field: 'lastReply' as const, label: tc('sortByLastReply') },
+                { field: 'type' as const, label: tc('sortByStatus') },
+              ]).map(({ field, label }) => (
+                <DropdownMenuItem key={field} onClick={() => {
+                  if (sortField === field) setSortOrder((o) => o === 'asc' ? 'desc' : 'asc');
+                  else { setSortField(field); setSortOrder('desc'); }
+                }}>
+                  {sortField === field && <Check className="size-3.5" />}
+                  {label}
+                  {sortField === field && <span className="ml-auto text-[10px] text-muted-foreground">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
               <MoreHorizontal className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
@@ -280,7 +326,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             </Button>
           </div>
         ) : null}
-        {!initialLoading && groupMode === 'none' && activeChannels.map((ch) => renderActiveChannel(ch))}
+        {!initialLoading && groupMode === 'none' && sortedActiveChannels.map((ch) => renderActiveChannel(ch))}
         {!initialLoading && groupMode !== 'none' && channelGroups?.map((group) => (
           <Collapsible key={group.key} open={groupOpen[group.key] !== false} onOpenChange={(open) => setGroupOpen((prev) => ({ ...prev, [group.key]: open }))}>
             <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">

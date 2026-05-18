@@ -39,7 +39,12 @@
     "timeEarlier": "更早",
     "groupNone": "不分组",
     "groupByTime": "按时间分组",
-    "groupByStatus": "按任务状态分组"
+    "groupByStatus": "按任务状态分组",
+    "sortByCreated": "按创建时间",
+    "sortByLastReply": "按最后回复",
+    "sortByStatus": "按状态",
+    "sortAsc": "正序",
+    "sortDesc": "倒序"
   },
   "settings": {
     "title": "设置",
