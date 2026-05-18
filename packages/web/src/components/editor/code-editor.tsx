@@ -326,12 +326,12 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               }}
               theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
             />
-            {mobile.showMobileReadonlyOverlay && (mobile.mobileSelectionMode || mobile.mobileReadonlyMenu) ? (
+            {mobile.showMobileReadonlyOverlay ? (
               <MobileReadonlyOverlay
                 activeContent={activeContent}
                 wordWrap={wordWrap}
                 mobileSelectionMode={mobile.mobileSelectionMode}
-                mobileReadonlyMenu={mobile.mobileReadonlyMenu!}
+                mobileReadonlyMenu={mobile.mobileReadonlyMenu}
                 mobileSelectionPreMetrics={mobile.mobileSelectionPreMetrics}
                 mobileSelectionPreRef={mobile.mobileSelectionPreRef}
                 mobileReadonlyMenuRef={mobile.mobileReadonlyMenuRef}

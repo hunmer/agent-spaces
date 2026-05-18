@@ -12,10 +12,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MemberPicker, type MemberCandidate } from '@/components/common/member-picker';
-import { AgentIcon } from '@/components/common/agent-icon';
+import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,15 +24,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Search,
-  X,
   MoreVertical,
   Trash2,
   Rocket,
   Save,
   Plus,
   MessageSquare,
+  Upload,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 const MonacoEditor = dynamic(
   () => import('@monaco-editor/react').then((mod) => mod.default),
@@ -69,6 +68,10 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Import state
+  const [importOpen, setImportOpen] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<FileUploadFile[]>([]);
+
   // Apply dialog state
   const [applyTemplate, setApplyTemplate] = useState<PromptTemplate | null>(null);
   const [applySelected, setApplySelected] = useState<string[]>([]);
@@ -103,6 +106,21 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
       fetchAgents();
     }
   }, [open, standalone, fetchTemplates, fetchAgents]);
+
+  const handleImport = async () => {
+    for (const item of uploadFiles) {
+      const content = await item.file.text();
+      const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
+      await fetch('/api/prompt-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, content }),
+      });
+    }
+    setUploadFiles([]);
+    setImportOpen(false);
+    fetchTemplates();
+  };
 
   const handleCreate = () => {
     setEditTemplate(null);
@@ -188,7 +206,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
     return tmpl.name.toLowerCase().includes(q) || tmpl.content.toLowerCase().includes(q);
   });
 
-  const showMainView = (standalone || open) && !applyTemplate && !editTemplate;
+  const showMainView = (standalone || open) && !applyTemplate && !editTemplate && !isCreating;
 
   const agentCandidates: MemberCandidate[] = agents.map((a) => ({
     id: a.id,
@@ -211,6 +229,34 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
             }
           </div>
           <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
+            <Popover open={importOpen} onOpenChange={setImportOpen}>
+              <PopoverTrigger render={
+                <Button variant="outline" size="sm">
+                  <Upload className="size-3.5 mr-1" />
+                  {t('import')}
+                </Button>
+              } />
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">{t('importTitle')}</p>
+                  <FileUpload
+                    value={uploadFiles}
+                    onChange={setUploadFiles}
+                    accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
+                    placeholder={t('importPlaceholder')}
+                    maxFiles={10}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleImport}
+                    disabled={uploadFiles.length === 0}
+                    className="w-full"
+                  >
+                    {t('importConfirm')}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button variant="outline" size="sm" onClick={handleCreate}>
               <Plus className="size-3.5 mr-1" />
               {t('create')}
@@ -220,7 +266,6 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
       </DialogHeader>
 
       <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        {/* Right: Prompt cards */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           <div className="relative">
             <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -242,49 +287,50 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
                 {t('empty')}
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 pr-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
                 {filtered.map((tmpl) => (
                   <div
                     key={tmpl.id}
                     className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
                     onClick={() => handleEdit(tmpl)}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <MessageSquare className="size-3.5 text-muted-foreground" />
-                          <span className="font-medium text-sm">{tmpl.name}</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <MessageSquare className="size-3.5 text-muted-foreground shrink-0" />
+                          <span className="font-medium text-sm truncate">{tmpl.name}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {tmpl.content.slice(0, 150).replace(/^#\s+/, '')}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openApplyDialog(tmpl)}
-                        >
-                          <Rocket className="size-3.5 mr-1" />
-                          {t('apply')}
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={<Button variant="ghost" size="icon" className="size-7" />}
+                        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-1.5 text-xs"
+                            onClick={() => openApplyDialog(tmpl)}
                           >
-                            <MoreVertical className="size-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDelete(tmpl)}
+                            <Rocket className="size-3 mr-0.5" />
+                            {t('apply')}
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={<Button variant="ghost" size="icon" className="size-6" />}
                             >
-                              <Trash2 className="size-3.5 mr-1.5" />
-                              {t('delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <MoreVertical className="size-3" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDelete(tmpl)}
+                              >
+                                <Trash2 className="size-3 mr-1.5" />
+                                {t('delete')}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
+                      <p className="text-xs text-muted-foreground line-clamp-3">
+                        {tmpl.content.slice(0, 200).replace(/^#\s+/, '')}
+                      </p>
                     </div>
                   </div>
                 ))}

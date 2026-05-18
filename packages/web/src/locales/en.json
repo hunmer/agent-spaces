@@ -1030,7 +1030,11 @@
     "applyConfirm": "Apply to {count} agents",
     "searchAgents": "Search agents...",
     "noAgents": "No agents found",
-    "delete": "Delete"
+    "delete": "Delete",
+    "import": "Import",
+    "importTitle": "Import Prompt Files",
+    "importPlaceholder": "Drag .md or .txt files here, or click to select",
+    "importConfirm": "Confirm Import"
   },
   "mcps": {
     "title": "MCP Servers",

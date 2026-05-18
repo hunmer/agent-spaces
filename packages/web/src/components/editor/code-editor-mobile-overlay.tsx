@@ -7,7 +7,7 @@ interface MobileReadonlyOverlayProps {
   activeContent: string;
   wordWrap: boolean;
   mobileSelectionMode: boolean;
-  mobileReadonlyMenu: MobileReadonlyMenuState;
+  mobileReadonlyMenu: MobileReadonlyMenuState | null;
   mobileSelectionPreMetrics: MobileSelectionPreMetrics | null;
   mobileSelectionPreRef: React.RefObject<HTMLPreElement | null>;
   mobileReadonlyMenuRef: React.RefObject<HTMLDivElement | null>;
@@ -58,69 +58,71 @@ export function MobileReadonlyOverlay({
           {activeContent}
         </pre>
       ) : null}
-      <div
-        ref={mobileReadonlyMenuRef}
-        className="fixed z-[80] min-w-40 select-none rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-        style={{
-          left: Math.min(Math.max(8, mobileReadonlyMenu.x), window.innerWidth - 168),
-          top: Math.min(Math.max(8, mobileReadonlyMenu.y), window.innerHeight - 180),
-        }}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        {!mobileSelectionMode ? (
-          <button
-            type="button"
-            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-            onClick={onEnterSelectionMode}
-          >
-            选择模式
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-          onClick={onCopySelection}
+      {mobileReadonlyMenu ? (
+        <div
+          ref={mobileReadonlyMenuRef}
+          className="fixed z-[80] min-w-40 select-none rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          style={{
+            left: Math.min(Math.max(8, mobileReadonlyMenu.x), window.innerWidth - 168),
+            top: Math.min(Math.max(8, mobileReadonlyMenu.y), window.innerHeight - 180),
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
         >
-          复制代码
-        </button>
-        {mobileReadonlyMenu.canNavigate ? (
-          <>
+          {!mobileSelectionMode ? (
             <button
               type="button"
               className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-              onClick={() => onRunEditorAction('editor.action.revealDefinition')}
+              onClick={onEnterSelectionMode}
             >
-              Go to Definition
+              选择模式
             </button>
+          ) : null}
+          <button
+            type="button"
+            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+            onClick={onCopySelection}
+          >
+            复制代码
+          </button>
+          {mobileReadonlyMenu.canNavigate ? (
+            <>
+              <button
+                type="button"
+                className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                onClick={() => onRunEditorAction('editor.action.revealDefinition')}
+              >
+                Go to Definition
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                onClick={() => onRunEditorAction('editor.action.goToReferences')}
+              >
+                Go to References
+              </button>
+            </>
+          ) : null}
+          {monacoBuiltinActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+              onClick={() => onRunBuiltinAction(action.id)}
+            >
+              {action.label}
+            </button>
+          ))}
+          {mobileSelectionMode ? (
             <button
               type="button"
               className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-              onClick={() => onRunEditorAction('editor.action.goToReferences')}
+              onClick={onCloseSelectionMode}
             >
-              Go to References
+              完成
             </button>
-          </>
-        ) : null}
-        {monacoBuiltinActions.map((action) => (
-          <button
-            key={action.id}
-            type="button"
-            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-            onClick={() => onRunBuiltinAction(action.id)}
-          >
-            {action.label}
-          </button>
-        ))}
-        {mobileSelectionMode ? (
-          <button
-            type="button"
-            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-            onClick={onCloseSelectionMode}
-          >
-            完成
-          </button>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 }
