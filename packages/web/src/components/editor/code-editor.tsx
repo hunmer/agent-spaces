@@ -186,12 +186,14 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
 }
 
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
-  const { openFiles, modifiedFileContents, activeFilePath, updateContent, saveFile, refreshFile, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
+  const { openFiles, modifiedFileContents, activeFilePath, updateContent, saveFile, refreshFile, jumpToPosition, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
   const workspaceRoot = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)?.boundDirs?.[0]);
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof Monaco | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
+  const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
@@ -227,19 +229,73 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     }
   }, []);
 
+  const registerNavigationActions = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
+    for (const disposable of navigationDisposablesRef.current) {
+      disposable.dispose();
+    }
+    navigationDisposablesRef.current = [];
+
+    navigationDisposablesRef.current.push(
+      monaco.editor.registerEditorOpener({
+        openCodeEditor: async (source, resource, selectionOrPosition) => {
+          const targetPath = getFilePathFromModelUri(resource, workspaceId, workspaceRoot);
+          if (!targetPath) return false;
+
+          const sourcePath = getFilePathFromModelUri(source.getModel()?.uri, workspaceId, workspaceRoot);
+          const line = selectionOrPosition && 'lineNumber' in selectionOrPosition
+            ? selectionOrPosition.lineNumber
+            : selectionOrPosition?.startLineNumber;
+          const column = selectionOrPosition && 'column' in selectionOrPosition
+            ? selectionOrPosition.column
+            : selectionOrPosition?.startColumn;
+
+          if (!line) {
+            await useEditorStore.getState().openFile(workspaceId, targetPath);
+            return true;
+          }
+
+          if (sourcePath === targetPath) {
+            source.setPosition({ lineNumber: line, column: column || 1 });
+            source.revealLineInCenter(line);
+            return true;
+          }
+
+          await jumpToPosition(workspaceId, targetPath, line, column);
+          return true;
+        },
+      }),
+      editor.addAction({
+        id: 'agentSpaces.showDefinition',
+        label: 'Show Definition',
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 1.11,
+        run: (currentEditor) => currentEditor.trigger('contextmenu', 'editor.action.peekDefinition', null),
+      }),
+      editor.addAction({
+        id: 'agentSpaces.showReferences',
+        label: 'Show References',
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 1.46,
+        run: (currentEditor) => currentEditor.trigger('contextmenu', 'editor.action.referenceSearch.trigger', null),
+      }),
+    );
+  }, [jumpToPosition, workspaceId, workspaceRoot]);
+
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, _monaco: typeof Monaco) => {
     editorRef.current = editor;
+    monacoRef.current = _monaco;
     if (workspaceRoot) {
       startTypeScriptLanguageClient(workspaceId, workspaceRoot);
     }
     syncReadOnly(editor, isReadOnly);
+    registerNavigationActions(editor, _monaco);
     setEditorReadyTick((tick) => tick + 1);
 
     editor.addCommand(
       2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
       () => handleSaveRef.current()
     );
-  }, [isReadOnly, syncReadOnly, workspaceId, workspaceRoot]);
+  }, [isReadOnly, registerNavigationActions, syncReadOnly, workspaceId, workspaceRoot]);
 
   useEffect(() => {
     if (!editorRef.current || !workspaceRoot) return;
@@ -247,8 +303,22 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   }, [workspaceId, workspaceRoot]);
 
   useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+    registerNavigationActions(editorRef.current, monacoRef.current);
+  }, [registerNavigationActions]);
+
+  useEffect(() => {
     return () => stopTypeScriptLanguageClient(workspaceId);
   }, [workspaceId]);
+
+  useEffect(() => {
+    return () => {
+      for (const disposable of navigationDisposablesRef.current) {
+        disposable.dispose();
+      }
+      navigationDisposablesRef.current = [];
+    };
+  }, []);
 
   // Poll for external file changes (skip if user has unsaved edits)
   useEffect(() => {
@@ -373,6 +443,13 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               readOnly: isReadOnly,
               domReadOnly: isReadOnly,
               wordWrap: wordWrap ? 'on' : 'off',
+              gotoLocation: {
+                multipleDefinitions: 'goto',
+                multipleTypeDefinitions: 'goto',
+                multipleDeclarations: 'goto',
+                multipleImplementations: 'goto',
+                multipleReferences: 'goto',
+              },
             }}
             theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
           />
