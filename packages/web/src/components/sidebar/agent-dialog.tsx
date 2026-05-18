@@ -283,6 +283,25 @@ export function AgentDialog({
     }
   };
 
+  const handleReset = async () => {
+    if (!selectedAgent || !FIXED_AGENT_IDS.has(selectedAgent.id)) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/agents/presets/${selectedAgent.id}/reset`, { method: "POST" });
+      if (!res.ok) throw new Error(await res.text());
+      const raw = (await res.json()) as AgentConfig;
+      const preset = normalizeAgent(raw);
+      setEditDraft({ ...preset });
+      setSelectedAgent(preset);
+      setTestResult(null);
+    } catch {
+      setError(t('error.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateAgentDraft = <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => {
     setEditDraft((prev) => {
       if (!prev) return prev;
@@ -358,7 +377,7 @@ export function AgentDialog({
             </DialogDescription>
           </DialogHeader>
           {selectedAgent && FIXED_AGENT_IDS.has(selectedAgent.id) && (
-            <Button variant="outline" size="sm" disabled={saving} onClick={() => { setEditDraft({ ...selectedAgent! }); setTestResult(null); }}>
+            <Button variant="outline" size="sm" disabled={saving} onClick={handleReset}>
               <RotateCcw className="size-3.5" />
               {tc('reset')}
             </Button>
@@ -465,7 +484,7 @@ export function AgentDialog({
             <p className="text-xs text-muted-foreground">{t('dialog.editDescription')}</p>
           </div>
           {FIXED_AGENT_IDS.has(selectedAgent.id) && (
-            <Button variant="outline" size="sm" disabled={saving} onClick={() => { setEditDraft({ ...selectedAgent! }); setTestResult(null); }}>
+            <Button variant="outline" size="sm" disabled={saving} onClick={handleReset}>
               <RotateCcw className="size-3.5" />
               {tc('reset')}
             </Button>

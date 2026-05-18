@@ -694,6 +694,16 @@ function sanitizeMarkdownFilename(name: string): string {
   return `${safe}.md`;
 }
 
+export function resetToDefault(presetId: string): AgentConfig | null {
+  let preset: AgentConfig | null = null;
+  if (presetId === AGENT_GENERATOR_PRESET_ID) preset = getDefaultAgentGeneratorPreset();
+  else if (presetId === AGENT_COMMIT_PRESET_ID) preset = getDefaultCommitAgentPreset();
+  if (!preset) return null;
+  const templateDir = getGlobalAgentTemplateDir(presetId);
+  if (existsSync(templateDir)) rmSync(templateDir, { recursive: true, force: true });
+  return preset;
+}
+
 export function deletePreset(workspaceId: string, presetId: string): boolean | null {
   if (presetId === AGENT_GENERATOR_PRESET_ID) return false;
   if (presetId === AGENT_COMMIT_PRESET_ID) return false;

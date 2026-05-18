@@ -77,6 +77,15 @@ router.put('/presets/:presetId', (req: Request<{ id: string; presetId: string }>
   res.json(preset);
 });
 
+router.post('/presets/:presetId/reset', (req: Request<{ id: string; presetId: string }>, res: Response) => {
+  const preset = agentService.resetToDefault(req.params.presetId);
+  if (!preset) {
+    res.status(404).json({ error: 'not a resettable preset' });
+    return;
+  }
+  res.json(preset);
+});
+
 router.delete('/presets/:presetId', (req: Request<{ id: string; presetId: string }>, res: Response) => {
   const workspaceId = req.params.id;
   if (workspaceId) {

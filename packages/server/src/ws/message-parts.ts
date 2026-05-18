@@ -93,7 +93,7 @@ export function buildAgentMessageParts(input: {
         systemPrompt: input.systemPrompt,
         userPrompt: input.userPrompt,
         fullPrompt: input.fullPrompt,
-        output: finalText || lines.join('\n'),
+        output: lines.join('\n'),
       },
     });
   }
