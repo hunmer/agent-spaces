@@ -27,6 +27,7 @@ import {
   Bot,
   ChevronDown,
   Plus,
+  RotateCcw,
   WandSparkles,
 } from "lucide-react";
 import {
@@ -47,6 +48,8 @@ import { AgentList } from "./agent-list";
 import { AgentDetail } from "./agent-detail";
 
 const AGENT_GENERATOR_PRESET_ID = "agent-generator";
+const AGENT_COMMIT_PRESET_ID = "commit-agent";
+const FIXED_AGENT_IDS = new Set([AGENT_GENERATOR_PRESET_ID, AGENT_COMMIT_PRESET_ID]);
 
 export function AgentDialog({
   open,
@@ -78,7 +81,7 @@ export function AgentDialog({
     ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
     : null;
   const visibleAgents = roleFilterSet
-    ? agents.filter((agent) => agent.id === AGENT_GENERATOR_PRESET_ID || roleFilterSet.has(agent.role))
+    ? agents.filter((agent) => FIXED_AGENT_IDS.has(agent.id) || roleFilterSet.has(agent.role))
     : agents;
   const addRoleOptions = roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS;
 
@@ -239,7 +242,7 @@ export function AgentDialog({
   };
 
   const handleToggleEnabled = async (id: string) => {
-    if (id === AGENT_GENERATOR_PRESET_ID) return;
+    if (FIXED_AGENT_IDS.has(id)) return;
 
     // 同步本地 agents 状态
     setAgents((prev) =>
@@ -250,7 +253,7 @@ export function AgentDialog({
   };
 
   const handleDeleteAgent = async (id: string) => {
-    if (id === AGENT_GENERATOR_PRESET_ID) return;
+    if (FIXED_AGENT_IDS.has(id)) return;
 
     if (id.startsWith("draft-")) {
       setSelectedAgent(null);
@@ -354,6 +357,12 @@ export function AgentDialog({
                 : t('dialog.listDescription')}
             </DialogDescription>
           </DialogHeader>
+          {selectedAgent && FIXED_AGENT_IDS.has(selectedAgent.id) && (
+            <Button variant="outline" size="sm" disabled={saving} onClick={() => { setEditDraft({ ...selectedAgent! }); setTestResult(null); }}>
+              <RotateCcw className="size-3.5" />
+              {tc('reset')}
+            </Button>
+          )}
           {selectedAgent && (
             <Button variant="outline" size="sm" disabled={saving || generating} onClick={() => setGenerateOpen(true)}>
               <WandSparkles className="size-3.5" />
@@ -455,6 +464,12 @@ export function AgentDialog({
             <h2 className="text-base font-medium truncate">{editDraft?.name ?? ""}</h2>
             <p className="text-xs text-muted-foreground">{t('dialog.editDescription')}</p>
           </div>
+          {FIXED_AGENT_IDS.has(selectedAgent.id) && (
+            <Button variant="outline" size="sm" disabled={saving} onClick={() => { setEditDraft({ ...selectedAgent! }); setTestResult(null); }}>
+              <RotateCcw className="size-3.5" />
+              {tc('reset')}
+            </Button>
+          )}
           <Button variant="outline" size="sm" disabled={saving || generating} onClick={() => setGenerateOpen(true)}>
             <WandSparkles className="size-3.5" />
             智能创建

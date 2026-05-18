@@ -224,6 +224,13 @@ function aggregateTokenUsage(parts: ContextPart[]) {
 function AgentContextPanel({ part }: { part: ContextPart }) {
   const agent = part.agentContext
   const usage = toContextUsage(part)
+  const textBlocks = [
+    { key: "systemPrompt", title: "提示词信息", value: agent?.systemPrompt, empty: "此 agent 未配置独立 system prompt。" },
+    { key: "userPrompt", title: "输入信息", value: agent?.userPrompt, empty: "旧消息未记录用户输入。" },
+    { key: "fullPrompt", title: "完整上下文", value: agent?.fullPrompt, empty: "旧消息未记录完整 prompt。", tall: true },
+    { key: "output", title: "输出信息", value: agent?.output, empty: "暂无输出信息。", tall: true },
+  ].map((block) => ({ ...block, stats: getTextStats(block.value) }))
+  const totalBlockTokens = textBlocks.reduce((sum, block) => sum + block.stats.tokens, 0)
 
   return (
     <div className="space-y-4">
@@ -241,11 +248,11 @@ function AgentContextPanel({ part }: { part: ContextPart }) {
         <TokenMetric label="缓存输入" value={usage.cachedInputTokens} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <ContextTextBlock title="提示词信息" value={agent?.systemPrompt} empty="此 agent 未配置独立 system prompt。" />
-        <ContextTextBlock title="输入信息" value={agent?.userPrompt} empty="旧消息未记录用户输入。" />
+        <ContextTextBlock {...textBlocks[0]} totalTokens={totalBlockTokens} />
+        <ContextTextBlock {...textBlocks[1]} totalTokens={totalBlockTokens} />
       </div>
-      <ContextTextBlock title="完整上下文" value={agent?.fullPrompt} empty="旧消息未记录完整 prompt。" tall />
-      <ContextTextBlock title="输出信息" value={agent?.output} empty="暂无输出信息。" tall />
+      <ContextTextBlock {...textBlocks[2]} totalTokens={totalBlockTokens} />
+      <ContextTextBlock {...textBlocks[3]} totalTokens={totalBlockTokens} />
     </div>
   )
 }
@@ -259,10 +266,33 @@ function TokenMetric({ label, value }: { label: string; value?: number }) {
   )
 }
 
-function ContextTextBlock({ title, value, empty, tall }: { title: string; value?: string; empty: string; tall?: boolean }) {
+function ContextTextBlock({
+  title,
+  value,
+  empty,
+  tall,
+  stats,
+  totalTokens,
+}: {
+  title: string
+  value?: string
+  empty: string
+  tall?: boolean
+  stats: TextStats
+  totalTokens: number
+}) {
+  const percent = totalTokens > 0 ? stats.tokens / totalTokens : 0
+
   return (
     <section className="min-w-0 space-y-2">
-      <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
+        <div className="flex flex-wrap items-center justify-end gap-1.5 font-mono text-[10px] text-muted-foreground">
+          <span>{formatPercent(percent)}</span>
+          <span>{formatTokenCount(stats.characters)} 字</span>
+          <span>{formatTokenCount(stats.tokens)} tokens</span>
+        </div>
+      </div>
       <pre className={cn(
         "min-w-0 whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground",
         tall ? "max-h-72 overflow-auto" : "max-h-48 overflow-auto",
@@ -272,6 +302,34 @@ function ContextTextBlock({ title, value, empty, tall }: { title: string; value?
       </pre>
     </section>
   )
+}
+
+interface TextStats {
+  characters: number
+  tokens: number
+}
+
+function getTextStats(value?: string): TextStats {
+  const text = value?.trim() ?? ""
+  if (!text) return { characters: 0, tokens: 0 }
+  return {
+    characters: Array.from(text).length,
+    tokens: estimateTextTokens(text),
+  }
+}
+
+function estimateTextTokens(text: string) {
+  const cjkChars = text.match(/[\u3400-\u9fff\uf900-\ufaff]/g)?.length ?? 0
+  const nonCjkText = text.replace(/[\u3400-\u9fff\uf900-\ufaff]/g, " ")
+  const words = nonCjkText.match(/[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g)?.length ?? 0
+  return Math.max(1, Math.ceil(cjkChars + words * 0.75))
+}
+
+function formatPercent(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(value)
 }
 
 function formatTokenCount(value: number) {
