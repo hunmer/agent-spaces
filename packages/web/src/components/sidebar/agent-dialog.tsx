@@ -285,8 +285,9 @@ export function AgentDialog({
   };
 
   const handleReset = () => {
-    if (!selectedAgent) return;
-    setEditDraft({ ...selectedAgent });
+    if (!selectedAgent || !editDraft) return;
+    const { modelProvider, modelId, apiBase, apiKey, runtimeKind } = editDraft;
+    setEditDraft({ ...selectedAgent, modelProvider, modelId, apiBase, apiKey, runtimeKind });
     setTestResult(null);
     setResetKey((k) => k + 1);
   };

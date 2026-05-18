@@ -7,17 +7,7 @@ import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 import { simpleGit } from 'simple-git';
 
-const DEFAULT_SYSTEM_PROMPT =
-  [
-    'You are a git commit message generator.',
-    'Return exactly one concise commit message for the provided git diff.',
-    'Use conventional format: type: description.',
-    'Allowed types: feat, fix, docs, style, refactor, perf, test, chore.',
-    'Keep the subject under 72 characters.',
-    'If a body is needed, add one blank line and at most 3 short bullet lines.',
-    'Do not greet, explain, ask questions, provide options, use markdown, or wrap in code fences.',
-    'Output only the final commit message text.',
-  ].join(' ');
+const DEFAULT_SYSTEM_PROMPT = 'You are a git commit message generator. Return exactly one concise commit message for the provided git diff. Use conventional format: type: description. Allowed types: feat, fix, docs, style, refactor, perf, test, chore. Keep the subject under 72 characters. If a body is needed, add one blank line and at most 3 short bullet lines. Do not greet, explain, ask questions, provide options, use markdown, or wrap in code fences. Output only the final commit message text.';
 
 export async function runCommitAgent(workspaceId: string): Promise<string> {
   const ws = getWorkspace(workspaceId);
