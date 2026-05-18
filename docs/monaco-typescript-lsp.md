@@ -108,19 +108,6 @@ file:///Users/me/project/src/lib/foo.ts
 
 这点很关键。TypeScript Language Server 运行在真实文件系统目录下，只有真实 `file://` URI 才能让它正确关联打开的文档、`tsconfig`、源码文件和 `node_modules`。
 
-## 已移除的旧兜底
-
-以下旧逻辑已移除：
-
-- `setupLanguageDefaults()`
-- `typescriptDefaults.setCompilerOptions(...)`
-- `javascriptDefaults.setCompilerOptions(...)`
-- `setEagerModelSync(true)`
-- 当前目录 TS/JS 文件预加载 `preloadDirectory()`
-- Monaco 内置 TS worker 的 `addExtraLib` 路线
-
-当前语义能力来源只保留 TypeScript Language Server。`getOrCreateModel()` 仍保留，用于创建/同步当前打开文件的 Monaco model。
-
 ## 当前能力边界
 
 可覆盖：
