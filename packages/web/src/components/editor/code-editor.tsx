@@ -263,6 +263,17 @@ function getSingleWordSelectionMenuState(editor: Monaco.editor.IStandaloneCodeEd
   };
 }
 
+function collapseEditorSelection(editor: Monaco.editor.IStandaloneCodeEditor | null) {
+  const position = editor?.getPosition();
+  if (!editor || !position) return;
+  editor.setSelections([{
+    selectionStartLineNumber: position.lineNumber,
+    selectionStartColumn: position.column,
+    positionLineNumber: position.lineNumber,
+    positionColumn: position.column,
+  }], 'agentSpaces.mobileContextMenu');
+}
+
 interface MobileReadonlyMenuState {
   x: number;
   y: number;
@@ -419,6 +430,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const mobileSelectionMenuTimerRef = useRef<number | null>(null);
   const mobileMonacoSelectionMenuTimerRef = useRef<number | null>(null);
   const allowMobileEditorFocusRef = useRef(false);
+  const suppressMobileSelectionMenuRef = useRef(false);
+  const pendingNavigationSelectionCleanupRef = useRef(false);
   const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const favoriteDecorationsRef = useRef<string[]>([]);
@@ -665,30 +678,40 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     const editor = editorRef.current;
     if (!editor) return;
     const selection = editor.getSelection();
-    const position = selection?.getStartPosition();
+    const position = selection?.getStartPosition() ?? editor.getPosition();
     setMobileReadonlyMenu(null);
+    clearMobileMonacoSelectionMenuTimer();
+    suppressMobileSelectionMenuRef.current = true;
+    pendingNavigationSelectionCleanupRef.current = true;
     allowMobileEditorFocusRef.current = true;
-    if (selection) editor.setSelection(selection);
-    if (position) editor.setPosition(position);
+    if (position) {
+      editor.setSelections([{
+        selectionStartLineNumber: position.lineNumber,
+        selectionStartColumn: position.column,
+        positionLineNumber: position.lineNumber,
+        positionColumn: position.column,
+      }], 'agentSpaces.mobileContextMenu');
+      editor.setPosition(position);
+    }
     editor.focus();
     requestAnimationFrame(() => {
       editor.trigger('agentSpaces.mobileContextMenu', actionId, undefined);
+      for (const delay of [250, 700, 1200]) {
+        window.setTimeout(() => {
+          collapseEditorSelection(editorRef.current);
+          setMobileReadonlyMenu(null);
+        }, delay);
+      }
       window.setTimeout(() => {
-        const currentPosition = editor.getPosition();
-        if (currentPosition) {
-          editor.setSelection({
-            startLineNumber: currentPosition.lineNumber,
-            startColumn: currentPosition.column,
-            endLineNumber: currentPosition.lineNumber,
-            endColumn: currentPosition.column,
-          });
-        }
+        collapseEditorSelection(editorRef.current);
         setMobileReadonlyMenu(null);
         allowMobileEditorFocusRef.current = false;
-        blurEditorActiveElement(editor);
-      }, 250);
+        suppressMobileSelectionMenuRef.current = false;
+        pendingNavigationSelectionCleanupRef.current = false;
+        blurEditorActiveElement(editorRef.current);
+      }, 1600);
     });
-  }, []);
+  }, [clearMobileMonacoSelectionMenuTimer]);
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
     editor.updateOptions({ readOnly, domReadOnly: readOnly });
@@ -981,6 +1004,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
     const disposable = editor.onDidChangeCursorSelection(() => {
       clearMobileMonacoSelectionMenuTimer();
+      if (suppressMobileSelectionMenuRef.current) {
+        setMobileReadonlyMenu(null);
+        return;
+      }
       if (!hasSingleWordSelection(editor)) {
         setMobileReadonlyMenu((menu) => (menu?.canNavigate ? null : menu));
         return;
@@ -1000,6 +1027,15 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       clearMobileMonacoSelectionMenuTimer();
     };
   }, [clearMobileMonacoSelectionMenuTimer, editorReadyTick, mobileSelectionMode, showMobileReadonlyOverlay]);
+
+  useEffect(() => {
+    if (!pendingNavigationSelectionCleanupRef.current) return;
+    window.setTimeout(() => {
+      if (!pendingNavigationSelectionCleanupRef.current) return;
+      collapseEditorSelection(editorRef.current);
+      setMobileReadonlyMenu(null);
+    }, 0);
+  }, [activeFilePath, editorReadyTick]);
 
   // Sync wordWrap with Monaco editor
   useEffect(() => {
