@@ -112,10 +112,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
       onRestored?.();
     });
-    ws.on('connected', () => {
-      ws.send('terminal.list', {});
-    });
-    ws.send('terminal.list', {});
+    // Server pushes terminal.sessions on each WS connection (handleConnection),
+    // no need to request terminal.list here.
   },
 
   createSession: (shell?: string, cwd?: string) => {
