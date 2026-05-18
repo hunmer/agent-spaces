@@ -19,12 +19,9 @@ class BrowserTabBar extends ConsumerStatefulWidget {
 class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
     with TickerProviderStateMixin {
   TabController? _controller;
-  OverlayEntry? _debugOverlayEntry;
-  Offset _debugOverlayOffset = const Offset(24, 72);
 
   @override
   void dispose() {
-    _debugOverlayEntry?.remove();
     _controller?.dispose();
     super.dispose();
   }
@@ -265,7 +262,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
       } else if (value == 'refresh') {
         WebViewService.instance.reload(tab.id);
       } else if (value == 'debug') {
-        _showDebugOverlay(context, tab);
+        _showDebugDialog(context, tab);
       } else if (value == 'console') {
         showModalBottomSheet(
           context: context,
@@ -276,35 +273,114 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
     });
   }
 
-  void _showDebugOverlay(BuildContext context, BrowserTab tab) {
-    _debugOverlayEntry?.remove();
-    _debugOverlayEntry = null;
-
-    final overlay = Overlay.of(context);
-    _debugOverlayEntry = OverlayEntry(
-      builder: (overlayContext) {
-        return _DebugOverlayPanel(
-          tab: tab,
-          initialOffset: _debugOverlayOffset,
-          onOffsetChanged: (offset) => _debugOverlayOffset = offset,
-          onClose: () {
-            _debugOverlayEntry?.remove();
-            _debugOverlayEntry = null;
-          },
-          onReload: () => WebViewService.instance.reload(tab.id),
-          onConsole: () {
-            _debugOverlayEntry?.remove();
-            _debugOverlayEntry = null;
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => const _ConsoleSheet(),
-            );
-          },
-        );
-      },
+  void _showDebugDialog(BuildContext context, BrowserTab tab) {
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('调试', style: TextStyle(fontSize: 15)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _DebugInfoRow(label: '标签页', value: tab.title),
+                const SizedBox(height: 8),
+                _DebugInfoRow(label: 'URL', value: tab.url),
+                const SizedBox(height: 8),
+                _DebugInfoRow(
+                  label: '设备',
+                  value:
+                      '${tab.device.name} '
+                      '${tab.device.width.toInt()}x'
+                      '${tab.device.height.toInt()}',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'WebView inspectable 已启用。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const _DebugStepsSection(
+                  title: 'macOS Safari',
+                  steps: [
+                    'Safari > 设置 > 高级，开启“在菜单栏中显示开发菜单”。',
+                    '保持当前 App 和这个 WebView 页面打开。',
+                    'Safari 菜单栏打开“开发”，选择当前 Mac、App 或页面。',
+                    '点击对应页面后打开 Web Inspector。',
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const _DebugStepsSection(
+                  title: 'Android Chrome',
+                  steps: [
+                    '保持当前 App 和这个 WebView 页面打开。',
+                    '在 Chrome 地址栏打开 chrome://inspect。',
+                    '在 Remote Target 中找到当前 WebView。',
+                    '点击 inspect 打开 DevTools。',
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '要求：iOS 16.4+ 或 macOS 13.3+ 支持 isInspectable。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              WebViewService.instance.reload(tab.id);
+              Navigator.of(ctx).pop();
+            },
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('刷新'),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => const _ConsoleSheet(),
+              );
+            },
+            icon: const Icon(Icons.terminal, size: 16),
+            label: const Text('控制台'),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: tab.url));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('已复制 URL'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text('复制 URL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
     );
-    overlay.insert(_debugOverlayEntry!);
   }
 
   void _hideKeyboard() {
@@ -523,195 +599,6 @@ class _MoreMenuButton extends ConsumerWidget {
   }
 }
 
-class _DebugOverlayPanel extends StatefulWidget {
-  final BrowserTab tab;
-  final Offset initialOffset;
-  final ValueChanged<Offset> onOffsetChanged;
-  final VoidCallback onClose;
-  final VoidCallback onReload;
-  final VoidCallback onConsole;
-
-  const _DebugOverlayPanel({
-    required this.tab,
-    required this.initialOffset,
-    required this.onOffsetChanged,
-    required this.onClose,
-    required this.onReload,
-    required this.onConsole,
-  });
-
-  @override
-  State<_DebugOverlayPanel> createState() => _DebugOverlayPanelState();
-}
-
-class _DebugOverlayPanelState extends State<_DebugOverlayPanel> {
-  static const _panelWidth = 320.0;
-  static const _panelMaxHeight = 360.0;
-  static const _margin = 12.0;
-
-  late Offset _offset;
-
-  @override
-  void initState() {
-    super.initState();
-    _offset = widget.initialOffset;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-    final width = size.width < _panelWidth + _margin * 2
-        ? size.width - _margin * 2
-        : _panelWidth;
-    final maxLeft = (size.width - width - _margin).clamp(_margin, size.width);
-    final maxTop = (size.height - 120).clamp(_margin, size.height);
-    final left = _offset.dx.clamp(_margin, maxLeft).toDouble();
-    final top = _offset.dy.clamp(_margin, maxTop).toDouble();
-
-    if (left != _offset.dx || top != _offset.dy) {
-      _offset = Offset(left, top);
-      widget.onOffsetChanged(_offset);
-    }
-
-    return Positioned(
-      left: left,
-      top: top,
-      width: width,
-      child: Material(
-        color: Colors.transparent,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: _panelMaxHeight),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onPanUpdate: (details) {
-                    setState(() {
-                      final next = _offset + details.delta;
-                      _offset = Offset(
-                        next.dx.clamp(_margin, maxLeft).toDouble(),
-                        next.dy.clamp(_margin, maxTop).toDouble(),
-                      );
-                    });
-                    widget.onOffsetChanged(_offset);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.drag_indicator, size: 16),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            '调试',
-                            style: theme.textTheme.titleSmall,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: widget.onReload,
-                          icon: const Icon(Icons.refresh, size: 18),
-                          tooltip: '刷新',
-                          style: IconButton.styleFrom(
-                            minimumSize: const Size(32, 32),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: widget.onClose,
-                          icon: const Icon(Icons.close, size: 18),
-                          tooltip: '关闭',
-                          style: IconButton.styleFrom(
-                            minimumSize: const Size(32, 32),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _DebugInfoRow(label: '标签页', value: widget.tab.title),
-                        const SizedBox(height: 8),
-                        _DebugInfoRow(label: 'URL', value: widget.tab.url),
-                        const SizedBox(height: 8),
-                        _DebugInfoRow(
-                          label: '设备',
-                          value:
-                              '${widget.tab.device.name} '
-                              '${widget.tab.device.width.toInt()}x'
-                              '${widget.tab.device.height.toInt()}',
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'WebView inspectable 已启用。iOS 16.4+ 或 macOS 13.3+ 可在 Safari 的开发菜单中选择此 WebView；Android 可打开 chrome://inspect。',
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.4,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: widget.onConsole,
-                              icon: const Icon(Icons.terminal, size: 16),
-                              label: const Text('控制台'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: widget.tab.url),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('已复制 URL'),
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.copy, size: 16),
-                              label: const Text('复制 URL'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _DebugInfoRow extends StatelessWidget {
   final String label;
   final String value;
@@ -737,6 +624,61 @@ class _DebugInfoRow extends StatelessWidget {
         Expanded(
           child: SelectableText(value, style: const TextStyle(fontSize: 12)),
         ),
+      ],
+    );
+  }
+}
+
+class _DebugStepsSection extends StatelessWidget {
+  final String title;
+  final List<String> steps;
+
+  const _DebugStepsSection({required this.title, required this.steps});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        ...steps.indexed.map((entry) {
+          final index = entry.$1 + 1;
+          final step = entry.$2;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 18,
+                  child: Text(
+                    '$index.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    step,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
