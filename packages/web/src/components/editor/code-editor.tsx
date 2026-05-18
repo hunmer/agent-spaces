@@ -286,7 +286,10 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
             {t('menuFind')}
             <DropdownMenuShortcut>⌘F</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => exec('editor.action.startFindReplaceAction')}>
+          <DropdownMenuItem
+            disabled={isReadOnly}
+            onClick={() => exec('editor.action.startFindReplaceAction')}
+          >
             {t('menuReplace')}
             <DropdownMenuShortcut>⌥⌘F</DropdownMenuShortcut>
           </DropdownMenuItem>
@@ -369,7 +372,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       editor.onContextMenu((event) => {
         const position = event.target.position;
         if (!position) return;
-        editor.setPosition(position);
+        const sel = editor.getSelection();
+        const inSelection = sel && !sel.isEmpty() && sel.containsPosition(position);
+        if (!inSelection) {
+          editor.setPosition(position);
+        }
         console.info('[monaco-navigation] context menu position', {
           uri: editor.getModel()?.uri.toString(),
           lineNumber: position.lineNumber,
@@ -582,7 +589,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       options: {
         isWholeLine: true,
         glyphMarginClassName: 'favorite-glyph',
-        glyphMarginHoverMessage: { value: '已收藏' },
+        glyphMarginHoverMessage: { value: f.label || `${f.path}:${f.line}` },
         className: 'favorite-line-bg',
       },
     }));

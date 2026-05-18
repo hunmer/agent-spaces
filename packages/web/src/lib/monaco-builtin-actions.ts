@@ -13,8 +13,7 @@ registerMonacoAction({
     const sel = editor.getSelection();
     if (!model || !sel) return;
     const relPath = toRelativePath(model.uri.path, ctx);
-    const base = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.startColumn}`;
-    const pos = sel.endLineNumber > sel.startLineNumber ? `${base}-${sel.endLineNumber}` : base;
+    const pos = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.endLineNumber}`;
     navigator.clipboard.writeText(pos).then(() => {
       toast.success(`已复制: ${pos}`);
     });
@@ -35,11 +34,18 @@ registerMonacoAction({
     const column = sel.startColumn;
     const endLine = sel.endLineNumber;
     const endColumn = sel.endColumn;
-    const snippet = endLine > line
-      ? model.getLineContent(line).trim() + ' …'
-      : model.getLineContent(line).trim();
     const relPath = toRelativePath(model.uri.path, ctx);
     if (!relPath) return;
+
+    // Extract snippet from selection range
+    const range = {
+      startLineNumber: line,
+      startColumn: 1,
+      endLineNumber: endLine,
+      endColumn: model.getLineMaxColumn(endLine),
+    };
+    let snippet = model.getValueInRange(range).trim();
+    if (snippet.length > 300) snippet = snippet.slice(0, 300) + '\n…';
 
     const fileName = relPath.split('/').pop() || relPath;
     const lineLabel = endLine > line ? `${line}-${endLine}` : `${line}`;
@@ -52,7 +58,7 @@ registerMonacoAction({
       endLine,
       endColumn,
       label: `${fileName}:${lineLabel}`,
-      snippet: snippet.length > 80 ? snippet.slice(0, 80) + '…' : snippet,
+      snippet,
     });
   },
 });

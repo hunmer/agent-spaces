@@ -88,7 +88,7 @@ function FavoriteCard({
       </div>
       <div className="text-xs text-muted-foreground truncate mt-1">{favorite.path}</div>
       {favorite.snippet && (
-        <pre className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1 mt-1.5 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
+        <pre className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1 mt-1.5 max-h-16 overflow-auto whitespace-pre break-all font-mono">
           {favorite.snippet}
         </pre>
       )}

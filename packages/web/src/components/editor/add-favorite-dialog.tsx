@@ -36,7 +36,7 @@ export function AddFavoriteDialog() {
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>添加代码收藏</DialogTitle>
         </DialogHeader>
@@ -51,11 +51,6 @@ export function AddFavoriteDialog() {
             }}
             autoFocus
           />
-          {pendingFavorite.snippet && (
-            <pre className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1.5 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
-              {pendingFavorite.snippet}
-            </pre>
-          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setPendingFavorite(null)}>
@@ -74,11 +69,16 @@ function FavoritePreview({ fav }: { fav: PendingFavorite }) {
   const fileName = fav.path.split("/").pop() || fav.path;
   const lineLabel = fav.endLine > fav.line ? `${fav.line}-${fav.endLine}` : `${fav.line}`;
   return (
-    <div className="text-sm text-muted-foreground space-y-0.5">
-      <div className="font-medium text-foreground">{fileName}</div>
-      <div>
-        {fav.path}:{lineLabel}
+    <div className="space-y-2">
+      <div className="text-sm text-muted-foreground space-y-0.5">
+        <div className="font-medium text-foreground">{fileName}</div>
+        <div>{fav.path}:{lineLabel}</div>
       </div>
+      {fav.snippet && (
+        <pre className="text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2 font-mono max-h-48 overflow-auto whitespace-pre break-all">
+          {fav.snippet}
+        </pre>
+      )}
     </div>
   );
 }
