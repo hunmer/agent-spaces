@@ -1,6 +1,7 @@
 import 'package:buttons_tabbar/buttons_tabbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/browser_tab.dart';
@@ -209,6 +210,17 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
           ),
         ),
         const PopupMenuItem<String>(
+          value: 'open_external',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.open_in_new, size: 16),
+              SizedBox(width: 8),
+              Text('用浏览器打开', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
           value: 'refresh',
           height: 36,
           child: Row(
@@ -260,6 +272,8 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
             deviceType: tab.device.type,
           );
         }
+      } else if (value == 'open_external') {
+        launchUrl(Uri.parse(tab.url));
       } else if (value == 'refresh') {
         WebViewService.instance.reload(tab.id);
       } else if (value == 'debug') {

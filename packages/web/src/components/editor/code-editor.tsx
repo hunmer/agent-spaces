@@ -41,15 +41,26 @@ function getFilePathFromModelUri(
   modelUri: Monaco.Uri | undefined,
   workspaceId: string,
   workspaceRoot?: string,
+  inferredWorkspaceRoot?: string | null,
 ): string | null {
   if (!modelUri) return null;
 
-  const rootPath = workspaceRoot?.replace(/\/+$/, '');
+  const rootPath = (workspaceRoot || inferredWorkspaceRoot || '').replace(/\/+$/, '');
   if (rootPath && modelUri.path.startsWith(`${rootPath}/`)) {
     return decodeURIComponent(modelUri.path.slice(rootPath.length + 1));
   }
 
   return getFilePathFromModelPath(modelUri.path, workspaceId);
+}
+
+function inferWorkspaceRootFromModelUri(
+  modelUri: Monaco.Uri | undefined,
+  filePath: string | null,
+): string | null {
+  if (!modelUri || modelUri.scheme !== 'file' || !filePath) return null;
+  const suffix = `/${filePath}`;
+  if (!modelUri.path.endsWith(suffix)) return null;
+  return decodeURIComponent(modelUri.path.slice(0, -suffix.length));
 }
 
 if (typeof window !== "undefined" && !navigator.clipboard?.write) {
@@ -238,10 +249,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     navigationDisposablesRef.current.push(
       monaco.editor.registerEditorOpener({
         openCodeEditor: async (source, resource, selectionOrPosition) => {
-          const targetPath = getFilePathFromModelUri(resource, workspaceId, workspaceRoot);
+          const inferredRoot = inferWorkspaceRootFromModelUri(source.getModel()?.uri, activeFilePath);
+          const targetPath = getFilePathFromModelUri(resource, workspaceId, workspaceRoot, inferredRoot);
           if (!targetPath) return false;
 
-          const sourcePath = getFilePathFromModelUri(source.getModel()?.uri, workspaceId, workspaceRoot);
+          const sourcePath = getFilePathFromModelUri(source.getModel()?.uri, workspaceId, workspaceRoot, inferredRoot);
           const line = selectionOrPosition && 'lineNumber' in selectionOrPosition
             ? selectionOrPosition.lineNumber
             : selectionOrPosition?.startLineNumber;
@@ -265,21 +277,70 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
         },
       }),
       editor.addAction({
+        id: 'agentSpaces.goToDefinition',
+        label: 'Go to Definition',
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 1.1,
+        run: (currentEditor) => currentEditor.getAction('editor.action.revealDefinition')?.run(),
+      }),
+      editor.addAction({
         id: 'agentSpaces.showDefinition',
         label: 'Show Definition',
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 1.11,
-        run: (currentEditor) => currentEditor.trigger('contextmenu', 'editor.action.peekDefinition', null),
+        run: (currentEditor) => currentEditor.getAction('editor.action.peekDefinition')?.run(),
+      }),
+      editor.addAction({
+        id: 'agentSpaces.goToReferences',
+        label: 'Go to References',
+        keybindings: [monaco.KeyMod.Shift | monaco.KeyCode.F12],
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 1.45,
+        run: (currentEditor) => currentEditor.getAction('editor.action.goToReferences')?.run(),
       }),
       editor.addAction({
         id: 'agentSpaces.showReferences',
         label: 'Show References',
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 1.46,
-        run: (currentEditor) => currentEditor.trigger('contextmenu', 'editor.action.referenceSearch.trigger', null),
+        run: (currentEditor) => currentEditor.getAction('editor.action.referenceSearch.trigger')?.run(),
+      }),
+      editor.addAction({
+        id: 'agentSpaces.find',
+        label: 'Find',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF],
+        run: (currentEditor) => currentEditor.getAction('actions.find')?.run(),
+      }),
+      editor.addAction({
+        id: 'agentSpaces.replace',
+        label: 'Replace',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH],
+        run: (currentEditor) => currentEditor.getAction('editor.action.startFindReplaceAction')?.run(),
+      }),
+      editor.addAction({
+        id: 'agentSpaces.findInFiles',
+        label: 'Find in Files',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF],
+        run: () => {
+          useEditorStore.getState().setRevealPath('__search_panel__');
+        },
+      }),
+      editor.addAction({
+        id: 'agentSpaces.goToLine',
+        label: 'Go to Line...',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG],
+        run: (currentEditor) => currentEditor.getAction('editor.action.gotoLine')?.run(),
+      }),
+      editor.addAction({
+        id: 'agentSpaces.formatDocument',
+        label: 'Format Document',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI],
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 1.5,
+        run: (currentEditor) => currentEditor.getAction('editor.action.formatDocument')?.run(),
       }),
     );
-  }, [jumpToPosition, workspaceId, workspaceRoot]);
+  }, [activeFilePath, jumpToPosition, workspaceId, workspaceRoot]);
 
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, _monaco: typeof Monaco) => {
     editorRef.current = editor;
@@ -291,10 +352,12 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     registerNavigationActions(editor, _monaco);
     setEditorReadyTick((tick) => tick + 1);
 
-    editor.addCommand(
-      2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
-      () => handleSaveRef.current()
-    );
+    editor.addAction({
+      id: 'agentSpaces.saveFile',
+      label: 'Save File',
+      keybindings: [2048 | 49], // KeyMod.CtrlCmd | KeyCode.KeyS
+      run: () => handleSaveRef.current(),
+    });
   }, [isReadOnly, registerNavigationActions, syncReadOnly, workspaceId, workspaceRoot]);
 
   useEffect(() => {

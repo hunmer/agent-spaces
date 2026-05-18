@@ -127,6 +127,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const [globalFileLoading, setGlobalFileLoading] = useState(false);
   const fileSearchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
+  const [sidebarTab, setSidebarTab] = useState('files');
   const filteredTree = useMemo(() => filterTreeByName(tree, fileSearch), [tree, fileSearch]);
   const fileSizeMap = useMemo(() => buildFileSizeMap(tree), [tree]);
 
@@ -274,6 +275,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     });
     // Load each parent directory to ensure children are available
     (async () => {
+      if (revealPath === '__search_panel__') {
+        setSidebarTab('search');
+        clearRevealPath();
+        return;
+      }
       for (const d of dirsToExpand) {
         await loadDirectory(workspaceId, d);
       }
@@ -284,7 +290,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs defaultValue="files" className="flex flex-col h-full">
+      <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="flex flex-col h-full">
         <TabsList className="w-full h-8 shrink-0 rounded-none border-b bg-transparent p-0">
           <TabsTrigger value="files" className="flex-1 gap-1 rounded-none border border-b-2 border-transparent text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:bg-transparent data-[active]:text-foreground data-[active]:shadow-none">
             {t('explorer')}
