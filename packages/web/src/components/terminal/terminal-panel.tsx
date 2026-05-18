@@ -108,8 +108,16 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       }
     }
 
-    return { customCommands: custom, folderGroups: groups };
-  }, [commands, search]);
+    const runSort = (a: QuickCommand, b: QuickCommand) =>
+      (isRunning(b.id) ? 1 : 0) - (isRunning(a.id) ? 1 : 0);
+
+    return {
+      customCommands: custom.sort(runSort),
+      folderGroups: Object.fromEntries(
+        Object.entries(groups).map(([k, v]) => [k, v.sort(runSort)])
+      ),
+    };
+  }, [commands, search, isRunning]);
 
   const toggleFolder = (folder: string) => {
     setCollapsedFolders(prev => ({ ...prev, [folder]: !prev[folder] }));
