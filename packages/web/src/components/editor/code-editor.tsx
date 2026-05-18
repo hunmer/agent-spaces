@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useCallback, useState } from "react";
 import "@/lib/monaco-loader";
+import "@/lib/monaco-builtin-actions";
+import { applyRegisteredActions } from "@/lib/monaco-action-registry";
 import { useEditorStore, isCommitDiffPath, getCommitHashFromPath } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { useTheme } from "@/components/theme-provider";
@@ -325,6 +327,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const monacoRef = useRef<typeof Monaco | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
+  const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
@@ -522,6 +525,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     }
     syncReadOnly(editor, isReadOnly);
     registerNavigationActions(editor, _monaco);
+
+    for (const d of actionRegistryDisposablesRef.current) d.dispose();
+    actionRegistryDisposablesRef.current = applyRegisteredActions(editor, { workspaceId, workspaceRoot });
+
     setEditorReadyTick((tick) => tick + 1);
 
     editor.addAction({
@@ -552,6 +559,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
         disposable.dispose();
       }
       navigationDisposablesRef.current = [];
+      for (const d of actionRegistryDisposablesRef.current) d.dispose();
+      actionRegistryDisposablesRef.current = [];
     };
   }, []);
 

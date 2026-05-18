@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, LucideIcon } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star, LucideIcon } from "lucide-react";
 
 export interface TabItem {
   id: string;
@@ -9,7 +9,7 @@ export interface TabItem {
   group: string;
 }
 
-export const TAB_ITEMS: TabItem[] = [
+const builtinTabs: TabItem[] = [
   { id: "channel-list", icon: Hash, group: "channel" },
   { id: "chat", icon: MessageSquare, group: "channel" },
   { id: "issue-list", icon: ListChecks, group: "issue" },
@@ -19,7 +19,25 @@ export const TAB_ITEMS: TabItem[] = [
   { id: "terminal", icon: TerminalSquare, group: "tools" },
   { id: "git-commits", icon: GitCommitHorizontal, group: "git" },
   { id: "project-settings", icon: Settings2, group: "settings" },
+  { id: "code-favorites", icon: Star, group: "workfolder" },
 ];
+
+const dynamicTabs: TabItem[] = [];
+const dynamicIcons: Record<string, React.ReactNode> = {};
+
+export function registerTab(tab: TabItem, iconNode?: React.ReactNode) {
+  if (builtinTabs.some((t) => t.id === tab.id) || dynamicTabs.some((t) => t.id === tab.id)) return;
+  dynamicTabs.push(tab);
+  if (iconNode) dynamicIcons[tab.id] = iconNode;
+}
+
+export function unregisterTab(id: string) {
+  const idx = dynamicTabs.findIndex((t) => t.id === id);
+  if (idx >= 0) dynamicTabs.splice(idx, 1);
+  delete dynamicIcons[id];
+}
+
+export const TAB_ITEMS: TabItem[] = [...builtinTabs, ...dynamicTabs];
 
 export const TAB_ICONS: Record<string, React.ReactNode> = {
   "channel-list": <Hash size={16} />,
@@ -31,6 +49,8 @@ export const TAB_ICONS: Record<string, React.ReactNode> = {
   "terminal": <TerminalSquare size={16} />,
   "git-commits": <GitCommitHorizontal size={16} />,
   "project-settings": <Settings2 size={16} />,
+  "code-favorites": <Star size={16} />,
+  ...dynamicIcons,
 };
 
 export const RIGHT_TO_LEFT_TAB_MAP: Record<string, string> = {

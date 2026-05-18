@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2 } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star } from "lucide-react";
 import { TAB_ICONS, RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
 import { EditorPanel } from "@/components/editor/editor-panel";
@@ -14,6 +14,7 @@ import { IssueList } from "@/components/issue/issue-list";
 import { IssueDetail } from "@/components/issue/issue-detail";
 import { GitCommitsPanel } from "@/components/git/git-commits-panel";
 import { ProjectSettingsPanel } from "@/components/settings/project-settings-panel";
+import { CodeFavoritesPanel } from "@/components/editor/code-favorites-panel";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -67,6 +68,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
           { type: "tab", name: "Workfolder", component: "workfolder", id: "workfolder" },
+          { type: "tab", name: "Favorites", component: "code-favorites", id: "code-favorites" },
         ],
       },
       {
@@ -350,6 +352,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <GitCommitsPanel workspaceId={workspaceId} />;
         case "project-settings":
           return <ProjectSettingsPanel workspaceId={workspaceId} />;
+        case "code-favorites":
+          return <CodeFavoritesPanel workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }
@@ -434,6 +438,8 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <GitCommitsPanel workspaceId={workspaceId} />;
     case "project-settings":
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
+    case "code-favorites":
+      return <CodeFavoritesPanel workspaceId={workspaceId} />;
     default:
       return <ChannelList workspaceId={workspaceId} />;
   }
