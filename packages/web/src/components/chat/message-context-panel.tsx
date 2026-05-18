@@ -50,13 +50,13 @@ export function AgentContextPanel({ part }: { part: ContextPart }) {
   const textBlocks = [
     { key: "systemPrompt", title: "提示词信息", value: agent?.systemPrompt, empty: "此 agent 未配置独立 system prompt。" },
     { key: "userPrompt", title: "输入信息", value: agent?.userPrompt, empty: "旧消息未记录用户输入。" },
-    { key: "fullPrompt", title: "完整上下文", value: agent?.fullPrompt, empty: "旧消息未记录完整 prompt。", tall: true },
-    { key: "output", title: "输出信息", value: outputValue, empty: "暂无输出信息。", tall: true, stats: outputStats },
+    { key: "fullPrompt", title: "完整上下文", value: agent?.fullPrompt, empty: "旧消息未记录完整 prompt。" },
+    { key: "output", title: "输出信息", value: outputValue, empty: "暂无输出信息。", stats: outputStats },
   ].map((block) => ({ ...block, stats: block.stats ?? getTextStats(block.value) }))
   const totalBlockTokens = textBlocks.reduce((sum, block) => sum + block.stats.tokens, 0)
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 h-full">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="secondary">{agent?.name || agent?.role || "Agent"}</Badge>
         {agent?.runtime ? <Badge variant="outline">{agent.runtime}</Badge> : null}
@@ -75,8 +75,10 @@ export function AgentContextPanel({ part }: { part: ContextPart }) {
         <ContextTextBlock key={textBlocks[0].key} title={textBlocks[0].title} value={textBlocks[0].value} empty={textBlocks[0].empty} stats={textBlocks[0].stats} totalTokens={totalBlockTokens} />
         <ContextTextBlock key={textBlocks[1].key} title={textBlocks[1].title} value={textBlocks[1].value} empty={textBlocks[1].empty} stats={textBlocks[1].stats} totalTokens={totalBlockTokens} />
       </div>
-      <ContextTextBlock key={textBlocks[2].key} title={textBlocks[2].title} value={textBlocks[2].value} empty={textBlocks[2].empty} tall={textBlocks[2].tall} stats={textBlocks[2].stats} totalTokens={totalBlockTokens} />
-      <ContextTextBlock key={textBlocks[3].key} title={textBlocks[3].title} value={textBlocks[3].value} empty={textBlocks[3].empty} tall={textBlocks[3].tall} stats={textBlocks[3].stats} totalTokens={totalBlockTokens} />
+      <div className="flex flex-1 flex-col gap-4 min-h-0">
+        <ContextTextBlock key={textBlocks[2].key} title={textBlocks[2].title} value={textBlocks[2].value} empty={textBlocks[2].empty} stats={textBlocks[2].stats} totalTokens={totalBlockTokens} />
+        <ContextTextBlock key={textBlocks[3].key} title={textBlocks[3].title} value={textBlocks[3].value} empty={textBlocks[3].empty} stats={textBlocks[3].stats} totalTokens={totalBlockTokens} />
+      </div>
     </div>
   )
 }
@@ -95,21 +97,19 @@ function ContextTextBlock({
   title,
   value,
   empty,
-  tall,
   stats,
   totalTokens,
 }: {
   title: string
   value?: string
   empty: string
-  tall?: boolean
   stats: TextStats
   totalTokens: number
 }) {
   const percent = totalTokens > 0 ? stats.tokens / totalTokens : 0
 
   return (
-    <section className="min-w-0 space-y-2">
+    <section className="min-w-0 overflow-hidden flex flex-col gap-2">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
         <div className="flex flex-wrap items-center justify-end gap-1.5 font-mono text-[10px] text-muted-foreground">
@@ -119,8 +119,8 @@ function ContextTextBlock({
         </div>
       </div>
       <pre className={cn(
-        "min-w-0 whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground",
-        tall ? "max-h-72 overflow-auto" : "max-h-48 overflow-auto",
+        "min-w-0 flex-1 min-h-0 whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground overflow-auto",
+        !value?.trim() && "text-muted-foreground",
         !value?.trim() && "text-muted-foreground",
       )}>
         {value?.trim() || empty}

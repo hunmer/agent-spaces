@@ -87,19 +87,20 @@ export function MessageContextUsage({ message }: { message: Message }) {
               onValueChange={setActiveAgentId}
               className="min-h-0 flex flex-1 gap-0"
             >
-              <div className="flex w-48 shrink-0 flex-col border-r">
-                <TabsList className="!flex h-auto flex-col items-stretch gap-1 rounded-none border-0 bg-transparent p-2">
+              <div className="flex w-56 shrink-0 flex-col border-r">
+                <TabsList className="!flex h-auto w-full flex-col items-stretch gap-1 rounded-none border-0 bg-transparent p-2">
                   {contextParts.map((item, index) => (
                     <TabsTrigger key={item.id} value={item.id} className="!w-full justify-start gap-2 px-3 py-2 text-xs">
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[10px] text-muted-foreground">{index + 1}</span>
                       <BotIcon className="size-3.5 shrink-0" />
-                      <span className="truncate">{item.agentContext?.name || item.agentContext?.role || `Agent ${index + 1}`}</span>
+                      <span className="min-w-0 truncate">{item.agentContext?.name || item.agentContext?.role || `Agent ${index + 1}`}</span>
                     </TabsTrigger>
                   ))}
                 </TabsList>
               </div>
-              <ScrollArea className="max-h-[min(68vh,720px)] flex-1">
+              <ScrollArea className="max-h-[min(68vh,720px)] min-w-0 flex-1">
                 {contextParts.map((item) => (
-                  <TabsContent key={item.id} value={item.id} className="m-0 p-5">
+                  <TabsContent key={item.id} value={item.id} className="m-0 min-w-0 p-5">
                     <AgentContextPanel part={item} />
                   </TabsContent>
                 ))}
