@@ -108,6 +108,20 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   }, [open, standalone, fetchTemplates, fetchAgents]);
 
   const handleImport = async () => {
+    if (uploadFiles.length === 0) return;
+
+    if (uploadFiles.length === 1) {
+      const content = await uploadFiles[0].file.text();
+      const name = uploadFiles[0].file.name.replace(/\.(md|txt|markdown)$/i, '');
+      setUploadFiles([]);
+      setImportOpen(false);
+      setEditTemplate(null);
+      setIsCreating(true);
+      setEditName(name);
+      setEditContent(content);
+      return;
+    }
+
     for (const item of uploadFiles) {
       const content = await item.file.text();
       const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');

@@ -44,7 +44,19 @@ interface CodeEditorProps {
   workspaceId: string;
 }
 
+let _monacoCanceledHandlerRegistered = false;
+function suppressMonacoCanceled() {
+  if (_monacoCanceledHandlerRegistered || typeof window === 'undefined') return;
+  _monacoCanceledHandlerRegistered = true;
+  window.addEventListener('unhandledrejection', (e) => {
+    if (e.reason?.name === 'Canceled' || String(e.reason) === 'Canceled') {
+      e.preventDefault();
+    }
+  });
+}
+
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
+  suppressMonacoCanceled();
   const { openFiles, modifiedFileContents, activeFilePath, updateContent, saveFile, refreshFile, jumpToPosition, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
@@ -311,6 +323,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                 minimap: { enabled: minimap },
                 scrollBeyondLastLine: false,
                 glyphMargin: true,
+                lineNumbersMinChars: 3,
                 padding: { top: 8 },
                 renderLineHighlight: "gutter",
                 readOnly: isReadOnly,
