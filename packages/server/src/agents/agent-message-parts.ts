@@ -69,6 +69,8 @@ export function createAgentMessagePartsTracker(input: {
         return;
       }
 
+      if (event.type === 'session') return;
+
       output.push(event.line);
       input.onOutput?.(event.line);
     },

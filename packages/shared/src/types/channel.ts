@@ -132,6 +132,7 @@ export interface MessageTool {
 
 export interface MessageMetadata {
   agentSessionId?: string;
+  runtimeSessionId?: string;
   runtime?: string;
   model?: string;
   summary?: string;

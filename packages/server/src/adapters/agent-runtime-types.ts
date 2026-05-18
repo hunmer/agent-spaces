@@ -7,6 +7,7 @@ export interface AgentRunResult {
   artifacts: string[];
   error?: string;
   output: string[];
+  sessionId?: string;
   usage?: MessageTokenUsage;
   costUsd?: number;
 }
@@ -25,11 +26,13 @@ export interface AgentRunOptions {
   configDir?: string;
   sandboxDirs?: string[];
   systemPrompt?: string;
+  resumeSessionId?: string;
   onEvent?: (event: AgentRuntimeEvent) => void;
 }
 
 export type AgentRuntimeEvent =
   | { type: 'output'; line: string }
+  | { type: 'session'; sessionId: string }
   | { type: 'reasoning'; text: string; status?: 'streaming' | 'completed' }
   | { type: 'tool_use'; id: string; name: string; input?: unknown; line: string }
   | { type: 'tool_result'; toolUseId?: string; result: unknown };

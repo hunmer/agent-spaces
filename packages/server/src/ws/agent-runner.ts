@@ -37,6 +37,7 @@ interface RunMentionedAgentOptions {
   seedOutput?: string[];
   seedQuestions?: PendingAskUserQuestion[];
   appendUserMessage?: string;
+  resumeSessionId?: string;
   excludeHistoryMessageIds?: string[];
   excludeHistoryReplyIds?: string[];
 }
@@ -232,6 +233,7 @@ export async function runMentionedAgent(
       metadata: {
         ...existingMessage.metadata,
         agentSessionId: session.id,
+        runtimeSessionId: options.resumeSessionId ?? existingMessage.metadata?.runtimeSessionId,
         runtime: preset.runtimeKind,
         model: preset.modelId,
         duration: 0,
@@ -263,6 +265,7 @@ export async function runMentionedAgent(
   let activeRun: ActiveChannelRun | undefined;
   const liveReasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   let agentPrompt = '';
+  let runtimeSessionId = options.resumeSessionId ?? existingMessage?.metadata?.runtimeSessionId;
   try {
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind,
@@ -287,7 +290,10 @@ export async function runMentionedAgent(
       ],
       excludeReplyIds: options.excludeHistoryReplyIds,
     });
-    agentPrompt = buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, runtimePromptConfig);
+    const isRuntimeSessionResume = Boolean(options.resumeSessionId && preset.runtimeKind === 'claude-code');
+    agentPrompt = isRuntimeSessionResume
+      ? prompt
+      : buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, runtimePromptConfig);
     const liveOutput: string[] = [...(options.seedOutput ?? [])];
     const liveOutputItems: MessageAgentOutputItem[] = liveOutput.map((line, index) => buildOutputItem({
       id: `seed-${index}`,
@@ -334,6 +340,7 @@ export async function runMentionedAgent(
         parts: displayParts,
         metadata: {
           ...pending.metadata,
+          runtimeSessionId,
           duration: Date.now() - startTime,
         },
       });
@@ -346,8 +353,21 @@ export async function runMentionedAgent(
       skills,
       configDir,
       sandboxDirs: preset.sandboxDirs,
+      resumeSessionId: isRuntimeSessionResume ? options.resumeSessionId : undefined,
       onEvent: (event) => {
         if (activeRun?.stopped) return;
+        if (event.type === 'session') {
+          runtimeSessionId = event.sessionId;
+          const live = updateMessage(workspaceId, channelId, pending.id, {
+            metadata: {
+              ...pending.metadata,
+              runtimeSessionId,
+              duration: Date.now() - startTime,
+            },
+          });
+          if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
+          return;
+        }
         if (event.type === 'reasoning') {
           liveReasoning.push({ text: event.text, status: event.status });
           broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.text });
@@ -482,6 +502,7 @@ export async function runMentionedAgent(
         status: 'waiting_for_user',
         metadata: {
           agentSessionId: session.id,
+          runtimeSessionId: result.sessionId ?? runtimeSessionId,
           runtime: preset.runtimeKind,
           model: preset.modelId,
           summary: 'Waiting for user answer',
@@ -559,6 +580,7 @@ export async function runMentionedAgent(
       status: result.success ? 'completed' : 'error',
       metadata: {
         agentSessionId: session.id,
+        runtimeSessionId: result.sessionId ?? runtimeSessionId,
         runtime: preset.runtimeKind,
         model: preset.modelId,
         summary: result.summary,
@@ -610,6 +632,7 @@ export async function runMentionedAgent(
       status: 'error',
       metadata: {
         agentSessionId: session.id,
+        runtimeSessionId,
         runtime: preset.runtimeKind,
         model: preset.modelId,
         duration: Date.now() - startTime,

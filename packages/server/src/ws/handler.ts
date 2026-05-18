@@ -89,6 +89,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
       void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
         messageId: updated.id,
         appendUserMessage: stripHtml(content),
+        resumeSessionId: updated.metadata?.runtimeSessionId,
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
       });
     }

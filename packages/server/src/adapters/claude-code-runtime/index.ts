@@ -58,6 +58,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         additionalDirectories,
         permissionMode,
         allowDangerouslySkipPermissions: permissionMode === 'bypassPermissions' ? true : undefined,
+        resume: options?.resumeSessionId,
         abortController: this.abortController,
         env: buildEnv(this.config, configDir, { baseURL, apiKey }),
         stderr: (data) => {
@@ -77,11 +78,17 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let usageLine: string | null = null;
       let usage: AgentRunResult['usage'];
       let costUsd: number | undefined;
+      let sessionId = options?.resumeSessionId;
       let sawResult = false;
       const pendingAskUserQuestionToolIds = new Set<string>();
       let waitingForUserAnswer = false;
 
       for await (const message of this.activeQuery) {
+        const nextSessionId = readSessionId(message);
+        if (nextSessionId && nextSessionId !== sessionId) {
+          sessionId = nextSessionId;
+          options?.onEvent?.({ type: 'session', sessionId });
+        }
         const toolUses = extractToolUseEvents(message);
         for (const toolUse of toolUses) {
           if (toolUse.name === 'AskUserQuestion') {
@@ -126,6 +133,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           usageLine = formatUsageLine(message.usage);
           usage = normalizeUsage(message.usage);
           costUsd = readTotalCostUsd(message);
+          sessionId = readSessionId(message) ?? sessionId;
           if (message.subtype === 'success') {
             if (!isAskUserQuestionAutoResult(message.result)) {
               resultText = message.result;
@@ -151,6 +159,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           output,
           usage,
           costUsd,
+          sessionId,
         };
       }
 
@@ -164,6 +173,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           output,
           usage,
           costUsd,
+          sessionId,
         };
       }
 
@@ -180,6 +190,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           output,
           usage,
           costUsd,
+          sessionId,
         };
       }
 
@@ -199,6 +210,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         output: finalOutput,
         usage,
         costUsd,
+        sessionId,
       };
     } catch (err) {
       const elapsed = Date.now() - startTime;
@@ -209,7 +221,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       appendUnique(output, stderrLines);
       appendUnique(output, [runtimeError]);
-      return { success: false, summary: 'Claude Code execution failed', artifacts: [], error: runtimeError, output };
+      return { success: false, summary: 'Claude Code execution failed', artifacts: [], error: runtimeError, output, sessionId: options?.resumeSessionId };
     } finally {
       this.activeQuery?.close();
       this.activeQuery = null;
@@ -225,6 +237,12 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       this.activeQuery?.close();
     });
   }
+}
+
+function readSessionId(message: unknown): string | undefined {
+  if (!message || typeof message !== 'object') return undefined;
+  const value = (message as { session_id?: unknown }).session_id;
+  return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
 function readTotalCostUsd(message: unknown): number | undefined {

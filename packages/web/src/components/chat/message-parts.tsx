@@ -147,7 +147,7 @@ export function MessageContextUsage({ message }: { message: Message }) {
         </ContextContent>
       </Context>
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="!w-[min(920px,calc(100vw-2rem))] !max-w-[min(920px,calc(100vw-2rem))] gap-0 overflow-hidden p-0">
+        <DialogContent className="!flex !w-[min(920px,calc(100vw-2rem))] !max-w-[min(920px,calc(100vw-2rem))] !flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b px-5 py-4">
             <DialogTitle className="text-base">Agent 上下文结构</DialogTitle>
             <DialogDescription className="text-xs">
@@ -158,21 +158,19 @@ export function MessageContextUsage({ message }: { message: Message }) {
             <Tabs
               value={selectedAgent?.id}
               onValueChange={setActiveAgentId}
-              className="min-h-0 gap-0"
+              className="min-h-0 flex flex-1 gap-0"
             >
-              <div className="border-b px-5 py-3">
-                <ScrollArea className="w-full">
-                  <TabsList className="h-8 max-w-full justify-start overflow-x-auto rounded-md">
-                    {contextParts.map((item, index) => (
-                      <TabsTrigger key={item.id} value={item.id} className="max-w-44 px-2 text-xs">
-                        <BotIcon className="size-3.5" />
-                        <span className="truncate">{item.agentContext?.name || item.agentContext?.role || `Agent ${index + 1}`}</span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </ScrollArea>
+              <div className="flex w-48 shrink-0 flex-col border-r">
+                <TabsList className="!flex h-auto flex-col items-stretch gap-1 rounded-none border-0 bg-transparent p-2">
+                  {contextParts.map((item, index) => (
+                    <TabsTrigger key={item.id} value={item.id} className="!w-full justify-start gap-2 px-3 py-2 text-xs">
+                      <BotIcon className="size-3.5 shrink-0" />
+                      <span className="truncate">{item.agentContext?.name || item.agentContext?.role || `Agent ${index + 1}`}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
               </div>
-              <ScrollArea className="max-h-[min(68vh,720px)]">
+              <ScrollArea className="max-h-[min(68vh,720px)] flex-1">
                 {contextParts.map((item) => (
                   <TabsContent key={item.id} value={item.id} className="m-0 p-5">
                     <AgentContextPanel part={item} />
