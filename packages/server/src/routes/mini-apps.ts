@@ -7,6 +7,8 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
+import { getProject, readAgentsConfig, listAgentChats } from '../storage/mini-app-store.js';
+import { runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
@@ -279,6 +281,86 @@ router.post('/import', async (req: Request, res: Response) => {
     const project = await svc.importZip(buffer, { name, type, description });
     res.json(project);
   } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// ---- Agents (preview chat) ----
+
+// GET /:id/agents — 脱敏返回 agents 清单 + enableAgents 开关
+router.get('/:id/agents', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const project = getProject(req.params.id);
+    if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+    const configs = readAgentsConfig(req.params.id) ?? [];
+    const agents = configs
+      .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+      .map((c) => ({
+        id: String(c.id),
+        name: String(c.name ?? c.id),
+        avatar: typeof c.avatar === 'string' ? c.avatar : undefined,
+      }));
+    res.json({ enableAgents: project.enableAgents === true, agents });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// GET /:id/agents/chat?sessionId=&agentId= — 历史
+router.get('/:id/agents/chat', (req: Request<{ id: string }, any, any, { sessionId?: string; agentId?: string }>, res: Response) => {
+  try {
+    const { sessionId, agentId } = req.query;
+    if (!sessionId) { res.status(400).json({ error: 'sessionId is required' }); return; }
+    let messages = listAgentChats(req.params.id, sessionId);
+    if (agentId) messages = messages.filter((m) => m.agentId === agentId);
+    res.json({ messages });
+  } catch (error: any) {
+    res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
+  }
+});
+
+// POST /:id/agents/:agentId/chat — SSE 流式
+router.post('/:id/agents/:agentId/chat', (req: Request<{ id: string; agentId: string }>, res: Response) => {
+  const { sessionId, message, route } = req.body ?? {};
+  if (!sessionId || typeof sessionId !== 'string') {
+    res.status(400).json({ error: 'sessionId is required' }); return;
+  }
+  if (!message || typeof message !== 'string') {
+    res.status(400).json({ error: 'message is required' }); return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  const ac = new AbortController();
+  req.on('close', () => ac.abort());
+
+  const write = (event: string, data: unknown) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  runMiniAppAgent({
+    projectId: req.params.id,
+    agentId: req.params.agentId,
+    sessionId,
+    message,
+    route,
+    stopSignal: ac.signal,
+    onEvent: (event) => {
+      if (event.type === 'reasoning') write('reasoning', { text: event.text, status: event.status });
+      else if (event.type === 'tool_use') write('tool_use', { id: event.id, name: event.name, input: event.input });
+      else if (event.type === 'tool_result') write('tool_result', { toolUseId: event.toolUseId, result: event.result });
+      else if (event.type === 'output') write('text', { line: event.line });
+    },
+  })
+    .then(({ userMessage, agentMessage }) => {
+      write('message_saved', { userMessage, agentMessage });
+      res.write('event: done\ndata: {}\n\n');
+      res.end();
+    })
+    .catch((error: any) => {
+      write('error', { message: error?.message ?? String(error) });
+      res.end();
+    });
 });
 
 export default router;
