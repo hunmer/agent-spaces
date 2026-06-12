@@ -146,6 +146,17 @@ export default function App() {
     }
   }, [playlist, currentIndex, playMode, playTrack]);
 
+  // Subscribe to agent-driven player actions (api.js broadcasts miniApp.playerAction)
+  useEffect(() => {
+    if (!window.AgentSpaces?.onTaskEvent) return;
+    const unsub = window.AgentSpaces.onTaskEvent((event, data) => {
+      if (event !== 'miniApp.playerAction') return;
+      if (data?.dir === 'next') handleNext();
+      else if (data?.dir === 'prev') handlePrev();
+    });
+    return unsub;
+  }, [handleNext, handlePrev]);
+
   return (
     <div className="bg-background text-foreground h-screen overflow-hidden flex flex-col relative">
       {/* Keyframe animation */}
