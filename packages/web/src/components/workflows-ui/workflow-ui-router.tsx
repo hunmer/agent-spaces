@@ -62,6 +62,127 @@ function normalizeQuery(query?: Record<string, unknown>): Record<string, string>
   return out;
 }
 
+// ---- Router Context ----
+export type RouterApi = RouteState & {
+  push(path: string | string[], query?: Record<string, unknown>): void;
+  replace(path: string | string[], query?: Record<string, unknown>): void;
+  back(): void;
+};
+
+const RouterContext = createContext<RouterApi | null>(null);
+
+// 从当前 window.location 读初始 route：
+// 优先 search 的 route 参数（宿主透传场景 / 独立打开带 ?route=），
+// 否则 hash（#/history?filter=done）。
+function readInitialRouteFromLocation(): RouteState {
+  if (typeof window === 'undefined') return { path: [], query: {} };
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const routeParam = sp.get('route');
+    if (routeParam) return parseRoute(decodeURIComponent(routeParam));
+    if (window.location.hash) return parseRoute(window.location.hash);
+  } catch { /* noop */ }
+  return { path: [], query: {} };
+}
+
+export function Router({ children }: { children: React.ReactNode }) {
+  const projectIdRef = useRef<string>('');
+  const [state, setState] = useState<RouteState>(() => readInitialRouteFromLocation());
+
+  // 取 projectId：从 location pathname 的 /workflows-ui-preview/<id> 段取（用于 postMessage 校验）。
+  useEffect(() => {
+    try {
+      const m = window.location.pathname.match(/\/workflows-ui-preview\/([^/]+)/);
+      projectIdRef.current = m ? decodeURIComponent(m[1]) : '';
+    } catch { /* noop */ }
+  }, []);
+
+  // hashchange：前进/后退或外部改 hash 时同步状态
+  useEffect(() => {
+    const onHashChange = () => {
+      setState(readInitialRouteFromLocation());
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // 写 hash 并广播给宿主（postMessage，单向：iframe -> 宿主）
+  const applyRoute = useCallback((next: RouteState, replace: boolean) => {
+    const serialized = serializeRoute(next);
+    const hash = serialized ? `#${serialized}` : '';
+    try {
+      if (replace) {
+        const base = window.location.pathname + window.location.search.replace(/([?&]route=)[^&]*/, '');
+        window.history.replaceState(null, '', base.replace(/[?&]$/, '') + (hash || ''));
+      } else {
+        if (window.location.hash !== hash) {
+          window.location.hash = hash;
+        }
+      }
+    } catch { /* noop */ }
+    setState(next);
+
+    // 广播给宿主
+    try {
+      window.parent?.postMessage(
+        {
+          source: 'agent-spaces:workflow-ui-router',
+          projectId: projectIdRef.current,
+          route: serialized,
+        },
+        '*',
+      );
+    } catch { /* noop */ }
+  }, []);
+
+  const push = useCallback((path: string | string[], query?: Record<string, unknown>) => {
+    applyRoute({ path: normalizePath(path), query: normalizeQuery(query) }, false);
+  }, [applyRoute]);
+
+  const replace = useCallback((path: string | string[], query?: Record<string, unknown>) => {
+    applyRoute({ path: normalizePath(path), query: normalizeQuery(query) }, true);
+  }, [applyRoute]);
+
+  const back = useCallback(() => {
+    try { window.history.back(); } catch { /* noop */ }
+  }, []);
+
+  const api: RouterApi = useMemo(
+    () => ({ path: state.path, query: state.query, push, replace, back }),
+    [state, push, replace, back],
+  );
+
+  return React.createElement(RouterContext.Provider, { value: api }, children);
+}
+
+export function useRouter(): RouterApi {
+  const ctx = useContext(RouterContext);
+  if (!ctx) {
+    throw new Error('useRouter must be used within <Router>');
+  }
+  return ctx;
+}
+
+export function Link(props: {
+  to: string | string[];
+  query?: Record<string, unknown>;
+  replace?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}): React.ReactElement {
+  const router = useRouter();
+  const handleClick = (e: React.MouseEvent) => {
+    // 允许 ctrl/cmd/shift 点击由浏览器处理（新标签）
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    if (props.replace) router.replace(props.to, props.query);
+    else router.push(props.to, props.query);
+  };
+  const serialized = serializeRoute({ path: normalizePath(props.to), query: normalizeQuery(props.query) });
+  const href = serialized ? `/${serialized.replace(/^\//, '')}` : '#';
+  return React.createElement('a', { href, onClick: handleClick, className: props.className }, props.children);
+}
+
 // 仅 dev 自检，发布前可删（Task 6 会删）
 if (typeof window !== 'undefined') {
   (window as any).__routeSelfTest = () => {
