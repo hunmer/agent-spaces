@@ -1,0 +1,18 @@
+{
+  "id": "wui_1781168372168_455c53f0",
+  "name": "AI创作",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-11T08:59:32.168Z",
+  "updatedAt": "2026-06-12T09:05:51.968Z",
+  "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
+  "enabledPlugins": [
+    "workflow.aliyun-ai",
+    "workflow.jimeng",
+    "workflow.minimax",
+    "workflow.aliyun-oss",
+    "workflow.tencent-cos"
+  ]
+}
