@@ -193,8 +193,10 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     ...(creds.apiBase ? { baseURL: creds.apiBase } : {}),
   };
   const runtime = createAgentRuntime(runtimeConfig);
-  if (stopSignal) stopSignal.addEventListener('abort', () => runtime.stop(), { once: true });
+  const onAbort = () => runtime.stop();
+  if (stopSignal) stopSignal.addEventListener('abort', onAbort, { once: true });
 
+  try {
   // 组装 functionTools
   const functionTools: AgentFunctionTool[] = [];
   const toolsCfg = entry.tools ?? { api: true, plugin: true };
@@ -246,7 +248,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     content: message, route, timestamp: now,
   };
   const agentContent = result.success
-    ? (result.output?.join('\n').trim() || result.summary)
+    ? (result.output.join('\n').trim() || result.summary)
     : `Error: ${result.error ?? result.summary}`;
   const agentMessage: miniAppStore.MiniAppChatMessage = {
     id: randomUUID(), sessionId, agentId, role: 'agent',
@@ -256,4 +258,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   miniAppStore.saveAgentChat(projectId, agentMessage);
 
   return { userMessage, agentMessage };
+  } finally {
+    if (stopSignal) stopSignal.removeEventListener('abort', onAbort);
+  }
 }
