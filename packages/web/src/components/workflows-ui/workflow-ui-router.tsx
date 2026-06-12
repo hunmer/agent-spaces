@@ -85,6 +85,15 @@ function readInitialRouteFromLocation(): RouteState {
   return { path: [], query: {} };
 }
 
+// hashchange 时只读 hash（用户主动前进/后退），忽略可能残留的 ?route=
+function readRouteFromHash(): RouteState {
+  if (typeof window === 'undefined') return { path: [], query: {} };
+  try {
+    if (window.location.hash) return parseRoute(window.location.hash);
+  } catch { /* noop */ }
+  return { path: [], query: {} };
+}
+
 export function Router({ children }: { children: React.ReactNode }) {
   const projectIdRef = useRef<string>('');
   const [state, setState] = useState<RouteState>(() => readInitialRouteFromLocation());
@@ -100,7 +109,7 @@ export function Router({ children }: { children: React.ReactNode }) {
   // hashchange：前进/后退或外部改 hash 时同步状态
   useEffect(() => {
     const onHashChange = () => {
-      setState(readInitialRouteFromLocation());
+      setState(readRouteFromHash());
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -115,7 +124,12 @@ export function Router({ children }: { children: React.ReactNode }) {
         const base = window.location.pathname + window.location.search.replace(/([?&]route=)[^&]*/, '');
         window.history.replaceState(null, '', base.replace(/[?&]$/, '') + (hash || ''));
       } else {
-        if (window.location.hash !== hash) {
+        if (hash === '') {
+          // 根路由：清掉 hash，避免末尾残留 #
+          if (window.location.hash) {
+            window.history.pushState(null, '', window.location.pathname + window.location.search);
+          }
+        } else if (window.location.hash !== hash) {
           window.location.hash = hash;
         }
       }
@@ -179,7 +193,7 @@ export function Link(props: {
     else router.push(props.to, props.query);
   };
   const serialized = serializeRoute({ path: normalizePath(props.to), query: normalizeQuery(props.query) });
-  const href = serialized ? `/${serialized.replace(/^\//, '')}` : '#';
+  const href = serialized ? `/${serialized.replace(/^\//, '')}` : '/';
   return React.createElement('a', { href, onClick: handleClick, className: props.className }, props.children);
 }
 
