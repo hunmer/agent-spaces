@@ -63,13 +63,20 @@
     "updatedAt": "2026-06-12T11:43:41.333Z"
   },
   {
-    "id": "wui_1781295970285_b3b8bf5b",
-    "name": "ai音乐",
+    "id": "wui_1781296097221_fcce9ebb",
+    "name": "ai_creator_tool-master",
     "version": "1.0.0",
     "type": "react",
     "tags": [],
+    "enabledPlugins": [
+      "workflow.aliyun-ai",
+      "workflow.jimeng",
+      "workflow.minimax",
+      "workflow.aliyun-oss",
+      "workflow.tencent-cos"
+    ],
     "mainFile": "index.jsx",
-    "createdAt": "2026-06-12T20:26:10.285Z",
-    "updatedAt": "2026-06-12T20:26:10.285Z"
+    "createdAt": "2026-06-12T20:28:17.221Z",
+    "updatedAt": "2026-06-12T20:28:17.221Z"
   }
 ]
