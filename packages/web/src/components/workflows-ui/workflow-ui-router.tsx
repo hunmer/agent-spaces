@@ -218,26 +218,3 @@ export function Link(props: {
   const href = serialized ? `/${serialized.replace(/^\//, '')}` : '/';
   return React.createElement('a', { href, onClick: handleClick, className: props.className }, props.children);
 }
-
-// 仅 dev 自检，发布前可删（Task 6 会删）
-if (typeof window !== 'undefined') {
-  (window as any).__routeSelfTest = () => {
-    const cases: Array<[RouteState, string]> = [
-      [{ path: [], query: {} }, ''],
-      [{ path: ['history'], query: {} }, '/history'],
-      [{ path: ['history'], query: { filter: 'done' } }, '/history?filter=done'],
-      [{ path: ['detail', '123'], query: {} }, '/detail/123'],
-      [{ path: ['a b'], query: { x: '1 2' } }, '/a%20b?x=1+2'],
-    ];
-    for (const [state, expected] of cases) {
-      const got = serializeRoute(state);
-      const back = parseRoute(got);
-      const okRoundtrip = got === '' ? back.path.length === 0 : JSON.stringify(back) === JSON.stringify(state);
-      console.assert(got === expected, `serialize ${JSON.stringify(state)} -> "${got}" expected "${expected}"`);
-      console.assert(okRoundtrip, `roundtrip ${JSON.stringify(state)} -> ${JSON.stringify(back)}`);
-    }
-    console.assert(JSON.stringify(parseRoute('garbage/../bad')) !== null, 'parse never throws');
-    console.assert(parseRoute('').path.length === 0, 'empty -> root');
-    console.log('route self-test done');
-  };
-}

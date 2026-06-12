@@ -194,6 +194,66 @@ const unsub = window.AgentSpaces.onConfigChanged((path, value) => {
 
 UI 不再直接 `readConfigJson/writeConfigJson`：落库走 `invokeService`，读取走 `getConfig`/`onConfigChanged`。REST 入口：`POST /api/workflows-ui/:id/services/invoke`，body `{ name, payload }` → `{ ok, result }`。
 
+## 内置路由（项目内多视图）
+
+复杂项目常需多个视图（生成 / 历史 / 设置 / 详情）。宿主提供**公共路由接口**，收敛地址栏同步、参数序列化、刷新与分享链接恢复逻辑——项目代码零同步代码。
+
+### 用法
+
+通过 `@agent-spaces/ui` 或 `window.AgentSpacesUI` 获取 `Router`、`useRouter`、`Link`：
+
+```jsx
+import { Router, useRouter, Link } from '@agent-spaces/ui';
+
+export default function App() {
+  return (
+    <Router>
+      <Nav />
+      <Views />
+    </Router>
+  );
+}
+
+function Nav() {
+  return <Link to="history" query={{ filter: 'done' }}>历史</Link>;
+}
+
+function Views() {
+  const { path, query } = useRouter();
+  if (path[0] === 'history') return <History filter={query.filter} />;
+  if (path[0] === 'detail' && path[1]) return <Detail id={path[1]} />;
+  return <Generate />;
+}
+```
+
+### API
+
+| 符号 | 说明 |
+|------|------|
+| `<Router>` | 路由 Provider，必须在顶层包裹。从地址栏恢复初始路由。 |
+| `useRouter()` | 返回 `{ path, query, push, replace, back }`。未包裹时抛 `useRouter must be used within <Router>`。 |
+| `<Link to query replace>` | 声明式导航，封装 `push`/`replace`。 |
+| `push(path, query?)` | 路径段 + query，入历史栈。`path` 接受字符串（按 `/` 拆）或数组。 |
+| `replace(path, query?)` | 替换当前项，不入栈。 |
+| `back()` | 浏览器回退。 |
+
+### URL 编码
+
+路由状态序列化为单个 `route` 参数：path 段用 `/` 拼接，query 用 `URLSearchParams` 拼到后面。如 `{ path: ['history'], query: { filter: 'done' } }` → `/history?filter=done` → URL 中 `?route=%2Fhistory%3Ffilter%3Ddone`。
+
+### 同步机制
+
+- **iframe hash**：`Router` 操作预览 iframe 自身 `location.hash`（`#/history?filter=done`），刷新 iframe 即可恢复。
+- **宿主页 URL**：iframe 经 `postMessage` 把 route 透传给宿主编辑器，写入宿主页 URL 的 `route` 参数。手动刷新预览（iframe reload 丢 hash）时，宿主在 iframe load 后重发当前 route。
+- **分享链接**：分享按钮生成的链接携带 `route`，独立打开时 `Router` 从 `?route=` 恢复初始视图。
+
+### 注意
+
+- query 值仅 `string`，传非 string 会被 `String()` 强转。
+- 路径段建议传数组而非含 `/` 的字符串，避免歧义。
+- 非法 `route` 值（手改 URL）会 fallback 到根路由，不报错。
+- 路由是纯客户端状态，不落盘、不进 SQLite / config，与 Services 正交。
+
 ## SQLite 数据库
 
 对于需要条件查询、聚合、索引、事务的结构化数据（JSON 配置和 `data/` 文件不够用时），宿主提供基于 better-sqlite3 的 SQLite 能力。每个**具名库**对应一个文件 `data/db/<name>.sqlite`，按 projectId 隔离。
