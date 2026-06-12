@@ -1,11 +1,15 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { getProjectDir } from '../storage/mini-app-store.js';
 import * as miniAppStore from '../storage/mini-app-store.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { executePluginTool } from './plugin.js';
 import { createBuiltinPluginApi } from './plugin-runtime-api.js';
-import type { AgentFunctionTool } from '../adapters/agent-runtime-types.js';
+import { createAgentRuntime } from '../adapters/agent-runtime.js';
+import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool } from '../adapters/agent-runtime-types.js';
+import { createMiniAppFunctionTools } from './builtin-tools/mini-app-tools.js';
+import { listPresets } from './agent.js';
 
 export interface ApiCtx {
   projectId: string;
@@ -136,4 +140,120 @@ export function resolveAgentCredentials(
     temperature: entry.temperature ?? preset?.temperature,
     maxTokens: entry.maxTokens ?? preset?.maxTokens,
   };
+}
+
+export interface MiniAppAgentRunInput {
+  projectId: string;
+  agentId: string;
+  sessionId: string;
+  message: string;
+  route?: string;
+  /** SSE 事件回调 */
+  onEvent: (event: AgentRuntimeEvent) => void;
+  /** 取消信号：abort 时调 runtime.stop() */
+  stopSignal?: AbortSignal;
+}
+
+export interface MiniAppAgentRunOutput {
+  userMessage: miniAppStore.MiniAppChatMessage;
+  agentMessage: miniAppStore.MiniAppChatMessage;
+}
+
+/**
+ * 自包含执行路径：读 agents.json → 解析凭据 → 组装 functionTools（plugin + api.js）
+ * → 注入路由/方法清单/systemPrompt → langchain execute → 落盘 user+agent 消息。
+ * 不依赖 workspace。
+ */
+export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<MiniAppAgentRunOutput> {
+  const { projectId, agentId, sessionId, message, route, onEvent, stopSignal } = input;
+
+  const project = miniAppStore.getProject(projectId);
+  if (!project) throw new Error(`Project not found: ${projectId}`);
+  if (!project.enableAgents) throw new Error('Agents not enabled for this project');
+
+  const configs = miniAppStore.readAgentsConfig(projectId);
+  if (!configs) throw new Error('agents.json not found');
+  const entry = configs.find((c: any) => c && c.id === agentId) as
+    | {
+        id: string; name: string; avatar?: string; agentId?: string;
+        modelProvider?: string; modelId?: string; apiKey?: string; apiBase?: string;
+        systemPrompt?: string; temperature?: number; maxTokens?: number;
+        tools?: { api?: boolean; plugin?: boolean };
+      }
+    | undefined;
+  if (!entry) throw new Error(`Agent not found in agents.json: ${agentId}`);
+
+  const creds = resolveAgentCredentials(entry, listPresets('') as any);
+
+  const runtimeConfig: AgentRuntimeConfig = {
+    kind: 'langchain',
+    ...(creds.modelProvider ? { provider: creds.modelProvider as AgentRuntimeConfig['provider'] } : {}),
+    ...(creds.modelId ? { model: creds.modelId } : {}),
+    ...(creds.apiKey ? { apiKey: creds.apiKey } : {}),
+    ...(creds.apiBase ? { baseURL: creds.apiBase } : {}),
+  };
+  const runtime = createAgentRuntime(runtimeConfig);
+  if (stopSignal) stopSignal.addEventListener('abort', () => runtime.stop(), { once: true });
+
+  // 组装 functionTools
+  const functionTools: AgentFunctionTool[] = [];
+  const toolsCfg = entry.tools ?? { api: true, plugin: true };
+  if (toolsCfg.plugin) {
+    functionTools.push(...createMiniAppFunctionTools({
+      enabledPlugins: project.enabledPlugins ?? [],
+    }));
+  }
+  let apiMethodNames: string[] = [];
+  if (toolsCfg.api) {
+    const apiMethods = loadApiJs(projectId);
+    apiMethodNames = Object.keys(apiMethods);
+    if (apiMethodNames.length) {
+      const ctxProvider = () => makeApiCtx(projectId);
+      functionTools.push(...buildApiFunctionTools(apiMethods, ctxProvider));
+    }
+  }
+
+  // 拼 systemPrompt
+  const sections: string[] = [];
+  if (creds.systemPrompt) sections.push(creds.systemPrompt);
+  sections.push(`Current mini-app route: ${route ?? '/'}`);
+  if (apiMethodNames.length) {
+    sections.push(`Available project api.js methods: ${apiMethodNames.join(', ')}. ` +
+      `Call them to control the UI (they broadcast events the UI reacts to).`);
+  }
+  if (project.enabledPlugins?.length) {
+    sections.push(`Enabled plugins: ${project.enabledPlugins.join(', ')}. ` +
+      `Use list_plugin_tools / get_plugin_tool_detail / execute_plugin_tool.`);
+  }
+  const systemPrompt = sections.join('\n\n');
+
+  // 执行
+  const output: string[] = [];
+  const result = await runtime.execute(message, getProjectDir(projectId), {
+    systemPrompt,
+    functionTools,
+    maxTurns: 20,
+    onEvent: (event) => {
+      onEvent(event);
+      if (event.type === 'output') output.push(event.line);
+      else if (event.type === 'tool_use') output.push(`[tool:${event.name}]`);
+    },
+  });
+
+  const now = new Date().toISOString();
+  const userMessage: miniAppStore.MiniAppChatMessage = {
+    id: randomUUID(), sessionId, agentId, role: 'user',
+    content: message, route, timestamp: now,
+  };
+  const agentContent = result.success
+    ? (result.output?.join('\n').trim() || result.summary)
+    : `Error: ${result.error ?? result.summary}`;
+  const agentMessage: miniAppStore.MiniAppChatMessage = {
+    id: randomUUID(), sessionId, agentId, role: 'agent',
+    content: agentContent, route, timestamp: new Date().toISOString(),
+  };
+  miniAppStore.saveAgentChat(projectId, userMessage);
+  miniAppStore.saveAgentChat(projectId, agentMessage);
+
+  return { userMessage, agentMessage };
 }
