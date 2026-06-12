@@ -123,7 +123,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const res = await sdk.miniApp.agentChat(projectId, agentId, { sessionId, message: text, route });
+      const res = await sdk.miniApp.agentChat(projectId, agentId, { sessionId, message: text, route }, { signal: ac.signal });
       await consumeSse(res, (event, data) => {
         const d = data as Record<string, unknown>;
         if (event === 'text' && typeof d.line === 'string') {

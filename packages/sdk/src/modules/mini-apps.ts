@@ -1,4 +1,5 @@
 import type { HttpClient } from '../client';
+import type { RequestOptions } from '../types';
 
 export interface MiniAppProject {
   id: string;
@@ -124,7 +125,7 @@ export function createMiniAppApi(http: HttpClient) {
      * SSE 流式聊天。返回原始 Response，调用方用 reader 解析 `event:` / `data:` 行。
      * body: { sessionId, message, route? }
      */
-    agentChat: (id: string, agentId: string, body: { sessionId: string; message: string; route?: string }): Promise<Response> =>
-      http.sse(`/api/mini-apps/${id}/agents/${encodeURIComponent(agentId)}/chat`, body),
+    agentChat: (id: string, agentId: string, body: { sessionId: string; message: string; route?: string }, opts?: RequestOptions): Promise<Response> =>
+      http.sse(`/api/mini-apps/${id}/agents/${encodeURIComponent(agentId)}/chat`, body, opts),
   };
 }

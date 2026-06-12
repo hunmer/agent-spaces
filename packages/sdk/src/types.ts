@@ -29,7 +29,7 @@ export class ApiError extends Error {
 }
 
 /** 请求选项（扩展 RequestInit） */
-export interface RequestOptions extends Omit<RequestInit, 'signal'> {
+export interface RequestOptions extends RequestInit {
   /** 是否跳过自动 auth header 注入，默认 false */
   noAuth?: boolean;
   /** 是否跳过 baseUrl 拼接（传入完整 URL），默认 false */
