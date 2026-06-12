@@ -41,6 +41,7 @@ Useful source locations:
 - `packages/server/src/services/builtin-tools/workflow-ui-tools.ts`: host UI component category lists and Workflow UI function tool behavior.
 - `packages/web/src/lib/ui-exports.ts`: components and lucide icons exported to `window.AgentSpacesUI` and `@agent-spaces/ui`.
 - `packages/web/src/components/ui/`: host UI component implementations and composition patterns.
+- `packages/web/src/components/workflows-ui/workflow-ui-router.tsx`: built-in routing — `Router`/`useRouter`/`Link`, `serializeRoute`/`parseRoute`, iframe hash sync and postMessage handoff to the host page URL.
 - `packages/web/src/components/workflows-ui/workflow-ui-renderer.tsx`: renderer module allowlist and local import resolution.
 - `packages/web/src/components/workflows-ui/workflow-ui-preview.tsx`: preview container behavior.
 - `packages/web/src/components/workflows-ui/workflow-ui-editor.tsx`: editor file loading and preview refresh behavior.
@@ -138,6 +139,8 @@ Known categories:
 If `window.AgentSpacesUI` component props or composition are unclear, inspect the host implementation in the current working directory, especially `packages/web/src/components/ui` and `packages/web/src/lib/ui-exports.ts`.
 
 `@agent-spaces/ui` is also mapped by the renderer for allowed host UI exports, but destructuring from `window.AgentSpacesUI` is the safest default in preview code.
+
+The built-in routing symbols (`Router`, `useRouter`, `Link`, `serializeRoute`, `parseRoute`) are exported from `@agent-spaces/ui` and `window.AgentSpacesUI`. Import them explicitly with a bare import (see [Routing](#routing)) rather than expecting them on a `window` sub-object — `useRouter` must be called inside a `<Router>` subtree, so a static `import` is the natural access point.
 
 ## Styling Rules
 
@@ -245,6 +248,48 @@ const unsubscribe = window.AgentSpaces.onTaskEvent((event, data) => {
 - Subscribe once in a top-level hook; clean up on unmount.
 
 Do not reimplement task queues, polling state machines, or cross-tab sync inside the project — the host already provides them.
+
+## Routing
+
+For projects with multiple views (generate / history / settings / detail), use the built-in router instead of local-only state. It syncs the address bar, serializes params, and restores the view on refresh or via a shared link — with no per-project sync code.
+
+Wrap the entry's default export in `<Router>` and call `useRouter()` inside:
+
+```jsx
+import { Router, useRouter, Link } from "@agent-spaces/ui";
+
+function App() {
+  const { path, query } = useRouter();
+  if (path[0] === "history") return <History filter={query.filter} />;
+  if (path[0] === "detail" && path[1]) return <Detail id={path[1]} />;
+  return <Generate />;
+}
+
+export default function Root() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
+```
+
+- `useRouter()` returns `{ path, query, push, replace, back }`. It throws if called outside `<Router>`, so the component that reads the route must be rendered inside the `<Router>` subtree.
+- `push(path, query?)` / `replace(path, query?)`: `path` accepts a string (split on `/`) or an array of segments. Pass an array when a segment value may contain `/`.
+- Navigate declaratively with `<Link to="history" query={{ filter: "done" }}>`; programmatic navigation with `push`/`replace`.
+- The active view is derived from `path[0]` (and deeper segments); guard unknown values with a fallback to the default view so a stale/edited URL never blanks the screen.
+
+Driving an existing host component from the route is common — bind its controlled value to the router instead of local state:
+
+```jsx
+const { path, push } = useRouter();
+const routeValue = validValues.has(path[0]) ? path[0] : "buttons";
+<Tabs value={routeValue} onValueChange={(v) => push(v)}>...</Tabs>;
+```
+
+Route state is single-`route` query param: path segments joined by `/`, query string appended (e.g. `/history?filter=done` → `?route=%2Fhistory%3Ffilter%3Ddone`). The host writes it into the preview iframe hash for refresh recovery and into the host page URL for shareable links; the project code does not manage `window.location` itself. It is pure client-side state — not persisted to `configs/`, `data/`, or SQLite, and orthogonal to Project Services.
+
+Only render the active view. Avoid `.map`-ing every view into the tree (pre-rendering all tabs) when a single `<TabsContent>` keyed on the active value suffices.
 
 ## Config And Data Helpers
 
@@ -389,6 +434,7 @@ Before finishing, inspect the changed files for these invariants:
 - Config writes go to `configs/`; generated/downloaded data goes to `data/`.
 - Shared/mutable config is written through `invokeService` + server `src/services` handlers (single writer) and read via `getConfig`/`onConfigChanged`; the initiator does not also `writeConfigJson` the same value.
 - Multi-client task state uses `onTaskEvent` + the `callPluginTool` options (`taskId`, `meta`) instead of local-only queues; the initiator does not double-write results that `taskFinished` already persists.
+- Routing: when views are switched, the entry is wrapped in `<Router>` (or the route-reading component is inside one), `useRouter()` is not called outside the `<Router>` subtree, unknown `path[0]` values fall back to a default view, and only the active view is rendered. The project does not read or write `window.location` directly.
 - `src/CLAUDE.md` was updated if project structure or decisions changed.
 
 Return concrete manual verification steps for the user, including which page to open, which controls to click, and what result confirms success.

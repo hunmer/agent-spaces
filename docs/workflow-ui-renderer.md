@@ -27,6 +27,7 @@ Workflow UI 渲染器 (`workflow-ui-renderer.tsx`) 在浏览器端编译和运�
 - **配置读取（内存缓存）**：UI 不直接读文件。`window.AgentSpaces.getConfig(path)` 读内存快照、`onConfigChanged((path, value) => {})` 订阅变更；客户端连入时服务端推 `workflowUi.configSnapshot` 建立缓存。
 - **配置/数据助手（兼容）**：`readConfigJson` / `writeConfigJson` 仍保留供简单项目，但新项目应优先走 Services + config 事件以避免多端写覆盖；`saveDataFile` / `downloadFile` 操作 `data/` 目录。
 - **SQLite 数据库**：`window.AgentSpaces.db(name)` 返回具名库句柄（`all` / `get` / `run` / `exec` / `transaction`），适合结构化、需查询/聚合/事务的数据；文件落盘 `data/db/<name>.sqlite`，详见「SQLite 数据库」。
+- **内置路由**：通过 `@agent-spaces/ui` 的 `Router` / `useRouter` / `Link` 实现项目内多视图切换，地址栏同步参数、刷新与分享链接可恢复，详见「内置路由」。
 
 ## 多文件项目支持
 
@@ -93,7 +94,7 @@ project/
 
 ### 拆分原则
 
-- 单文件超过 ~200 行就应该考虑拆分。
+- 单文件超过 ~500 行就应该考虑拆分。
 - 每个文件单一职责。
 - 不要创建 barrel re-export 文件（`index.jsx` 只做 re-export），直接 import 目标文件。
 - `window.AgentSpacesUI`、`window.AgentSpaces`、`window.AgentSpacesAPI` 是全局变量，不需要通过 import 传递。
@@ -322,6 +323,7 @@ SQL 本身不做语法白名单——预览代码可在自己的库内执行任�
 
 | 文件 | 说明 |
 |------|------|
+| `packages/web/src/components/workflows-ui/workflow-ui-router.tsx` | 内置路由：`Router`/`useRouter`/`Link` + `serializeRoute`/`parseRoute`，iframe hash 同步 + postMessage 透传宿主页 URL |
 | `packages/web/src/components/workflows-ui/workflow-ui-renderer.tsx` | 渲染器核心，包含 Babel 编译和本地模块解析 |
 | `packages/web/src/components/workflows-ui/workflow-ui-preview.tsx` | 预览容器，透传 files/mainFile 给渲染器 |
 | `packages/web/src/components/workflows-ui/workflow-ui-editor.tsx` | 编辑器，加载所有文件并管理预览（预览以 iframe 加载独立预览页） |
