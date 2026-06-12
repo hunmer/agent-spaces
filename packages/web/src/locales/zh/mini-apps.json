@@ -105,5 +105,12 @@
     "noParams": "此工具无需参数",
     "reset": "重置",
     "execute": "执行"
+  },
+  "agent": {
+    "open": "打开助手",
+    "switch": "切换助手",
+    "inputPlaceholder": "对助手说点什么…",
+    "empty": "暂无消息",
+    "loadError": "加载失败"
   }
 }

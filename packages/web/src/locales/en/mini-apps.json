@@ -105,5 +105,12 @@
     "noParams": "This tool requires no parameters",
     "reset": "Reset",
     "execute": "Execute"
+  },
+  "agent": {
+    "open": "Open assistant",
+    "switch": "Switch assistant",
+    "inputPlaceholder": "Message assistant…",
+    "empty": "No messages",
+    "loadError": "Failed to load"
   }
 }

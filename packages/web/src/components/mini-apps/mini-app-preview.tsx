@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
 import { pluginApi } from '@/lib/workflow-plugin-api';
@@ -13,7 +13,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AvatarGroup } from '@/components/ui/avatar-group';
-import { PanelRightOpen, Loader2, Search } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
+import { PanelRightOpen, Loader2, Search, Sparkles } from 'lucide-react';
 import { MiniAppRenderer } from './mini-app-renderer';
 
 interface MiniAppPreviewProps {
@@ -32,6 +35,153 @@ interface MiniAppPreviewProps {
   files?: Record<string, string>;
   /** entry point filename */
   mainFile?: string;
+}
+
+/** 从 fetch SSE Response 解析 event:/data: 帧，逐帧回调。 */
+async function consumeSse(response: Response, onEvent: (event: string, data: unknown) => void) {
+  const reader = response.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let sep: number;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      let event = 'message';
+      const dataLines: string[] = [];
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+      }
+      if (dataLines.length) {
+        try { onEvent(event, JSON.parse(dataLines.join('\n'))); }
+        catch { onEvent(event, dataLines.join('\n')); }
+      }
+    }
+  }
+}
+
+function MiniAppAgentPopover({ projectId }: { projectId: string }) {
+  const t = useTranslations('mini-apps');
+  const searchParams = useSearchParams();
+  const route = searchParams.get('route') ?? '/';
+
+  const [open, setOpen] = useState(false);
+  const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string }>>([]);
+  const [agentId, setAgentId] = useState<string>('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // session-id：sessionStorage，同 tab reload 复用
+  const [sessionId] = useState(() => {
+    const key = `mini-app-agent-session:${projectId}`;
+    if (typeof window === 'undefined') return '';
+    let sid = sessionStorage.getItem(key);
+    if (!sid) { sid = crypto.randomUUID(); sessionStorage.setItem(key, sid); }
+    return sid;
+  });
+
+  // 加载 agents 清单
+  useEffect(() => {
+    if (!projectId) return;
+    sdk.miniApp.listAgents(projectId).then((r) => {
+      setAgents(r.agents);
+      if (r.agents.length && !agentId) setAgentId(r.agents[0].id);
+    }).catch(() => {});
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // agent 变化或首次打开 → 拉历史
+  const loadHistory = useCallback(async () => {
+    if (!projectId || !agentId) return;
+    try {
+      const { messages: hist } = await sdk.miniApp.agentHistory(projectId, sessionId, agentId);
+      setMessages(hist.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.timestamp),
+      })));
+    } catch { /* ignore */ }
+  }, [projectId, agentId, sessionId]);
+
+  useEffect(() => { if (open) loadHistory(); }, [open, loadHistory]);
+
+  const handleSend = useCallback(async () => {
+    const text = input.trim();
+    if (!text || !agentId || sending) return;
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date() };
+    const agentMsgId = crypto.randomUUID();
+    setMessages((prev) => [...prev, userMsg, { id: agentMsgId, role: 'agent', content: '', timestamp: new Date() }]);
+    setInput('');
+    setSending(true);
+    const ac = new AbortController();
+    abortRef.current = ac;
+    try {
+      const res = await sdk.miniApp.agentChat(projectId, agentId, { sessionId, message: text, route });
+      await consumeSse(res, (event, data) => {
+        const d = data as Record<string, unknown>;
+        if (event === 'text' && typeof d.line === 'string') {
+          setMessages((prev) => prev.map((m) => m.id === agentMsgId ? { ...m, content: m.content + d.line } : m));
+        } else if (event === 'message_saved') {
+          // 服务端已落盘
+        }
+      });
+    } catch { /* aborted or error */ }
+    finally {
+      setSending(false);
+      abortRef.current = null;
+    }
+  }, [input, agentId, sending, projectId, sessionId, route]);
+
+  const handleStop = useCallback(() => {
+    abortRef.current?.abort();
+    setSending(false);
+  }, []);
+
+  const current = agents.find((a) => a.id === agentId);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t('agent.open')} />}>
+        <Sparkles className="h-4 w-4" />
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-auto p-0 border-0 bg-transparent shadow-none">
+        <ChatPanel
+          onClose={() => setOpen(false)}
+          agent={{
+            name: current?.name ?? 'Agent',
+            avatar: current?.avatar,
+            status: sending ? 'busy' : 'online',
+          }}
+          messages={messages}
+          sending={sending}
+          input={input}
+          onInputChange={setInput}
+          onSend={handleSend}
+          onStop={handleStop}
+          inputPlaceholder={t('agent.inputPlaceholder')}
+          headerActions={
+            agents.length > 1 ? (
+              <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
+                <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {agents.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : undefined
+          }
+        />
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents }: MiniAppPreviewProps) {
@@ -99,6 +249,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
             {projectName}
           </span>
           <div className="flex-1 flex justify-end">
+            {enableAgents && projectId && <MiniAppAgentPopover projectId={projectId} />}
             <Sheet open={drawerOpen} onOpenChange={handleDrawerOpen}>
               <SheetTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
                   <PanelRightOpen className="h-4 w-4" />
