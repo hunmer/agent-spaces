@@ -81,6 +81,7 @@ export default function MiniAppPreviewPageClient() {
           projectName={project.name}
           hideHeader={embedded}
           enabledPlugins={project.enabledPlugins}
+          enableAgents={project.enableAgents}
           files={allFiles}
           mainFile={project.mainFile}
         />

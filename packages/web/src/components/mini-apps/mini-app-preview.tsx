@@ -26,13 +26,15 @@ interface MiniAppPreviewProps {
   hideHeader?: boolean;
   /** List of enabled plugin IDs */
   enabledPlugins?: string[];
+  /** 开启 agent 对话（manifest.enableAgents） */
+  enableAgents?: boolean;
   /** filename -> content map for multi-file import resolution */
   files?: Record<string, string>;
   /** entry point filename */
   mainFile?: string;
 }
 
-export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile }: MiniAppPreviewProps) {
+export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents }: MiniAppPreviewProps) {
   const t = useTranslations('mini-apps');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
