@@ -1,0 +1,14 @@
+{
+  "id": "wui_1781192646059_cb4df369",
+  "name": "AI音乐",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-11T15:44:06.059Z",
+  "updatedAt": "2026-06-11T20:53:00.876Z",
+  "agentConfigId": "49c45e3a-75be-4116-a1e3-b750e6466544",
+  "enabledPlugins": [
+    "workflow.minimax"
+  ]
+}

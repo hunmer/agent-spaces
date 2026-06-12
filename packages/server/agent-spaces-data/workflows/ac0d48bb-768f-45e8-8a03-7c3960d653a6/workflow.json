@@ -1,0 +1,93 @@
+{
+  "id": "ac0d48bb-768f-45e8-8a03-7c3960d653a6",
+  "name": "代码编写工作流",
+  "folderId": null,
+  "description": "Planner 分解任务 → Executor 编写代码 → Reviewer 审查代码 → Commit 自动提交",
+  "nodes": [
+    {
+      "id": "node-planner",
+      "type": "agent",
+      "label": "Planner",
+      "position": {
+        "x": 300,
+        "y": 285
+      },
+      "data": {
+        "label": "Planner",
+        "agentConfigId": "7103ec3e-e6dd-4578-99d1-30b4032675ff",
+        "role": "planner",
+        "modelId": "claude-sonnet-4-6"
+      }
+    },
+    {
+      "id": "node-executor",
+      "type": "agent",
+      "label": "Executor",
+      "position": {
+        "x": 600,
+        "y": 390
+      },
+      "data": {
+        "label": "Executor",
+        "agentConfigId": "49c45e3a-75be-4116-a1e3-b750e6466544",
+        "role": "executor",
+        "modelId": "claude-sonnet-4-6"
+      }
+    },
+    {
+      "id": "node-reviewer",
+      "type": "agent",
+      "label": "Reviewer",
+      "position": {
+        "x": 510,
+        "y": 585
+      },
+      "data": {
+        "label": "Reviewer",
+        "agentConfigId": "b13598bc-95cd-4901-8b60-7e27f0ebba8c",
+        "role": "reviewer",
+        "modelId": "claude-sonnet-4-6"
+      }
+    },
+    {
+      "id": "node-commit",
+      "type": "agent",
+      "label": "Commit",
+      "position": {
+        "x": 885,
+        "y": 705
+      },
+      "data": {
+        "label": "Commit",
+        "agentConfigId": "88bcc8ea-3eef-4618-89e9-cf94ad153803",
+        "role": "commit",
+        "modelId": "claude-sonnet-4-6"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-planner-executor",
+      "source": "node-planner",
+      "target": "node-executor",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "edge-executor-reviewer",
+      "source": "node-executor",
+      "target": "node-reviewer",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "edge-reviewer-commit",
+      "source": "node-reviewer",
+      "target": "node-commit",
+      "sourceHandle": null,
+      "targetHandle": null
+    }
+  ],
+  "createdAt": 1779721399428,
+  "updatedAt": 1779721399428
+}

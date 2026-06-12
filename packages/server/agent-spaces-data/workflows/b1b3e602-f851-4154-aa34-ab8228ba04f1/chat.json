@@ -1,0 +1,1170 @@
+[
+  {
+    "id": "workflow-agent-user-1780936562203",
+    "role": "user",
+    "content": "添加一个语音合成节点，接收开始节点的输出变量来作为合成文本的内容，结束节点输出语音合成的url",
+    "timestamp": "2026-06-08T16:36:02.203Z"
+  },
+  {
+    "id": "workflow-agent-assistant-1780936562203",
+    "role": "agent",
+    "content": "",
+    "timestamp": "2026-06-08T16:36:02.203Z",
+    "timeline": [
+      {
+        "id": "thinking-1780936564199-54mx",
+        "type": "thinking",
+        "content": "用户想要添加一个语音合成节点，并设置以下连接：\n1. 开始节点 → 语音合成节点（传递文本内容）\n2. 语音合成节点 → 结束节点（输出语音URL）\n\n让我先查看当前工作流的完整结构，然后搜索语音合成相关的节点类型。\n\n首先我需要：\n1. 获取当前工作流详情\n2. 搜索可用的语音合成节点类型\n现在我了解了：\n1. 当前工作流有开始节点和结束节点，但没有连线\n2. 找到了语音合成节点类型 `minimax_tts`，它的输出中有 `data.audioUrl`\n\n现在我需要：\n1. 创建语音合成节点，文本内容使用开始节点的输出变量 `{{ __data__[\"node_1780936344467_start\"].input }}`\n2. 连接开始节点到语音合成节点\n3. 连接语音合成节点到结束节点\n4. 更新结束节点的输出变量为语音合成节点的输出\n\n让我先创建语音合成节点，然后添加连线。\n语音合成节点已创建成功，节点ID是 `node_1780936569387_6ru4wx`。文本内容已经设置为引用开始节点的输入字段 `{{ __data__[\"node_1780936344467_start\"].input }}`。\n\n现在需要：\n1. 创建边：开始节点 → 语音合成节点\n2. 创建边：语音合成节点 → 结束节点\n3. 更新结束节点的输出变量为语音合成节点的 audioUrl\n\n让我先更新结束节点的输出变量，然后创建连线。\n所有操作都成功了：\n1. 结束节点的输出已更新为引用语音合成节点的 audioUrl\n2. 已创建开始节点到语音合成节点的连线\n3. 已创建语音合成节点到结束节点的连线\n\n现在让我整理一下画布布局，让工作流看起来更清晰。\n所有工作都已完成。让我总结一下完成的内容。\n"
+      },
+      {
+        "id": "message-1780936565263-njt0",
+        "type": "message",
+        "content": "\n\n\n\n我来帮你添加语音合成节点。首先让我查看当前工作流详情，并搜索可用的语音合成节点类型。\n"
+      },
+      {
+        "id": "get_current_workflow-1780936565809-eqpjfo",
+        "name": "get_current_workflow",
+        "input": {
+          "summarize": false
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "workflow": {
+            "id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "name": "新工作流",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936396037_1gf4oo\"].data.audioUrl }}",
+                      "children": []
+                    }
+                  ]
+                }
+              }
+            ],
+            "edges": [],
+            "createdAt": 1780936344470,
+            "updatedAt": 1780936523843,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ]
+          }
+        }
+      },
+      {
+        "id": "search_node_usage-1780936565809-fg4ump",
+        "name": "search_node_usage",
+        "input": {
+          "keyword": "语音合成"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "total": 1,
+          "available_total": 29,
+          "nodes": [
+            {
+              "type": "minimax_tts",
+              "label": "语音合成",
+              "category": "MiniMax AI",
+              "icon": "AudioLines",
+              "description": "MiniMax 文字转语音（同步 TTS），支持多种音色、情绪、语速控制",
+              "properties": [
+                {
+                  "key": "apiKey",
+                  "label": "API Key",
+                  "type": "text",
+                  "required": true,
+                  "tooltip": "MiniMax API Key",
+                  "default": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}"
+                },
+                {
+                  "key": "text",
+                  "label": "文本内容",
+                  "type": "textarea",
+                  "required": true,
+                  "tooltip": "待合成语音的文本（<10000字符）"
+                },
+                {
+                  "key": "model",
+                  "label": "模型",
+                  "type": "select",
+                  "default": "speech-2.8-hd",
+                  "options": [
+                    {
+                      "label": "speech-2.8-hd (推荐)",
+                      "value": "speech-2.8-hd"
+                    },
+                    {
+                      "label": "speech-2.8-turbo",
+                      "value": "speech-2.8-turbo"
+                    },
+                    {
+                      "label": "speech-2.6-hd",
+                      "value": "speech-2.6-hd"
+                    },
+                    {
+                      "label": "speech-2.6-turbo",
+                      "value": "speech-2.6-turbo"
+                    },
+                    {
+                      "label": "speech-02-hd",
+                      "value": "speech-02-hd"
+                    },
+                    {
+                      "label": "speech-02-turbo",
+                      "value": "speech-02-turbo"
+                    }
+                  ]
+                },
+                {
+                  "key": "voiceId",
+                  "label": "音色ID",
+                  "type": "text",
+                  "default": "Chinese (Mandarin)_Lyrical_Voice",
+                  "tooltip": "系统音色ID，如 male-qn-qingse、English_Graceful_Lady"
+                },
+                {
+                  "key": "speed",
+                  "label": "语速",
+                  "type": "number",
+                  "default": 1,
+                  "tooltip": "0.5-2.0，默认1.0"
+                },
+                {
+                  "key": "vol",
+                  "label": "音量",
+                  "type": "number",
+                  "default": 1,
+                  "tooltip": "0-10，默认1.0"
+                },
+                {
+                  "key": "pitch",
+                  "label": "语调",
+                  "type": "number",
+                  "default": 0,
+                  "tooltip": "-12到12，默认0"
+                },
+                {
+                  "key": "emotion",
+                  "label": "情绪",
+                  "type": "select",
+                  "default": "",
+                  "options": [
+                    {
+                      "label": "自动",
+                      "value": ""
+                    },
+                    {
+                      "label": "高兴",
+                      "value": "happy"
+                    },
+                    {
+                      "label": "悲伤",
+                      "value": "sad"
+                    },
+                    {
+                      "label": "愤怒",
+                      "value": "angry"
+                    },
+                    {
+                      "label": "害怕",
+                      "value": "fearful"
+                    },
+                    {
+                      "label": "厌恶",
+                      "value": "disgusted"
+                    },
+                    {
+                      "label": "惊讶",
+                      "value": "surprised"
+                    },
+                    {
+                      "label": "中性",
+                      "value": "calm"
+                    },
+                    {
+                      "label": "生动",
+                      "value": "fluent"
+                    },
+                    {
+                      "label": "低语",
+                      "value": "whisper"
+                    }
+                  ]
+                },
+                {
+                  "key": "audioFormat",
+                  "label": "音频格式",
+                  "type": "select",
+                  "default": "mp3",
+                  "options": [
+                    {
+                      "label": "mp3 (默认)",
+                      "value": "mp3"
+                    },
+                    {
+                      "label": "wav",
+                      "value": "wav"
+                    },
+                    {
+                      "label": "flac",
+                      "value": "flac"
+                    },
+                    {
+                      "label": "pcm",
+                      "value": "pcm"
+                    }
+                  ]
+                },
+                {
+                  "key": "sampleRate",
+                  "label": "采样率",
+                  "type": "select",
+                  "default": 32000,
+                  "options": [
+                    {
+                      "label": "8000",
+                      "value": 8000
+                    },
+                    {
+                      "label": "16000",
+                      "value": 16000
+                    },
+                    {
+                      "label": "22050",
+                      "value": 22050
+                    },
+                    {
+                      "label": "24000",
+                      "value": 24000
+                    },
+                    {
+                      "label": "32000 (默认)",
+                      "value": 32000
+                    },
+                    {
+                      "label": "44100",
+                      "value": 44100
+                    }
+                  ]
+                },
+                {
+                  "key": "outputFormat",
+                  "label": "输出格式",
+                  "type": "select",
+                  "default": "url",
+                  "options": [
+                    {
+                      "label": "URL (推荐)",
+                      "value": "url"
+                    },
+                    {
+                      "label": "HEX",
+                      "value": "hex"
+                    }
+                  ]
+                },
+                {
+                  "key": "baseUrl",
+                  "label": "API地址",
+                  "type": "text",
+                  "default": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}"
+                }
+              ],
+              "outputs": [
+                {
+                  "key": "success",
+                  "type": "boolean"
+                },
+                {
+                  "key": "message",
+                  "type": "string"
+                },
+                {
+                  "key": "data",
+                  "type": "object",
+                  "children": [
+                    {
+                      "key": "audioUrl",
+                      "type": "string"
+                    },
+                    {
+                      "key": "audioHex",
+                      "type": "string"
+                    },
+                    {
+                      "key": "audioLength",
+                      "type": "number"
+                    },
+                    {
+                      "key": "audioFormat",
+                      "type": "string"
+                    },
+                    {
+                      "key": "traceId",
+                      "type": "string"
+                    }
+                  ]
+                }
+              ],
+              "pluginId": "workflow.minimax",
+              "pluginIconPath": "icon.svg",
+              "exampleData": {
+                "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                "model": "speech-2.8-hd",
+                "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                "speed": 1,
+                "vol": 1,
+                "pitch": 0,
+                "emotion": "",
+                "audioFormat": "mp3",
+                "sampleRate": 32000,
+                "outputFormat": "url",
+                "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}"
+              },
+              "usage": {
+                "variables": "字符串字段支持 {{ __data__[\"节点ID\"].字段路径 }} 和 {{ context.some.path }}。开始节点的工作流输入也通过 {{ __data__[\"开始节点ID\"].字段 }} 引用；{{ __inputs__[\"节点ID\"].字段路径 }} 仅作为普通节点输入字段的兼容语法。",
+                "handles": {}
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "message-1780936569008-xuyo",
+        "type": "message",
+        "content": "\n\n\n\n找到了语音合成节点类型 `minimax_tts`。现在让我创建节点并连接它们。\n"
+      },
+      {
+        "id": "create_node-1780936569387-qf3xw8",
+        "name": "create_node",
+        "input": {
+          "type": "minimax_tts",
+          "label": "语音合成",
+          "data": {
+            "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+            "audioFormat": "mp3",
+            "emotion": "",
+            "model": "speech-2.8-hd",
+            "outputFormat": "url",
+            "pitch": 0,
+            "sampleRate": 32000,
+            "speed": 1,
+            "text": "{{ __data__[\"node_1780936344467_start\"].input }}",
+            "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+            "vol": 1
+          }
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "name": "新工作流",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936396037_1gf4oo\"].data.audioUrl }}",
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [],
+            "createdAt": 1780936344470,
+            "updatedAt": 1780936569387,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ]
+          },
+          "workflow_patch": {
+            "workflow_id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936396037_1gf4oo\"].data.audioUrl }}",
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [],
+            "updatedAt": 1780936569387
+          }
+        }
+      },
+      {
+        "id": "message-1780936572291-qe9e",
+        "type": "message",
+        "content": "\n\n\n\n语音合成节点已创建。现在让我更新结束节点的输出变量，并创建连线。\n"
+      },
+      {
+        "id": "set_node_io_fields-1780936573220-3u83ci",
+        "name": "set_node_io_fields",
+        "input": {
+          "nodeId": "node_1780936344467_end",
+          "fieldKind": "outputs",
+          "mode": "replace",
+          "fields": [
+            {
+              "key": "url",
+              "type": "string",
+              "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+            }
+          ]
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "name": "新工作流",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [],
+            "createdAt": 1780936344470,
+            "updatedAt": 1780936573221,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ]
+          },
+          "workflow_patch": {
+            "workflow_id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [],
+            "updatedAt": 1780936573221
+          }
+        }
+      },
+      {
+        "id": "create_edge-1780936573221-5xkxbg",
+        "name": "create_edge",
+        "input": {
+          "source": "node_1780936344467_start",
+          "target": "node_1780936569387_6ru4wx"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "name": "新工作流",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1780936344467_start-node_1780936569387_6ru4wx-mq5fnin9",
+                "source": "node_1780936344467_start",
+                "target": "node_1780936569387_6ru4wx"
+              }
+            ],
+            "createdAt": 1780936344470,
+            "updatedAt": 1780936573221,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ]
+          },
+          "workflow_patch": {
+            "workflow_id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1780936344467_start-node_1780936569387_6ru4wx-mq5fnin9",
+                "source": "node_1780936344467_start",
+                "target": "node_1780936569387_6ru4wx"
+              }
+            ],
+            "updatedAt": 1780936573221
+          }
+        }
+      },
+      {
+        "id": "create_edge-1780936573221-x4nkwp",
+        "name": "create_edge",
+        "input": {
+          "source": "node_1780936569387_6ru4wx",
+          "target": "node_1780936344467_end"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "name": "新工作流",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1780936344467_start-node_1780936569387_6ru4wx-mq5fnin9",
+                "source": "node_1780936344467_start",
+                "target": "node_1780936569387_6ru4wx"
+              },
+              {
+                "id": "e-node_1780936569387_6ru4wx-node_1780936344467_end-mq5fnin9",
+                "source": "node_1780936569387_6ru4wx",
+                "target": "node_1780936344467_end"
+              }
+            ],
+            "createdAt": 1780936344470,
+            "updatedAt": 1780936573221,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ]
+          },
+          "workflow_patch": {
+            "workflow_id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": -75
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 375,
+                  "y": 510
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 635,
+                  "y": 218
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1780936344467_start-node_1780936569387_6ru4wx-mq5fnin9",
+                "source": "node_1780936344467_start",
+                "target": "node_1780936569387_6ru4wx"
+              },
+              {
+                "id": "e-node_1780936569387_6ru4wx-node_1780936344467_end-mq5fnin9",
+                "source": "node_1780936569387_6ru4wx",
+                "target": "node_1780936344467_end"
+              }
+            ],
+            "updatedAt": 1780936573221
+          }
+        }
+      },
+      {
+        "id": "message-1780936577216-c3pc",
+        "type": "message",
+        "content": "\n\n\n\n已完成所有连接。让我整理一下画布布局。\n"
+      },
+      {
+        "id": "auto_layout-1780936577354-zkh690",
+        "name": "auto_layout",
+        "input": {
+          "direction": "LR"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "affected_node_count": 3,
+          "workflow_patch": {
+            "workflow_id": "b1b3e602-f851-4154-aa34-ab8228ba04f1",
+            "nodes": [
+              {
+                "id": "node_1780936344467_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "input",
+                      "type": "string",
+                      "value": "",
+                      "required": true,
+                      "children": []
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936344467_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 600,
+                  "y": 0
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "url",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1780936569387_6ru4wx",
+                "type": "minimax_tts",
+                "label": "语音合成",
+                "position": {
+                  "x": 300,
+                  "y": 0
+                },
+                "data": {
+                  "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+                  "model": "speech-2.8-hd",
+                  "voiceId": "Chinese (Mandarin)_Lyrical_Voice",
+                  "speed": 1,
+                  "vol": 1,
+                  "pitch": 0,
+                  "emotion": "",
+                  "audioFormat": "mp3",
+                  "sampleRate": 32000,
+                  "outputFormat": "url",
+                  "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+                  "text": "{{ __data__[\"node_1780936344467_start\"].input }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1780936344467_start-node_1780936569387_6ru4wx-mq5fnin9",
+                "source": "node_1780936344467_start",
+                "target": "node_1780936569387_6ru4wx"
+              },
+              {
+                "id": "e-node_1780936569387_6ru4wx-node_1780936344467_end-mq5fnin9",
+                "source": "node_1780936569387_6ru4wx",
+                "target": "node_1780936344467_end"
+              }
+            ],
+            "updatedAt": 1780936577361
+          }
+        }
+      },
+      {
+        "id": "message-1780936579769-f9sj",
+        "type": "message",
+        "content": "\n\n\n\n已完成语音合成节点的添加，工作流配置如下：\n\n**已创建的内容：**\n\n1. **语音合成节点** (`minimax_tts`)\n   - 文本内容：`{{ __data__[\"node_1780936344467_start\"].input }}`（接收开始节点的输入）\n   - 使用默认音色和参数配置\n\n2. **连线**\n   - 开始节点 → 语音合成节点\n   - 语音合成节点 → 结束节点\n\n3. **结束节点输出**\n   - `url`: `{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}`（输出语音合成后的音频URL）\n\n**工作流结构：**\n```\n开始节点 (input) → 语音合成节点 → 结束节点 (url)\n```\n\n运行时，你需要在开始节点传入文本内容，语音合成节点会将文本转为语音，结束节点输出生成的音频URL。[Usage] tokens=12894 input=12694 output=200"
+      }
+    ]
+  }
+]
