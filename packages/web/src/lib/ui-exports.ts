@@ -73,3 +73,7 @@ export { SidebarProvider as SidebarContextProvider, useSidebar as useSidebarCont
 export { MediaGallery, openMediaGallery, NodeMediaPreview } from '@/components/ui/media-gallery';
 export type { MediaItem } from '@/components/ui/media-gallery';
 export * from 'lucide-react';
+
+// Workflow-UI 内置路由能力
+export { Router, useRouter, Link, serializeRoute, parseRoute } from '@/components/workflows-ui/workflow-ui-router';
+export type { RouteState, RouterApi } from '@/components/workflows-ui/workflow-ui-router';
