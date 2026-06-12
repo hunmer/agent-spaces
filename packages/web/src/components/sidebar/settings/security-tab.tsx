@@ -36,6 +36,10 @@ export function SecurityTab() {
         <div className="flex items-center gap-2">
           <Input
             type="password"
+            autoComplete="new-password"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             className="h-8 text-sm flex-1"
             placeholder={t("newSecretPlaceholder")}
             value={newSecret}

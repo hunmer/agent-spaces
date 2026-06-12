@@ -122,9 +122,13 @@ export function SettingsDialog({
           </button>
         ))}
       </div>
-      <div className="flex-1 p-5 min-w-0 overflow-y-auto">
+      <form
+        autoComplete="off"
+        onSubmit={(e) => e.preventDefault()}
+        className="flex-1 p-5 min-w-0 overflow-y-auto"
+      >
         {renderContent()}
-      </div>
+      </form>
     </div>
   );
 

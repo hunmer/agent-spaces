@@ -25,3 +25,5 @@ packages/server/agent-spaces-data/workflows/*/execution_history/
 packages/server/agent-spaces-data/workflows/*/operation_history.json
 packages/server/agent-spaces-data/workflows-ui/*/data/
 packages/server/agent-spaces-data/plugins/state.json
+packages/server/agent-spaces-data/agents/agents.sqlite
+packages/server/agent-spaces-data/auth.json
