@@ -72,6 +72,7 @@ export default function WorkflowUiPreviewPageClient() {
           projectId={project.id}
           projectName={project.name}
           hideHeader={embedded}
+          enabledPlugins={project.enabledPlugins}
           files={allFiles}
           mainFile={project.mainFile}
         />

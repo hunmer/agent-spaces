@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
+import { pluginApi } from '@/lib/workflow-plugin-api';
+import { resolveServerAssetUrl } from '@/lib/server';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AvatarGroup } from '@/components/ui/avatar-group';
 import { PanelRightOpen, Loader2, Search } from 'lucide-react';
 import { WorkflowUiRenderer } from './workflow-ui-renderer';
 
@@ -21,19 +24,41 @@ interface WorkflowUiPreviewProps {
   projectId?: string;
   projectName?: string;
   hideHeader?: boolean;
+  /** List of enabled plugin IDs */
+  enabledPlugins?: string[];
   /** filename -> content map for multi-file import resolution */
   files?: Record<string, string>;
   /** entry point filename */
   mainFile?: string;
 }
 
-export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, files, mainFile }: WorkflowUiPreviewProps) {
+export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile }: WorkflowUiPreviewProps) {
   const t = useTranslations('workflows-ui');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [projects, setProjects] = useState<WorkflowUiProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
+
+  // Load plugin metadata for avatar display
+  useEffect(() => {
+    if (!projectId) return;
+    pluginApi.list().then((list) => {
+      setAllPlugins(list.map(p => ({ id: p.id, name: p.name, iconPath: p.iconPath })));
+    }).catch(() => {});
+  }, [projectId]);
+
+  const enabledPluginAvatars = useMemo(() => {
+    if (!enabledPlugins?.length) return [];
+    const enabledSet = new Set(enabledPlugins);
+    return allPlugins
+      .filter(p => enabledSet.has(p.id))
+      .map(p => ({
+        imageUrl: p.iconPath ? resolveServerAssetUrl(`/api/plugins/${p.id}/icon`) : '',
+        name: p.name,
+      }));
+  }, [enabledPlugins, allPlugins]);
 
   // Load projects when drawer opens
   const handleDrawerOpen = useCallback((open: boolean) => {
@@ -63,7 +88,11 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId,
     <div className="relative flex flex-col h-full">
       {showToolbar && (
         <div className="flex items-center shrink-0 px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
-          <div className="flex-1" />
+          <div className="flex-1 min-w-0">
+            {enabledPluginAvatars.length > 0 && (
+              <AvatarGroup avatarUrls={enabledPluginAvatars} size="sm" />
+            )}
+          </div>
           <span className="text-sm font-medium truncate max-w-[60%] text-center">
             {projectName}
           </span>
