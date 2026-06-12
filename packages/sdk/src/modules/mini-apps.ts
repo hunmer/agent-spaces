@@ -35,6 +35,17 @@ export interface MiniAppAgentConfig {
   tools?: { api?: boolean; plugin?: boolean };
 }
 
+export interface MiniAppChatMessage {
+  id: string;
+  sessionId: string;
+  agentId: string;
+  role: 'user' | 'agent';
+  content: string;
+  route?: string;
+  toolCalls?: Array<{ name: string; input: unknown; result: unknown }>;
+  timestamp: string;
+}
+
 export function createMiniAppApi(http: HttpClient) {
   return {
     list: (): Promise<MiniAppProject[]> =>
@@ -100,5 +111,20 @@ export function createMiniAppApi(http: HttpClient) {
     /** Reveal project folder in OS file manager */
     revealFolder: (id: string): Promise<{ ok: true; path: string }> =>
       http.post(`/api/mini-apps/${id}/reveal`),
+
+    // ---- Agents (preview chat) ----
+
+    listAgents: (id: string): Promise<{ enableAgents: boolean; agents: Array<{ id: string; name: string; avatar?: string }> }> =>
+      http.get(`/api/mini-apps/${id}/agents`),
+
+    agentHistory: (id: string, sessionId: string, agentId?: string): Promise<{ messages: MiniAppChatMessage[] }> =>
+      http.get(`/api/mini-apps/${id}/agents/chat?sessionId=${encodeURIComponent(sessionId)}${agentId ? `&agentId=${encodeURIComponent(agentId)}` : ''}`),
+
+    /**
+     * SSE 流式聊天。返回原始 Response，调用方用 reader 解析 `event:` / `data:` 行。
+     * body: { sessionId, message, route? }
+     */
+    agentChat: (id: string, agentId: string, body: { sessionId: string; message: string; route?: string }): Promise<Response> =>
+      http.sse(`/api/mini-apps/${id}/agents/${encodeURIComponent(agentId)}/chat`, body),
   };
 }
