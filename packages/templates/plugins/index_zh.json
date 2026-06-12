@@ -131,8 +131,8 @@
     "hasWorkflow": true,
     "path": "epub-parser",
     "iconUrl": "plugins/epub-parser/icon.png",
-    "md5": "210487fb1f3841e03a53b31599cb0d88",
-    "updatedAt": "2026-06-09T02:37:20.567Z"
+    "md5": "42c6a2f1cd028fb4978d1444fc07ea37",
+    "updatedAt": "2026-06-12T20:46:34.597Z"
   },
   {
     "id": "workflow.fetch",

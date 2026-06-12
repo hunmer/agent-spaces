@@ -1,0 +1,11 @@
+{
+  "id": "wui_1781296943209_278551c7",
+  "name": "电子书转博客",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-12T20:42:23.209Z",
+  "updatedAt": "2026-06-12T20:44:21.839Z",
+  "enabledPlugins": []
+}

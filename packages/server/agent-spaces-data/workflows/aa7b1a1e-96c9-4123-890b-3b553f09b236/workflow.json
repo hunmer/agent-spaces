@@ -72,8 +72,11 @@
   ],
   "edges": [],
   "createdAt": 1781255038446,
-  "updatedAt": 1781259957831,
+  "updatedAt": 1781297409615,
   "enabledPlugins": [
-    "workflow.aliyun-ai"
+    "workflow.aliyun-ai",
+    "workflow.epub-parser",
+    "workflow.fish-audio",
+    "workflow.custom-view-demo"
   ]
 }

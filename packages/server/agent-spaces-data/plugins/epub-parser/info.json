@@ -1,0 +1,24 @@
+{
+  "id": "workflow.epub-parser",
+  "name": "EPUB解析器",
+  "name_zh": "EPUB解析器",
+  "name_en": "EPUB Parser",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "解析EPUB电子书文件，提取书籍信息、目录、章节内容",
+  "description_zh": "解析EPUB电子书文件，提取书籍信息、目录、章节内容",
+  "description_en": "Parse EPUB ebook files to extract book info, table of contents, and chapter content",
+  "author": { "name": "workflow" },
+  "tags": ["文件处理", "电子书", "EPUB"],
+  "tags_zh": ["文件处理", "电子书", "EPUB"],
+  "tags_en": ["File Processing", "E-Book", "EPUB"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": []
+}
