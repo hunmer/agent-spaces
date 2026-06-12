@@ -402,3 +402,66 @@ function copyDirSync(src: string, dest: string): void {
     }
   }
 }
+
+// ---- Agents config & chat ----
+
+/** 读取项目 agents.json（多 agent 配置）。缺失返回 null。 */
+export function readAgentsConfig(projectId: string): unknown[] | null {
+  const filePath = join(projectDir(projectId), 'agents.json');
+  if (!existsSync(filePath)) return null;
+  try {
+    const data = JSON.parse(readFileSync(filePath, 'utf-8'));
+    return Array.isArray(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface MiniAppChatMessage {
+  id: string;
+  sessionId: string;
+  agentId: string;
+  role: 'user' | 'agent';
+  content: string;
+  route?: string;
+  toolCalls?: Array<{ name: string; input: unknown; result: unknown }>;
+  timestamp: string;
+}
+
+function chatDir(projectId: string, sessionId: string): string {
+  return join(projectDir(projectId), 'chat', sessionId);
+}
+
+function safeSessionId(sessionId: string): string {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId)) {
+    throw new Error('Invalid sessionId');
+  }
+  return sessionId;
+}
+
+/** 保存一条聊天消息到 chat/{sessionId}/{messageId}.json */
+export function saveAgentChat(projectId: string, message: MiniAppChatMessage): void {
+  safeSessionId(message.sessionId);
+  const dir = chatDir(projectId, message.sessionId);
+  ensureDir(dir);
+  writeFileSync(join(dir, `${message.id}.json`), JSON.stringify(message, null, 2), 'utf-8');
+}
+
+/** 列出某 session 的全部消息，按 timestamp 升序。 */
+export function listAgentChats(projectId: string, sessionId: string): MiniAppChatMessage[] {
+  safeSessionId(sessionId);
+  const dir = chatDir(projectId, sessionId);
+  if (!existsSync(dir)) return [];
+  const messages: MiniAppChatMessage[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
+    try {
+      const msg = JSON.parse(readFileSync(join(dir, entry.name), 'utf-8'));
+      if (msg && typeof msg === 'object' && typeof msg.timestamp === 'string') {
+        messages.push(msg as MiniAppChatMessage);
+      }
+    } catch { /* skip malformed */ }
+  }
+  messages.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+  return messages;
+}
