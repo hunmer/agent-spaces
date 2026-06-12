@@ -238,7 +238,6 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     onEvent: (event) => {
       onEvent(event);
       if (event.type === 'output') output.push(event.line);
-      else if (event.type === 'tool_use') output.push(`[tool:${event.name}]`);
     },
   });
 
