@@ -1,0 +1,303 @@
+{
+  "id": "a2df0309-64ba-4b7a-b85a-1248885723b3",
+  "name": "图片生成视频",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781074664189_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "prompt",
+            "type": "string",
+            "value": "",
+            "description": "提示词",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "image",
+            "type": "file",
+            "value": "",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781074664189_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 1320,
+        "y": 0
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "url",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781075458346_at5pxd\"].data.downloadUrl }}",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781074716386_wytbfp",
+      "type": "minimax_image_to_video",
+      "label": "Image to Video",
+      "position": {
+        "x": 660,
+        "y": 0
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "model": "MiniMax-Hailuo-2.3",
+        "duration": 6,
+        "resolution": "768P",
+        "promptOptimizer": "true",
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "firstFrameImage": "{{ __data__[\"node_1781075839906_ueljwm\"].data.url }}",
+        "prompt": "{{ __data__[\"node_1781074664189_start\"].prompt }}"
+      }
+    },
+    {
+      "id": "node_1781075458346_at5pxd",
+      "type": "minimax_video_async_wait",
+      "label": "Video Async Wait",
+      "position": {
+        "x": 1005,
+        "y": 0
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "timeout": 600,
+        "pollInterval": 10,
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "status",
+                "type": "string"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "fileId",
+                "type": "string"
+              },
+              {
+                "key": "downloadUrl",
+                "type": "video"
+              },
+              {
+                "key": "fileName",
+                "type": "string"
+              },
+              {
+                "key": "fileSize",
+                "type": "number"
+              },
+              {
+                "key": "videoWidth",
+                "type": "number"
+              },
+              {
+                "key": "videoHeight",
+                "type": "number"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781074716386_wytbfp",
+        "sourceHandle": "source",
+        "taskId": "{{ __data__[\"node_1781074716386_wytbfp\"].data.taskId }}"
+      }
+    },
+    {
+      "id": "node_1781075839906_ueljwm",
+      "type": "cos_upload_file",
+      "label": "COS Upload File",
+      "position": {
+        "x": 330,
+        "y": 0
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781074664189_start",
+        "sourceHandle": "source",
+        "key": "{{ __data__[\"node_1781074664189_start\"].image.name }}",
+        "filePath": "{{ __data__[\"node_1781074664189_start\"].image.path }}"
+      }
+    },
+    {
+      "id": "node_1781158833302_7k97pc",
+      "type": "qianyin_tts",
+      "label": "AI文字转语音",
+      "position": {
+        "x": 735,
+        "y": -210
+      },
+      "data": {
+        "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"]}}",
+        "secret": "{{ __config__[\"workflow.qianyin\"][\"secret\"]}}",
+        "speakerId": "521",
+        "format": "mp3",
+        "speed": 1,
+        "volume": 100,
+        "pitch": 0,
+        "baseUrl": "{{ __config__[\"workflow.qianyin\"][\"baseUrl\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "filePath",
+                "type": "string"
+              },
+              {
+                "key": "format",
+                "type": "string"
+              },
+              {
+                "key": "size",
+                "type": "number"
+              },
+              {
+                "key": "fileUrl",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "text": "大家好"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781074716386_wytbfp-source-node_1781075458346_at5pxd-target",
+      "source": "node_1781074716386_wytbfp",
+      "target": "node_1781075458346_at5pxd",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781075458346_at5pxd-source-node_1781074664189_end-target",
+      "source": "node_1781075458346_at5pxd",
+      "target": "node_1781074664189_end"
+    },
+    {
+      "id": "e-node_1781074664189_start-source-node_1781075839906_ueljwm-target",
+      "source": "node_1781074664189_start",
+      "target": "node_1781075839906_ueljwm",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781075839906_ueljwm-source-node_1781074716386_wytbfp-target",
+      "source": "node_1781075839906_ueljwm",
+      "target": "node_1781074716386_wytbfp",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1781074664193,
+  "updatedAt": 1781230258458,
+  "enabledPlugins": [
+    "workflow.minimax",
+    "workflow.aliyun-ai",
+    "workflow.tencent-cos",
+    "workflow.fish-audio",
+    "workflow.qianyin",
+    "workflow.openai"
+  ],
+  "groups": [],
+  "layoutSnapshot": {
+    "edgeLineStyle": "solid",
+    "logPanelLayout": "tabs"
+  },
+  "variables": []
+}

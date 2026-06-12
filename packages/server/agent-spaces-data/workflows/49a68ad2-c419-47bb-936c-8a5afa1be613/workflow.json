@@ -1,0 +1,256 @@
+{
+  "id": "49a68ad2-c419-47bb-936c-8a5afa1be613",
+  "name": "数字人对口型",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1780708985087_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": -15,
+        "y": 15
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "video_path",
+            "type": "file",
+            "value": "",
+            "fileNameFilter": "*.mp4",
+            "description": "视频文件",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "audio_file",
+            "type": "file",
+            "value": "",
+            "fileNameFilter": "*.mp3,*.wav",
+            "description": "音频文件",
+            "required": true,
+            "children": []
+          }
+        ],
+        "label": "开始"
+      }
+    },
+    {
+      "id": "node_1780708985087_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 675,
+        "y": 225
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "url",
+            "type": "string",
+            "value": "{{ __data__[\"node_1780711863880_bvm3fc\"].data.videoUrl }}",
+            "description": "下载地址",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780711863880_bvm3fc",
+      "type": "aliyun_videoretalk",
+      "label": "对口型",
+      "position": {
+        "x": 450,
+        "y": 180
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workfox.aliyun-ai\"][\"apiKey\"] }}",
+        "audioUrl": "{{ __data__[\"node_1780717812434_f7qwyu\"].data.url }}",
+        "videoUrl": "{{ __data__[\"node_1780718583500_micz42\"].data.url }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "videoUrl",
+                "type": "string"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "requestId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "__jsonPresets": [],
+        "__selectedJsonPresetId": "",
+        "label": "对口型"
+      }
+    },
+    {
+      "id": "node_1780717812434_f7qwyu",
+      "type": "cos_upload_file",
+      "label": "上传音频",
+      "position": {
+        "x": 240,
+        "y": 90
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workfox.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workfox.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workfox.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workfox.tencent-cos\"][\"region\"]}}",
+        "key": "{{ __data__[\"node_1780708985087_start\"].audio_file.name }}",
+        "filePath": "{{ __data__[\"node_1780708985087_start\"].audio_file.path }}",
+        "__jsonPresets": [],
+        "__selectedJsonPresetId": "",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "children": []
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "children": []
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "ETag",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "Location",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "url",
+                "type": "string",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "label": "上传音频"
+      }
+    },
+    {
+      "id": "node_1780718583500_micz42",
+      "type": "cos_upload_file",
+      "label": "上传视频",
+      "position": {
+        "x": 240,
+        "y": 255
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workfox.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workfox.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workfox.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workfox.tencent-cos\"][\"region\"]}}",
+        "sourceNodeId": "node_1780708985087_start",
+        "sourceHandle": "source",
+        "key": "{{ __data__[\"node_1780708985087_start\"].video_path.name }}",
+        "filePath": "{{ __data__[\"node_1780708985087_start\"].video_path.path }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "label": "上传视频"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1780708985087_start-node_1780717812434_f7qwyu",
+      "source": "node_1780708985087_start",
+      "target": "node_1780717812434_f7qwyu",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1780708985087_start-node_1780718583500_micz42",
+      "source": "node_1780708985087_start",
+      "target": "node_1780718583500_micz42",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1780717812434_f7qwyu-node_1780711863880_bvm3fc",
+      "source": "node_1780717812434_f7qwyu",
+      "target": "node_1780711863880_bvm3fc",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1780718583500_micz42-node_1780711863880_bvm3fc",
+      "source": "node_1780718583500_micz42",
+      "target": "node_1780711863880_bvm3fc",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1780711863880_bvm3fc-node_1780708985087_end",
+      "source": "node_1780711863880_bvm3fc",
+      "target": "node_1780708985087_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1780708985090,
+  "updatedAt": 1780739312196,
+  "enabledPlugins": [
+    "workfox.aliyun-ai",
+    "workfox.tencent-cos"
+  ]
+}

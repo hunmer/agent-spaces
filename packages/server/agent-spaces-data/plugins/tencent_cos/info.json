@@ -1,0 +1,58 @@
+{
+  "id": "workflow.tencent-cos",
+  "icon": "icon.svg",
+  "name": "腾讯云COS",
+  "name_zh": "腾讯云COS",
+  "name_en": "Tencent COS",
+  "version": "1.0.0",
+  "description": "腾讯云COS对象存储，支持上传、下载、删除、列举、签名URL等操作",
+  "description_zh": "腾讯云COS对象存储，支持上传、下载、删除、列举、签名URL等操作",
+  "description_en": "Tencent COS object storage with upload, download, delete, list, signed URL, copy, and file metadata operations.",
+  "author": { "name": "workflow" },
+  "tags": ["云存储", "COS", "腾讯云"],
+  "tags_zh": ["云存储", "COS", "腾讯云"],
+  "tags_en": ["Cloud Storage", "COS", "Tencent"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "secretId",
+      "label": "SecretId",
+      "desc": "腾讯云 API SecretId",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "secretKey",
+      "label": "SecretKey",
+      "desc": "腾讯云 API SecretKey",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "bucket",
+      "label": "Bucket",
+      "desc": "存储桶名称（格式: bucket-appid，如 mybucket-1250000000）",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "region",
+      "label": "Region",
+      "desc": "存储桶地域，如 ap-guangzhou、ap-shanghai、ap-beijing",
+      "type": "string",
+      "value": "",
+      "placeholder": "ap-guangzhou",
+      "required": true
+    }
+  ]
+}

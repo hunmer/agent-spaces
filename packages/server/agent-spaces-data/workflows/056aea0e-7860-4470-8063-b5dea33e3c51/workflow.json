@@ -1,0 +1,161 @@
+{
+  "id": "056aea0e-7860-4470-8063-b5dea33e3c51",
+  "name": "文生图",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781071703198_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": -150,
+        "y": 75
+      },
+      "data": {
+        "handleColors": {
+          "source": "slate"
+        },
+        "inputFields": [
+          {
+            "key": "prompt",
+            "type": "string",
+            "value": "",
+            "description": "提示词",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "negative_prompt",
+            "type": "string",
+            "value": "",
+            "description": "消极提示词",
+            "children": []
+          },
+          {
+            "key": "ratio",
+            "type": "select",
+            "value": "",
+            "description": "图片比例",
+            "inputMode": "native",
+            "options": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "21:9"
+            ],
+            "children": []
+          },
+          {
+            "key": "size",
+            "type": "select",
+            "value": "",
+            "description": "图片大小",
+            "inputMode": "native",
+            "options": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781071703198_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 155,
+        "y": 600
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "image",
+            "type": "image[]",
+            "value": "{{ __data__[\"node_1781082378348_4uncnk\"].data.images }}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781082378348_4uncnk",
+      "type": "jimeng_text_to_image",
+      "label": "AI Text to Image",
+      "position": {
+        "x": 60,
+        "y": 300
+      },
+      "data": {
+        "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+        "model": "jimeng-5.0",
+        "ratio": "{{ __data__[\"node_1781071703198_start\"].ratio }}",
+        "resolution": "{{ __data__[\"node_1781071703198_start\"].size }}",
+        "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781071703198_start",
+        "sourceHandle": "source",
+        "prompt": "{{ __data__[\"node_1781071703198_start\"].prompt }}",
+        "negativePrompt": "{{ __data__[\"node_1781071703198_start\"].negative_prompt }}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781071703198_start-source-node_1781082378348_4uncnk-target",
+      "source": "node_1781071703198_start",
+      "target": "node_1781082378348_4uncnk",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781082378348_4uncnk-source-node_1781071703198_end-target",
+      "source": "node_1781082378348_4uncnk",
+      "target": "node_1781071703198_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1781071703202,
+  "updatedAt": 1781085286317,
+  "variables": [],
+  "groups": [],
+  "layoutSnapshot": {
+    "attributionPosition": "top-bottom",
+    "bgVariant": "dots",
+    "edgePathType": "smoothstep",
+    "layoutEngine": "dagre"
+  },
+  "enabledPlugins": [
+    "workflow.jimeng"
+  ],
+  "tags": [
+    "AI",
+    "绘画"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "tencent-cos-plugin",
+  "version": "1.0.0",
+  "description": "Tencent Cloud COS plugin for workflow",
+  "main": "main.js",
+  "type": "commonjs",
+  "dependencies": {
+    "cos-nodejs-sdk-v5": "^2.14.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "wui_1781260164362_4147b9ff",
+  "name": "copywriting",
+  "description": "文案库",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-12T10:29:24.362Z",
+  "updatedAt": "2026-06-12T11:43:41.333Z"
+}

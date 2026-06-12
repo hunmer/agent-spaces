@@ -21,3 +21,7 @@ agent_spaces-server.latest.tar
 packages/server/public/avatars/
 packages/server/public/uploads/
 .tmp*
+packages/server/agent-spaces-data/workflows/*/execution_history/
+packages/server/agent-spaces-data/workflows/*/operation_history.json
+packages/server/agent-spaces-data/workflows-ui/*/data/
+packages/server/agent-spaces-data/plugins/state.json

@@ -1,0 +1,41 @@
+{
+  "id": "workflow.jimeng",
+  "name": "即梦AI生图",
+  "name_zh": "即梦AI生图",
+  "name_en": "Jimeng AI Image Generation",
+  "version": "1.0.0",
+  "icon": "icon.png",
+  "description": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
+  "description_zh": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
+  "description_en": "Jimeng AI image and video generation with text-to-image, image-to-image, and text-to-video support.",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "图片生成", "视频生成", "即梦"],
+  "tags_zh": ["AI", "图片生成", "视频生成", "即梦"],
+  "tags_en": ["AI", "Image Generation", "Video Generation", "Jimeng"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": [
+    {
+      "key": "sessionId",
+      "label": "Session Token",
+      "desc": "即梦 Session ID（国际站加前缀 us-/hk-/jp-/sg-）",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的即梦 Session ID",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "即梦 API 服务地址",
+      "type": "string",
+      "value": "http://localhost:5100",
+      "placeholder": "http://localhost:5100"
+    }
+  ]
+}

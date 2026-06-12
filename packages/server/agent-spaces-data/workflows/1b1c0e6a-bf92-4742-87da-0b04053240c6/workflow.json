@@ -1,0 +1,135 @@
+{
+  "id": "1b1c0e6a-bf92-4742-87da-0b04053240c6",
+  "name": "文案转音乐",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1780553286539_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 45,
+        "y": 30
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "music_lyric",
+            "type": "string",
+            "value": "",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "music_desc",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "music_ref",
+            "type": "string",
+            "value": "",
+            "description": "参考音频地址",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780553286539_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 555,
+        "y": 270
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "music_url",
+            "type": "string",
+            "value": "{{ __data__[\"node_1780744094633_j3jdyz\"].data.audioHex }}",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780744094633_j3jdyz",
+      "type": "minimax_music_generation",
+      "label": "音乐生成",
+      "position": {
+        "x": 270,
+        "y": 150
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workfox.minimax\"][\"apiKey\"] }}",
+        "model": "music-cover-free",
+        "isInstrumental": "false",
+        "lyricsOptimizer": "false",
+        "outputFormat": "url",
+        "audioFormat": "mp3",
+        "baseUrl": "{{ __config__[\"workfox.minimax\"][\"baseUrl\"] }}",
+        "sourceNodeId": "node_1780553286539_start",
+        "sourceHandle": "source",
+        "prompt": "{{ __data__[\"node_1780553286539_start\"].music_desc }}",
+        "lyrics": "{{ __data__[\"node_1780553286539_start\"].music_lyric }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "audioHex",
+                "type": "string"
+              },
+              {
+                "key": "duration",
+                "type": "number"
+              },
+              {
+                "key": "sampleRate",
+                "type": "number"
+              },
+              {
+                "key": "traceId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "audioUrl": "{{ __data__[\"node_1780553286539_start\"].music_ref }}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1780553286539_start-node_1780744094633_j3jdyz",
+      "source": "node_1780553286539_start",
+      "target": "node_1780744094633_j3jdyz",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1780744094633_j3jdyz-node_1780553286539_end",
+      "source": "node_1780744094633_j3jdyz",
+      "target": "node_1780553286539_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1780553286552,
+  "updatedAt": 1780890513770,
+  "enabledPlugins": [
+    "workfox.fish-audio",
+    "workfox.minimax"
+  ]
+}

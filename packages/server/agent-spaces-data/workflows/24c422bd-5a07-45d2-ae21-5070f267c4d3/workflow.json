@@ -1,0 +1,357 @@
+{
+  "id": "24c422bd-5a07-45d2-ae21-5070f267c4d3",
+  "name": "音视频提取字幕",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1780745571433_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "input_file",
+            "type": "file",
+            "value": "",
+            "required": true,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780745571433_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 0,
+        "y": 1400
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "text",
+            "type": "string",
+            "value": "{{ __data__[\"node_1780745734466_vzcdjz\"].data.text }}",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780745727769_eiwohq",
+      "type": "cos_upload_file",
+      "label": "COS上传文件",
+      "position": {
+        "x": 75,
+        "y": 1000
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workfox.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workfox.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workfox.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workfox.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1780745571433_start",
+        "sourceHandle": "source",
+        "key": "{{ __data__[\"node_1780745571433_start\"].input_file.name }}",
+        "filePath": "{{ __data__[\"node_1780886067806_2f5yg9\"].result.file }}"
+      }
+    },
+    {
+      "id": "node_1780745734466_vzcdjz",
+      "type": "asr_file_recognition",
+      "label": "录音文件转写",
+      "position": {
+        "x": 75,
+        "y": 1200
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workfox.asr\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workfox.asr\"][\"baseUrl\"] }}",
+        "model": "paraformer-v2",
+        "language": "",
+        "diarizationEnabled": false,
+        "enableItn": false,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "text",
+                "type": "string"
+              },
+              {
+                "key": "details",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1780745727769_eiwohq",
+        "sourceHandle": "source",
+        "fileUrls": "{{ __data__[\"node_1780745727769_eiwohq\"].data.url }}"
+      }
+    },
+    {
+      "id": "node_1780885183586_bykbh6",
+      "type": "run_code",
+      "label": "判断文件类型",
+      "position": {
+        "x": 0,
+        "y": 200
+      },
+      "data": {
+        "code": "async function main({ params, context }) {\n  // 从开始节点获取上传的文件\n  const file = params.input_file;\n  // 兼容结构：可能是 { url, name, type } 也可能直接是字符串路径\n  const fileName = (file && (file.name || file.filename)) || (typeof file === 'string' ? file.split(/[\\\\\\\\/]/).pop() : '');\n  const mimeType = (file && file.type) || '';\n  const ext = (fileName || '').toLowerCase().split('.').pop();\n\n  const videoExts = ['mp4', 'mov', 'mkv', 'avi', 'flv', 'wmv', 'webm', 'm4v', 'mpeg', 'mpg', 'ts', '3gp'];\n  const audioExts = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma', 'opus', 'amr', 'aiff', 'ac3'];\n\n  let fileType = 'other';\n  if (mimeType.startsWith('video/') || videoExts.includes(ext)) {\n    fileType = 'video';\n  } else if (mimeType.startsWith('audio/') || audioExts.includes(ext)) {\n    fileType = 'audio';\n  }\n\n  return {\n    file_type: fileType,\n    file_name: fileName,\n    file_ext: ext,\n    mime_type: mimeType,\n    original_file: file\n  };\n}",
+        "outputs": [
+          {
+            "key": "file_type",
+            "type": "string"
+          },
+          {
+            "key": "file_name",
+            "type": "string"
+          },
+          {
+            "key": "file_ext",
+            "type": "string"
+          },
+          {
+            "key": "mime_type",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780885183587_a1uoz4",
+      "type": "switch",
+      "label": "文件类型分支",
+      "position": {
+        "x": 0,
+        "y": 400
+      },
+      "data": {
+        "conditions": [
+          {
+            "id": "cond_1780885590189_rjtb",
+            "variable": "{{ __data__[\"node_1780885183586_bykbh6\"].mime_type }}",
+            "field": "{{ __data__[\"node_1780885183586_bykbh6\"].mime_type }}",
+            "operator": "equals",
+            "value": "video"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780885183587_e2uztq",
+      "type": "ffmpeg_demux",
+      "label": "视频提取音频",
+      "position": {
+        "x": 240,
+        "y": 570
+      },
+      "data": {
+        "mode": "extract_audio",
+        "audioFormat": "mp3",
+        "ffmpegPath": "{{ __config__[\"workfox.ffmpeg\"][\"ffmpegPath\"] }}",
+        "inputPath": "{{ __data__[\"node_1780885183586_bykbh6\"].original_file }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "audioPath",
+                "type": "string"
+              },
+              {
+                "key": "videoPath",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1780886067806_2f5yg9",
+      "type": "variable_aggregate",
+      "label": "变量聚合",
+      "position": {
+        "x": 0,
+        "y": 800
+      },
+      "data": {
+        "strategy": "first_non_empty",
+        "groups": [
+          {
+            "key": "file",
+            "variables": [
+              {
+                "key": "",
+                "type": "string",
+                "value": "{{ __data__[\"node_1780885183587_e2uztq\"].data.audioPath }}",
+                "children": []
+              },
+              {
+                "key": "",
+                "type": "string",
+                "value": "{{ __data__[\"node_1780745571433_start\"].input_file.path }}",
+                "children": []
+              }
+            ],
+            "id": 1780886087323
+          }
+        ],
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object",
+            "children": [
+              {
+                "key": "file",
+                "type": "string",
+                "value": "",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1780745571433_start-node_1780885183586_bykbh6-mq4l3of0",
+      "source": "node_1780745571433_start",
+      "target": "node_1780885183586_bykbh6"
+    },
+    {
+      "id": "e-node_1780885183586_bykbh6-node_1780885183587_a1uoz4-mq4l3of0",
+      "source": "node_1780885183586_bykbh6",
+      "target": "node_1780885183587_a1uoz4"
+    },
+    {
+      "id": "e-node_1780745727769_eiwohq-node_1780745734466_vzcdjz-mq4l3of1",
+      "source": "node_1780745727769_eiwohq",
+      "target": "node_1780745734466_vzcdjz"
+    },
+    {
+      "id": "e-node_1780745734466_vzcdjz-node_1780745571433_end-mq4l3of2",
+      "source": "node_1780745734466_vzcdjz",
+      "target": "node_1780745571433_end"
+    },
+    {
+      "id": "e-node_1780885183587_a1uoz4-node_1780885183587_e2uztq-mq4l424j",
+      "source": "node_1780885183587_a1uoz4",
+      "target": "node_1780885183587_e2uztq",
+      "sourceHandle": "source-0"
+    },
+    {
+      "id": "e-node_1780885183587_a1uoz4-node_1780745727769_eiwohq-mq4l424k",
+      "source": "node_1780885183587_a1uoz4",
+      "target": "node_1780745727769_eiwohq",
+      "sourceHandle": "source-1"
+    },
+    {
+      "id": "e-node_1780885183587_a1uoz4-node_1780745571433_end-mq4l424k",
+      "source": "node_1780885183587_a1uoz4",
+      "target": "node_1780745571433_end",
+      "sourceHandle": "source-2"
+    },
+    {
+      "id": "e-node_1780885183587_a1uoz4-case-0-node_1780885183587_e2uztq-target",
+      "source": "node_1780885183587_a1uoz4",
+      "target": "node_1780885183587_e2uztq",
+      "sourceHandle": "case-0",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1780885183587_e2uztq-source-node_1780886067806_2f5yg9-target",
+      "source": "node_1780885183587_e2uztq",
+      "target": "node_1780886067806_2f5yg9",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1780885183587_a1uoz4-default-node_1780886067806_2f5yg9-target",
+      "source": "node_1780885183587_a1uoz4",
+      "target": "node_1780886067806_2f5yg9",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1780886067806_2f5yg9-source-node_1780745727769_eiwohq-target",
+      "source": "node_1780886067806_2f5yg9",
+      "target": "node_1780745727769_eiwohq",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1780745571438,
+  "updatedAt": 1780987136693,
+  "enabledPlugins": [
+    "workfox.asr",
+    "workfox.tencent-cos",
+    "workfox.ffmpeg"
+  ],
+  "variables": []
+}

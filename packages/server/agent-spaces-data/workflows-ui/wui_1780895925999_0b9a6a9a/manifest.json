@@ -1,0 +1,17 @@
+{
+  "id": "wui_1780895925999_0b9a6a9a",
+  "name": "配音",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-08T05:18:45.999Z",
+  "updatedAt": "2026-06-11T08:13:48.021Z",
+  "enabledPlugins": [
+    "workflow.minimax",
+    "workflow.fish-audio",
+    "workflow.qianyin"
+  ],
+  "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
+  "description": "配音界面"
+}

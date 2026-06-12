@@ -1,0 +1,352 @@
+{
+  "id": "c19d5c51-7773-4193-a467-6b579b63c1d5",
+  "name": "图生图",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781071703198_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "handleColors": {
+          "source": "slate"
+        },
+        "inputFields": [
+          {
+            "key": "images",
+            "type": "file[]",
+            "value": "",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "prompt",
+            "type": "string",
+            "value": "",
+            "description": "提示词",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "ratio",
+            "type": "select",
+            "value": "",
+            "description": "图片比例",
+            "inputMode": "native",
+            "options": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "21:9"
+            ],
+            "children": []
+          },
+          {
+            "key": "size",
+            "type": "select",
+            "value": "",
+            "description": "图片大小",
+            "inputMode": "native",
+            "options": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "children": []
+          },
+          {
+            "key": "video",
+            "type": "boolean",
+            "value": "",
+            "description": "是否生成视频",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781071703198_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 0,
+        "y": 755
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "image",
+            "type": "image[]",
+            "value": "{{ __data__[\"node_1781082378348_4uncnk\"].data.images }}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781086780974_nosuhx",
+      "type": "jimeng_image_to_image",
+      "label": "AI Image to Image",
+      "position": {
+        "x": 0,
+        "y": 615
+      },
+      "data": {
+        "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+        "model": "jimeng-5.0",
+        "ratio": "{{ __data__[\"node_1781071703198_start\"].ratio }}",
+        "resolution": "{{ __data__[\"node_1781071703198_start\"].size }}",
+        "sampleStrength": 0.7,
+        "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              },
+              {
+                "key": "inputImages",
+                "type": "image[]"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781071703198_start",
+        "sourceHandle": "source",
+        "prompt": "{{ __data__[\"node_1781071703198_start\"].prompt }}",
+        "images": "{{ __data__[\"node_1781090473863_gn9jsr\"].result }}"
+      },
+      "nodeState": "normal"
+    },
+    {
+      "id": "node_1781089001408_x944p4",
+      "type": "pluck_array_key",
+      "label": "nodes.pluck_array_key.label",
+      "position": {
+        "x": 0,
+        "y": 200
+      },
+      "data": {
+        "array": "{{ __data__[\"node_1781071703198_start\"].images }}",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "any[]",
+            "children": []
+          }
+        ],
+        "sourceNodeId": "node_1781071703198_start",
+        "sourceHandle": "source",
+        "key": "httpPath",
+        "width": 250,
+        "height": 75
+      }
+    },
+    {
+      "id": "node_1781090473863_gn9jsr",
+      "type": "array_text_replace",
+      "label": "nodes.array_text_replace.label",
+      "position": {
+        "x": 0,
+        "y": 355
+      },
+      "data": {
+        "array": "{{ __data__[\"node_1781089001408_x944p4\"].result }}",
+        "replaceCount": 0,
+        "replaceMode": "literal",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string[]"
+          }
+        ],
+        "sourceNodeId": "node_1781089001408_x944p4",
+        "sourceHandle": null,
+        "findText": "127.0.0.1",
+        "replaceText": "192.168.20.5"
+      }
+    },
+    {
+      "id": "node_1781140995562_jk33xk",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 0,
+        "y": 455
+      },
+      "data": {
+        "sourceNodeId": "node_1781090473863_gn9jsr",
+        "sourceHandle": null,
+        "conditions": [
+          {
+            "id": "cond_1781140998753_tk10",
+            "variable": "{{ __data__[\"node_1781071703198_start\"].video }}",
+            "field": "{{ __data__[\"node_1781071703198_start\"].video }}",
+            "operator": "is_true",
+            "value": "true"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781144037508_sxhvti",
+      "type": "jimeng_text_to_video",
+      "label": "AI视频生成",
+      "position": {
+        "x": 375,
+        "y": 495
+      },
+      "data": {
+        "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+        "model": "jimeng-video-3.0",
+        "ratio": "1:1",
+        "duration": 5,
+        "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "videos",
+                "type": "video"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781140995562_jk33xk",
+        "sourceHandle": "case-0",
+        "filePaths": "{{ __data__[\"node_1781090473863_gn9jsr\"].result }}",
+        "prompt": "{{ __data__[\"node_1781071703198_start\"].prompt }}",
+        "width": 295,
+        "height": 60
+      }
+    },
+    {
+      "id": "node_1781144447963_qsew5h",
+      "type": "end",
+      "label": "nodes.end.label",
+      "position": {
+        "x": 735,
+        "y": 555
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "",
+            "type": "image[]",
+            "value": ""
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781086780974_nosuhx-source-node_1781071703198_end-target",
+      "source": "node_1781086780974_nosuhx",
+      "target": "node_1781071703198_end"
+    },
+    {
+      "id": "e-node_1781071703198_start-source-node_1781089001408_x944p4-target",
+      "source": "node_1781071703198_start",
+      "target": "node_1781089001408_x944p4",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781089001408_x944p4-source-node_1781090473863_gn9jsr-target",
+      "source": "node_1781089001408_x944p4",
+      "target": "node_1781090473863_gn9jsr"
+    },
+    {
+      "id": "e-node_1781090473863_gn9jsr-source-node_1781140995562_jk33xk-target",
+      "source": "node_1781090473863_gn9jsr",
+      "target": "node_1781140995562_jk33xk"
+    },
+    {
+      "id": "e-node_1781140995562_jk33xk-default-node_1781086780974_nosuhx-target",
+      "source": "node_1781140995562_jk33xk",
+      "target": "node_1781086780974_nosuhx",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781140995562_jk33xk-case-0-node_1781144037508_sxhvti-target",
+      "source": "node_1781140995562_jk33xk",
+      "target": "node_1781144037508_sxhvti",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1781144037508_sxhvti-source-node_1781144447963_qsew5h-target",
+      "source": "node_1781144037508_sxhvti",
+      "target": "node_1781144447963_qsew5h",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1781086499843,
+  "updatedAt": 1781154388289,
+  "variables": [],
+  "groups": [],
+  "layoutSnapshot": {
+    "attributionPosition": "left-right",
+    "bgVariant": "dots",
+    "edgePathType": "smoothstep",
+    "layoutEngine": "dagre",
+    "logPanelLayout": "tabs",
+    "canvasTheme": "default",
+    "snapGrid": true,
+    "edgeLineStyle": "solid",
+    "autoMergeNodeOnEdge": true,
+    "collisionBoxEnabled": true,
+    "floatingHandles": true,
+    "autoPreviewLastRun": false
+  },
+  "enabledPlugins": [
+    "workflow.jimeng",
+    "workflow.minimax",
+    "workflow.custom-view-demo",
+    "workflow.aliyun-ai",
+    "workflow.aliyun-oss",
+    "workflow.qianyin",
+    "workfox.dingtalk",
+    "workflow.fish-audio"
+  ],
+  "tags": [
+    "AI",
+    "绘画"
+  ],
+  "pluginConfigSchemes": {}
+}

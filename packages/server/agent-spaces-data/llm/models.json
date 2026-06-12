@@ -1,0 +1,148 @@
+[
+  {
+    "modelId": "GLM-4.7",
+    "name": "GLM-4.7",
+    "provider": "zhipu",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "272326ea-fe9f-4569-ae3c-d14cfbb548a8"
+  },
+  {
+    "modelId": "gpt-5.5",
+    "name": "gpt-5.5",
+    "provider": "aicode",
+    "vision": false,
+    "reasoning": true,
+    "embedding": false,
+    "id": "78ecd2a4-1058-4ca8-9ac5-36bac9eaafbf"
+  },
+  {
+    "modelId": "GLM-5.1",
+    "name": "GLM-5.1",
+    "provider": "zhipu",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "7fd353a7-43ba-4365-9e7b-96b518ddc803"
+  },
+  {
+    "modelId": "MiniMax-M2.7",
+    "name": "MiniMax-M2.7",
+    "provider": "minimax",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "453bf322-5680-4989-a0cd-26ba28db78d3"
+  },
+  {
+    "modelId": "test",
+    "name": "test",
+    "provider": "Other",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "d3882778-3f6f-46da-b239-fd9b28bfb165"
+  },
+  {
+    "modelId": "embedding-3",
+    "name": "embedding-3",
+    "provider": "zhipu-openai",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": false,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": true,
+    "id": "522931c3-2d34-4d8b-94ab-f8cf8c8b921d"
+  },
+  {
+    "modelId": "MiniMax-M2.7",
+    "name": "MiniMax-M2.7",
+    "provider": "minimax-openai",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "15a98734-37b5-474d-91af-5a1af5b06dc0"
+  },
+  {
+    "modelId": "GLM-4.7",
+    "name": "GLM-4.7",
+    "provider": "zhipu-openai",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "3bfa54f6-308d-43dc-bac1-0427417df384"
+  },
+  {
+    "modelId": "GLM-5.1",
+    "name": "GLM-5.1",
+    "provider": "zhipu-openai",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "eb12be46-69f2-40a9-9c7f-3674113041cd"
+  },
+  {
+    "modelId": "MiniMax-M3",
+    "name": "MiniMax-M3",
+    "provider": "minimax-openai",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "757fb0f9-15d3-4834-aca7-3ff6f040ecee"
+  }
+]

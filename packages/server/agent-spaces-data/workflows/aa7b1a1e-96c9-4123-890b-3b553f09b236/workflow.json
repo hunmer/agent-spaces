@@ -1,0 +1,79 @@
+{
+  "id": "aa7b1a1e-96c9-4123-890b-3b553f09b236",
+  "name": "文字撰写测试",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781255038442_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781255038442_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781259947606_ovahim",
+      "type": "asr_file_recognition",
+      "label": "录音文件转写",
+      "position": {
+        "x": 120,
+        "y": 180
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.aliyun-ai\"][\"baseUrl\"] || \"https://dashscope.aliyuncs.com\" }}",
+        "model": "paraformer-v2",
+        "language": "",
+        "diarizationEnabled": false,
+        "enableItn": false,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "text",
+                "type": "string"
+              },
+              {
+                "key": "details",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1781255038446,
+  "updatedAt": 1781259957831,
+  "enabledPlugins": [
+    "workflow.aliyun-ai"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "workflow.minimax",
+  "name": "MiniMax AI",
+  "name_zh": "MiniMax AI",
+  "name_en": "MiniMax AI",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "description": "MiniMax AI 多模态生成，支持文本合成(M2.x大模型)、角色对话(M2-her)、语音合成(TTS)、音乐生成、视频生成(文生/图生/首尾帧/主体参考)、歌词生成",
+  "description_zh": "MiniMax AI 多模态生成，支持文本合成(M2.x大模型)、角色对话(M2-her)、语音合成(TTS)、音乐生成、视频生成(文生/图生/首尾帧/主体参考)、歌词生成",
+  "description_en": "MiniMax AI multimodal generation with text synthesis (M2.x LLM), character dialogue (M2-her), TTS, music generation, video generation (text-to-video/image-to-video/first-last-frame/subject-reference), and lyrics generation",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "文本合成", "角色对话", "语音合成", "音乐生成", "视频生成", "MiniMax", "海螺AI"],
+  "tags_zh": ["AI", "文本合成", "角色对话", "语音合成", "音乐生成", "视频生成", "MiniMax", "海螺AI"],
+  "tags_en": ["AI", "Text Synthesis", "Character Dialogue", "TTS", "Music Generation", "Video Generation", "MiniMax", "Hailuo AI"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "MiniMax API Key，可在 账户管理>接口密钥 中获取",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的 MiniMax API Key",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "MiniMax API 服务地址",
+      "type": "string",
+      "value": "https://api.minimaxi.com",
+      "placeholder": "https://api.minimaxi.com"
+    }
+  ]
+}

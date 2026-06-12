@@ -1,0 +1,170 @@
+{
+  "id": "50d8f660-eeb7-4ad8-b27e-5718265bef86",
+  "name": "openai测试",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781176099507_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781176099507_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781176113470_cfp72g",
+      "type": "openai_create_image",
+      "label": "OpenAI 文生图",
+      "position": {
+        "x": 150,
+        "y": 195
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.openai\"][\"apiKey\"] }}",
+        "model": "gpt-image-2",
+        "size": "auto",
+        "quality": "auto",
+        "n": 1,
+        "output_format": "png",
+        "background": "auto",
+        "baseUrl": "{{ __config__[\"workflow.openai\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "created",
+                "type": "number"
+              },
+              {
+                "key": "usage",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "prompt": "动漫女孩"
+      }
+    },
+    {
+      "id": "node_1781232246956_yuyfpx",
+      "type": "aliyun_image_out_painting",
+      "label": "AI图像扩图",
+      "position": {
+        "x": 615,
+        "y": 195
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "expandMode": "ratio",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "imageUrl",
+                "type": "string"
+              },
+              {
+                "key": "requestId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "imageUrl": "https://gips3.baidu.com/it/u=3825937833,2620196976&fm=3074&app=3074&f=PNG?w=2048&h=2048",
+        "outputRatio": "9:16"
+      }
+    },
+    {
+      "id": "node_1781232275780_jy94pf",
+      "type": "aliyun_video_editing",
+      "label": "万相视频编辑",
+      "position": {
+        "x": 825,
+        "y": 375
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "resolution": "720P",
+        "audioSetting": "auto",
+        "promptExtend": "true",
+        "watermark": "false",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "videoUrl",
+                "type": "string"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "requestId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "videoUrl": "https://dashscope-a717.oss-accelerate.aliyuncs.com/1d/f5/20260612/773ecfda/70581877-metadata_user_a8ee61d485113cbb.mp4?Expires=1781317316&OSSAccessKeyId=LTAI5tJjG6wsHad1Sf7iezX4&Signature=T580uo1GiHlV5IFSL7eX%2Fz%2FJwYw%3D",
+        "prompt": "将女孩手里的花改成向日葵"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1781176099512,
+  "updatedAt": 1781232431316,
+  "enabledPlugins": [
+    "workflow.openai",
+    "workflow.aliyun-ai"
+  ],
+  "groups": []
+}

@@ -1,0 +1,32 @@
+{
+  "id": "workfox.dingtalk",
+  "name": "DingTalk",
+  "version": "1.0.0",
+  "description": "通过钉钉自定义机器人 Webhook 发送群消息，支持 text/markdown/link/actionCard/feedCard 五种消息类型",
+  "author": { "name": "workfox" },
+  "tags": ["notification", "dingtalk"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "config": [
+    {
+      "key": "accessToken",
+      "label": "Access Token",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "secret",
+      "label": "签名密钥",
+      "type": "string",
+      "value": "",
+      "required": false
+    }
+  ],
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "text": "大家好，今天的演讲我要献给生命中最重要的人，我的妈妈。我出生在湖北省新山县高桥乡下湾村，这些年我见过不少的人，可是依然觉得妈妈是我这辈子见过最美丽的女人。",
+  "provider": "qianyin",
+  "providers": {
+    "minimax": {
+      "voices": [
+        {
+          "id": "male-qn-badao",
+          "name": "霸道男声",
+          "icon": "🔥"
+        },
+        {
+          "id": "female-shaonv",
+          "name": "少女音",
+          "icon": "👧"
+        },
+        {
+          "id": "female-yujie",
+          "name": "御姐音",
+          "icon": "👩‍💼"
+        },
+        {
+          "id": "presenter_male",
+          "name": "主持人男",
+          "icon": "🎙️"
+        },
+        {
+          "id": "presenter_female",
+          "name": "主持人女",
+          "icon": "🎙️"
+        }
+      ],
+      "voiceId": "female-shaonv",
+      "speed": 1,
+      "vol": 1,
+      "pitch": 0,
+      "emotion": ""
+    },
+    "fishaudio": {
+      "voices": [
+        {
+          "id": "067a63e4-40d3-4a5f-8b42-1a6a8a4e8ea8",
+          "name": "通用男声",
+          "icon": "👨"
+        },
+        {
+          "id": "eeba9e2d32254268b7aa9c135cb335f7",
+          "name": "test",
+          "icon": "🎵"
+        }
+      ],
+      "voiceId": "eeba9e2d32254268b7aa9c135cb335f7",
+      "speed": 1,
+      "temperature": 0.7
+    },
+    "qianyin": {
+      "voices": [
+        {
+          "id": "521",
+          "name": "默认女声",
+          "icon": "👩"
+        },
+        {
+          "id": "1051",
+          "name": "晓晓 Ultra",
+          "icon": "🎙️"
+        },
+        {
+          "id": "1052",
+          "name": "test",
+          "icon": "🎵"
+        }
+      ],
+      "voiceId": "1051",
+      "speed": 1,
+      "volume": 100,
+      "pitch": 0
+    }
+  }
+}
