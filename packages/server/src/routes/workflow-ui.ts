@@ -2,8 +2,9 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import multer from 'multer';
 import { existsSync, mkdirSync, writeFileSync, rmSync, createReadStream } from 'node:fs';
-import { join, basename } from 'node:path';
+import { join, basename, resolve } from 'node:path';
 import { randomUUID } from 'crypto';
+import { exec } from 'node:child_process';
 import * as svc from '../services/workflow-ui.js';
 import { invokeService } from '../services/workflow-ui-services.js';
 
@@ -192,6 +193,24 @@ router.post('/:id/db/:dbName/transaction', (req: Request<{ id: string; dbName: s
   } catch (error: any) {
     res.status(400).json({ ok: false, error: { code: error?.code ?? 'SQLITE_ERROR', message: error?.message ?? String(error) } });
   }
+});
+
+// Reveal project folder in OS file manager
+router.post('/:id/reveal', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const project = svc.getProject(req.params.id);
+    if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+    const fullPath = resolve(svc.store.getProjectDir(req.params.id));
+    const cmd = process.platform === 'darwin'
+      ? `open "${fullPath}"`
+      : process.platform === 'win32'
+        ? `explorer "${fullPath}"`
+        : `xdg-open "${fullPath}"`;
+    exec(cmd, (err) => {
+      if (err) { res.status(500).json({ error: 'Failed to reveal', detail: err.message }); return; }
+      res.json({ ok: true, path: fullPath });
+    });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
 // Avatar upload

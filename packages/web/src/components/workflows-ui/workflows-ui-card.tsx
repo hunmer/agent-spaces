@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download, Share2 } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download, Share2, FolderOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ShareDialog } from '@/components/common/share-dialog';
@@ -43,6 +43,8 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
     URL.revokeObjectURL(url);
   };
 
+  const handleRevealFolder = () => sdk.workflowUi.revealFolder(project.id);
+
   const pluginCount = project.enabledPlugins?.length ?? 0;
 
   return (
@@ -69,6 +71,9 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleExportZip}>
               <Download className="h-3.5 w-3.5 mr-2" /> {t('card.exportZip')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleRevealFolder}>
+              <FolderOpen className="h-3.5 w-3.5 mr-2" /> {t('card.revealFolder')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShareOpen(true); }}>
               <Share2 className="h-3.5 w-3.5 mr-2" /> {t('card.share')}

@@ -19,7 +19,8 @@
     "share": "Share",
     "deleteTitle": "Delete Project",
     "deleteConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "revealFolder": "Reveal in File Manager"
   },
   "create": {
     "title": "Create Custom Page",

@@ -79,5 +79,9 @@ export function createWorkflowUiApi(http: HttpClient) {
 
     getAvatarUrl: (id: string): string =>
       `/api/workflows-ui/${id}/avatar`,
+
+    /** Reveal project folder in OS file manager */
+    revealFolder: (id: string): Promise<{ ok: true; path: string }> =>
+      http.post(`/api/workflows-ui/${id}/reveal`),
   };
 }
