@@ -89,31 +89,16 @@ export function touchProject(projectId: string): void {
 // ---- CRUD ----
 
 export function listProjects(): MiniAppProject[] {
-  // 惰性自愈：每次列出前校验磁盘目录数与索引是否一致，不一致则重建。
-  // 这样手动新增 wui_* 文件夹后，下次调用即可被发现。
-  const root = baseDir();
-  if (existsSync(root)) {
-    const dirIds = readdirSync(root, { withFileTypes: true })
-      .filter(e => e.isDirectory() && /^wui_/.test(e.name))
-      .map(e => e.name)
-      .filter(id => existsSync(manifestPath(id)));
-    const indexed = readJsonFile<MiniAppProject[]>(indexPath()) ?? [];
-    const indexedIds = indexed.map(p => p?.id).filter(Boolean);
-    const same = dirIds.length === indexedIds.length
-      && dirIds.every(id => indexedIds.includes(id));
-    if (!same) return rebuildIndex().projects;
-  }
   return readJsonFile<MiniAppProject[]>(indexPath()) ?? [];
 }
 
 /**
  * 扫描 mini-apps/ 下每个项目目录的 manifest.json，重建 index.json。
- * 用于磁盘上存在项目但 index.json 缺失/损坏时的自愈（手动拷入、文件被删、版本迁移）。
- * 返回（重建前后是否变化, 当前项目列表）。
+ * 每次调用都从磁盘读取最新 manifest 并写入 index.json。
  */
-export function rebuildIndex(): { changed: boolean; projects: MiniAppProject[] } {
+export function rebuildIndex(): MiniAppProject[] {
   const root = baseDir();
-  if (!existsSync(root)) return { changed: false, projects: [] };
+  if (!existsSync(root)) return [];
 
   const onDisk: MiniAppProject[] = [];
   for (const entry of readdirSync(root, { withFileTypes: true })) {
@@ -123,18 +108,9 @@ export function rebuildIndex(): { changed: boolean; projects: MiniAppProject[] }
     if (manifest && manifest.id === entry.name) onDisk.push(manifest);
   }
 
-  // 按 createdAt 稳定排序，避免每次重建顺序抖动
   onDisk.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
-
-  const indexed = readJsonFile<MiniAppProject[]>(indexPath()) ?? [];
-  const sameLength = indexed.length === onDisk.length
-    && indexed.every((p, i) => p?.id === onDisk[i]?.id);
-
-  if (!sameLength) {
-    writeJsonFile(indexPath(), onDisk);
-    return { changed: true, projects: onDisk };
-  }
-  return { changed: false, projects: onDisk };
+  writeJsonFile(indexPath(), onDisk);
+  return onDisk;
 }
 
 export function getProject(projectId: string): MiniAppProject | null {

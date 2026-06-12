@@ -65,6 +65,7 @@ import { broadcastToWorkspace } from './ws/connection-manager.js';
 import { createWorkflowHookRouter } from './routes/workflow-hook.js';
 import { setWorkflowExecutionManager } from './services/builtin-tools/index.js';
 import { ensureBuiltInAgentTemplates } from './services/agent.js';
+import { rebuildIndex as rebuildMiniAppIndex } from './storage/mini-app-store.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -426,6 +427,7 @@ server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
   console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);
   ensureBuiltInAgentTemplates();
+  rebuildMiniAppIndex();
   recoverRunningWorkOnStartup();
   triggerService.start().catch((err) => {
     console.error('[trigger] failed to start:', err);
