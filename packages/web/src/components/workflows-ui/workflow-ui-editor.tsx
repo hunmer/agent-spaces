@@ -131,9 +131,13 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
 
-    const shareUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}/workflows-ui-preview/${projectId}`
-        : '';
+    const shareUrl = (() => {
+        if (typeof window === 'undefined') return '';
+        let route = '';
+        try { route = new URLSearchParams(window.location.search).get('route') || ''; } catch { /* noop */ }
+        const base = `${window.location.origin}/workflows-ui-preview/${projectId}`;
+        return route ? `${base}?route=${encodeURIComponent(route)}` : base;
+    })();
     const localDirtyRef = useRef(false);
     const loadedFileContentRef = useRef('');
     const filesRef = useRef<string[]>([]);
