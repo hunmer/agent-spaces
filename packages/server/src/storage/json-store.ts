@@ -1,11 +1,13 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 const DEFAULT_DATA_DIR = join(process.env.HOME || process.env.USERPROFILE || homedir(), '.agent-spaces-data');
 
 export function getDataDir(): string {
-  return process.env.AGENT_SPACES_DATA_DIR || DEFAULT_DATA_DIR;
+  // resolve() 以防 AGENT_SPACES_DATA_DIR 是相对路径 —— 下游 createRequire 只接受绝对路径，
+  // 相对路径会让插件 activate 直接抛 ERR_INVALID_ARG_VALUE，导致 workflow 节点全部加载失败。
+  return resolve(process.env.AGENT_SPACES_DATA_DIR || DEFAULT_DATA_DIR);
 }
 
 export function ensureDir(dir: string): void {
