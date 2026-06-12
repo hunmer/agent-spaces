@@ -344,8 +344,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         }
         return () => {
             window.removeEventListener('message', onMessage);
-            const ifr = previewIframeRef.current;
-            if (ifr) ifr.removeEventListener('load', sendRouteToIframe);
+            if (iframe) iframe.removeEventListener('load', sendRouteToIframe);
         };
     }, [project, previewRefreshKey]);
 
