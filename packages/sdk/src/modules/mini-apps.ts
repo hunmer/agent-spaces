@@ -19,6 +19,22 @@ export interface MiniAppProject {
   storeChecksum?: string;
 }
 
+export interface MiniAppAgentConfig {
+  id: string;
+  name: string;
+  avatar?: string;
+  /** 引用全局 Agent Preset id，复用其密钥（可选） */
+  agentId?: string;
+  modelProvider?: string;
+  modelId?: string;
+  apiKey?: string;
+  apiBase?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  tools?: { api?: boolean; plugin?: boolean };
+}
+
 export function createMiniAppApi(http: HttpClient) {
   return {
     list: (): Promise<MiniAppProject[]> =>

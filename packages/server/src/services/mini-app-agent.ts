@@ -86,3 +86,54 @@ export function buildApiFunctionTools(
     },
   }));
 }
+
+export interface ResolvedAgentCredentials {
+  modelProvider?: string;
+  modelId?: string;
+  apiKey?: string;
+  apiBase?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+/**
+ * 解析 agent 凭据优先级（spec §5.2）：
+ * 1. agentId → 从 presets 提取 modelProvider/modelId/apiKey/apiBase 作为默认
+ * 2. entry 本地字段覆盖 preset 值
+ * 3. systemPrompt：entry 本地为准，缺失才用 preset
+ * 4. 全都没有 → 返回空对象，调用方走服务端默认模型兜底
+ */
+export function resolveAgentCredentials(
+  entry: {
+    agentId?: string;
+    modelProvider?: string;
+    modelId?: string;
+    apiKey?: string;
+    apiBase?: string;
+    systemPrompt?: string;
+    temperature?: number;
+    maxTokens?: number;
+  },
+  presets: Array<{
+    id: string;
+    modelProvider?: string;
+    modelId?: string;
+    apiKey?: string;
+    apiBase?: string;
+    systemPrompt?: string;
+    temperature?: number;
+    maxTokens?: number;
+  }>,
+): ResolvedAgentCredentials {
+  const preset = entry.agentId ? presets.find((p) => p.id === entry.agentId) : undefined;
+  return {
+    modelProvider: entry.modelProvider ?? preset?.modelProvider,
+    modelId: entry.modelId ?? preset?.modelId,
+    apiKey: entry.apiKey ?? preset?.apiKey,
+    apiBase: entry.apiBase ?? preset?.apiBase,
+    systemPrompt: entry.systemPrompt ?? preset?.systemPrompt,
+    temperature: entry.temperature ?? preset?.temperature,
+    maxTokens: entry.maxTokens ?? preset?.maxTokens,
+  };
+}
