@@ -308,7 +308,7 @@ router.get('/:id/agents/chat', (req: Request<{ id: string }, any, any, { session
     const { sessionId, agentId } = req.query;
     if (!sessionId) { res.status(400).json({ error: 'sessionId is required' }); return; }
     let messages = listAgentChats(req.params.id, sessionId);
-    if (agentId) messages = messages.filter((m) => m.agentId === agentId);
+    if (typeof agentId === 'string') messages = messages.filter((m) => m.agentId === agentId);
     res.json({ messages });
   } catch (error: any) {
     res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
