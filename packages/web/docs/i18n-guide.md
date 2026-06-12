@@ -120,6 +120,6 @@ Workflow 节点定义中的 `label` / `category` / `description` / `tooltip` 字
 
 ## 命名空间列表
 
-当前 34 个命名空间：`agent`、`agentCommands`、`chat`、`commandPalette`、`commands`、`common`、`composer`、`database`、`editor`、`folderPicker`、`git`、`home`、`issue`、`kanban`、`login`、`mcps`、`models`、`outputStyles`、`projectSettings`、`prompts`、`providers`、`robotAccounts`、`settings`、`sidebar`、`skills`、`task`、`terminal`、`tools`、`workflows`、`workflows-ui`、`workspaces`、`workspace`、`worktree`。
+当前 34 个命名空间：`agent`、`agentCommands`、`chat`、`commandPalette`、`commands`、`common`、`composer`、`database`、`editor`、`folderPicker`、`git`、`home`、`issue`、`kanban`、`login`、`mcps`、`models`、`outputStyles`、`projectSettings`、`prompts`、`providers`、`robotAccounts`、`settings`、`sidebar`、`skills`、`task`、`terminal`、`tools`、`workflows`、`mini-apps`、`workspaces`、`workspace`、`worktree`。
 
 选命名空间的原则：跟功能域对应，不要往 `common` 里塞功能特定的翻译。

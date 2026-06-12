@@ -4,4 +4,4 @@ export { createDatabaseFunctionTools } from './database-tools.js';
 export { createKanbanFunctionTools } from './kanban-tools.js';
 export { createWorkspaceFileFunctionTools } from './workspace-file-tools.js';
 export { createWorkflowExecutionFunctionTools, setWorkflowExecutionManager } from './workflow-exec-tools.js';
-export { createWorkflowUiFunctionTools, type WorkflowUiToolContext } from './workflow-ui-tools.js';
+export { createMiniAppFunctionTools, type MiniAppToolContext } from './mini-app-tools.js';

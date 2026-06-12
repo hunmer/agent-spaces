@@ -1,0 +1,109 @@
+{
+  "page": {
+    "title": "Mini Apps",
+    "subtitle": "Create and manage mini apps — lightweight interactive apps for your workflows.",
+    "store": "Store",
+    "importZip": "Import ZIP",
+    "create": "New",
+    "searchPlaceholder": "Search pages...",
+    "loading": "Loading...",
+    "empty": "No custom pages yet.",
+    "createFirst": "Create your first page",
+    "noMatch": "No pages match your search."
+  },
+  "card": {
+    "edit": "Edit",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "exportZip": "Export ZIP",
+    "share": "Share",
+    "deleteTitle": "Delete Project",
+    "deleteConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+    "cancel": "Cancel",
+    "revealFolder": "Reveal in File Manager"
+  },
+  "create": {
+    "title": "Create Custom Page",
+    "name": "Name",
+    "namePlaceholder": "Page name",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description",
+    "type": "Type",
+    "submit": "Create"
+  },
+  "edit": {
+    "title": "Edit Page",
+    "name": "Name",
+    "description": "Description",
+    "save": "Save"
+  },
+  "store": {
+    "title": "Template Store",
+    "description": "Download Workflow UI templates from the store and import them with one click.",
+    "loading": "Loading...",
+    "empty": "No templates available",
+    "import": "Import"
+  },
+  "editor": {
+    "loadingEditor": "Loading editor...",
+    "notFound": "Project not found",
+    "files": "Files",
+    "fileCount": "{count} files",
+    "modified": "Modified",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "upload": "Upload files to current folder",
+    "pathDialog": {
+      "newFileTitle": "New File",
+      "newFileDesc": "Enter the file name; subdirectory paths are allowed.",
+      "newFilePlaceholder": "e.g. components/Header.jsx",
+      "newFolderTitle": "New Folder",
+      "newFolderDesc": "Enter the folder name; subdirectory paths are allowed.",
+      "newFolderPlaceholder": "e.g. components/widgets",
+      "renameTitle": "Rename",
+      "renameDesc": "Enter the new name.",
+      "renamePlaceholder": "New name",
+      "moveTitle": "Move",
+      "moveDesc": "Enter the target directory path (empty for root).",
+      "movePlaceholder": "Target directory",
+      "copyTitle": "Copy",
+      "copyDesc": "Enter the target directory path (empty for root).",
+      "copyPlaceholder": "Target directory",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    }
+  },
+  "preview": {
+    "autoPreview": "Auto Preview",
+    "refresh": "Refresh",
+    "plugins": "Plugins",
+    "entryExportError": "Entry file must export default a React component",
+    "switchProject": "Switch Page"
+  },
+  "chat": {
+    "assistantPrompt": "Please act as the development assistant for Workflow UI project \"{name}\".",
+    "projectId": "Current project ID: {id}",
+    "currentFile": "Current file: {path}",
+    "noFile": "(No file selected)",
+    "fileContentHint": "The current file content is as follows, please base subsequent answers on this context:",
+    "channelName": "Workflow UI - {name}",
+    "channelTitlePrompt": "Workflow UI {name} {path}",
+    "close": "Close",
+    "openChat": "Open Chat",
+    "closeChat": "Close Chat",
+    "noWorkspace": "Workspace not found, unable to load Agent chat.",
+    "selectAgent": "Please select an Agent above",
+    "preparing": "Preparing chat channel..."
+  },
+  "pluginTools": {
+    "title": "Plugin Manager",
+    "store": "Plugin Store",
+    "noPlugins": "No plugins installed",
+    "tools": "{count} tools"
+  },
+  "toolExecute": {
+    "noParams": "This tool requires no parameters",
+    "reset": "Reset",
+    "execute": "Execute"
+  }
+}

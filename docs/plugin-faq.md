@@ -167,7 +167,7 @@ packages/templates/plugins/tencent_cos/actions.js
 Workflow UI host API：
 
 ```text
-packages/web/src/components/workflows-ui/use-workflow-ui-host-api.ts
+packages/web/src/components/mini-apps/use-mini-app-host-api.ts
 ```
 
 这里负责向 preview 注入：

@@ -35,7 +35,7 @@ DAG 可视化编排 + 执行引擎，平台核心。6 个核心文件：
 | `services/workflow.ts` | 487 | CRUD + DAG 校验 + 角色刷新 + Cron 校验 + 任务映射 |
 | `services/workflow-trigger-service.ts` | 148 | cron / hook 触发器 |
 | `services/workflow-command-runner.ts` | 37 | command 节点（child_process） |
-| `services/workflow-ui.ts` | 327 | UI 项目（react/html）+ ZIP 导入导出 |
+| `services/mini-app.ts` | 327 | UI 项目（react/html）+ ZIP 导入导出 |
 | `storage/workflow-store.ts` | 434 | 目录式持久化（见 [storage.md](storage.md)） |
 
 ### 会话生命周期（ExecutionManager）

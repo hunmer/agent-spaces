@@ -6,11 +6,11 @@ import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import { createIssueFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createKanbanFunctionTools, createWorkflowExecutionFunctionTools, createWorkflowUiFunctionTools } from '../services/builtin-tools/index.js';
+import { createIssueFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createKanbanFunctionTools, createWorkflowExecutionFunctionTools, createMiniAppFunctionTools } from '../services/builtin-tools/index.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
-import * as workflowUiService from '../services/workflow-ui.js';
+import * as miniAppService from '../services/mini-apps.js';
 import type { AgentContext } from '../agents/agent-context.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
@@ -38,7 +38,7 @@ interface PendingQuestionRun {
   question: string;
 }
 
-interface WorkflowUiMessageContext {
+interface MiniAppMessageContext {
   projectId: string;
   activeFilePath?: string;
   projectType?: 'react' | 'html';
@@ -55,7 +55,7 @@ interface RunMentionedAgentOptions {
   contextLength?: number;
   excludeHistoryMessageIds?: string[];
   excludeHistoryReplyIds?: string[];
-  workflowUiContext?: WorkflowUiMessageContext;
+  miniAppContext?: MiniAppMessageContext;
 }
 
 // --- State ---
@@ -234,7 +234,7 @@ export async function runMentionedAgent(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
   const { channel, issue } = resolveIssueChannelContext(workspaceId, channelId);
-  const workflowUiRuntimeContext = resolveWorkflowUiRuntimeContext(options.workflowUiContext);
+  const miniAppRuntimeContext = resolveMiniAppRuntimeContext(options.miniAppContext);
   const functionTools = [
     ...createIssueFunctionTools(workspaceId, channel, {
       senderId: preset.id,
@@ -244,14 +244,14 @@ export async function runMentionedAgent(
     ...createDatabaseFunctionTools(workspaceId, preset.tools),
     ...createKanbanFunctionTools(workspaceId, preset.tools),
     ...createWorkflowExecutionFunctionTools(preset.tools),
-    ...(workflowUiRuntimeContext ? createWorkflowUiFunctionTools({
-      enabledPlugins: workflowUiRuntimeContext.enabledPlugins,
+    ...(miniAppRuntimeContext ? createMiniAppFunctionTools({
+      enabledPlugins: miniAppRuntimeContext.enabledPlugins,
     }) : []),
   ];
-  const workingDir = workflowUiRuntimeContext?.projectDir ?? agentService.resolveWorkingDir(workspaceId, preset);
-  const boundDirs = workflowUiRuntimeContext ? [workflowUiRuntimeContext.projectDir] : workspace?.boundDirs;
-  const sandboxDirs = workflowUiRuntimeContext
-    ? [workflowUiRuntimeContext.projectDir]
+  const workingDir = miniAppRuntimeContext?.projectDir ?? agentService.resolveWorkingDir(workspaceId, preset);
+  const boundDirs = miniAppRuntimeContext ? [miniAppRuntimeContext.projectDir] : workspace?.boundDirs;
+  const sandboxDirs = miniAppRuntimeContext
+    ? [miniAppRuntimeContext.projectDir]
     : preset.sandboxDirs;
   const workspaceRoot = boundDirs?.[0];
   const startTime = Date.now();
@@ -263,10 +263,10 @@ export async function runMentionedAgent(
     workingDir,
     excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
     builtInTools: buildBuiltInTools(functionTools, channel, issue),
-    workflowUiContext: workflowUiRuntimeContext ? {
-      projectId: workflowUiRuntimeContext.projectId,
-      activeFilePath: options.workflowUiContext?.activeFilePath,
-      projectType: workflowUiRuntimeContext.projectType,
+    miniAppContext: miniAppRuntimeContext ? {
+      projectId: miniAppRuntimeContext.projectId,
+      activeFilePath: options.miniAppContext?.activeFilePath,
+      projectType: miniAppRuntimeContext.projectType,
     } : undefined,
   };
   const existingMessage = options.messageId
@@ -711,7 +711,7 @@ export async function runMentionedAgent(
 
 // --- Internal helpers ---
 
-function resolveWorkflowUiRuntimeContext(context: WorkflowUiMessageContext | undefined): {
+function resolveMiniAppRuntimeContext(context: MiniAppMessageContext | undefined): {
   projectId: string;
   projectDir: string;
   projectType?: 'react' | 'html';
@@ -721,8 +721,8 @@ function resolveWorkflowUiRuntimeContext(context: WorkflowUiMessageContext | und
   if (!projectId) return null;
 
   try {
-    const project = workflowUiService.getProject(projectId);
-    const projectDir = join(getDataDir(), 'workflows-ui', project.id);
+    const project = miniAppService.getProject(projectId);
+    const projectDir = join(getDataDir(), 'mini-apps', project.id);
     if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) return null;
     return {
       projectId: project.id,

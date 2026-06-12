@@ -4,7 +4,7 @@ import { stripHtml } from './html-utils.js';
 import * as issueService from '../services/issue.js';
 import { getChannel } from '../services/channel.js';
 import { createIssueFunctionTools } from '../services/builtin-tools/index.js';
-import { WORKFLOW_UI_COMPONENT_CATEGORY_DESCRIPTIONS } from '../services/builtin-tools/workflow-ui-tools.js';
+import { MINI_APP_COMPONENT_CATEGORY_DESCRIPTIONS } from '../services/builtin-tools/mini-app-tools.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 
 export interface BuiltInToolContext {
@@ -15,7 +15,7 @@ export interface BuiltInToolContext {
   issueTitle?: string;
 }
 
-interface WorkflowUiPromptContext {
+interface MiniAppPromptContext {
   projectId: string;
   activeFilePath?: string;
   projectType?: 'react' | 'html';
@@ -34,7 +34,7 @@ export function buildAgentPrompt(
     workingDir?: string;
     excludeNativeClaudeMd?: boolean;
     builtInTools?: BuiltInToolContext[];
-    workflowUiContext?: WorkflowUiPromptContext;
+    miniAppContext?: MiniAppPromptContext;
   },
 ): string {
   const parts: string[] = [];
@@ -57,8 +57,8 @@ export function buildAgentPrompt(
     if (runtimeConfig.builtInTools?.length) {
       configLines.push(...formatBuiltInToolContext(workspaceId, runtimeConfig.builtInTools));
     }
-    if (runtimeConfig.workflowUiContext) {
-      configLines.push(...formatWorkflowUiPromptContext(runtimeConfig.workflowUiContext));
+    if (runtimeConfig.miniAppContext) {
+      configLines.push(...formatMiniAppPromptContext(runtimeConfig.miniAppContext));
     }
     if (isIssueContextLookup(userPrompt)) {
       configLines.push(
@@ -263,9 +263,9 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
   return lines;
 }
 
-function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string[] {
+function formatMiniAppPromptContext(context: MiniAppPromptContext): string[] {
   const projectType = context.projectType ?? 'unknown';
-  const componentCategories = WORKFLOW_UI_COMPONENT_CATEGORY_DESCRIPTIONS
+  const componentCategories = MINI_APP_COMPONENT_CATEGORY_DESCRIPTIONS
     .map((item) => `${item.category} (${item.description})`)
     .join(', ');
   const lines = [

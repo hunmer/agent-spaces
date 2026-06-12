@@ -100,7 +100,7 @@
         "src/modules/chat.ts",
         "src/modules/workflow.ts",
         "src/modules/workflow-plugin.ts",
-        "src/modules/workflow-ui.ts",
+        "src/modules/mini-app.ts",
         "src/modules/git.ts",
         "src/modules/editor.ts",
         "src/modules/database.ts",
@@ -174,7 +174,7 @@
         "src/services/execution-manager.ts",
         "src/services/agent.ts",
         "src/services/workflow.ts",
-        "src/services/workflow-ui.ts",
+        "src/services/mini-app.ts",
         "src/services/workflow-trigger-service.ts",
         "src/services/workflow-command-runner.ts",
         "src/services/plugin.ts",
@@ -209,7 +209,7 @@
         "src/routes/issue.ts",
         "src/routes/task.ts",
         "src/routes/workflow.ts",
-        "src/routes/workflow-ui.ts",
+        "src/routes/mini-app.ts",
         "src/routes/workflow-hook.ts",
         "src/routes/plugin.ts",
         "src/routes/agent.ts",
@@ -309,9 +309,9 @@
         "src/app/workflows/page.tsx",
         "src/app/workflows/[id]/page.tsx",
         "src/app/workflows/share/page.tsx",
-        "src/app/workflows-ui/page.tsx",
-        "src/app/workflows-ui/[id]/page.tsx",
-        "src/app/workflows-ui-preview/[id]/page.tsx",
+        "src/app/mini-apps/page.tsx",
+        "src/app/mini-apps/[id]/page.tsx",
+        "src/app/mini-apps-preview/[id]/page.tsx",
         "src/app/chat/page.tsx",
         "src/app/settings/page.tsx",
         "src/app/settings/layout.tsx",
@@ -405,7 +405,7 @@
         "plugins/index.json",
         "skills/index.json",
         "workflows/index.json",
-        "workflow-ui/index.json",
+        "mini-app/index.json",
         "prompt/index.json",
         "output-styles/index.json"
       ],
@@ -416,7 +416,7 @@
         "skills (15)",
         "plugins (107)",
         "workflows",
-        "workflow-ui (含 minimax_tts 示例)",
+        "mini-app (含 minimax_tts 示例)",
         "prompt",
         "output-styles"
       ],
@@ -424,7 +424,7 @@
         "scanned": true,
         "percentage": 82,
         "gaps": [
-          "prompt / output-styles / workflow-ui 模板内容样本未抽取",
+          "prompt / output-styles / mini-app 模板内容样本未抽取",
           "agents 15 个分类下 184 个 Agent 模板未逐一展开"
         ],
         "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
@@ -495,16 +495,16 @@
     "incrementalFrom": "2026-06-09T11:48:01+08:00",
     "changesSinceLastScan": [
       "新建 packages/dom-inspector-hook/CLAUDE.md（此前缺失）",
-      "templates: 新增 workflow-ui 子目录（minimax_tts 示例 + index.json）",
+      "templates: 新增 mini-app 子目录（minimax_tts 示例 + index.json）",
       "根 CLAUDE.md: 补全 Mermaid click 链接、刷新运行命令、刷新扫描状态",
       "claude/changelog.md: 增量记录本次更新"
     ],
     "nextStepRecommendations": [
-      "packages/server/src/services/workflow-ui.ts + workflow-trigger-service.ts -- Workflow 引擎细节",
+      "packages/server/src/services/mini-app.ts + workflow-trigger-service.ts -- Workflow 引擎细节",
       "packages/server/src/storage/ -- 全部 store 字段抽取（issue/task/workspace/usage/robot-account/worktree）",
       "packages/web/src/stores/workflow-editor/ -- 12 子文件大型 Store 拆解",
       "packages/web/src/locales/ -- 34 i18n 命名空间列名",
-      "packages/templates/{prompt,output-styles,workflow-ui} -- 模板内容样本",
+      "packages/templates/{prompt,output-styles,mini-app} -- 模板内容样本",
       "packages/web/src/components/{layout,common,settings,sidebar} -- 组件目录补全"
     ]
   }

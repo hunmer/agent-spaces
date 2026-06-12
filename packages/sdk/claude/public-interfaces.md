@@ -150,7 +150,7 @@ SDK 的唯一入口。接收 `SDKConfig` 配置，返回 `SDK` 实例。
 | getConfig / saveConfig | 配置 |
 | listSchemes / createScheme / readScheme / saveScheme / deleteScheme | 方案管理 |
 
-### workflow-ui（13 方法）
+### mini-app（13 方法）
 
 | 方法 | 说明 |
 |------|------|

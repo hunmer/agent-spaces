@@ -59,7 +59,7 @@ packages/sdk/
 │       ├── workspace.ts       # 工作空间
 │       ├── workflow.ts        # Workflow
 │       ├── workflow-plugin.ts # Workflow 插件
-│       ├── workflow-ui.ts     # Workflow UI 项目
+│       ├── mini-app.ts     # Workflow UI 项目
 │       └── chat.ts            # Chat Agent
 └── dist/                     # 构建产物（不纳入版本控制）
 ```

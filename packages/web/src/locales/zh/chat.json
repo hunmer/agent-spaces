@@ -36,7 +36,7 @@
     "general": "通用",
     "issue": "议题",
     "agent": "Agent",
-    "workflows-ui": "自定义页面"
+    "mini-apps": "自定义页面"
   },
   "emptyState": "选择一个频道开始对话",
   "status": {

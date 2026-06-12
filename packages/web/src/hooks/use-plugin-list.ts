@@ -12,7 +12,7 @@ export interface PluginWithTools extends WorkflowPlugin {
 
 /**
  * 加载插件列表 + 插件工具 + 开关管理
- * workflow-ui-plugin-tools-dialog 和 workflow-node-sidebar 共用
+ * mini-app-plugin-tools-dialog 和 workflow-node-sidebar 共用
  */
 export function usePluginList({
   projectId,
@@ -77,7 +77,7 @@ export function usePluginList({
     }
     const arr = Array.from(next);
     onEnabledPluginsChange(arr);
-    await sdk.workflowUi.update(projectId, { enabledPlugins: arr });
+    await sdk.miniApp.update(projectId, { enabledPlugins: arr });
   }, [enabledPlugins, plugins, projectId, onEnabledPluginsChange]);
 
   /** 拿到某个插件的 config 字段 */

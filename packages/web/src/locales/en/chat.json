@@ -36,7 +36,7 @@
     "general": "General",
     "issue": "Issue",
     "agent": "Agent",
-    "workflows-ui": "Custom Page"
+    "mini-apps": "Custom Page"
   },
   "emptyState": "Select a channel to start chatting",
   "status": {

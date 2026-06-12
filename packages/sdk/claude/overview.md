@@ -33,7 +33,7 @@ createSDK(config)
         ├── llm             # LLM 模型/供应商管理
         ├── workflow        # Workflow CRUD + 执行
         ├── workflowPlugin  # Workflow 插件
-        ├── workflowUi      # Workflow UI 项目
+        ├── miniApp      # Workflow UI 项目
         ├── kanban          # 看板
         ├── database        # 文档数据库
         ├── worktree        # Git Worktree
@@ -71,7 +71,7 @@ createSDK(config)
   - UI 组件
 - SDK 的类型定义有两个来源：
   - 内部类型（`src/types.ts`）：`SDKConfig`、`ApiError`、`RequestOptions`
-  - 模块内联类型：`PromptTemplate`、`SkillInfo`、`McpServerInfo`、`NpmSettings`、`OutputStyleTemplate`、`RobotAccount`、`ChatAgent`、`ChatMessage`、`ChatWorkspace`、`ChatSession`、`WorkflowUiProject`
+  - 模块内联类型：`PromptTemplate`、`SkillInfo`、`McpServerInfo`、`NpmSettings`、`OutputStyleTemplate`、`RobotAccount`、`ChatAgent`、`ChatMessage`、`ChatWorkspace`、`ChatSession`、`MiniAppProject`
   - 外部共享类型（`@agent-spaces/shared`）：`Workspace`、`AgentConfig`、`Channel`、`Message` 等
 
 ## 运行时形态

@@ -333,8 +333,8 @@ function scanWorkflowStore() {
 }
 scanWorkflowStore();
 
-function scanWorkflowUiStore() {
-  const dir = join(agentsDir, 'workflow-ui');
+function scanMiniAppStore() {
+  const dir = join(agentsDir, 'mini-app');
   if (!existsSync(dir)) return;
   const indexPath = join(dir, 'index.json');
   const existing = loadExistingIndex(indexPath);
@@ -352,13 +352,13 @@ function scanWorkflowUiStore() {
         name = manifest.name || name;
         icon = manifest.icon;
         if (manifest.icon && existsSync(join(templateDir, manifest.icon))) {
-          iconUrl = `workflow-ui/${entry.name}/${manifest.icon}`;
+          iconUrl = `mini-app/${entry.name}/${manifest.icon}`;
         }
       } catch { /* ignore */ }
     }
     // Fallback: use avatar.png if no iconUrl yet
     if (!iconUrl && existsSync(join(templateDir, 'avatar.png'))) {
-      iconUrl = `workflow-ui/${entry.name}/avatar.png`;
+      iconUrl = `mini-app/${entry.name}/avatar.png`;
     }
     // Collect relative file paths instead of generating zip
     const files = [];
@@ -382,6 +382,6 @@ function scanWorkflowUiStore() {
     index.push({ id: entry.name, name, icon, iconUrl, files, md5, updatedAt });
   }
   writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
-  console.log(`[workflow-ui] ${index.length} templates`);
+  console.log(`[mini-app] ${index.length} templates`);
 }
-scanWorkflowUiStore();
+scanMiniAppStore();

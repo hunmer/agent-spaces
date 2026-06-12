@@ -42,7 +42,7 @@ createSDK(config)
         ├── workspace       agent            channel
         ├── issue           task             git
         ├── editor          llm              workflow
-        ├── workflowPlugin  workflowUi       kanban
+        ├── workflowPlugin  miniApp       kanban
         ├── database        worktree         hooks
         ├── command         subscription     notification
         ├── speech          codeFavorites    prompts

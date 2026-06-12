@@ -10,12 +10,12 @@ import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
 import * as agentService from '../services/agent.js';
 import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureScheduler, makeContext } from './agent-runner.js';
 import { stripHtml, extractMentionIds } from './html-utils.js';
-import { listTasks } from '../services/workflow-ui-tasks.js';
-import { listConfigs } from '../services/workflow-ui.js';
+import { listTasks } from '../services/mini-app-tasks.js';
+import { listConfigs } from '../services/mini-apps.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
-interface WorkflowUiMessageContext {
+interface MiniAppMessageContext {
   projectId: string;
   activeFilePath?: string;
   projectType?: 'react' | 'html';
@@ -76,7 +76,7 @@ for (const evt of terminalEvents) {
 
 // Register channel handlers
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength, workflowUiContext } = data as {
+  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength, miniAppContext } = data as {
     channelId: string;
     content: string;
     type?: string;
@@ -84,7 +84,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     attachments?: Message['attachments'];
     replyToMessageId?: string;
     contextLength?: number;
-    workflowUiContext?: WorkflowUiMessageContext;
+    miniAppContext?: MiniAppMessageContext;
   };
   const normalizedContextLength = normalizeContextLength(contextLength);
   if (!channelId || (!content && !attachments?.length)) return;
@@ -108,7 +108,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
         resumeSessionId: normalizedContextLength > 0 ? updated.metadata?.runtimeSessionId : undefined,
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
         contextLength: normalizedContextLength,
-        workflowUiContext,
+        miniAppContext,
       });
     }
     return;
@@ -134,7 +134,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
       excludeHistoryMessageIds: [message.id],
       contextLength: normalizedContextLength,
-      workflowUiContext,
+      miniAppContext,
     });
   }
 });
@@ -185,10 +185,10 @@ onClientConnected((clientId) => {
   const conn = getConnectionByClientId(clientId);
   if (!conn) return;
   const tasks = listTasks(conn.workspaceId);
-  sendToClient(clientId, { event: 'workflowUi.taskSnapshot', data: { tasks } });
+  sendToClient(clientId, { event: 'miniApp.taskSnapshot', data: { tasks } });
   // 配置全量快照：UI 据此建立内存缓存，不再直接 readConfig
   const configs = listConfigs(conn.workspaceId);
-  sendToClient(clientId, { event: 'workflowUi.configSnapshot', data: { configs } });
+  sendToClient(clientId, { event: 'miniApp.configSnapshot', data: { configs } });
 });
 
 export { broadcastToWorkspace } from './connection-manager.js';

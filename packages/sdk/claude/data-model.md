@@ -195,10 +195,10 @@ interface ChatSession {
 }
 ```
 
-### WorkflowUiProject（`modules/workflow-ui.ts`）
+### MiniAppProject（`modules/mini-app.ts`）
 
 ```typescript
-interface WorkflowUiProject {
+interface MiniAppProject {
   id: string;
   name: string;
   description?: string;

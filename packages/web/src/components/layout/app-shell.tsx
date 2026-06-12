@@ -7,7 +7,7 @@ import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { isLoginPath, isWorkflowSharePath, isWorkflowUiPreviewPath } from "@/lib/routes";
+import { isLoginPath, isWorkflowSharePath, isMiniAppPreviewPath } from "@/lib/routes";
 import { sdk } from "@/lib/sdk";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (isWorkflowSharePath(pathname) || isWorkflowUiPreviewPath(pathname)) {
+  if (isWorkflowSharePath(pathname) || isMiniAppPreviewPath(pathname)) {
     return <>{children}</>;
   }
 

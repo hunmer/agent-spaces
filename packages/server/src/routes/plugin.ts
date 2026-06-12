@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import * as pluginService from '../services/plugin.js';
 import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
-import { startTask, finishTask, failTask } from '../services/workflow-ui-tasks.js';
+import { startTask, finishTask, failTask } from '../services/mini-app-tasks.js';
 
 const router = Router();
 
@@ -139,7 +139,7 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
         executorId: typeof executorId === 'string' ? executorId : 'unknown',
         meta: meta && typeof meta === 'object' ? meta : undefined,
       });
-      broadcastToWorkspace(workspaceId, 'workflowUi.taskStarted', {
+      broadcastToWorkspace(workspaceId, 'miniApp.taskStarted', {
         taskId: effectiveTaskId,
         executorId: typeof executorId === 'string' ? executorId : 'unknown',
         pluginId,
@@ -152,7 +152,7 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
       const result = await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
       if (track) {
         finishTask(workspaceId, effectiveTaskId!, result);
-        broadcastToWorkspace(workspaceId, 'workflowUi.taskFinished', {
+        broadcastToWorkspace(workspaceId, 'miniApp.taskFinished', {
           taskId: effectiveTaskId,
           executorId: typeof executorId === 'string' ? executorId : 'unknown',
           pluginId,
@@ -165,7 +165,7 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
     } catch (error: any) {
       if (track) {
         failTask(workspaceId, effectiveTaskId!, error?.message || String(error));
-        broadcastToWorkspace(workspaceId, 'workflowUi.taskFailed', {
+        broadcastToWorkspace(workspaceId, 'miniApp.taskFailed', {
           taskId: effectiveTaskId,
           executorId: typeof executorId === 'string' ? executorId : 'unknown',
           pluginId,

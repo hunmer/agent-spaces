@@ -7,8 +7,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   const openPaths = ['/api/health', '/api/auth/login', '/api/auth/check', '/api/version', '/api/version/check'];
   if (openPaths.includes(req.path)) return next();
 
-  // Allow public access to workflow-ui avatar images
-  if (/^\/api\/workflows-ui\/[^/]+\/avatar$/.test(req.path)) return next();
+  // Allow public access to mini-app avatar images
+  if (/^\/api\/mini-apps\/[^/]+\/avatar$/.test(req.path)) return next();
 
   const auth = req.headers.authorization;
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : '';

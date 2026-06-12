@@ -3,7 +3,7 @@ import type { Channel, Message } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 import { sdk } from '@/lib/sdk';
 
-export interface WorkflowUiMessageContext {
+export interface MiniAppMessageContext {
   projectId: string;
   activeFilePath?: string;
   projectType?: 'react' | 'html';
@@ -26,7 +26,7 @@ interface ChannelStore {
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   loadChannelState: (workspaceId: string, channelId: string) => Promise<ChannelState | null>;
-  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number, workflowUiContext?: WorkflowUiMessageContext) => void;
+  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number, miniAppContext?: MiniAppMessageContext) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
   stopProcessingMessages: (channelId: string) => void;
@@ -65,7 +65,7 @@ function getStoredActiveId(workspaceId: string, channels: Channel[]): string | n
 function isChannel(channel: Partial<Channel> & Pick<Channel, 'id'>): channel is Channel {
   return typeof channel.workspaceId === 'string'
     && typeof channel.name === 'string'
-    && (channel.type === 'general' || channel.type === 'issue' || channel.type === 'agent' || channel.type === 'workflows-ui')
+    && (channel.type === 'general' || channel.type === 'issue' || channel.type === 'agent' || channel.type === 'mini-apps')
     && Array.isArray(channel.members)
     && typeof channel.createdAt === 'string';
 }
@@ -137,9 +137,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     }
   },
 
-  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength, workflowUiContext) => {
+  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength, miniAppContext) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength, workflowUiContext });
+    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength, miniAppContext });
   },
 
   addMessage: (channelId, message) => {

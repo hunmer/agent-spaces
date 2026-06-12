@@ -70,7 +70,7 @@ graph TD
 | server | `packages/server` | TypeScript | 170+ | Express 5 后端 + WebSocket + 6 运行时 Agent 编排 + Workflow 引擎 |
 | web | `packages/web` | TSX/TypeScript | 250+ | Next.js 16 前端 SPA（34 Store + 20 页面 + 30+ lib） |
 | flutter | `packages/flutter` | Dart | 46 | Flutter 多平台壳应用（WebView + SSH 终端 + 多协议文件源） |
-| templates | `packages/templates` | JSON/Markdown | 324+ | 模板库（Agent / Chat / MCP / Skill / Plugin / Workflow / Workflow-UI / Prompt / OutputStyle） |
+| templates | `packages/templates` | JSON/Markdown | 324+ | 模板库（Agent / Chat / MCP / Skill / Plugin / Workflow / mini-apps / Prompt / OutputStyle） |
 | dom-inspector-hook | `packages/dom-inspector-hook` | TypeScript | 2 | 浏览器端 DOM 源码定位 Hook（HTTP 上报 / IDE 跳转） |
 
 ## 运行与开发
@@ -89,7 +89,7 @@ pnpm publish          # 构建 shared/server 并发布到 npm
 ## AI 使用指引
 
 - `packages/web/AGENTS.md`、`packages/web/DESIGN.md` —— Next.js 16 注意事项、UI 设计规范（MiniMax 风格）
-- `docs/` —— 40+ 项目文档，涵盖 Agent 运行时、Workflow、通知中心、Hook、LSP、Chat、Worktree、Workflow-UI 等
+- `docs/` —— 40+ 项目文档，涵盖 Agent 运行时、Workflow、通知中心、Hook、LSP、Chat、Worktree、mini-apps 等
 - `docs/superpowers/{plans,specs}/` —— 按日期归档的功能设计与实施计划
 - `PRD.md` —— 需求文档
 - `codegraph` MCP —— 基于 AST 的代码知识图谱，做结构性查询（定义/调用/影响面）时优先使用
@@ -103,4 +103,4 @@ pnpm publish          # 构建 shared/server 并发布到 npm
 - **跳过范围**：node_modules、dist、.next、构建产物、二进制文件、.agent-spaces-data
 - **覆盖率**：约 88%
 - **本次新增**：补建 `packages/dom-inspector-hook/CLAUDE.md`（此前缺失）
-- **主要缺口**：server 部分 service 子模块细节、web `components/` 个别子目录、flutter 单元测试（项目无测试）、templates 中 prompt/output-styles/workflow-ui 内容样本
+- **主要缺口**：server 部分 service 子模块细节、web `components/` 个别子目录、flutter 单元测试（项目无测试）、templates 中 prompt/output-styles/mini-app 内容样本

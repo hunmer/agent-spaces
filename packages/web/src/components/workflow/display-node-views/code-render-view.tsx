@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { Code2 } from 'lucide-react';
-import { WorkflowUiRenderer, type WorkflowUiRenderType } from '@/components/workflows-ui/workflow-ui-renderer';
+import { MiniAppRenderer, type MiniAppRenderType } from '@/components/mini-apps/mini-app-renderer';
 import { type DisplayNodeViewProps, EmptyDisplay, readString } from './utils';
 
 export function CodeRenderView({ data }: DisplayNodeViewProps) {
   const [error, setError] = useState<string | null>(null);
-  const renderType: WorkflowUiRenderType = readString(data.renderType) === 'html' ? 'html' : 'react';
+  const renderType: MiniAppRenderType = readString(data.renderType) === 'html' ? 'html' : 'react';
   const code = readString(data.code);
 
   if (!code.trim()) {
@@ -21,7 +21,7 @@ export function CodeRenderView({ data }: DisplayNodeViewProps) {
           {error}
         </div>
       ) : null}
-      <WorkflowUiRenderer
+      <MiniAppRenderer
         type={renderType}
         sourceCode={code}
         onError={setError}

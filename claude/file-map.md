@@ -29,7 +29,7 @@ packages/server/src/
   middleware/auth.ts         # 认证中间件
   routes/                   # 37 个路由文件
     auth.ts, workspace.ts, channel.ts, issue.ts, task.ts, agent.ts,
-    agent-sse.ts, workflow.ts, workflow-ui.ts, workflow-hook.ts,
+    agent-sse.ts, workflow.ts, mini-app.ts, workflow-hook.ts,
     command.ts, git.ts, llm.ts, search.ts, database.ts, kanban.ts,
     worktree.ts, plugin.ts, chat.ts, chat-run.ts, import.ts, data.ts,
     file.ts, folder.ts, code-favorites.ts, prompt-template.ts, hooks.ts,
@@ -70,7 +70,7 @@ packages/server/src/
 packages/web/src/
   app/                      # Next.js 页面
     login/, settings/, workflows/, chat/, workspace/[id]/, workspaces/,
-    workflows-ui/, workflows-ui-preview/
+    mini-apps/, mini-apps-preview/
   components/               # React 组件
     chat/ (30+ 文件)        # 聊天组件
     sidebar/ (50+ 文件)     # 侧边栏组件
@@ -83,7 +83,7 @@ packages/web/src/
     issue/ (10+ 文件)       # 议题管理
     terminal/ (5+ 文件)     # 终端
     composer/ (6 文件)      # Composer 编辑器
-    workflows-ui/ (8+ 文件) # Workflow UI 编辑器
+    mini-apps/ (8+ 文件) # Workflow UI 编辑器
     forgeui/, common/, ui/  # UI 基础组件
   stores/                   # 34 个 Zustand Store
   lib/                      # 工具库（30+ 文件）
@@ -117,7 +117,7 @@ packages/templates/
   workflows/                   # Workflow 模板
   prompt/                      # Prompt 模板
   output-styles/               # OutputStyle 模板
-  workflow-ui/                  # Workflow UI 模板
+  mini-app/                  # Workflow UI 模板
 ```
 
 ## 文档目录

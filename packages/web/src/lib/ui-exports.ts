@@ -74,6 +74,6 @@ export { MediaGallery, openMediaGallery, NodeMediaPreview } from '@/components/u
 export type { MediaItem } from '@/components/ui/media-gallery';
 export * from 'lucide-react';
 
-// Workflow-UI 内置路由能力
-export { Router, useRouter, Link, serializeRoute, parseRoute } from '@/components/workflows-ui/workflow-ui-router';
-export type { RouteState, RouterApi } from '@/components/workflows-ui/workflow-ui-router';
+// mini-apps 内置路由能力
+export { Router, useRouter, Link, serializeRoute, parseRoute } from '@/components/mini-apps/mini-app-router';
+export type { RouteState, RouterApi } from '@/components/mini-apps/mini-app-router';

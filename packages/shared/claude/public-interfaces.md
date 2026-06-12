@@ -50,7 +50,7 @@
 
 | 导出 | 类型 | 说明 |
 |------|------|------|
-| `Channel` | interface | 频道（4 种类型：general/issue/agent/workflows-ui，含 Todo、草稿、归档） |
+| `Channel` | interface | 频道（4 种类型：general/issue/agent/mini-apps，含 Todo、草稿、归档） |
 | `Message` | interface | 消息（5 种类型，含 Parts/附件/回复/代码引用/metadata） |
 | `MessagePart` | type | 11 种结构化消息类型（text/user_message/reasoning/chain/terminal/error/confirmation/context/subagent/ask_user_question） |
 | `MessageChain` | interface | chain 容器内单条链（工具步骤/消息） |

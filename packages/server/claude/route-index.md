@@ -13,7 +13,7 @@
 | agent-sse.ts | /api/agent-sse | Agent SSE 流式调用 |
 | agent-commands.ts | /api/workspaces/:id/agent-commands | Agent 命令管理 |
 | workflow.ts | /api/workflows | Workflow 模板 CRUD |
-| workflow-ui.ts | /api/workflows-ui | Workflow UI CRUD |
+| mini-app.ts | /api/mini-apps | Workflow UI CRUD |
 | workflow-hook.ts | /api/workflow-hook | Workflow Webhook Hook（SSE） |
 | command.ts | /api/workspaces/:id/commands | 快捷命令 CRUD + run/stop |
 | git.ts | /api/workspaces/:id/git | Git 操作 |

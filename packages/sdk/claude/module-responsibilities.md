@@ -76,7 +76,7 @@ SDK 由 39 个 API 模块适配器组成，按业务域划分。以下是各模�
 - 插件配置读写
 - 插件方案管理（列表/创建/读取/保存/删除）
 
-### workflow-ui（Workflow UI 项目）
+### mini-app（Workflow UI 项目）
 - 项目 CRUD
 - 文件树与文件内容读写
 - 配置文件读写

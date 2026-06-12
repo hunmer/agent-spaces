@@ -13,7 +13,7 @@
 | `components/git/` | 20+ | Git 面板（状态/Diff/提交/远程/高级操作） |
 | `components/issue/` | 10+ | 议题管理（详情/评论/任务面板） |
 | `components/database/` | 15+ | 文档数据库（树形导航/双编辑器/搜索） |
-| `components/workflows-ui/` | 8+ | Workflow UI 编辑器 |
+| `components/mini-apps/` | 8+ | Workflow UI 编辑器 |
 | `components/terminal/` | 5+ | 终端（多 tab/虚拟键盘/命令侧边栏） |
 | `components/kanban/` | 6 | Kanban 看板 |
 | `components/worktree/` | 3 | Worktree 面板 |
@@ -36,6 +36,6 @@
 | `app/workspaces/` | 工作空间列表 |
 | `app/workspace/[id]/` | 工作空间 IDE 页 |
 | `app/workflows/` | Workflow 管理 + 编辑器 |
-| `app/workflows-ui/` | Workflow UI 管理 + 编辑器 |
+| `app/mini-apps/` | Workflow UI 管理 + 编辑器 |
 | `app/chat/` | Chat 独立对话页 |
 | `app/settings/` | 设置页（agents/skills/mcps/models/providers/prompts/output-styles/tools） |

@@ -30,7 +30,7 @@ const typeBadgeConfig: Record<Channel['type'], { className: string; icon: typeof
   general: { className: 'bg-muted text-muted-foreground', icon: Hash },
   issue: { className: 'bg-amber-500/15 text-amber-600', icon: AlertCircle },
   agent: { className: 'bg-blue-500/15 text-blue-600', icon: MessageCircle },
-  'workflows-ui': { className: 'bg-purple-500/15 text-purple-600', icon: MessageCircle },
+  'mini-apps': { className: 'bg-purple-500/15 text-purple-600', icon: MessageCircle },
 };
 
 const statusBadgeConfig: Record<string, { className: string; label: string }> = {
@@ -68,8 +68,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const agents = useAgentStore(s => s.agents);
   const ensureAgents = useAgentStore(s => s.ensure);
 
-  const activeChannels = useMemo(() => channels.filter(c => !c.archived && c.type !== 'workflows-ui'), [channels]);
-  const archivedChannels = useMemo(() => channels.filter(c => c.archived && c.type !== 'workflows-ui'), [channels]);
+  const activeChannels = useMemo(() => channels.filter(c => !c.archived && c.type !== 'mini-apps'), [channels]);
+  const archivedChannels = useMemo(() => channels.filter(c => c.archived && c.type !== 'mini-apps'), [channels]);
 
   useEffect(() => {
     setInitialLoading(true);

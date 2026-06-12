@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { WorkflowUiRenderer, type WorkflowUiRenderType } from '@/components/workflows-ui/workflow-ui-renderer';
+import { MiniAppRenderer, type MiniAppRenderType } from '@/components/mini-apps/mini-app-renderer';
 import { cn } from '@/lib/utils';
 import type { WorkflowCustomViewProps } from './workflow-node-types';
 
 export type PluginWorkflowCustomViewDefinition = {
-  type?: WorkflowUiRenderType;
+  type?: MiniAppRenderType;
   sourceCode?: string;
   html?: string;
   react?: string;
@@ -26,7 +26,7 @@ export function isPluginWorkflowCustomViewDefinition(input: unknown): input is P
 
 export function PluginWorkflowCustomView({ nodeId, data, view }: PluginWorkflowCustomViewProps) {
   const [error, setError] = useState<string | null>(null);
-  const type: WorkflowUiRenderType = view.type === 'html' ? 'html' : 'react';
+  const type: MiniAppRenderType = view.type === 'html' ? 'html' : 'react';
   const sourceCode = type === 'html'
     ? (view.sourceCode || view.html || '')
     : (view.sourceCode || view.react || '');
@@ -39,7 +39,7 @@ export function PluginWorkflowCustomView({ nodeId, data, view }: PluginWorkflowC
           {error}
         </div>
       ) : null}
-      <WorkflowUiRenderer
+      <MiniAppRenderer
         type={type}
         sourceCode={sourceCode}
         onError={setError}

@@ -4,19 +4,19 @@
 
 `agent_run` 是 workflow 内置节点类型（定义于 `packages/web/src/lib/workflow-nodes/definitions/ai.ts`），执行逻辑在 `packages/server/src/services/execution-manager.ts:773`。
 
-`list_plugin_tools`（`packages/server/src/services/builtin-tools/workflow-ui-tools.ts:309`）只扫描外部插件目录（`~/.agent-spaces-data/plugins/`），`agent_run` 无法被发现。
+`list_plugin_tools`（`packages/server/src/services/builtin-tools/mini-app-tools.ts:309`）只扫描外部插件目录（`~/.agent-spaces-data/plugins/`），`agent_run` 无法被发现。
 
-需要：让 workflow-ui agent 通过 `list_plugin_tools` 发现 `agent_run`，并能通过 `execute_plugin_tool` 执行。
+需要：让 mini-app agent 通过 `list_plugin_tools` 发现 `agent_run`，并能通过 `execute_plugin_tool` 执行。
 
 ## 修改文件
 
-**唯一修改文件**: `packages/server/src/services/builtin-tools/workflow-ui-tools.ts`
+**唯一修改文件**: `packages/server/src/services/builtin-tools/mini-app-tools.ts`
 
 ## 实现方案
 
 ### 1. 定义内置插件常量和工具列表
 
-在文件顶部（`createWorkflowUiFunctionTools` 之前）添加：
+在文件顶部（`createMiniAppFunctionTools` 之前）添加：
 
 ```ts
 const BUILTIN_PLUGIN_ID = '@agent-spaces/builtin';
@@ -139,7 +139,7 @@ if (pluginId === BUILTIN_PLUGIN_ID) {
 ## 验证
 
 1. `pnpm dev` 启动
-2. 在 workflow-ui 项目中触发 agent chat
+2. 在 mini-app 项目中触发 agent chat
 3. 让 agent 调用 `list_plugin_tools`，确认返回包含 `{ pluginId: '@agent-spaces/builtin', toolName: 'agent_run' }`
 4. 调用 `get_plugin_tool_detail`（`pluginId=@agent-spaces/builtin, toolName=agent_run`）确认 schema
 5. 调用 `execute_plugin_tool` 执行一个简单 prompt，确认返回结果

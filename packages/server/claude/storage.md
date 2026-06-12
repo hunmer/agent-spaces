@@ -41,7 +41,7 @@
 |-----------|------|-----------|
 | `json-store.ts` | 基础工具 | 无状态 |
 | `workflow-store.ts` | Workflow DAG + 版本 + 日志 + 触发器配置 | 目录式（见上） |
-| `workflow-ui-store.ts` | Workflow UI 项目（react/html 文件树） | 项目目录 + 文件 |
+| `mini-app-store.ts` | Workflow UI 项目（react/html 文件树） | 项目目录 + 文件 |
 | `agent-store.ts` | Agent preset + 配置目录 | JSON + 文件 |
 | `workspace-store.ts` | 工作空间 + boundDirs | JSON |
 | `issue-store.ts` | Issue 列表 + 状态 | JSON |

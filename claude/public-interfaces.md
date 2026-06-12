@@ -64,8 +64,8 @@
 | `/workspace/[id]` | 工作空间 IDE 页 |
 | `/chat` | Chat 独立对话页 |
 | `/settings/*` | 设置页（agents/skills/mcps/models/providers/prompts/output-styles/tools） |
-| `/workflows-ui` | Workflow UI 模板管理 |
-| `/workflows-ui/[id]` | Workflow UI 编辑器 |
+| `/mini-apps` | Workflow UI 模板管理 |
+| `/mini-apps/[id]` | Workflow UI 编辑器 |
 
 ## SDK（packages/sdk）
 

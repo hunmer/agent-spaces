@@ -47,7 +47,7 @@ import importRouter from './routes/import.js';
 import dataRouter from './routes/data.js';
 import chatRouter from './routes/chat.js';
 import chatRunRouter from './routes/chat-run.js';
-import workflowUiRouter from './routes/workflow-ui.js';
+import miniAppRouter from './routes/mini-apps.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { getDataDir } from './storage/json-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
@@ -239,7 +239,7 @@ app.use('/api/workspaces/:id/files', fileRouter);
 app.use('/api/workspaces/:id/channels', channelRouter);
 app.use('/api/workspaces/:id/issues', issueRouter);
 app.use('/api/workflows', workflowRouter);
-app.use('/api/workflows-ui', workflowUiRouter);
+app.use('/api/mini-apps', miniAppRouter);
 app.use('/api/plugins', pluginRouter);
 
 // Initialize workflow execution infrastructure

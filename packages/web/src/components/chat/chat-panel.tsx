@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
-import type { WorkflowUiMessageContext } from '@/stores/channel';
+import type { MiniAppMessageContext } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
@@ -33,7 +33,7 @@ const channelTypeStatus: Record<Channel['type'], { status: 'online' | 'offline' 
   general: { status: 'online' },
   issue: { status: 'degraded' },
   agent: { status: 'maintenance' },
-  'workflows-ui': { status: 'online' },
+  'mini-apps': { status: 'online' },
 };
 
 const MAX_VISIBLE = 4;
@@ -91,11 +91,11 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
 interface ChatPanelProps {
   workspaceId: string;
   channelId?: string;
-  workflowUiContext?: WorkflowUiMessageContext;
+  miniAppContext?: MiniAppMessageContext;
   onAgentActivated?: (agent: MentionedAgent) => void;
 }
 
-export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentActivated }: ChatPanelProps) {
+export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActivated }: ChatPanelProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
   const { activeChannelId, channels, messages, loadMessages, loadChannelState, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages, upsertChannel } = useChannelStore();
@@ -113,7 +113,7 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentAc
 
   const currentChannelId = channelId ?? activeChannelId;
   const isExternalChannelId = channelId && !channels.some((c) => c.id === channelId);
-  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: (isExternalChannelId ? 'workflows-ui' : 'agent') as Channel['type'], members: [], issueId: undefined, workspaceId: '', createdAt: '' } as Channel;
+  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: (isExternalChannelId ? 'mini-apps' : 'agent') as Channel['type'], members: [], issueId: undefined, workspaceId: '', createdAt: '' } as Channel;
   const msgs = useMemo(
     () => currentChannelId ? (messages[currentChannelId] || []) : [],
     [currentChannelId, messages],
@@ -215,8 +215,8 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentAc
 
   const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number) => {
     if (!currentChannelId) return;
-    sendMessage(workspaceId, currentChannelId, content, mentions, attachments, replyToMessageId, contextLength, workflowUiContext);
-  }, [workspaceId, currentChannelId, sendMessage, workflowUiContext]);
+    sendMessage(workspaceId, currentChannelId, content, mentions, attachments, replyToMessageId, contextLength, miniAppContext);
+  }, [workspaceId, currentChannelId, sendMessage, miniAppContext]);
 
   const isProcessing = channelActive || (msgs.length > 0
     && ['pending', 'streaming', 'waiting_for_user'].includes(msgs[msgs.length - 1].status ?? ''));

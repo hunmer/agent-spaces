@@ -92,7 +92,7 @@ export interface TaskOutputPayload {
   data: string;
 }
 
-export interface WorkflowUiMessageContext {
+export interface MiniAppMessageContext {
   projectId: string;
   activeFilePath?: string;
   projectType?: 'react' | 'html';
@@ -107,7 +107,7 @@ export type ClientEventMap = {
   'terminal.input': TerminalInputPayload;
   'terminal.resize': TerminalResizePayload;
   'terminal.close': TerminalClosePayload;
-  'channel.message': { channelId: string; content: string; type?: string; mentions?: string[]; attachments?: import('./channel.js').Attachment[]; replyToMessageId?: string; contextLength?: number; workflowUiContext?: WorkflowUiMessageContext };
+  'channel.message': { channelId: string; content: string; type?: string; mentions?: string[]; attachments?: import('./channel.js').Attachment[]; replyToMessageId?: string; contextLength?: number; miniAppContext?: MiniAppMessageContext };
   'channel.stop': { channelId: string };
   'channel.answer_question': { channelId: string; messageId: string; questionId: string; answer: string };
   'agent.start': { workspaceId: string; role: string; issueId?: string };
@@ -123,15 +123,15 @@ export type ClientEventMap = {
 
 // ---- Workflow UI Task Events ----
 
-export type WorkflowUiTaskStatus = 'running' | 'completed' | 'failed';
+export type MiniAppTaskStatus = 'running' | 'completed' | 'failed';
 
-export interface WorkflowUiTask {
+export interface MiniAppTask {
   taskId: string;
   projectId: string;
   pluginId: string;
   toolName: string;
   executorId: string;
-  status: WorkflowUiTaskStatus;
+  status: MiniAppTaskStatus;
   startedAt: number;
   finishedAt?: number;
   result?: unknown;
@@ -140,7 +140,7 @@ export interface WorkflowUiTask {
   meta?: Record<string, unknown>;
 }
 
-export interface WorkflowUiTaskEvent {
+export interface MiniAppTaskEvent {
   taskId: string;
   executorId: string;
   pluginId: string;
@@ -199,12 +199,12 @@ export type ServerEventMap = {
   'workflow:get-execution-recovery:error': { error: string };
   'workflow:interaction': InteractionRequest;
   'interaction:ui_required': unknown;
-  'workflowUi.taskSnapshot': { tasks: WorkflowUiTask[] };
-  'workflowUi.taskStarted': WorkflowUiTaskEvent;
-  'workflowUi.taskFinished': WorkflowUiTaskEvent & { result?: unknown };
-  'workflowUi.taskFailed': WorkflowUiTaskEvent & { error: string };
-  'workflowUi.configSnapshot': { configs: Record<string, unknown> };
-  'workflowUi.configChanged': { path: string; value: unknown };
+  'miniApp.taskSnapshot': { tasks: MiniAppTask[] };
+  'miniApp.taskStarted': MiniAppTaskEvent;
+  'miniApp.taskFinished': MiniAppTaskEvent & { result?: unknown };
+  'miniApp.taskFailed': MiniAppTaskEvent & { error: string };
+  'miniApp.configSnapshot': { configs: Record<string, unknown> };
+  'miniApp.configChanged': { path: string; value: unknown };
 };
 
 export type ClientEventName = keyof ClientEventMap;

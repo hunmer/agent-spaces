@@ -31,7 +31,7 @@
 ### channel.ts
 - `MessagePart` 新增 `user_message` 类型（含 senderName）
 - `MessagePart` 新增 `error` 类型（含 title, message）
-- `Channel.type` 新增 `'workflows-ui'` 类型
+- `Channel.type` 新增 `'mini-apps'` 类型
 - `Message` 新增 `replies` 字段（`MessageReply[]`）
 - `Message` 新增 `codeRef` 字段
 - 新增 `MessageReply` 接口
@@ -47,7 +47,7 @@
   - 新增 `workflow:execute`、`workflow:pause`、`workflow:resume`、`workflow:stop`
   - 新增 `workflow:debug-node`、`workflow:get-execution-recovery`、`workflow:interaction`
 - `ServerEventMap` 大幅扩展，新增大量 workflow/command/notification/worktree 事件
-- 新增 WorkflowUiMessageContext 接口
+- 新增 MiniAppMessageContext 接口
 - 新增 Terminal 相关 payload 类型
 
 ### git.ts

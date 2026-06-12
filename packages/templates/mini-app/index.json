@@ -1,0 +1,15 @@
+[
+  {
+    "id": "minimax_tts",
+    "name": "minimax tts",
+    "icon": "🫨",
+    "iconUrl": "mini-app/minimax_tts/avatar.png",
+    "files": [
+      "avatar.png",
+      "manifest.json",
+      "src/index.jsx"
+    ],
+    "md5": "d55cf273d7162391b735ab9ab3942b72",
+    "updatedAt": "2026-06-09T01:14:48.324Z"
+  }
+]
