@@ -1,3 +1,4 @@
+import { Router, useRouter, Link } from "@agent-spaces/ui";
 import ButtonDemo from "./components/ButtonDemo";
 import CardDemo from "./components/CardDemo";
 import FormDemo from "./components/FormDemo";
@@ -31,6 +32,8 @@ const tabItems = [
   { value: "media", label: "🎬 媒体", icon: " MEDIA", component: MediaDemo },
 ];
 
+const validValues = new Set(tabItems.map((t) => t.value));
+
 const headerStyle = {
   display: "flex",
   alignItems: "center",
@@ -50,6 +53,11 @@ const titleStyle = {
 };
 
 function App() {
+  const { path, push } = useRouter();
+  // path[0] 作为当前分类；非法或缺失时回退 buttons
+  const routeValue = path[0] && validValues.has(path[0]) ? path[0] : "buttons";
+  const active = tabItems.find((t) => t.value === routeValue);
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "hsl(var(--background))" }}>
       {/* 顶部标题栏 */}
@@ -61,8 +69,8 @@ function App() {
         <Badge variant="secondary">237 组件</Badge>
       </div>
 
-      {/* 选项卡导航 + 内容区 */}
-      <Tabs defaultValue="buttons" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* 选项卡导航 + 内容区：Tabs 的 value 由路由驱动 */}
+      <Tabs value={routeValue} onValueChange={(v) => push(v)} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "0 24px", borderBottom: "1px solid hsl(var(--border))" }}>
           <TabsList style={{ flexWrap: "wrap", gap: 4 }}>
             {tabItems.map((tab) => (
@@ -73,18 +81,23 @@ function App() {
           </TabsList>
         </div>
 
-        {tabItems.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value} style={{ flex: 1, overflow: "hidden" }}>
-            <ScrollArea style={{ height: "100%" }}>
-              <div style={{ padding: "20px 24px", maxWidth: 960 }}>
-                <tab.component />
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        ))}
+        {/* 只渲染当前分类，避免预渲染全部内容 */}
+        <TabsContent key={routeValue} value={routeValue} style={{ flex: 1, overflow: "hidden" }}>
+          <ScrollArea style={{ height: "100%" }}>
+            <div style={{ padding: "20px 24px", maxWidth: 960 }}>
+              {active ? <active.component /> : null}
+            </div>
+          </ScrollArea>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-export default App;
+export default function Root() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
