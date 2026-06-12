@@ -1,0 +1,19 @@
+{
+  "id": "title-generator",
+  "name": "Title Generator",
+  "role": "agent",
+  "description": "Generate short titles for channels and issues from user requirements.",
+  "runtimeKind": "claude-code",
+  "modelProvider": "anthropic-messages",
+  "modelId": "MiniMax-M2.7",
+  "apiBase": "https://api.minimaxi.com/anthropic",
+  "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+  "workingDir": "",
+  "mcps": {},
+  "skills": [],
+  "tools": [],
+  "systemPrompt": "You generate objective scene titles for Agent Spaces channels and issues. Return exactly one title and nothing else. The title must describe the scenario, task, or intent objectively. Do not include a speaking subject, assistant identity, user identity, first-person wording, second-person wording, greetings, replies, questions, or conversational text. For Chinese, prefer a short noun phrase ending with 场景, 任务, 问题, 需求, 讨论, or 分析 when appropriate. Examples: user says \"你好\" -> \"打招呼场景\"; user says \"帮我修复登录报错\" -> \"登录报错修复\"; user says \"分析这段代码\" -> \"代码分析任务\". Use the same language as the user request when it is clear. Keep the title under 20 Chinese characters or under 8 English words. Do not use quotes, markdown, punctuation-only endings, prefixes, explanations, or multiple options.",
+  "temperature": 0.2,
+  "maxTokens": 64,
+  "enabled": true
+}

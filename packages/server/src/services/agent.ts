@@ -16,6 +16,7 @@ import { getWorkspace, listWorkspaces } from '../storage/workspace-store.js';
 import { listIssues, updateIssue } from '../storage/issue-store.js';
 import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
+import { listModels, listProviders } from '../storage/llm-store.js';
 import { extractUsageFromOutput } from '../storage/usage.js';
 
 const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
@@ -757,6 +758,68 @@ function withBuiltInTemplatesFirst(templates: AgentConfig[]): AgentConfig[] {
   const builtIns = getDefaultBuiltInAgentPresets().map((preset) => byId.get(preset.id) ?? preset);
   const custom = templates.filter((template) => !BUILT_IN_AGENT_IDS.includes(template.id));
   return [...builtIns, ...custom];
+}
+
+interface BuiltInDefaultModel {
+  modelProvider?: AgentConfig['modelProvider'];
+  modelId: string;
+  apiBase: string;
+  apiKey: string;
+}
+
+function resolveGlobalDefaultModel(): BuiltInDefaultModel | null {
+  const providers = listProviders();
+  if (providers.length === 0) return null;
+  const models = listModels();
+  for (const model of models) {
+    const provider = providers.find((entry) => entry.name === model.provider);
+    if (provider?.apiBase && provider?.apiKey && model.modelId) {
+      return {
+        modelProvider: inferBuiltInModelProvider(provider.apiBase),
+        modelId: model.modelId,
+        apiBase: provider.apiBase,
+        apiKey: provider.apiKey,
+      };
+    }
+  }
+  return null;
+}
+
+function inferBuiltInModelProvider(apiBase: string): NonNullable<AgentConfig['modelProvider']> {
+  if (apiBase.includes('anthropic')) return 'anthropic-messages';
+  if (apiBase.includes('generativelanguage.googleapis.com')) return 'gemini-generate-content';
+  return 'openai-chat-completions';
+}
+
+// Seed built-in presets to disk on startup so agent-generator/commit-agent/title-generator are
+// first-class members of the agents list. Presets missing model settings inherit the first
+// fully-configured global provider+model, so agent generation works out of the box.
+export function ensureBuiltInAgentTemplates(): { seeded: string[]; defaultModel: BuiltInDefaultModel | null } {
+  const defaultModel = resolveGlobalDefaultModel();
+  const seeded: string[] = [];
+
+  for (const preset of getDefaultBuiltInAgentPresets()) {
+    const dir = getGlobalAgentTemplateDir(preset.id);
+    if (existsSync(join(dir, 'agent.json'))) continue;
+
+    const resolved = defaultModel && !(preset.apiBase && preset.apiKey && preset.modelId)
+      ? { ...preset, ...defaultModel }
+      : preset;
+    ensureDir(dir);
+    writeFileSync(join(dir, 'agent.json'), JSON.stringify(resolved, null, 2), 'utf-8');
+    if (!existsSync(join(dir, 'mcp.json'))) {
+      writeFileSync(join(dir, 'mcp.json'), JSON.stringify(resolved.mcps ?? {}, null, 2), 'utf-8');
+    }
+    seeded.push(preset.id);
+  }
+
+  if (seeded.length > 0) {
+    console.info('[agent] seeded built-in agent templates', {
+      seeded,
+      defaultModel: defaultModel ? { modelId: defaultModel.modelId, apiBase: defaultModel.apiBase } : null,
+    });
+  }
+  return { seeded, defaultModel };
 }
 
 function getDefaultAgentGeneratorPreset(): AgentConfig {

@@ -1,0 +1,19 @@
+{
+  "id": "commit-agent",
+  "name": "Commit Agent",
+  "role": "commit",
+  "description": "根据 git diff 自动生成 conventional commit message。",
+  "runtimeKind": "claude-code",
+  "modelProvider": "anthropic-messages",
+  "modelId": "MiniMax-M2.7",
+  "apiBase": "https://api.minimaxi.com/anthropic",
+  "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+  "workingDir": "",
+  "mcps": {},
+  "skills": [],
+  "tools": [],
+  "systemPrompt": "You are a git commit message generator. Return exactly one concise commit message for the provided git diff. Use conventional format: type: description. Allowed types: feat, fix, docs, style, refactor, perf, test, chore. Keep the subject under 72 characters. If a body is needed, add one blank line and at most 3 short bullet lines. Do not greet, explain, ask questions, provide options, use markdown, or wrap in code fences. Output only the final commit message text.",
+  "temperature": 0,
+  "maxTokens": 512,
+  "enabled": true
+}

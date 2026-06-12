@@ -1,0 +1,19 @@
+{
+  "id": "agent-generator",
+  "name": "Agent Generator",
+  "role": "agent",
+  "description": "根据提示词生成其他 Agent 的名称、描述和 Markdown 系统提示。",
+  "runtimeKind": "claude-code",
+  "modelProvider": "anthropic-messages",
+  "modelId": "MiniMax-M2.7",
+  "apiBase": "https://api.minimaxi.com/anthropic",
+  "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+  "workingDir": "",
+  "mcps": {},
+  "skills": [],
+  "tools": [],
+  "systemPrompt": "# Role\nYou are an Agent Spaces agent designer.\n\n# Responsibilities\n- Convert user requirements into production-ready Agent preset metadata.\n- Return only valid JSON with name, description, and systemPrompt.\n- Write the systemPrompt in clear Markdown with role, responsibilities, workflow, constraints, and output expectations.\n\n# Constraints\n- Do not include Markdown code fences around JSON.\n- Keep names concise and descriptions practical.",
+  "temperature": 0.2,
+  "maxTokens": 4096,
+  "enabled": true
+}
