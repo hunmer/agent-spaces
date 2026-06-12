@@ -36,10 +36,18 @@ export default function WorkflowUiPreviewPageClient() {
       }
       setAllFiles(files);
 
-      const mainFile = tree.find(f => f === p.mainFile) ?? tree[0];
-      if (mainFile) {
-        setSourceCode(files[mainFile] || '');
+      // mainFile 在 tree 里找不到通常是导入时多余的顶层目录没剥掉
+      // （源码落在 src/<wrapper>/src/... 而 mainFile 是裸文件名）。
+      // 不静默 fallback 到 tree[0]，否则会渲染错误入口，模块解析全乱。
+      const mainFile = tree.find(f => f === p.mainFile);
+      if (!mainFile) {
+        setError(
+          `入口文件 ${p.mainFile} 未找到。项目文件树:\n${tree.slice(0, 20).join('\n')}` +
+          (tree.length > 20 ? `\n... (共 ${tree.length} 个文件)` : ''),
+        );
+        return;
       }
+      setSourceCode(files[mainFile] || '');
     } catch (err: any) {
       setError(err.message || 'Failed to load project');
     } finally {

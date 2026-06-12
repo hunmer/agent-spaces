@@ -353,10 +353,11 @@ export function importFromDir(extractDir: string, manifest: Partial<WorkflowUiPr
 
   const targetSrc = srcDir(id);
   ensureDir(targetSrc);
-  if (existsSync(join(extractDir, 'src'))) {
-    copyDirSync(join(extractDir, 'src'), targetSrc);
+  const contentRoot = resolveContentRoot(extractDir, manifest.mainFile);
+  if (existsSync(join(contentRoot, 'src'))) {
+    copyDirSync(join(contentRoot, 'src'), targetSrc);
   } else {
-    copyDirSync(extractDir, targetSrc);
+    copyDirSync(contentRoot, targetSrc);
   }
 
   const projects = listProjects();
@@ -364,6 +365,28 @@ export function importFromDir(extractDir: string, manifest: Partial<WorkflowUiPr
   writeJsonFile(indexPath(), projects);
 
   return project;
+}
+
+/**
+ * ZIP 解压后内容可能被多余的顶层目录包裹（如 `ai_creator_tool-master/`，
+ * 甚至双重嵌套）。从 extractDir 向下定位真正的内容根：
+ *  - 若当前目录直接含 `src/` 子目录（标准布局）→ 当前即内容根
+ *  - 若当前目录含 mainFile（扁平布局）→ 当前即内容根
+ *  - 否则下钻唯一子目录继续判断，最多 4 层，找不到则回退 extractDir
+ */
+function resolveContentRoot(extractDir: string, mainFile: string): string {
+  const isContentRoot = (dir: string): boolean =>
+    existsSync(join(dir, 'src')) ||
+    (!!mainFile && existsSync(join(dir, mainFile)));
+
+  let current = extractDir;
+  for (let depth = 0; depth < 4; depth++) {
+    if (isContentRoot(current)) return current;
+    const entries = readdirSync(current, { withFileTypes: true }).filter((e) => e.isDirectory());
+    if (entries.length !== 1) break;
+    current = join(current, entries[0].name);
+  }
+  return extractDir;
 }
 
 function copyDirSync(src: string, dest: string): void {

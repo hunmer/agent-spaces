@@ -73,10 +73,11 @@
       "workflow.jimeng",
       "workflow.minimax",
       "workflow.aliyun-oss",
-      "workflow.tencent-cos"
+      "workflow.tencent-cos",
+      "workflow.openai"
     ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T20:28:17.221Z",
-    "updatedAt": "2026-06-12T20:28:17.221Z"
+    "updatedAt": "2026-06-12T20:30:47.171Z"
   }
 ]
