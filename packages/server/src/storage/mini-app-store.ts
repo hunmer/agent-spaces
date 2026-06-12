@@ -439,9 +439,17 @@ function safeSessionId(sessionId: string): string {
   return sessionId;
 }
 
+function safeMessageId(id: string): string {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(id)) {
+    throw new Error('Invalid messageId');
+  }
+  return id;
+}
+
 /** 保存一条聊天消息到 chat/{sessionId}/{messageId}.json */
 export function saveAgentChat(projectId: string, message: MiniAppChatMessage): void {
   safeSessionId(message.sessionId);
+  safeMessageId(message.id);
   const dir = chatDir(projectId, message.sessionId);
   ensureDir(dir);
   writeFileSync(join(dir, `${message.id}.json`), JSON.stringify(message, null, 2), 'utf-8');
