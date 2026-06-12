@@ -9,6 +9,7 @@ export interface MiniAppProject {
   tags?: string[];
   enabledPlugins?: string[];
   agentConfigId?: string;
+  enableAgents?: boolean;
   mainFile: string;
   icon?: string;
   avatarUrl?: string;

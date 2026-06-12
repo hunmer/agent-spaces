@@ -12,6 +12,7 @@ export interface MiniAppProject {
   tags?: string[];
   enabledPlugins?: string[];
   agentConfigId?: string;
+  enableAgents?: boolean;
   mainFile: string;
   icon?: string;
   avatarUrl?: string;
@@ -181,7 +182,7 @@ export function createProject(input: {
   return project;
 }
 
-export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl'>>): MiniAppProject {
+export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl'>>): MiniAppProject {
   const projects = listProjects();
   const index = projects.findIndex(p => p.id === projectId);
   if (index === -1) throw new Error(`Project not found: ${projectId}`);
