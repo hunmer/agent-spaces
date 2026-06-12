@@ -115,6 +115,28 @@ export function Router({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
+  // 接收宿主 init 透传（iframe reload 后宿主重发当前 route）
+  useEffect(() => {
+    const ROUTE_INIT_SOURCE = 'agent-spaces:workflow-ui-router:init';
+    const onMessage = (e: MessageEvent) => {
+      if (e.source !== window.parent) return;
+      const data = e.data;
+      if (!data || data.source !== ROUTE_INIT_SOURCE) return;
+      if (typeof data.route === 'string' && data.route) {
+        const next = parseRoute(data.route);
+        const serialized = serializeRoute(next);
+        const hash = serialized ? `#${serialized}` : '';
+        try {
+          const base = window.location.pathname + window.location.search.replace(/([?&]route=)[^&]*/, '');
+          window.history.replaceState(null, '', base.replace(/[?&]$/, '') + (hash || ''));
+        } catch { /* noop */ }
+        setState(next);
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
   // 写 hash 并广播给宿主（postMessage，单向：iframe -> 宿主）
   const applyRoute = useCallback((next: RouteState, replace: boolean) => {
     const serialized = serializeRoute(next);

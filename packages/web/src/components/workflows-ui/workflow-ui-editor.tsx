@@ -141,6 +141,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     const fileMtimeRef = useRef<Record<string, number>>({});
     const [saveStatus, setSaveStatus] = useState<'saved' | 'modified' | 'saving'>('saved');
     const handleSaveRef = useRef<() => Promise<void>>(async () => { });
+    const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
 
     const refreshPreviewFrame = useCallback(() => {
         setPreviewRefreshKey((key) => key + 1);
@@ -295,6 +296,54 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     useEffect(() => {
         handleSaveRef.current = handleSave;
     }, [handleSave]);
+
+    // ---- 路由同步：iframe <-> 宿主页 URL ----
+    // 接收 iframe Router 的 route 变化，写进宿主页 URL（replaceState，保留 embedded/refresh）。
+    // iframe load 后把宿主当前 route 透传回去（手动刷新 key 变导致 iframe reload 丢 hash）。
+    useEffect(() => {
+        if (!project) return;
+        const ROUTE_MSG_SOURCE = 'agent-spaces:workflow-ui-router';
+
+        const syncRouteToHostUrl = (route: string) => {
+            try {
+                const url = new URL(window.location.href);
+                if (route) url.searchParams.set('route', route);
+                else url.searchParams.delete('route');
+                window.history.replaceState(null, '', url.pathname + url.search);
+            } catch { /* noop */ }
+        };
+
+        const onMessage = (e: MessageEvent) => {
+            const iframe = previewIframeRef.current;
+            if (!iframe || e.source !== iframe.contentWindow) return;
+            const data = e.data;
+            if (!data || data.source !== ROUTE_MSG_SOURCE) return;
+            if (data.projectId && data.projectId !== project.id) return;
+            syncRouteToHostUrl(typeof data.route === 'string' ? data.route : '');
+        };
+
+        const sendRouteToIframe = () => {
+            const iframe = previewIframeRef.current;
+            if (!iframe?.contentWindow) return;
+            let route = '';
+            try { route = new URLSearchParams(window.location.search).get('route') || ''; } catch { /* noop */ }
+            iframe.contentWindow.postMessage(
+                { source: ROUTE_MSG_SOURCE + ':init', projectId: project.id, route },
+                '*',
+            );
+        };
+
+        window.addEventListener('message', onMessage);
+        const iframe = previewIframeRef.current;
+        if (iframe) {
+            iframe.addEventListener('load', sendRouteToIframe);
+        }
+        return () => {
+            window.removeEventListener('message', onMessage);
+            const ifr = previewIframeRef.current;
+            if (ifr) ifr.removeEventListener('load', sendRouteToIframe);
+        };
+    }, [project, previewRefreshKey]);
 
     const handleManualRefresh = useCallback(async () => {
         const tree = await refreshFileTree();
@@ -583,6 +632,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                         <iframe
                             key={previewUrl}
                             src={previewUrl}
+                            ref={previewIframeRef}
                             title={project.name}
                             className="flex-1 min-h-0 w-full border-0 bg-background"
                         />
