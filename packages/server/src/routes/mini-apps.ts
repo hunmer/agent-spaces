@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats } from '../storage/mini-app-store.js';
 import { runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -355,6 +355,18 @@ router.get('/:id/agents/chat', (req: Request<{ id: string }, any, any, { session
     let messages = listAgentChats(req.params.id, sessionId);
     if (typeof agentId === 'string') messages = messages.filter((m) => m.agentId === agentId);
     res.json({ messages });
+  } catch (error: any) {
+    res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
+  }
+});
+
+// DELETE /:id/agents/chat?sessionId=&agentId= — 清空 session 历史（可选按 agentId 过滤）
+router.delete('/:id/agents/chat', (req: Request<{ id: string }, any, any, { sessionId?: string; agentId?: string }>, res: Response) => {
+  try {
+    const { sessionId, agentId } = req.query;
+    if (!sessionId) { res.status(400).json({ error: 'sessionId is required' }); return; }
+    clearAgentChats(req.params.id, sessionId, typeof agentId === 'string' ? agentId : undefined);
+    res.json({ ok: true });
   } catch (error: any) {
     res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
   }

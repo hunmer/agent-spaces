@@ -136,6 +136,10 @@ export function createMiniAppApi(http: HttpClient) {
     agentHistory: (id: string, sessionId: string, agentId?: string): Promise<{ messages: MiniAppChatMessage[] }> =>
       http.get(`/api/mini-apps/${id}/agents/chat?sessionId=${encodeURIComponent(sessionId)}${agentId ? `&agentId=${encodeURIComponent(agentId)}` : ''}`),
 
+    /** 清空某 session 的历史（可选按 agentId 过滤）。 */
+    clearAgentHistory: (id: string, sessionId: string, agentId?: string): Promise<void> =>
+      http.delete(`/api/mini-apps/${id}/agents/chat?sessionId=${encodeURIComponent(sessionId)}${agentId ? `&agentId=${encodeURIComponent(agentId)}` : ''}`),
+
     /**
      * SSE 流式聊天。返回原始 Response，调用方用 reader 解析 `event:` / `data:` 行。
      * body: { sessionId, message, route? }

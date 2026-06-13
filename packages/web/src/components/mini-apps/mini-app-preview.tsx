@@ -16,8 +16,9 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles, Settings2 } from 'lucide-react';
+import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Eraser } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { MINI_APP_HIDDEN_FIELDS, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
@@ -148,6 +149,16 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
     setSending(false);
   }, []);
 
+  const [clearOpen, setClearOpen] = useState(false);
+  const handleClear = useCallback(async () => {
+    if (!projectId || !agentId) return;
+    try {
+      await sdk.miniApp.clearAgentHistory(projectId, sessionId, agentId);
+      setMessages([]);
+    } catch { /* ignore */ }
+    finally { setClearOpen(false); }
+  }, [projectId, agentId, sessionId]);
+
   // ---- Agent 设置弹窗 ----
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -220,6 +231,18 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
               >
                 <Settings2 className="h-4 w-4" />
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-background/50"
+                onClick={() => setClearOpen(true)}
+                disabled={!agentId || sending || messages.length === 0}
+                title={t('agent.clear')}
+                aria-label={t('agent.clear')}
+              >
+                <Eraser className="h-4 w-4" />
+              </Button>
             </>
           }
         />
@@ -252,6 +275,18 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           )}
         </DialogContent>
       </Dialog>
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('agent.clearTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('agent.clearConfirm')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('agent.clearCancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleClear}>{t('agent.clearAction')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Popover>
   );
 }

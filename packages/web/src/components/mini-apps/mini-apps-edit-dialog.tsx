@@ -29,6 +29,9 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
   const [backgroundUrl, setBackgroundUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Track whether avatar was cleared during this edit session
+  const [avatarCleared, setAvatarCleared] = useState(false);
+
   // Background image picker state
   const [bgPickerSrc, setBgPickerSrc] = useState('');
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
@@ -46,11 +49,13 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
   const handleAvatarUrlChange = async (url: string) => {
     if (!project) return;
     setAvatarUrl(url);
+    setAvatarCleared(url === '');
   };
 
   const handleUploadDataUrl = async (dataUrl: string): Promise<string> => {
     if (!project) return '';
     const { url } = await sdk.miniApp.uploadAvatar(project.id, dataUrl);
+    setAvatarCleared(false);
     return `${sdk.miniApp.getAvatarUrl(project.id)}?t=${Date.now()}`;
   };
 
@@ -81,6 +86,7 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
         name: name.trim(),
         description: description.trim() || undefined,
         icon: icon || undefined,
+        ...(avatarCleared ? { avatarUrl: '' } : {}),
       });
       onUpdated?.(updated);
       onOpenChange(false);
@@ -141,7 +147,7 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
           </div>
 
           {/* Avatar + Name row: avatar overlaps background bottom */}
-          <div className="flex items-end gap-3 -mt-5 px-1">
+          <div className="flex items-end gap-3 -mt-8 px-1">
             <div className="relative shrink-0">
               <AvatarUploader
                 name={name}

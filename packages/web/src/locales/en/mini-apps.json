@@ -115,6 +115,11 @@
     "loadError": "Failed to load",
     "settings": "Agent settings",
     "settingsTitle": "Edit Agent",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "clear": "Clear messages",
+    "clearTitle": "Clear messages",
+    "clearConfirm": "Clear all messages for this assistant? This action cannot be undone.",
+    "clearCancel": "Cancel",
+    "clearAction": "Clear"
   }
 }

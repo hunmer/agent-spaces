@@ -7,7 +7,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-08T05:18:45.999Z",
-    "updatedAt": "2026-06-13T01:42:06.920Z",
+    "updatedAt": "2026-06-13T01:46:23.322Z",
     "enabledPlugins": [
       "workflow.minimax",
       "workflow.fish-audio",
@@ -16,7 +16,7 @@
     "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
     "description": "配音界面",
     "icon": "🎵",
-    "avatarUrl": "avatar.png"
+    "avatarUrl": ""
   },
   {
     "id": "wui_1781160986095_4141b274",
@@ -37,7 +37,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-11T15:44:06.059Z",
-    "updatedAt": "2026-06-13T01:34:00.584Z",
+    "updatedAt": "2026-06-13T01:44:15.378Z",
     "agentConfigId": "49c45e3a-75be-4116-a1e3-b750e6466544",
     "enabledPlugins": [
       "workflow.minimax"

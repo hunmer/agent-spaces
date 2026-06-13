@@ -13,6 +13,8 @@ export interface FeatureCardProps extends Omit<HTMLMotionProps<"div">, "ref"> {
   backgroundImage?: string;
   /** Color variant for the gradient accent */
   color?: FeatureCardColor;
+  /** Center icon element (e.g. AgentIcon) with hover scale animation, no border */
+  centerIcon?: React.ReactNode;
   /** Card body content */
   children: React.ReactNode;
   /** Additional class for the content wrapper */
@@ -52,7 +54,7 @@ const featureCardColorVariants: Record<FeatureCardColor, Record<string, string>>
  * ```
  */
 export const FeatureCard = React.forwardRef<HTMLDivElement, FeatureCardProps>(
-  ({ className, backgroundImage, color = "default", children, contentClassName, height, style, ...props }, ref) => {
+  ({ className, backgroundImage, color = "default", centerIcon, children, contentClassName, height, style, ...props }, ref) => {
     const cardStyle = { ...featureCardColorVariants[color], ...style } as React.CSSProperties;
 
     return (
@@ -93,6 +95,20 @@ export const FeatureCard = React.forwardRef<HTMLDivElement, FeatureCardProps>(
               background: `radial-gradient(circle at 50% 30%, var(--feature-color-light) 0%, transparent 70%)`,
             }}
           />
+        )}
+
+        {/* Center icon with hover scale animation */}
+        {centerIcon && (
+          <motion.div
+            className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"
+            variants={{
+              initial: { scale: 1, y: 0 },
+              hover: { scale: 1.25, y: -16 },
+            }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          >
+            {centerIcon}
+          </motion.div>
         )}
 
         {/* Content */}

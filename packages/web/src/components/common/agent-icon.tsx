@@ -94,9 +94,11 @@ export interface AgentIconProps {
   onClick?: () => void;
   bordered?: boolean;
   rounded?: string;
+  /** Override emoji / initial text size (default: "text-sm" / "text-xs") */
+  textSize?: string;
 }
 
-export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, onClick, bordered = true, rounded: roundedClass = 'rounded-lg' }: AgentIconProps) {
+export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, onClick, bordered = true, rounded: roundedClass = 'rounded-lg', textSize }: AgentIconProps) {
   const agents = useAgentStore((s) => s.agents);
   const [avatarError, setAvatarError] = useState(false);
   const [providerError, setProviderError] = useState(false);
@@ -145,9 +147,9 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
       {src ? (
         <img src={src} alt={displayName} className="size-full object-cover" onError={handleError} />
       ) : showEmoji ? (
-        <span className="select-none text-sm leading-none">{resolvedIcon}</span>
+        <span className={cn("select-none leading-none", textSize ?? "text-sm")}>{resolvedIcon}</span>
       ) : (
-        <span className="text-xs font-semibold select-none">{initial}</span>
+        <span className={cn("font-semibold select-none", textSize ?? "text-xs")}>{initial}</span>
       )}
     </div>
   );

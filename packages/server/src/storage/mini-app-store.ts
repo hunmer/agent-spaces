@@ -482,3 +482,21 @@ export function listAgentChats(projectId: string, sessionId: string): MiniAppCha
   messages.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
   return messages;
 }
+
+/** 清空某 session 的聊天消息。提供 agentId 时仅删该 agent 的消息，否则删整个 session。 */
+export function clearAgentChats(projectId: string, sessionId: string, agentId?: string): void {
+  safeSessionId(sessionId);
+  const dir = chatDir(projectId, sessionId);
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
+    const file = join(dir, entry.name);
+    if (agentId) {
+      try {
+        const msg = JSON.parse(readFileSync(file, 'utf-8'));
+        if (!msg || typeof msg !== 'object' || (msg as MiniAppChatMessage).agentId !== agentId) continue;
+      } catch { continue; }
+    }
+    rmSync(file, { force: true });
+  }
+}

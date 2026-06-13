@@ -115,6 +115,11 @@
     "loadError": "加载失败",
     "settings": "Agent 设置",
     "settingsTitle": "编辑 Agent",
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "clear": "清空消息",
+    "clearTitle": "清空消息",
+    "clearConfirm": "确定要清空当前助手的所有消息吗？此操作不可撤销。",
+    "clearCancel": "取消",
+    "clearAction": "清空"
   }
 }

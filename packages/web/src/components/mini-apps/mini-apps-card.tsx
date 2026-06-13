@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Copy, Trash2, MoreVertical, Download, Share2, FolderOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -74,6 +73,17 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
         backgroundImage={backgroundUrl}
         color="blue"
         className="cursor-pointer h-[260px]"
+        centerIcon={
+          <AgentIcon
+            name={project.name}
+            avatarUrl={project.avatarUrl ? sdk.miniApp.getAvatarUrl(project.id) : undefined}
+            icon={project.icon}
+            bordered={false}
+            textSize="text-4xl"
+            rounded="rounded-2xl"
+            className="size-24"
+          />
+        }
         onClick={() => nativeNavigate(router, `/mini-apps/${project.id}`)}
       >
         {/* Dropdown menu (top-right) */}
@@ -119,26 +129,6 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
             {project.type === 'react' ? 'React' : 'HTML'}
           </Badge>
         </div>
-
-        {/* Center icon with hover scale animation */}
-        <motion.div
-          className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"
-          variants={{
-            initial: { scale: 1, y: 0 },
-            hover: { scale: 1.25, y: -16 },
-          }}
-          transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        >
-          <AgentIcon
-            name={project.name}
-            avatarUrl={project.avatarUrl ? sdk.miniApp.getAvatarUrl(project.id) : undefined}
-            icon={project.icon}
-            className={cn(
-              "size-20 rounded-2xl shadow-lg",
-              hasBackground && "ring-2 ring-white/30"
-            )}
-          />
-        </motion.div>
 
         {/* Bottom glass panel */}
         <div className="mt-auto">
