@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { readHistory } from '../utils/storage';
+import { useState, useEffect } from 'react';
 
 const {
   Sheet, SheetTrigger, SheetContent, SheetTitle,
@@ -8,24 +7,23 @@ const {
 
 const PAGE_SIZE = 50;
 
-export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, likedSongs, onToggleLiked, onRemove }) {
-  const [items, setItems] = useState([]);
+export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, likedSongs, onToggleLiked, onRemove, playlist }) {
+  // 数据源单一：直接使用父级 playlist，避免与本地 items 状态不同步（删除/清空后列表不刷新）
+  const items = Array.isArray(playlist) ? playlist : [];
   const [page, setPage] = useState(0);
   const [open, setOpen] = useState(false);
 
-  const loadItems = useCallback(async () => {
-    const data = await readHistory();
-    setItems(data);
-  }, []);
-
+  // 打开时回到第一页
   useEffect(() => {
-    if (open) {
-      setPage(0);
-      loadItems();
-    }
-  }, [open, loadItems]);
+    if (open) setPage(0);
+  }, [open]);
 
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  // 删除导致当前页越界时，回退到最后一页
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(totalPages - 1);
+  }, [page, totalPages]);
+
   const pageItems = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (

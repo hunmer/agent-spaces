@@ -195,6 +195,7 @@ export default function Player({
               likedSongs={likedSongs}
               onToggleLiked={onToggleLiked}
               onRemove={onRemove}
+              playlist={playlist}
             />
           </div>
 
