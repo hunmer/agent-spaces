@@ -3,30 +3,11 @@
 import Database from 'better-sqlite3';
 import { join, resolve, sep, dirname } from 'node:path';
 import { ensureDir, getDataDir } from './json-store.js';
-
-export const DB_NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
-export const MAX_ROWS = 10000;
-const BLOCKED_RE = /\b(ATTACH|DETACH)\b/i;
-
-export type SqlParams = unknown[] | Record<string, unknown>;
-
-export function validateDbName(dbName: string): void {
-  if (typeof dbName !== 'string' || !DB_NAME_RE.test(dbName)) {
-    throw new Error(`Invalid db name: ${dbName}`);
-  }
-}
-
-export function checkSql(sql: string): void {
-  if (typeof sql !== 'string' || BLOCKED_RE.test(sql)) {
-    throw new Error('ATTACH/DETACH are not allowed');
-  }
-}
-
-// 数组 → 按位置展开；对象 → 包成单参（better-sqlite3 命名占位符 :name/@name/$name）；undefined → 空参数
-export function bindArgs(params: SqlParams | undefined): unknown[] {
-  if (params == null) return [];
-  return Array.isArray(params) ? params : [params];
-}
+import { MAX_ROWS, type SqlParams } from './sql-safety.js';
+// 重新导出纯校验函数，保持 mini-app-db 既有公开 API（validateDbName/checkSql/bindArgs）
+// 不破坏下游 import；真相源在 sql-safety。
+export { validateDbName, checkSql, bindArgs } from './sql-safety.js';
+import { validateDbName, checkSql, bindArgs } from './sql-safety.js';
 
 type DbConnection = InstanceType<typeof Database>;
 type ExecMode = 'all' | 'get' | 'run' | 'exec';
