@@ -29,14 +29,16 @@
     "description": "Description",
     "descriptionPlaceholder": "Optional description",
     "type": "Type",
-    "submit": "Create"
+    "submit": "Create",
+    "nameExists": "该名称已存在，请换一个"
   },
   "edit": {
     "title": "编辑页面",
     "name": "名称",
     "description": "描述",
     "save": "保存",
-    "defaultBackground": "默认背景"
+    "defaultBackground": "默认背景",
+    "nameExists": "该名称已存在，请换一个"
   },
   "store": {
     "title": "模板商店",

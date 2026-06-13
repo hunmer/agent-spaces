@@ -2,7 +2,7 @@
 
 Agent Spaces 是一个**本地多 Agent 协同编程平台**。基于 pnpm monorepo 组织 7 个包：`shared`（前后端共享类型）、`sdk`（前端 API 调用层）、`server`（Express 5 后端 + WebSocket + Agent 编排引擎）、`web`（Next.js 16 前端 SPA）、`flutter`（多平台原生壳应用）、`templates`（Agent / Chat / MCP / Skill / Plugin / Workflow 模板库）、`dom-inspector-hook`（浏览器端 DOM 源码定位 Hook）。
 
-核心能力：6 种 Agent 运行时（Claude Code / Codex / Open Agent SDK / LangChain / Hermes / Oh-My-Pi）、Workflow DAG 可视化编辑器（含 command 节点 + UI 渲染节点）、Monaco 编辑器 + TypeScript LSP、频道聊天（含 Chat 独立页）、xterm 终端、Git 操作与 Worktree 并行开发、Issue 自动化、Kanban 看板、文档数据库（Notion 风格 + 向量搜索）、通知中心（飞书 / 企微 / Native）、Plugin 插件系统、Hook 引擎、订阅管理、Skill 系统。
+核心能力：6 种 Agent 运行时（Claude Code / Codex / Open Agent SDK / LangChain / Hermes / Oh-My-Pi）、Workflow DAG 可视化编辑器（含 command 节点 + UI 渲染节点）、Mini-app 沙箱子系统（React/HTML 项目 + 沙箱服务编译 + Agent 运行时 + 客户端 RPC + SQLite）、Monaco 编辑器 + TypeScript LSP、频道聊天（含 Chat 独立页）、xterm 终端、Git 操作与 Worktree 并行开发、Issue 自动化、Kanban 看板、文档数据库（Notion 风格 + 向量搜索）、通知中心（飞书 / 企微 / Native）、Plugin 插件系统、Hook 引擎、订阅管理、Skill 系统。
 
 数据持久化采用 JSON 文件 + SQLite（位于 `~/.agent-spaces-data/`），WebSocket 事件命名 `domain.action`，REST API 按资源分组并以 Bearer Token 鉴权。
 
@@ -67,10 +67,10 @@ graph TD
 |------|------|------|----------|------|
 | shared | `packages/shared` | TypeScript | 29 | 前后端共享类型定义（27 个子模块 + 1 入口 + 1 类型聚合） |
 | sdk | `packages/sdk` | TypeScript | 42 | 前端 API 统一 SDK（39 个模块适配器，250+ 方法） |
-| server | `packages/server` | TypeScript | 170+ | Express 5 后端 + WebSocket + 6 运行时 Agent 编排 + Workflow 引擎 |
-| web | `packages/web` | TSX/TypeScript | 250+ | Next.js 16 前端 SPA（34 Store + 20 页面 + 30+ lib） |
-| flutter | `packages/flutter` | Dart | 46 | Flutter 多平台壳应用（WebView + SSH 终端 + 多协议文件源） |
-| templates | `packages/templates` | JSON/Markdown | 324+ | 模板库（Agent / Chat / MCP / Skill / Plugin / Workflow / mini-apps / Prompt / OutputStyle） |
+| server | `packages/server` | TypeScript | 185+ | Express 5 后端 + WebSocket + 6 运行时 Agent 编排 + Workflow 引擎 + Mini-app 子系统 |
+| web | `packages/web` | TSX/TypeScript | 290+ | Next.js 16 前端 SPA（44 Store 文件 + 29 页面 + 37 lib + 200+ 组件） |
+| flutter | `packages/flutter` | Dart | 46+2 | Flutter 多平台壳应用（WebView + SSH 终端 + 多协议文件源 + 2 测试） |
+| templates | `packages/templates` | JSON/Markdown | 400+ | 模板库（184 Agent + 6 Chat + 9 MCP + 66+ Skill + 120+ Plugin + Workflow/Prompt/OutputStyle/Mini-app） |
 | dom-inspector-hook | `packages/dom-inspector-hook` | TypeScript | 2 | 浏览器端 DOM 源码定位 Hook（HTTP 上报 / IDE 跳转） |
 
 ## 运行与开发
@@ -89,7 +89,7 @@ pnpm publish          # 构建 shared/server 并发布到 npm
 ## AI 使用指引
 
 - `packages/web/AGENTS.md`、`packages/web/DESIGN.md` —— Next.js 16 注意事项、UI 设计规范（MiniMax 风格）
-- `docs/` —— 40+ 项目文档，涵盖 Agent 运行时、Workflow、通知中心、Hook、LSP、Chat、Worktree、mini-apps 等
+- `docs/` —— 45+ 项目文档，涵盖 Agent 运行时、Workflow、Mini-app、通知中心、Hook、LSP、Chat、Worktree 等
 - `docs/superpowers/{plans,specs}/` —— 按日期归档的功能设计与实施计划
 - `PRD.md` —— 需求文档
 - `codegraph` MCP —— 基于 AST 的代码知识图谱，做结构性查询（定义/调用/影响面）时优先使用
@@ -97,10 +97,10 @@ pnpm publish          # 构建 shared/server 并发布到 npm
 
 ## 扫描状态
 
-- **更新时间**：2026-06-12 09:31:44
-- **本次性质**：增量更新（自 2026-06-09）
-- **已扫描范围**：全部 7 个模块的 package.json / pubspec.yaml / 入口文件 / 关键目录结构 / 配置文件
+- **更新时间**：2026-06-13 16:57:29
+- **本次性质**：增量更新 + 断点续扫（自 2026-06-12）
+- **已扫描范围**：全部 7 个模块的目录结构、入口文件、关键服务、组件分组、模板内容、测试文件
 - **跳过范围**：node_modules、dist、.next、构建产物、二进制文件、.agent-spaces-data
-- **覆盖率**：约 88%
-- **本次新增**：补建 `packages/dom-inspector-hook/CLAUDE.md`（此前缺失）
-- **主要缺口**：server 部分 service 子模块细节、web `components/` 个别子目录、flutter 单元测试（项目无测试）、templates 中 prompt/output-styles/mini-app 内容样本
+- **覆盖率**：约 92%（从 88% 提升）
+- **本次新增**：server mini-app 5 文件架构、server 新增服务（pty/command-process-manager/generated-title/issue-retry 等）、flutter 2 测试文件、templates skills 扩展至 66+、web 组件缺口补全（home/timeline/layout/common/settings）、i18n 34 命名空间确认
+- **仍存缺口**：server `storage/` 22 个 store 字段未逐一抽取、web `components/sidebar/` 56 文件未逐一展开、templates agents 184 个模板内容未逐一抽样

@@ -6,8 +6,12 @@
 - **开发启动**：`pnpm dev`（并行启动 server + web）
   - server: http://localhost:3100
   - web: http://localhost:3000（自动代理 /api/* 和 /ws 到 server）
-- **构建**：`pnpm build`（shared -> sdk -> server -> web）
+- **构建**：`pnpm build`（shared -> sdk -> server -> web -> copy）
 - **Docker 构建**：`pnpm build:docker`
+- **Docker 部署**：`pnpm up`（docker compose up -d --build）
+- **Lint**：`pnpm lint`（pnpm -r lint）
+- **发布**：`pnpm publish`（构建 shared + server 后发布到 npm）
+- **清理**：`pnpm clean`
 
 ## packages/shared
 
@@ -27,7 +31,7 @@
 - **启动命令**：`pnpm dev`（tsx watch 热重载）或 `pnpm start`（编译后运行）
 - **默认端口**：3100（PORT 环境变量）
 - **数据目录**：`~/.agent-spaces-data`（AGENT_SPACES_DATA_DIR 环境变量）
-- **启动流程**：Express 初始化 -> auth 中间件 -> 路由注册 -> HTTP Server -> WebSocket Server -> Issue 重试恢复 -> 持久化通知服务恢复
+- **启动流程**：Express 初始化 -> auth 中间件 -> 路由注册 -> HTTP Server -> WebSocket Server -> Issue 重试恢复（`issue-retry.ts`）-> 持久化通知服务恢复
 
 ## packages/web
 
@@ -40,7 +44,8 @@
 
 - **入口文件**：`lib/main.dart`
 - **启动命令**：`flutter run`
-- **路由**：GoRouter（4 条路由：/ /bookmarks /settings /about）
+- **测试命令**：`flutter test`（2 个测试文件：widget_test + webdav_url_test）
+- **路由**：GoRouter（7 条路由：/ /bookmarks /settings /about /home /terminal-credentials /file-source-credentials）
 
 ## packages/templates
 

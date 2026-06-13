@@ -1,6 +1,6 @@
 {
-  "version": "1.19.0",
-  "timestamp": "2026-06-12T09:31:44+08:00",
+  "version": "1.20.0",
+  "timestamp": "2026-06-13T16:57:29+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
@@ -33,9 +33,7 @@
       "claudeMd": "packages/shared/CLAUDE.md",
       "claudeDir": "packages/shared/claude/",
       "entry": "src/index.ts",
-      "interfaces": [
-        "src/types/index.ts"
-      ],
+      "interfaces": ["src/types/index.ts"],
       "tests": [],
       "importantPaths": [
         "src/index.ts",
@@ -74,7 +72,7 @@
         "scannedFiles": 29,
         "totalFiles": 29,
         "gaps": [],
-        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
+        "lastScanTimestamp": "2026-06-13T16:57:29+08:00"
       }
     },
     {
@@ -85,10 +83,7 @@
       "claudeMd": "packages/sdk/CLAUDE.md",
       "claudeDir": "packages/sdk/claude/",
       "entry": "src/index.ts",
-      "interfaces": [
-        "src/client.ts",
-        "src/types.ts"
-      ],
+      "interfaces": ["src/client.ts", "src/types.ts"],
       "tests": [],
       "importantPaths": [
         "src/index.ts",
@@ -100,7 +95,7 @@
         "src/modules/chat.ts",
         "src/modules/workflow.ts",
         "src/modules/workflow-plugin.ts",
-        "src/modules/mini-app.ts",
+        "src/modules/mini-apps.ts",
         "src/modules/git.ts",
         "src/modules/editor.ts",
         "src/modules/database.ts",
@@ -132,33 +127,20 @@
         "src/modules/avatar.ts",
         "src/modules/npm-settings.ts"
       ],
-      "detailFiles": [
-        "packages/sdk/claude/overview.md",
-        "packages/sdk/claude/conventions.md",
-        "packages/sdk/claude/module-responsibilities.md",
-        "packages/sdk/claude/entrypoints.md",
-        "packages/sdk/claude/public-interfaces.md",
-        "packages/sdk/claude/dependencies-and-config.md",
-        "packages/sdk/claude/data-model.md",
-        "packages/sdk/claude/testing-and-quality.md",
-        "packages/sdk/claude/file-map.md",
-        "packages/sdk/claude/faq.md",
-        "packages/sdk/claude/changelog.md"
-      ],
       "coverage": {
         "scanned": true,
         "percentage": 100,
         "scannedFiles": 42,
         "totalFiles": 42,
         "gaps": [],
-        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
+        "lastScanTimestamp": "2026-06-13T16:57:29+08:00"
       }
     },
     {
       "name": "server",
       "path": "packages/server",
       "language": "TypeScript",
-      "sourceFileCount": 173,
+      "sourceFileCount": 185,
       "claudeMd": "packages/server/CLAUDE.md",
       "claudeDir": "packages/server/claude/",
       "entry": "src/app.ts",
@@ -174,7 +156,11 @@
         "src/services/execution-manager.ts",
         "src/services/agent.ts",
         "src/services/workflow.ts",
-        "src/services/mini-app.ts",
+        "src/services/mini-apps.ts",
+        "src/services/mini-app-services.ts",
+        "src/services/mini-app-agent.ts",
+        "src/services/mini-app-tasks.ts",
+        "src/services/mini-app-client-rpc.ts",
         "src/services/workflow-trigger-service.ts",
         "src/services/workflow-command-runner.ts",
         "src/services/plugin.ts",
@@ -182,6 +168,13 @@
         "src/services/hook-engine.ts",
         "src/services/notification-hub/",
         "src/services/builtin-tools/",
+        "src/services/pty.ts",
+        "src/services/command-process-manager.ts",
+        "src/services/generated-title.ts",
+        "src/services/issue-retry.ts",
+        "src/services/tool-detail.ts",
+        "src/services/llm-model-config.ts",
+        "src/services/global-wechat-qr.ts",
         "src/services/chat.ts",
         "src/services/channel.ts",
         "src/ws/agent-runner.ts",
@@ -189,18 +182,25 @@
         "src/ws/connection-manager.ts",
         "src/ws/execution-channels.ts",
         "src/ws/typescript-lsp.ts",
+        "src/ws/message-parts.ts",
+        "src/ws/agent-prompt.ts",
         "src/agents/issue-task-controller.ts",
         "src/agents/scheduler-agent.ts",
         "src/agents/agent-designer.ts",
         "src/agents/commit-agent.ts",
         "src/agents/pull-request-agent.ts",
+        "src/agents/title-generator-agent.ts",
+        "src/agents/agent-context.ts",
+        "src/agents/agent-message-parts.ts",
         "src/adapters/agent-runtime.ts",
         "src/adapters/claude-code-runtime/",
         "src/adapters/codex-runtime.ts",
         "src/adapters/langchain-runtime.ts",
         "src/adapters/open-agent-sdk-runtime.ts",
         "src/adapters/hermes-runtime.ts",
-        "src/adapters/oh-my-pi-runtime.ts"
+        "src/adapters/oh-my-pi-runtime.ts",
+        "src/storage/mini-app-store.ts",
+        "src/storage/mini-app-db.ts"
       ],
       "routes": [
         "src/routes/workspace.ts",
@@ -209,7 +209,7 @@
         "src/routes/issue.ts",
         "src/routes/task.ts",
         "src/routes/workflow.ts",
-        "src/routes/mini-app.ts",
+        "src/routes/mini-apps.ts",
         "src/routes/workflow-hook.ts",
         "src/routes/plugin.ts",
         "src/routes/agent.ts",
@@ -245,31 +245,28 @@
         "packages/server/claude/overview.md",
         "packages/server/claude/route-index.md",
         "packages/server/claude/architecture.md",
+        "packages/server/claude/storage.md",
         "packages/server/claude/changelog.md"
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 92,
+        "percentage": 94,
         "gaps": [
-          "src/services/ 部分辅助 service 子目录细节",
-          "src/storage/ 全部 store 文件未逐一抽取字段"
+          "src/storage/ 22 个 store 文件未逐一抽取字段细节",
+          "src/services/notification-hub/ 14 文件中 bot-agent/service 细节未深抽"
         ],
-        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
+        "lastScanTimestamp": "2026-06-13T16:57:29+08:00"
       }
     },
     {
       "name": "web",
       "path": "packages/web",
       "language": "TypeScript/TSX",
-      "sourceFileCount": 250,
+      "sourceFileCount": 290,
       "claudeMd": "packages/web/CLAUDE.md",
       "claudeDir": "packages/web/claude/",
       "entry": "src/app/layout.tsx",
-      "interfaces": [
-        "src/app/",
-        "src/stores/",
-        "src/components/"
-      ],
+      "interfaces": ["src/app/", "src/stores/", "src/components/"],
       "tests": [],
       "importantPaths": [
         "src/app/layout.tsx",
@@ -290,6 +287,8 @@
         "src/stores/issue.ts",
         "src/stores/kanban.ts",
         "src/stores/workflow.ts",
+        "src/stores/command-palette.ts",
+        "src/stores/search-commands/",
         "src/components/sidebar/",
         "src/components/workflow/",
         "src/components/editor/",
@@ -299,7 +298,12 @@
         "src/components/git/",
         "src/components/kanban/",
         "src/components/terminal/",
-        "src/components/worktree/"
+        "src/components/worktree/",
+        "src/components/home/",
+        "src/components/timeline/",
+        "src/components/layout/",
+        "src/components/common/",
+        "src/components/settings/"
       ],
       "pageRoutes": [
         "src/app/page.tsx",
@@ -324,6 +328,14 @@
         "src/app/settings/output-styles/page.tsx",
         "src/app/settings/tools/page.tsx"
       ],
+      "i18nNamespaces": [
+        "agent", "agentCommands", "chat", "commandPalette", "commands", "common",
+        "composer", "database", "editor", "folderPicker", "git", "home", "issue",
+        "kanban", "login", "mcps", "models", "outputStyles", "projectSettings",
+        "prompts", "providers", "robotAccounts", "settings", "sidebar", "skills",
+        "task", "terminal", "tools", "workspace", "workspaces", "worktree",
+        "workflows", "mini-apps"
+      ],
       "detailFiles": [
         "packages/web/claude/overview.md",
         "packages/web/claude/conventions.md",
@@ -334,13 +346,12 @@
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 88,
+        "percentage": 92,
         "gaps": [
-          "components/ 个别子目录（layout / common / settings）样本未细抽",
-          "stores/workflow-editor/ 12 个子文件未逐一展开",
-          "locales/ 34 个 i18n 命名空间未列名"
+          "components/sidebar/ 56 文件未逐一展开（含 settings/ 14 + skills-dialog/ 10）",
+          "components/workflow/ 86 文件中部分 hook/utils 未深抽"
         ],
-        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
+        "lastScanTimestamp": "2026-06-13T16:57:29+08:00"
       }
     },
     {
@@ -348,13 +359,15 @@
       "path": "packages/flutter",
       "language": "Dart",
       "sourceFileCount": 46,
+      "testFileCount": 2,
       "claudeMd": "packages/flutter/CLAUDE.md",
       "claudeDir": "packages/flutter/claude/",
       "entry": "lib/main.dart",
-      "interfaces": [
-        "lib/bridge/js_bridge.dart"
+      "interfaces": ["lib/bridge/js_bridge.dart"],
+      "tests": [
+        "test/widget_test.dart",
+        "test/services/file_sources/webdav_url_test.dart"
       ],
-      "tests": [],
       "importantPaths": [
         "lib/main.dart",
         "lib/widgets/webview_panel.dart",
@@ -383,16 +396,17 @@
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 95,
+        "percentage": 97,
         "gaps": [],
-        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
+        "lastScanTimestamp": "2026-06-13T16:57:29+08:00",
+        "notes": "测试缺口已填补：新增 widget_test + webdav_url_test"
       }
     },
     {
       "name": "templates",
       "path": "packages/templates",
       "language": "JSON/Markdown",
-      "sourceFileCount": 324,
+      "sourceFileCount": 400,
       "claudeMd": "packages/templates/CLAUDE.md",
       "entry": "generate-index.mjs",
       "interfaces": [],
@@ -410,24 +424,25 @@
         "output-styles/index.json"
       ],
       "subTypes": [
-        "agents (184)",
+        "agents (184, 15 分类)",
         "chat (6)",
         "mcps (9)",
-        "skills (15)",
-        "plugins (107)",
-        "workflows",
-        "mini-app (含 minimax_tts 示例)",
-        "prompt",
-        "output-styles"
+        "skills (66+ 文件，含 superpowers 14 子目录)",
+        "plugins (120+ 文件)",
+        "workflows (1: code-writing 四阶段)",
+        "mini-app (1: minimax_tts)",
+        "prompt (2: karpathy-skills + token-efficient-coding)",
+        "output-styles (7: carmack/codex-rigor/dhh/evan-you/jobs/linus/uncle-bob)"
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 82,
+        "percentage": 90,
         "gaps": [
-          "prompt / output-styles / mini-app 模板内容样本未抽取",
-          "agents 15 个分类下 184 个 Agent 模板未逐一展开"
+          "agents 184 个模板内容未逐一抽样",
+          "plugins 120+ 文件中各插件的 tools.js/workflow.js 细节未深抽"
         ],
-        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
+        "lastScanTimestamp": "2026-06-13T16:57:29+08:00",
+        "notes": "prompt/output-styles/mini-app 内容样本已确认"
       }
     },
     {
@@ -458,8 +473,7 @@
         "scannedFiles": 2,
         "totalFiles": 2,
         "gaps": [],
-        "lastScanTimestamp": "2026-06-12T09:31:44+08:00",
-        "newlyCreatedClaudeMd": true
+        "lastScanTimestamp": "2026-06-13T16:57:29+08:00"
       }
     }
   ],
@@ -488,24 +502,30 @@
     "source": ".gitignore"
   },
   "scanSummary": {
-    "totalEstimatedFiles": 870,
-    "scannedFiles": 770,
-    "coveragePercentage": 88,
+    "totalEstimatedFiles": 994,
+    "scannedFiles": 914,
+    "coveragePercentage": 92,
     "truncated": false,
-    "incrementalFrom": "2026-06-09T11:48:01+08:00",
+    "incrementalFrom": "2026-06-12T09:31:44+08:00",
     "changesSinceLastScan": [
-      "新建 packages/dom-inspector-hook/CLAUDE.md（此前缺失）",
-      "templates: 新增 mini-app 子目录（minimax_tts 示例 + index.json）",
-      "根 CLAUDE.md: 补全 Mermaid click 链接、刷新运行命令、刷新扫描状态",
-      "claude/changelog.md: 增量记录本次更新"
+      "server: mini-app.ts 拆分为 5 文件架构（mini-apps/services/agent/tasks/client-rpc），路由 mini-app -> mini-apps",
+      "server: 新增 pty/command-process-manager/generated-title/issue-retry/tool-detail/llm-model-config/global-wechat-qr/gitignore/workspace-prompt 等服务",
+      "server: ws 新增 message-parts/agent-prompt/html-utils；agents 新增 agent-context/agent-message-parts/title-generator-agent",
+      "server: storage 新增 mini-app-store + mini-app-db（better-sqlite3 连接池 + 越界保护）",
+      "flutter: 新增 2 测试文件（widget_test + webdav_url_test），测试缺口已填补",
+      "templates: skills 从 15 扩展至 66+（新增 caveman/grill-me/handoff/improve-codebase-architecture/tdd/to-prd/planning-with-files-zh）",
+      "templates: plugins 新增 mira-sdk/dingtalk/aliyun_oss/tencent_cos/epub-parser/fish-audio/jimeng/test-plugin",
+      "templates: 确认 prompt(2)/output-styles(7)/mini-app(1)/workflows(1) 内容样本",
+      "web: 新增 home(10)/timeline(4)/layout(13)/common(15)/settings(5) 组件组",
+      "web: i18n 确认 34 命名空间（新增 projectSettings/home/commands/agentCommands/robotAccounts/worktree/mini-apps）",
+      "docs: 新增 mini-app-agent/mini-app-renderer/mini-app-preview-agent/mini-app-state-sync-ws-plan/plugin-faq/hermes-mcp-config-findings/flex-truncate-fix + superpowers 2026-06-13 三份设计文档"
     ],
     "nextStepRecommendations": [
-      "packages/server/src/services/mini-app.ts + workflow-trigger-service.ts -- Workflow 引擎细节",
-      "packages/server/src/storage/ -- 全部 store 字段抽取（issue/task/workspace/usage/robot-account/worktree）",
-      "packages/web/src/stores/workflow-editor/ -- 12 子文件大型 Store 拆解",
-      "packages/web/src/locales/ -- 34 i18n 命名空间列名",
-      "packages/templates/{prompt,output-styles,mini-app} -- 模板内容样本",
-      "packages/web/src/components/{layout,common,settings,sidebar} -- 组件目录补全"
+      "packages/server/src/storage/ -- 22 个 store 逐一抽取字段（优先 workspace-store/issue-store/mini-app-store）",
+      "packages/web/src/components/sidebar/ -- 56 文件逐一展开（含 settings/ 14 + skills-dialog/ 10）",
+      "packages/web/src/components/workflow/ -- 86 文件中的 hook/utils 深抽",
+      "packages/templates/agents/ -- 184 个模板按分类抽样内容",
+      "packages/server/src/services/notification-hub/ -- bot-agent/service 细节"
     ]
   }
 }

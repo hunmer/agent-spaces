@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { sdk } from '@/lib/sdk';
+import { getApiErrorStatus, readApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +26,7 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'react' | 'html'>('react');
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
 
   const handleCreate = async () => {
     const trimmed = name.trim();
@@ -32,11 +34,18 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
     setCreating(true);
     try {
       const project = await sdk.miniApp.create({ name: trimmed, type, description: description.trim() || undefined });
+      setError('');
       onOpenChange(false);
       setName('');
       setDescription('');
       setType('react');
       nativeNavigate(router, `/mini-apps/${project.id}`);
+    } catch (e: unknown) {
+      if (getApiErrorStatus(e) === 409) {
+        setError(t('create.nameExists'));
+      } else {
+        setError(readApiErrorMessage(e));
+      }
     } finally {
       setCreating(false);
     }
@@ -61,11 +70,12 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
             <Input
               placeholder={t('create.namePlaceholder')}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setError(''); }}
               onKeyDown={handleKeyDown}
               disabled={creating}
               autoFocus
             />
+            {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
           <div className="space-y-2">
             <Label>{t('create.description')}</Label>

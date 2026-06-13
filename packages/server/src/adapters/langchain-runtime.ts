@@ -178,6 +178,17 @@ export class LangChainRuntime implements AgentRuntime {
         runtimeOptions?.onEvent?.({ type: 'output', line: fallbackText });
         eventSink.flush();
       }
+      const incompleteBeforeToolFallback = progress.getIncompleteReason();
+      const toolResultFallbackText = incompleteBeforeToolFallback?.includes('without a final assistant response')
+        ? progress.getToolResultFallbackText()
+        : undefined;
+      if (toolResultFallbackText) {
+        d(`tool result fallback text | chars=${toolResultFallbackText.length} preview=${truncateForLog(toolResultFallbackText, 1200)}`);
+        progress.recordAiText();
+        textParts.push(toolResultFallbackText);
+        runtimeOptions?.onEvent?.({ type: 'output', line: toolResultFallbackText });
+        eventSink.flush();
+      }
 
       const text = textParts.join('');
       d(`final text | chars=${text.length} preview=${truncateForLog(text, 1200) || '-'}`);
@@ -249,9 +260,10 @@ interface SkillPrompt {
 
 interface LangChainRunProgress {
   recordToolUse: () => void;
-  recordToolResult: () => void;
+  recordToolResult: (result?: unknown) => void;
   recordAiText: () => void;
   hasSeenToolResult: () => boolean;
+  getToolResultFallbackText: () => string | undefined;
   getIncompleteReason: () => string | undefined;
 }
 
@@ -259,21 +271,26 @@ export function createLangChainRunProgress(): LangChainRunProgress {
   let toolUseCount = 0;
   let toolResultCount = 0;
   let aiTextAfterLastToolResult = true;
+  let toolResultFallbackText: string | undefined;
 
   return {
     recordToolUse() {
       toolUseCount += 1;
       aiTextAfterLastToolResult = false;
     },
-    recordToolResult() {
+    recordToolResult(result?: unknown) {
       toolResultCount += 1;
       aiTextAfterLastToolResult = false;
+      toolResultFallbackText = summarizeToolResultForAssistant(result);
     },
     recordAiText() {
       aiTextAfterLastToolResult = true;
     },
     hasSeenToolResult() {
       return toolResultCount > 0;
+    },
+    getToolResultFallbackText() {
+      return toolResultFallbackText;
     },
     getIncompleteReason() {
       if (toolUseCount === 0) return undefined;
@@ -286,6 +303,27 @@ export function createLangChainRunProgress(): LangChainRunProgress {
       return undefined;
     },
   };
+}
+
+export function summarizeToolResultForAssistant(result: unknown): string | undefined {
+  if (typeof result === 'string') {
+    const text = result.trim();
+    return text && text.length <= 500 ? text : undefined;
+  }
+  if (!isRecord(result)) return undefined;
+
+  const ok = typeof result.ok === 'boolean' ? result.ok : undefined;
+  const success = typeof result.success === 'boolean' ? result.success : undefined;
+  if (ok === false || success === false) return undefined;
+
+  for (const key of ['message', 'summary', 'text', 'output']) {
+    const value = result[key];
+    if (typeof value !== 'string') continue;
+    const text = value.trim();
+    if (text && text.length <= 500) return text;
+  }
+
+  return undefined;
 }
 
 export function buildLangChainPromptWithSkills(
@@ -390,7 +428,7 @@ function buildLangChainTools(
       options?.onEvent?.({ type: 'tool_use', id: toolUseId, name: runtimeTool.name, input, line });
       try {
         const result = await runtimeTool.execute(input);
-        progress.recordToolResult();
+        progress.recordToolResult(result);
         log(`tool result | source=function id=${toolUseId} name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} output=${summarizeForLog(result, 1000)}`);
         options?.onEvent?.({ type: 'tool_result', toolUseId, result });
         return stringifyToolResult(result);
@@ -517,7 +555,7 @@ function createLangChainMcpClient(
     afterToolCall: (result) => {
       const name = formatMcpToolName(result.serverName, result.name);
       const outputText = stringifyToolResult(result.result);
-      progress.recordToolResult();
+      progress.recordToolResult(outputText);
       log(`tool result | source=mcp server=${result.serverName} name=${name} chars=${outputText.length} output=${truncateForLog(outputText, 1000)}`);
       options?.onEvent?.({ type: 'tool_result', toolUseId: name, result: outputText });
       return { result: outputText };

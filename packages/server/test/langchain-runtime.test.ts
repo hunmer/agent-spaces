@@ -13,6 +13,7 @@ import {
   normalizeLangChainMcpServers,
   resolveLangChainModelSettings,
   stringifyToolResult,
+  summarizeToolResultForAssistant,
 } from '../src/adapters/langchain-runtime.js';
 
 test('LangChain run progress flags tool results without final assistant text as incomplete', () => {
@@ -41,6 +42,21 @@ test('LangChain run progress flags pending tool calls', () => {
   progress.recordToolUse();
 
   assert.match(progress.getIncompleteReason() ?? '', /pending tool calls/);
+});
+
+test('LangChain run progress exposes successful tool result message as assistant fallback', () => {
+  const progress = createLangChainRunProgress();
+
+  progress.recordToolUse();
+  progress.recordToolResult({ ok: true, message: '歌曲生成完成' });
+
+  assert.match(progress.getIncompleteReason() ?? '', /without a final assistant response/);
+  assert.equal(progress.getToolResultFallbackText(), '歌曲生成完成');
+});
+
+test('summarizeToolResultForAssistant ignores failed tool results', () => {
+  assert.equal(summarizeToolResultForAssistant({ ok: false, message: 'failed' }), undefined);
+  assert.equal(summarizeToolResultForAssistant({ success: false, message: 'failed' }), undefined);
 });
 
 test('resolveLangChainModelSettings uses OpenAI for BigModel compatible Anthropic misconfiguration', () => {

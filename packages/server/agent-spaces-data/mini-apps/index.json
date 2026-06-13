@@ -26,7 +26,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-11T06:56:26.095Z",
-    "updatedAt": "2026-06-11T08:55:15.607Z",
+    "updatedAt": "2026-06-13T09:08:36.740Z",
     "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4"
   },
   {
@@ -72,7 +72,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T09:48:13.813Z",
-    "updatedAt": "2026-06-12T12:28:27.180Z"
+    "updatedAt": "2026-06-13T08:54:34.519Z"
   },
   {
     "id": "wui_1781260164362_4147b9ff",
@@ -83,7 +83,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T10:29:24.362Z",
-    "updatedAt": "2026-06-12T11:43:41.333Z"
+    "updatedAt": "2026-06-13T08:54:15.768Z"
   },
   {
     "id": "wui_1781296097221_fcce9ebb",
@@ -113,5 +113,15 @@
     "createdAt": "2026-06-12T20:42:23.209Z",
     "updatedAt": "2026-06-12T21:49:15.759Z",
     "enabledPlugins": []
+  },
+  {
+    "id": "wui_1781341747753_bbcc2843",
+    "name": "bbb",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-06-13T09:09:07.753Z",
+    "updatedAt": "2026-06-13T09:09:07.753Z"
   }
 ]

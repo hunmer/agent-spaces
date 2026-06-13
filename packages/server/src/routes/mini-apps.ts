@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, DuplicateNameError } from '../storage/mini-app-store.js';
 import { runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -25,7 +25,10 @@ router.post('/', (req: Request, res: Response) => {
     if (!name || !type) { res.status(400).json({ error: 'name and type are required' }); return; }
     if (type !== 'react' && type !== 'html') { res.status(400).json({ error: 'type must be "react" or "html"' }); return; }
     res.json(svc.createProject({ name, description, type, tags }));
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
+  } catch (error: any) {
+    if (error instanceof DuplicateNameError) { res.status(409).json({ error: 'name already exists' }); return; }
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.get('/:id', (req: Request<{ id: string }>, res: Response) => {
@@ -35,7 +38,10 @@ router.get('/:id', (req: Request<{ id: string }>, res: Response) => {
 
 router.put('/:id', (req: Request<{ id: string }>, res: Response) => {
   try { res.json(svc.updateProject(req.params.id, req.body)); }
-  catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+  catch (error: any) {
+    if (error instanceof DuplicateNameError) { res.status(409).json({ error: 'name already exists' }); return; }
+    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+  }
 });
 
 router.delete('/:id', (req: Request<{ id: string }>, res: Response) => {
@@ -325,7 +331,10 @@ router.post('/import', async (req: Request, res: Response) => {
     const buffer = Buffer.from(zip, 'base64');
     const project = await svc.importZip(buffer, { name, type, description });
     res.json(project);
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
+  } catch (error: any) {
+    if (error instanceof DuplicateNameError) { res.status(409).json({ error: 'name already exists' }); return; }
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ---- Agents (preview chat) ----

@@ -1,7 +1,7 @@
 const { useState, useCallback, useEffect } = React;
 const {
   Card, CardContent, CardHeader, CardTitle,
-  Textarea, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+  Textarea, Label, RadioGroup, RadioGroupItem,
   Badge,
 } = window.AgentSpacesUI;
 
@@ -250,18 +250,36 @@ function App() {
         <Card style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
           <CardHeader style={{ padding: '12px 16px', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <CardTitle style={{ fontSize: '14px' }}>🎭 角色设置</CardTitle>
-            <Select value={provider} onValueChange={handleProviderChange}>
-              <SelectTrigger style={{ width: '150px', fontSize: '13px' }}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(PROVIDERS).map(([key, prov]) => (
-                  <SelectItem key={key} value={key}>
-                    {prov.icon} {prov.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RadioGroup
+              value={provider}
+              onValueChange={handleProviderChange}
+              style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}
+            >
+              {Object.entries(PROVIDERS).map(([key, prov]) => {
+                const selected = provider === key;
+                return (
+                  <label
+                    key={key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border, #444)',
+                      ...(selected
+                        ? { borderColor: 'var(--primary, #4fc3f7)', background: 'var(--primary, #4fc3f7)15' }
+                        : {}),
+                    }}
+                  >
+                    <RadioGroupItem value={key} style={{ width: '13px', height: '13px' }} />
+                    <span>{prov.icon} {prov.name}</span>
+                  </label>
+                );
+              })}
+            </RadioGroup>
           </CardHeader>
           <CardContent style={{ flex: '1', overflowY: 'auto', padding: '0 16px 16px' }}>
             <VoiceSelector

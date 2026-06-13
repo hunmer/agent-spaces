@@ -116,6 +116,26 @@ export function rebuildIndex(): MiniAppProject[] {
   return onDisk;
 }
 
+/** name 与已有项目重复时抛出。route 层用 instanceof 判别并返回 409。 */
+export class DuplicateNameError extends Error {
+  constructor(public readonly duplicateName: string) {
+    super(`Mini app name already exists: ${duplicateName}`);
+    this.name = 'DuplicateNameError';
+  }
+}
+
+/**
+ * 校验 name 在全局唯一（trim 后精确匹配、大小写敏感）。
+ * @param excludeId 更新场景排除自身，避免未改名误报。
+ */
+function assertNameUnique(name: string, excludeId?: string): void {
+  const target = name.trim();
+  const conflict = listProjects().find(
+    (p) => p.id !== excludeId && p.name.trim() === target,
+  );
+  if (conflict) throw new DuplicateNameError(name);
+}
+
 export function getProject(projectId: string): MiniAppProject | null {
   return listProjects().find(p => p.id === projectId) ?? null;
 }
@@ -128,6 +148,7 @@ export function createProject(input: {
   mainFile: string;
   files?: Record<string, string>;
 }): MiniAppProject {
+  assertNameUnique(input.name);
   const id = `wui_${Date.now()}_${uuid().slice(0, 8)}`;
   const now = new Date().toISOString();
   const project: MiniAppProject = {
@@ -162,6 +183,7 @@ export function createProject(input: {
 }
 
 export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl'>>): MiniAppProject {
+  if (updates.name !== undefined) assertNameUnique(updates.name, projectId);
   const projects = listProjects();
   const index = projects.findIndex(p => p.id === projectId);
   if (index === -1) throw new Error(`Project not found: ${projectId}`);
@@ -307,6 +329,7 @@ export function writeDataFile(projectId: string, filePath: string, content: Buff
 // ---- ZIP Import ----
 
 export function importFromDir(extractDir: string, manifest: Partial<MiniAppProject> & { name: string; type: 'react' | 'html'; mainFile: string }): MiniAppProject {
+  assertNameUnique(manifest.name);
   const id = `wui_${Date.now()}_${uuid().slice(0, 8)}`;
   const now = new Date().toISOString();
   const project: MiniAppProject = {

@@ -29,11 +29,15 @@
 - `/api/workspaces/:id/notifications` -- 应用内通知
 - `/api/workspaces/:id/search` -- 代码搜索
 - `/api/workflows` -- Workflow 模板 CRUD + 触发
+- `/api/mini-apps` -- Mini-app 项目 CRUD + 文件 + Agent + 服务调用（**重构**：原 `/api/mini-app`）
 - `/api/models` / `/api/providers` -- LLM 模型与供应商管理
 - `/api/chat/agents` -- Chat Agent CRUD + SSE 流式执行
 - `/api/plugins` -- Plugin 插件管理
 - `/api/agent-sse/run` -- Agent SSE 流式调用（外部集成）
 - `/api/agents/usage/dashboard` -- Agent 用量 Dashboard
+- `/api/speech-recognition` -- 语音识别
+- `/api/robot-accounts` -- 机器人账号管理
+- `/api/subscription` -- 订阅管理
 
 ### WebSocket 端点
 
@@ -45,18 +49,18 @@
 
 ### WebSocket 事件（客户端 -> 服务端）
 
-`terminal.create` / `terminal.input` / `terminal.resize` / `terminal.close` / `channel.message` / `channel.stop` / `channel.answer_question` / `agent.start` / `agent.stop` / `chat.message` / `chat.stop`
+`terminal.create` / `terminal.input` / `terminal.resize` / `terminal.close` / `channel.message` / `channel.stop` / `channel.answer_question` / `agent.start` / `agent.stop` / `chat.message` / `chat.stop` / `miniApp.clientResponse`（RPC 响应）
 
 ### WebSocket 事件（服务端 -> 客户端）
 
-`connected` / `terminal.*` / `channel.*` / `agent.*` / `issue.*` / `task.*` / `workflow.*` / `command.*` / `notification.*` / `inspector.jump` / `chat.*`
+`connected` / `terminal.*` / `channel.*` / `agent.*` / `issue.*` / `task.*` / `workflow.*` / `command.*` / `notification.*` / `inspector.jump` / `chat.*` / `miniApp.configChanged` / `miniApp.clientRequest` / `miniApp.taskUpdated`
 
 ## 前端页面路由
 
 | 路由 | 说明 |
 |------|------|
 | `/login` | 登录页 |
-| `/` | 首页（Dashboard + 订阅面板） |
+| `/` | 首页（Dashboard + 用量仪表盘 + 订阅面板） |
 | `/workspaces` | 工作空间列表 |
 | `/workflows` | Workflow 模板管理 |
 | `/workflows/[id]` | Workflow 编辑器 |
@@ -64,9 +68,10 @@
 | `/workspace/[id]` | 工作空间 IDE 页 |
 | `/chat` | Chat 独立对话页 |
 | `/settings/*` | 设置页（agents/skills/mcps/models/providers/prompts/output-styles/tools） |
-| `/mini-apps` | Workflow UI 模板管理 |
-| `/mini-apps/[id]` | Workflow UI 编辑器 |
+| `/mini-apps` | Mini-app 模板管理 |
+| `/mini-apps/[id]` | Mini-app 编辑器 |
+| `/mini-apps-preview/[id]` | Mini-app 预览页 |
 
 ## SDK（packages/sdk）
 
-39 个 API 模块适配器，通过 `createSDK()` 工厂创建。HttpClient 自动注入 Bearer Token，401/403 触发 `onUnauthorized` 回调。
+39 个 API 模块适配器，通过 `createSDK()` 工厂创建。HttpClient 自动注入 Bearer Token，401/403 触发 `onUnauthorized` 回调。模块包括：workspace/agent/channel/chat/workflow/workflowPlugin/miniApps/git/editor/database/issue/task/kanban/skills/mcps/prompts/agentCommands/data/search/llm/worktree/hooks/command/subscription/notification/speech/codeFavorites/outputStyles/tools/robotAccounts/auth/version/agentStore/font/inspector/avatar/npmSettings。

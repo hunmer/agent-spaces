@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
+import { getApiErrorStatus, readApiErrorMessage } from '@/lib/api-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +29,7 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
   const [avatarUrl, setAvatarUrl] = useState('');
   const [backgroundUrl, setBackgroundUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   // Track whether avatar was cleared during this edit session
   const [avatarCleared, setAvatarCleared] = useState(false);
@@ -88,8 +90,15 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
         icon: icon || undefined,
         ...(avatarCleared ? { avatarUrl: '' } : {}),
       });
+      setError('');
       onUpdated?.(updated);
       onOpenChange(false);
+    } catch (e: unknown) {
+      if (getApiErrorStatus(e) === 409) {
+        setError(t('edit.nameExists'));
+      } else {
+        setError(readApiErrorMessage(e));
+      }
     } finally {
       setSaving(false);
     }
@@ -163,11 +172,12 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
               <Label className="text-xs text-muted-foreground mb-1">{t('edit.name')}</Label>
               <Input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); setError(''); }}
                 disabled={saving}
                 autoFocus
                 className="h-7 text-sm"
               />
+              {error && <p className="text-xs text-destructive mt-1">{error}</p>}
             </div>
           </div>
 

@@ -29,14 +29,16 @@
     "description": "Description",
     "descriptionPlaceholder": "Optional description",
     "type": "Type",
-    "submit": "Create"
+    "submit": "Create",
+    "nameExists": "This name already exists. Try another."
   },
   "edit": {
     "title": "Edit Page",
     "name": "Name",
     "description": "Description",
     "save": "Save",
-    "defaultBackground": "Default background"
+    "defaultBackground": "Default background",
+    "nameExists": "This name already exists. Try another."
   },
   "store": {
     "title": "Template Store",

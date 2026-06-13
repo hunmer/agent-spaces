@@ -2,11 +2,11 @@
 
 # @agent-spaces/server
 
-Express 5 后端服务，173 个 TypeScript 源文件。提供 REST API（37 个路由文件）、WebSocket 实时通信（3 个端点）、认证中间件、六运行时 Agent 编排引擎、Workflow DAG 执行引擎（1757 行）、Plugin 插件系统、通知中心（飞书/企微/Native）、Hook 系统、PTY 终端、Git 操作、SQLite Agent Usage 统计。作为整个平台的核心运行时，管理 Workspace 生命周期、Issue/Task 状态机、Agent 会话调度和数据持久化。
+Express 5 后端服务，185+ 个 TypeScript 源文件。提供 REST API（37 个路由文件）、WebSocket 实时通信（10 个处理器）、认证中间件、六运行时 Agent 编排引擎、Workflow DAG 执行引擎、Mini-app 沙箱子系统（5 文件架构 + SQLite）、Plugin 插件系统、通知中心（飞书/企微/Native）、Hook 系统、PTY 终端、Git 操作、SQLite Agent Usage 统计。作为整个平台的核心运行时，管理 Workspace 生命周期、Issue/Task 状态机、Agent 会话调度和数据持久化。
 
 ## 约定的规则
 
-- ESM 模块（`"type": "module"`）
+- ESM 模块（`"type": "module"`），导入路径带 `.js` 后缀
 - 路由文件放在 `src/routes/`，按资源分组
 - 服务层文件放在 `src/services/`
 - 存储层文件放在 `src/storage/`
@@ -15,6 +15,7 @@ Express 5 后端服务，173 个 TypeScript 源文件。提供 REST API（37 个
 - zod 用于后端请求校验
 - 除健康检查/认证/Inspector/版本端点外均需 Bearer Token 认证
 - WebSocket 认证通过 `token` 查询参数
+- 越界保护：文件路径 `safeSrcPath`、SQL `checkSql` + `validateDbName`
 
 ## 文件索引
 
@@ -23,29 +24,41 @@ Express 5 后端服务，173 个 TypeScript 源文件。提供 REST API（37 个
 | [claude/overview.md](claude/overview.md) | 总览、核心架构、大文件列表 |
 | [claude/route-index.md](claude/route-index.md) | 37 个 REST API 路由索引 |
 | [claude/architecture.md](claude/architecture.md) | Agent 运行时架构、Workflow 引擎、Issue 自动化、通知中心 |
-| [claude/storage.md](claude/storage.md) | 存储层 21 个 store 索引、数据目录布局、写入约定 |
+| [claude/storage.md](claude/storage.md) | 存储层 22 个 store 索引、数据目录布局、写入约定 |
 | [claude/changelog.md](claude/changelog.md) | 变更记录 |
 
 ## 入口与启动
 
-- **入口文件**：`src/app.ts`（435 行）
+- **入口文件**：`src/app.ts`
 - **启动命令**：`pnpm dev`（tsx watch）或 `pnpm start`
 - **默认端口**：3100（PORT 环境变量）
 - **数据目录**：`~/.agent-spaces-data`
+- **启动流程**：Express -> auth -> 路由 -> HTTP -> WebSocket -> Issue 重试恢复（`issue-retry.ts`）-> 通知恢复
 
 ## 关键目录
 
 | 目录 | 文件数 | 说明 |
 |------|--------|------|
 | `src/routes/` | 37 | REST API 路由 |
-| `src/services/` | 50+ | 业务逻辑（含子目录） |
-| `src/storage/` | 20+ | 持久化层 |
+| `src/services/` | 78 | 业务逻辑（含 mini-app 5 文件 + 子目录） |
+| `src/storage/` | 22 | 持久化层（含 mini-app-store + mini-app-db） |
 | `src/adapters/` | 16 | Agent 运行时 + Git |
 | `src/agents/` | 10 | Agent 编排 |
-| `src/ws/` | 8 | WebSocket 处理 |
+| `src/ws/` | 10 | WebSocket 处理 |
+
+## Mini-app 子系统架构（5 文件）
+
+| 文件 | 职责 |
+|------|------|
+| `mini-apps.ts` | CRUD + 文件管理 + ZIP 导入（yauzl）|
+| `mini-app-services.ts` | 沙箱服务编译（剥离 import + ESM->CJS + new Function）+ configs 读写广播 |
+| `mini-app-agent.ts` | Agent 运行时创建 + API JS 编译 + 工具注入 + 客户端 RPC |
+| `mini-app-tasks.ts` | 进程内任务缓存（projectId 维度，TTL 10 分钟清理终态） |
+| `mini-app-client-rpc.ts` | 客户端 RPC（request/response 配对，5s 超时） |
 
 ## 扫描状态
 
-- **更新时间**：2026-06-09 11:04:09
-- **已扫描范围**：全部路由、服务、适配器、存储层、WebSocket 处理器
-- **覆盖率**：约 90%
+- **更新时间**：2026-06-13 16:57:29
+- **已扫描范围**：全部路由、服务、适配器、存储层、WebSocket 处理器、mini-app 子系统、新增辅助服务
+- **覆盖率**：约 94%
+- **主要缺口**：`storage/` 22 个 store 字段未逐一抽取、`notification-hub/` bot-agent/service 细节

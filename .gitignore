@@ -34,3 +34,4 @@ packages/server/agent-spaces-data/chat-templates/*
 packages/server/agent-spaces-data/agent-templates/*
 packages/server/agent-spaces-data/mini-apps/*/agents.json
 packages/server/agent-spaces-data/llm/*
+packages/server/agent-spaces-data/mini-apps/*/data/
