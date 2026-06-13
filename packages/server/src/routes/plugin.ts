@@ -4,6 +4,7 @@ import { dirname, basename } from 'path';
 import { randomUUID } from 'node:crypto';
 import * as pluginService from '../services/plugin.js';
 import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
+import { BUILTIN_PLUGIN_ID, executeMiniAppBuiltinTool } from '../services/builtin-tools/mini-app-tools.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { startTask, finishTask, failTask } from '../services/mini-app-tasks.js';
 
@@ -149,7 +150,9 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
     }
 
     try {
-      const result = await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
+      const result = pluginId === BUILTIN_PLUGIN_ID
+        ? await executeMiniAppBuiltinTool(name, args ?? {})
+        : await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
       if (track) {
         finishTask(workspaceId, effectiveTaskId!, result);
         broadcastToWorkspace(workspaceId, 'miniApp.taskFinished', {

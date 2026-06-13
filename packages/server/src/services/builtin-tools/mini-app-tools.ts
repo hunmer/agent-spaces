@@ -264,7 +264,7 @@ export interface MiniAppToolContext {
 
 // ---- Built-in virtual plugin ----
 
-const BUILTIN_PLUGIN_ID = '@agent-spaces/builtin';
+export const BUILTIN_PLUGIN_ID = '@agent-spaces/builtin';
 
 interface BuiltinToolDefinition {
   name: string;
@@ -391,6 +391,15 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
     },
   },
 ];
+
+export async function executeMiniAppBuiltinTool(
+  toolName: string,
+  args: Record<string, any> = {},
+): Promise<any> {
+  const tool = BUILTIN_TOOLS.find(t => t.name === toolName);
+  if (!tool) throw new Error(`Tool "${toolName}" not found in builtin tools`);
+  return tool.execute(args);
+}
 
 // ---- Workflow UI function tools ----
 
@@ -541,10 +550,8 @@ export function createMiniAppFunctionTools(ctx: MiniAppToolContext): AgentFuncti
           ? record.args as Record<string, any>
           : {};
         if (pluginId === BUILTIN_PLUGIN_ID) {
-          const tool = BUILTIN_TOOLS.find(t => t.name === toolName);
-          if (!tool) return { success: false, message: `Tool "${toolName}" not found in builtin tools` };
           try {
-            const result = await tool.execute(args);
+            const result = await executeMiniAppBuiltinTool(toolName, args);
             return { success: true, result };
           } catch (error: any) {
             return { success: false, message: error.message };
