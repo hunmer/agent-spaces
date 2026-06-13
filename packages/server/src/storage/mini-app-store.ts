@@ -13,6 +13,8 @@ export interface MiniAppProject {
   enabledPlugins?: string[];
   agentConfigId?: string;
   enableAgents?: boolean;
+  /** agents.json 的种子配置：服务器启动时若 agents.json 不存在，则用它落地初始化。 */
+  agents?: unknown[];
   mainFile: string;
   icon?: string;
   avatarUrl?: string;
@@ -316,6 +318,7 @@ export function importFromDir(extractDir: string, manifest: Partial<MiniAppProje
     tags: manifest.tags ?? [],
     enabledPlugins: manifest.enabledPlugins,
     agentConfigId: manifest.agentConfigId,
+    agents: manifest.agents,
     mainFile: manifest.mainFile,
     icon: manifest.icon,
     avatarUrl: manifest.avatarUrl,
@@ -393,6 +396,19 @@ export function readAgentsConfig(projectId: string): unknown[] | null {
   } catch {
     return null;
   }
+}
+
+/** agents.json 是否已在磁盘上存在（不解析内容，仅判存在，避免把损坏文件误判为「缺失」）。 */
+export function agentsConfigExists(projectId: string): boolean {
+  return existsSync(join(projectDir(projectId), 'agents.json'));
+}
+
+/**
+ * 整体覆盖写入项目 agents.json。用于服务器启动时从 manifest.agents 种子首次落地。
+ * 不触碰 manifest 的 updatedAt —— 这是后台初始化，不应污染项目的「最近编辑」时间戳。
+ */
+export function writeAgentsConfig(projectId: string, configs: unknown[]): void {
+  writeJsonFile(join(projectDir(projectId), 'agents.json'), configs);
 }
 
 /** 读取单条 agent 的完整配置（含 apiKey，仅供编辑器加载）。缺失返回 null。 */

@@ -475,6 +475,7 @@ export function AgentDetail({
               options={dynamicModelOptions.length > 0 ? dynamicModelOptions : [{ value: agent.modelId || "", label: agent.modelId || t("detail.selectProviderFirst") }]}
               placeholder={t("detail.modelPlaceholder")}
               searchPlaceholder={t("detail.modelSearchPlaceholder")}
+              disabled={!selectedProvider}
             />
           </FieldGroup>
           <FieldGroup label={t("detail.apiMessageType")}>

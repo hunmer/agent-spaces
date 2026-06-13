@@ -37,12 +37,25 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-11T15:44:06.059Z",
-    "updatedAt": "2026-06-13T03:21:16.889Z",
+    "updatedAt": "2026-06-13T03:45:29.885Z",
     "agentConfigId": "49c45e3a-75be-4116-a1e3-b750e6466544",
     "enabledPlugins": [
       "workflow.minimax"
     ],
-    "enableAgents": true
+    "enableAgents": true,
+    "agents": [
+      {
+        "id": "music-assistant",
+        "name": "音乐管家",
+        "avatar": "🎵",
+        "agentId": "49c45e3a-75be-4116-a1e3-b750e6466544",
+        "systemPrompt": "你是「AI音乐」的管家。用户说切歌/下一首/上一首时，调用 next_music 或 prev_music；说播放某首时调 play_track（但注意 v1 不传参，引导用户用列表选择）。可以用 list_plugin_tools 查看 minimax 插件能力。回答简洁。",
+        "tools": {
+          "api": true,
+          "plugin": true
+        }
+      }
+    ]
   },
   {
     "id": "wui_1781257693812_cb2e0d04",

@@ -109,3 +109,27 @@ export function reloadServices(projectId: string): void {
   registries.delete(projectId);
   loadRegistry(projectId);
 }
+
+/**
+ * 服务器启动检查：遍历所有 mini-app 项目，若某项目尚未落地 agents.json，
+ * 但其 manifest 声明了 `agents` 种子数组，则把种子写入 agents.json。
+ *
+ * - 已存在 agents.json 的项目一律跳过 —— 绝不覆盖用户既有配置（哪怕文件损坏）。
+ * - 无种子（manifest 未声明 agents 或为空数组）的项目跳过。
+ * - 首次落地只写 agents.json，不改 manifest.updatedAt（后台初始化，无副作用）。
+ *
+ * 这样预览页 agent 对话（读 agents.json）在项目首次启用时即可用，
+ * 用户无需手动创建 agents.json。
+ */
+export function ensureAgentsConfigs(): void {
+  const projects = miniAppStore.listProjects();
+  for (const project of projects) {
+    if (miniAppStore.agentsConfigExists(project.id)) continue;
+    const agents = project.agents;
+    if (!Array.isArray(agents) || agents.length === 0) continue;
+    miniAppStore.writeAgentsConfig(project.id, agents);
+    console.log(
+      `[mini-app-services] initialized agents.json for ${project.id} (${agents.length} agent(s)) from manifest seed`,
+    );
+  }
+}
