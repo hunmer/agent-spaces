@@ -28,8 +28,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": -75,
-        "y": -30
+        "x": -150,
+        "y": -240
       },
       "data": {}
     },
@@ -85,7 +85,7 @@
   ],
   "edges": [],
   "createdAt": 1781255038446,
-  "updatedAt": 1781351915073,
+  "updatedAt": 1781352140145,
   "enabledPlugins": [
     "workflow.aliyun-ai",
     "workflow.epub-parser",
