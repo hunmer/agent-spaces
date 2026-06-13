@@ -1,19 +1,49 @@
 "use client";
 
 import { JsonViewer } from "@/components/viewers/json-viewer";
+import { Markdown } from "@/components/ui/markdown";
 import { cn } from "@/lib/utils";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { AlertCircle, CheckCircle2, ChevronDown, Loader2, Wrench } from "lucide-react";
 import { useState } from "react";
 
-export function ChatToolTimeline({ timeline }: { timeline?: WorkflowAgentTimelineItem[] }) {
+export function normalizeChatTimeline(
+  timeline?: WorkflowAgentTimelineItem[],
+): WorkflowAgentTimelineItem[] {
+  if (!timeline?.length) return [];
+  const thinking = timeline.find((item) => item.type === "thinking");
+  if (!thinking) return timeline;
+  return [thinking, ...timeline.filter((item) => item.id !== thinking.id)];
+}
+
+export function ChatToolTimeline({
+  timeline,
+  workspaceId,
+}: {
+  timeline?: WorkflowAgentTimelineItem[];
+  workspaceId?: string;
+}) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  if (!timeline?.length) return null;
+  const items = normalizeChatTimeline(timeline);
+  if (!items.length) return null;
 
   return (
     <div className="mt-2 flex w-full flex-col gap-1.5">
-      {timeline.map((item, index) => {
-        if (item.type !== "tool") return null;
+      {items.map((item, index) => {
+        if (item.type === "thinking") {
+          return (
+            <ThinkingTimelineCard
+              key={`${item.id}-${index}`}
+              item={item}
+              expanded={Boolean(expanded[item.id])}
+              onToggle={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
+            />
+          );
+        }
+
+        if (item.type === "message") {
+          return <MessageTimelineCard key={`${item.id}-${index}`} item={item} workspaceId={workspaceId} />;
+        }
 
         const open = expanded[item.id];
         const missingResult = item.status === "success" && item.result === undefined;
@@ -46,6 +76,44 @@ export function ChatToolTimeline({ timeline }: { timeline?: WorkflowAgentTimelin
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function MessageTimelineCard({
+  item,
+  workspaceId,
+}: {
+  item: Extract<WorkflowAgentTimelineItem, { type: "message" }>;
+  workspaceId?: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/50 px-2.5 py-2 text-xs leading-relaxed shadow-sm">
+      <Markdown content={item.content} workspaceId={workspaceId} />
+    </div>
+  );
+}
+
+function ThinkingTimelineCard({
+  item,
+  expanded,
+  onToggle,
+}: {
+  item: Extract<WorkflowAgentTimelineItem, { type: "thinking" }>;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/30 text-xs shadow-sm">
+      <button type="button" className="flex w-full items-center gap-2 px-2.5 py-2 text-left" onClick={onToggle}>
+        <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+        <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">思考过程</span>
+      </button>
+      {expanded ? (
+        <div className="whitespace-pre-wrap break-words border-t px-2.5 py-2 text-muted-foreground">
+          {item.content}
+        </div>
+      ) : null}
     </div>
   );
 }

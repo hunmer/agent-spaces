@@ -2,6 +2,7 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { cn } from "@/lib/utils";
+import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall } from "@agent-spaces/shared";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
   Brain,
@@ -15,12 +16,15 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ChatToolTimeline, normalizeChatTimeline } from "./chat-tool-timeline";
 
 export interface DisplayChatMessage {
   id: string;
   role: "user" | "agent";
   content: string;
   timestamp: Date | string;
+  toolCalls?: WorkflowAgentToolCall[];
+  timeline?: WorkflowAgentTimelineItem[];
 }
 
 export interface ChatMessageListProps<TMessage extends DisplayChatMessage> {
@@ -65,6 +69,12 @@ export function extractThinkingContent(content: string): { thinking: string | nu
 function formatTime(timestamp: Date | string) {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function getMessageTimeline(message: DisplayChatMessage): WorkflowAgentTimelineItem[] {
+  return message.timeline?.length
+    ? message.timeline
+    : message.toolCalls?.map((toolCall) => ({ ...toolCall, type: "tool" as const })) ?? [];
 }
 
 function ThinkingBlock({ content }: { content: string }) {
@@ -151,7 +161,9 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const showStreamingPlaceholder = streaming && !thinking && !message;
     const hasMessageBody =
       showStreamingPlaceholder || msg.role === "user" || thinking !== null || message.trim().length > 0;
-    if (!hasMessageBody && !renderMessageExtras) return null;
+    const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
+    const hasTimeline = timeline.length > 0;
+    if (!hasMessageBody && !renderMessageExtras && !hasTimeline) return null;
 
     const versions = versionInfo?.(msg);
     const hasVersions = msg.role === "agent" && versions && versions.count > 1 && versions.onChange;
@@ -193,6 +205,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               )}
             </div>
           ) : null}
+          {hasTimeline ? <ChatToolTimeline timeline={timeline} workspaceId={workspaceId} /> : null}
           {renderMessageExtras?.(msg)}
           <div className={cn("flex items-center gap-1", msg.role === "user" && "flex-row-reverse")}>
             <span

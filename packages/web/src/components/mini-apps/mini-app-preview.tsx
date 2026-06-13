@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { MiniAppProject, MiniAppAgentConfig } from '@agent-spaces/sdk';
+import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
@@ -70,6 +71,17 @@ async function consumeSse(response: Response, onEvent: (event: string, data: unk
   }
 }
 
+function miniAppToolCallsToTimeline(toolCalls?: Array<{ name: string; input: unknown; result: unknown }>): WorkflowAgentTimelineItem[] {
+  return toolCalls?.map((toolCall, index) => ({
+    id: `${toolCall.name}-${index}`,
+    type: 'tool' as const,
+    name: toolCall.name,
+    input: toolCall.input,
+    result: toolCall.result,
+    status: toolCall.result === undefined ? 'error' as const : 'success' as const,
+  })) ?? [];
+}
+
 function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   const t = useTranslations('mini-apps');
   const searchParams = useSearchParams();
@@ -111,6 +123,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
         role: m.role,
         content: m.content,
         timestamp: new Date(m.timestamp),
+        timeline: miniAppToolCallsToTimeline(m.toolCalls),
       })));
     } catch { /* ignore */ }
   }, [projectId, agentId, sessionId]);
@@ -133,6 +146,35 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
         const d = data as Record<string, unknown>;
         if (event === 'text' && typeof d.line === 'string') {
           setMessages((prev) => prev.map((m) => m.id === agentMsgId ? { ...m, content: m.content + d.line } : m));
+        } else if (event === 'tool_use' && typeof d.name === 'string') {
+          const item: WorkflowAgentTimelineItem = {
+            id: typeof d.id === 'string' ? d.id : crypto.randomUUID(),
+            type: 'tool',
+            name: d.name,
+            input: d.input,
+            status: 'running',
+          };
+          setMessages((prev) => prev.map((m) => (
+            m.id === agentMsgId ? { ...m, timeline: [...(m.timeline ?? []), item] } : m
+          )));
+        } else if (event === 'tool_result') {
+          const toolUseId = typeof d.toolUseId === 'string' ? d.toolUseId : '';
+          setMessages((prev) => prev.map((m) => {
+            if (m.id !== agentMsgId || !m.timeline?.length) return m;
+            const index = toolUseId
+              ? m.timeline.findLastIndex((item) => item.type === 'tool' && item.id === toolUseId)
+              : m.timeline.findLastIndex((item) => item.type === 'tool' && item.status === 'running');
+            if (index < 0) return m;
+            const timeline = [...m.timeline];
+            const item = timeline[index];
+            if (!item || item.type !== 'tool') return m;
+            timeline[index] = {
+              ...item,
+              result: d.result,
+              status: 'success',
+            };
+            return { ...m, timeline };
+          }));
         } else if (event === 'message_saved') {
           // 服务端已落盘
         }

@@ -11,7 +11,6 @@ import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { ChatComposerInput, type ChatComposerInputHandle } from "./chat-composer-input";
 import { ChatMessageList } from "./chat-message-list";
-import { ChatToolTimeline } from "./chat-tool-timeline";
 import type { ChatMessage } from "@agent-spaces/sdk";
 
 interface InlineChatPanelProps {
@@ -90,12 +89,13 @@ export function InlineChatPanel({
     onSend(content, mentions, attachments, contextLength);
   };
 
-  const createStreamingMessage = (key: string): ChatMessage => ({
+  const createStreamingMessage = (key: string, timeline?: WorkflowAgentTimelineItem[]): ChatMessage => ({
     id: `${agentId}:regenerating:${key}`,
     agentId,
     role: "agent",
     content: streamingThinking ? `<think>${streamingThinking}</think>${streamingContent}` : streamingContent,
     timestamp: regenerationStartedAt ?? new Date().toISOString(),
+    timeline,
   });
 
   return (
@@ -173,13 +173,12 @@ export function InlineChatPanel({
                   workspaceId={workspaceId}
                   showTypingIndicator={false}
                   onDeleteMessage={onDelete}
-                  renderMessageExtras={(message) => <ChatToolTimeline timeline={message.timeline} />}
                 />
               );
             }
 
             const streamingMessage = isRegenerating && regeneratingVersionKey === item.key
-              ? createStreamingMessage(item.key)
+              ? createStreamingMessage(item.key, streamingTimeline)
               : null;
             const versionMessages = streamingMessage ? [...item.messages, streamingMessage] : item.messages;
             const selectedIndex = selectedVersions[item.key] ?? versionMessages.length - 1;
@@ -196,7 +195,6 @@ export function InlineChatPanel({
                 workspaceId={workspaceId}
                 showTypingIndicator={false}
                 onDeleteMessage={!isStreamingVersion ? onDelete : undefined}
-                renderMessageExtras={(message) => <ChatToolTimeline timeline={message.timeline} />}
                 onRegenerateMessage={!sending && onRegenerate ? (message) => {
                   setRegeneratingVersionKey(item.key);
                   setRegenerationStartedAt(new Date().toISOString());
@@ -223,12 +221,11 @@ export function InlineChatPanel({
           )}
           {sending && !isRegenerating && (streamingContent || streamingThinking || streamingTimeline.length > 0) && (
             <ChatMessageList
-              messages={[createStreamingMessage("current")]}
+              messages={[createStreamingMessage("current", streamingTimeline)]}
               sending={false}
               workspaceId={workspaceId}
               showTypingIndicator={false}
               isStreamingMessage={() => true}
-              renderMessageExtras={() => <ChatToolTimeline timeline={streamingTimeline} />}
             />
           )}
           {sending && !isRegenerating && !streamingContent && !streamingThinking && streamingTimeline.length === 0 && (

@@ -250,6 +250,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
 
   // 执行
   const output: string[] = [];
+  const toolCalls = new Map<string, { name: string; input: unknown; result: unknown }>();
   const result = await runtime.execute(message, getProjectDir(projectId), {
     systemPrompt,
     functionTools,
@@ -257,6 +258,15 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     onEvent: (event) => {
       onEvent(event);
       if (event.type === 'output') output.push(event.line);
+      if (event.type === 'tool_use') {
+        toolCalls.set(event.id, { name: event.name, input: event.input, result: undefined });
+      }
+      if (event.type === 'tool_result' && event.toolUseId) {
+        const existing = toolCalls.get(event.toolUseId);
+        if (existing) {
+          toolCalls.set(event.toolUseId, { ...existing, result: event.result });
+        }
+      }
     },
   });
 
@@ -271,6 +281,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const agentMessage: miniAppStore.MiniAppChatMessage = {
     id: randomUUID(), sessionId, agentId, role: 'agent',
     content: agentContent, route, timestamp: new Date().toISOString(),
+    ...(toolCalls.size ? { toolCalls: Array.from(toolCalls.values()) } : {}),
   };
   miniAppStore.saveAgentChat(projectId, userMessage);
   miniAppStore.saveAgentChat(projectId, agentMessage);

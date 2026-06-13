@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ChatMessageList } from '@/components/chat/chat-message-list';
 import { cn } from '@/lib/utils';
+import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
 import { motion, type Variants } from 'framer-motion';
 import { Send, X, Square, ArrowDown } from 'lucide-react';
 import { useId, useRef, useEffect, useState, type ReactNode } from 'react';
@@ -13,6 +14,8 @@ export interface ChatMessage {
   role: 'user' | 'agent';
   content: string;
   timestamp: Date;
+  toolCalls?: WorkflowAgentToolCall[];
+  timeline?: WorkflowAgentTimelineItem[];
 }
 
 export interface ChatAgentInfo {

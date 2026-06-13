@@ -35,7 +35,6 @@ import { useWorkflowEditorState } from './use-workflow-editor-state';
 import { useWorkflowEditorCanvas } from './use-workflow-editor-canvas';
 import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
 import { useWorkflowEditorAgentChat } from './use-workflow-editor-agent-chat';
-import { WorkflowAgentTimeline } from './workflow-editor-agent-chat-ui';
 import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflow-editor-agent-utils';
 import type { WorkflowAgentChatMessage, WorkflowToolCall } from './workflow-editor-agent-utils';
 import { WORKFLOW_LAYOUT_KEY } from './workflow-editor-types';
@@ -751,9 +750,6 @@ function WorkflowEditorInner({
           message.content.trim()
             ? <span className="whitespace-pre-wrap break-words">{message.content}</span>
             : null
-        )}
-        renderMessageExtras={(message) => (
-          <WorkflowAgentTimeline timeline={getWorkflowAgentTimeline(message as WorkflowAgentChatMessage)} workspaceId={workspaceId} />
         )}
         serializeForCopy={(message) => {
           const m = message as WorkflowAgentChatMessage;
