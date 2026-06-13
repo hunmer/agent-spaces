@@ -101,7 +101,7 @@ export default App;
 
 export function updateProject(
   projectId: string,
-  updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl'>>,
+  updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl'>>,
 ): MiniAppProject {
   return store.updateProject(projectId, updates);
 }

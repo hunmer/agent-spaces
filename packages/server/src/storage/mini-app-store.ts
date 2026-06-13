@@ -16,6 +16,7 @@ export interface MiniAppProject {
   mainFile: string;
   icon?: string;
   avatarUrl?: string;
+  backgroundUrl?: string;
   createdAt: string;
   updatedAt: string;
   storeUrl?: string;
@@ -158,7 +159,7 @@ export function createProject(input: {
   return project;
 }
 
-export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl'>>): MiniAppProject {
+export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl'>>): MiniAppProject {
   const projects = listProjects();
   const index = projects.findIndex(p => p.id === projectId);
   if (index === -1) throw new Error(`Project not found: ${projectId}`);
@@ -318,6 +319,7 @@ export function importFromDir(extractDir: string, manifest: Partial<MiniAppProje
     mainFile: manifest.mainFile,
     icon: manifest.icon,
     avatarUrl: manifest.avatarUrl,
+    backgroundUrl: manifest.backgroundUrl,
     createdAt: now,
     updatedAt: now,
     storeUrl: manifest.storeUrl,

@@ -6,12 +6,14 @@
   "tags": [],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-08T05:18:45.999Z",
-  "updatedAt": "2026-06-11T08:13:48.021Z",
+  "updatedAt": "2026-06-13T01:42:06.920Z",
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.fish-audio",
     "workflow.qianyin"
   ],
   "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
-  "description": "配音界面"
+  "description": "配音界面",
+  "icon": "🎵",
+  "avatarUrl": "avatar.png"
 }

@@ -62,5 +62,21 @@
     "reasoning": false,
     "embedding": false,
     "id": "d3b9c79a-0eb4-401e-b28e-8010716605c6"
+  },
+  {
+    "modelId": "GLM-4.7",
+    "name": "GLM-4.7",
+    "provider": "zhipu-openai",
+    "cost": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    },
+    "maxContextTokens": 128000,
+    "thinkingEnabled": true,
+    "thinkingEffort": "medium",
+    "vision": false,
+    "reasoning": false,
+    "embedding": false,
+    "id": "7fcc40b7-bb81-41f2-b4ee-1d20e27f8441"
   }
 ]

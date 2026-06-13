@@ -32,10 +32,11 @@
     "submit": "Create"
   },
   "edit": {
-    "title": "Edit Page",
-    "name": "Name",
-    "description": "Description",
-    "save": "Save"
+    "title": "编辑页面",
+    "name": "名称",
+    "description": "描述",
+    "save": "保存",
+    "defaultBackground": "默认背景"
   },
   "store": {
     "title": "模板商店",

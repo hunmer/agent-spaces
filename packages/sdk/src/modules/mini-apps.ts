@@ -14,6 +14,7 @@ export interface MiniAppProject {
   mainFile: string;
   icon?: string;
   avatarUrl?: string;
+  backgroundUrl?: string;
   createdAt: string;
   updatedAt: string;
   storeUrl?: string;
@@ -58,7 +59,7 @@ export function createMiniAppApi(http: HttpClient) {
     create: (data: { name: string; type: 'react' | 'html'; description?: string; tags?: string[] }): Promise<MiniAppProject> =>
       http.post('/api/mini-apps', data),
 
-    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl'>>): Promise<MiniAppProject> =>
+    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl'>>): Promise<MiniAppProject> =>
       http.put(`/api/mini-apps/${id}`, data),
 
     delete_: (id: string): Promise<void> =>
@@ -108,6 +109,12 @@ export function createMiniAppApi(http: HttpClient) {
 
     getAvatarUrl: (id: string): string =>
       `/api/mini-apps/${id}/avatar`,
+
+    uploadBackground: (id: string, dataUrl: string): Promise<{ url: string }> =>
+      http.post(`/api/mini-apps/${id}/background`, { dataUrl }),
+
+    getBackgroundUrl: (id: string): string =>
+      `/api/mini-apps/${id}/background`,
 
     /** Reveal project folder in OS file manager */
     revealFolder: (id: string): Promise<{ ok: true; path: string }> =>

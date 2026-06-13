@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MiniAppProject } from '@agent-spaces/sdk';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Copy, Trash2, MoreVertical, Download, Share2, FolderOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -11,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ShareDialog } from '@/components/common/share-dialog';
 import { WorkflowsUiEditDialog } from './mini-apps-edit-dialog';
 import { AgentIcon } from '@/components/common/agent-icon';
+import { FeatureCard } from '@/components/ui/feature-card';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
@@ -49,7 +51,6 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
 
   const handleRevealFolder = () => sdk.miniApp.revealFolder(project.id);
 
-  // 参照 mini-app-preview 的 enabledPluginAvatars：用已启用插件 ID 过滤出头像
   const enabledPluginAvatars = useMemo(() => {
     const ids = project.enabledPlugins;
     if (!ids?.length || !allPlugins?.length) return [];
@@ -62,94 +63,153 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
       }));
   }, [project.enabledPlugins, allPlugins]);
 
+  const hasBackground = !!project.backgroundUrl;
+  const backgroundUrl = project.backgroundUrl
+    ? sdk.miniApp.getBackgroundUrl(project.id)
+    : undefined;
+
   return (
-    <Card
-      className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative"
-      onClick={() => nativeNavigate(router, `/mini-apps/${project.id}`)}
-    >
-      <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground h-7 w-7 cursor-pointer">
-            <MoreVertical className="h-3.5 w-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
-              <Pencil className="h-3.5 w-3.5 mr-2" /> {t('card.edit')}
-            </DropdownMenuItem>
-            {onDuplicate && (
-              <DropdownMenuItem onClick={() => onDuplicate(project.id)}>
-                <Copy className="h-3.5 w-3.5 mr-2" /> {t('card.duplicate')}
+    <>
+      <FeatureCard
+        backgroundImage={backgroundUrl}
+        color="blue"
+        className="cursor-pointer h-[260px]"
+        onClick={() => nativeNavigate(router, `/mini-apps/${project.id}`)}
+      >
+        {/* Dropdown menu (top-right) */}
+        <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger className={cn(
+              "inline-flex items-center justify-center rounded-md h-7 w-7 cursor-pointer transition-colors",
+              hasBackground ? "hover:bg-black/30 text-white" : "hover:bg-accent text-foreground"
+            )}>
+              <MoreVertical className="h-3.5 w-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
+                <Pencil className="h-3.5 w-3.5 mr-2" /> {t('card.edit')}
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('card.delete')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportZip}>
-              <Download className="h-3.5 w-3.5 mr-2" /> {t('card.exportZip')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleRevealFolder}>
-              <FolderOpen className="h-3.5 w-3.5 mr-2" /> {t('card.revealFolder')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShareOpen(true); }}>
-              <Share2 className="h-3.5 w-3.5 mr-2" /> {t('card.share')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div onClick={(e) => e.stopPropagation()}>
-        <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={project.name} url={shareUrl} />
-        <WorkflowsUiEditDialog project={project} open={editOpen} onOpenChange={setEditOpen} onUpdated={onUpdated} />
-        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{t('card.deleteTitle')}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {t('card.deleteConfirm', { name: project.name })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t('card.cancel')}</AlertDialogCancel>
-              <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => onDelete(project.id)}>
-                {t('card.delete')}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
+              {onDuplicate && (
+                <DropdownMenuItem onClick={() => onDuplicate(project.id)}>
+                  <Copy className="h-3.5 w-3.5 mr-2" /> {t('card.duplicate')}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('card.delete')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportZip}>
+                <Download className="h-3.5 w-3.5 mr-2" /> {t('card.exportZip')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRevealFolder}>
+                <FolderOpen className="h-3.5 w-3.5 mr-2" /> {t('card.revealFolder')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShareOpen(true); }}>
+                <Share2 className="h-3.5 w-3.5 mr-2" /> {t('card.share')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Type badge (top-left) */}
+        <div className="absolute top-2.5 left-3 z-10">
+          <Badge
+            variant={project.type === 'react' ? 'default' : 'secondary'}
+            className={cn("text-[10px]", hasBackground && "bg-black/50 text-white border-white/20 hover:bg-black/60")}
+          >
+            {project.type === 'react' ? 'React' : 'HTML'}
+          </Badge>
+        </div>
+
+        {/* Center icon with hover scale animation */}
+        <motion.div
+          className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"
+          variants={{
+            initial: { scale: 1, y: 0 },
+            hover: { scale: 1.25, y: -16 },
+          }}
+          transition={{ type: "spring", stiffness: 200, damping: 15 }}
+        >
           <AgentIcon
             name={project.name}
             avatarUrl={project.avatarUrl ? sdk.miniApp.getAvatarUrl(project.id) : undefined}
             icon={project.icon}
-            className="size-6 rounded shrink-0"
+            className={cn(
+              "size-20 rounded-2xl shadow-lg",
+              hasBackground && "ring-2 ring-white/30"
+            )}
           />
-          <CardTitle className="text-sm truncate">{project.name}</CardTitle>
-          <Badge variant={project.type === 'react' ? 'default' : 'secondary'} className="text-[10px] ml-auto me-6 shrink-0">
-            {project.type === 'react' ? 'React' : 'HTML'}
-          </Badge>
-        </div>
-        {project.description && (
-          <CardDescription className="text-xs line-clamp-2">{project.description}</CardDescription>
-        )}
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          {project.tags && project.tags.length > 0 && (
-            <div className="flex gap-1">
-              {project.tags.slice(0, 2).map(tag => (
-                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
-              ))}
-              {project.tags.length > 2 && (
-                <span className="text-[10px] text-muted-foreground">+{project.tags.length - 2}</span>
+        </motion.div>
+
+        {/* Bottom glass panel */}
+        <div className="mt-auto">
+          <div className={cn(
+            "rounded-t-xl p-3",
+            hasBackground
+              ? "bg-black/50 backdrop-blur-md text-white"
+              : "bg-background/80 dark:bg-background/60 backdrop-blur-sm border-t text-card-foreground"
+          )}>
+            {/* Name */}
+            <p className="text-sm font-medium truncate mb-1">{project.name}</p>
+
+            {/* Tags + Plugin icons — always render row for consistent height */}
+            <div className="flex items-center gap-2 flex-wrap min-h-[22px]">
+              {project.tags && project.tags.length > 0 ? (
+                <div className="flex gap-1">
+                  {project.tags.slice(0, 2).map(tag => (
+                    <span
+                      key={tag}
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded",
+                        hasBackground ? "bg-white/20 text-white/90" : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {project.tags.length > 2 && (
+                    <span className={cn(
+                      "text-[10px]",
+                      hasBackground ? "text-white/70" : "text-muted-foreground"
+                    )}>
+                      +{project.tags.length - 2}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className={cn(
+                  "text-[10px]",
+                  hasBackground ? "text-white/50" : "text-muted-foreground/50"
+                )}>
+                  —
+                </span>
+              )}
+              {enabledPluginAvatars.length > 0 && (
+                <AvatarGroup avatarUrls={enabledPluginAvatars} size="sm" />
               )}
             </div>
-          )}
-          {enabledPluginAvatars.length > 0 && (
-            <AvatarGroup avatarUrls={enabledPluginAvatars} size="sm" />
-          )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </FeatureCard>
+
+      {/* Dialogs */}
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={project.name} url={shareUrl} />
+      <WorkflowsUiEditDialog project={project} open={editOpen} onOpenChange={setEditOpen} onUpdated={onUpdated} />
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('card.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('card.deleteConfirm', { name: project.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('card.cancel')}</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => onDelete(project.id)}>
+              {t('card.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

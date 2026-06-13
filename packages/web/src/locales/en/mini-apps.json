@@ -35,7 +35,8 @@
     "title": "Edit Page",
     "name": "Name",
     "description": "Description",
-    "save": "Save"
+    "save": "Save",
+    "defaultBackground": "Default background"
   },
   "store": {
     "title": "Template Store",

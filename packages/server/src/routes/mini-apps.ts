@@ -260,6 +260,51 @@ router.get('/:id/avatar', (req: Request<{ id: string }>, res: Response) => {
   } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
 });
 
+// Background upload
+router.post('/:id/background', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { dataUrl } = req.body as { dataUrl?: string };
+    if (!dataUrl || !dataUrl.startsWith('data:')) { res.status(400).json({ error: 'Invalid dataUrl' }); return; }
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) { res.status(400).json({ error: 'Invalid base64 data' }); return; }
+    const [, mime, base64] = match;
+    const extByMime: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+    const ext = extByMime[mime.toLowerCase()];
+    if (!ext) { res.status(400).json({ error: 'Unsupported image type' }); return; }
+
+    const project = svc.getProject(req.params.id);
+
+    // Remove old background file
+    if (project.backgroundUrl) {
+      const oldPath = join(svc.store.getProjectDir(project.id), project.backgroundUrl);
+      if (existsSync(oldPath)) rmSync(oldPath, { force: true });
+    }
+
+    const filename = `background.${ext}`;
+    const dir = svc.store.getProjectDir(project.id);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, filename), Buffer.from(base64, 'base64'));
+
+    const updated = svc.updateProject(req.params.id, { backgroundUrl: filename });
+    res.json({ url: updated.backgroundUrl });
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
+// Serve project background
+router.get('/:id/background', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const project = svc.getProject(req.params.id);
+    if (!project.backgroundUrl) { res.status(404).json({ error: 'No background' }); return; }
+    const filePath = join(svc.store.getProjectDir(project.id), project.backgroundUrl);
+    if (!existsSync(filePath)) { res.status(404).json({ error: 'Background file not found' }); return; }
+    const ext = project.backgroundUrl.split('.').pop()?.toLowerCase() ?? 'png';
+    const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+    res.setHeader('Content-Type', mimeMap[ext] ?? 'image/png');
+    res.setHeader('Cache-Control', 'no-cache');
+    createReadStream(filePath).pipe(res);
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
 // ZIP Export
 router.get('/:id/export', async (req: Request<{ id: string }>, res: Response) => {
   try {

@@ -157,7 +157,6 @@ export function AgentDetail({
       <Section icon={<MessageSquare className="size-3.5" />} title={t("detail.basic")}>
         {/* Background + Avatar + Name/Role layout */}
         <div className="flex flex-col">
-          {!hiddenFields?.background && (
           <div className="relative h-24 rounded-t-xl bg-muted overflow-hidden group">
             {agent.backgroundUrl ? (
               <>
@@ -166,6 +165,7 @@ export function AgentDetail({
                   alt="Background"
                   className="size-full object-cover"
                 />
+                {!hiddenFields?.background && (
                 <button
                   type="button"
                   className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/70"
@@ -173,13 +173,15 @@ export function AgentDetail({
                 >
                   <X className="size-3" />
                 </button>
+                )}
               </>
             ) : (
               <div className="size-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
                 <span className="text-xs text-muted-foreground">Default background</span>
               </div>
             )}
-            {/* Upload background button */}
+            {/* Upload background button — hiddenFields.background 时不开启上传 */}
+            {!hiddenFields?.background && (
             <label className="absolute bottom-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/50 text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
               <Camera className="size-3" />
               <input
@@ -199,8 +201,8 @@ export function AgentDetail({
                 }}
               />
             </label>
+            )}
           </div>
-          )}
           {/* Avatar + Name/Row row: avatar overlaps background bottom */}
           <div className="flex items-end gap-4 px-4 -mt-6">
             <div className="relative shrink-0">
