@@ -43,7 +43,7 @@ export function usePluginList({
         await Promise.all(
           allPlugins.map(async (p) => {
             try {
-              const resp = await fetchWithAuth(`/api/plugins/${p.id}/tools`);
+              const resp = await fetchWithAuth(`/api/plugins/${encodeURIComponent(p.id)}/tools`);
               if (resp.ok) {
                 const tools = await resp.json();
                 if (tools.length > 0) map[p.id] = tools;

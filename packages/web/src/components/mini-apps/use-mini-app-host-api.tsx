@@ -217,7 +217,7 @@ export function useMiniAppHostApi(projectId: string) {
       const body: Record<string, unknown> = { name: toolName, args, workspaceId: projectId, executorId };
       if (options?.taskId) body.taskId = options.taskId;
       if (options?.meta) body.meta = options.meta;
-      const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
+      const resp = await fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/tools/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -388,7 +388,7 @@ export function useMiniAppHostApi(projectId: string) {
 
     // ---- Tool exists check ----
     const toolExists = async (pluginId: string, toolName: string): Promise<boolean> => {
-      const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools`);
+      const resp = await fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/tools`);
       if (!resp.ok) return false;
       const tools: Array<{ name: string }> = await resp.json();
       return tools.some((t) => t.name === toolName);

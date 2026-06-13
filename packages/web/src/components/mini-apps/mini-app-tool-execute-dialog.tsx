@@ -127,7 +127,7 @@ export function MiniAppToolExecuteDialog({
     setExecuting(true);
     setResult(null);
     try {
-      const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
+      const resp = await fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/tools/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: tool.name, args }),
