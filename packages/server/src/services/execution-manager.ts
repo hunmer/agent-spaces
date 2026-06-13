@@ -37,6 +37,8 @@ import { createErrorShape } from '@agent-spaces/shared';
 import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
 import type { InteractionManager } from './interaction-manager.js';
 import * as workflowStore from '../storage/workflow-store.js';
+import * as sqliteStore from '../storage/sqlite-store.js';
+import { validateIdentifier } from '../storage/sql-safety.js';
 import * as pluginService from './plugin.js';
 import { executeCommandNode } from './workflow-command-runner.js';
 import { getThinkingRuntimeConfig } from './llm-model-config.js';
@@ -614,6 +616,11 @@ export class ExecutionManager {
         return { items: Array.isArray(resolvedData.items) ? resolvedData.items : [] };
       case 'table_display':
         return this.executeTableDisplay(session, node, resolvedData);
+      case 'sqlite_query':  return this.executeSqliteQuery(session, node, resolvedData);
+      case 'sqlite_insert': return this.executeSqliteInsert(session, node, resolvedData);
+      case 'sqlite_update': return this.executeSqliteUpdate(session, node, resolvedData);
+      case 'sqlite_delete': return this.executeSqliteDelete(session, node, resolvedData);
+      case 'sqlite_raw':    return this.executeSqliteRaw(session, node, resolvedData);
       case 'run_code':
         return this.executeCode(
           this.getRuntimeContext(session),
@@ -994,6 +1001,111 @@ export class ExecutionManager {
       schema: { headers, cells, selectionMode },
     });
     return { ...(result as Record<string, any>), headers, cells };
+  }
+
+  // ---- Private: SQLite node execution ----
+
+  /**
+   * inputFields 是节点声明的输入字段（OutputField[]，每项 {key, type, value?, children?}），
+   * 其 value 在 resolvedData 解析阶段（resolveContextVariables）已被绑定上游变量。
+   * 取「值」数组（按声明顺序），用于绑定 SQL 的 ? 占位符。
+   */
+  private getInputFieldValues(resolvedData: Record<string, any>): unknown[] {
+    const fields = Array.isArray(resolvedData?.inputFields) ? resolvedData.inputFields : [];
+    return fields.map((f: any) => f?.value ?? f?.defaultValue ?? null);
+  }
+
+  private resolveWhereParams(where: string): { clause: string | null; paramCount: number } {
+    if (!where || !where.trim()) return { clause: null, paramCount: 0 };
+    const paramCount = (where.match(/\?/g) || []).length;
+    return { clause: where, paramCount };
+  }
+
+  private executeSqliteQuery(
+    _session: ExecutionSession, _node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): { rows: unknown[]; rowCount: number } {
+    const dbId = String(resolvedData.database || '');
+    const table = String(resolvedData.table || '');
+    validateIdentifier(table, 'table');
+    const colsRaw = resolvedData.columns === '*' || !resolvedData.columns ? '*' : String(resolvedData.columns);
+    const { clause, paramCount } = this.resolveWhereParams(String(resolvedData.where || ''));
+    const order = resolvedData.orderBy ? ` ORDER BY ${resolvedData.orderBy}` : '';
+    const limit = Number(resolvedData.limit) > 0 ? Number(resolvedData.limit) : 1000;
+    let sql = `SELECT ${colsRaw} FROM "${table}"`;
+    if (clause) sql += ` WHERE ${clause}`;
+    sql += `${order} LIMIT ?`;
+    const fieldValues = this.getInputFieldValues(resolvedData).slice(0, paramCount);
+    const result = sqliteStore.query(dbId, sql, [...fieldValues, limit]);
+    return { rows: result.rows, rowCount: result.rowCount };
+  }
+
+  private executeSqliteInsert(
+    _session: ExecutionSession, _node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): { insertedId: number | null; changes: number } {
+    const dbId = String(resolvedData.database || '');
+    const table = String(resolvedData.table || '');
+    validateIdentifier(table, 'table');
+    const fields = Array.isArray(resolvedData.fields) ? resolvedData.fields : [];
+    const columns = fields.map((f: any) => { validateIdentifier(String(f.column), 'column'); return String(f.column); });
+    const placeholders = columns.map(() => '?').join(',');
+    const sql = `INSERT INTO "${table}" (${columns.join(',')}) VALUES (${placeholders})`;
+    const fieldValues = this.getInputFieldValues(resolvedData);
+    const params = fields.map((f: any, i: number) => fieldValues[i] ?? f.value ?? null);
+    const r = sqliteStore.exec(dbId, sql, params);
+    return { insertedId: r.lastInsertRowid, changes: r.changes };
+  }
+
+  private executeSqliteUpdate(
+    _session: ExecutionSession, _node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): { changes: number } {
+    const dbId = String(resolvedData.database || '');
+    const table = String(resolvedData.table || '');
+    validateIdentifier(table, 'table');
+    const setFields = Array.isArray(resolvedData.setFields) ? resolvedData.setFields : [];
+    const columns = setFields.map((f: any) => { validateIdentifier(String(f.column), 'column'); return String(f.column); });
+    const setClause = columns.map((c) => `${c} = ?`).join(', ');
+    const { clause, paramCount } = this.resolveWhereParams(String(resolvedData.where || ''));
+    let sql = `UPDATE "${table}" SET ${setClause}`;
+    if (clause) sql += ` WHERE ${clause}`;
+    const fieldValues = this.getInputFieldValues(resolvedData);
+    const setParams = setFields.map((f: any, i: number) => fieldValues[i] ?? f.value ?? null);
+    const whereParams = fieldValues.slice(setFields.length, setFields.length + paramCount);
+    const r = sqliteStore.exec(dbId, sql, [...setParams, ...whereParams]);
+    return { changes: r.changes };
+  }
+
+  private executeSqliteDelete(
+    _session: ExecutionSession, _node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): { changes: number } {
+    const dbId = String(resolvedData.database || '');
+    const table = String(resolvedData.table || '');
+    validateIdentifier(table, 'table');
+    const { clause, paramCount } = this.resolveWhereParams(String(resolvedData.where || ''));
+    let sql = `DELETE FROM "${table}"`;
+    if (clause) sql += ` WHERE ${clause}`;
+    const fieldValues = this.getInputFieldValues(resolvedData).slice(0, paramCount);
+    const r = sqliteStore.exec(dbId, sql, fieldValues);
+    return { changes: r.changes };
+  }
+
+  private executeSqliteRaw(
+    _session: ExecutionSession, _node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): { rows: unknown[]; rowCount?: number; execResult?: { changes: number; lastInsertRowid: number | null } } {
+    const dbId = String(resolvedData.database || '');
+    const sql = String(resolvedData.sql || '');
+    const mode = String(resolvedData.mode || 'query');
+    const params = this.getInputFieldValues(resolvedData).slice(0, (sql.match(/\?/g) || []).length);
+    if (mode === 'exec') {
+      const r = sqliteStore.exec(dbId, sql, params);
+      return { rows: [], execResult: r };
+    }
+    const r = sqliteStore.query(dbId, sql, params);
+    return { rows: r.rows, rowCount: r.rowCount };
   }
 
   private async executeAlertDialog(
