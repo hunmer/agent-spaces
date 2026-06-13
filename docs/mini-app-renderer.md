@@ -21,7 +21,7 @@ Workflow UI 渲染器 (`mini-app-renderer.tsx`) 在浏览器端编译和运行�
 
 - **无构建步骤**：使用 `@babel/standalone` 在浏览器端实时编译，支持 JSX 和 ES module 语法。
 - **全局 UI 组件与图标**：宿主应用通过 `window.AgentSpacesUI` 注入 shadcn/ui 组件（Button、Card、Slider 等）和 lucide-react 图标（Search、Loader2 等），用户代码通过解构使用，无需 import。
-- **插件工具调用**：`window.AgentSpaces.callPluginTool(pluginId, toolName, args, options?)` 调用插件 tool；消费返回值前应按工具详情里的输出结构取字段，若收到 `{ success, result }` 包装结构则使用内层 `result`。可选第 4 参 `options: { taskId?, meta? }` —— 附带后该次执行会被登记为 WS 频道任务并广播 `miniApp.*` 事件（见下文「WS 任务事件与多端同步」）；`meta` 是前端自定义上下文（如 mode/provider/prompt），后端原样存取并随事件回传。
+- **插件工具调用**：`window.AgentSpaces.callPluginTool(pluginId, toolName, args, options?)` 调用插件 tool；内置虚拟插件使用 `pluginId = '@agent-spaces/builtin'`，可调用 `list_agent_presets`、`agent_run` 等宿主内置工具。消费返回值前应按工具详情里的输出结构取字段，若收到 `{ success, result }` 包装结构则使用内层 `result`。可选第 4 参 `options: { taskId?, meta? }` —— 附带后该次执行会被登记为 WS 频道任务并广播 `miniApp.*` 事件（见下文「WS 任务事件与多端同步」）；`meta` 是前端自定义上下文（如 mode/provider/prompt），后端原样存取并随事件回传。
 - **任务事件订阅**：`window.AgentSpaces.onTaskEvent((event, data) => {...})` 订阅 `miniApp.taskSnapshot / taskStarted / taskFinished / taskFailed` 事件，返回取消订阅函数；`window.AgentSpaces.getExecutorId()` 返回当前客户端的会话级 executorId，用于识别自己发起的任务。
 - **服务端 Services（配置唯一写入方）**：`window.AgentSpaces.invokeService(name, payload)` 调用项目 `src/services/*.js` 中登记的 handler（服务端 Node 执行），handler 通过 `ctx.writeConfig / updateConfig` 落盘并自动广播 `miniApp.configChanged`，让所有客户端同步。多客户端共享同一写入方，杜绝互相覆盖（详见「项目 Services」）。
 - **配置读取（内存缓存）**：UI 不直接读文件。`window.AgentSpaces.getConfig(path)` 读内存快照、`onConfigChanged((path, value) => {})` 订阅变更；客户端连入时服务端推 `miniApp.configSnapshot` 建立缓存。
@@ -147,6 +147,33 @@ Agent 或项目 service 也可以广播业务事件，例如 `miniApp.playerActi
 - 执行完成广播 `miniApp.taskFinished`（带 result），抛错广播 `miniApp.taskFailed`（带 error）。
 - `taskId` 由前端预生成并对齐（见下），`meta` 是前端自定义上下文，后端原样存取并随每个事件回传 —— 其他未发起调用的客户端需要靠 `meta` 才能渲染队列项（mode/provider/label）与解析结果。
 - 响应体不变（`{ success, result }`），发起方照常拿结果。不带 `options` 时行为与普通 execute 完全一致（向后兼容）。
+
+内置 Agent 工具同样走 `callPluginTool` 和这套任务编排。先用 `list_agent_presets` 获取可用 preset，再把 `agentConfigId` 传给 `agent_run`：
+
+```js
+const presetsResp = await window.AgentSpaces.callPluginTool(
+  '@agent-spaces/builtin',
+  'list_agent_presets',
+  {},
+);
+const presets = presetsResp?.result?.presets ?? presetsResp?.presets ?? [];
+
+const taskId = crypto.randomUUID();
+const runResp = await window.AgentSpaces.callPluginTool(
+  '@agent-spaces/builtin',
+  'agent_run',
+  {
+    agentConfigId: presets[0].id,
+    prompt: '根据当前项目文件生成一份实现建议',
+    permissionMode: 'dontAsk',
+  },
+  {
+    taskId,
+    meta: { label: 'Agent 任务', prompt: '根据当前项目文件生成一份实现建议' },
+  },
+);
+const agentResult = runResp?.result?.result ?? runResp?.result ?? runResp;
+```
 
 ### 事件清单
 
