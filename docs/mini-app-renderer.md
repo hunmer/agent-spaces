@@ -41,6 +41,7 @@ Workflow UI 渲染器 (`mini-app-renderer.tsx`) 在浏览器端编译和运行�
    - `react`
    - `react-dom` / `react-dom/client`
    - `embla-carousel-react`
+   - `@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities`（拖拽排序：`DndContext` / `SortableContext` / `useSortable` / `arrayMove` / `CSS` 等）
    - `@agent-spaces/ui`（宿主 UI 导出）
 4. **本地文件解析**：外部模块未命中时，渲染器解析本地相对路径：
    - 相对路径归一化（处理 `./` 和 `../`）
@@ -60,6 +61,8 @@ Workflow UI 项目里的源码运行在 renderer 的 `new Function()` 沙箱中�
 - 新增外部模块映射时，保持返回值与 Babel CommonJS transform 兼容。默认导入模块建议返回 `{ __esModule: true, default: value }`。
 
 当前 `embla-carousel-react` 已由 renderer 映射；轮播 UI 也可以直接使用 `AgentSpacesUI` 暴露的 `Carousel`、`CarouselContent`、`CarouselItem`、`CarouselPrevious`、`CarouselNext`。
+
+`@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities` 同样已由 renderer 映射（直接 `import { DndContext, useSortable, arrayMove } from '@dnd-kit/...'`），用于列表拖拽排序。
 
 动态增删 Embla slide 时，需要在 React 提交 DOM 更新后调用 `emblaApi.reInit()`，再执行 `scrollTo()` 或读取 `canScrollPrev()` / `canScrollNext()`。否则 Embla 可能沿用初始化时的 slide 列表，表现为只能停留在第一张或导航按钮状态不更新。
 

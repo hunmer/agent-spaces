@@ -85,23 +85,30 @@
       "icon": "👩",
       "provider": "qianyin",
       "voiceId": "521"
+    },
+    {
+      "id": "role_mqc6swub_ox8el3",
+      "name": "test",
+      "icon": "🎵",
+      "provider": "fishaudio",
+      "voiceId": "eeba9e2d32254268b7aa9c135cb335f7"
     }
   ],
   "messages": [
     {
-      "id": "msg_mqc6da8j_fwyofp",
+      "id": "msg_mqc6gk6k_7kob0j",
       "roleId": "role_mqc6cj7v_l1dg9b",
-      "text": "很高兴见到大家",
-      "audioUrl": "",
-      "status": "idle",
+      "text": "大家好",
+      "audioUrl": "https://lang-pro-upload.oss-cn-beijing.aliyuncs.com/ttspro/202606/243d52d1-05ed-410f-8faf-eba174f4cbfb.mp3?Expires=1781388212&OSSAccessKeyId=LTAI5tMkC4z4WQz5Mk7f6AXX&Signature=wCTog%2BRwwmgwrVW0Mo1ZxTiIfFM%3D",
+      "status": "done",
       "error": ""
     },
     {
-      "id": "msg_mqc6gk6k_7kob0j",
-      "roleId": "role_mqc6cj7v_l1dg9b",
-      "text": "",
-      "audioUrl": "",
-      "status": "idle",
+      "id": "msg_mqc6da8j_fwyofp",
+      "roleId": "role_mqc6swub_ox8el3",
+      "text": "很高兴见到大家",
+      "audioUrl": "http://127.0.0.1:3100/static/uploads/1781344976754_46q1jf.mp3",
+      "status": "done",
       "error": ""
     }
   ]

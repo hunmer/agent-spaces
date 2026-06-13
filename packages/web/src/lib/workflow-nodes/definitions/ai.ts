@@ -8,7 +8,7 @@ export const aiNodes: NodeTypeDefinition[] = [
     icon: 'Bot',
     description: 'nodes.agent_run.description',
     properties: [
-      { key: 'agentConfigId', label: 'nodes.agent_run.props.agentConfigId', type: 'text' },
+      { key: 'agent', label: 'nodes.agent_run.props.agent', type: 'agent' },
       { key: 'prompt', label: 'nodes.agent_run.props.prompt', type: 'textarea', required: true },
       { key: 'systemPrompt', label: 'nodes.agent_run.props.systemPrompt', type: 'textarea' },
       { key: 'cwd', label: 'nodes.agent_run.props.cwd', type: 'text' },

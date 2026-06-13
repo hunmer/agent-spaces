@@ -1,8 +1,15 @@
 const { useState, useCallback, useRef } = React;
 const {
   Button, Badge, Textarea, Alert, AlertDescription,
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Separator,
+  Select, SelectTrigger, SelectContent, SelectItem, Separator,
 } = window.AgentSpacesUI;
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import styles from '../utils/styles';
 import { PROVIDERS, buildTTSArgs, extractAudioUrl, genId } from '../utils/providers';
 
@@ -46,19 +53,91 @@ async function downloadOne(url, filename) {
   }
 }
 
-// 多人配音编辑区（左侧）：角色列表 + 消息列表 + 工具栏
-// 音色库与参数面板在右侧固定卡，由 App 直接渲染
-function MultiVoicePanel({
-  providerStates,
-  roles,
-  onRemoveRole,
-  messages,
-  onMessagesChange,
-}) {
+// 单条消息（可拖拽）。拖拽手柄 ⠿，避免与 textarea / select 冲突
+function SortableMessage({ msg, index, roles, onText, onRole, onAddAfter, onRemove, onPreview, onSynth, previewingId }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: msg.id });
+  const role = roles.find((r) => r.id === msg.roleId);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        ...styles.msgItem,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        ...(isDragging ? { boxShadow: '0 4px 16px rgba(0,0,0,0.4)', zIndex: 10 } : {}),
+      }}
+    >
+      <div style={styles.msgTopRow}>
+        {/* 拖拽手柄 */}
+        <button
+          {...attributes}
+          {...listeners}
+          style={{ ...styles.iconBtn, cursor: 'grab', touchAction: 'none' }}
+          title="拖拽排序"
+        >
+          ⠿
+        </button>
+        <span style={styles.msgIndex}>#{index + 1}</span>
+
+        <Select value={msg.roleId} onValueChange={(v) => onRole(msg.id, v)}>
+          <SelectTrigger style={{ flex: '1', minWidth: '140px' }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {role ? `${role.icon} ${role.name}` : <span style={{ opacity: 0.5 }}>选择配音人</span>}
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {roles.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.icon} {r.name} · {PROVIDERS[r.provider]?.name || r.provider}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div style={styles.msgActions}>
+          <button style={styles.iconBtn} onClick={() => onPreview(msg)} disabled={!role || previewingId === msg.id} title="试听配音人">
+            {previewingId === msg.id ? '⏳' : '▶'}
+          </button>
+          <button style={styles.iconBtn} onClick={() => onSynth(msg)} disabled={msg.status === 'pending'} title={msg.audioUrl ? '重新合成' : '合成本条'}>
+            {msg.status === 'pending' ? '⏳' : msg.audioUrl ? '🔄' : '🎬'}
+          </button>
+          <button style={styles.iconBtn} onClick={() => onAddAfter(msg.prevId)} title="在上方插入">↑</button>
+          <button style={styles.iconBtn} onClick={() => onAddAfter(msg.id)} title="在下方插入">↓</button>
+          <button style={{ ...styles.iconBtn, color: '#f87171' }} onClick={() => onRemove(msg.id)} title="删除本条">🗑</button>
+        </div>
+      </div>
+
+      <Textarea
+        style={{ minHeight: '52px', resize: 'vertical', fontSize: '13px' }}
+        value={msg.text}
+        onChange={(e) => onText(msg.id, e.target.value)}
+        placeholder="输入该角色的配音文本..."
+        maxLength={10000}
+      />
+
+      {msg.audioUrl && msg.status === 'done' && (
+        <audio style={styles.audioPlayer} controls src={msg.audioUrl}>您的浏览器不支持音频播放</audio>
+      )}
+      {msg.status === 'error' && msg.error && (
+        <div style={{ fontSize: '12px', color: '#f87171' }}>❌ {msg.error}</div>
+      )}
+    </div>
+  );
+}
+
+// 多人配音编辑区（左侧）：角色列表 + 可拖拽消息列表 + 工具栏
+function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMessagesChange }) {
   const [batchLoading, setBatchLoading] = useState(false);
   const [previewingId, setPreviewingId] = useState(null);
   const [batchError, setBatchError] = useState('');
   const previewAudioRef = useRef(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // ===== 消息增删改 =====
   const patchMessage = useCallback((id, patch) => {
@@ -69,9 +148,7 @@ function MultiVoicePanel({
     onMessagesChange((prev) =>
       prev.map((m) =>
         m.id === id
-          ? m.text === text
-            ? m
-            : { ...m, text, audioUrl: '', status: 'idle', error: '' }
+          ? m.text === text ? m : { ...m, text, audioUrl: '', status: 'idle', error: '' }
           : m
       )
     );
@@ -79,22 +156,13 @@ function MultiVoicePanel({
 
   const updateMessageRole = useCallback((id, roleId) => {
     onMessagesChange((prev) =>
-      prev.map((m) =>
-        m.id === id ? { ...m, roleId, audioUrl: '', status: 'idle', error: '' } : m
-      )
+      prev.map((m) => (m.id === id ? { ...m, roleId, audioUrl: '', status: 'idle', error: '' } : m))
     );
   }, [onMessagesChange]);
 
   const addMessageAfter = useCallback((id) => {
     onMessagesChange((prev) => {
-      const newMsg = {
-        id: genId('msg'),
-        roleId: roles[0]?.id || '',
-        text: '',
-        audioUrl: '',
-        status: 'idle',
-        error: '',
-      };
+      const newMsg = { id: genId('msg'), roleId: roles[0]?.id || '', text: '', audioUrl: '', status: 'idle', error: '' };
       if (!id) return [...prev, newMsg];
       const idx = prev.findIndex((m) => m.id === id);
       if (idx < 0) return [...prev, newMsg];
@@ -106,6 +174,18 @@ function MultiVoicePanel({
 
   const removeMessage = useCallback((id) => {
     onMessagesChange((prev) => prev.filter((m) => m.id !== id));
+  }, [onMessagesChange]);
+
+  // ===== 拖拽排序 =====
+  const handleDragEnd = useCallback((e) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    onMessagesChange((prev) => {
+      const oldIndex = prev.findIndex((m) => m.id === active.id);
+      const newIndex = prev.findIndex((m) => m.id === over.id);
+      if (oldIndex < 0 || newIndex < 0) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
   }, [onMessagesChange]);
 
   // ===== 合成 =====
@@ -129,7 +209,6 @@ function MultiVoicePanel({
     }
   }, [roles, providerStates, patchMessage]);
 
-  // 一键合成：批量并发（最大 3）
   const handleGenerateAll = useCallback(async () => {
     const pending = messages.filter((m) => m.roleId && m.text.trim() && m.status !== 'done');
     if (!pending.length) {
@@ -145,7 +224,6 @@ function MultiVoicePanel({
     }
   }, [messages, synthOne]);
 
-  // ===== 试听配音人（用角色音色合成测试文本，不写入消息结果）=====
   const handlePreview = useCallback(async (msg) => {
     const role = roles.find((r) => r.id === msg.roleId);
     if (!role) return;
@@ -162,13 +240,13 @@ function MultiVoicePanel({
         audio.play();
       }
     } catch {
-      // 试听失败静默处理
+      // 静默
     } finally {
       setPreviewingId(null);
     }
   }, [roles]);
 
-  // ===== 批量下载已合成音频 =====
+  // ===== 批量下载（文件名用序号）=====
   const handleDownloadAll = useCallback(async () => {
     const done = messages.filter((m) => m.status === 'done' && m.audioUrl);
     if (!done.length) {
@@ -177,14 +255,11 @@ function MultiVoicePanel({
     }
     setBatchError('');
     for (let i = 0; i < done.length; i++) {
-      const m = done[i];
-      const role = roles.find((r) => r.id === m.roleId);
-      const safeName = (role?.name || 'voice').replace(/[\\/:*?"<>|]/g, '_');
-      const filename = `${String(i + 1).padStart(2, '0')}_${safeName}.mp3`;
-      await downloadOne(m.audioUrl, filename);
+      const filename = `${String(i + 1).padStart(2, '0')}.mp3`;
+      await downloadOne(done[i].audioUrl, filename);
       await delay(500);
     }
-  }, [messages, roles]);
+  }, [messages]);
 
   const doneCount = messages.filter((m) => m.status === 'done').length;
   const pendingCount = messages.filter((m) => m.roleId && m.text.trim() && m.status !== 'done').length;
@@ -196,7 +271,7 @@ function MultiVoicePanel({
         <span style={{ fontSize: '13px', fontWeight: '600', opacity: 0.8 }}>👥 角色</span>
         <Badge variant="secondary">{roles.length}</Badge>
         {roles.length > 0 ? (
-          <div style={styles.roleList} >
+          <div style={styles.roleList}>
             {roles.map((r) => (
               <span key={r.id} style={styles.roleItem} title={`${PROVIDERS[r.provider]?.name || r.provider} · ${r.voiceId}`}>
                 <span>{r.icon} {r.name}</span>
@@ -211,62 +286,32 @@ function MultiVoicePanel({
 
       <Separator style={{ margin: '10px 0' }} />
 
-      {/* 消息列表（滚动区） */}
+      {/* 可拖拽消息列表 */}
       <div style={{ flex: '1', overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
-        <div style={styles.msgList}>
-          {messages.length === 0 && (
-            <div style={styles.emptyHint}>暂无消息，点击下方「＋ 添加消息」开始</div>
-          )}
-          {messages.map((m, i) => {
-            const role = roles.find((r) => r.id === m.roleId);
-            return (
-              <div key={m.id} style={styles.msgItem}>
-                <div style={styles.msgTopRow}>
-                  <span style={styles.msgIndex}>#{i + 1}</span>
-                  <Select value={m.roleId} onValueChange={(v) => updateMessageRole(m.id, v)}>
-                    <SelectTrigger style={{ flex: '1', minWidth: '140px' }}>
-                      <SelectValue placeholder="选择配音人" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.icon} {r.name} · {PROVIDERS[r.provider]?.name || r.provider}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <div style={styles.msgActions}>
-                    <button style={styles.iconBtn} onClick={() => handlePreview(m)} disabled={!role || previewingId === m.id} title="试听配音人">
-                      {previewingId === m.id ? '⏳' : '▶'}
-                    </button>
-                    <button style={styles.iconBtn} onClick={() => synthOne(m)} disabled={m.status === 'pending'} title={m.audioUrl ? '重新合成' : '合成本条'}>
-                      {m.status === 'pending' ? '⏳' : m.audioUrl ? '🔄' : '🎬'}
-                    </button>
-                    <button style={styles.iconBtn} onClick={() => addMessageAfter(messages[i - 1]?.id)} title="在上方插入">↑</button>
-                    <button style={styles.iconBtn} onClick={() => addMessageAfter(m.id)} title="在下方插入">↓</button>
-                    <button style={{ ...styles.iconBtn, color: '#f87171' }} onClick={() => removeMessage(m.id)} title="删除本条">🗑</button>
-                  </div>
-                </div>
-
-                <Textarea
-                  style={{ minHeight: '52px', resize: 'vertical', fontSize: '13px' }}
-                  value={m.text}
-                  onChange={(e) => updateMessageText(m.id, e.target.value)}
-                  placeholder="输入该角色的配音文本..."
-                  maxLength={10000}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={messages.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+            <div style={styles.msgList}>
+              {messages.length === 0 && (
+                <div style={styles.emptyHint}>暂无消息，点击下方「＋ 添加消息」开始</div>
+              )}
+              {messages.map((m, i) => (
+                <SortableMessage
+                  key={m.id}
+                  msg={{ ...m, prevId: messages[i - 1]?.id }}
+                  index={i}
+                  roles={roles}
+                  onText={updateMessageText}
+                  onRole={updateMessageRole}
+                  onAddAfter={addMessageAfter}
+                  onRemove={removeMessage}
+                  onPreview={handlePreview}
+                  onSynth={synthOne}
+                  previewingId={previewingId}
                 />
-
-                {m.audioUrl && m.status === 'done' && (
-                  <audio style={styles.audioPlayer} controls src={m.audioUrl}>您的浏览器不支持音频播放</audio>
-                )}
-                {m.status === 'error' && m.error && (
-                  <div style={{ fontSize: '12px', color: '#f87171' }}>❌ {m.error}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* 工具栏 */}

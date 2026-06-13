@@ -47,6 +47,7 @@ export function inferDataType(type: string): DataType {
     case 'array':
     case 'conditions':
     case 'output_fields': return 'any';
+    case 'agent': return 'object';
     default: return 'string';
   }
 }

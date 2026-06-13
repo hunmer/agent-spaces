@@ -4,6 +4,22 @@
 import React, { Component as ReactComponent, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import useEmblaCarousel from 'embla-carousel-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/layout/theme-provider';
@@ -107,6 +123,30 @@ function resolveExternalModule(id: string) {
   if (id === 'react-dom' || id === 'react-dom/client') return ReactDOM;
   if (id === 'embla-carousel-react') {
     return { __esModule: true, default: useEmblaCarousel };
+  }
+  if (id === '@dnd-kit/core') {
+    return {
+      __esModule: true,
+      DndContext,
+      closestCenter,
+      PointerSensor,
+      KeyboardSensor,
+      useSensor,
+      useSensors,
+    };
+  }
+  if (id === '@dnd-kit/sortable') {
+    return {
+      __esModule: true,
+      SortableContext,
+      useSortable,
+      arrayMove,
+      verticalListSortingStrategy,
+      sortableKeyboardCoordinates,
+    };
+  }
+  if (id === '@dnd-kit/utilities') {
+    return { __esModule: true, CSS };
   }
   if (id === '@agent-spaces/ui') {
     return { __esModule: true, ...AgentSpacesUI };

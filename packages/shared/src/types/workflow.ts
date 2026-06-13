@@ -196,7 +196,7 @@ export interface NodePropertyVisibleWhen {
 export interface NodeProperty {
   key: string
   label: string
-  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields'
+  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields' | 'agent'
   dataType?: DataType
   required?: boolean
   readonly?: boolean

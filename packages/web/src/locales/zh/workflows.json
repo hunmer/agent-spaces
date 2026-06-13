@@ -513,7 +513,7 @@
       "label": "AI 执行",
       "description": "调用 Agent 运行任务",
       "props": {
-        "agentConfigId": "Agent preset ID",
+        "agent": "Agent",
         "prompt": "任务",
         "systemPrompt": "系统提示词",
         "cwd": "工作目录",

@@ -795,9 +795,7 @@ export class ExecutionManager {
 
     const workspaceId = resolveWorkflowAgentWorkspaceId();
     const workspace = workspaceService.getById(workspaceId);
-    const agentConfigId = typeof resolvedData.agentConfigId === 'string'
-      ? resolvedData.agentConfigId.trim()
-      : '';
+    const agentConfigId = resolveAgentConfigId(resolvedData);
     const presets = agentService.listPresets(workspaceId).filter(p => p.enabled !== false);
     const preset = agentConfigId
       ? presets.find(p => p.id === agentConfigId)
@@ -2012,6 +2010,18 @@ function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefi
 
 function resolveWorkflowAgentWorkspaceId(): string {
   return workspaceService.getAll()[0]?.id ?? 'default';
+}
+
+function resolveAgentConfigId(resolvedData: Record<string, any>): string {
+  if (typeof resolvedData.agentConfigId === 'string' && resolvedData.agentConfigId.trim()) {
+    return resolvedData.agentConfigId.trim();
+  }
+  const agent = resolvedData.agent;
+  if (agent && typeof agent === 'object' && !Array.isArray(agent)) {
+    const id = (agent as Record<string, unknown>).id;
+    if (typeof id === 'string' && id.trim()) return id.trim();
+  }
+  return '';
 }
 
 // Composite node helpers (from workflow-composite.ts shared types)

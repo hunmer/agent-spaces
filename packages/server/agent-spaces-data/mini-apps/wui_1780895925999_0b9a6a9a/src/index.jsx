@@ -229,6 +229,12 @@ function App() {
 
   const handleRemoveRole = useCallback((roleId) => {
     setRoles((prev) => prev.filter((r) => r.id !== roleId));
+    // 同步清空消息列表里使用该角色的选择，并失效其已合成音频
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.roleId === roleId ? { ...m, roleId: '', audioUrl: '', status: 'idle', error: '' } : m
+      )
+    );
   }, []);
 
   // ========== 渲染 ==========
