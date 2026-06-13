@@ -1,6 +1,6 @@
 {
-  "id": "wui_1781296943209_278551c7",
-  "name": "电子书转播客",
+  "id": "podcast_generator",
+  "name": "podcast_generator",
   "version": "1.0.0",
   "type": "react",
   "tags": [],

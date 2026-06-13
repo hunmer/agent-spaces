@@ -1,9 +1,0 @@
-{
-  "id": "8f8a5281-ce6e-4538-ace9-b36cf69b0fb5",
-  "sessionId": "a7e5ac7e-52ae-4296-8253-3ed387608b4e",
-  "agentId": "music-assistant",
-  "role": "user",
-  "content": "播放下一首歌",
-  "route": "/",
-  "timestamp": "2026-06-12T23:53:11.006Z"
-}

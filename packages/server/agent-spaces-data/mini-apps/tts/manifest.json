@@ -1,6 +1,6 @@
 {
-  "id": "wui_1780895925999_0b9a6a9a",
-  "name": "配音",
+  "id": "tts",
+  "name": "tts",
   "version": "1.0.0",
   "type": "react",
   "tags": [],

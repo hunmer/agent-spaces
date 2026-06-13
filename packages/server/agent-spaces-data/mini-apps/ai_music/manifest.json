@@ -1,6 +1,6 @@
 {
-  "id": "wui_1781192646059_cb4df369",
-  "name": "AI音乐",
+  "id": "ai_music",
+  "name": "ai_music",
   "version": "1.0.0",
   "type": "react",
   "tags": [],
