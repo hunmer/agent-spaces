@@ -21,6 +21,7 @@ import { TagInput } from '@/components/common/tag-input';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { Braces, ChevronRight, GripVertical, ListChecks, Plus, Trash2 } from 'lucide-react';
 import {
 	Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -167,6 +168,7 @@ export function OutputFieldsEditor({
 					<span>{t('type')}</span>
 				</div>
 			)}
+			{depth === 0 && <Separator />}
 			<div className="space-y-1">
 				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
 					<SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>

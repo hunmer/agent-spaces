@@ -313,18 +313,13 @@ export function WorkflowPropertiesPanel({
 
           {canEditInputFields && (
             <Card className='mt-2'>
-              {node.type !== 'start' && (
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">{t('properties.inputFields')}</CardTitle>
-                </CardHeader>
-              )}
-              <CardContent className={node.type === 'start' ? '' : 'pt-0'}>
-                  <InputFieldsSection
-                    node={node}
-                    data={data}
-                    variableContext={variableContext}
-                    onDataChange={handleDataChange}
-                  />
+              <CardContent>
+                <InputFieldsSection
+                  node={node}
+                  data={data}
+                  variableContext={variableContext}
+                  onDataChange={handleDataChange}
+                />
               </CardContent>
             </Card>
           )}

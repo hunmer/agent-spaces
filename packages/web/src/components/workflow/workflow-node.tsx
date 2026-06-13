@@ -588,7 +588,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               {isCurrentNodeDebugging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             </button>
           ) : null}
-          {canDeleteNode ? (
+          {canDeleteNode && !isExecutionBusy ? (
             <button
               type="button"
               className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"

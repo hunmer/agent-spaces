@@ -3,6 +3,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import type { OutputField, PluginConfigField, Workflow } from '@agent-spaces/shared';
+import { LOOP_BREAK_NODE_TYPE } from '@agent-spaces/shared';
+
+/** 侧边栏隐藏的节点类型（仅在节点选择对话框中可见）。 */
+const SIDEBAR_HIDDEN_NODE_TYPES = new Set<string>([LOOP_BREAK_NODE_TYPE]);
 import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi, workflowPluginSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { Input } from '@/components/ui/input';
@@ -132,12 +136,18 @@ export function WorkflowNodeSidebar({
       const grouped: Record<string, typeof searchResults> = {};
       for (const def of searchResults) {
         if (def.manualCreate === false) continue;
+        if (SIDEBAR_HIDDEN_NODE_TYPES.has(def.type)) continue;
         if (!grouped[def.category]) grouped[def.category] = [];
         grouped[def.category].push(def);
       }
       return grouped;
     }
-    return allCategories;
+    const grouped: Record<string, typeof searchResults> = {};
+    for (const [category, nodes] of Object.entries(allCategories)) {
+      const filtered = nodes.filter(node => !SIDEBAR_HIDDEN_NODE_TYPES.has(node.type));
+      if (filtered.length) grouped[category] = filtered;
+    }
+    return grouped;
   }, [searchQuery, searchResults, allCategories]);
 
   const pluginById = useMemo(() => new Map(workflowPlugins.map(plugin => [plugin.id, plugin])), [workflowPlugins]);
