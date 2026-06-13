@@ -476,6 +476,17 @@
         }
       }
     },
+    "string_concat": {
+      "label": "String Concat",
+      "description": "Interpolate input fields into a template using {{expression}} placeholders and output a result string",
+      "props": {
+        "template": {
+          "label": "Template",
+          "placeholder": "Hi {{users[0]}}, now {{today.hour}}:{{today.min}}",
+          "tooltip": "Supports {{expression}} placeholders, evaluated against the input fields above, e.g. {{users[0]}}, {{today.hour}}, {{today.min}}"
+        }
+      }
+    },
     "set_variable": {
       "label": "Set Variable",
       "description": "Write or overwrite workflow runtime variables, set multiple at once",

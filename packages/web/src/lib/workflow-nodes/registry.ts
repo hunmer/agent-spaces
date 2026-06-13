@@ -1,6 +1,6 @@
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { LOCAL_BRIDGE_WORKFLOW_NODES } from '@agent-spaces/shared';
-import { flowControlNodes, aiNodes, interactionNodes, displayNodes, utilsNodes } from './definitions';
+import { flowControlNodes, aiNodes, interactionNodes, displayNodes, utilsNodes, stringNodes } from './definitions';
 
 // ---- All node definitions (raw, with i18n keys) ----
 
@@ -10,6 +10,7 @@ export const allNodeDefinitions: NodeTypeDefinition[] = [
   ...interactionNodes,
   ...displayNodes,
   ...utilsNodes,
+  ...stringNodes,
   ...LOCAL_BRIDGE_WORKFLOW_NODES,
 ];
 

@@ -476,6 +476,17 @@
         }
       }
     },
+    "string_concat": {
+      "label": "字符串拼接",
+      "description": "用模板字符串拼接输入字段，{{expression}} 占位符会被替换为对应值，输出 result 字符串",
+      "props": {
+        "template": {
+          "label": "模板",
+          "placeholder": "你好,{{users[0]}},现在是{{today.hour}}:{{today.min}}",
+          "tooltip": "支持 {{表达式}} 插值，表达式以上方输入字段为上下文，例如 {{users[0]}}、{{today.hour}}、{{today.min}}"
+        }
+      }
+    },
     "set_variable": {
       "label": "设置变量",
       "description": "写入或覆盖工作流运行时变量，可一次设置多个变量",

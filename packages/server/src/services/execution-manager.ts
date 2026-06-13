@@ -646,6 +646,8 @@ export class ExecutionManager {
         return this.executeArrayTextReplace(resolvedData);
       case 'parse_json':
         return this.executeParseJson(resolvedData);
+      case 'string_concat':
+        return this.executeStringConcat(resolvedData);
       case 'set_variable':
         return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
@@ -747,6 +749,34 @@ export class ExecutionManager {
     } catch {
       return { result: {} };
     }
+  }
+
+  /**
+   * 字符串拼接节点：用 {{expression}} 占位符引用输入字段的值进行插值。
+   * 表达式以输入字段为上下文执行，例如 {{users[0]}}、{{today.hour}}。
+   */
+  private executeStringConcat(resolvedData: Record<string, any>): Record<string, string> {
+    const template = typeof resolvedData.template === 'string' ? resolvedData.template : '';
+    const context = this.buildOutputObject(resolvedData.inputFields) ?? {};
+    return { result: this.interpolateTemplate(template, context) };
+  }
+
+  private interpolateTemplate(template: string, context: Record<string, any>): string {
+    if (!template) return '';
+    const keys = Object.keys(context);
+    return template.replace(/\{\{([\s\S]*?)\}\}/g, (match, expr: string) => {
+      const trimmed = expr.trim();
+      if (!trimmed) return '';
+      try {
+        const fn = new Function(...keys, `"use strict"; return (${trimmed});`);
+        const value = fn(...keys.map(k => context[k]));
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+      } catch {
+        return match;
+      }
+    });
   }
 
   private executeArrayTextReplace(resolvedData: Record<string, any>): Record<string, string[]> {

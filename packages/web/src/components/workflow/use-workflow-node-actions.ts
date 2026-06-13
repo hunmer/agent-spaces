@@ -7,6 +7,7 @@ export interface UseWorkflowNodeActionsParams {
   isBoundaryNode: boolean;
   isCurrentNodeDebugging: boolean;
   isExecutionBusy: boolean;
+  isDeleteDisabled: boolean;
   selectedNodeIds: string[];
   nodeMinWidth: number;
   nodeMinHeight: number;
@@ -19,6 +20,7 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
     isBoundaryNode,
     isCurrentNodeDebugging,
     isExecutionBusy,
+    isDeleteDisabled,
     selectedNodeIds,
     nodeMinWidth,
     nodeMinHeight,
@@ -32,9 +34,9 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
   }, [id, isCanvasLocked]);
 
   const handleDelete = useCallback(() => {
-    if (isCanvasLocked) return;
+    if (isCanvasLocked || isDeleteDisabled) return;
     window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
-  }, [id, isCanvasLocked]);
+  }, [id, isCanvasLocked, isDeleteDisabled]);
 
   const handleCopy = useCallback(() => {
     if (isCanvasLocked) return;
@@ -52,10 +54,10 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
   }, [id, isCanvasLocked]);
 
   const handleMoveToStage = useCallback(() => {
-    if (isCanvasLocked) return;
+    if (isCanvasLocked || isDeleteDisabled) return;
     window.dispatchEvent(new CustomEvent('workflow:stage-node', { detail: { nodeId: id } }));
     window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
-  }, [id, isCanvasLocked]);
+  }, [id, isCanvasLocked, isDeleteDisabled]);
 
   const handleMergeToWorkflow = useCallback(() => {
     if (isCanvasLocked || selectedNodeIds.length < 2) return;
@@ -68,9 +70,9 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
   }, [isCanvasLocked, selectedNodeIds]);
 
   const handleBatchDelete = useCallback(() => {
-    if (isCanvasLocked || selectedNodeIds.length < 1) return;
+    if (isCanvasLocked || isDeleteDisabled || selectedNodeIds.length < 1) return;
     window.dispatchEvent(new CustomEvent('workflow:batch-delete-nodes', { detail: { nodeIds: selectedNodeIds } }));
-  }, [isCanvasLocked, selectedNodeIds]);
+  }, [isCanvasLocked, isDeleteDisabled, selectedNodeIds]);
 
   const handleShowInfo = useCallback(() => {
     window.dispatchEvent(new CustomEvent('workflow:show-node-info', { detail: { nodeId: id } }));

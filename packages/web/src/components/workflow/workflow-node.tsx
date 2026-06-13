@@ -220,7 +220,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const currentNodeState = nodeData.nodeState || 'normal';
   const currentBreakpoint = nodeData.breakpoint || null;
   const isCurrentNodeDebugging = nodeData.debugNodeId === id && nodeData.debugStatus === 'running';
+  const isDebugging = nodeData.debugStatus === 'running';
   const isExecutionBusy = nodeData.execStatus === 'running' || nodeData.execStatus === 'paused';
+  const isDeleteDisabled = isExecutionBusy || isDebugging;
   const isPartialTesting = nodeData.execStatus === 'running' && nodeData.partialExecutionStartNodeId === id;
   const isPausedAtThisNode = nodeData.execStatus === 'paused'
     && nodeData.pausedNodeId === id
@@ -267,6 +269,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     isBoundaryNode,
     isCurrentNodeDebugging,
     isExecutionBusy,
+    isDeleteDisabled,
     selectedNodeIds,
     nodeMinWidth,
     nodeMinHeight,
@@ -588,7 +591,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               {isCurrentNodeDebugging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             </button>
           ) : null}
-          {canDeleteNode && !isExecutionBusy ? (
+          {canDeleteNode && !isDeleteDisabled ? (
             <button
               type="button"
               className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
