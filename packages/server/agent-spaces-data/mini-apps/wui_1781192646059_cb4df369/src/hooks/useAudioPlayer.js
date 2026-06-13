@@ -98,6 +98,19 @@ export default function useAudioPlayer() {
     setIsPlaying(true);
   }, []);
 
+  const stop = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setAudioUrl(null);
+    audioRef.current = null;
+  }, []);
+
   const formatTime = useCallback((seconds) => {
     if (!seconds || isNaN(seconds)) return '0:00';
     const m = Math.floor(seconds / 60);
@@ -107,6 +120,6 @@ export default function useAudioPlayer() {
 
   return {
     audioUrl, isPlaying, isLoading, currentTime, duration, volume,
-    toggle, seek, loadAudio, formatTime, setVolume, replay, onEndedRef,
+    toggle, seek, loadAudio, formatTime, setVolume, replay, stop, onEndedRef,
   };
 }

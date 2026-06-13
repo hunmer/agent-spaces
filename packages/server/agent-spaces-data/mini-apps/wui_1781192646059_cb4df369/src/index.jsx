@@ -124,6 +124,27 @@ export default function App() {
     playTrack(item, idx !== -1 ? idx : -1);
   }, [playlist, playTrack]);
 
+  const handleRemove = useCallback(async (item) => {
+    try {
+      const updated = playlist.filter(p => p.audioUrl !== item.audioUrl);
+      await window.AgentSpacesUI.writeConfigJson('music-history.json', updated);
+      setPlaylist(updated);
+      // 如果删除的是当前播放的歌曲，停止播放
+      if (player.audioUrl === item.audioUrl) {
+        player.stop();
+        setTrackInfo({ title: 'Neon Horizon', artist: 'Syntax Error ft. The Algorithm', lyrics: '' });
+        setCurrentLyrics('');
+        setCurrentIndex(-1);
+      } else {
+        // 重新定位当前索引
+        const newIdx = updated.findIndex(p => p.audioUrl === player.audioUrl);
+        if (newIdx !== -1) setCurrentIndex(newIdx);
+      }
+    } catch (e) {
+      console.error('Failed to remove song:', e);
+    }
+  }, [playlist, player]);
+
   // Prev / Next handlers
   const handlePrev = useCallback(() => {
     if (playlist.length === 0) return;
@@ -216,6 +237,7 @@ export default function App() {
         onNext={handleNext}
         playlist={playlist}
         currentIndex={currentIndex}
+        onRemove={handleRemove}
       />
 
       {/* Music Generator Sheet */}

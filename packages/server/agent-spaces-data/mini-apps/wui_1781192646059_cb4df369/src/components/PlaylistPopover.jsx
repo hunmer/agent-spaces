@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 
 const {
   Popover, PopoverContent, PopoverTrigger,
-  Play, Pause, Music, ChevronLeft, ChevronRight, ListMusic, Heart,
+  Play, Pause, Music, ChevronLeft, ChevronRight, ListMusic, Heart, Trash2,
 } = window.AgentSpacesUI;
 
 const PAGE_SIZE = 50;
 
-export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, likedSongs, onToggleLiked }) {
+export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, likedSongs, onToggleLiked, onRemove }) {
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
   const [open, setOpen] = useState(false);
@@ -85,6 +85,12 @@ export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, 
                       className={`w-4 h-4 ${likedSongs.has(item.audioUrl) ? 'text-[var(--theme-accent)]' : 'text-muted-foreground'}`}
                       fill={likedSongs.has(item.audioUrl) ? 'currentColor' : 'none'}
                     />
+                  </button>
+                  <button
+                    className="shrink-0 p-1 text-muted-foreground hover:text-red-400 hover:scale-110 transition-all"
+                    onClick={(e) => { e.stopPropagation(); onRemove(item); }}
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </button>
               );

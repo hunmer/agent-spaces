@@ -187,7 +187,7 @@ export class LangChainRuntime implements AgentRuntime {
       }
       if (usage?.totalTokens || usage?.inputTokens || usage?.outputTokens) {
         const usageLine = `[Usage] tokens=${usage.totalTokens ?? '-'} input=${usage.inputTokens ?? '-'} output=${usage.outputTokens ?? '-'}`;
-        output.push(usageLine);
+        // output.push(usageLine);
         runtimeOptions?.onEvent?.({ type: 'output', line: usageLine });
       }
 

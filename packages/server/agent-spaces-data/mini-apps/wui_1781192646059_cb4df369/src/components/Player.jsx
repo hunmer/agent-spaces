@@ -21,6 +21,7 @@ export default function Player({
   playMode, onPlayModeChange,
   onPrev, onNext,
   playlist,
+  onRemove,
 }) {
   const barCount = 80;
   const bars = useMemo(
@@ -193,6 +194,7 @@ export default function Player({
               onSelect={onPlayFromList}
               likedSongs={likedSongs}
               onToggleLiked={onToggleLiked}
+              onRemove={onRemove}
             />
           </div>
 
