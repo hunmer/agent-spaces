@@ -96,16 +96,16 @@ export default function MusicGenerator({ open, onClose, onGenerate, onGenerateSt
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !generating) onClose(); }}>
-      <DialogContent className="bg-popover text-popover-foreground border-border max-w-[60vw] max-h-[85vh] flex flex-col">
-        <div className="overflow-y-auto flex-1">
-        <DialogHeader>
+      <DialogContent className="bg-popover text-popover-foreground border-border max-w-[60vw] flex flex-col overflow-hidden">
+        {/* Header - fixed */}
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-xl">AI 音乐创作</DialogTitle>
           <DialogDescription>
             描述你想要的音乐风格，AI 将为你生成独一无二的音乐
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-4 flex-1 min-h-0">
           {/* Prompt */}
           <div className="space-y-2">
             <Label className="text-sm">音乐风格描述 *</Label>
@@ -113,7 +113,8 @@ export default function MusicGenerator({ open, onClose, onGenerate, onGenerateSt
               placeholder="例如：流行音乐, 难过, 适合在下雨的晚上"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              className="border-border placeholder:text-muted-foreground bg-background/40 min-h-[80px] resize-none"
+              rows={5}
+              className="border-border placeholder:text-muted-foreground bg-background/40 resize-none"
             />
           </div>
 
@@ -125,7 +126,8 @@ export default function MusicGenerator({ open, onClose, onGenerate, onGenerateSt
                 placeholder={"[Verse]\n在这里写歌词...\n\n[Chorus]\n副歌部分..."}
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value)}
-                className="border-border placeholder:text-muted-foreground bg-background/40 min-h-[100px] resize-none pb-9"
+                rows={5}
+                className="border-border placeholder:text-muted-foreground bg-background/40 resize-none pb-9"
               />
               <button
                 type="button"
@@ -175,9 +177,8 @@ export default function MusicGenerator({ open, onClose, onGenerate, onGenerateSt
             </div>
           )}
         </div>
-        </div>
 
-        {/* Generate Button - fixed at bottom */}
+        {/* Footer - fixed */}
         <div className="mt-4 flex-shrink-0">
           <Button
             onClick={handleGenerate}

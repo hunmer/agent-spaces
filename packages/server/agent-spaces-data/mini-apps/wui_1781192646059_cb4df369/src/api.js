@@ -31,8 +31,13 @@ export default {
         'minimax_music_generation',
         { prompt, lyrics, instrumental }
       );
-      ctx.broadcast('miniApp.musicGenerated', { result });
-      return { ok: true, message: '歌曲生成中，请稍候...', result };
+      const data = result?.result?.data || result?.data;
+      const audioUrl = data?.audioHex?.trim();
+      if (audioUrl) {
+        const title = prompt.length > 30 ? prompt.slice(0, 30) + '...' : prompt;
+        ctx.broadcast('miniApp.musicGenerated', { audioUrl, prompt, lyrics, title });
+      }
+      return { ok: true, message: '歌曲生成完成', audioUrl };
     } catch (err) {
       return { ok: false, message: '生成失败：' + (err.message || String(err)) };
     }

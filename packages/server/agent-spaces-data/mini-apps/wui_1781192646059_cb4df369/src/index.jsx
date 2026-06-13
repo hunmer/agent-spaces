@@ -152,12 +152,17 @@ export default function App() {
   useEffect(() => {
     if (!window.AgentSpaces?.onTaskEvent) return;
     const unsub = window.AgentSpaces.onTaskEvent((event, data) => {
-      if (event !== 'miniApp.playerAction') return;
-      if (data?.dir === 'next') handleNext();
-      else if (data?.dir === 'prev') handlePrev();
+      if (event === 'miniApp.playerAction') {
+        if (data?.dir === 'next') handleNext();
+        else if (data?.dir === 'prev') handlePrev();
+      } else if (event === 'miniApp.musicGenerated') {
+        if (data?.audioUrl) handleGenerate(data);
+      } else if (event === 'miniApp.toggleLike') {
+        if (player.audioUrl) toggleLiked(player.audioUrl);
+      }
     });
     return unsub;
-  }, [handleNext, handlePrev]);
+  }, [handleNext, handlePrev, handleGenerate, player.audioUrl, toggleLiked]);
 
   return (
     <div className="bg-background text-foreground h-screen overflow-hidden flex flex-col relative">
