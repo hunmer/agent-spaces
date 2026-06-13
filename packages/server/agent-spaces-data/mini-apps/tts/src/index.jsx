@@ -13,6 +13,7 @@ import ParameterPanel from './components/ParameterPanel';
 import BackgroundMusic from './components/BackgroundMusic';
 import PlayerBar from './components/PlayerBar';
 import MultiVoicePanel from './components/MultiVoicePanel';
+import { normalizeLaunchParams, parseUrlLaunchParams } from './schems';
 
 function App() {
   // 配音模式：单人 / 多人（仅切换左侧；右侧角色设置卡固定不变）
@@ -30,16 +31,70 @@ function App() {
   // 多人配音：角色列表 / 消息列表
   const [roles, setRoles] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [pendingLaunch, setPendingLaunch] = useState(null);
 
   // 背景音乐（单人模式，会话级，仅本地混音播放）
   const bgmAudioRef = useRef(null);
   const [bgmUrl, setBgmUrl] = useState('');
   const [bgmVolume, setBgmVolume] = useState(30);
+  const multiPanelApiRef = useRef(null);
+  const consumedLaunchRef = useRef(new Set());
+  const [multiPanelReady, setMultiPanelReady] = useState(false);
 
   const current = providerStates[provider];
   const voices = current.voices;
   const voiceId = current.voiceId;
   const isMulti = mode === 'multi';
+
+  const applyLaunchPayload = useCallback((payload, sourceKey) => {
+    const launch = normalizeLaunchParams(payload);
+    if (!launch || !sourceKey) return false;
+    if (consumedLaunchRef.current.has(sourceKey)) return false;
+    consumedLaunchRef.current.add(sourceKey);
+
+    const nextProvider = PROVIDERS[launch.provider] ? launch.provider : 'minimax';
+    setProvider(nextProvider);
+    setError('');
+    setAudioUrl('');
+
+    if (launch.mode === 'multi') {
+      const lines = launch.text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (!lines.length) return false;
+
+      const providerState = providerStates[nextProvider] || buildDefaultProviderStates()[nextProvider];
+      const firstVoice = providerState?.voices?.[0];
+      const roleId = genId('role');
+
+      setMode('multi');
+      setText('');
+      setRoles(firstVoice ? [{
+        id: roleId,
+        name: firstVoice.name,
+        icon: firstVoice.icon || '🎭',
+        provider: nextProvider,
+        voiceId: firstVoice.id,
+      }] : []);
+      setMessages(lines.map((line) => ({
+        id: genId('msg'),
+        roleId: firstVoice ? roleId : '',
+        text: line,
+        audioUrl: '',
+        status: 'idle',
+        error: '',
+      })));
+    } else {
+      setMode('single');
+      setRoles([]);
+      setMessages([]);
+      setText(launch.text);
+    }
+
+    setPendingLaunch({ ...launch, sourceKey, at: Date.now() });
+    return true;
+  }, [providerStates]);
 
   // ========== 启动时加载配置 ==========
 
@@ -105,6 +160,24 @@ function App() {
       })
       .finally(() => setConfigLoaded(true));
   }, []);
+
+  useEffect(() => {
+    if (!configLoaded) return;
+    const launch = parseUrlLaunchParams(window.location.search);
+    if (launch) applyLaunchPayload(launch, `url:${window.location.search}`);
+  }, [configLoaded, applyLaunchPayload]);
+
+  useEffect(() => {
+    const AS = window.AgentSpaces;
+    if (!AS?.onTaskEvent) return undefined;
+    const unsubscribe = AS.onTaskEvent((event, data) => {
+      if (event !== 'miniApp.ttsLaunch') return;
+      applyLaunchPayload(data, `event:${JSON.stringify(data)}`);
+    });
+    return () => {
+      try { unsubscribe(); } catch {}
+    };
+  }, [applyLaunchPayload]);
 
   // ========== 多人状态持久化 ==========
   useEffect(() => {
@@ -237,6 +310,30 @@ function App() {
     );
   }, []);
 
+  const handleMultiPanelReady = useCallback((api) => {
+    multiPanelApiRef.current = api;
+    setMultiPanelReady(!!api);
+  }, []);
+
+  useEffect(() => {
+    if (!pendingLaunch || !configLoaded || loading) return;
+    if (pendingLaunch.mode === 'multi') {
+      if (!messages.length) return;
+      if (!multiPanelReady || !multiPanelApiRef.current?.generateAll) return;
+      const timer = setTimeout(() => {
+        multiPanelApiRef.current?.generateAll?.();
+        setPendingLaunch(null);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    if (!text.trim()) return;
+    const timer = setTimeout(() => {
+      handleGenerate();
+      setPendingLaunch(null);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [pendingLaunch, configLoaded, loading, messages.length, multiPanelReady, text, handleGenerate]);
+
   // ========== 渲染 ==========
 
   if (!configLoaded) {
@@ -306,6 +403,7 @@ function App() {
                 roles={roles}
                 onRemoveRole={handleRemoveRole}
                 messages={messages}
+                onReady={handleMultiPanelReady}
                 onMessagesChange={(updater) =>
                   setMessages((prev) => (typeof updater === 'function' ? updater(prev) : updater))
                 }

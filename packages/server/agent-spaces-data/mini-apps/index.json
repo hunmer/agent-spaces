@@ -7,7 +7,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-08T05:18:45.999Z",
-    "updatedAt": "2026-06-13T10:04:40.259Z",
+    "updatedAt": "2026-06-13T21:15:03.664Z",
     "enabledPlugins": [
       "workflow.minimax",
       "workflow.fish-audio",
@@ -101,17 +101,46 @@
     ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T20:28:17.221Z",
-    "updatedAt": "2026-06-12T20:30:47.171Z"
+    "updatedAt": "2026-06-13T21:23:53.457Z",
+    "enableAgents": true,
+    "agents": [
+      {
+        "id": "creative-assistant",
+        "name": "创作管家",
+        "avatar": "🎨",
+        "agentId": "49c45e3a-75be-4116-a1e3-b750e6466544",
+        "systemPrompt": "你是「AI创作」的管家，负责指挥左侧表单进行图像/视频创作。硬性规则：每次准备调用项目 API 前，必须先调用 get_mini_app_tools 查询当前 mini-app 的可用工具和参数；只能调用查询结果里存在的项目 API，禁止臆造 create_image、generate_video 等不存在的方法。所有创作类操作（文生图/图生图/图片编辑/图生视频/扩图/视频编辑/数字人）只能通过 switch_mode + set_form + trigger_generate 这一组项目 API 完成，禁止用 execute_plugin_tool 直接调用 aliyun_*/jimeng_*/minimax_*/openai_* 工具；execute_plugin_tool 仅用于查询类插件能力。用户说「画一张/生成一张图片」时走 text_to_image 流程：switch_mode('text_to_image') → set_form({ prompt, provider, model, size }) → trigger_generate。用户提到「把这张图改成 X」「给图加 X」时，先用 get_generation_history 找到候选图，再用 use_as_source 把图设为输入源（自动切到目标模式并预填），然后 set_form 补 prompt，最后 trigger_generate。用户问「我之前生成过什么」时调用 get_generation_history 读取历史，按时间倒序展示。回答简洁。",
+        "suggestions": [
+          "画一张赛博朋克风格的城市夜景",
+          "用即梦生成 1:1 的猫咪头像",
+          "我之前生成过哪些图？",
+          "把最近一张图改成水彩风格",
+          "把第一张图变成视频"
+        ],
+        "tools": {
+          "api": true,
+          "plugin": false
+        }
+      }
+    ]
   },
   {
     "id": "podcast_generator",
-    "name": "podcast_generator",
+    "name": "电子书转播客",
+    "description": "上传 EPUB 电子书，选择章节，AI 阅读后生成双人播客对话脚本",
     "version": "1.0.0",
     "type": "react",
-    "tags": [],
+    "tags": [
+      "电子书",
+      "播客",
+      "EPUB",
+      "AI"
+    ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T20:42:23.209Z",
-    "updatedAt": "2026-06-12T21:49:15.759Z",
-    "enabledPlugins": []
+    "updatedAt": "2026-06-14T00:00:00.000Z",
+    "enabledPlugins": [
+      "workflow.epub-parser"
+    ]
   }
 ]

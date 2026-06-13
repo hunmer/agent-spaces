@@ -234,6 +234,7 @@ export function useMiniAppHostApi(projectId: string) {
       'miniApp.taskFinished',
       'miniApp.taskFailed',
       'miniApp.clientRequest',
+      'miniApp.ttsLaunch',
     ] as const;
     const subscribeTaskEvents = (cb: (event: string, data: any) => void) => {
       const ws = getWS(projectId);

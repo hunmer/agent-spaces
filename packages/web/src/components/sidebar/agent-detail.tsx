@@ -185,7 +185,7 @@ export function AgentDetail({
   };
 
   return (
-    <div className="flex w-[80vw] flex-col gap-5 p-5">
+    <div className="flex w-full flex-col gap-5 p-5">
       <Section icon={<MessageSquare className="size-3.5" />} title={t("detail.basic")}>
         {/* Background + Avatar + Name/Role layout */}
         <div className="flex flex-col">

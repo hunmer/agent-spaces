@@ -1,4 +1,4 @@
-const { useState, useCallback, useRef } = React;
+const { useState, useCallback, useEffect, useRef } = React;
 const {
   Button, Badge, Textarea, Alert, AlertDescription,
   Select, SelectTrigger, SelectContent, SelectItem, Separator,
@@ -128,7 +128,7 @@ function SortableMessage({ msg, index, roles, onText, onRole, onAddAfter, onRemo
 }
 
 // 多人配音编辑区（左侧）：角色列表 + 可拖拽消息列表 + 工具栏
-function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMessagesChange }) {
+function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMessagesChange, onReady }) {
   const [batchLoading, setBatchLoading] = useState(false);
   const [previewingId, setPreviewingId] = useState(null);
   const [batchError, setBatchError] = useState('');
@@ -223,6 +223,12 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
       setBatchLoading(false);
     }
   }, [messages, synthOne]);
+
+  useEffect(() => {
+    if (!onReady) return undefined;
+    onReady({ generateAll: handleGenerateAll });
+    return () => onReady(null);
+  }, [onReady, handleGenerateAll]);
 
   const handlePreview = useCallback(async (msg) => {
     const role = roles.find((r) => r.id === msg.roleId);
