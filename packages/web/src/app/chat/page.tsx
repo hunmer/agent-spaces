@@ -88,6 +88,7 @@ function ChatPageInner() {
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
   const [createAgentOpen, setCreateAgentOpen] = useState(false);
+  const [createAgentPreset, setCreateAgentPreset] = useState<AgentPreset | undefined>(undefined);
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
 
@@ -196,6 +197,15 @@ function ChatPageInner() {
 
   const handleAddAgent = useCallback(
     async (preset: AgentPreset) => {
+      if (!preset.providerId || !preset.modelId) {
+        setCreateAgentPreset({
+          ...preset,
+          id: preset.id || `draft-chat-${Date.now()}`,
+          runtimeKind: "langchain",
+        });
+        setCreateAgentOpen(true);
+        return;
+      }
       await createAgent({
         name: preset.name,
         role: "agent",
@@ -478,10 +488,15 @@ function ChatPageInner() {
       {/* Create Agent Dialog */}
       <AddChatAgentDialog
         open={createAgentOpen}
-        onOpenChange={setCreateAgentOpen}
+        onOpenChange={(open) => {
+          setCreateAgentOpen(open);
+          if (!open) setCreateAgentPreset(undefined);
+        }}
+        initialPreset={createAgentPreset}
         onSubmit={async (data) => {
           await createAgent(data);
           setCreateAgentOpen(false);
+          setCreateAgentPreset(undefined);
         }}
       />
 

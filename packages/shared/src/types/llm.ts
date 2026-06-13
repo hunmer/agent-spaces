@@ -1,3 +1,5 @@
+import type { AgentConfig } from './workspace.js';
+
 export interface LLMModel {
   id: string;
   modelId: string;
@@ -24,6 +26,8 @@ export interface LLMProvider {
   name: string;
   apiBase: string;
   apiKey: string;
+  /** API 消息类型（与 AgentConfig.modelProvider 同一联合类型），选定 provider 时由 agent 自动应用 */
+  modelProvider?: AgentConfig['modelProvider'];
   createdAt: string;
   updatedAt: string;
 }

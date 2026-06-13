@@ -111,6 +111,7 @@
     "provider": "供应商",
     "providerPlaceholder": "选择供应商...",
     "providerSearchPlaceholder": "搜索供应商...",
+    "manageProviders": "管理供应商",
     "modelField": "模型",
     "selectProviderFirst": "请先选择供应商...",
     "modelPlaceholder": "选择模型...",

@@ -28,6 +28,8 @@
     "apiBase": "API 地址",
     "apiBasePlaceholder": "https://api.anthropic.com",
     "apiKey": "API 密钥",
-    "apiKeyPlaceholder": "sk-..."
+    "apiKeyPlaceholder": "sk-...",
+    "apiMessageType": "API 消息类型",
+    "apiMessageTypePlaceholder": "选择 API 消息类型..."
   }
 }

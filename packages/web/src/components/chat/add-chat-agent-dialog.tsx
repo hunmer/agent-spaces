@@ -72,12 +72,13 @@ interface AddChatAgentDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: Omit<ChatAgent, "id" | "createdAt" | "updatedAt">) => void;
   initialData?: ChatAgent;
+  initialPreset?: AgentPreset;
 }
 
-export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }: AddChatAgentDialogProps) {
+export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData, initialPreset }: AddChatAgentDialogProps) {
   const editorRef = useRef<AgentEditorHandle>(null);
   const isEdit = !!initialData;
-  const preset = initialData ? chatAgentToPreset(initialData) : newEmptyAgent();
+  const preset = initialData ? chatAgentToPreset(initialData) : initialPreset ?? newEmptyAgent();
   const t = useTranslations('chat.addAgent');
   const [canSave, setCanSave] = useState(Boolean(preset.name.trim() && preset.providerId));
 

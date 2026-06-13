@@ -111,6 +111,7 @@
     "provider": "Provider",
     "providerPlaceholder": "Select provider...",
     "providerSearchPlaceholder": "Search provider...",
+    "manageProviders": "Manage providers",
     "modelField": "Model",
     "selectProviderFirst": "Select a provider first...",
     "modelPlaceholder": "Select model...",

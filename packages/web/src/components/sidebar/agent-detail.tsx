@@ -43,6 +43,7 @@ import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
+import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
 import {
   type AgentPreset,
   type AgentRole,
@@ -89,6 +90,7 @@ export function AgentDetail({
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
+  const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
   const [previewPrompt, setPreviewPrompt] = useState("");
   const [bgPickerSrc, setBgPickerSrc] = useState("");
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
@@ -114,6 +116,7 @@ export function AgentDetail({
       onChange("providerId", provider.id);
       onChange("apiBase", provider.apiBase);
       onChange("apiKey", provider.apiKey);
+      onChange("modelProvider", (provider.modelProvider || "") as AgentPreset["modelProvider"]);
       const providerModels = llmModels.filter((m) => m.provider === provider.name);
       const options = providerModels.map((m) => ({ value: m.modelId, label: m.name }));
       setDynamicModelOptions(options);
@@ -440,17 +443,30 @@ export function AgentDetail({
       <Section icon={<Sliders className="size-3.5" />} title={t("detail.model")}>
         <div className="space-y-2.5">
           <FieldGroup label={t("detail.provider")}>
-            <SearchSelect
-              value={selectedProvider?.name || ""}
-              onChange={(v) => {
-                const provider = llmProviders.find((p) => p.name === v);
-                if (provider) handleSelectProvider(provider);
-              }}
-              options={llmProviders.map((p) => ({ value: p.name, label: p.name }))}
-              placeholder={t("detail.providerPlaceholder")}
-              searchPlaceholder={t("detail.providerSearchPlaceholder")}
-              allowCustom={false}
-            />
+            <div className="flex items-center gap-2">
+              <SearchSelect
+                value={selectedProvider?.name || ""}
+                onChange={(v) => {
+                  const provider = llmProviders.find((p) => p.name === v);
+                  if (provider) handleSelectProvider(provider);
+                }}
+                options={llmProviders.map((p) => ({ value: p.name, label: p.name }))}
+                placeholder={t("detail.providerPlaceholder")}
+                searchPlaceholder={t("detail.providerSearchPlaceholder")}
+                allowCustom={false}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-8 shrink-0"
+                onClick={() => setProvidersDialogOpen(true)}
+                title={t("detail.manageProviders")}
+              >
+                <Settings2 className="size-3.5" />
+              </Button>
+            </div>
           </FieldGroup>
           <FieldGroup label={t("detail.modelField")}>
             <SearchSelect
@@ -469,13 +485,14 @@ export function AgentDetail({
               placeholder={t("detail.apiMessageTypePlaceholder")}
               searchPlaceholder={t("detail.apiMessageTypeSearchPlaceholder")}
               allowCustom={false}
+              disabled
             />
           </FieldGroup>
           <FieldGroup label={t("detail.apiBase")}>
-            <Input value={agent.apiBase} onChange={(e) => onChange("apiBase", e.target.value)} placeholder={t("detail.apiBasePlaceholder")} className="h-7 text-xs" />
+            <Input value={agent.apiBase} onChange={(e) => onChange("apiBase", e.target.value)} placeholder={t("detail.apiBasePlaceholder")} className="h-7 text-xs" disabled />
           </FieldGroup>
           <FieldGroup label={t("detail.apiKey")}>
-            <Input type="password" value={agent.apiKey} onChange={(e) => onChange("apiKey", e.target.value)} placeholder={t("detail.apiKeyPlaceholder")} className="h-7 text-xs" />
+            <Input type="password" value={agent.apiKey} onChange={(e) => onChange("apiKey", e.target.value)} placeholder={t("detail.apiKeyPlaceholder")} className="h-7 text-xs" disabled />
           </FieldGroup>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -593,6 +610,12 @@ export function AgentDetail({
         onOpenChange={setBgPickerOpen}
         onCropComplete={(dataUrl) => onChange("backgroundUrl", dataUrl)}
         defaultAspect={16 / 9}
+      />
+
+      <ProvidersDialog
+        open={providersDialogOpen}
+        onOpenChange={setProvidersDialogOpen}
+        onAddModel={() => {}}
       />
     </div>
   );

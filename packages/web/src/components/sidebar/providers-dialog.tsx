@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   ArrowLeft,
   Server,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
 import { sdk } from "@/lib/sdk";
+import { PROVIDER_OPTIONS } from "./agent-shared";
 
 const CAP_CLS: Record<string, string> = {
   vision: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -292,6 +294,7 @@ function ProviderForm({
   onChange: (key: string, value: unknown) => void;
 }) {
   const t = useTranslations("providers");
+  const ta = useTranslations("agent");
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">
@@ -307,6 +310,17 @@ function ProviderForm({
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">{t("form.apiKey")}</label>
           <Input type="password" value={draft.apiKey || ""} onChange={e => onChange("apiKey", e.target.value)} placeholder={t("form.apiKeyPlaceholder")} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">{t("form.apiMessageType")}</label>
+          <SearchSelect
+            value={(draft.modelProvider as string) || ""}
+            onChange={v => onChange("modelProvider", v || undefined)}
+            options={PROVIDER_OPTIONS.map(option => ({ value: option.value, label: ta(`provider.${option.labelKey}`) }))}
+            placeholder={t("form.apiMessageTypePlaceholder")}
+            searchPlaceholder={t("form.apiMessageTypePlaceholder")}
+            allowCustom={false}
+          />
         </div>
       </div>
     </div>

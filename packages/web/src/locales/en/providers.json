@@ -28,6 +28,8 @@
     "apiBase": "API Base",
     "apiBasePlaceholder": "https://api.anthropic.com",
     "apiKey": "API Key",
-    "apiKeyPlaceholder": "sk-..."
+    "apiKeyPlaceholder": "sk-...",
+    "apiMessageType": "API Message Type",
+    "apiMessageTypePlaceholder": "Select API message type..."
   }
 }

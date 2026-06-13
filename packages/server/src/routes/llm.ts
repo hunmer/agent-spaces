@@ -70,7 +70,7 @@ router.get('/providers', (_req, res) => {
 });
 
 router.post('/providers', (req, res) => {
-  const { name, apiBase, apiKey } = req.body;
+  const { name, apiBase, apiKey, modelProvider } = req.body;
   if (!name) {
     res.status(400).json({ error: 'name is required' });
     return;
@@ -79,6 +79,7 @@ router.post('/providers', (req, res) => {
     name,
     apiBase: apiBase || '',
     apiKey: apiKey || '',
+    modelProvider: modelProvider || undefined,
   });
   res.status(201).json(provider);
 });
