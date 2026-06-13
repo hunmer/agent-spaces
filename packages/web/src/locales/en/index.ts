@@ -23,6 +23,7 @@ import robotAccounts from './robotAccounts.json';
 import settings from './settings.json';
 import sidebar from './sidebar.json';
 import skills from './skills.json';
+import sqlite from './sqlite.json';
 import task from './task.json';
 import terminal from './terminal.json';
 import tools from './tools.json';
@@ -58,6 +59,7 @@ const messages = {
   settings,
   sidebar,
   skills,
+  sqlite,
   task,
   terminal,
   tools,

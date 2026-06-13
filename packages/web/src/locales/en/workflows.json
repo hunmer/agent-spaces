@@ -339,7 +339,8 @@
       "ai": "AI",
       "interaction": "Interaction",
       "display": "Display",
-      "utilities": "Utilities"
+      "utilities": "Utilities",
+      "sqlite": "Database"
     },
     "start": {
       "label": "Start",
@@ -798,6 +799,50 @@
       "slate": "Slate",
       "red": "Red",
       "indigo": "Indigo"
+    },
+    "sqlite": {
+      "props": {
+        "database": "Database",
+        "database_tooltip": "Pick a SQL database in this workspace",
+        "table": "Table",
+        "columns": "Columns",
+        "selectDbFirst": "Select a database first",
+        "selectTableFirst": "Select a table first",
+        "where": "WHERE",
+        "where_tooltip": "SQL fragment; use ? for values bound from input fields. e.g. age > ?",
+        "orderBy": "ORDER BY",
+        "limit": "Row limit",
+        "fields": "Fields",
+        "fields_tooltip": "One row per column/value; values use ? placeholder",
+        "setFields": "Set fields",
+        "column": "Column",
+        "value": "Value",
+        "sql": "SQL",
+        "sql_tooltip": "Raw SQL; ? placeholders bind from input fields",
+        "mode": "Mode",
+        "modeQuery": "Query (returns rows)",
+        "modeExec": "Exec (write/DDL)"
+      }
+    },
+    "sqlite_query": {
+      "label": "Query Data",
+      "description": "Query rows from a selected table."
+    },
+    "sqlite_insert": {
+      "label": "Insert Data",
+      "description": "Insert rows into a table."
+    },
+    "sqlite_update": {
+      "label": "Update Data",
+      "description": "Update rows in a table by condition."
+    },
+    "sqlite_delete": {
+      "label": "Delete Data",
+      "description": "Delete rows from a table by condition."
+    },
+    "sqlite_raw": {
+      "label": "Custom SQL",
+      "description": "Run arbitrary SQL; ? params bind from input fields."
     }
   },
   "nodeSelect": {
