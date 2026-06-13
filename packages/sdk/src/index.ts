@@ -63,6 +63,7 @@ export { createAgentCommandsApi } from './modules/agent-commands';
 export { createChatApi } from './modules/chat';
 export type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from './modules/chat';
 export { createMiniAppApi, type MiniAppProject, type MiniAppAgentConfig } from './modules/mini-apps';
+export { createSqliteApi } from './modules/sqlite';
 
 // ---- 工厂函数 ----
 
@@ -106,6 +107,7 @@ import { createAvatarApi } from './modules/avatar';
 import { createAgentCommandsApi } from './modules/agent-commands';
 import { createChatApi } from './modules/chat';
 import { createMiniAppApi } from './modules/mini-apps';
+import { createSqliteApi } from './modules/sqlite';
 
 export interface SDK {
   /** 底层 HTTP 客户端 */
@@ -153,6 +155,7 @@ export interface SDK {
   readonly agentCommands: ReturnType<typeof createAgentCommandsApi>;
   readonly chat: ReturnType<typeof createChatApi>;
   readonly miniApp: ReturnType<typeof createMiniAppApi>;
+  readonly sqlite: ReturnType<typeof createSqliteApi>;
 }
 
 /**
@@ -208,5 +211,6 @@ export function createSDK(config: SDKConfig): SDK {
     agentCommands: createAgentCommandsApi(http),
     chat: createChatApi(http),
     miniApp: createMiniAppApi(http),
+    sqlite: createSqliteApi(http),
   };
 }
