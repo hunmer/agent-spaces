@@ -472,6 +472,9 @@ router.put('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }
       temperature: typeof body.temperature === 'number' ? body.temperature : undefined,
       maxTokens: typeof body.maxTokens === 'number' ? body.maxTokens : undefined,
       tools: body.tools && typeof body.tools === 'object' && !Array.isArray(body.tools) ? body.tools : undefined,
+      suggestions: Array.isArray(body.suggestions)
+        ? body.suggestions.filter((s: unknown): s is string => typeof s === 'string')
+        : undefined,
     };
     for (const k of Object.keys(entry)) {
       if (entry[k] === undefined) delete entry[k];

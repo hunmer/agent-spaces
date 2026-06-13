@@ -9,6 +9,7 @@ import {
   type LLMProvider,
 } from "@agent-spaces/shared";
 import { AvatarUploader } from "@/components/common/avatar-uploader";
+import { TagInput } from "@/components/common/tag-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +35,7 @@ import {
   MessageSquare,
   Sliders,
   WandSparkles,
+  Lightbulb,
   Check,
   X as XIcon,
   Camera,
@@ -323,6 +325,15 @@ export function AgentDetail({
         />
       </Section>
       )}
+
+      <Section icon={<Lightbulb className="size-3.5" />} title={t("detail.suggestions")}>
+        <TagInput
+          value={agent.suggestions ?? []}
+          onChange={(v) => onChange("suggestions", v)}
+          placeholder={t("detail.suggestionsPlaceholder")}
+          addLabel={t("detail.suggestionsAdd")}
+        />
+      </Section>
 
       {!hiddenFields?.mcps && (
       <div className="flex flex-col gap-2.5">

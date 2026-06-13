@@ -369,6 +369,7 @@ export function createPreset(
     tools: normalizeToolNames(data.tools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name)),
     systemPrompt: data.systemPrompt || '',
     outputStyle: data.outputStyle,
+    suggestions: data.suggestions,
     temperature: data.temperature ?? 0.3,
     maxTokens: data.maxTokens ?? 4096,
     avatarUrl: data.avatarUrl,

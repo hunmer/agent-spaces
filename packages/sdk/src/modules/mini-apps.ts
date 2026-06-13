@@ -36,8 +36,6 @@ export interface MiniAppAgentConfig {
   temperature?: number;
   maxTokens?: number;
   tools?: { api?: boolean; plugin?: boolean };
-  /** 预设消息建议：mini-app 预览聊天输入框的快捷提示 */
-  suggestions?: string[];
 }
 
 export interface MiniAppChatMessage {

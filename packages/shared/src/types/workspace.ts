@@ -77,6 +77,8 @@ export interface AgentConfig {
   tools?: BuiltInAgentToolName[];
   systemPrompt?: string;
   outputStyle?: string;
+  /** 预设消息建议：聊天输入框的快捷提示（如 mini-app 预览聊天） */
+  suggestions?: string[];
   temperature?: number;
   maxTokens?: number;
   avatarUrl?: string;
