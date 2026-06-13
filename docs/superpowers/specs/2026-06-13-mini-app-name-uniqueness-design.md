@@ -102,3 +102,20 @@ Mini App 项目当前以物理 id `wui_{时间戳}_{uuid}` 作为目录名、`ma
 4. `packages/web/src/components/mini-apps/mini-apps-create-dialog.tsx` — 同上
 5. `packages/web/src/locales/zh/mini-apps.json` — `*.nameExists`
 6. `packages/web/src/locales/en/mini-apps.json` — `*.nameExists`
+
+## 11. 变更补充：id/目录名改用 name（2026-06-13 追加）
+
+经再次澄清，id/目录名不再用 `wui_时间戳_uuid`，改为基于 name（这是 name 唯一性校验的自然延伸：既然 name 全局唯一，可直接作为目录标识）。
+
+| 决策 | 选择 |
+|------|------|
+| id/目录名形式 | `safeNameId(name)`：替换 `\ / : * ? " < > |`、控制字符、空白为 `_`，去首尾 `-_.`，保留中文等可读字符；去 `wui_` 前缀 |
+| 改名行为 | 创建时取 name，之后固定；`updateProject` 改名只更新 `manifest.name`，**不改** id/目录 |
+| URL 安全 | sdk `modules/mini-apps.ts` 所有 `${id}` 统一 `encodeURIComponent(id)`（id 含中文时确保各链路 encode 一致） |
+| 旧数据兼容 | `rebuildIndex` 去掉 `^wui_` 前缀校验，仍按 `manifest.id === 目录名` 收录，旧 `wui_*` 项目继续可见 |
+| 唯一性保证 | `assertNameUnique`（原文 name）+ `existsSync(目录)` 兜底双重；`safeNameId` 冲突也视为重复（抛 `DuplicateNameError` → 409） |
+
+实现（`mini-app-store.ts`）：新增 `safeNameId`；`createProject`/`importFromDir` 改 `id = safeNameId(name)` 并在目录已存在时抛 `DuplicateNameError`；`rebuildIndex` 移除 `if (!/^wui_/.test(entry.name)) continue;`；移除 `uuid` import。
+
+注：sdk 改动为运行时行为，web 实际生效需按构建顺序 `pnpm build`（shared→sdk→server→web）重新构建 sdk。
+

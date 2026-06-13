@@ -385,6 +385,38 @@ Expected: 全部符合预期。
 
 ---
 
+### Task 8（追加）：id/目录名改用 name
+
+**Files:**
+- Modify: `packages/server/src/storage/mini-app-store.ts`
+- Modify: `packages/sdk/src/modules/mini-apps.ts`
+
+- [ ] **Step 1: 移除 `uuid` import（不再用于 id 生成）**
+
+删除 `import { v4 as uuid } from 'uuid';`。
+
+- [ ] **Step 2: 新增 `safeNameId`**
+
+在 `assertNameUnique` 之后加（替换文件系统/URL 非法字符，保留中文，去首尾 `-_.`，空名抛错）。
+
+- [ ] **Step 3: `createProject` / `importFromDir` 改 id 生成**
+
+`const id = safeNameId(name);` + `if (existsSync(projectDir(id))) throw new DuplicateNameError(name);`
+
+- [ ] **Step 4: `rebuildIndex` 去 `^wui_` 校验**
+
+删除 `if (!/^wui_/.test(entry.name)) continue;`，保留 `manifest.id === entry.name` 收录逻辑（兼容旧 `wui_*` 数据）。
+
+- [ ] **Step 5: sdk 路径 id 统一 encode**
+
+`modules/mini-apps.ts` 全部 `${id}` → `${encodeURIComponent(id)}`（25 处，replace_all）。
+
+- [ ] **Step 6: 类型检查 + 手动验证**
+
+`tsc --noEmit`（server/sdk/web）；手动创建中文 name 项目，确认目录名=name、URL 可访问、改名不改目录。
+
+---
+
 ## Self-Review
 
 **Spec coverage:**

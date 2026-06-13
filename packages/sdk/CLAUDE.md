@@ -42,7 +42,7 @@ createSDK(config)
         ├── workspace       agent            channel
         ├── issue           task             git
         ├── editor          llm              workflow
-        ├── workflowPlugin  miniApp       kanban
+        ├── workflowPlugin  miniApp          kanban
         ├── database        worktree         hooks
         ├── command         subscription     notification
         ├── speech          codeFavorites    prompts
@@ -53,6 +53,8 @@ createSDK(config)
         ├── inspector       avatar           agentCommands
         └── chat
 ```
+
+注：`miniApp` 模块对应文件 `src/modules/mini-apps.ts`（导出 `createMiniAppApi`）。
 
 ### HttpClient 便捷方法
 
@@ -69,7 +71,7 @@ createSDK(config)
 
 ## 扫描状态
 
-- **更新时间**：2026-06-09 11:48:01
+- **更新时间**：2026-06-13 16:57:29
 - **已扫描范围**：全部 42 个源文件（3 核心 + 39 模块），2 个配置文件
 - **跳过范围**：dist/（构建产物）
 - **覆盖率**：100%

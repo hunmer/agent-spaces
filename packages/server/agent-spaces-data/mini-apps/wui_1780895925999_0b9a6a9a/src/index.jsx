@@ -1,4 +1,4 @@
-const { useState, useCallback, useEffect } = React;
+const { useState, useCallback, useEffect, useRef } = React;
 const {
   Card, CardContent, CardHeader, CardTitle,
   Textarea, Label, RadioGroup, RadioGroupItem,
@@ -11,6 +11,7 @@ import styles from './utils/styles';
 import VoiceSelector from './components/VoiceSelector';
 import ParameterPanel from './components/ParameterPanel';
 import ControlBar from './components/ControlBar';
+import BackgroundMusic from './components/BackgroundMusic';
 
 function App() {
   const [text, setText] = useState('');
@@ -21,6 +22,11 @@ function App() {
   const [audioUrl, setAudioUrl] = useState('');
   const [error, setError] = useState('');
   const [configLoaded, setConfigLoaded] = useState(false);
+
+  // 背景音乐（会话级，不上传到 TTS 参数，仅本地混音播放）
+  const bgmAudioRef = useRef(null);
+  const [bgmUrl, setBgmUrl] = useState('');
+  const [bgmVolume, setBgmVolume] = useState(30);
 
   const current = providerStates[provider];
   const voices = current.voices;
@@ -224,6 +230,13 @@ function App() {
 
   return (
     <div style={styles.container}>
+      <style>{`
+        .voice-grid { grid-template-columns: repeat(2, 1fr); }
+        @media (min-width: 560px)  { .voice-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 760px)  { .voice-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 960px)  { .voice-grid { grid-template-columns: repeat(5, 1fr); } }
+        @media (min-width: 1200px) { .voice-grid { grid-template-columns: repeat(6, 1fr); } }
+      `}</style>
       <div style={{ fontSize: '20px', fontWeight: '700', textAlign: 'center', padding: '12px 0' }}>
         {PROVIDERS[provider].icon} {PROVIDERS[provider].name} 配音
       </div>
@@ -249,7 +262,6 @@ function App() {
         {/* 右侧：角色设置 */}
         <Card style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
           <CardHeader style={{ padding: '12px 16px', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <CardTitle style={{ fontSize: '14px' }}>🎭 角色设置</CardTitle>
             <RadioGroup
               value={provider}
               onValueChange={handleProviderChange}
@@ -296,6 +308,14 @@ function App() {
               current={current}
               onUpdate={handleParamUpdate}
             />
+
+            <BackgroundMusic
+              audioRef={bgmAudioRef}
+              url={bgmUrl}
+              onUrlChange={setBgmUrl}
+              volume={bgmVolume}
+              onVolumeChange={setBgmVolume}
+            />
           </CardContent>
         </Card>
       </div>
@@ -305,6 +325,8 @@ function App() {
         error={error}
         audioUrl={audioUrl}
         onGenerate={handleGenerate}
+        bgmAudioRef={bgmAudioRef}
+        bgmUrl={bgmUrl}
       />
     </div>
   );

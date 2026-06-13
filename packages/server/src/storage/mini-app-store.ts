@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, rmSync, readdirSync, renameSync, statSync } from 'node:fs';
 import { join, dirname, resolve, sep } from 'node:path';
 import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from './json-store.js';
-import { v4 as uuid } from 'uuid';
 
 export interface MiniAppProject {
   id: string;
@@ -106,7 +105,6 @@ export function rebuildIndex(): MiniAppProject[] {
   const onDisk: MiniAppProject[] = [];
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    if (!/^wui_/.test(entry.name)) continue;
     const manifest = readJsonFile<MiniAppProject>(manifestPath(entry.name));
     if (manifest && manifest.id === entry.name) onDisk.push(manifest);
   }
@@ -136,6 +134,23 @@ function assertNameUnique(name: string, excludeId?: string): void {
   if (conflict) throw new DuplicateNameError(name);
 }
 
+/**
+ * 把 name 转成可同时用作目录名与 URL path 的 id：替换文件系统/URL 非法字符
+ * （\ / : * ? " < > |、控制字符、空白）为 _，去除首尾 -_. 。保留中文等可读
+ * 字符（URL 中非 ASCII 由 fetch 自动 percent-encode）。结果为空则抛错。
+ *
+ * 注：id 仅在创建时取 name，之后固定；改名只更新 manifest.name，不改 id/目录。
+ */
+function safeNameId(name: string): string {
+  const cleaned = name
+    .trim()
+    .replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/^[-_.]+|[-_.]+$/g, '');
+  if (!cleaned) throw new Error('Invalid project name: results in empty id');
+  return cleaned;
+}
+
 export function getProject(projectId: string): MiniAppProject | null {
   return listProjects().find(p => p.id === projectId) ?? null;
 }
@@ -149,7 +164,8 @@ export function createProject(input: {
   files?: Record<string, string>;
 }): MiniAppProject {
   assertNameUnique(input.name);
-  const id = `wui_${Date.now()}_${uuid().slice(0, 8)}`;
+  const id = safeNameId(input.name);
+  if (existsSync(projectDir(id))) throw new DuplicateNameError(input.name);
   const now = new Date().toISOString();
   const project: MiniAppProject = {
     id,
@@ -330,7 +346,8 @@ export function writeDataFile(projectId: string, filePath: string, content: Buff
 
 export function importFromDir(extractDir: string, manifest: Partial<MiniAppProject> & { name: string; type: 'react' | 'html'; mainFile: string }): MiniAppProject {
   assertNameUnique(manifest.name);
-  const id = `wui_${Date.now()}_${uuid().slice(0, 8)}`;
+  const id = safeNameId(manifest.name);
+  if (existsSync(projectDir(id))) throw new DuplicateNameError(manifest.name);
   const now = new Date().toISOString();
   const project: MiniAppProject = {
     id,

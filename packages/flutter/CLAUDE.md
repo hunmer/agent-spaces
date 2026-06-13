@@ -29,13 +29,15 @@ Agent Spaces 的**原生多平台客户端外壳**。基于 Flutter 构建桌面
 ## 快速参考
 
 - **语言**：Dart（Flutter SDK ^3.10.1）
-- **源文件数**：44 个 Dart 源文件 + 2 个测试文件
+- **源文件数**：46 个 Dart 源文件 + 2 个测试文件
 - **状态管理**：Riverpod 2.x（StateNotifierProvider 模式）
 - **路由**：GoRouter（7 条路由）
 - **持久化**：SharedPreferences（JSON 序列化）
 - **Lint**：flutter_lints
+- **测试**：`flutter test`（widget_test 冒烟测试 + webdav_url_test 单元测试）
 - **外部依赖**：不依赖 packages/shared 或 packages/server，通过 HTTP/WebSocket 连接后端
 
 ## 变更记录 (Changelog)
 
+- **2026-06-13**：增量更新。确认新增 2 个测试文件（`test/widget_test.dart` App 构建冒烟测试 + `test/services/file_sources/webdav_url_test.dart` URL 规范化单元测试）。测试缺口已填补。覆盖率提升至 97%。
 - **2026-06-09**：全量重新扫描，发现源文件从旧记录的 21 个增长到 44 个。新增：终端（SSH）功能、文件源管理器（SFTP/FTP/Storage/WebDAV）、Docking 分屏布局、i18n、主题切换、桌面窗口状态管理、虚拟键盘、控制台日志面板等。重新生成 CLAUDE.md 和全部 claude/ 详情文件。

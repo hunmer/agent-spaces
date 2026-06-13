@@ -96,7 +96,7 @@ function VoiceSelector({ voices, voiceId, provider, onSelect, onDelete, onAdd })
         style={{ marginTop: '8px', fontSize: '13px' }}
       />
       <div style={styles.voiceGridWrapper}>
-        <div style={styles.voiceGrid}>
+        <div className="voice-grid" style={styles.voiceGrid}>
           {filteredVoices.map((v) => (
             <div
               key={v.id}
