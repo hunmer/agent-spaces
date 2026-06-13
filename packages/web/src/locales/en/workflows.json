@@ -359,6 +359,20 @@
         }
       }
     },
+    "run_python": {
+      "label": "Run Python Code",
+      "description": "Execute custom Python code",
+      "props": {
+        "code": {
+          "label": "Code",
+          "tooltip": "Python code. Define main(params) and return a dict"
+        },
+        "pythonPath": {
+          "label": "Python Path",
+          "tooltip": "Path to the Python executable. Leave empty to use system default python"
+        }
+      }
+    },
     "toast": {
       "label": "Toast Message",
       "description": "Display a toast notification",

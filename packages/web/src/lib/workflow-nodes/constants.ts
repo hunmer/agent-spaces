@@ -32,3 +32,15 @@ export const RUN_CODE_DEFAULT_CODE = `async function main({ params }) {
 
   return ret
 }`;
+
+export const RUN_PYTHON_DEFAULT_CODE = `def main(params):
+    ret = {
+        "key0": params.get("input", "") + params.get("input", ""),
+        "key1": ["hello", "world"],
+        "key2": {
+            "key21": "hi",
+        },
+    }
+
+    return ret
+`;

@@ -9,7 +9,7 @@ import {
   LOOP_ROOT_ROLE,
 } from '@agent-spaces/shared';
 import { LoopBodyView } from '@/components/workflow/loop-body-view';
-import { RUN_CODE_DEFAULT_CODE } from '../constants';
+import { RUN_CODE_DEFAULT_CODE, RUN_PYTHON_DEFAULT_CODE } from '../constants';
 
 const UNLIMITED_CONNECTION_COUNT = Number.MAX_SAFE_INTEGER;
 
@@ -50,6 +50,33 @@ export const flowControlNodes: NodeTypeDefinition[] = [
         required: true,
         default: RUN_CODE_DEFAULT_CODE,
         tooltip: 'nodes.run_code.props.code.tooltip',
+      },
+    ],
+  },
+  {
+    type: 'run_python',
+    label: 'nodes.run_python.label',
+    category: 'nodes.categories.flowControl',
+    icon: 'FileCode',
+    description: 'nodes.run_python.description',
+    allowInputFields: true,
+    properties: [
+      {
+        key: 'code',
+        label: 'nodes.run_python.props.code.label',
+        type: 'code',
+        language: 'python',
+        required: true,
+        default: RUN_PYTHON_DEFAULT_CODE,
+        tooltip: 'nodes.run_python.props.code.tooltip',
+      },
+      {
+        key: 'pythonPath',
+        label: 'nodes.run_python.props.pythonPath.label',
+        type: 'text',
+        default: '',
+        tooltip: 'nodes.run_python.props.pythonPath.tooltip',
+        placeholder: 'python',
       },
     ],
   },

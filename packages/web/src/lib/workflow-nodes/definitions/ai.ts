@@ -34,9 +34,6 @@ export const aiNodes: NodeTypeDefinition[] = [
     ],
     outputs: [
       { key: 'result', type: 'string' },
-      { key: 'content', type: 'string' },
-      { key: 'summary', type: 'string' },
-      { key: 'output', type: 'string[]' },
       { key: 'usage', type: 'object' },
     ],
   },

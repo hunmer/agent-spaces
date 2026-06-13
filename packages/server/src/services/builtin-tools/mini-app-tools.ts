@@ -338,8 +338,6 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
     },
     outputs: [
       { key: 'result', type: 'string', description: 'Agent 执行结果' },
-      { key: 'content', type: 'string', description: 'Agent 执行消息内容' },
-      { key: 'summary', type: 'string', description: 'Agent 执行摘要' },
     ],
     execute: async (args) => {
       const agentService = await import('../agent.js');
@@ -388,8 +386,6 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
       const content = result.output?.join('\n').trim() || result.summary;
       return {
         result: content,
-        content,
-        summary: result.summary,
         usage: result.usage,
       };
     },

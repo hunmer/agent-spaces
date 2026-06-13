@@ -107,7 +107,7 @@ const PropertyItem = memo(function PropertyItem({
         else next.add(prop.key);
         onCollapsedChange(next);
       }}
-      className="space-y-1"
+      className="mt-2"
     >
       <div className="flex items-center gap-1 text-xs font-medium">
         <CollapsibleTriggerAsChild>

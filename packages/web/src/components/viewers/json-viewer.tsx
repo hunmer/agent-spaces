@@ -594,9 +594,9 @@ function JsonViewer({
 
   const [collapsedPaths, setCollapsedPaths] = React.useState<Set<string>>(
     () => {
-      if (defaultExpanded === true && !mini) return new Set()
+      if (defaultExpanded === true) return new Set()
       const collapsed = new Set<string>()
-      collectPaths(data, rootName, mini ? 1 : defaultExpanded, 0, collapsed)
+      collectPaths(data, rootName, defaultExpanded, 0, collapsed)
       return collapsed
     }
   )

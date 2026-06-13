@@ -6,6 +6,10 @@
 
 import { randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { execFile } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type {
   Workflow,
   WorkflowNode,
@@ -617,6 +621,13 @@ export class ExecutionManager {
           this.buildCodeParams(session, node, resolvedData),
           appendLog,
         );
+      case 'run_python':
+        return this.executePython(
+          String(resolvedData.pythonPath || ''),
+          String(resolvedData.code || ''),
+          this.buildCodeParams(session, node, resolvedData),
+          appendLog,
+        );
       case 'toast':
         return { message: String(resolvedData.message || ''), type: String(resolvedData.type || 'info') };
       case 'delay':
@@ -883,11 +894,9 @@ export class ExecutionManager {
     }
 
     appendLog('info', `Agent completed: ${result.summary || 'done'}`);
+    const message = result.output?.join('\n').trim() || result.summary;
     return {
-      content: result.output?.join('\n').trim() || result.summary,
-      result: result.output?.join('\n').trim() || result.summary,
-      output: result.output || result.summary,
-      summary: result.summary,
+      result: message,
       usage: result.usage,
       runtime: {
         cwd: workingDir,
@@ -1035,6 +1044,80 @@ export class ExecutionManager {
     };
     const fn = new Function('context', 'params', 'console', `${normalized}\nif (typeof main === 'function') return main({ params, context })`);
     return fn(context, params, workflowConsole);
+  }
+
+  private async executePython(
+    pythonPath: string,
+    code: string,
+    params: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    const python = pythonPath.trim() || 'python';
+    if (!code.trim()) throw new Error('Python code is empty');
+
+    // User code runs at module top level, then we call main(params) if defined.
+    // Result is emitted on stdout wrapped between markers; everything else on
+    // stdout/stderr is forwarded to the workflow log.
+    const wrapper = `import os, json, sys
+
+__WF_PARAMS__ = json.loads(os.environ.get('__WF_PARAMS__', '{}'))
+
+${code}
+
+if 'main' in dir() and callable(main):
+    __wf_result = main(__WF_PARAMS__)
+else:
+    __wf_result = None
+
+sys.stdout.write('__WF_RESULT__' + json.dumps(__wf_result, default=str) + '__WF_RESULT_END__')
+sys.stdout.flush()
+`;
+
+    const dir = await mkdtemp(join(tmpdir(), 'wf-python-'));
+    const scriptPath = join(dir, 'main.py');
+    try {
+      await writeFile(scriptPath, wrapper, 'utf8');
+
+      const stdout = await new Promise<string>((resolve, reject) => {
+        execFile(python, [scriptPath], {
+          cwd: dir,
+          env: { ...process.env, __WF_PARAMS__: JSON.stringify(params ?? {}) },
+          timeout: 300_000,
+          maxBuffer: 10 * 1024 * 1024,
+        }, (error, out, stderr) => {
+          // Forward stderr (tracebacks) and any non-result stdout to the log.
+          const stderrText = String(stderr || '');
+          if (stderrText) appendLog('error', stderrText.trim());
+          if (error) {
+            reject(new Error(`Python execution failed: ${stderrText.trim() || error.message}`));
+            return;
+          }
+          resolve(String(out || ''));
+        });
+      });
+
+      const start = stdout.lastIndexOf('__WF_RESULT__');
+      const end = stdout.lastIndexOf('__WF_RESULT_END__');
+      if (start === -1 || end === -1 || end <= start) {
+        const rest = stdout.replace('__WF_RESULT__', '').replace('__WF_RESULT_END__', '').trim();
+        if (rest) appendLog('info', rest);
+        appendLog('warning', 'Python code produced no result marker');
+        return null;
+      }
+
+      const before = stdout.slice(0, start);
+      if (before.trim()) appendLog('info', before.trim());
+
+      const payload = stdout.slice(start + '__WF_RESULT__'.length, end).trim();
+      try {
+        return payload === '' ? null : JSON.parse(payload);
+      } catch {
+        appendLog('warning', `Python returned non-JSON result: ${payload}`);
+        return payload;
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 
   private buildCodeParams(

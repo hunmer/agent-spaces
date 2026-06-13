@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import type { PluginConfigField, Workflow } from '@agent-spaces/shared';
+import type { OutputField, PluginConfigField, Workflow } from '@agent-spaces/shared';
 import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi, workflowPluginSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ import {
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2, LayoutList, LayoutGrid } from 'lucide-react';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
-import { JsonViewer } from '@/components/viewers/json-viewer';
+import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
 import { WORKFLOW_NODE_DRAG_MIME } from './workflow-drag-types';
 
 function stringToHsl(str: string, s: number, l: number): string {
@@ -33,6 +33,18 @@ function stringToHsl(str: string, s: number, l: number): string {
   for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
   const h = hash % 360;
   return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
+/** 把 OutputField（含 children）递归构建为 JsonViewer 可展开的嵌套结构。 */
+function outputFieldToJson(field: OutputField): JsonValue {
+  const isArray = field.type === 'array' || field.type.endsWith('[]');
+  if (field.type === 'object' || isArray) {
+    const obj: Record<string, JsonValue> = field.children?.length
+      ? Object.fromEntries(field.children.map(c => [c.key, outputFieldToJson(c)]))
+      : {};
+    return isArray ? [obj] : obj;
+  }
+  return field.type;
 }
 
 export function WorkflowNodeSidebar({
@@ -336,8 +348,9 @@ export function WorkflowNodeSidebar({
                               <div className="space-y-1">
                                 <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('sidebar.outputs')}</div>
                                 <JsonViewer
-                                  data={Object.fromEntries(node.outputs!.map(o => [o.key, o.type]))}
+                                  data={Object.fromEntries(node.outputs!.map(o => [o.key, outputFieldToJson(o)]))}
                                   rootName=""
+                                  defaultExpanded={2}
                                   mini
                                   className="text-[10px]"
                                 />
