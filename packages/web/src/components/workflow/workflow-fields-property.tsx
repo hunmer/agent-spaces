@@ -18,6 +18,7 @@ import {
 } from './workflow-fields-debounced';
 import { AgentPropertyEditor } from './workflow-fields-agent';
 import { CodePropertyEditor } from './workflow-fields-code';
+import { SqliteDatabasePicker } from './workflow-fields-sqlite';
 
 export function PropertyField({
   prop,
@@ -146,6 +147,9 @@ export function PropertyField({
           onChange={onChange}
         />
       );
+
+    case 'sqlite':
+      return <SqliteDatabasePicker value={String(value ?? '')} onChange={(v) => onChange(v)} />;
 
     default:
       return (
