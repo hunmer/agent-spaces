@@ -11,6 +11,7 @@
 - 读取当前路由（由前端每条消息带进上下文）。
 - 调用项目已启用插件工具（`list_plugin_tools` / `get_plugin_tool_detail` / `execute_plugin_tool`）。
 - 调用项目自定义的 `src/api.js` 方法（如 `next_music` / `prev_music`）来操控 UI，并通过 `src/tools.js` 获取这些方法的结构化参数说明。
+- 按需向当前预览页客户端请求浏览器本地状态（如 localStorage 中的歌曲列表），再在 toolcall 中使用返回值。
 
 Runtime 固定 **langchain**。整条执行链路自包含：不依赖 workspace、不走 channel、不复用编辑器的 `mini-app-chat.tsx`。
 
@@ -145,6 +146,7 @@ export default {
 | --- | --- |
 | `ctx.broadcast(event, data)` | 向该 projectId 频道广播任意 `miniApp.*` 事件 |
 | `ctx.callPluginTool(pluginId, toolName, args)` | 执行项目已启用的插件 tool（复用 plugin execute 路径） |
+| `ctx.requestClient(type, payload?, timeoutMs?)` | 通过 WS 向当前 mini-app 预览客户端发起请求，等待客户端用同一 `requestId` 回传结果；默认 5 秒超时 |
 | `ctx.readConfig(path)` | 读 `configs/<path>`，不广播 |
 | `ctx.writeConfig(path, value)` | 写 `configs/<path>`，并广播 `miniApp.configChanged` |
 | `ctx.projectId` | 当前项目 id |
@@ -152,6 +154,57 @@ export default {
 ### 约束
 
 - handler **不能 `import` 外部模块**（编译时剥离 import 行），能力全部通过 `ctx` 注入 —— 与 services 一致。
+
+### 请求客户端状态
+
+服务端 toolcall 不能直接读取浏览器内存 / localStorage。对于歌曲列表、用户本地偏好、当前 UI 选择等客户端私有状态，推荐使用 `ctx.requestClient` 做一次 request/response：
+
+```js
+export default {
+  get_music_library: async (_input, ctx) => {
+    try {
+      const library = await ctx.requestClient('musicLibrary');
+      return { ok: true, songs: Array.isArray(library?.songs) ? library.songs : [] };
+    } catch (err) {
+      return { ok: false, message: err.message || String(err) };
+    }
+  },
+};
+```
+
+对应 mini-app 前端用 `window.AgentSpaces.onTaskEvent` 监听 `miniApp.clientRequest`，并通过 `window.AgentSpaces.respondClientRequest` 回传：
+
+```js
+window.AgentSpaces.onTaskEvent((event, data) => {
+  if (event !== 'miniApp.clientRequest') return;
+  if (data?.type !== 'musicLibrary') return;
+
+  readHistory()
+    .then((songs) => {
+      window.AgentSpaces.respondClientRequest(data.requestId, {
+        updatedAt: new Date().toISOString(),
+        songs,
+      });
+    })
+    .catch((err) => {
+      window.AgentSpaces.respondClientRequest(
+        data.requestId,
+        null,
+        false,
+        err?.message || String(err),
+      );
+    });
+});
+```
+
+WS 协议：
+
+| 方向 | event | data |
+| --- | --- | --- |
+| server → client | `miniApp.clientRequest` | `{ requestId, type, payload? }` |
+| client → server | `miniApp.clientResponse` | `{ requestId, ok, result?, error? }` |
+
+服务端按 `requestId` 匹配 pending callback；多个预览客户端同时响应时，第一份有效响应胜出，后续同 id 响应会被忽略。
 
 ## src/tools.js
 
@@ -206,6 +259,8 @@ window.AgentSpaces.onTaskEvent((event, data) => {
     if (data.dir === 'next') nextTrack();
     if (data.dir === 'prev') prevTrack();
     if (data.dir === 'goto') playTrack(data.id);
+  } else if (event === 'miniApp.clientRequest') {
+    // 按 data.type 读取客户端状态，并调用 respondClientRequest(data.requestId, result)
   }
 });
 ```
@@ -230,6 +285,8 @@ SSE 事件类型：`text` / `reasoning` / `tool_use` / `tool_result`（与主聊
 - **需要登录态** —— 预览路径虽无 active workspace，但仍带 Bearer token，不支持公网匿名分享。
 - **`agentId` 引用的 preset 必须存在**才能复用密钥；preset 不存在时按本地字段 / 默认兜底，并打告警日志（不阻断）。
 - **`src/api.js` 编译失败不致命** —— 该文件缺失或编译出错时，后端返回空方法表并告警，agent 仍能运行，只是看不到 api 方法工具。
+- **`ctx.requestClient` 需要在线预览页** —— 没有客户端连接、页面未响应或响应超时时，Promise reject；业务方法应 catch 后返回 `{ ok: false, message }`，避免 toolcall 直接中断。
+- **客户端状态不建议写入 config 作为中转** —— `configs/` 更适合服务端持久配置；localStorage、当前 UI 状态这类客户端私有数据应通过 `miniApp.clientRequest/clientResponse` 按需读取。
 - **会话按页面 session-id 持久化** —— key 为 `mini-app-agent-session:${projectId}` 存 sessionStorage；同 tab reload 恢复历史，换 tab / 清 sessionStorage 则新建会话。
 - **凭据脱敏** —— GET agents 端点不返回 apiKey。
 
@@ -238,8 +295,11 @@ SSE 事件类型：`text` / `reasoning` / `tool_use` / `tool_result`（与主聊
 | 文件 | 说明 |
 | --- | --- |
 | `packages/server/src/services/mini-app-agent.ts` | 执行器：`runMiniAppAgent`、`compileApiJs`、`compileToolsJs`、`registerAllMiniAppTools`、`loadApiJs`、`makeApiCtx`、`buildApiFunctionTools`、`resolveAgentCredentials` |
+| `packages/server/src/services/mini-app-client-rpc.ts` | mini-app 客户端 WS request/response：生成 `requestId`、广播 `miniApp.clientRequest`、等待 `miniApp.clientResponse` |
+| `packages/server/src/ws/handler.ts` | WS handler：接收客户端 `miniApp.clientResponse` 并交给 pending callback |
 | `packages/server/src/storage/mini-app-store.ts` | 存储层：`readAgentsConfig`、`saveAgentChat`、`listAgentChats`、`getProjectDir` |
 | `packages/server/src/routes/mini-apps.ts` | 3 个 agent 端点（`GET /:id/agents`、`GET /:id/agents/chat`、`POST /:id/agents/:agentId/chat`） |
 | `packages/sdk/src/modules/mini-apps.ts` | SDK 命名空间：`listAgents`、`agentHistory`、`agentChat`（SSE 回调式消费） |
 | `packages/web/src/components/mini-apps/mini-app-preview.tsx` | 预览 Toolbar 的 `MiniAppAgentPopover`（agent 按钮 + ChatPanel + agent 切换器 + session-id + 流式逻辑） |
+| `packages/web/src/components/mini-apps/use-mini-app-host-api.ts` | host API：向 mini-app 暴露 `onTaskEvent` / `respondClientRequest` 等浏览器侧能力 |
 | `docs/superpowers/specs/2026-06-13-mini-app-agent-chat-design.md` | 设计文档（决策、数据流、验证标准的权威来源） |

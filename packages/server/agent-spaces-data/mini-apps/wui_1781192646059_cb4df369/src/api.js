@@ -37,7 +37,36 @@ export default {
   },
 
   /**
-   * 根据提示词生成一首歌曲。参数说明维护在同目录 tools.js。
+   * 根据提示词生成歌词。参数说明维护在同目录 tools.js。
+   */
+  generate_lyrics: async (input, ctx) => {
+    try {
+      const prompt = input.prompt || '写一首完整歌曲歌词';
+      const mode = input.mode || 'write_full_song';
+      const lyrics = input.lyrics || '';
+      const title = input.title || '';
+      const result = await ctx.callPluginTool(
+        'workflow.minimax',
+        'minimax_lyrics_generation',
+        { prompt, mode, lyrics, title }
+      );
+      const pluginResult = result?.result || result || {};
+      const data = pluginResult.data || {};
+      return {
+        ok: pluginResult.success !== false,
+        message: pluginResult.message || '歌词生成完成',
+        songTitle: data.songTitle || data.song_title || title || '',
+        styleTags: data.styleTags || data.style_tags || '',
+        lyrics: data.lyrics || '',
+        raw: result,
+      };
+    } catch (err) {
+      return { ok: false, message: '歌词生成失败：' + (err.message || String(err)) };
+    }
+  },
+
+  /**
+   * 根据提示词生成一首歌曲。成功后会广播 miniApp.musicGenerated，前端会自动加入列表并播放。
    */
   generate_music: async (input, ctx) => {
     try {

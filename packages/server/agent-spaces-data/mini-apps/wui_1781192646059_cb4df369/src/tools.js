@@ -1,7 +1,7 @@
 export default [
   {
     name: 'get_music_library',
-    description: '读取用户歌曲列表。用户问“有什么好听的音乐”“推荐一首”“我有哪些歌”，或要求播放某首歌之前，必须先调用此工具获取歌曲 id、标题、prompt 和音频地址等服务端镜像数据。',
+    description: '读取用户歌曲列表。用户问“有什么好听的音乐”“推荐一首”“我有哪些歌”，或要求播放某首歌之前，必须先调用此工具获取歌曲 id、标题、prompt 和音频地址等客户端本地数据。',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -25,7 +25,7 @@ export default [
   },
   {
     name: 'generate_music',
-    description: '根据用户给出的音乐风格和可选歌词调用 workflow.minimax 的 minimax_music_generation 插件生成歌曲。生成成功且返回 audioHex 时，会广播 miniApp.musicGenerated，把音频地址、提示词、歌词和标题交给前端加入播放器。',
+    description: '根据用户给出的音乐风格和可选歌词调用 workflow.minimax 的 minimax_music_generation 插件生成歌曲。生成成功且返回 audioHex 时，会广播 miniApp.musicGenerated，把音频地址、提示词、歌词和标题交给前端加入播放器并自动播放。调用此工具后不要再调用 execute_plugin_tool 播放，也不要调用 toggle_like。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -40,6 +40,33 @@ export default [
         instrumental: {
           type: 'boolean',
           description: '是否生成纯音乐。缺省为 true；传 false 表示允许使用歌词/人声。',
+        },
+      },
+      required: ['prompt'],
+    },
+  },
+  {
+    name: 'generate_lyrics',
+    description: '调用 workflow.minimax 的 minimax_lyrics_generation 生成歌词。用户明确要求“写歌词/生成歌词/歌词你自己写”时必须调用此工具。若用户要求生成一首带自写歌词的歌，应先调用 generate_lyrics，再把返回的 lyrics 传给 generate_music。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: {
+          type: 'string',
+          description: '歌词主题、情绪、风格或故事描述，例如“失恋后的深夜独白，中文流行歌”。',
+        },
+        mode: {
+          type: 'string',
+          description: '歌词生成模式。默认 write_full_song；编辑/续写已有歌词时传 edit。',
+          enum: ['write_full_song', 'edit'],
+        },
+        lyrics: {
+          type: 'string',
+          description: '编辑模式下的现有歌词。',
+        },
+        title: {
+          type: 'string',
+          description: '可选歌曲标题。',
         },
       },
       required: ['prompt'],

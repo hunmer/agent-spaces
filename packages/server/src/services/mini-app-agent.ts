@@ -357,10 +357,12 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   sections.push(`Current mini-app route: ${route ?? '/'}`);
   sections.push(`Current mini-app id: ${projectId}`);
   if (apiMethodNames.length) {
-    sections.push(`Available project api.js methods: ${apiMethodNames.join(', ')}. ` +
-      `Use get_mini_app_tools with the current mini-app id when you need parameter details, then call the api.js method to control the UI.`);
+    sections.push([
+      `Available project api.js methods: ${apiMethodNames.join(', ')}.`,
+      `Use get_mini_app_tools with the current mini-app id to inspect descriptions and input schemas before calling project api.js methods.`,
+    ].join(' '));
   }
-  if (project.enabledPlugins?.length) {
+  if (toolsCfg.plugin && project.enabledPlugins?.length) {
     sections.push(`Enabled plugins: ${project.enabledPlugins.join(', ')}. ` +
       `Use list_plugin_tools / get_plugin_tool_detail / execute_plugin_tool.`);
   }
