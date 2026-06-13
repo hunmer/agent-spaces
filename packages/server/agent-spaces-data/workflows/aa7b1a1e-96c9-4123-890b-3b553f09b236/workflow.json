@@ -8,10 +8,20 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 642.5,
-        "y": 71.25
+        "x": 795,
+        "y": 15
       },
-      "data": {}
+      "data": {
+        "inputFields": [
+          {
+            "key": "",
+            "type": "string",
+            "value": "",
+            "required": true,
+            "children": []
+          }
+        ]
+      }
     },
     {
       "id": "node_1781255038442_end",
@@ -22,56 +32,6 @@
         "y": -30
       },
       "data": {}
-    },
-    {
-      "id": "node_1781345774070_biuuty",
-      "type": "agent_run",
-      "label": "agent",
-      "position": {
-        "x": 60,
-        "y": 105
-      },
-      "data": {
-        "permissionMode": "dontAsk",
-        "loadProjectClaudeMd": false,
-        "loadRuleMd": false,
-        "outputs": [
-          {
-            "key": "result",
-            "type": "string"
-          },
-          {
-            "key": "usage",
-            "type": "object"
-          }
-        ],
-        "agent": {
-          "id": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
-          "name": "test",
-          "role": "agent",
-          "description": "",
-          "runtimeKind": "claude-code",
-          "modelProvider": "openai-chat-completions",
-          "providerId": "575f5fea-467e-4aa2-8b17-f4522dc74429",
-          "modelId": "GLM-4.7",
-          "workingDir": "",
-          "mcps": {},
-          "skills": [],
-          "tools": [],
-          "systemPrompt": "",
-          "outputStyle": "",
-          "temperature": 0.3,
-          "maxTokens": 4096,
-          "avatarUrl": "",
-          "icon": "",
-          "enabled": true,
-          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
-          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O",
-          "backgroundUrl": ""
-        },
-        "prompt": "你好",
-        "label": "agent"
-      }
     },
     {
       "id": "node_1781346668500_plkaeo",
@@ -121,206 +81,11 @@
           "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O"
         }
       }
-    },
-    {
-      "id": "node_1781346682380_7l3rgw",
-      "type": "aliyun_reference_video",
-      "label": "参考生视频",
-      "position": {
-        "x": 150,
-        "y": 300
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
-        "resolution": "720P",
-        "ratio": "16:9",
-        "duration": 5,
-        "promptExtend": "true",
-        "watermark": "false",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "videoUrl",
-                "type": "string"
-              },
-              {
-                "key": "taskId",
-                "type": "string"
-              },
-              {
-                "key": "requestId",
-                "type": "string"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "node_1781347010894_i9eur5",
-      "type": "run_python",
-      "label": "",
-      "position": {
-        "x": 270,
-        "y": -75
-      },
-      "data": {
-        "code": "def main(params):\n    ret = {\n        \"key0\": params.get(\"input\", \"\") + params.get(\"input\", \"\"),\n        \"key1\": [\"hello\", \"world\"],\n        \"key2\": {\n            \"key21\": \"hi\",\n        },\n    }\n\n    return ret\n",
-        "pythonPath": "",
-        "inputFields": [],
-        "label": ""
-      }
-    },
-    {
-      "id": "node_1781347279510_4wl50p",
-      "type": "variable_aggregate",
-      "label": "nodes.variable_aggregate.label",
-      "position": {
-        "x": 435,
-        "y": 195
-      },
-      "data": {
-        "strategy": "first_non_empty",
-        "groups": [],
-        "outputs": [
-          {
-            "key": "result",
-            "type": "object"
-          }
-        ]
-      }
-    },
-    {
-      "id": "node_1781347455847_nqx0dl",
-      "type": "loop",
-      "label": "nodes.loop.label",
-      "position": {
-        "x": 210,
-        "y": 525
-      },
-      "data": {
-        "loopType": "count",
-        "count": 1,
-        "concurrency": 1,
-        "sharedVariables": [],
-        "outputs": [
-          {
-            "key": "items",
-            "type": "any"
-          }
-        ]
-      },
-      "composite": {
-        "role": "loop",
-        "generated": false,
-        "hidden": false,
-        "scopeBoundary": false,
-        "rootId": "node_1781347455847_nqx0dl",
-        "parentId": null
-      }
-    },
-    {
-      "id": "node_1781347455847_oe6q33",
-      "type": "loop_body",
-      "label": "nodes.loop_body.label",
-      "position": {
-        "x": 494,
-        "y": 520
-      },
-      "data": {
-        "width": 672,
-        "height": 287
-      },
-      "composite": {
-        "role": "loop_body",
-        "generated": true,
-        "hidden": false,
-        "scopeBoundary": true,
-        "rootId": "node_1781347455847_nqx0dl",
-        "parentId": "node_1781347455847_nqx0dl"
-      }
-    },
-    {
-      "id": "node_1781347455848_zl509s",
-      "type": "start",
-      "label": "nodes.loop.label开始",
-      "position": {
-        "x": 550,
-        "y": 620
-      },
-      "data": {},
-      "composite": {
-        "rootId": "node_1781347455847_oe6q33",
-        "parentId": "node_1781347455847_oe6q33",
-        "generated": true,
-        "hidden": false
-      }
-    },
-    {
-      "id": "node_1781347455848_pk8o4d",
-      "type": "end",
-      "label": "nodes.loop.label结束",
-      "position": {
-        "x": 890,
-        "y": 642.5
-      },
-      "data": {},
-      "composite": {
-        "rootId": "node_1781347455847_oe6q33",
-        "parentId": "node_1781347455847_oe6q33",
-        "generated": true,
-        "hidden": false
-      }
     }
   ],
-  "edges": [
-    {
-      "id": "e-node_1781347455847_nqx0dl-loop-body-node_1781347455847_oe6q33-target",
-      "source": "node_1781347455847_nqx0dl",
-      "target": "node_1781347455847_oe6q33",
-      "sourceHandle": "loop-body",
-      "targetHandle": "target",
-      "composite": {
-        "rootId": "node_1781347455847_nqx0dl",
-        "parentId": "node_1781347455847_nqx0dl",
-        "generated": true,
-        "hidden": false,
-        "locked": true
-      }
-    },
-    {
-      "id": "e-node_1781347455847_oe6q33-source-node_1781347455848_zl509s-target",
-      "source": "node_1781347455847_oe6q33",
-      "target": "node_1781347455848_zl509s",
-      "sourceHandle": null,
-      "targetHandle": "target",
-      "composite": {
-        "rootId": "node_1781347455847_oe6q33",
-        "parentId": "node_1781347455847_oe6q33",
-        "generated": true,
-        "hidden": true,
-        "locked": true
-      }
-    },
-    {
-      "id": "e-node_1781347455848_zl509s-source-node_1781347455848_pk8o4d-target",
-      "source": "node_1781347455848_zl509s",
-      "target": "node_1781347455848_pk8o4d"
-    }
-  ],
+  "edges": [],
   "createdAt": 1781255038446,
-  "updatedAt": 1781348141071,
+  "updatedAt": 1781351915073,
   "enabledPlugins": [
     "workflow.aliyun-ai",
     "workflow.epub-parser",

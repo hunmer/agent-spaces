@@ -472,18 +472,33 @@
       "props": {
         "text": {
           "label": "JSON Text",
-          "tooltip": "The JSON string to parse, e.g. {\"key\":\"value\"}"
+          "tooltip": "The JSON string to parse, e.g. '{\"key\":\"value\"}'"
         }
       }
     },
     "string_concat": {
       "label": "String Concat",
-      "description": "Interpolate input fields into a template using {{expression}} placeholders and output a result string",
+      "description": "Interpolate input fields into a template using '{{expression}}' placeholders and output a result string",
       "props": {
         "template": {
           "label": "Template",
-          "placeholder": "Hi {{users[0]}}, now {{today.hour}}:{{today.min}}",
-          "tooltip": "Supports {{expression}} placeholders, evaluated against the input fields above, e.g. {{users[0]}}, {{today.hour}}, {{today.min}}"
+          "placeholder": "Hi '{{users[0]}}', now '{{today.hour}}':'{{today.min}}'",
+          "tooltip": "Supports '{{expression}}' placeholders, evaluated against the input fields above, e.g. '{{users[0]}}', '{{today.hour}}', '{{today.min}}'"
+        }
+      }
+    },
+    "string_split": {
+      "label": "String Split",
+      "description": "Split the source string by a delimiter into a result string array",
+      "props": {
+        "source": {
+          "label": "Source String",
+          "placeholder": "String to split, variables supported",
+          "tooltip": "The string to split; supports binding upstream variables"
+        },
+        "text": {
+          "label": "Delimiter",
+          "tooltip": "Delimiter used to split the string, defaults to |"
         }
       }
     },

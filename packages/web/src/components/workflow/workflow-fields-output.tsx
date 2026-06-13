@@ -50,6 +50,12 @@ function getSelectOptions(options: OutputField['options']) {
 	return Array.isArray(options) ? options : [];
 }
 
+function createOutputField(type: OutputField['type']): OutputField {
+	return isStructuredOutputFieldType(type)
+		? { key: '', type, children: [] }
+		: { key: '', type, value: '' };
+}
+
 function SortableOutputField({
 	id,
 	children,
@@ -89,6 +95,7 @@ export function OutputFieldsEditor({
 	value,
 	onChange,
 	variableContext,
+	allowedFieldTypes,
 	depth = 0,
 	showRequired = false,
 	outputPreviewEnabled,
@@ -97,6 +104,7 @@ export function OutputFieldsEditor({
 	value: OutputField[];
 	onChange: (v: OutputField[]) => void;
 	variableContext?: WorkflowVariableContext;
+	allowedFieldTypes?: OutputField['type'][];
 	depth?: number;
 	showRequired?: boolean;
 	outputPreviewEnabled?: boolean;
@@ -105,10 +113,13 @@ export function OutputFieldsEditor({
 	const t = useTranslations('workflows.outputFields');
 	const fields = getOutputFields(value);
 	const [expandedFields, setExpandedFields] = useState<Set<number>>(() => new Set());
+	const [expandedDetailFields, setExpandedDetailFields] = useState<Set<number>>(() => new Set());
 	const [editorId] = useState(() => `output-fields-${outputFieldDragIdCounter++}`);
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 	const indent = depth * 16;
 	const fieldIds = fields.map((_, index) => `${editorId}-${index}`);
+	const selectableFieldTypes = allowedFieldTypes?.length ? allowedFieldTypes : FIELD_TYPES;
+	const defaultFieldType = selectableFieldTypes[0] ?? 'string';
 
 	const updateField = (index: number, patch: Partial<OutputField>) => {
 		const next = [...fields];
@@ -141,6 +152,15 @@ export function OutputFieldsEditor({
 		});
 	};
 
+	const toggleDetailExpand = (index: number) => {
+		setExpandedDetailFields((current) => {
+			const next = new Set(current);
+			if (next.has(index)) next.delete(index);
+			else next.add(index);
+			return next;
+		});
+	};
+
 	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event;
 		if (!over || active.id === over.id) return;
@@ -159,6 +179,65 @@ export function OutputFieldsEditor({
 			inputMode: fields[index]?.inputMode === 'native' ? 'variable' : 'native',
 		});
 	};
+
+	const renderFieldDetails = (field: OutputField, index: number) => (
+		<div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
+			{isFileOutputFieldType(field.type) ? (
+				<Input
+					value={field.fileNameFilter ?? ''}
+					onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
+					placeholder={t('fileNameFilterPlaceholder')}
+					className="h-6 text-[11px]"
+				/>
+			) : (
+				<div className="flex items-start gap-1">
+					<button
+						type="button"
+						className={`mt-0.5 rounded p-0.5 transition-colors hover:bg-accent ${field.inputMode === 'native' ? 'text-primary' : 'text-muted-foreground'}`}
+						title={field.inputMode === 'native' ? t('switchToVariableInput') : t('switchToNativeInput')}
+						onClick={() => toggleInputMode(index)}
+					>
+						{field.inputMode === 'native' ? <ListChecks className="h-3.5 w-3.5" /> : <Braces className="h-3.5 w-3.5" />}
+					</button>
+					<div className="min-w-0 flex-1">
+						{field.inputMode === 'native' && field.type === 'select' ? (
+							<TagInput
+								value={getSelectOptions(field.options)}
+								onChange={(options) => updateField(index, { options })}
+								placeholder={t('selectOptionsPlaceholder')}
+								addLabel={t('addOption')}
+								className="h-6 text-[11px]"
+							/>
+						) : field.inputMode === 'native' ? (
+							<Input
+								value={stringifyOutputFieldValue(field.value)}
+								onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
+								placeholder={t('defaultValuePlaceholder')}
+								className="h-6 text-[11px]"
+							/>
+						) : (
+							<WorkflowVariableInput
+								value={stringifyOutputFieldValue(field.value)}
+								placeholder={t('defaultValuePlaceholder')}
+								variableContext={variableContext}
+								typeFilter={field.type}
+								groupClassName="h-6 min-h-0 rounded-md"
+								inputClassName="h-6 text-[11px]"
+								onChange={(nextValue) => updateField(index, { value: parseArrayOutputFieldValue(field.type, nextValue) })}
+								onSelectVariable={(path) => insertVariable(index, path)}
+							/>
+						)}
+					</div>
+				</div>
+			)}
+			<Input
+				value={field.description ?? ''}
+				onChange={(e) => updateField(index, { description: e.target.value || undefined })}
+				placeholder={t('descriptionPlaceholder')}
+				className="h-6 text-[11px]"
+			/>
+		</div>
+	);
 
 	return (
 		<div className="space-y-1">
@@ -187,14 +266,26 @@ export function OutputFieldsEditor({
 											>
 												<GripVertical className="h-3 w-3" />
 											</button>
-											<Button
-												variant="ghost"
-												size="icon"
-												className={`h-5 w-5 shrink-0 ${expandedFields.has(index) ? '' : '-rotate-90'}`}
-												onClick={() => toggleExpand(index)}
-											>
-												<ChevronRight className="h-3 w-3" />
-											</Button>
+											{isStructuredOutputFieldType(field.type) ? (
+												<Button
+													variant="ghost"
+													size="icon"
+													className={`h-5 w-5 shrink-0 text-muted-foreground ${expandedDetailFields.has(index) ? 'text-foreground' : ''}`}
+													title={expandedDetailFields.has(index) ? t('addField') : t('defaultValuePlaceholder')}
+													onClick={() => toggleDetailExpand(index)}
+												>
+													{expandedDetailFields.has(index) ? <ListChecks className="h-3 w-3" /> : <Braces className="h-3 w-3" />}
+												</Button>
+											) : (
+												<Button
+													variant="ghost"
+													size="icon"
+													className={`h-5 w-5 shrink-0 ${expandedFields.has(index) ? '' : '-rotate-90'}`}
+													onClick={() => toggleExpand(index)}
+												>
+													<ChevronRight className="h-3 w-3" />
+												</Button>
+											)}
 											{showRequired && (
 												<Checkbox
 													checked={Boolean(field.required) || false}
@@ -217,7 +308,7 @@ export function OutputFieldsEditor({
 													<SelectValue />
 												</SelectTrigger>
 												<SelectContent>
-													{FIELD_TYPES.map(type => (
+													{selectableFieldTypes.map(type => (
 														<SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
 													))}
 												</SelectContent>
@@ -231,65 +322,9 @@ export function OutputFieldsEditor({
 												<Trash2 className="h-2.5 w-2.5" />
 											</Button>
 										</div>
-										{expandedFields.has(index) && !isStructuredOutputFieldType(field.type) && (
-											<div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
-												{isFileOutputFieldType(field.type) ? (
-													<Input
-														value={field.fileNameFilter ?? ''}
-														onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
-														placeholder={t('fileNameFilterPlaceholder')}
-														className="h-6 text-[11px]"
-													/>
-												) : (
-													<div className="flex items-start gap-1">
-														<button
-															type="button"
-															className={`mt-0.5 rounded p-0.5 transition-colors hover:bg-accent ${field.inputMode === 'native' ? 'text-primary' : 'text-muted-foreground'}`}
-															title={field.inputMode === 'native' ? t('switchToVariableInput') : t('switchToNativeInput')}
-															onClick={() => toggleInputMode(index)}
-														>
-															{field.inputMode === 'native' ? <ListChecks className="h-3.5 w-3.5" /> : <Braces className="h-3.5 w-3.5" />}
-														</button>
-														<div className="min-w-0 flex-1">
-															{field.inputMode === 'native' && field.type === 'select' ? (
-																<TagInput
-																	value={getSelectOptions(field.options)}
-																	onChange={(options) => updateField(index, { options })}
-																	placeholder={t('selectOptionsPlaceholder')}
-																	addLabel={t('addOption')}
-																	className="h-6 text-[11px]"
-																/>
-															) : field.inputMode === 'native' ? (
-																<Input
-																	value={stringifyOutputFieldValue(field.value)}
-																	onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
-																	placeholder={t('defaultValuePlaceholder')}
-																	className="h-6 text-[11px]"
-																/>
-															) : (
-																<WorkflowVariableInput
-																	value={stringifyOutputFieldValue(field.value)}
-																	placeholder={t('defaultValuePlaceholder')}
-																	variableContext={variableContext}
-																	typeFilter={field.type}
-																	groupClassName="h-6 min-h-0 rounded-md"
-																	inputClassName="h-6 text-[11px]"
-																	onChange={(nextValue) => updateField(index, { value: parseArrayOutputFieldValue(field.type, nextValue) })}
-																	onSelectVariable={(path) => insertVariable(index, path)}
-																/>
-															)}
-														</div>
-													</div>
-												)}
-												<Input
-													value={field.description ?? ''}
-													onChange={(e) => updateField(index, { description: e.target.value || undefined })}
-													placeholder={t('descriptionPlaceholder')}
-													className="h-6 text-[11px]"
-												/>
-											</div>
-										)}
-										{isStructuredOutputFieldType(field.type) && depth < 3 && (
+										{((expandedFields.has(index) && !isStructuredOutputFieldType(field.type))
+											|| (expandedDetailFields.has(index) && isStructuredOutputFieldType(field.type))) && renderFieldDetails(field, index)}
+										{!expandedDetailFields.has(index) && isStructuredOutputFieldType(field.type) && depth < 3 && (
 											<div>
 												<OutputFieldsEditor
 													value={getOutputFields(field.children)}
@@ -312,7 +347,7 @@ export function OutputFieldsEditor({
 					size="sm"
 					className="h-5 w-full gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
 					style={{ paddingLeft: `${indent}px` }}
-					onClick={() => onChange([...fields, { key: '', type: 'string', value: '' }])}
+					onClick={() => onChange([...fields, createOutputField(defaultFieldType)])}
 				>
 					<Plus className="h-2.5 w-2.5" />
 					{t('addField')}

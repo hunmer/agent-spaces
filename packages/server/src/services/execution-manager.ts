@@ -648,6 +648,8 @@ export class ExecutionManager {
         return this.executeParseJson(resolvedData);
       case 'string_concat':
         return this.executeStringConcat(resolvedData);
+      case 'string_split':
+        return this.executeStringSplit(resolvedData);
       case 'set_variable':
         return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
@@ -759,6 +761,19 @@ export class ExecutionManager {
     const template = typeof resolvedData.template === 'string' ? resolvedData.template : '';
     const context = this.buildOutputObject(resolvedData.inputFields) ?? {};
     return { result: this.interpolateTemplate(template, context) };
+  }
+
+  /**
+   * 字符串分割节点：将 source 字符串按分隔符切成数组。
+   * 源字符串来自 source 属性（支持变量），分隔符来自 text 属性（默认 |）。
+   */
+  private executeStringSplit(resolvedData: Record<string, any>): Record<string, string[]> {
+    const source = typeof resolvedData.source === 'string' ? resolvedData.source : '';
+    const delimiter = typeof resolvedData.text === 'string' && resolvedData.text !== ''
+      ? resolvedData.text
+      : '|';
+    if (source === '') return { result: [] };
+    return { result: source.split(delimiter) };
   }
 
   private interpolateTemplate(template: string, context: Record<string, any>): string {

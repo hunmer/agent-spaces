@@ -8,6 +8,7 @@ export const stringNodes: NodeTypeDefinition[] = [
     icon: 'Type',
     description: 'nodes.string_concat.description',
     allowInputFields: true,
+    allowedInputFieldTypes: ['array', 'object'],
     properties: [
       {
         key: 'template',
@@ -21,5 +22,33 @@ export const stringNodes: NodeTypeDefinition[] = [
       },
     ],
     outputs: [{ key: 'result', type: 'string' }],
+  },
+  {
+    type: 'string_split',
+    label: 'nodes.string_split.label',
+    category: 'nodes.categories.utilities',
+    icon: 'Split',
+    description: 'nodes.string_split.description',
+    allowInputFields: false,
+    properties: [
+      {
+        key: 'source',
+        label: 'nodes.string_split.props.source.label',
+        type: 'text',
+        required: true,
+        inputMode: 'variable',
+        placeholder: 'nodes.string_split.props.source.placeholder',
+        tooltip: 'nodes.string_split.props.source.tooltip',
+      },
+      {
+        key: 'text',
+        label: 'nodes.string_split.props.text.label',
+        type: 'text',
+        default: '|',
+        placeholder: '|',
+        tooltip: 'nodes.string_split.props.text.tooltip',
+      },
+    ],
+    outputs: [{ key: 'result', type: 'string[]' }],
   },
 ];

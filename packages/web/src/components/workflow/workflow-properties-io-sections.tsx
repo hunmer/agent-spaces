@@ -45,6 +45,7 @@ export function InputFieldsSection({
         value={getOutputFields(data.inputFields)}
         onChange={(value) => onDataChange('inputFields', value)}
         variableContext={variableContext}
+        allowedFieldTypes={getNodeDefinition(node.type)?.allowedInputFieldTypes}
         showRequired
       />
     </section>
