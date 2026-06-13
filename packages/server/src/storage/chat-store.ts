@@ -16,9 +16,10 @@ export interface ChatAgent {
   systemPrompt?: string;
   modelProvider?: string;
   modelId?: string;
-  provider: string;
+  providerId?: string;
+  provider?: string;
   model: string;
-  apiKey: string;
+  apiKey?: string;
   baseURL?: string;
   apiBase?: string;
   workingDir?: string;
@@ -130,13 +131,29 @@ export function saveAgent(agent: ChatAgent, skillInputs?: Array<string | { name:
   ensureDir(skillsDir(agent.id));
   ensureDir(chatWorkspaceDir(agent.id));
   ensureDir(chatWorkspaceSkillsDir(agent.id));
-  writeJsonFile(agentFile(agent.id), agent);
-  writeJsonFile(mcpFile(agent.id), agent.mcps ?? {});
+  const storedAgent = toStoredChatAgent(agent);
+  writeJsonFile(agentFile(agent.id), storedAgent);
+  writeJsonFile(mcpFile(agent.id), storedAgent.mcps ?? {});
   writeSkills(agent.id, skillInputs, agent.skills ?? []);
 }
 
 export function findAgent(id: string): ChatAgent | undefined {
   return readJsonFile<ChatAgent>(agentFile(id)) ?? undefined;
+}
+
+function toStoredChatAgent(agent: ChatAgent): ChatAgent {
+  const {
+    apiKey: _apiKey,
+    baseURL: _baseURL,
+    apiBase: _apiBase,
+    provider: _provider,
+    ...stored
+  } = agent;
+  void _apiKey;
+  void _baseURL;
+  void _apiBase;
+  void _provider;
+  return stored as ChatAgent;
 }
 
 export function deleteAgent(id: string): void {

@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync } from 'node:fs';
 import * as store from '../storage/chat-store.js';
+import { listProviders } from '../storage/llm-store.js';
 import type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from '../storage/chat-store.js';
 
 // --- Agent CRUD ---
 
 export function listAgents(): ChatAgent[] {
-  return store.listAgents();
+  return store.listAgents().map(hydrateAgentProvider);
 }
 
 export function createAgent(data: Omit<ChatAgent, 'id' | 'createdAt' | 'updatedAt'>): ChatAgent {
@@ -20,7 +21,7 @@ export function createAgent(data: Omit<ChatAgent, 'id' | 'createdAt' | 'updatedA
     updatedAt: now,
   };
   store.saveAgent(agent, data.skills as Array<string | { name: string; content?: string }> | undefined);
-  return agent;
+  return hydrateAgentProvider(agent);
 }
 
 export function updateAgent(id: string, data: Partial<Omit<ChatAgent, 'id' | 'createdAt'>>): ChatAgent | null {
@@ -35,7 +36,7 @@ export function updateAgent(id: string, data: Partial<Omit<ChatAgent, 'id' | 'cr
     updatedAt: new Date().toISOString(),
   };
   store.saveAgent(updated, data.skills as Array<string | { name: string; content?: string }> | undefined);
-  return updated;
+  return hydrateAgentProvider(updated);
 }
 
 export function deleteAgent(id: string): boolean {
@@ -45,7 +46,8 @@ export function deleteAgent(id: string): boolean {
 }
 
 export function findAgent(id: string): ChatAgent | undefined {
-  return store.findAgent(id);
+  const agent = store.findAgent(id);
+  return agent ? hydrateAgentProvider(agent) : undefined;
 }
 
 // --- Message CRUD ---
@@ -80,6 +82,10 @@ export function getAgentWorkingDir(agentId: string): string | null {
 
 export function getAgentConfigDir(agentId: string): string | null {
   return store.findAgent(agentId) ? store.agentDir(agentId) : null;
+}
+
+export function resolveProviderIdFromChatAgentInput(data: Partial<ChatAgent> & Record<string, unknown>): string {
+  return stringValue(data.providerId) || resolveProviderConfig(data)?.id || '';
 }
 
 export function getAgentWorkspace(agentId: string) {
@@ -174,7 +180,8 @@ export { migrateToWorkspaces } from '../storage/chat-store.js';
 function normalizeAgentData(data: Partial<ChatAgent> & Record<string, unknown>): Omit<ChatAgent, 'id' | 'createdAt' | 'updatedAt'> {
   const provider = stringValue(data.provider) || stringValue(data.modelProvider) || 'openai-chat-completions';
   const model = stringValue(data.model) || stringValue(data.modelId) || '';
-  const baseURL = stringValue(data.baseURL) || stringValue(data.apiBase) || undefined;
+  const providerConfig = resolveProviderConfig(data);
+  const baseURL = providerConfig?.apiBase || stringValue(data.baseURL) || stringValue(data.apiBase) || undefined;
   const avatar = stringValue(data.avatar) || stringValue(data.avatarUrl) || undefined;
   const skills = normalizeSkillNames(data.skills);
 
@@ -189,9 +196,10 @@ function normalizeAgentData(data: Partial<ChatAgent> & Record<string, unknown>):
     systemPrompt: stringValue(data.systemPrompt) || undefined,
     provider,
     modelProvider: provider,
+    providerId: stringValue(data.providerId) || providerConfig?.id || undefined,
     model,
     modelId: model,
-    apiKey: stringValue(data.apiKey),
+    apiKey: providerConfig?.apiKey || stringValue(data.apiKey) || undefined,
     baseURL,
     apiBase: baseURL,
     workingDir: stringValue(data.workingDir),
@@ -202,6 +210,43 @@ function normalizeAgentData(data: Partial<ChatAgent> & Record<string, unknown>):
     temperature: typeof data.temperature === 'number' ? data.temperature : 0.3,
     maxTokens: typeof data.maxTokens === 'number' ? data.maxTokens : 4096,
     enabled: data.enabled !== false,
+  };
+}
+
+function resolveProviderConfig(data: Partial<ChatAgent>) {
+  const providers = listProviders();
+  const providerId = stringValue(data.providerId);
+  if (providerId) {
+    const byId = providers.find((provider) => provider.id === providerId);
+    if (byId) return byId;
+  }
+
+  const apiBase = stringValue(data.apiBase) || stringValue(data.baseURL);
+  const apiKey = stringValue(data.apiKey);
+  if (!apiBase && !apiKey) return undefined;
+  return providers.find((provider) =>
+    (!apiBase || provider.apiBase === apiBase)
+    && (!apiKey || provider.apiKey === apiKey),
+  );
+}
+
+function hydrateAgentProvider(agent: ChatAgent): ChatAgent {
+  const provider = resolveProviderConfig(agent);
+  if (!provider) {
+    return {
+      ...agent,
+      provider: agent.provider || agent.modelProvider || 'openai-chat-completions',
+      baseURL: agent.baseURL || agent.apiBase,
+      apiBase: agent.apiBase || agent.baseURL,
+    };
+  }
+  return {
+    ...agent,
+    providerId: provider.id,
+    provider: agent.provider || agent.modelProvider || 'openai-chat-completions',
+    apiKey: provider.apiKey,
+    baseURL: provider.apiBase,
+    apiBase: provider.apiBase,
   };
 }
 

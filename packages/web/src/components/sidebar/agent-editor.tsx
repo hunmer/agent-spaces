@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useState, useImperativeHandle } from "react";
+import { forwardRef, useEffect, useState, useImperativeHandle } from "react";
 import { useTranslations } from "next-intl";
 import { type AgentConfig } from "@agent-spaces/shared";
 import { useAgentStore } from "@/stores/agent";
@@ -54,6 +54,7 @@ export interface AgentEditorProps {
   commit?: (draft: AgentPreset) => Promise<AgentPreset>;
   /** 隐藏 AgentDetail 的指定区块（整段不渲染）。与 lockedFields 正交、可叠加。 */
   hiddenFields?: AgentDetailHiddenFields;
+  onDraftChange?: (draft: AgentPreset) => void;
 }
 
 export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
@@ -70,6 +71,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       fixedValues,
       commit,
       hiddenFields,
+      onDraftChange,
     },
     ref,
   ) {
@@ -87,6 +89,10 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
     const [generateOpen, setGenerateOpen] = useState(autoOpenGenerate);
     const [generatePrompt, setGeneratePrompt] = useState("");
     const [generating, setGenerating] = useState(false);
+
+    useEffect(() => {
+      onDraftChange?.(editDraft);
+    }, [editDraft, onDraftChange]);
 
     useImperativeHandle(ref, () => ({
       reset() {

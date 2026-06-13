@@ -13,9 +13,10 @@ export interface ChatAgent {
   systemPrompt?: string;
   modelProvider?: string;
   modelId?: string;
-  provider: string;
+  providerId?: string;
+  provider?: string;
   model: string;
-  apiKey: string;
+  apiKey?: string;
   baseURL?: string;
   apiBase?: string;
   workingDir?: string;

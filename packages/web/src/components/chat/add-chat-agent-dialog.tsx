@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ function chatAgentToPreset(agent: ChatAgent): AgentPreset {
     description: agent.description ?? "",
     systemPrompt: agent.systemPrompt ?? "",
     modelProvider: (agent.modelProvider || agent.provider || "") as AgentPreset["modelProvider"],
+    providerId: agent.providerId ?? "",
     modelId: agent.modelId || agent.model,
     apiKey: agent.apiKey,
     apiBase: agent.apiBase ?? agent.baseURL ?? "",
@@ -49,12 +50,9 @@ function presetToChatAgentData(preset: AgentPreset): Omit<ChatAgent, "id" | "cre
     description: preset.description || undefined,
     systemPrompt: preset.systemPrompt || undefined,
     modelProvider: preset.modelProvider || "openai-chat-completions",
+    providerId: preset.providerId,
     modelId: preset.modelId,
-    provider: preset.modelProvider || "openai-chat-completions",
     model: preset.modelId,
-    apiKey: preset.apiKey,
-    apiBase: preset.apiBase || undefined,
-    baseURL: preset.apiBase || undefined,
     avatarUrl: preset.avatarUrl || undefined,
     avatar: preset.avatarUrl || undefined,
     icon: preset.icon || undefined,
@@ -81,10 +79,11 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
   const isEdit = !!initialData;
   const preset = initialData ? chatAgentToPreset(initialData) : newEmptyAgent();
   const t = useTranslations('chat.addAgent');
+  const [canSave, setCanSave] = useState(Boolean(preset.name.trim() && preset.providerId));
 
   const handleSubmit = useCallback(() => {
     const draft = editorRef.current?.getDraft();
-    if (!draft || !draft.name.trim() || !draft.apiKey.trim()) return;
+    if (!draft || !draft.name.trim() || !draft.providerId) return;
     onSubmit(presetToChatAgentData(draft));
     onOpenChange(false);
   }, [onSubmit, onOpenChange]);
@@ -104,11 +103,12 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
             showFooter={false}
             lockedFields={{ runtimeKind: true, workingDir: true }}
             fixedValues={{ runtimeKind: "langchain" }}
+            onDraftChange={(draft) => setCanSave(Boolean(draft.name.trim() && draft.providerId))}
           />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
-          <Button onClick={handleSubmit}>{t('save')}</Button>
+          <Button onClick={handleSubmit} disabled={!canSave}>{t('save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

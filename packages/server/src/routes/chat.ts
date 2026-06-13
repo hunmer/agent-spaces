@@ -191,18 +191,19 @@ router.get('/agents', (_req, res) => {
   }
 });
 
-// POST /api/chat/agents — create agent (requires name, provider, model, apiKey)
+// POST /api/chat/agents — create agent (requires name, providerId, model)
 router.post('/agents', (req, res) => {
   const body = req.body as Record<string, unknown>;
   const name = typeof body.name === 'string' ? body.name.trim() : '';
-  const provider = stringValue(body.provider) || stringValue(body.modelProvider);
+  const providerId = stringValue(body.providerId)
+    || svc.resolveProviderIdFromChatAgentInput(body);
   const model = stringValue(body.model) || stringValue(body.modelId);
-  if (!name || !provider || !model) {
-    res.status(400).json({ error: 'name, provider, and model are required' });
+  if (!name || !providerId || !model) {
+    res.status(400).json({ error: 'name, providerId, and model are required' });
     return;
   }
   try {
-    const agent = svc.createAgent(body as Parameters<typeof svc.createAgent>[0]);
+    const agent = svc.createAgent({ ...body, providerId } as Parameters<typeof svc.createAgent>[0]);
     res.status(201).json(agent);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

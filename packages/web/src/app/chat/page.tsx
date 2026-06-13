@@ -11,7 +11,7 @@ import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { AddMemberDialog } from "@/components/chat/add-member-dialog";
 import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { MessageSquare, FileIcon, X } from "lucide-react";
+import { MessageSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileIconImg } from "@/components/editor/file-icon";
 import { AgentIcon } from "@/components/common/agent-icon";
@@ -203,12 +203,9 @@ function ChatPageInner() {
         description: preset.description || undefined,
         systemPrompt: preset.systemPrompt || undefined,
         modelProvider: preset.modelProvider || "openai-chat-completions",
+        providerId: preset.providerId,
         modelId: preset.modelId || "gpt-4o-mini",
-        provider: preset.modelProvider || "openai-chat-completions",
         model: preset.modelId || "gpt-4o-mini",
-        apiKey: preset.apiKey || "",
-        apiBase: preset.apiBase || undefined,
-        baseURL: preset.apiBase || undefined,
         avatarUrl: preset.avatarUrl || undefined,
         avatar: preset.avatarUrl || undefined,
         icon: preset.icon || undefined,

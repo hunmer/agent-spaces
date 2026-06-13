@@ -128,6 +128,7 @@ export function ChatAgentPickerDialog({
         backgroundUrl: agent.backgroundUrl || "",
         runtimeKind: "langchain",
         modelProvider: (agent.modelProvider || agent.provider || "") as AgentPreset["modelProvider"],
+        providerId: agent.providerId || "",
         modelId: agent.modelId || agent.model || "",
         apiBase: agent.apiBase || agent.baseURL || "",
         apiKey: agent.apiKey || "",
