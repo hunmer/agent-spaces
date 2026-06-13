@@ -10,7 +10,7 @@
 
 - 读取当前路由（由前端每条消息带进上下文）。
 - 调用项目已启用插件工具（`list_plugin_tools` / `get_plugin_tool_detail` / `execute_plugin_tool`）。
-- 调用项目自定义的 `src/api.js` 方法（如 `next_music` / `prev_music`）来操控 UI。
+- 调用项目自定义的 `src/api.js` 方法（如 `next_music` / `prev_music`）来操控 UI，并通过 `src/tools.js` 获取这些方法的结构化参数说明。
 
 Runtime 固定 **langchain**。整条执行链路自包含：不依赖 workspace、不走 channel、不复用编辑器的 `mini-app-chat.tsx`。
 
@@ -58,7 +58,7 @@ Runtime 固定 **langchain**。整条执行链路自包含：不依赖 workspace
    ]
    ```
 
-可选第三步：在 `src/api.js` 写 agent 可调用的方法表（见下文）。
+可选第三步：在 `src/api.js` 写 agent 可调用的方法表，并在 `src/tools.js` 写这些方法的参数说明（见下文）。
 
 ## agents.json schema
 
@@ -128,12 +128,6 @@ export default {
     ctx.broadcast('miniApp.playerAction', { dir: 'prev' });
     return { ok: true };
   },
-  // 带参：JSDoc 声明的参数会注入到 function tool 的 inputSchema
-  /**
-   * 根据提示词生成一首歌曲
-   * @param {string} prompt - 音乐风格描述
-   * @param {string} [lyrics] - 歌词文本（可选）
-   */
   generate_music: async (input, ctx) => {
     const prompt = input.prompt || '默认风格';
     const result = await ctx.callPluginTool('workflow.minimax', 'minimax_music_generation', { prompt });
@@ -143,7 +137,7 @@ export default {
 };
 ```
 
-> 带参方法的写法见下文「声明方法参数」。
+> 带参方法的结构化说明写在同目录 `src/tools.js`，不要依赖 `api.js` 的 JSDoc。
 
 ### ctx API
 
@@ -159,41 +153,37 @@ export default {
 
 - handler **不能 `import` 外部模块**（编译时剥离 import 行），能力全部通过 `ctx` 注入 —— 与 services 一致。
 
-### 声明方法参数（JSDoc `@param`）
+## src/tools.js
 
-`compileApiJs` 在编译 `src/api.js` 时会解析每个方法上方紧邻的 **JSDoc 注释**，提取 `@param` 标签生成 JSON Schema，注入到该方法的 function tool `inputSchema` 和 `description`。模型据此知道该传什么参数。
+项目根目录下的 `src/tools.js`，单文件，**default-export 一个工具说明数组**，或 `{ tools: [...] }`。服务启动时会遍历 mini-app 的 `src/tools.js` 并注册到内存表；agent 运行时会获得 `get_mini_app_tools` function tool，可按 mini-app id 查询对应工具说明。
 
-支持格式（**注释必须紧贴方法定义**，中间不能有空行或其他语句）：
+每个工具说明的 `name` 必须和 `src/api.js` 导出的方法名一致。`description` 和 `inputSchema` 会注入到同名 api function tool，模型据此知道该传什么参数。
 
 ```js
-export default {
-  /**
-   * 根据提示词生成一首歌曲
-   * @param {string} prompt - 音乐风格描述
-   * @param {string} [lyrics] - 歌词文本，留空表示纯音乐
-   * @param {boolean} [instrumental] - 是否为纯音乐，默认 true
-   */
-  generate_music: async (input, ctx) => {
-    const prompt = input.prompt || '默认风格';
-    // ... ctx.callPluginTool(...) ...
+export default [
+  {
+    name: 'generate_music',
+    description: '根据提示词生成一首歌曲',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: '音乐风格描述' },
+        lyrics: { type: 'string', description: '歌词文本，留空表示纯音乐' },
+        instrumental: { type: 'boolean', description: '是否为纯音乐，默认 true' },
+      },
+      required: ['prompt'],
+    },
   },
-};
+];
 ```
-
-| 写法 | 含义 | 生成的 schema |
-| --- | --- | --- |
-| `@param {string} prompt - 描述` | 必填 string | `{ type: 'string', description: '描述' }`，加入 `required` |
-| `@param {string} [lyrics] - 描述` | 可选 string（方括号） | `{ type: 'string', description: '描述' }`，不加 `required` |
-| `{number}` / `{boolean}` / `{object}` / `{array}` | 类型映射 | 对应 JSON Schema type |
-| 无 `@param` 注释 | 无参 | `inputSchema: { type: 'object' }`（空，向后兼容） |
 
 **约束与边界**：
 
 - handler **不能 `import` 外部模块**（编译时剥离 import 行），能力全部通过 `ctx` 注入 —— 与 services 一致。
-- 仅识别紧贴方法定义上方的 `/** ... */` 块；普通 `//` 行注释不会被解析。
+- `tools.js` 也不能 `import` 外部模块；它只承载静态工具元数据。
+- `tools.js` 缺失或某方法没有同名说明时，该方法仍会注册，schema 回退为 `{ type: 'object', properties: {} }`。
 - handler 内部读取参数用 `input.xxx`（首参数为对象），不强制做类型校验，建议对缺失参数给默认值。
-- 注释第一段（`@param` 之前）会作为方法的 tool `description`，可在此描述方法用途，帮助模型决策。
-- 没写 JSDoc 的方法仍生成空 schema（`{ type: 'object' }`），不影响现有无参方法 —— **完全向后兼容**。
+- `get_mini_app_tools` 的入参为 `{ projectId?: string }`；缺省时查询当前 mini-app。
 
 ## agent 能力
 
@@ -201,7 +191,7 @@ export default {
 
 - **读当前路由**：当前 iframe 的 `?route` 值由前端每条消息带进 payload（`miniAppContext.route`），后端注入到 systemPrompt（`Current route: {route}`）。agent 从上下文读，**非实时往返**。
 - **`tools.plugin` → `createMiniAppFunctionTools`**：提供 `list_plugin_tools` / `get_plugin_tool_detail` / `execute_plugin_tool`（可见范围来自 `manifest.enabledPlugins`）。
-- **`tools.api` → `buildApiFunctionTools`**：把 `src/api.js` 的每个导出方法注册成一个 function tool。
+- **`tools.api` → `buildApiFunctionTools`**：把 `src/api.js` 的每个导出方法注册成一个 function tool，并用 `src/tools.js` 的同名说明补充 `description` / `inputSchema`。
 
 Runtime 固定 **langchain**。agent 的 `cwd` 设到项目目录，让它能用原生文件工具读 `src/`。
 
@@ -236,7 +226,7 @@ SSE 事件类型：`text` / `reasoning` / `tool_use` / `tool_result`（与主聊
 
 ## 边界
 
-- **带参方法需写 JSDoc** —— 见上文「声明方法参数」：方法上方紧邻的 `/** @param {type} name - desc */` 注释会被编译解析为 inputSchema；没写注释的方法默认为无参。
+- **带参方法需写 `src/tools.js`** —— 见上文「src/tools.js」：同名工具说明会被注册为 inputSchema；缺失说明的方法默认为空对象 schema。
 - **需要登录态** —— 预览路径虽无 active workspace，但仍带 Bearer token，不支持公网匿名分享。
 - **`agentId` 引用的 preset 必须存在**才能复用密钥；preset 不存在时按本地字段 / 默认兜底，并打告警日志（不阻断）。
 - **`src/api.js` 编译失败不致命** —— 该文件缺失或编译出错时，后端返回空方法表并告警，agent 仍能运行，只是看不到 api 方法工具。
@@ -247,7 +237,7 @@ SSE 事件类型：`text` / `reasoning` / `tool_use` / `tool_result`（与主聊
 
 | 文件 | 说明 |
 | --- | --- |
-| `packages/server/src/services/mini-app-agent.ts` | 执行器：`runMiniAppAgent`、`compileApiJs`（+`extractParamSchemas` 解析 JSDoc）、`loadApiJs`、`makeApiCtx`、`buildApiFunctionTools`、`resolveAgentCredentials` |
+| `packages/server/src/services/mini-app-agent.ts` | 执行器：`runMiniAppAgent`、`compileApiJs`、`compileToolsJs`、`registerAllMiniAppTools`、`loadApiJs`、`makeApiCtx`、`buildApiFunctionTools`、`resolveAgentCredentials` |
 | `packages/server/src/storage/mini-app-store.ts` | 存储层：`readAgentsConfig`、`saveAgentChat`、`listAgentChats`、`getProjectDir` |
 | `packages/server/src/routes/mini-apps.ts` | 3 个 agent 端点（`GET /:id/agents`、`GET /:id/agents/chat`、`POST /:id/agents/:agentId/chat`） |
 | `packages/sdk/src/modules/mini-apps.ts` | SDK 命名空间：`listAgents`、`agentHistory`、`agentChat`（SSE 回调式消费） |

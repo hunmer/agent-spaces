@@ -3,9 +3,33 @@ import useAudioPlayer from './hooks/useAudioPlayer';
 import Background from './components/Background';
 import Player from './components/Player';
 import MusicGenerator from './components/MusicGenerator';
-import { readHistory, writeHistory } from './utils/storage';
+import SettingsDialog from './components/SettingsDialog';
+import { readHistory, writeHistory, readSettings, writeSettings, readLastTrack, writeLastTrack } from './utils/storage';
 
-const { Sparkles, Alert, AlertTitle, AlertDescription, Loader2, RefreshCw } = window.AgentSpacesUI;
+const { Sparkles, Alert, AlertTitle, AlertDescription, Loader2, RefreshCw, Settings } = window.AgentSpacesUI;
+
+const AGENT_MUSIC_LIBRARY_CONFIG = 'agent-music-library.json';
+
+const toAgentMusicLibrary = (list) => ({
+  updatedAt: new Date().toISOString(),
+  songs: (Array.isArray(list) ? list : []).slice(0, 100).map((item) => ({
+    id: String(item.id || item.audioUrl || ''),
+    audioUrl: item.audioUrl || '',
+    title: item.title || '未命名歌曲',
+    artist: item.artist || 'MiniMax Music AI',
+    prompt: item.prompt || '',
+    lyrics: item.lyrics ? String(item.lyrics).slice(0, 500) : '',
+    createdAt: item.createdAt || '',
+  })),
+});
+
+const syncAgentMusicLibrary = async (list) => {
+  try {
+    await window.AgentSpacesUI?.writeConfigJson?.(AGENT_MUSIC_LIBRARY_CONFIG, toAgentMusicLibrary(list));
+  } catch (e) {
+    console.error('Failed to sync agent music library:', e);
+  }
+};
 
 export default function App() {
   const player = useAudioPlayer();
@@ -26,10 +50,15 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [playMode, setPlayMode] = useState('sequential');
 
+  // Settings dialog & restore-on-start preference
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [restoreOnStart, setRestoreOnStart] = useState(false);
+
   // Load playlist from local storage
   const loadPlaylist = useCallback(async () => {
     const data = await readHistory();
     setPlaylist(data);
+    await syncAgentMusicLibrary(data);
     return data;
   }, []);
 
@@ -37,12 +66,32 @@ export default function App() {
     loadPlaylist();
   }, [loadPlaylist]);
 
+  // On startup: load settings; if restore-on-start is enabled, resume last track
+  useEffect(() => {
+    (async () => {
+      const settings = await readSettings();
+      setRestoreOnStart(!!settings.restoreOnStart);
+      if (!settings.restoreOnStart) return;
+      const last = await readLastTrack();
+      if (!last?.audioUrl) return;
+      // Ensure playlist is loaded so we can sync currentIndex
+      const data = await loadPlaylist();
+      player.loadAudio(last.audioUrl, true);
+      setTrackInfo({ title: last.title || 'Neon Horizon', artist: last.artist || 'MiniMax Music AI', lyrics: last.lyrics || '' });
+      setCurrentLyrics(last.lyrics || '');
+      const idx = data.findIndex(p => p.audioUrl === last.audioUrl);
+      if (idx !== -1) setCurrentIndex(idx);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Play a track and update index
   const playTrack = useCallback((item, index) => {
     player.loadAudio(item.audioUrl, true);
     setTrackInfo({ title: item.title, artist: item.artist });
     setCurrentLyrics(item.lyrics || '');
     if (index !== undefined) setCurrentIndex(index);
+    writeLastTrack({ audioUrl: item.audioUrl, title: item.title, artist: item.artist, lyrics: item.lyrics || '' });
   }, [player]);
 
   // Handle track ended based on play mode
@@ -87,6 +136,7 @@ export default function App() {
     const artist = 'MiniMax Music AI';
     setTrackInfo({ title, artist });
     setCurrentLyrics(lyrics || '');
+    writeLastTrack({ audioUrl, title, artist, lyrics: lyrics || '' });
 
     // Save to local storage (per-project)
     try {
@@ -122,6 +172,7 @@ export default function App() {
       const updated = playlist.filter(p => p.audioUrl !== item.audioUrl);
       await writeHistory(updated);
       setPlaylist(updated);
+      await syncAgentMusicLibrary(updated);
       // 如果删除的是当前播放的歌曲，停止播放
       if (player.audioUrl === item.audioUrl) {
         player.stop();
@@ -169,6 +220,47 @@ export default function App() {
     playTrack(playlist[randomIdx], randomIdx);
   }, [playlist, playTrack]);
 
+  // Toggle "restore on start" and persist
+  const handleRestoreChange = useCallback(async (val) => {
+    setRestoreOnStart(val);
+    await writeSettings({ restoreOnStart: val });
+  }, []);
+
+  // Export local song list as a downloadable JSON file
+  const handleExport = useCallback(async () => {
+    try {
+      const data = await readHistory();
+      const payload = JSON.stringify({ exportedAt: new Date().toISOString(), songs: data }, null, 2);
+      const blob = new Blob([payload], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sonicai-music-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to export data:', e);
+    }
+  }, []);
+
+  // Clear all songs (local history + last track + player state)
+  const handleClear = useCallback(async () => {
+    try {
+      await writeHistory([]);
+      await writeLastTrack(null);
+      setPlaylist([]);
+      await syncAgentMusicLibrary([]);
+      setCurrentIndex(-1);
+      player.stop();
+      setTrackInfo({ title: 'Neon Horizon', artist: 'Syntax Error ft. The Algorithm', lyrics: '' });
+      setCurrentLyrics('');
+    } catch (e) {
+      console.error('Failed to clear songs:', e);
+    }
+  }, [player]);
+
   // Subscribe to agent-driven player actions (api.js broadcasts miniApp.playerAction)
   useEffect(() => {
     if (!window.AgentSpaces?.onTaskEvent) return;
@@ -177,6 +269,14 @@ export default function App() {
         if (data?.dir === 'next') handleNext();
         else if (data?.dir === 'prev') handlePrev();
         else if (data?.dir === 'random') handleRandom();
+        else if (data?.dir === 'goto') {
+          const idx = playlist.findIndex((item) =>
+            (data?.id && item.id === data.id)
+            || (data?.audioUrl && item.audioUrl === data.audioUrl)
+            || (data?.title && item.title === data.title)
+          );
+          if (idx !== -1) playTrack(playlist[idx], idx);
+        }
       } else if (event === 'miniApp.musicGenerated') {
         if (data?.audioUrl) handleGenerate(data);
       } else if (event === 'miniApp.toggleLike') {
@@ -184,7 +284,7 @@ export default function App() {
       }
     });
     return unsub;
-  }, [handleNext, handlePrev, handleRandom, handleGenerate, player.audioUrl, toggleLiked]);
+  }, [handleNext, handlePrev, handleRandom, handleGenerate, playlist, playTrack, player.audioUrl, toggleLiked]);
 
   return (
     <div className="bg-background text-foreground h-screen overflow-hidden flex flex-col relative">
@@ -202,6 +302,15 @@ export default function App() {
 
       {/* Animated Background */}
       <Background />
+
+      {/* Settings (top-left) */}
+      <button
+        className="fixed top-4 left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card/90 backdrop-blur-xl border border-border transition-colors"
+        onClick={() => setSettingsOpen(true)}
+        title="设置"
+      >
+        <Settings className="w-5 h-5" />
+      </button>
 
       {/* Generating Alert */}
       {generatingAlert && (
@@ -250,6 +359,16 @@ export default function App() {
         onGenerateEnd={handleGenerateEnd}
         initialPrompt={remixPrompt}
         initialLyrics={remixLyrics}
+      />
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        restoreOnStart={restoreOnStart}
+        onRestoreChange={handleRestoreChange}
+        onExport={handleExport}
+        onClear={handleClear}
       />
 
       {/* Bottom Center - AI Music Creation / Remix Buttons */}

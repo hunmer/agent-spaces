@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compileApiJs, buildApiFunctionTools, resolveAgentCredentials, type ApiCtx } from '../src/services/mini-app-agent.js';
+import {
+  compileApiJs,
+  compileToolsJs,
+  buildApiFunctionTools,
+  createMiniAppToolsCatalogTool,
+  registerMiniAppTools,
+  resolveAgentCredentials,
+  type ApiCtx,
+} from '../src/services/mini-app-agent.js';
 
 test('compileApiJs strips imports and converts export default to method map', () => {
   const code = `
@@ -39,6 +47,74 @@ export default {
   assert.deepEqual(tools[0].inputSchema, { type: 'object', properties: {} });
   // execute invokes the handler with the ctx
   return tools[0].execute({}).then((r: any) => assert.deepEqual(r, { ok: true }));
+});
+
+test('compileToolsJs loads mini-app tool metadata from default export array', () => {
+  const tools = compileToolsJs(`
+export default [
+  {
+    name: 'generate_music',
+    description: '根据提示词生成一首歌曲',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: '音乐风格描述' },
+      },
+      required: ['prompt'],
+    },
+  },
+];
+`);
+  assert.equal(tools.length, 1);
+  assert.equal(tools[0].name, 'generate_music');
+  assert.deepEqual(tools[0].inputSchema, {
+    type: 'object',
+    properties: {
+      prompt: { type: 'string', description: '音乐风格描述' },
+    },
+    required: ['prompt'],
+  });
+});
+
+test('buildApiFunctionTools uses tools.js metadata when provided', () => {
+  const methods = compileApiJs(`
+export default {
+  generate_music: (input) => ({ prompt: input.prompt }),
+};
+`);
+  const ctx: ApiCtx = {
+    projectId: 'p1',
+    broadcast: () => {},
+    callPluginTool: async () => ({ ok: true }),
+    readConfig: () => null,
+    writeConfig: () => {},
+  };
+  const tools = buildApiFunctionTools(methods, () => ctx, {
+    generate_music: {
+      name: 'generate_music',
+      description: '根据提示词生成一首歌曲',
+      inputSchema: {
+        type: 'object',
+        properties: { prompt: { type: 'string' } },
+        required: ['prompt'],
+      },
+    },
+  });
+  assert.equal(tools[0].description, '根据提示词生成一首歌曲');
+  assert.deepEqual(tools[0].inputSchema, {
+    type: 'object',
+    properties: { prompt: { type: 'string' } },
+    required: ['prompt'],
+  });
+});
+
+test('createMiniAppToolsCatalogTool queries registered mini-app tools by project id', async () => {
+  const projectId = 'wui_1781192646059_cb4df369';
+  registerMiniAppTools(projectId);
+  const catalogTool = createMiniAppToolsCatalogTool(projectId);
+  const result = await catalogTool.execute({ projectId }) as any;
+  assert.equal(result.projectId, projectId);
+  assert.ok(result.tools.some((tool: any) => tool.name === 'generate_music'));
 });
 
 test('resolveAgentCredentials: agentId resolves preset creds, local fields override', () => {

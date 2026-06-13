@@ -8,11 +8,12 @@ SonicAI 是一个 AI 音乐播放器应用，具有沉浸式视觉效果（动�
 
 ## File Structure
 
-- `index.jsx` — 入口组件，主布局（播放器 + 底部创作按钮 + 配置持久化逻辑 + 红心状态管理 + 播放列表/索引/模式管理 + 生成中 Alert 提示）
+- `index.jsx` — 入口组件，主布局（播放器 + 左上角设置齿轮 + 底部创作按钮 + 配置持久化逻辑 + 红心状态管理 + 播放列表/索引/模式管理 + 生成中 Alert 提示 + 启动恢复播放）
 - `components/Background.jsx` — 动态渐变背景（三色光斑 + 噪点叠加）
 - `components/Player.jsx` — 播放器核心 UI（封面+标题左侧列、歌词面板右侧列、悬浮红心/下载、波形可视化进度条（可点击跳转、占满宽度）、播放控制、播放模式切换、音量调节 Popover；播放列表图标定位在下一首按钮右侧）
 - `components/PlaylistPopover.jsx` — 播放列表弹窗（Popover，点击播放、翻页、每页50条，歌曲右侧红心收藏切换；使用 CSS 变量 `--theme-accent` 管理主题色）
 - `components/MusicGenerator.jsx` — AI 音乐创作面板（Dialog 弹窗，包含风格描述、歌词（带 AI 生成图标）、模型选择、纯音乐开关；生成时立即关闭对话框）
+- `components/SettingsDialog.jsx` — 设置弹窗（左上角齿轮入口；启动时恢复播放开关 / 导出数据 / 清空歌曲列表两步确认）
 - `hooks/useAudioPlayer.js` — 音频播放状态管理（加载、播放/暂停、进度追踪、跳转、音量控制、replay 重播、onEnded 回调）
 - `DESIGN.md` — Apple Music 设计系统 token 参考
 - `code.html` — 原始 HTML 参考文件
@@ -43,6 +44,9 @@ SonicAI 是一个 AI 音乐播放器应用，具有沉浸式视觉效果（动�
 22. **控制栏布局**：控制栏宽度 `max-w-3xl` 与封面+歌词区域对齐，歌单图标（PlaylistPopover）位于下一首按钮右侧
 23. **单曲循环重播**：使用 `replay()` 方法（seek 0 + play）而非 `loadAudio(同URL)`，避免 React 状态未变化导致不触发重渲染
 24. **主题色管理**：通过 CSS 变量 `--theme-accent: #d6143a`（定义在 index.jsx style 标签）统一管理主题色，PlaylistPopover 等组件使用 `text-[var(--theme-accent)]` 引用，避免硬编码
+25. **设置入口**：左上角 `fixed top-4 left-4` 齿轮按钮（Settings 图标，glass 风格 `bg-card/60 backdrop-blur-xl`），点击打开 SettingsDialog；与右上角「生成中」Alert 分层共存（z-40）
+26. **设置弹窗（SettingsDialog）**：Dialog 组件，包含三项 ——「启动时恢复播放」Switch、「导出数据」按钮（下载 JSON `{ exportedAt, songs }`，文件名 `sonicai-music-YYYY-MM-DD.json`）、「清空歌曲列表」按钮（**两步确认**：首次点击进入红色确认态并显示「再次点击以确认清空」，3 秒内未二次点击自动复位）
+27. **启动恢复播放**：经 `storage.js` 的 `readSettings/writeSettings`（sub-key `music-settings`）持久化 `restoreOnStart` 开关；播放歌曲时（playTrack / handleGenerate）经 `writeLastTrack`（sub-key `music-last`）记录 `{ audioUrl, title, artist, lyrics }`；启动时若开关开启，读取 lastTrack 并 `loadAudio(url, true)` 自动续播，同步 trackInfo/lyrics 及 playlist 中的 currentIndex；清空歌曲列表时一并清除 lastTrack
 
 ## Dependencies
 

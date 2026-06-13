@@ -67,6 +67,7 @@ import { setWorkflowExecutionManager } from './services/builtin-tools/index.js';
 import { ensureBuiltInAgentTemplates } from './services/agent.js';
 import { rebuildIndex as rebuildMiniAppIndex } from './storage/mini-app-store.js';
 import { ensureAgentsConfigs } from './services/mini-app-services.js';
+import { registerAllMiniAppTools } from './services/mini-app-agent.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -430,6 +431,7 @@ server.listen(PORT, HOST, () => {
   ensureBuiltInAgentTemplates();
   rebuildMiniAppIndex();
   ensureAgentsConfigs();
+  registerAllMiniAppTools();
   recoverRunningWorkOnStartup();
   triggerService.start().catch((err) => {
     console.error('[trigger] failed to start:', err);

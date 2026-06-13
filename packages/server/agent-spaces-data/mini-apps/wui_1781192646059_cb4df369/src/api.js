@@ -1,5 +1,22 @@
 export default {
   /**
+   * 读取服务端镜像的用户歌曲列表。列表由前端从浏览器 localStorage 同步到 configs/agent-music-library.json。
+   */
+  get_music_library: (_input, ctx) => {
+    const library = ctx.readConfig('agent-music-library.json');
+    const songs = Array.isArray(library?.songs) ? library.songs : [];
+    return {
+      ok: true,
+      count: songs.length,
+      updatedAt: library?.updatedAt || null,
+      songs,
+      message: songs.length
+        ? '已读取用户歌曲列表'
+        : '用户歌曲列表为空或尚未从客户端同步',
+    };
+  },
+
+  /**
    * 切换到下一首歌曲
    */
   next_music: (_input, ctx) => {
@@ -16,10 +33,7 @@ export default {
   },
 
   /**
-   * 根据提示词生成一首歌曲
-   * @param {string} prompt - 音乐风格描述，如"轻快活泼的电子舞曲"
-   * @param {string} [lyrics] - 歌词文本，留空表示纯音乐
-   * @param {boolean} [instrumental] - 是否为纯音乐，默认 true
+   * 根据提示词生成一首歌曲。参数说明维护在同目录 tools.js。
    */
   generate_music: async (input, ctx) => {
     try {
@@ -57,5 +71,43 @@ export default {
   play_random: (_input, ctx) => {
     ctx.broadcast('miniApp.playerAction', { dir: 'random' });
     return { ok: true, action: 'random', message: '已随机播放一首' };
+  },
+
+  /**
+   * 根据 id、标题或关键词播放用户歌曲列表中的一首歌。
+   */
+  play_music: (input, ctx) => {
+    const library = ctx.readConfig('agent-music-library.json');
+    const songs = Array.isArray(library?.songs) ? library.songs : [];
+    if (songs.length === 0) {
+      return { ok: false, message: '用户歌曲列表为空或尚未从客户端同步' };
+    }
+
+    const id = String(input.id || '').trim();
+    const query = String(input.query || input.title || '').trim().toLowerCase();
+    const song = songs.find((item) => id && item?.id === id)
+      || songs.find((item) => query && String(item?.title || '').toLowerCase().includes(query))
+      || songs.find((item) => query && String(item?.prompt || '').toLowerCase().includes(query));
+
+    if (!song) {
+      return {
+        ok: false,
+        message: '未找到匹配歌曲',
+        candidates: songs.slice(0, 10).map((item) => ({
+          id: item.id,
+          title: item.title,
+          artist: item.artist,
+          prompt: item.prompt,
+        })),
+      };
+    }
+
+    ctx.broadcast('miniApp.playerAction', {
+      dir: 'goto',
+      id: song.id,
+      audioUrl: song.audioUrl,
+      title: song.title,
+    });
+    return { ok: true, action: 'goto', song };
   },
 };
