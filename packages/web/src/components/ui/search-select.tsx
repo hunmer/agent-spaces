@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronDown, Plus } from "lucide-react";
 
 export interface SearchSelectOption {
@@ -31,17 +32,8 @@ export function SearchSelect({
   className,
   disabled = false,
 }: SearchSelectProps) {
-  const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    if (open) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
 
   const filtered = options.filter((o) =>
     (o.label ?? o.value).toLowerCase().includes(query.toLowerCase()),
@@ -59,28 +51,36 @@ export function SearchSelect({
   };
 
   return (
-    <div ref={ref} className={cn("relative", className)}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          if (disabled) return;
-          setOpen(true);
-          setQuery("");
+    <div className={className}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) setQuery("");
         }}
-        className={cn(
-          "flex h-8 w-full items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none hover:bg-muted/50 focus-visible:border-ring dark:bg-input/30",
-          disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
-        )}
       >
-        <span className={cn("truncate", !value && "text-muted-foreground")}>
-          {selected ? (selected.label ?? selected.value) : isCustom ? value : placeholder}
-        </span>
-        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-      </button>
-
-      {open && !disabled && (
-        <div className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border bg-popover p-1 shadow-md">
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              disabled={disabled}
+              className={cn(
+                "flex h-8 w-full items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none hover:bg-muted/50 focus-visible:border-ring dark:bg-input/30",
+                disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
+              )}
+            >
+              <span className={cn("truncate", !value && "text-muted-foreground")}>
+                {selected ? (selected.label ?? selected.value) : isCustom ? value : placeholder}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+          }
+        />
+        <PopoverContent
+          align="start"
+          sideOffset={4}
+          className="w-(--anchor-width) min-w-48 gap-0 p-1"
+        >
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -91,7 +91,6 @@ export function SearchSelect({
                 e.preventDefault();
                 select(query.trim());
               }
-              if (e.key === "Escape") setOpen(false);
             }}
             autoFocus
           />
@@ -129,8 +128,8 @@ export function SearchSelect({
               <div className="px-2 py-1.5 text-xs text-muted-foreground">No results</div>
             )}
           </div>
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
