@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path';
-import type { AgentConfig, AgentSession, AgentSessionStatus, AgentUsageDashboard, MessageTokenUsage } from '@agent-spaces/shared';
+import type { AgentConfig, AgentSession, AgentSessionStatus, AgentUsageDashboard, LLMProvider, MessageTokenUsage } from '@agent-spaces/shared';
 import { BUILT_IN_AGENT_TOOLS } from '@agent-spaces/shared';
 import {
   listAgentSessions,
@@ -92,8 +92,9 @@ export async function testConnection(
     if (!ws) return null;
   }
 
-  const apiBase = data.apiBase?.trim();
-  const apiKey = data.apiKey?.trim();
+  const providerConfig = resolveProviderConfig(data);
+  const apiBase = (providerConfig?.apiBase ?? data.apiBase)?.trim();
+  const apiKey = (providerConfig?.apiKey ?? data.apiKey)?.trim();
   const model = data.modelId?.trim();
   const provider = data.modelProvider || inferProvider(apiBase);
   const debug: AgentConnectionTestResult['debug'] = {
@@ -360,9 +361,8 @@ export function createPreset(
     description: data.description || '',
     runtimeKind: presetRuntimeKind,
     modelProvider: requestedModelProvider,
+    providerId: resolveProviderId(data),
     modelId: data.modelId || 'claude-sonnet-4-6',
-    apiBase: data.apiBase || '',
-    apiKey: data.apiKey || '',
     workingDir: workingDir || '',
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
@@ -381,7 +381,7 @@ export function createPreset(
 
   writeAgentTemplate(preset, data.skills as SkillInput[] | undefined);
 
-  return preset;
+  return hydrateAgentProvider(preset);
 }
 
 export function updatePreset(
@@ -406,13 +406,14 @@ export function updatePreset(
     runtimeKind: updatedRuntimeKind,
     name: data.name?.trim() || existing.name || 'New Agent',
     modelProvider: requestedModelProvider,
+    providerId: resolveProviderId(data) || existing.providerId,
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     tools: normalizeToolNames(data.tools ?? existing.tools),
     enabled: data.enabled ?? existing.enabled ?? true,
   };
   writeAgentTemplate(updated, data.skills as SkillInput[] | undefined);
-  return updated;
+  return hydrateAgentProvider(updated);
 }
 
 export function getAllowedTools(mcps?: AgentConfig['mcps']): string[] | undefined {
@@ -573,13 +574,65 @@ function normalizeToolNames(tools?: AgentConfig['tools']): AgentConfig['tools'] 
   return tools.filter((name): name is NonNullable<AgentConfig['tools']>[number] => VALID_TOOL_NAMES.has(name));
 }
 
+function resolveProviderConfig(data: Partial<AgentConfig>): LLMProvider | undefined {
+  const providers = listProviders();
+  if (data.providerId) {
+    const byId = providers.find((provider) => provider.id === data.providerId);
+    if (byId) return byId;
+  }
+
+  const apiBase = data.apiBase?.trim();
+  const apiKey = data.apiKey?.trim();
+  if (apiBase || apiKey) {
+    return providers.find((provider) =>
+      (!apiBase || provider.apiBase === apiBase)
+      && (!apiKey || provider.apiKey === apiKey),
+    );
+  }
+
+  return undefined;
+}
+
+function resolveProviderId(data: Partial<AgentConfig>): string | undefined {
+  return data.providerId || resolveProviderConfig(data)?.id;
+}
+
+function hydrateAgentProvider(preset: AgentConfig): AgentConfig {
+  const provider = resolveProviderConfig(preset);
+  if (!provider) return preset;
+  return {
+    ...preset,
+    providerId: provider.id,
+    apiBase: provider.apiBase,
+    apiKey: provider.apiKey,
+  };
+}
+
+function toStoredAgentTemplate(preset: AgentConfig): AgentConfig {
+  const {
+    apiBase: _apiBase,
+    apiKey: _apiKey,
+    provider: _provider,
+    baseURL: _baseURL,
+    model: _model,
+    ...stored
+  } = preset as AgentConfig & { provider?: unknown; baseURL?: unknown; model?: unknown };
+  void _apiBase;
+  void _apiKey;
+  void _provider;
+  void _baseURL;
+  void _model;
+  return stored;
+}
+
 function writeAgentTemplate(preset: AgentConfig, skillInputs?: SkillInput[]): void {
   const dir = getGlobalAgentTemplateDir(preset.id);
   const skillsDir = join(dir, 'skills');
   ensureDir(skillsDir);
 
-  writeFileSync(join(dir, 'agent.json'), JSON.stringify(preset, null, 2), 'utf-8');
-  writeFileSync(join(dir, 'mcp.json'), JSON.stringify(preset.mcps ?? {}, null, 2), 'utf-8');
+  const storedPreset = toStoredAgentTemplate(preset);
+  writeFileSync(join(dir, 'agent.json'), JSON.stringify(storedPreset, null, 2), 'utf-8');
+  writeFileSync(join(dir, 'mcp.json'), JSON.stringify(storedPreset.mcps ?? {}, null, 2), 'utf-8');
 
   const hasObjectSkills = skillInputs?.some((skill) => typeof skill !== 'string');
   console.log('[writeAgentTemplate]', {
@@ -682,7 +735,7 @@ function writeWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): vo
     workingDir: workspaceAgentDir,
   };
   ensureDir(workspaceAgentDir);
-  writeFileSync(join(workspaceAgentDir, 'agent.json'), JSON.stringify(workspacePreset, null, 2), 'utf-8');
+  writeFileSync(join(workspaceAgentDir, 'agent.json'), JSON.stringify(toStoredAgentTemplate(workspacePreset), null, 2), 'utf-8');
 }
 
 function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): void {
@@ -732,7 +785,7 @@ export function readAgentTemplate(agentId: string): AgentConfig | null {
     return getDefaultBuiltInAgentPreset(agentId);
   }
   try {
-    return JSON.parse(readFileSync(filePath, 'utf-8')) as AgentConfig;
+    return hydrateAgentProvider(JSON.parse(readFileSync(filePath, 'utf-8')) as AgentConfig);
   } catch {
     return getDefaultBuiltInAgentPreset(agentId);
   }
@@ -762,6 +815,7 @@ function withBuiltInTemplatesFirst(templates: AgentConfig[]): AgentConfig[] {
 
 interface BuiltInDefaultModel {
   modelProvider?: AgentConfig['modelProvider'];
+  providerId: string;
   modelId: string;
   apiBase: string;
   apiKey: string;
@@ -776,6 +830,7 @@ function resolveGlobalDefaultModel(): BuiltInDefaultModel | null {
     if (provider?.apiBase && provider?.apiKey && model.modelId) {
       return {
         modelProvider: inferBuiltInModelProvider(provider.apiBase),
+        providerId: provider.id,
         modelId: model.modelId,
         apiBase: provider.apiBase,
         apiKey: provider.apiKey,
@@ -806,7 +861,7 @@ export function ensureBuiltInAgentTemplates(): { seeded: string[]; defaultModel:
       ? { ...preset, ...defaultModel }
       : preset;
     ensureDir(dir);
-    writeFileSync(join(dir, 'agent.json'), JSON.stringify(resolved, null, 2), 'utf-8');
+    writeFileSync(join(dir, 'agent.json'), JSON.stringify(toStoredAgentTemplate(resolved), null, 2), 'utf-8');
     if (!existsSync(join(dir, 'mcp.json'))) {
       writeFileSync(join(dir, 'mcp.json'), JSON.stringify(resolved.mcps ?? {}, null, 2), 'utf-8');
     }
@@ -816,7 +871,7 @@ export function ensureBuiltInAgentTemplates(): { seeded: string[]; defaultModel:
   if (seeded.length > 0) {
     console.info('[agent] seeded built-in agent templates', {
       seeded,
-      defaultModel: defaultModel ? { modelId: defaultModel.modelId, apiBase: defaultModel.apiBase } : null,
+      defaultModel: defaultModel ? { providerId: defaultModel.providerId, modelId: defaultModel.modelId, apiBase: defaultModel.apiBase } : null,
     });
   }
   return { seeded, defaultModel };
@@ -974,9 +1029,8 @@ export function createGlobalPreset(data: Omit<Partial<AgentConfig>, 'id'>): Agen
     description: data.description || '',
     runtimeKind: presetRuntimeKind,
     modelProvider: requestedModelProvider,
+    providerId: resolveProviderId(data),
     modelId: data.modelId || 'claude-sonnet-4-6',
-    apiBase: data.apiBase || '',
-    apiKey: data.apiKey || '',
     workingDir: '',
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
@@ -991,7 +1045,7 @@ export function createGlobalPreset(data: Omit<Partial<AgentConfig>, 'id'>): Agen
   };
 
   writeAgentTemplate(preset, data.skills as SkillInput[] | undefined);
-  return preset;
+  return hydrateAgentProvider(preset);
 }
 
 export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>): AgentConfig | null {
@@ -1013,6 +1067,7 @@ export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>)
     runtimeKind: updatedRuntimeKind,
     name: data.name?.trim() || existing.name || 'New Agent',
     modelProvider: requestedModelProvider,
+    providerId: resolveProviderId(data) || existing.providerId,
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     tools: normalizeToolNames(data.tools ?? existing.tools),
@@ -1020,7 +1075,7 @@ export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>)
   };
 
   writeAgentTemplate(updated, data.skills as SkillInput[] | undefined);
-  return updated;
+  return hydrateAgentProvider(updated);
 }
 
 export function deleteGlobalPreset(presetId: string): boolean {

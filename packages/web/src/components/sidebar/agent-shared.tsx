@@ -14,6 +14,7 @@ export type AgentPreset = Omit<AgentConfig, "mcps" | "skills" | "modelProvider">
   icon: string;
   backgroundUrl: string;
   modelProvider: AgentConfig["modelProvider"] | "";
+  providerId: string;
   modelId: string;
   apiBase: string;
   apiKey: string;
@@ -135,6 +136,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
+    providerId: "",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -158,6 +160,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
+    providerId: "",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -181,6 +184,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
+    providerId: "",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -204,6 +208,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
+    providerId: "",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -230,6 +235,7 @@ export function normalizeAgent(agent: AgentConfig): AgentPreset {
     backgroundUrl: agent.backgroundUrl || "",
     runtimeKind: agent.runtimeKind || "open-agent-sdk",
     modelProvider: agent.modelProvider || "",
+    providerId: agent.providerId || "",
     modelId: agent.modelId || "claude-sonnet-4-6",
     apiBase: agent.apiBase || "",
     apiKey: agent.apiKey || "",
@@ -264,13 +270,26 @@ function normalizeSkillDrafts(skills: AgentConfig["skills"] | SkillDraft[] | und
   });
 }
 
-export type AgentPresetPayload = Omit<AgentPreset, "id" | "modelProvider"> & {
+export type AgentPresetPayload = Omit<AgentPreset, "id" | "modelProvider" | "apiBase" | "apiKey"> & {
   modelProvider?: AgentConfig["modelProvider"];
 };
 
 export function serializeAgent(agent: AgentPreset): AgentPresetPayload {
-  const { id: _id, ...body } = agent;
+  const {
+    id: _id,
+    apiBase: _apiBase,
+    apiKey: _apiKey,
+    provider: _provider,
+    baseURL: _baseURL,
+    model: _model,
+    ...body
+  } = agent as AgentPreset & { provider?: unknown; baseURL?: unknown; model?: unknown };
   void _id;
+  void _apiBase;
+  void _apiKey;
+  void _provider;
+  void _baseURL;
+  void _model;
   return {
     ...body,
     modelProvider: body.modelProvider || undefined,
@@ -298,6 +317,7 @@ export function newEmptyAgent(): AgentPreset {
     backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "",
+    providerId: "",
     modelId: "",
     apiBase: "",
     apiKey: "",

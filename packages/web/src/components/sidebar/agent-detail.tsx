@@ -96,13 +96,22 @@ export function AgentDetail({
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
   const llmModels = allLlmModels.filter((m) => !m.embedding);
   const uniqueRoleOptions = Array.from(new Set(roleOptions));
+  const selectedProvider = llmProviders.find((p) => p.id === agent.providerId)
+    ?? llmProviders.find((p) => p.apiBase === agent.apiBase && p.apiKey === agent.apiKey);
 
   useEffect(() => {
     ensureLLM();
   }, [ensureLLM]);
 
+  useEffect(() => {
+    if (!agent.providerId && selectedProvider) {
+      onChange("providerId", selectedProvider.id);
+    }
+  }, [agent.providerId, onChange, selectedProvider]);
+
   const handleSelectProvider = useCallback(
     (provider: LLMProvider) => {
+      onChange("providerId", provider.id);
       onChange("apiBase", provider.apiBase);
       onChange("apiKey", provider.apiKey);
       const providerModels = llmModels.filter((m) => m.provider === provider.name);
@@ -432,7 +441,7 @@ export function AgentDetail({
         <div className="space-y-2.5">
           <FieldGroup label={t("detail.provider")}>
             <SearchSelect
-              value={llmProviders.find((p) => p.apiBase === agent.apiBase && p.apiKey === agent.apiKey)?.name || ""}
+              value={selectedProvider?.name || ""}
               onChange={(v) => {
                 const provider = llmProviders.find((p) => p.name === v);
                 if (provider) handleSelectProvider(provider);
@@ -471,7 +480,7 @@ export function AgentDetail({
         </div>
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs text-muted-foreground">{t("detail.validateHelper")}</div>
-          <Button type="button" variant="outline" size="sm" onClick={onTestConnection} disabled={testing || !agent.apiBase || !agent.apiKey || !agent.modelId}>
+          <Button type="button" variant="outline" size="sm" onClick={onTestConnection} disabled={testing || !selectedProvider || !agent.modelId}>
             <PlugZap className="size-3.5" />
             {testing ? t("detail.testing") : t("detail.test")}
           </Button>

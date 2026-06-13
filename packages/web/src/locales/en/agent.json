@@ -48,6 +48,7 @@
   "error": {
     "loadFailed": "Failed to load agent presets",
     "saveFailed": "Failed to save agent preset",
+    "providerRequired": "Select a model provider before saving",
     "connectionTestFailed": "Connection test failed",
     "noWorkspace": "Open a workspace before adding agent presets",
     "deleteFailed": "Failed to delete agent preset",

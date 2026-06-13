@@ -82,6 +82,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
     const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [resetKey, setResetKey] = useState(0);
+    const canSave = Boolean(editDraft.providerId);
 
     const [generateOpen, setGenerateOpen] = useState(autoOpenGenerate);
     const [generatePrompt, setGeneratePrompt] = useState("");
@@ -91,8 +92,8 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       reset() {
         setEditDraft((draft) => {
           if (!draft) return { ...initialAgent };
-          const { modelProvider, modelId, apiBase, apiKey, runtimeKind } = draft;
-          return { ...initialAgent, modelProvider, modelId, apiBase, apiKey, runtimeKind, ...fixedValues };
+          const { modelProvider, providerId, modelId, apiBase, apiKey, runtimeKind } = draft;
+          return { ...initialAgent, modelProvider, providerId, modelId, apiBase, apiKey, runtimeKind, ...fixedValues };
         });
         setTestResult(null);
         setResetKey((k) => k + 1);
@@ -116,11 +117,15 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
           onSaved(saved);
           return;
         }
+        if (!nextDraft.providerId) {
+          setError(t("error.providerRequired"));
+          return;
+        }
         const isDraft = isDraftAgent(nextDraft);
         const createBody = serializeAgent(nextDraft);
         const raw = isDraft
           ? await sdk.agent.createPreset(createBody as unknown as Partial<AgentConfig>)
-          : await sdk.agent.updatePreset(nextDraft.id, nextDraft as unknown as Partial<AgentConfig>);
+          : await sdk.agent.updatePreset(nextDraft.id, serializeAgent(nextDraft) as unknown as Partial<AgentConfig>);
         const saved = normalizeAgent(raw);
         if (presetBasePath === "/api/agents/presets") {
           useAgentStore.setState((state) => ({
@@ -237,7 +242,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
             <Button variant="outline" size="sm" onClick={onBack} disabled={saving}>
               {tc("cancel")}
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Button size="sm" onClick={handleSave} disabled={saving || !canSave}>
               {saving ? tc("saving") : tc("save")}
             </Button>
           </div>

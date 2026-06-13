@@ -48,6 +48,7 @@
   "error": {
     "loadFailed": "加载 Agent 预设失败",
     "saveFailed": "保存 Agent 预设失败",
+    "providerRequired": "请选择模型供应商后再保存",
     "connectionTestFailed": "连接测试失败",
     "noWorkspace": "请先打开工作空间再添加 Agent 预设",
     "deleteFailed": "删除 Agent 预设失败",
