@@ -15,6 +15,8 @@ export interface MiniAppProject {
   enableAgents?: boolean;
   /** agents.json 的种子配置：服务器启动时若 agents.json 不存在，则用它落地初始化。 */
   agents?: unknown[];
+  /** 预设消息建议：mini-app 预览聊天输入框的快捷提示 */
+  suggestions?: string[];
   mainFile: string;
   icon?: string;
   avatarUrl?: string;

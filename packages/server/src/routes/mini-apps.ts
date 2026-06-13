@@ -343,7 +343,11 @@ router.get('/:id/agents', (req: Request<{ id: string }>, res: Response) => {
         name: String(c.name ?? c.id),
         avatar: typeof c.avatar === 'string' ? c.avatar : undefined,
       }));
-    res.json({ enableAgents: project.enableAgents === true, agents });
+    res.json({
+      enableAgents: project.enableAgents === true,
+      suggestions: project.suggestions ?? [],
+      agents,
+    });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

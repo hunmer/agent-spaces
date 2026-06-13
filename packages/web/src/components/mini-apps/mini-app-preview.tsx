@@ -90,6 +90,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
 
   const [open, setOpen] = useState(false);
   const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string }>>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [agentId, setAgentId] = useState<string>('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -110,6 +111,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
     if (!projectId) return;
     sdk.miniApp.listAgents(projectId).then((r) => {
       setAgents(r.agents);
+      setSuggestions(r.suggestions ?? []);
       if (r.agents.length && !agentId) setAgentId(r.agents[0].id);
     }).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -131,8 +133,8 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
 
   useEffect(() => { if (open) loadHistory(); }, [open, loadHistory]);
 
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
     if (!text || !agentId || sending) return;
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date() };
     const agentMsgId = crypto.randomUUID();
@@ -250,6 +252,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           onSend={handleSend}
           onStop={handleStop}
           inputPlaceholder={t('agent.inputPlaceholder')}
+          suggestions={suggestions}
           headerActions={
             <>
               {agents.length > 1 && (

@@ -6,8 +6,9 @@ import { ChatMessageList } from '@/components/chat/chat-message-list';
 import { cn } from '@/lib/utils';
 import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
 import { motion, type Variants } from 'framer-motion';
-import { Send, X, Square, ArrowDown } from 'lucide-react';
+import { Send, X, Square, ArrowDown, Lightbulb, Pencil } from 'lucide-react';
 import { useId, useRef, useEffect, useState, type ReactNode } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export interface ChatMessage {
   id: string;
@@ -40,9 +41,15 @@ export interface ChatPanelProps {
   /** Input */
   input: string;
   onInputChange: (value: string) => void;
-  onSend: () => void;
+  /**
+   * 发送当前输入。可传入 text 直接发送指定内容（用于消息建议的「发送」），
+   * 不传则发送当前 input。
+   */
+  onSend: (text?: string) => void;
   onStop?: () => void;
   inputPlaceholder?: string;
+  /** 预设消息建议：输入框左侧展示 popover，提供「编辑（填入输入框）/发送」快捷操作 */
+  suggestions?: string[];
 
   /** Whether to render agent messages as Markdown */
   markdown?: boolean;
@@ -112,6 +119,7 @@ export function ChatPanel({
   onSend,
   onStop,
   inputPlaceholder,
+  suggestions,
   markdown = true,
   workspaceId,
   headerActions,
@@ -125,6 +133,7 @@ export function ChatPanel({
   const widgetId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   const isNearBottom = () => {
     const el = listRef.current;
@@ -154,6 +163,18 @@ export function ChatPanel({
       e.preventDefault();
       onSend();
     }
+  };
+
+  /** 将建议填入输入框（编辑模式：不发送） */
+  const applySuggestion = (suggestion: string) => {
+    onInputChange(suggestion);
+    setSuggestionsOpen(false);
+  };
+
+  /** 直接发送该建议 */
+  const sendSuggestion = (suggestion: string) => {
+    setSuggestionsOpen(false);
+    onSend(suggestion);
   };
 
   return (
@@ -250,6 +271,60 @@ export function ChatPanel({
             onSend();
           }}
         >
+          {suggestions && suggestions.length > 0 && (
+            <Popover open={suggestionsOpen} onOpenChange={setSuggestionsOpen}>
+              <PopoverTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 shrink-0 rounded-full text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                    aria-label="消息建议"
+                  />
+                }
+              >
+                <Lightbulb className="h-5 w-5" />
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-72 p-1.5">
+                <div className="flex flex-col gap-0.5">
+                  {suggestions.map((suggestion, index) => (
+                    <div
+                      key={`${index}-${suggestion}`}
+                      className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-accent"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => applySuggestion(suggestion)}
+                        className="min-w-0 flex-1 truncate text-left text-sm text-foreground"
+                        title={suggestion}
+                      >
+                        {suggestion}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applySuggestion(suggestion)}
+                        title="填入输入框"
+                        aria-label="填入输入框"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendSuggestion(suggestion)}
+                        title="发送"
+                        aria-label="发送"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-primary group-hover:opacity-100"
+                      >
+                        <Send className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           <input
             type="text"
             value={input}

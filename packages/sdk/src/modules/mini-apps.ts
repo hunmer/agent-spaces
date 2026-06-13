@@ -123,7 +123,7 @@ export function createMiniAppApi(http: HttpClient) {
 
     // ---- Agents (preview chat) ----
 
-    listAgents: (id: string): Promise<{ enableAgents: boolean; agents: Array<{ id: string; name: string; avatar?: string }> }> =>
+    listAgents: (id: string): Promise<{ enableAgents: boolean; suggestions: string[]; agents: Array<{ id: string; name: string; avatar?: string }> }> =>
       http.get(`/api/mini-apps/${id}/agents`),
 
     /** 读取单条 agent 的完整配置（含 apiKey，供编辑器加载） */
