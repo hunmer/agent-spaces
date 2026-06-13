@@ -429,7 +429,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                   if (!plugin) return null;
                   const hasConfig = (plugin.config?.length ?? 0) > 0;
                   return (
-                    <div className="w-56 rounded-lg border bg-popover p-3 text-left shadow-lg">
+                    <div className="w-56 rounded-lg border bg-popover text-popover-foreground p-3 text-left shadow-xl ring-1 ring-black/5 dark:ring-white/10">
                       <div className="flex items-start gap-2">
                         <PluginIcon
                           source={plugin.iconPath

@@ -1,4 +1,4 @@
-const { useState, useCallback, useEffect, useRef } = React;
+const { useState, useCallback, useRef } = React;
 const {
   Button, Badge, Textarea, Alert, AlertDescription,
   Select, SelectTrigger, SelectContent, SelectItem, Separator,
@@ -16,6 +16,16 @@ import { PROVIDERS, buildTTSArgs, extractAudioUrl, genId } from '../utils/provid
 const SYNTH_CONCURRENCY = 3;
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function getSynthText(msg) {
+  const rawText = String(msg?.text || '');
+  const prefix = String(msg?.matchPrefix || '').trim();
+  const trimmedStart = rawText.trimStart();
+  if (prefix && trimmedStart.startsWith(prefix)) {
+    return trimmedStart.slice(prefix.length).trim();
+  }
+  return rawText.trim();
+}
 
 // 并发池：最多 concurrency 个 worker 同时消费队列
 async function runPool(items, worker, concurrency) {
@@ -128,7 +138,7 @@ function SortableMessage({ msg, index, roles, onText, onRole, onAddAfter, onRemo
 }
 
 // 多人配音编辑区（左侧）：角色列表 + 可拖拽消息列表 + 工具栏
-function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMessagesChange, onReady }) {
+function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMessagesChange }) {
   const [batchLoading, setBatchLoading] = useState(false);
   const [previewingId, setPreviewingId] = useState(null);
   const [batchError, setBatchError] = useState('');
@@ -148,7 +158,7 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
     onMessagesChange((prev) =>
       prev.map((m) =>
         m.id === id
-          ? m.text === text ? m : { ...m, text, audioUrl: '', status: 'idle', error: '' }
+          ? m.text === text ? m : { ...m, text, matchPrefix: '', audioUrl: '', status: 'idle', error: '' }
           : m
       )
     );
@@ -156,7 +166,7 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
 
   const updateMessageRole = useCallback((id, roleId) => {
     onMessagesChange((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, roleId, audioUrl: '', status: 'idle', error: '' } : m))
+      prev.map((m) => (m.id === id ? { ...m, roleId, matchPrefix: '', audioUrl: '', status: 'idle', error: '' } : m))
     );
   }, [onMessagesChange]);
 
@@ -191,7 +201,8 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
   // ===== 合成 =====
   const synthOne = useCallback(async (msg) => {
     const role = roles.find((r) => r.id === msg.roleId);
-    if (!role || !msg.text.trim()) {
+    const synthText = getSynthText(msg);
+    if (!role || !synthText) {
       patchMessage(msg.id, { status: 'error', error: !role ? '请选择配音人' : '请输入文本' });
       return;
     }
@@ -199,7 +210,7 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
     try {
       const prov = PROVIDERS[role.provider];
       const settings = providerStates[role.provider] || {};
-      const args = buildTTSArgs(role.provider, role.voiceId, settings, msg.text);
+      const args = buildTTSArgs(role.provider, role.voiceId, settings, synthText);
       const result = await window.AgentSpaces.callPluginTool(prov.pluginId, prov.toolName, args);
       const url = extractAudioUrl(result);
       if (!url) throw new Error('未获取到音频地址');
@@ -224,12 +235,6 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
     }
   }, [messages, synthOne]);
 
-  useEffect(() => {
-    if (!onReady) return undefined;
-    onReady({ generateAll: handleGenerateAll });
-    return () => onReady(null);
-  }, [onReady, handleGenerateAll]);
-
   const handlePreview = useCallback(async (msg) => {
     const role = roles.find((r) => r.id === msg.roleId);
     if (!role) return;
@@ -252,7 +257,7 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
     }
   }, [roles]);
 
-  // ===== 批量下载（文件名用序号）=====
+  // ===== 批量下载（打包 zip，文件名用序号）=====
   const handleDownloadAll = useCallback(async () => {
     const done = messages.filter((m) => m.status === 'done' && m.audioUrl);
     if (!done.length) {
@@ -260,9 +265,18 @@ function MultiVoicePanel({ providerStates, roles, onRemoveRole, messages, onMess
       return;
     }
     setBatchError('');
-    for (let i = 0; i < done.length; i++) {
-      const filename = `${String(i + 1).padStart(2, '0')}.mp3`;
-      await downloadOne(done[i].audioUrl, filename);
+    const files = done.map((item, index) => ({
+      url: item.audioUrl,
+      filename: `${String(index + 1).padStart(2, '0')}.mp3`,
+    }));
+
+    if (window.AgentSpaces?.downloadZip) {
+      await window.AgentSpaces.downloadZip(files, 'tts-audios.zip');
+      return;
+    }
+
+    for (const file of files) {
+      await downloadOne(file.url, file.filename);
       await delay(500);
     }
   }, [messages]);

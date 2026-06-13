@@ -104,6 +104,17 @@ function markUploadFailed(file: WorkflowFileUploadItem['file'], error: unknown) 
   });
 }
 
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'download.bin';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 function WrappedFileUpload(props: any) {
   const latestValueRef = useRef<WorkflowFileUploadItem[]>(props.value || []);
   const autoUpload = props.autoUpload === true;
@@ -341,6 +352,31 @@ export function useMiniAppHostApi(projectId: string) {
       });
       if (!resp.ok) throw new Error(`Failed to save downloaded file: ${resp.status} ${resp.statusText}`);
       return resp.json();
+    };
+
+    const downloadZip = async (
+      files: Array<{ url: string; filename?: string; init?: RequestInit }>,
+      zipFilename = 'download.zip',
+    ) => {
+      const validFiles = Array.isArray(files) ? files.filter((file) => file?.url) : [];
+      if (!validFiles.length) throw new Error('No files to zip');
+
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i]!;
+        const response = await fetch(file.url, file.init);
+        if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        const filename = normalizeRelativePath(
+          file.filename || inferDownloadFileName(file.url),
+          `${String(i + 1).padStart(2, '0')}.bin`,
+        );
+        zip.file(filename, await response.blob());
+      }
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      triggerDownload(blob, zipFilename || 'download.zip');
+      return { ok: true, count: validFiles.length, filename: zipFilename || 'download.zip' };
     };
 
     // ---- SQLite db (per-project named databases under data/db/) ----
@@ -593,6 +629,7 @@ export function useMiniAppHostApi(projectId: string) {
       uploadFile,
       saveDataFile,
       downloadFile,
+      downloadZip,
     };
     (window as any).AgentSpacesAPI = {
       ...pluginApi,
@@ -607,6 +644,7 @@ export function useMiniAppHostApi(projectId: string) {
       uploadFile,
       saveDataFile,
       downloadFile,
+      downloadZip,
     };
 
     const handleOpenFile = (e: Event) => {

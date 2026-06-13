@@ -105,6 +105,124 @@ project/
 - 第三方 bare import 只能使用 renderer allowlist 中的模块。未登记依赖不要在 workflow 项目内自行写 shim，先补 renderer 或 `ui-exports.ts`。
 - 共享状态逻辑提取到 `hooks/`，纯函数和常量提取到 `utils/`。
 
+## 启动参数 Schema（`schems.js` 约定）
+
+某些 mini-app 需要支持“带参数打开即预填界面”或“由外部 POST 一组启动参数后更新界面”。这类需求建议在**项目内**定义一个轻量 schema 文件（例如 `src/schems.js`），专门负责**解析、校验、归一化启动参数**，而不要把业务规则散落在 `index.jsx`、service handler 和按钮跳转代码里。
+
+### 职责边界
+
+`schems.js` 只做三件事：
+
+1. 解析原始输入（URL query / service payload）
+2. 校验可接受字段和值
+3. 归一化成 UI 入口能直接消费的 payload
+
+它**不负责**：
+
+- 直接调用插件工具
+- 直接写 config
+- 直接操作 React state
+- 在 service 中执行业务动作
+
+推荐模式：
+
+```js
+// src/schems.js
+function normalizeLaunchParams(input) {
+  // 校验 + 默认值 + 字段归一化
+  return { ... };
+}
+
+function parseUrlLaunchParams(search) {
+  const params = new URLSearchParams(search || '');
+  return normalizeLaunchParams({
+    mode: params.get('mode'),
+    provider: params.get('provider'),
+    text: params.get('text'),
+  });
+}
+```
+
+然后在入口组件中消费：
+
+```js
+const launch = parseUrlLaunchParams(window.location.search);
+if (launch) {
+  applyLaunchPayload(launch);
+}
+```
+
+### URL 启动参数
+
+预览页本身保留浏览器地址栏 query，因此 mini-app 可以直接读取 `window.location.search`。常见做法：
+
+- 在 `useEffect` 中调用 `parseUrlLaunchParams(window.location.search)`
+- 归一化成功后只做“预填 UI”或“切换视图”
+- 是否自动执行生成动作，由项目自己决定
+
+示例：
+
+```text
+/mini-apps-preview/tts?mode=multi&provider=minimax&text=第一句%0A第二句
+```
+
+### POST / Service 启动参数
+
+如果需要支持“POST 一组参数给正在运行的 mini-app”，不要让前端直接监听任意 HTTP 请求；推荐走项目 service：
+
+1. 前端调用或外部请求命中 `POST /api/mini-apps/:id/services/invoke`
+2. 项目 `src/services/*.js` 中的 handler 校验 payload
+3. handler 用 `ctx.broadcast('miniApp.xxx', payload)` 广播事件
+4. 前端用 `window.AgentSpaces.onTaskEvent(...)` 监听该事件
+5. 监听后仍然复用 `schems.js` 的归一化逻辑，再更新 UI
+
+示例：
+
+```js
+// src/services/launch.js
+export default {
+  launch_tts: (input, ctx) => {
+    const payload = normalizeLaunchPayload(input);
+    if (!payload.ok) return payload;
+    ctx.broadcast('miniApp.ttsLaunch', payload.payload);
+    return { ok: true };
+  },
+};
+```
+
+### TTS 示例
+
+`packages/server/agent-spaces-data/mini-apps/tts/src/schems.js` 当前约定：
+
+- `mode`: `signal | single | multi`
+- `signal` 会归一化成 `single`
+- `provider`: `minimax | fishaudio | qianyin`
+- `text`: 必填
+
+归一化结果：
+
+```js
+{
+  mode: 'single' | 'multi',
+  provider: 'minimax' | 'fishaudio' | 'qianyin',
+  text: '...'
+}
+```
+
+其中：
+
+- `single` 模式用于单人配音文本预填
+- `multi` 模式用于按换行拆分多条消息并填入多人配音列表
+- 是否自动开始合成，不属于 schema 责任，应该由 UI 层自行决定
+
+### 设计建议
+
+- schema 文件保持**纯函数**，避免依赖 React state
+- URL 和 POST payload 尽量复用同一套 `normalize...` 逻辑
+- service 中的校验可以比前端更严格，但字段语义保持一致
+- 不要把“事件广播名”和“字段合法性”硬编码在多个文件里反复复制；优先集中在 schema / service 入口附近
+- 只有当某 mini-app 确实存在“外部启动参数”需求时再加 `schems.js`，不要把它变成所有项目的模板负担
+
 ## WS 任务事件与多端同步
 
 同一 mini-app 项目的多个预览实例（编辑器 iframe、独立预览页、多标签）连接同一个 workspace WS 频道（`workspaceId = projectId`）。宿主在 `window.AgentSpaces` 上暴露任务事件订阅能力，使任务事件在所有客户端之间实时同步。**任务队列按发起者（executorId）过滤**——每个客户端只显示自己发起的任务（初始化时调 `invokeService('get_queue')` 主动拉取 running 任务，按 `executorId === getExecutorId()` 过滤；`taskSnapshot`/`taskStarted` 等事件同样过滤）；**生成结果（configs 历史）全局共享**，所有客户端都能看到。

@@ -2,7 +2,9 @@ const { useState, useCallback, useEffect, useRef } = React;
 const {
   Card, CardContent, CardHeader,
   Textarea, RadioGroup, RadioGroupItem,
-  Badge,
+  Badge, Button, Input,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Select, SelectTrigger, SelectContent, SelectItem,
 } = window.AgentSpacesUI;
 
 import { PROVIDERS, buildDefaultProviderStates, buildTTSArgs, extractAudioUrl, genId } from './utils/providers';
@@ -31,15 +33,14 @@ function App() {
   // 多人配音：角色列表 / 消息列表
   const [roles, setRoles] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [pendingLaunch, setPendingLaunch] = useState(null);
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [matchRules, setMatchRules] = useState([]);
 
   // 背景音乐（单人模式，会话级，仅本地混音播放）
   const bgmAudioRef = useRef(null);
   const [bgmUrl, setBgmUrl] = useState('');
   const [bgmVolume, setBgmVolume] = useState(30);
-  const multiPanelApiRef = useRef(null);
   const consumedLaunchRef = useRef(new Set());
-  const [multiPanelReady, setMultiPanelReady] = useState(false);
 
   const current = providerStates[provider];
   const voices = current.voices;
@@ -64,23 +65,13 @@ function App() {
         .filter(Boolean);
       if (!lines.length) return false;
 
-      const providerState = providerStates[nextProvider] || buildDefaultProviderStates()[nextProvider];
-      const firstVoice = providerState?.voices?.[0];
-      const roleId = genId('role');
-
       setMode('multi');
       setText('');
-      setRoles(firstVoice ? [{
-        id: roleId,
-        name: firstVoice.name,
-        icon: firstVoice.icon || '🎭',
-        provider: nextProvider,
-        voiceId: firstVoice.id,
-      }] : []);
       setMessages(lines.map((line) => ({
         id: genId('msg'),
-        roleId: firstVoice ? roleId : '',
+        roleId: '',
         text: line,
+        matchPrefix: '',
         audioUrl: '',
         status: 'idle',
         error: '',
@@ -91,10 +82,8 @@ function App() {
       setMessages([]);
       setText(launch.text);
     }
-
-    setPendingLaunch({ ...launch, sourceKey, at: Date.now() });
     return true;
-  }, [providerStates]);
+  }, []);
 
   // ========== 启动时加载配置 ==========
 
@@ -148,6 +137,7 @@ function App() {
                 id: m.id,
                 roleId: m.roleId || '',
                 text: m.text || '',
+                matchPrefix: m.matchPrefix || '',
                 audioUrl: m.audioUrl || '',
                 status: m.audioUrl ? 'done' : 'idle',
                 error: '',
@@ -310,29 +300,55 @@ function App() {
     );
   }, []);
 
-  const handleMultiPanelReady = useCallback((api) => {
-    multiPanelApiRef.current = api;
-    setMultiPanelReady(!!api);
+  const openMatchDialog = useCallback(() => {
+    setMatchRules((prev) => (
+      prev.length
+        ? prev
+        : [{ id: genId('rule'), prefix: '', roleId: roles[0]?.id || '' }]
+    ));
+    setMatchDialogOpen(true);
+  }, [roles]);
+
+  const updateMatchRule = useCallback((id, patch) => {
+    setMatchRules((prev) => prev.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
   }, []);
 
-  useEffect(() => {
-    if (!pendingLaunch || !configLoaded || loading) return;
-    if (pendingLaunch.mode === 'multi') {
-      if (!messages.length) return;
-      if (!multiPanelReady || !multiPanelApiRef.current?.generateAll) return;
-      const timer = setTimeout(() => {
-        multiPanelApiRef.current?.generateAll?.();
-        setPendingLaunch(null);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-    if (!text.trim()) return;
-    const timer = setTimeout(() => {
-      handleGenerate();
-      setPendingLaunch(null);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [pendingLaunch, configLoaded, loading, messages.length, multiPanelReady, text, handleGenerate]);
+  const addMatchRule = useCallback(() => {
+    setMatchRules((prev) => [...prev, { id: genId('rule'), prefix: '', roleId: roles[0]?.id || '' }]);
+  }, [roles]);
+
+  const removeMatchRule = useCallback((id) => {
+    setMatchRules((prev) => prev.filter((rule) => rule.id !== id));
+  }, []);
+
+  const countRuleMatches = useCallback((prefix) => {
+    const p = String(prefix || '').trim();
+    if (!p) return 0;
+    return messages.filter((msg) => String(msg.text || '').trimStart().startsWith(p)).length;
+  }, [messages]);
+
+  const applyMatchRules = useCallback(() => {
+    const usableRules = matchRules
+      .map((rule) => ({
+        prefix: String(rule.prefix || '').trim(),
+        roleId: rule.roleId,
+      }))
+      .filter((rule) => rule.prefix && roles.some((role) => role.id === rule.roleId));
+
+    setMessages((prev) => prev.map((msg) => {
+      const textValue = String(msg.text || '').trimStart();
+      const matched = usableRules.find((rule) => textValue.startsWith(rule.prefix));
+      return {
+        ...msg,
+        roleId: matched?.roleId || '',
+        matchPrefix: matched?.prefix || '',
+        audioUrl: '',
+        status: 'idle',
+        error: '',
+      };
+    }));
+    setMatchDialogOpen(false);
+  }, [matchRules, roles]);
 
   // ========== 渲染 ==========
 
@@ -361,19 +377,32 @@ function App() {
         {/* ===== 左侧：Tabs 切换单人 / 多人 ===== */}
         <Card style={{ flex: '1', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <CardHeader style={{ padding: '6px 8px' }}>
-            <div style={styles.tabBar}>
-              <button
-                style={{ ...styles.tabBtn, ...(mode === 'single' ? styles.tabBtnActive : {}) }}
-                onClick={() => setMode('single')}
-              >
-                🎙️ 单人配音
-              </button>
-              <button
-                style={{ ...styles.tabBtn, ...(mode === 'multi' ? styles.tabBtnActive : {}) }}
-                onClick={() => setMode('multi')}
-              >
-                👥 多人配音
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ ...styles.tabBar, flex: '1' }}>
+                <button
+                  style={{ ...styles.tabBtn, ...(mode === 'single' ? styles.tabBtnActive : {}) }}
+                  onClick={() => setMode('single')}
+                >
+                  🎙️ 单人配音
+                </button>
+                <button
+                  style={{ ...styles.tabBtn, ...(mode === 'multi' ? styles.tabBtnActive : {}) }}
+                  onClick={() => setMode('multi')}
+                >
+                  👥 多人配音
+                </button>
+              </div>
+              {mode === 'multi' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={openMatchDialog}
+                  disabled={!messages.length || !roles.length}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  智能匹配
+                </Button>
+              )}
             </div>
           </CardHeader>
 
@@ -403,7 +432,6 @@ function App() {
                 roles={roles}
                 onRemoveRole={handleRemoveRole}
                 messages={messages}
-                onReady={handleMultiPanelReady}
                 onMessagesChange={(updater) =>
                   setMessages((prev) => (typeof updater === 'function' ? updater(prev) : updater))
                 }
@@ -469,6 +497,72 @@ function App() {
           </CardContent>
         </Card>
       </div>
+      <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
+        <DialogContent style={{ maxWidth: '620px' }}>
+          <DialogHeader>
+            <DialogTitle>智能匹配</DialogTitle>
+          </DialogHeader>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {matchRules.map((rule) => (
+              <div
+                key={rule.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 180px 72px 32px',
+                  gap: '8px',
+                  alignItems: 'center',
+                }}
+              >
+                <Input
+                  value={rule.prefix}
+                  onChange={(e) => updateMatchRule(rule.id, { prefix: e.target.value })}
+                  placeholder="前缀，如：哲学家："
+                />
+                <Select value={rule.roleId} onValueChange={(value) => updateMatchRule(rule.id, { roleId: value })}>
+                  <SelectTrigger>
+                    <span>
+                      {roles.find((role) => role.id === rule.roleId)?.name || '选择角色'}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.icon} {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Badge variant="secondary">{countRuleMatches(rule.prefix)} 条</Badge>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => removeMatchRule(rule.id)}
+                  disabled={matchRules.length <= 1}
+                  title="删除规则"
+                >
+                  ×
+                </Button>
+              </div>
+            ))}
+            <Button variant="outline" onClick={addMatchRule} style={{ alignSelf: 'flex-start' }}>
+              添加规则
+            </Button>
+            {!roles.length && <div style={styles.emptyHint}>请先从右侧音色库添加角色</div>}
+            {!!roles.length && !messages.length && <div style={styles.emptyHint}>请先添加消息</div>}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMatchDialogOpen(false)}>
+              取消
+            </Button>
+            <Button
+              onClick={applyMatchRules}
+              disabled={!matchRules.some((rule) => String(rule.prefix || '').trim() && rule.roleId)}
+            >
+              确定
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
