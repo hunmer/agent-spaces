@@ -1,5 +1,9 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { AgentEditor } from '@/components/sidebar/agent-editor';
+import { newEmptyAgent, normalizeAgent, type AgentPreset } from '@/components/sidebar/agent-shared';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { useEditorStore } from '@/stores/editor';
 import { getWS } from '@/lib/ws';
@@ -174,6 +178,18 @@ export function useMiniAppHostApi(projectId: string) {
   const executorIdRef = useRef<string>('');
   const configCacheRef = useRef<Map<string, unknown>>(new Map());
   const configChangeCallbacksRef = useRef<Set<(path: string, value: unknown) => void>>(new Set());
+
+  // —— Agent editor 弹窗：mini-app 通过 openAgentEditor 配置 AI 模型 ——
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorAgent, setEditorAgent] = useState<AgentPreset | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
+  const editorResolverRef = useRef<((v: AgentPreset | null) => void) | null>(null);
+
+  const closeEditor = (result: AgentPreset | null) => {
+    setEditorOpen(false);
+    editorResolverRef.current?.(result);
+    editorResolverRef.current = null;
+  };
 
   useEffect(() => {
     if (!executorIdRef.current) {
@@ -508,6 +524,34 @@ export function useMiniAppHostApi(projectId: string) {
       saveUserSettings,
     };
 
+    // 打开 Agent 配置弹窗：mini-app 用于配置 AI 模型（model/apiKey/systemPrompt）。
+    // agentId 存在则拉完整 preset 进入编辑模式；否则用空 draft，可被 initialName/initialPrompt 覆盖。
+    // 返回 Promise<AgentPreset | null>：保存返回 saved（含真实 id，可用于 agent_run），取消返回 null。
+    const openAgentEditor = async (opts?: {
+      initialName?: string;
+      initialPrompt?: string;
+      agentId?: string;
+    }): Promise<AgentPreset | null> => {
+      let agent: AgentPreset;
+      if (opts?.agentId) {
+        try {
+          agent = normalizeAgent(await sdk.agent.getPreset(opts.agentId));
+        } catch {
+          agent = newEmptyAgent();
+        }
+      } else {
+        agent = newEmptyAgent();
+      }
+      if (opts?.initialName) agent.name = opts.initialName;
+      if (opts?.initialPrompt) agent.systemPrompt = opts.initialPrompt;
+      setEditorAgent(agent);
+      setEditorKey((k) => k + 1);
+      setEditorOpen(true);
+      return new Promise<AgentPreset | null>((resolve) => {
+        editorResolverRef.current = resolve;
+      });
+    };
+
     const pluginApi = {
       callPluginTool: executePluginTool,
       executePluginTool,
@@ -521,6 +565,7 @@ export function useMiniAppHostApi(projectId: string) {
       getAllConfigs,
       onConfigChanged,
       invokeService,
+      openAgentEditor,
     };
 
     const fileApi = {
@@ -588,4 +633,17 @@ export function useMiniAppHostApi(projectId: string) {
       delete (window as any).AgentSpacesAPI;
     };
   }, [projectId]);
+
+  return editorAgent ? (
+    <Dialog open={editorOpen} onOpenChange={(o) => { if (!o) closeEditor(null); }}>
+      <DialogContent className="!w-[80vw] !max-w-[80vw] max-h-[85vh] gap-0 p-0 overflow-hidden flex flex-col">
+        <AgentEditor
+          key={editorKey}
+          agent={editorAgent}
+          onSaved={(saved) => closeEditor(saved)}
+          onBack={() => closeEditor(null)}
+        />
+      </DialogContent>
+    </Dialog>
+  ) : null;
 }

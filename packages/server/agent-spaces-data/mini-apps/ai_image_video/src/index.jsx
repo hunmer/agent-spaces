@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import LeftPanel from './components/LeftPanel';
 import RightPanel from './components/RightPanel';
 import useGeneration from './hooks/useGeneration';
@@ -6,14 +6,90 @@ import useUI from './hooks/useUI';
 
 export default function App() {
   const UI = useUI();
-  const { results, loading, progress, error, taskQueue, generate, clearResults } =
+  const { results, loading, progress, error, taskQueue, generate, clearResults, removeResult } =
     useGeneration();
   const [preset, setPreset] = useState(null);
+  const [leftPanelApi, setLeftPanelApi] = useState(null);
 
   // 右侧卡片"二次创作"菜单 → 切换左侧模式并把当前媒体预填为输入源
   const handleUseAsSource = useCallback((item, mode) => {
     setPreset({ seq: Date.now(), item, mode });
   }, []);
+
+  // ====== Agent 广播事件监听 ======
+  // api.js 中的 switch_mode / set_form / trigger_generate / use_as_source /
+  // delete_result / clear_history 通过 broadcast 通知前端，这里转发到 LeftPanel 的
+  // imperative API 或 useGeneration 的对应方法。
+  useEffect(() => {
+    const AS = window.AgentSpaces;
+    if (!AS?.onTaskEvent) return;
+
+    const unsubscribe = AS.onTaskEvent((event, data) => {
+      switch (event) {
+        case 'miniApp.switchMode': {
+          leftPanelApi?.switchMode?.(data?.mode);
+          break;
+        }
+        case 'miniApp.setForm': {
+          leftPanelApi?.applyFormPatch?.(data || {});
+          break;
+        }
+        case 'miniApp.triggerGenerate': {
+          // 等下一帧确保 setForm 的 setState 已应用
+          setTimeout(() => leftPanelApi?.submit?.(), 0);
+          break;
+        }
+        case 'miniApp.useAsSource': {
+          if (data?.mode && data?.source) {
+            setPreset({
+              seq: Date.now(),
+              kind: 'useAsSource',
+              mode: data.mode,
+              item: {
+                type: data.source.type,
+                url: data.source.url,
+                prompt: data.source.prompt || '',
+                provider: data.source.provider,
+              },
+            });
+          }
+          break;
+        }
+        case 'miniApp.deleteResult': {
+          if (data?.id) removeResult?.(data.id);
+          break;
+        }
+        case 'miniApp.clearHistory': {
+          clearResults?.();
+          break;
+        }
+        case 'miniApp.clientRequest': {
+          // 服务端 toolcall 通过 ctx.requestClient 读取客户端状态
+          if (data?.type === 'history') {
+            const respond = AS.respondClientRequest;
+            if (!respond) return;
+            try {
+              const history = AS.getConfig?.('generation-history.json') || [];
+              respond(data.requestId, {
+                updatedAt: new Date().toISOString(),
+                count: Array.isArray(history) ? history.length : 0,
+                items: Array.isArray(history) ? history : [],
+              });
+            } catch (err) {
+              respond(data.requestId, null, false, err?.message || String(err));
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    });
+
+    return () => {
+      try { unsubscribe(); } catch {}
+    };
+  }, [leftPanelApi, removeResult, clearResults]);
 
   if (!UI) return null;
 
@@ -34,6 +110,7 @@ export default function App() {
                 taskQueue={taskQueue}
                 error={error}
                 preset={preset}
+                onReady={setLeftPanelApi}
               />
             </CardContent>
           </Card>
@@ -43,7 +120,7 @@ export default function App() {
         <ResizableHandle style={styles.handle} />
 
         {/* ====== 右侧结果面板 ====== */}
-        <ResizablePanel id="right-results" defaultSize="68%" minSize="50%">
+        <ResizablePanel id="right-results" defaultSize="50%" minSize="40%">
           <Card style={styles.rightCard}>
             <CardContent style={styles.rightContent}>
               <RightPanel

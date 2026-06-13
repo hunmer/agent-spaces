@@ -1,11 +1,8 @@
-const {
-  Button, Alert, AlertDescription, Badge,
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-} = window.AgentSpacesUI;
+const { Button, Alert, AlertDescription, Badge } = window.AgentSpacesUI;
 import { styles } from '../utils/styles.js';
 
 export function Toolbar({
-  bookMeta, parsing, presets, agentConfigId, onPresetChange,
+  bookMeta, parsing, agentMeta, onConfigureAgent,
   onFile, error, toast,
 }) {
   const handlePick = (e) => {
@@ -37,19 +34,11 @@ export function Toolbar({
 
       <div style={styles.divider} />
 
-      <span style={{ fontSize: '12px' }}>AI 模型</span>
-      <Select value={agentConfigId} onValueChange={onPresetChange}>
-        <SelectTrigger style={{ width: '180px', height: '32px' }}>
-          <SelectValue placeholder="选择模型预设" />
-        </SelectTrigger>
-        <SelectContent>
-          {presets.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name} <span style={{ opacity: 0.5, fontSize: '11px' }}>· {p.modelProvider}</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Button size="sm" variant="outline" onClick={onConfigureAgent}>
+        {agentMeta
+          ? `🤖 ${agentMeta.name}${agentMeta.modelProvider ? ` · ${agentMeta.modelProvider}` : ''}`
+          : '⚙️ 配置 AI 模型'}
+      </Button>
 
       {toast && <Badge variant="secondary">{toast}</Badge>}
       {error && (

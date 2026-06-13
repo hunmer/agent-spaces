@@ -8,8 +8,11 @@ AI 绘图创作工具，支持七种模式：文生图、图生图、图片编�
 
 ## File Structure
 
-- `index.jsx` — 入口文件，ResizablePanelGroup 左右布局；持有 preset 联动状态（右侧卡片二次创作 → 左侧预填）
-- `components/LeftPanel.jsx` — 左侧表单：模式选择(Tabs 7个标签，固定顶部)、提供商选择(Select)、模型选择(Select)、图片/视频/音频上传(FileUpload)、扩图/视频编辑/数字人动态表单字段、错误提示+生成按钮(固定底部)。按钮始终显示正常状态，旁边有队列图标（DropdownMenu 展示任务详情）；接收 preset 应用二次创作预设（切模式+预填远程 URL 源，不触发本地落盘/云转存）
+- `index.jsx` — 入口文件，ResizablePanelGroup 左右布局；持有 preset 联动状态（右侧卡片二次创作 → 左侧预填）；监听 agent 广播事件（switchMode/setForm/triggerGenerate/useAsSource/deleteResult/clearHistory）并通过 LeftPanel 的 imperative API（onReady 暴露）或 useGeneration 方法执行
+- `agents.json` — agent 配置（与 manifest.json 同步），定义创作管家 agent，引用全局 preset 借密钥
+- `src/api.js` — agent 可调用的项目 API：get_generation_history / get_capabilities / switch_mode / set_form / trigger_generate / use_as_source / delete_result / clear_history
+- `src/tools.js` — api.js 中带参方法的结构化参数说明（agent 据此知道传什么）
+- `components/LeftPanel.jsx` — 左侧表单：模式选择(Tabs 7个标签，固定顶部)、提供商选择(Select)、模型选择(Select)、图片/视频/音频上传(FileUpload)、扩图/视频编辑/数字人动态表单字段、错误提示+生成按钮(固定底部)。按钮始终显示正常状态，旁边有队列图标（DropdownMenu 展示任务详情）；接收 preset 应用二次创作预设（切模式+预填远程 URL 源，不触发本地落盘/云转存）；通过 onReady prop 暴露 imperative API（switchMode/applyFormPatch/submit），供 agent 广播事件调用；submitRef 在每次渲染同步最新 handleGenerate 闭包，避免 agent trigger_generate 拿到陈旧 state
 - `components/RightPanel.jsx` — 右侧结果展示：上传设置入口、单张图片骨架占位、按日期+模式+提供商分组平铺（最新在前，已取消折叠）、分组头部展示指令文本、Flex 瀑布流布局、IntersectionObserver 媒体懒加载、MediaGallery 灯箱预览、空状态；卡片底部三点菜单（下载/重新生成/图生图/扩图/图生视频/图片编辑(图)/视频编辑(视)），图片贴卡片顶部
 - `components/UploadSettingsDialog.jsx` — 上传设置弹窗：选择腾讯云 COS / 阿里云 OSS，并控制提交时是否自动转存本地文件
 - `hooks/useUI.js` — 安全访问 `window.AgentSpacesUI` 的 Hook（轮询等待异步注入完成）
@@ -56,3 +59,44 @@ AI 绘图创作工具，支持七种模式：文生图、图生图、图片编�
 - MiniMax 仅支持图生视频模式，选择 MiniMax 时会自动切换到图生视频模式
 - 图生图模式支持多图上传（最多 4 张），图片编辑模式根据提供商不同限制（阿里云 9 张、OpenAI 4 张），图生视频/扩图模式限 1 张。视频编辑模式上传 1 个视频和可选参考图，数字人模式上传 1 个视频和 1 个音频
 - 运行端到端扩图/视频编辑/数字人前，需要在插件配置中完成 `workflow.aliyun-ai`、`workflow.aliyun-oss` 或 `workflow.tencent-cos` 的密钥配置，并确保 OSS/COS 对象可被阿里云生成服务公网访问
+
+## Agent 集成
+
+预览 Toolbar 自包含版 agent（参考 [docs/mini-app-preview-agent.md](../../../../../docs/mini-app-preview-agent.md)）。`manifest.json` 中 `enableAgents: true` + `agents.json` 定义创作管家 agent；`agentId` 引用全局 preset 借用 API Key，本地下发 `systemPrompt` 限定 agent 只能用项目 API 操作 UI，禁止直接 `execute_plugin_tool` 调生成类插件。
+
+### 设计原则：与任务驱动模型对齐
+
+agent **不直接调用插件生成**，而是通过 broadcast 指挥前端走完整的 `callPluginTool → 任务队列 → 自动落库 → 多端同步` 流程。这样：
+- 复用 useGeneration 已有的 buildToolCall 逻辑，避免在 api.js 中重复维护一份提供商/模式映射
+- UI 完整反映生成过程（任务进度、错误提示、历史记录）
+- agent 通过 `get_generation_history` 拿最终结果
+
+### 广播事件协议
+
+| 事件 | 方向 | data | 处理 |
+| --- | --- | --- | --- |
+| `miniApp.switchMode` | server → client | `{ mode }` | `leftPanelApi.switchMode(mode)` |
+| `miniApp.setForm` | server → client | `{ 字段名: 值, ... }` | `leftPanelApi.applyFormPatch(patch)` |
+| `miniApp.triggerGenerate` | server → client | `{}` | `setTimeout(() => leftPanelApi.submit(), 0)`（等 setState 应用） |
+| `miniApp.useAsSource` | server → client | `{ mode, source: { type, url, prompt?, provider? } }` | `setPreset({ kind: 'useAsSource', ... })` |
+| `miniApp.deleteResult` | server → client | `{ id }` | `removeResult(id)` |
+| `miniApp.clearHistory` | server → client | `{}` | `clearResults()` |
+
+### LeftPanel imperative API
+
+通过 `onReady` prop 在 mount 时回调，传 `{ switchMode, applyFormPatch, submit }`。内部用 `switchModeRef / applyFormPatchRef / submitRef` 包装最新闭包，`onReady` 只触发一次避免频繁 re-render，调用时拿到最新 state。
+
+`submitRef.current = handleGenerate` 在每次渲染直接赋值（不在 useEffect 中），保证 `submit` 总能拿到最新表单状态。
+
+### 典型 agent 流程
+
+- **文生图**：`switch_mode('text_to_image')` → `set_form({ prompt, provider, model })` → `trigger_generate()`
+- **改图**：`get_generation_history` 找候选 → `use_as_source({ mode: 'image_edit', sourceId })` → `set_form({ prompt })` → `trigger_generate()`
+- **图生视频**：`get_generation_history` 找候选 → `use_as_source({ mode: 'image_to_video', sourceId })` → `set_form({ prompt, provider: 'minimax' })` → `trigger_generate()`
+
+### 边界
+
+- agent toolcall 之间有 LLM 推理间隔，客户端有时间渲染；`trigger_generate` 用 `setTimeout(0)` 防御性等 setState 应用
+- `applyFormPatch` 中 `provider` 字段切换会自动重置 model（与 UI 行为一致）
+- `use_as_source` 校验源类型与目标模式匹配（图→图模式，视频→视频模式）
+- `get_generation_history` 按时间倒序返回，items[].id 可作为 `use_as_source` 的 sourceId

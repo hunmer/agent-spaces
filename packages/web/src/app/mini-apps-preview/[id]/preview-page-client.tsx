@@ -18,7 +18,7 @@ export default function MiniAppPreviewPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useMiniAppHostApi(params.id);
+  const host = useMiniAppHostApi(params.id);
 
   const loadProject = useCallback(async () => {
     try {
@@ -71,6 +71,7 @@ export default function MiniAppPreviewPageClient() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
+      {host}
       <div className="flex-1 min-h-0 overflow-hidden">
         <MiniAppPreview
           type={project.type}

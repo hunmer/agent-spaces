@@ -95,7 +95,7 @@ function makeRemoteFile(url, kind, name) {
   ];
 }
 
-export default function LeftPanel({ onGenerate, taskQueue, error, preset }) {
+export default function LeftPanel({ onGenerate, taskQueue, error, preset, onReady }) {
   const UI = useUI();
   const [mode, setMode] = useState('text_to_image');
   const [provider, setProvider] = useState('jimeng');
@@ -139,37 +139,10 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset }) {
     setAudioFiles([]);
   };
 
-  // ====== 应用右侧卡片的"二次创作"预设：切到目标模式 + 预填当前媒体为远程 URL 输入源 ======
+  // ====== 预设应用：支持 agent 广播的多类操作（switchMode / setForm / triggerGenerate / useAsSource） ======
+  // preset.kind 缺省时走 useAsSource（向后兼容右侧卡片的二次创作入口）
   const lastPresetSeq = useRef(0);
-  useEffect(() => {
-    if (!preset || preset.seq === lastPresetSeq.current) return;
-    lastPresetSeq.current = preset.seq;
-
-    const { item, mode: targetMode } = preset;
-    const available = getAvailableProviders(targetMode);
-    // 优先沿用生成该媒体的提供商，否则取目标模式下首个可用提供商
-    const targetProvider =
-      (item.provider && available.find((p) => p.id === item.provider)?.id) ||
-      available[0]?.id ||
-      '';
-    setMode(targetMode);
-    setProvider(targetProvider);
-    setModel(getDefaultModel(targetProvider, targetMode));
-    const resOpts = RESOLUTION_OPTIONS[targetProvider]?.[targetMode];
-    setResolution(resOpts ? resOpts[0]?.value : '');
-    setPrompt(item.prompt || '');
-
-    // 远程 URL 源直接作为公网地址提交，无需本地落盘/云转存
-    setImageFiles([]);
-    setReferenceImages([]);
-    setVideoFiles([]);
-    setAudioFiles([]);
-    if (item.type === 'image' && IMAGE_INPUT_MODES.has(targetMode)) {
-      setImageFiles(makeRemoteFile(item.url, 'image', '来源图片'));
-    } else if (item.type === 'video' && VIDEO_INPUT_MODES.has(targetMode)) {
-      setVideoFiles(makeRemoteFile(item.url, 'video', '来源视频'));
-    }
-  }, [preset]);
+  const submitRef = useRef(() => {});
 
   const handleModeChange = useCallback((newMode) => {
     setMode(newMode);
@@ -191,6 +164,111 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset }) {
     const resOpts = RESOLUTION_OPTIONS[newProviderId]?.[mode];
     setResolution(resOpts ? resOpts[0]?.value : '');
   }, [mode]);
+
+  /** 批量应用表单字段（来自 agent set_form 广播） */
+  const applyFormPatch = useCallback((patch) => {
+    if (!patch || typeof patch !== 'object') return;
+    if (typeof patch.prompt === 'string') setPrompt(patch.prompt);
+    if (typeof patch.negativePrompt === 'string') setNegativePrompt(patch.negativePrompt);
+    if (typeof patch.provider === 'string') {
+      const available = getAvailableProviders(mode);
+      if (available.some((p) => p.id === patch.provider)) {
+        setProvider(patch.provider);
+        setModel(getDefaultModel(patch.provider, mode));
+        const resOpts = RESOLUTION_OPTIONS[patch.provider]?.[mode];
+        setResolution(resOpts ? resOpts[0]?.value : '');
+      }
+    }
+    if (typeof patch.model === 'string') setModel(patch.model);
+    if (typeof patch.size === 'string') setSize(patch.size);
+    if (typeof patch.ratio === 'string') setRatio(patch.ratio);
+    if (typeof patch.resolution === 'string') setResolution(patch.resolution);
+    if (patch.duration != null) setDuration(Number(patch.duration));
+    if (patch.sampleStrength != null) setSampleStrength(Number(patch.sampleStrength));
+    if (patch.n != null) setN(Number(patch.n));
+    if (typeof patch.quality === 'string') setQuality(patch.quality);
+    if (typeof patch.outputFormat === 'string') setOutputFormat(patch.outputFormat);
+    if (typeof patch.expandMode === 'string') setExpandMode(patch.expandMode);
+    if (typeof patch.outputRatio === 'string') setOutputRatio(patch.outputRatio);
+    if (patch.xScale != null) setXScale(Number(patch.xScale));
+    if (patch.yScale != null) setYScale(Number(patch.yScale));
+    if (patch.leftOffset != null) setLeftOffset(numberOrEmpty(patch.leftOffset));
+    if (patch.rightOffset != null) setRightOffset(numberOrEmpty(patch.rightOffset));
+    if (patch.topOffset != null) setTopOffset(numberOrEmpty(patch.topOffset));
+    if (patch.bottomOffset != null) setBottomOffset(numberOrEmpty(patch.bottomOffset));
+    if (patch.angle != null) setAngle(numberOrEmpty(patch.angle));
+  }, [mode]);
+
+  /** 切换模式（来自 agent switch_mode 广播） */
+  const applySwitchMode = useCallback((targetMode) => {
+    if (!MODES.some((m) => m.id === targetMode)) return;
+    handleModeChange(targetMode);
+  }, [handleModeChange]);
+
+  /** 用远程 URL 源预填输入（来自 agent use_as_source 广播或右侧二次创作） */
+  const applyUseAsSource = useCallback((source, targetMode) => {
+    const available = getAvailableProviders(targetMode);
+    const targetProvider =
+      (source.provider && available.find((p) => p.id === source.provider)?.id) ||
+      available[0]?.id ||
+      '';
+    setMode(targetMode);
+    setProvider(targetProvider);
+    setModel(getDefaultModel(targetProvider, targetMode));
+    const resOpts = RESOLUTION_OPTIONS[targetProvider]?.[targetMode];
+    setResolution(resOpts ? resOpts[0]?.value : '');
+    setPrompt(source.prompt || '');
+
+    setImageFiles([]);
+    setReferenceImages([]);
+    setVideoFiles([]);
+    setAudioFiles([]);
+    if (source.type === 'image' && IMAGE_INPUT_MODES.has(targetMode)) {
+      setImageFiles(makeRemoteFile(source.url, 'image', '来源图片'));
+    } else if (source.type === 'video' && VIDEO_INPUT_MODES.has(targetMode)) {
+      setVideoFiles(makeRemoteFile(source.url, 'video', '来源视频'));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!preset || preset.seq === lastPresetSeq.current) return;
+    lastPresetSeq.current = preset.seq;
+
+    const kind = preset.kind || 'useAsSource';
+    if (kind === 'switchMode') {
+      applySwitchMode(preset.mode);
+      return;
+    }
+    if (kind === 'setForm') {
+      applyFormPatch(preset.patch);
+      return;
+    }
+    if (kind === 'triggerGenerate') {
+      // submitRef.current 在每次渲染同步为最新 handleGenerate，调用时拿到最新 state
+      submitRef.current();
+      return;
+    }
+
+    // 默认：useAsSource（兼容右侧卡片二次创作入口的旧 preset 结构）
+    applyUseAsSource(preset.item, preset.mode);
+  }, [preset, applySwitchMode, applyFormPatch, applyUseAsSource]);
+
+  // ====== 暴露 imperative API 给 App（供 agent broadcast 调用） ======
+  // 用 ref 持有最新的 applySwitchMode / applyFormPatch / submitRef，确保 onReady
+  // 只触发一次（避免 setLeftPanelApi 频繁触发 re-render），但调用时拿到最新闭包。
+  const switchModeRef = useRef(applySwitchMode);
+  const applyFormPatchRef = useRef(applyFormPatch);
+  switchModeRef.current = applySwitchMode;
+  applyFormPatchRef.current = applyFormPatch;
+  useEffect(() => {
+    if (typeof onReady !== 'function') return;
+    onReady({
+      switchMode: (mode) => switchModeRef.current(mode),
+      applyFormPatch: (patch) => applyFormPatchRef.current(patch),
+      submit: () => submitRef.current(),
+    });
+    return () => onReady(null);
+  }, [onReady]);
 
   if (!UI) return null;
 
@@ -260,6 +338,9 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset }) {
       setSubmittingUpload(false);
     }
   };
+
+  // 保持 submitRef 持有最新 handleGenerate 闭包，供 agent trigger_generate 调用
+  submitRef.current = handleGenerate;
 
   const allFiles = [...imageFiles, ...referenceImages, ...videoFiles, ...audioFiles];
   const filesUploading = allFiles.some((item) => item.file?.uploading);

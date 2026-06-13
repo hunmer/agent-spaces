@@ -22,9 +22,8 @@ function App() {
       <Toolbar
         bookMeta={s.bookMeta}
         parsing={s.parsing}
-        presets={s.presets}
-        agentConfigId={s.agentConfigId}
-        onPresetChange={s.onPresetChange}
+        agentMeta={s.agentMeta}
+        onConfigureAgent={s.configureAgent}
         onFile={s.handleUpload}
         error={s.error}
         toast={s.toast}

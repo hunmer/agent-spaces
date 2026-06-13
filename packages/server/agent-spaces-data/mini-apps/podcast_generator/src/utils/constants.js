@@ -11,5 +11,10 @@ export const SETTING_KEYS = {
   bookMeta: 'bookMeta',
   selectedIndex: 'selectedIndex',
   agentConfigId: 'agentConfigId',
+  agentMeta: 'agentMeta', // { name, modelProvider }，按钮显示用
   podcast: 'podcast',
 };
+
+// openAgentEditor 的初始 name / systemPrompt
+export const AGENT_INIT_NAME = '播客生成器';
+export const AGENT_INIT_PROMPT = '你是一位资深播客制作人，负责把电子书章节内容改编成自然流畅的双人播客对话脚本。';

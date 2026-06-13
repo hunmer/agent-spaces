@@ -1,7 +1,8 @@
 const { useState, useCallback, useEffect, useMemo } = React;
-const { getUserSetting, saveUserSettings, callPluginTool } = window.AgentSpaces;
+const { getUserSetting, saveUserSettings, callPluginTool, openAgentEditor } = window.AgentSpaces;
 import {
   BUILTIN_PLUGIN, EPUB_PLUGIN, MAX_CONTENT_CHARS, SETTING_KEYS,
+  AGENT_INIT_NAME, AGENT_INIT_PROMPT,
 } from '../utils/constants.js';
 import { deriveChapters, htmlToText } from '../utils/epub.js';
 import { parseScript, truncate } from '../utils/script.js';
@@ -20,8 +21,8 @@ export function usePodcast() {
   const [loadingChapter, setLoadingChapter] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  const [presets, setPresets] = useState([]);
   const [agentConfigId, setAgentConfigId] = useState(() => get(SETTING_KEYS.agentConfigId, ''));
+  const [agentMeta, setAgentMeta] = useState(() => get(SETTING_KEYS.agentMeta, null));
 
   const [ready, setReady] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -96,10 +97,32 @@ export function usePodcast() {
     }
   }, [parseBook]);
 
+  // —— 打开 Agent 配置弹窗，保存返回的 preset ——
+  const configureAgent = useCallback(async () => {
+    try {
+      const saved = await openAgentEditor({
+        initialName: AGENT_INIT_NAME,
+        initialPrompt: AGENT_INIT_PROMPT,
+        agentId: agentConfigId || undefined,
+      });
+      if (!saved) return;
+      const meta = { name: saved.name || AGENT_INIT_NAME, modelProvider: saved.modelProvider };
+      setAgentMeta(meta);
+      setAgentConfigId(saved.id);
+      saveUserSettings({
+        [SETTING_KEYS.agentConfigId]: saved.id,
+        [SETTING_KEYS.agentMeta]: meta,
+      });
+      setError('');
+    } catch (e) {
+      setError('打开模型配置失败：' + (e?.message || e));
+    }
+  }, [agentConfigId]);
+
   // —— AI 生成播客脚本 ——
   const generatePodcast = useCallback(async () => {
     if (!chapterText.trim()) { setError('请先选择章节'); return; }
-    if (!agentConfigId) { setError('请先选择 AI 模型预设'); return; }
+    if (!agentConfigId) { setError('请先点击「配置 AI 模型」'); return; }
     setError(''); setToast(''); setGenerating(true); setPodcast([]);
     try {
       const title = chapters[selectedIndex]?.label || '本章';
@@ -139,12 +162,6 @@ export function usePodcast() {
     }
   }, [chapterText, agentConfigId, chapters, selectedIndex]);
 
-  // —— 切换 AI 模型预设 ——
-  const onPresetChange = useCallback((id) => {
-    setAgentConfigId(id);
-    saveUserSettings({ [SETTING_KEYS.agentConfigId]: id });
-  }, []);
-
   const copyScript = useCallback(() => {
     if (!podcast.length) return;
     const text = podcast.map((it) => `${it.role}：${it.content}`).join('\n');
@@ -154,22 +171,10 @@ export function usePodcast() {
     );
   }, [podcast]);
 
-  // —— 启动：拉 presets + 恢复上次的 epub/章节 ——
+  // —— 启动：恢复上次的 epub/章节 ——
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // 1. AI 模型预设
-      try {
-        const res = await callPluginTool(BUILTIN_PLUGIN, 'list_agent_presets', {});
-        const list = Array.isArray(res?.presets) ? res.presets : [];
-        if (cancelled) return;
-        setPresets(list);
-        setAgentConfigId((prev) => (prev && list.some((p) => p.id === prev)) ? prev : (list[0]?.id || ''));
-      } catch (e) {
-        if (!cancelled) setError('初始化失败：' + (e?.message || e));
-      }
-
-      // 2. 恢复 epub（filePath 来自 localStorage）
       const path = get(SETTING_KEYS.filePath, '');
       if (!path) { if (!cancelled) setReady(true); return; }
       try {
@@ -194,7 +199,7 @@ export function usePodcast() {
   return {
     ready, parsing, error, toast,
     bookMeta, chapters, selectedIndex, chapterText, loadingChapter, currentLabel,
-    podcast, generating, presets, agentConfigId,
-    handleUpload, selectChapter, generatePodcast, onPresetChange, copyScript,
+    podcast, generating, agentConfigId, agentMeta,
+    handleUpload, selectChapter, generatePodcast, configureAgent, copyScript,
   };
 }

@@ -95,6 +95,7 @@ export function AgentDetail({
   const [previewPrompt, setPreviewPrompt] = useState("");
   const [bgPickerSrc, setBgPickerSrc] = useState("");
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
+  const tools = agent.tools ?? [];
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
   const llmModels = allLlmModels.filter((m) => !m.embedding);
@@ -184,7 +185,7 @@ export function AgentDetail({
   };
 
   return (
-    <div className="flex flex-col gap-5 p-5">
+    <div className="flex w-[80vw] flex-col gap-5 p-5">
       <Section icon={<MessageSquare className="size-3.5" />} title={t("detail.basic")}>
         {/* Background + Avatar + Name/Role layout */}
         <div className="flex flex-col">
@@ -403,14 +404,14 @@ export function AgentDetail({
           }
         />
         <div className="flex flex-wrap gap-1.5">
-          {agent.tools.length > 0 ? (
-            agent.tools.map((tool) => {
+          {tools.length > 0 ? (
+            tools.map((tool) => {
               const builtIn = BUILT_IN_AGENT_TOOLS.find((t) => t.name === tool);
               return (
                 <span key={tool} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
                   {builtIn?.label ?? tool}
                   {!lockedFields?.tools ? (
-                    <button type="button" onClick={() => onChange("tools", agent.tools.filter((t) => t !== tool))} className="hover:text-destructive cursor-pointer">
+                    <button type="button" onClick={() => onChange("tools", tools.filter((t) => t !== tool))} className="hover:text-destructive cursor-pointer">
                       <X className="size-2.5" />
                     </button>
                   ) : null}
@@ -425,7 +426,7 @@ export function AgentDetail({
           open={toolsDialogOpen}
           onOpenChange={setToolsDialogOpen}
           selectable
-          selectedTools={agent.tools}
+          selectedTools={tools}
           onSelectedToolsChange={(tools) => onChange("tools", tools)}
         />
       </div>
