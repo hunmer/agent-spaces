@@ -319,12 +319,12 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
   },
   {
     name: 'agent_run',
-    description: '运行 AI Agent 执行任务。支持指定 agent preset（通过 list_agent_presets 获取）、prompt、systemPrompt、工作目录和权限模式。',
+    description: '运行 AI Agent 执行任务。需要指定 agent preset（通过 list_agent_presets 获取）、prompt、systemPrompt、工作目录和权限模式。',
     input_schema: {
       type: 'object',
       properties: {
         prompt: { type: 'string', description: '给 Agent 的任务描述（必填）' },
-        agentConfigId: { type: 'string', description: 'Agent preset ID（从 list_agent_presets 获取可选值）' },
+        agentConfigId: { type: 'string', description: 'Agent preset ID（必填，从 list_agent_presets 获取可选值）' },
         systemPrompt: { type: 'string', description: '系统提示词' },
         cwd: { type: 'string', description: '工作目录' },
         permissionMode: {
@@ -334,39 +334,37 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
         },
         extraInstructions: { type: 'string', description: '额外指令' },
       },
-      required: ['prompt'],
+      required: ['prompt', 'agentConfigId'],
     },
     outputs: [
       { key: 'result', type: 'string', description: 'Agent 执行结果' },
+      { key: 'content', type: 'string', description: 'Agent 执行消息内容' },
+      { key: 'summary', type: 'string', description: 'Agent 执行摘要' },
     ],
     execute: async (args) => {
       const agentService = await import('../agent.js');
       const prompt = String(args.prompt || '').trim();
       if (!prompt) throw new Error('prompt is required');
 
-      const agentConfigId = args.agentConfigId as string | undefined;
+      const agentConfigId = typeof args.agentConfigId === 'string' ? args.agentConfigId.trim() : '';
+      if (!agentConfigId) throw new Error('agentConfigId is required');
       const presets = agentService.listPresets('');
-      const preset = agentConfigId
-        ? presets.find(p => p.id === agentConfigId)
-        : undefined;
-
-      if (agentConfigId && !preset) throw new Error(`Agent preset not found: ${agentConfigId}`);
+      const preset = presets.find(p => p.id === agentConfigId);
+      if (!preset || preset.enabled === false) throw new Error(`Agent preset not found: ${agentConfigId}`);
 
       const permissionMode = normalizeAgentPermissionMode(args.permissionMode);
 
       // Build runtime config from preset or use defaults
-      const config: AgentRuntimeConfig = preset
-        ? {
-            kind: preset.runtimeKind as AgentRuntimeConfig['kind'],
-            provider: preset.modelProvider as AgentRuntimeConfig['provider'],
-            model: preset.modelId,
-            apiKey: preset.apiKey,
-            baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
-            adapterBaseURL: preset.apiBase,
-            permissionMode,
-            ...getThinkingRuntimeConfig(preset),
-          }
-        : { permissionMode };
+      const config: AgentRuntimeConfig = {
+        kind: preset.runtimeKind as AgentRuntimeConfig['kind'],
+        provider: preset.modelProvider as AgentRuntimeConfig['provider'],
+        model: preset.modelId,
+        apiKey: preset.apiKey,
+        baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
+        adapterBaseURL: preset.apiBase,
+        permissionMode,
+        ...getThinkingRuntimeConfig(preset),
+      };
 
       const runtime = createAgentRuntime(config);
 
@@ -376,9 +374,7 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
 
       const workingDir = typeof args.cwd === 'string' && args.cwd.trim()
         ? args.cwd.trim()
-        : preset
-          ? agentService.resolveWorkingDir('', preset)
-          : process.cwd();
+        : agentService.resolveWorkingDir('', preset);
 
       const result = await runtime.execute(fullPrompt, workingDir, {
         maxTurns: 50,
@@ -389,8 +385,10 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
 
       if (!result.success) throw new Error(result.summary || 'Agent execution failed');
 
+      const content = result.output?.join('\n').trim() || result.summary;
       return {
-        content: result.output?.join('\n').trim() || result.summary,
+        result: content,
+        content,
         summary: result.summary,
         usage: result.usage,
       };

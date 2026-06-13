@@ -1,7 +1,7 @@
 const { useState, useCallback, useEffect, useRef } = React;
 const {
-  Card, CardContent, CardHeader, CardTitle,
-  Textarea, Label, RadioGroup, RadioGroupItem,
+  Card, CardContent, CardHeader,
+  Textarea, RadioGroup, RadioGroupItem,
   Badge,
 } = window.AgentSpacesUI;
 
@@ -15,7 +15,7 @@ import PlayerBar from './components/PlayerBar';
 import MultiVoicePanel from './components/MultiVoicePanel';
 
 function App() {
-  // 配音模式：单人 / 多人
+  // 配音模式：单人 / 多人（仅切换左侧；右侧角色设置卡固定不变）
   const [mode, setMode] = useState('single');
 
   const [text, setText] = useState('');
@@ -39,6 +39,7 @@ function App() {
   const current = providerStates[provider];
   const voices = current.voices;
   const voiceId = current.voiceId;
+  const isMulti = mode === 'multi';
 
   // ========== 启动时加载配置 ==========
 
@@ -134,12 +135,7 @@ function App() {
 
       await persistProviderStates(providerStates, text, provider);
 
-      const result = await window.AgentSpaces.callPluginTool(
-        prov.pluginId,
-        prov.toolName,
-        args
-      );
-
+      const result = await window.AgentSpaces.callPluginTool(prov.pluginId, prov.toolName, args);
       const url = extractAudioUrl(result);
       if (url) {
         setAudioUrl(url);
@@ -153,7 +149,7 @@ function App() {
     }
   }, [text, provider, providerStates]);
 
-  // ========== 音色增删 ==========
+  // ========== 音色增删（右侧固定卡） ==========
 
   const handleAddVoice = useCallback(async (newId, newName) => {
     const id = newId.trim();
@@ -245,36 +241,6 @@ function App() {
     );
   }
 
-  const radioStyle = { display: 'flex', gap: '6px', flexWrap: 'wrap' };
-  const renderProviderRadio = () => (
-    <RadioGroup value={provider} onValueChange={handleProviderChange} style={radioStyle}>
-      {Object.entries(PROVIDERS).map(([key, prov]) => {
-        const selected = provider === key;
-        return (
-          <label
-            key={key}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              padding: '4px 8px',
-              borderRadius: '6px',
-              border: '1px solid var(--border, #444)',
-              ...(selected
-                ? { borderColor: 'var(--primary, #4fc3f7)', background: 'var(--primary, #4fc3f7)15' }
-                : {}),
-            }}
-          >
-            <RadioGroupItem value={key} style={{ width: '13px', height: '13px' }} />
-            <span>{prov.icon} {prov.name}</span>
-          </label>
-        );
-      })}
-    </RadioGroup>
-  );
-
   return (
     <div style={styles.container}>
       <style>{`
@@ -288,34 +254,29 @@ function App() {
         {PROVIDERS[provider].icon} {PROVIDERS[provider].name} 配音
       </div>
 
-      {/* 单人 / 多人 配音模式切换 */}
-      <div style={styles.tabBar}>
-        <button
-          style={{ ...styles.tabBtn, ...(mode === 'single' ? styles.tabBtnActive : {}) }}
-          onClick={() => setMode('single')}
-        >
-          🎙️ 单人配音
-        </button>
-        <button
-          style={{ ...styles.tabBtn, ...(mode === 'multi' ? styles.tabBtnActive : {}) }}
-          onClick={() => setMode('multi')}
-        >
-          👥 多人配音
-        </button>
-      </div>
+      <div style={styles.main}>
+        {/* ===== 左侧：Tabs 切换单人 / 多人 ===== */}
+        <Card style={{ flex: '1', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <CardHeader style={{ padding: '6px 8px' }}>
+            <div style={styles.tabBar}>
+              <button
+                style={{ ...styles.tabBtn, ...(mode === 'single' ? styles.tabBtnActive : {}) }}
+                onClick={() => setMode('single')}
+              >
+                🎙️ 单人配音
+              </button>
+              <button
+                style={{ ...styles.tabBtn, ...(mode === 'multi' ? styles.tabBtnActive : {}) }}
+                onClick={() => setMode('multi')}
+              >
+                👥 多人配音
+              </button>
+            </div>
+          </CardHeader>
 
-      {/* 服务商切换（两种模式共用，控制音色库筛选） */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>{renderProviderRadio()}</div>
-
-      {mode === 'single' ? (
-        <>
-          <div style={styles.main}>
-            {/* 左侧：文本输入 */}
-            <Card style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
-              <CardHeader style={{ padding: '12px 16px' }}>
-                <CardTitle style={{ fontSize: '15px' }}>📝 配音文本</CardTitle>
-              </CardHeader>
-              <CardContent style={{ flex: '1', display: 'flex', flexDirection: 'column', padding: '0 16px 16px' }}>
+          <CardContent style={{ flex: '1', display: 'flex', flexDirection: 'column', minHeight: 0, padding: '12px 16px 16px' }}>
+            {mode === 'single' ? (
+              <>
                 <Textarea
                   style={{ flex: '1', minHeight: '160px', resize: 'vertical' }}
                   value={text}
@@ -324,70 +285,86 @@ function App() {
                   maxLength={10000}
                 />
                 <div style={styles.charCount}>{text.length} / 10000</div>
-              </CardContent>
-            </Card>
-
-            {/* 右侧：音色 + 参数 + 背景音乐 */}
-            <Card style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
-              <CardHeader style={{ padding: '12px 16px' }}>
-                <CardTitle style={{ fontSize: '15px' }}>⚙️ 角色设置</CardTitle>
-              </CardHeader>
-              <CardContent style={{ flex: '1', overflowY: 'auto', padding: '0 16px 16px' }}>
-                <VoiceSelector
-                  voices={voices}
-                  voiceId={voiceId}
-                  provider={provider}
-                  onSelect={handleSelectVoice}
-                  onDelete={handleDeleteVoice}
-                  onAdd={handleAddVoice}
+                <PlayerBar
+                  loading={loading}
+                  error={error}
+                  audioUrl={audioUrl}
+                  onGenerate={handleGenerate}
+                  bgmAudioRef={bgmAudioRef}
+                  bgmUrl={bgmUrl}
                 />
-                <ParameterPanel provider={provider} current={current} onUpdate={handleParamUpdate} />
-                <BackgroundMusic
-                  audioRef={bgmAudioRef}
-                  url={bgmUrl}
-                  onUrlChange={setBgmUrl}
-                  volume={bgmVolume}
-                  onVolumeChange={setBgmVolume}
-                />
-              </CardContent>
-            </Card>
-          </div>
+              </>
+            ) : (
+              <MultiVoicePanel
+                providerStates={providerStates}
+                roles={roles}
+                onRemoveRole={handleRemoveRole}
+                messages={messages}
+                onMessagesChange={(updater) =>
+                  setMessages((prev) => (typeof updater === 'function' ? updater(prev) : updater))
+                }
+              />
+            )}
+          </CardContent>
+        </Card>
 
-          {/* 单人模式播放栏（替代原 ControlBar，置于单人 tab 下） */}
-          <PlayerBar
-            loading={loading}
-            error={error}
-            audioUrl={audioUrl}
-            onGenerate={handleGenerate}
-            bgmAudioRef={bgmAudioRef}
-            bgmUrl={bgmUrl}
-          />
-        </>
-      ) : (
-        <>
-          <MultiVoicePanel
-            provider={provider}
-            voices={voices}
-            voiceId={voiceId}
-            providerStates={providerStates}
-            current={current}
-            onSelectVoice={handleSelectVoice}
-            onAddVoice={handleAddVoice}
-            onDeleteVoice={handleDeleteVoice}
-            onParamUpdate={handleParamUpdate}
-            roles={roles}
-            onAddRole={handleAddRole}
-            onRemoveRole={handleRemoveRole}
-            messages={messages}
-            onMessagesChange={(updater) =>
-              setMessages((prev) => (typeof updater === 'function' ? updater(prev) : updater))
-            }
-          />
-          {error && (
-            <div style={{ fontSize: '13px', color: '#f87171', marginTop: '4px' }}>❌ {error}</div>
-          )}
-        </>
-      )}
+        {/* ===== 右侧：角色设置（固定不变，不随 Tab 切换） ===== */}
+        <Card style={{ flex: '1', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <CardHeader style={{ padding: '12px 16px', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <RadioGroup
+              value={provider}
+              onValueChange={handleProviderChange}
+              style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}
+            >
+              {Object.entries(PROVIDERS).map(([key, prov]) => {
+                const selected = provider === key;
+                return (
+                  <label
+                    key={key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border, #444)',
+                      ...(selected
+                        ? { borderColor: 'var(--primary, #4fc3f7)', background: 'var(--primary, #4fc3f7)15' }
+                        : {}),
+                    }}
+                  >
+                    <RadioGroupItem value={key} style={{ width: '13px', height: '13px' }} />
+                    <span>{prov.icon} {prov.name}</span>
+                  </label>
+                );
+              })}
+            </RadioGroup>
+          </CardHeader>
+          <CardContent style={{ flex: '1', overflowY: 'auto', padding: '0 16px 16px' }}>
+            <VoiceSelector
+              mode={mode}
+              voices={voices}
+              voiceId={voiceId}
+              provider={provider}
+              onSelect={handleSelectVoice}
+              onDelete={handleDeleteVoice}
+              onAdd={handleAddVoice}
+              onAddRole={isMulti ? handleAddRole : undefined}
+              addedRoleKeys={isMulti ? roles.map((r) => `${r.provider}:${r.voiceId}`) : undefined}
+            />
+            <ParameterPanel provider={provider} current={current} onUpdate={handleParamUpdate} />
+            <BackgroundMusic
+              audioRef={bgmAudioRef}
+              url={bgmUrl}
+              onUrlChange={setBgmUrl}
+              volume={bgmVolume}
+              onVolumeChange={setBgmVolume}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

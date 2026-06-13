@@ -1,13 +1,10 @@
 const { useState, useCallback, useRef } = React;
 const {
-  Card, CardContent, CardHeader, CardTitle,
   Button, Badge, Textarea, Alert, AlertDescription,
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Separator,
 } = window.AgentSpacesUI;
 import styles from '../utils/styles';
 import { PROVIDERS, buildTTSArgs, extractAudioUrl, genId } from '../utils/providers';
-import VoiceSelector from './VoiceSelector';
-import ParameterPanel from './ParameterPanel';
 
 const SYNTH_CONCURRENCY = 3;
 
@@ -49,18 +46,11 @@ async function downloadOne(url, filename) {
   }
 }
 
+// 多人配音编辑区（左侧）：角色列表 + 消息列表 + 工具栏
+// 音色库与参数面板在右侧固定卡，由 App 直接渲染
 function MultiVoicePanel({
-  provider,
-  voices,
-  voiceId,
   providerStates,
-  current,
-  onSelectVoice,
-  onAddVoice,
-  onDeleteVoice,
-  onParamUpdate,
   roles,
-  onAddRole,
   onRemoveRole,
   messages,
   onMessagesChange,
@@ -69,8 +59,6 @@ function MultiVoicePanel({
   const [previewingId, setPreviewingId] = useState(null);
   const [batchError, setBatchError] = useState('');
   const previewAudioRef = useRef(null);
-
-  const addedRoleKeys = roles.map((r) => `${r.provider}:${r.voiceId}`);
 
   // ===== 消息增删改 =====
   const patchMessage = useCallback((id, patch) => {
@@ -202,178 +190,103 @@ function MultiVoicePanel({
   const pendingCount = messages.filter((m) => m.roleId && m.text.trim() && m.status !== 'done').length;
 
   return (
-    <div style={styles.main}>
-      {/* 左侧：音色库 + 参数 */}
-      <Card style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
-        <CardHeader style={{ padding: '12px 16px' }}>
-          <CardTitle style={{ fontSize: '15px' }}>🎭 音色库与参数</CardTitle>
-        </CardHeader>
-        <CardContent style={{ flex: '1', overflowY: 'auto', padding: '0 16px 16px' }}>
-          <VoiceSelector
-            mode="multi"
-            voices={voices}
-            voiceId={voiceId}
-            provider={provider}
-            onSelect={onSelectVoice}
-            onDelete={onDeleteVoice}
-            onAdd={onAddVoice}
-            onAddRole={onAddRole}
-            addedRoleKeys={addedRoleKeys}
-          />
-          <ParameterPanel provider={provider} current={current} onUpdate={onParamUpdate} />
-        </CardContent>
-      </Card>
-
-      {/* 右侧：角色与消息 */}
-      <Card style={{ flex: '1.3', display: 'flex', flexDirection: 'column' }}>
-        <CardHeader style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <CardTitle style={{ fontSize: '15px' }}>👥 角色与配音消息</CardTitle>
-            <Badge variant="secondary">角色 {roles.length} · 消息 {messages.length} · 已合成 {doneCount}</Badge>
+    <div style={{ flex: '1', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* 角色列表 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '13px', fontWeight: '600', opacity: 0.8 }}>👥 角色</span>
+        <Badge variant="secondary">{roles.length}</Badge>
+        {roles.length > 0 ? (
+          <div style={styles.roleList} >
+            {roles.map((r) => (
+              <span key={r.id} style={styles.roleItem} title={`${PROVIDERS[r.provider]?.name || r.provider} · ${r.voiceId}`}>
+                <span>{r.icon} {r.name}</span>
+                <span style={styles.roleRemove} onClick={() => onRemoveRole(r.id)} title="移除角色">×</span>
+              </span>
+            ))}
           </div>
-          {/* 角色列表 */}
-          {roles.length > 0 ? (
-            <div style={styles.roleList}>
-              {roles.map((r) => (
-                <span key={r.id} style={styles.roleItem} title={`${PROVIDERS[r.provider]?.name || r.provider} · ${r.voiceId}`}>
-                  <span>{r.icon} {r.name}</span>
-                  <span
-                    style={styles.roleRemove}
-                    onClick={() => onRemoveRole(r.id)}
-                    title="移除角色"
-                  >
-                    ×
-                  </span>
-                </span>
-              ))}
-            </div>
-          ) : (
-            <div style={styles.emptyHint}>还没有角色，从左侧音色库点击右下角 ＋ 添加角色</div>
+        ) : (
+          <span style={styles.emptyHint}>从右侧音色库点击右下角 ＋ 添加角色</span>
+        )}
+      </div>
+
+      <Separator style={{ margin: '10px 0' }} />
+
+      {/* 消息列表（滚动区） */}
+      <div style={{ flex: '1', overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
+        <div style={styles.msgList}>
+          {messages.length === 0 && (
+            <div style={styles.emptyHint}>暂无消息，点击下方「＋ 添加消息」开始</div>
           )}
-        </CardHeader>
+          {messages.map((m, i) => {
+            const role = roles.find((r) => r.id === m.roleId);
+            return (
+              <div key={m.id} style={styles.msgItem}>
+                <div style={styles.msgTopRow}>
+                  <span style={styles.msgIndex}>#{i + 1}</span>
+                  <Select value={m.roleId} onValueChange={(v) => updateMessageRole(m.id, v)}>
+                    <SelectTrigger style={{ flex: '1', minWidth: '140px' }}>
+                      <SelectValue placeholder="选择配音人" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.icon} {r.name} · {PROVIDERS[r.provider]?.name || r.provider}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-        <CardContent style={{ flex: '1', overflowY: 'auto', padding: '0 16px 16px' }}>
-          {/* 消息列表 */}
-          <div style={styles.msgList}>
-            {messages.length === 0 && (
-              <div style={styles.emptyHint}>
-                暂无消息，点击下方「＋ 添加消息」开始
-              </div>
-            )}
-            {messages.map((m, i) => {
-              const role = roles.find((r) => r.id === m.roleId);
-              return (
-                <div key={m.id} style={styles.msgItem}>
-                  <div style={styles.msgTopRow}>
-                    <span style={styles.msgIndex}>#{i + 1}</span>
-                    <Select value={m.roleId} onValueChange={(v) => updateMessageRole(m.id, v)}>
-                      <SelectTrigger style={{ flex: '1', minWidth: '160px' }}>
-                        <SelectValue placeholder="选择配音人" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>
-                            {r.icon} {r.name} · {PROVIDERS[r.provider]?.name || r.provider}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div style={styles.msgActions}>
-                      {/* 试听配音人 */}
-                      <button
-                        style={styles.iconBtn}
-                        onClick={() => handlePreview(m)}
-                        disabled={!role || previewingId === m.id}
-                        title="试听配音人"
-                      >
-                        {previewingId === m.id ? '⏳' : '▶'}
-                      </button>
-                      {/* 单条合成 / 重新合成 */}
-                      <button
-                        style={styles.iconBtn}
-                        onClick={() => synthOne(m)}
-                        disabled={m.status === 'pending'}
-                        title={m.audioUrl ? '重新合成' : '合成本条'}
-                      >
-                        {m.status === 'pending' ? '⏳' : m.audioUrl ? '🔄' : '🎬'}
-                      </button>
-                      {/* 上方插入 */}
-                      <button
-                        style={styles.iconBtn}
-                        onClick={() => addMessageAfter(messages[i - 1]?.id)}
-                        title="在上方插入"
-                      >
-                        ↑
-                      </button>
-                      {/* 下方插入 */}
-                      <button
-                        style={styles.iconBtn}
-                        onClick={() => addMessageAfter(m.id)}
-                        title="在下方插入"
-                      >
-                        ↓
-                      </button>
-                      {/* 删除 */}
-                      <button
-                        style={{ ...styles.iconBtn, color: '#f87171' }}
-                        onClick={() => removeMessage(m.id)}
-                        title="删除本条"
-                      >
-                        🗑
-                      </button>
-                    </div>
+                  <div style={styles.msgActions}>
+                    <button style={styles.iconBtn} onClick={() => handlePreview(m)} disabled={!role || previewingId === m.id} title="试听配音人">
+                      {previewingId === m.id ? '⏳' : '▶'}
+                    </button>
+                    <button style={styles.iconBtn} onClick={() => synthOne(m)} disabled={m.status === 'pending'} title={m.audioUrl ? '重新合成' : '合成本条'}>
+                      {m.status === 'pending' ? '⏳' : m.audioUrl ? '🔄' : '🎬'}
+                    </button>
+                    <button style={styles.iconBtn} onClick={() => addMessageAfter(messages[i - 1]?.id)} title="在上方插入">↑</button>
+                    <button style={styles.iconBtn} onClick={() => addMessageAfter(m.id)} title="在下方插入">↓</button>
+                    <button style={{ ...styles.iconBtn, color: '#f87171' }} onClick={() => removeMessage(m.id)} title="删除本条">🗑</button>
                   </div>
-
-                  <Textarea
-                    style={{ minHeight: '56px', resize: 'vertical', fontSize: '13px' }}
-                    value={m.text}
-                    onChange={(e) => updateMessageText(m.id, e.target.value)}
-                    placeholder="输入该角色的配音文本..."
-                    maxLength={10000}
-                  />
-
-                  {m.audioUrl && m.status === 'done' && (
-                    <audio style={styles.audioPlayer} controls src={m.audioUrl}>
-                      您的浏览器不支持音频播放
-                    </audio>
-                  )}
-
-                  {m.status === 'error' && m.error && (
-                    <div style={{ fontSize: '12px', color: '#f87171' }}>❌ {m.error}</div>
-                  )}
                 </div>
-              );
-            })}
-          </div>
 
-          {/* 工具栏 */}
-          <Separator style={{ margin: '12px 0' }} />
-          <div style={styles.toolbarRow}>
-            <Button variant="outline" size="sm" onClick={() => addMessageAfter()}>
-              ＋ 添加消息
-            </Button>
-            <Button onClick={handleGenerateAll} disabled={batchLoading || pendingCount === 0}>
-              {batchLoading ? '⏳ 批量合成中...' : `🎙️ 一键合成${pendingCount ? ` (${pendingCount})` : ''}`}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleDownloadAll}
-              disabled={doneCount === 0 || batchLoading}
-              title="下载所有已合成音频"
-            >
-              ⬇️ 批量下载{doneCount ? ` (${doneCount})` : ''}
-            </Button>
-            {batchLoading && <Badge variant="secondary">并发上限 {SYNTH_CONCURRENCY}</Badge>}
-          </div>
+                <Textarea
+                  style={{ minHeight: '52px', resize: 'vertical', fontSize: '13px' }}
+                  value={m.text}
+                  onChange={(e) => updateMessageText(m.id, e.target.value)}
+                  placeholder="输入该角色的配音文本..."
+                  maxLength={10000}
+                />
 
-          {batchError && (
-            <Alert variant="destructive" style={{ marginTop: '8px' }}>
-              <AlertDescription>❌ {batchError}</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+                {m.audioUrl && m.status === 'done' && (
+                  <audio style={styles.audioPlayer} controls src={m.audioUrl}>您的浏览器不支持音频播放</audio>
+                )}
+                {m.status === 'error' && m.error && (
+                  <div style={{ fontSize: '12px', color: '#f87171' }}>❌ {m.error}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 工具栏 */}
+      <Separator style={{ margin: '10px 0' }} />
+      <div style={styles.toolbarRow}>
+        <Button variant="outline" size="sm" onClick={() => addMessageAfter()}>＋ 添加消息</Button>
+        <Button onClick={handleGenerateAll} disabled={batchLoading || pendingCount === 0}>
+          {batchLoading ? '⏳ 批量合成中...' : `🎙️ 一键合成${pendingCount ? ` (${pendingCount})` : ''}`}
+        </Button>
+        <Button variant="secondary" onClick={handleDownloadAll} disabled={doneCount === 0 || batchLoading} title="下载所有已合成音频">
+          ⬇️ 批量下载{doneCount ? ` (${doneCount})` : ''}
+        </Button>
+        {batchLoading && <Badge variant="secondary">并发上限 {SYNTH_CONCURRENCY}</Badge>}
+      </div>
+
+      {batchError && (
+        <Alert variant="destructive" style={{ marginTop: '8px' }}>
+          <AlertDescription>❌ {batchError}</AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 }

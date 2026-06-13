@@ -8,6 +8,7 @@ export const aiNodes: NodeTypeDefinition[] = [
     icon: 'Bot',
     description: 'nodes.agent_run.description',
     properties: [
+      { key: 'agentConfigId', label: 'nodes.agent_run.props.agentConfigId', type: 'text' },
       { key: 'prompt', label: 'nodes.agent_run.props.prompt', type: 'textarea', required: true },
       { key: 'systemPrompt', label: 'nodes.agent_run.props.systemPrompt', type: 'textarea' },
       { key: 'cwd', label: 'nodes.agent_run.props.cwd', type: 'text' },
@@ -30,6 +31,13 @@ export const aiNodes: NodeTypeDefinition[] = [
       { key: 'extraInstructions', label: 'nodes.agent_run.props.extraInstructions', type: 'textarea' },
       { key: 'loadProjectClaudeMd', label: 'nodes.agent_run.props.loadProjectClaudeMd', type: 'checkbox', default: true },
       { key: 'loadRuleMd', label: 'nodes.agent_run.props.loadRuleMd', type: 'checkbox', default: true },
+    ],
+    outputs: [
+      { key: 'result', type: 'string' },
+      { key: 'content', type: 'string' },
+      { key: 'summary', type: 'string' },
+      { key: 'output', type: 'string[]' },
+      { key: 'usage', type: 'object' },
     ],
   },
 ];

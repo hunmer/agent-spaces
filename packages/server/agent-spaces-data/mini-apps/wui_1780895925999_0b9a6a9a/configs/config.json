@@ -77,7 +77,32 @@
       "pitch": 0
     }
   },
-  "mode": "single",
-  "roles": [],
-  "messages": []
+  "mode": "multi",
+  "roles": [
+    {
+      "id": "role_mqc6cj7v_l1dg9b",
+      "name": "默认女声",
+      "icon": "👩",
+      "provider": "qianyin",
+      "voiceId": "521"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_mqc6da8j_fwyofp",
+      "roleId": "role_mqc6cj7v_l1dg9b",
+      "text": "很高兴见到大家",
+      "audioUrl": "",
+      "status": "idle",
+      "error": ""
+    },
+    {
+      "id": "msg_mqc6gk6k_7kob0j",
+      "roleId": "role_mqc6cj7v_l1dg9b",
+      "text": "",
+      "audioUrl": "",
+      "status": "idle",
+      "error": ""
+    }
+  ]
 }

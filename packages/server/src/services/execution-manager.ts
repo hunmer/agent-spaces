@@ -36,6 +36,8 @@ import * as workflowStore from '../storage/workflow-store.js';
 import * as pluginService from './plugin.js';
 import { executeCommandNode } from './workflow-command-runner.js';
 import { getThinkingRuntimeConfig } from './llm-model-config.js';
+import * as workspaceService from './workspace.js';
+import { buildAgentPrompt } from '../ws/agent-prompt.js';
 
 interface ExecutionManagerDeps {
   interactionManager: InteractionManager
@@ -780,29 +782,7 @@ export class ExecutionManager {
 
     appendLog('info', 'Executing agent_run node');
 
-    // If agentConfigId is specified, use agent-spaces Agent runtime
-    const agentConfigId = resolvedData.agentConfigId;
-    if (agentConfigId) {
-      return this.executeAgentWithRuntime(session, node, resolvedData, appendLog);
-    }
-
-    // Fallback: use interaction manager (client-side execution)
-    const result = await this.deps.interactionManager.request({
-      clientId: session.ownerClientId,
-      executionId: session.id,
-      workflowId: session.workflow.id,
-      nodeId: node.id,
-      interactionType: 'agent_chat',
-      schema: {
-        prompt,
-        systemPrompt: typeof resolvedData.systemPrompt === 'string' ? resolvedData.systemPrompt : undefined,
-        cwd: typeof resolvedData.cwd === 'string' ? resolvedData.cwd : undefined,
-        workflowId: session.workflow.id,
-        workflowName: session.workflow.name,
-      },
-    });
-    appendLog('info', 'Agent execution completed');
-    return result;
+    return this.executeAgentWithRuntime(session, node, resolvedData, appendLog);
   }
 
   private async executeAgentWithRuntime(
@@ -813,10 +793,18 @@ export class ExecutionManager {
     const { createAgentRuntime } = await import('../adapters/agent-runtime.js');
     const agentService = await import('./agent.js');
 
-    const agentConfigId = resolvedData.agentConfigId as string;
-    const presets = agentService.listPresets(session.workflow.id);
-    const preset = presets.find(p => p.id === agentConfigId);
-    if (!preset) throw new Error(`Agent preset not found: ${agentConfigId}`);
+    const workspaceId = resolveWorkflowAgentWorkspaceId();
+    const workspace = workspaceService.getById(workspaceId);
+    const agentConfigId = typeof resolvedData.agentConfigId === 'string'
+      ? resolvedData.agentConfigId.trim()
+      : '';
+    const presets = agentService.listPresets(workspaceId).filter(p => p.enabled !== false);
+    const preset = agentConfigId
+      ? presets.find(p => p.id === agentConfigId)
+      : presets[0];
+    if (!preset) {
+      throw new Error(agentConfigId ? `Agent preset not found: ${agentConfigId}` : 'No enabled agent preset available');
+    }
 
     appendLog('info', `Using agent: ${preset.name || preset.id}`);
 
@@ -851,8 +839,8 @@ export class ExecutionManager {
       .join('\n\n');
     const workingDir = typeof resolvedData.cwd === 'string' && resolvedData.cwd.trim()
       ? resolvedData.cwd.trim()
-      : agentService.resolveWorkingDir(session.workflow.id, preset);
-    const configDir = agentService.getAgentConfigDir(session.workflow.id, preset);
+      : agentService.resolveWorkingDir(workspaceId, preset);
+    const configDir = agentService.getAgentConfigDir(workspaceId, preset);
     const sandboxDirs = uniqueStrings([
       ...normalizeStringList(preset.sandboxDirs),
       ...normalizeStringList(resolvedData.additionalDirectories),
@@ -863,23 +851,34 @@ export class ExecutionManager {
     appendLog('info', `Runtime: ${preset.runtimeKind || 'open-agent-sdk'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
     if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
 
-    const result = await runtime.execute(fullPrompt, workingDir, {
-      maxTurns: 100,
-      mcpServers,
-      skills,
-      configDir,
-      sandboxDirs,
-      systemPrompt: preset.systemPrompt,
-      outputStyle: preset.outputStyle,
-      userPrompt: prompt,
-      onEvent: (event) => {
-        if (event.type === 'output') {
-          appendLog('info', event.line);
-        } else if (event.type === 'tool_use') {
-          appendLog('info', `Tool: ${event.name}`);
-        }
+    const result = await runtime.execute(
+      buildAgentPrompt(workspaceId, preset.systemPrompt, fullPrompt, [], {
+        runtimeKind: preset.runtimeKind,
+        mcpServers: Object.keys(mcpServers ?? {}),
+        skills,
+        boundDirs: workspace?.boundDirs ?? [],
+        workingDir,
+        excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
+      }),
+      workingDir,
+      {
+        maxTurns: 100,
+        mcpServers,
+        skills,
+        configDir,
+        sandboxDirs,
+        systemPrompt: preset.systemPrompt,
+        outputStyle: preset.outputStyle,
+        userPrompt: prompt,
+        onEvent: (event) => {
+          if (event.type === 'output') {
+            appendLog('info', event.line);
+          } else if (event.type === 'tool_use') {
+            appendLog('info', `Tool: ${event.name}`);
+          }
+        },
       },
-    });
+    );
 
     if (!result.success) {
       throw new Error(result.summary || 'Agent execution failed');
@@ -888,6 +887,7 @@ export class ExecutionManager {
     appendLog('info', `Agent completed: ${result.summary || 'done'}`);
     return {
       content: result.output?.join('\n').trim() || result.summary,
+      result: result.output?.join('\n').trim() || result.summary,
       output: result.output || result.summary,
       summary: result.summary,
       usage: result.usage,
@@ -901,6 +901,8 @@ export class ExecutionManager {
         enabledPlugins: session.workflow.enabledPlugins,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
+        workspaceId,
+        agentConfigId: preset.id,
       },
     };
   }
@@ -2006,6 +2008,10 @@ function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefi
     || provider === 'openai-chat-completions-to-anthropic-messages'
   ) return undefined;
   return apiBase;
+}
+
+function resolveWorkflowAgentWorkspaceId(): string {
+  return workspaceService.getAll()[0]?.id ?? 'default';
 }
 
 // Composite node helpers (from workflow-composite.ts shared types)

@@ -513,6 +513,7 @@
       "label": "AI Execute",
       "description": "Invoke an Agent to run a task",
       "props": {
+        "agentConfigId": "Agent preset ID",
         "prompt": "Task",
         "systemPrompt": "System Prompt",
         "cwd": "Working Directory",
