@@ -80,36 +80,205 @@
   "mode": "multi",
   "roles": [
     {
-      "id": "role_mqc6cj7v_l1dg9b",
-      "name": "默认女声",
-      "icon": "👩",
-      "provider": "qianyin",
-      "voiceId": "521"
-    },
-    {
-      "id": "role_mqc6swub_ox8el3",
-      "name": "test",
-      "icon": "🎵",
-      "provider": "fishaudio",
-      "voiceId": "eeba9e2d32254268b7aa9c135cb335f7"
+      "id": "role_mqcvlclh_pi5r9o",
+      "name": "霸道男声",
+      "icon": "🔥",
+      "provider": "minimax",
+      "voiceId": "male-qn-badao"
     }
   ],
   "messages": [
     {
-      "id": "msg_mqc6gk6k_7kob0j",
-      "roleId": "role_mqc6cj7v_l1dg9b",
-      "text": "大家好",
-      "audioUrl": "https://lang-pro-upload.oss-cn-beijing.aliyuncs.com/ttspro/202606/243d52d1-05ed-410f-8faf-eba174f4cbfb.mp3?Expires=1781388212&OSSAccessKeyId=LTAI5tMkC4z4WQz5Mk7f6AXX&Signature=wCTog%2BRwwmgwrVW0Mo1ZxTiIfFM%3D",
+      "id": "msg_mqcvlclh_zksg1f",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：今天咱们来聊一个很有意思的心理话题。设想一下这个场景：昨天下午，一个年轻人在咖啡馆看书，服务员不小心把咖啡洒在了他刚买的新外套上。这人当场火冒三丈，对着服务员大吼大叫，完全不顾及公共场合的体面。如果是你，你会怎么看这件事？",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d00711d39ca47809aeebe72048d14_1781386611548_1176.mp3?Expires=1781473011&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=lw6vx5rH%2Ft0mq6kuQlJH63qiZcc%3D",
       "status": "done",
       "error": ""
     },
     {
-      "id": "msg_mqc6da8j_fwyofp",
-      "roleId": "role_mqc6swub_ox8el3",
-      "text": "很高兴见到大家",
-      "audioUrl": "http://127.0.0.1:3100/static/uploads/1781344976754_46q1jf.mp3",
+      "id": "msg_mqcvlclh_6e3g60",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：这听起来非常真实。那个年轻人平时可能很温文尔雅，但那一刻他觉得自己完全被愤怒冲昏了头脑，失去了理智，认为这是不可抗力的结果，是“因为愤怒所以大喊”。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0071ba72a42d3683da84a1b6a6e1_1781386611226_7399.mp3?Expires=1781473011&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=kSiY3%2BEOUY60t8Q%2BEzxkxY706kg%3D",
       "status": "done",
       "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_r05z5k",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：对，这就是我们通常的理解嘛。这不就是典型的“原因导致结果”吗？先有被泼咖啡这个原因，后有愤怒这个结果，这中间难道还能有什么别的猫腻？",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007123bfdc686dd70e8f33648830_1781386611345_6341.mp3?Expires=1781473011&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=xSnbg%2FJv2qXo1prjJfKMK1IFCDo%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_apvjsu",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：阿德勒心理学并不这么认为。如果按照那个年轻人的逻辑，愤怒是无法抗拒的。那我们来做个假设：如果当时那个年轻人手里恰好拿着一把刀，他一怒之下把服务员刺伤了。他能不能也辩解说：“我控制不了自己，这是不可抗力，全是愤怒的错”？",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0073ed52f2fe807bb50e74224a2e_1781386613436_1464.mp3?Expires=1781473013&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=w9qeSTomX6soFcYoEJZIojbxns4%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_yt5j9m",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：这……这也太极端了吧！这完全不能相提并论啊。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d00734ede07e9c3e87c0acd7e3be5_1781386612543_5819.mp3?Expires=1781473012&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=IAwPt27XSAWtlLaD3q3gScZPegA%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_b3zlyj",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：其实不是极端。如果承认人无法抵抗感情，那所有的暴行都可以推卸给情绪了。但显然，我们并没有那样做。这说明，愤怒并不是一种无法控制的力量。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0073e0ce3c9b62203d90b903c8dc_1781386613189_1081.mp3?Expires=1781473013&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=DJOgEVRi9E4Fy4bBWICkfkyUnCw%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_wwq320",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：哦？那你的意思是，那个年轻人大吼大叫，并不是真的因为失控？",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d00743d3e4d5f6ccc9f9fab355563_1781386613800_9218.mp3?Expires=1781473013&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=lAiGvXMXZPUGMVD10IxfApOVulc%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_l5iwqf",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：是的。真相其实反过来了：他不是为了发泄愤怒才大喊，而是“为了达到大喊这个目的，才捏造了愤怒”。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d00751e7b3eca539779ab94cc8aa1_1781386614665_9354.mp3?Expires=1781473014&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=4mNcU6lGeebvxTNZhwreR62NbqM%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_m0aube",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：捏造愤怒？这个说法太惊人了。你是说他是故意的？",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0075b396329db04f9c2e285c6280_1781386614678_2898.mp3?Expires=1781473014&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=W5RduT8aBmetqEWVOeyr3BjQosg%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_b4pj6l",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：可以这么理解。在他的潜意识里，有一个先行的目的——他要通过大声吼叫来震慑服务员，让对方屈服，完全听从他的指挥。为了更高效、更省力地达成这个目的，他顺手制造出了“愤怒”这个工具。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0075683fa40acc4e0d6416d691c1_1781386615912_2557.mp3?Expires=1781473016&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=l6UiBqr47Nc3HkKdnAyInv47BmQ%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_4qrppe",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：但这太牵强了吧？当时那种突发情况，哪有时间去想什么目的不目的的？愤怒不就是一种瞬间爆发的生理反应吗？",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007656cd10fd52fc235b1867bf6e_1781386616280_9376.mp3?Expires=1781473016&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=xAxDsW57U7BPVTqfgcQ92tLIAVw%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_4r8m6v",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：表面上看是瞬间的。但你想，服务员如果不小心洒了咖啡，只要好好说话，对方肯定会郑重道歉，还会帮忙擦拭，甚至承担干洗费。这些其实那个年轻人心里都明白，但他嫌麻烦，不想走正常的沟通程序。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0076bba3085a8895a731d36e7789_1781386616578_785.mp3?Expires=1781473016&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=J9zdzvfTVMIbV0tH1ifXqkSCl0Q%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_u6g9hk",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：所以他就选择了最简单粗暴的方式？",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0078b59908d0a72de99fa8ec769f_1781386616867_4180.mp3?Expires=1781473016&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=jey2WV46qB1OH4P1Qx2r8%2B8eWPs%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_eaho38",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：没错。面对一个看起来弱势的服务员，使用“愤怒”这种手段能最快达到让对方屈服的效果。这比起心平气和地讲道理要“安直”得多。所以，愤怒是被制造出来作为武器使用的。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0078b132c5cf5b9d98dd7ef27fdc_1781386618306_1991.mp3?Expires=1781473018&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=kfZLRD9gp%2FIADcSOnR%2BFNgIfu7o%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_7vmtfc",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：我还是有点难以接受。真的能在一瞬间“制造”出情绪吗？我自己生气的时候感觉那是完全不受控制的啊。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0078cfd8391c8c323733d9bfc55a_1781386618439_2603.mp3?Expires=1781473018&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=2JOJhpmpn4bEVz6p7AJNiuWaMQ8%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_uukn5u",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：我给你讲个例子。有位母亲正在和女儿大声争吵，怒火冲天。突然电话响了，是女儿学校的班主任打来的。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d0079111176a377803c0c9f1fa543_1781386618431_4270.mp3?Expires=1781473018&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=NAZFxVRamHWlv1O083SbJ6W%2BKLY%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_vlkpo8",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：这情况确实很常见。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007a169b11bfeed18bc168856c62_1781386619160_3219.mp3?Expires=1781473019&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=8MRgpTiuH3JzUDcY79OcwaQ1xfQ%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_fmc591",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：母亲拿起听筒的一瞬间，声音立马变得彬彬有礼，非常有礼貌地和老师聊了五分钟，挂断电话后，转脸又开始对着女儿怒吼。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007a22a1a3aa5216b768069b6daa_1781386620082_9449.mp3?Expires=1781473020&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=2zTGw%2FRv1DJW2Y80zfZrlYuvM9o%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_u4l3pp",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：哈哈，这个画面感太强了，确实很多人都经历过。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007aca621664a8aea16bb652e5b7_1781386619682_2416.mp3?Expires=1781473019&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=%2BzR9N%2F4mSCBp3tpYjz9bDwoU8CM%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_b335c6",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：你看，这就证明了愤怒是可以“收放自如”的道具。它不是那种一旦来了就停不下来的洪水猛兽。只要有需要，比如面对老师，她就能瞬间把愤怒收起来；为了压制女儿，又能瞬间拿出来。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007b06986043990803b12d65c137_1781386620920_1438.mp3?Expires=1781473021&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=5sBngIHLeKWQeZZ50oNy3CkHfqg%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_umwx8h",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：原来如此。这么说来，愤怒确实更像是一个为了达到某种目的而随时拿出来的“工具”。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007b7e4669dd4bb9184a988138b6_1781386621001_8281.mp3?Expires=1781473021&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=ETGmwFpr%2FeSGavoouhOm9gG3FbU%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_44k4l6",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：正是如此。这就是目的论的核心观点。我们不是为了愤怒而行动，而是为了达成某个目的，选择了愤怒这种手段。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007cfa9ce7fb9a42c82e17bda941_1781386621688_1435.mp3?Expires=1781473021&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=11bQkT228SApCIOBjNZ41Kmn8k4%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_wz9zfm",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "主持人：天哪，这么一想，感觉把人类心理的遮羞布都扯下来了。难道我们所有的情绪都是为了某种目的而服务的吗？这听起来有点太冷酷、太虚无主义了。",
+      "audioUrl": "https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/audio%2Feffect%2F067d007dfc032bc72b68ac6a65d6d0eb_1781386622866_1344.mp3?Expires=1781473022&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=UNEPAaO5fRy2rSxZXiP7XKEMaN0%3D",
+      "status": "done",
+      "error": ""
+    },
+    {
+      "id": "msg_mqcvlclh_kkw1ty",
+      "roleId": "role_mqcvlclh_pi5r9o",
+      "text": "嘉宾：乍听之下确实冷酷，甚至有点可怕。但只有理解了这一点，我们才能真正意识到，其实我们是可以掌控自己人生的，而不是被过去的原因或者突发的情绪所支配。",
+      "audioUrl": "",
+      "status": "error",
+      "error": "未获取到音频地址"
     }
   ]
 }

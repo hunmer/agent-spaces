@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface Avatar {
@@ -32,9 +33,11 @@ interface AvatarGroupProps {
   className?: string;
   avatarUrls: Avatar[];
   size?: AvatarSize;
+  /** hover 某个 avatar 时渲染的悬浮卡片；提供后不再展开默认名称 */
+  renderHoverCard?: (index: number) => ReactNode;
 }
 
-const AvatarGroup = ({ className, avatarUrls = [], size = 'md' }: AvatarGroupProps) => {
+const AvatarGroup = ({ className, avatarUrls = [], size = 'md', renderHoverCard }: AvatarGroupProps) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const s = sizeMap[size];
@@ -73,7 +76,7 @@ const AvatarGroup = ({ className, avatarUrls = [], size = 'md' }: AvatarGroupPro
     >
       {avatarUrls.map((avatar, index) => {
         const isHovered = hoveredIndex === index;
-        const showName = isHovered;
+        const showName = isHovered && !renderHoverCard;
 
         return (
           <div
@@ -111,6 +114,11 @@ const AvatarGroup = ({ className, avatarUrls = [], size = 'md' }: AvatarGroupPro
                   s.text,
                 )}>
                   {avatar.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {renderHoverCard && isHovered && (
+                <div className="absolute left-0 top-full z-50 pt-1">
+                  {renderHoverCard(index)}
                 </div>
               )}
             </div>

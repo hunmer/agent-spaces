@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { MiniAppProject, MiniAppAgentConfig } from '@agent-spaces/sdk';
-import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
+import type { WorkflowAgentTimelineItem, PluginConfigField } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
-import { pluginApi } from '@/lib/workflow-plugin-api';
+import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { getWS } from '@/lib/ws';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -18,13 +18,15 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Eraser } from 'lucide-react';
+import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { MINI_APP_HIDDEN_FIELDS, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
 import { MiniAppRenderer, type MiniAppTaskEvent } from './mini-app-renderer';
+import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
+import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
 
 interface MiniAppPreviewProps {
   type: 'react' | 'html';
@@ -343,14 +345,14 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   const [projects, setProjects] = useState<MiniAppProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
+  const [allPlugins, setAllPlugins] = useState<WorkflowPlugin[]>([]);
   const [taskEvents, setTaskEvents] = useState<MiniAppTaskEvent[]>([]);
 
   // Load plugin metadata for avatar display
   useEffect(() => {
     if (!projectId) return;
     pluginApi.list().then((list) => {
-      setAllPlugins(list.map(p => ({ id: p.id, name: p.name, iconPath: p.iconPath })));
+      setAllPlugins(list);
     }).catch(() => {});
   }, [projectId]);
 
@@ -368,16 +370,26 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     });
   }, [projectId]);
 
-  const enabledPluginAvatars = useMemo(() => {
+  const enabledPluginsList = useMemo(() => {
     if (!enabledPlugins?.length) return [];
     const enabledSet = new Set(enabledPlugins);
-    return allPlugins
-      .filter(p => enabledSet.has(p.id))
-      .map(p => ({
-        imageUrl: p.iconPath ? resolveServerAssetUrl(`/api/plugins/${p.id}/icon`) : '',
-        name: p.name,
-      }));
+    return allPlugins.filter(p => enabledSet.has(p.id));
   }, [enabledPlugins, allPlugins]);
+
+  const enabledPluginAvatars = useMemo(() => {
+    return enabledPluginsList.map(p => ({
+      imageUrl: p.iconPath ? resolveServerAssetUrl(`/api/plugins/${p.id}/icon`) : '',
+      name: p.name,
+    }));
+  }, [enabledPluginsList]);
+
+  // 插件配置弹窗（hover 卡片齿轮触发）
+  const [configPlugin, setConfigPlugin] = useState<{ id: string; name: string; config: PluginConfigField[] } | null>(null);
+  const openPluginConfig = useCallback((pluginId: string) => {
+    const plugin = allPlugins.find(p => p.id === pluginId);
+    if (!plugin?.config?.length) return;
+    setConfigPlugin({ id: plugin.id, name: plugin.name, config: plugin.config });
+  }, [allPlugins]);
 
   // Load projects when drawer opens
   const handleDrawerOpen = useCallback((open: boolean) => {
@@ -409,7 +421,49 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         <div className="flex items-center shrink-0 px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
           <div className="flex-1 min-w-0">
             {enabledPluginAvatars.length > 0 && (
-              <AvatarGroup avatarUrls={enabledPluginAvatars} size="sm" />
+              <AvatarGroup
+                avatarUrls={enabledPluginAvatars}
+                size="sm"
+                renderHoverCard={(index) => {
+                  const plugin = enabledPluginsList[index];
+                  if (!plugin) return null;
+                  const hasConfig = (plugin.config?.length ?? 0) > 0;
+                  return (
+                    <div className="w-56 rounded-lg border bg-popover p-3 text-left shadow-lg">
+                      <div className="flex items-start gap-2">
+                        <PluginIcon
+                          source={plugin.iconPath
+                            ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) }
+                            : { type: 'builtin', variant: 'local' }}
+                          className="h-7 w-7 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-medium truncate">{plugin.name}</div>
+                          {plugin.version && (
+                            <div className="text-[10px] text-muted-foreground">v{plugin.version}</div>
+                          )}
+                        </div>
+                        {hasConfig && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 shrink-0"
+                            title={t('pluginTools.config')}
+                            onClick={() => openPluginConfig(plugin.id)}
+                          >
+                            <Settings className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      {plugin.description && (
+                        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground line-clamp-3">
+                          {plugin.description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }}
+              />
             )}
           </div>
           <span className="text-sm font-medium truncate max-w-[60%] text-center">
@@ -483,6 +537,13 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         taskEvents={taskEvents}
         files={files}
         mainFile={mainFile}
+      />
+      <WorkflowPluginConfigDialog
+        open={Boolean(configPlugin)}
+        onOpenChange={(o) => { if (!o) setConfigPlugin(null); }}
+        pluginId={configPlugin?.id || null}
+        pluginName={configPlugin?.name || ''}
+        config={configPlugin?.config || []}
       />
     </div>
   );

@@ -102,7 +102,8 @@
     "title": "插件管理",
     "store": "插件商店",
     "noPlugins": "未安装任何插件",
-    "tools": "{count} tools"
+    "tools": "{count} tools",
+    "config": "配置"
   },
   "toolExecute": {
     "noParams": "此工具无需参数",
