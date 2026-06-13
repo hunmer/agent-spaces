@@ -644,6 +644,8 @@ export class ExecutionManager {
         return this.executePluckArrayKey(resolvedData);
       case 'array_text_replace':
         return this.executeArrayTextReplace(resolvedData);
+      case 'parse_json':
+        return this.executeParseJson(resolvedData);
       case 'set_variable':
         return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
@@ -734,6 +736,17 @@ export class ExecutionManager {
     }
 
     return { result };
+  }
+
+  private executeParseJson(resolvedData: Record<string, any>): Record<string, unknown> {
+    const text = String(resolvedData.text ?? '').trim();
+    if (!text) return { result: {} };
+    try {
+      const parsed = JSON.parse(text);
+      return { result: parsed && typeof parsed === 'object' ? parsed : { value: parsed } };
+    } catch {
+      return { result: {} };
+    }
   }
 
   private executeArrayTextReplace(resolvedData: Record<string, any>): Record<string, string[]> {

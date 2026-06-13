@@ -466,6 +466,16 @@
         }
       }
     },
+    "parse_json": {
+      "label": "Parse JSON",
+      "description": "Parse a JSON string into an object and output as result object",
+      "props": {
+        "text": {
+          "label": "JSON Text",
+          "tooltip": "The JSON string to parse, e.g. {\"key\":\"value\"}"
+        }
+      }
+    },
     "set_variable": {
       "label": "Set Variable",
       "description": "Write or overwrite workflow runtime variables, set multiple at once",

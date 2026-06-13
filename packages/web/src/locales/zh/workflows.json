@@ -466,6 +466,16 @@
         }
       }
     },
+    "parse_json": {
+      "label": "解析 JSON",
+      "description": "将 JSON 字符串解析为对象，输出 result 对象",
+      "props": {
+        "text": {
+          "label": "JSON 文本",
+          "tooltip": "要解析的 JSON 字符串，例如 {\"key\":\"value\"}"
+        }
+      }
+    },
     "set_variable": {
       "label": "设置变量",
       "description": "写入或覆盖工作流运行时变量，可一次设置多个变量",

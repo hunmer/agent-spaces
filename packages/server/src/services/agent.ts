@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path';
 import type { AgentConfig, AgentSession, AgentSessionStatus, AgentUsageDashboard, LLMProvider, MessageTokenUsage } from '@agent-spaces/shared';
 import { BUILT_IN_AGENT_TOOLS } from '@agent-spaces/shared';
@@ -481,8 +482,9 @@ export function resolveWorkingDir(workspaceId: string, preset: AgentConfig): str
   const mappedWorkingDir = resolveWorkspacePath(ws?.boundDirs, preset.workingDir);
   if (mappedWorkingDir) return mappedWorkingDir;
 
-  if (!ws) return process.cwd();
-  return ws.boundDirs[0] || process.cwd();
+  const userDir = homedir();
+  if (!ws) return userDir;
+  return ws.boundDirs[0] || userDir;
 }
 
 function resolveWorkspacePath(boundDirs: string[] | undefined, workingDir?: string): string | undefined {

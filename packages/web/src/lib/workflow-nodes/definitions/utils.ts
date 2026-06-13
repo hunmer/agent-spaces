@@ -110,4 +110,23 @@ export const utilsNodes: NodeTypeDefinition[] = [
     ],
     outputs: [{ key: 'result', type: 'string[]' }],
   },
+  {
+    type: 'parse_json',
+    label: 'nodes.parse_json.label',
+    category: 'nodes.categories.utilities',
+    icon: 'Braces',
+    description: 'nodes.parse_json.description',
+    properties: [
+      {
+        key: 'text',
+        label: 'nodes.parse_json.props.text.label',
+        type: 'text',
+        required: true,
+        inputMode: 'variable',
+        tooltip: 'nodes.parse_json.props.text.tooltip',
+        placeholder: '{"key":"value"}',
+      },
+    ],
+    outputs: [{ key: 'result', type: 'object' }],
+  },
 ];

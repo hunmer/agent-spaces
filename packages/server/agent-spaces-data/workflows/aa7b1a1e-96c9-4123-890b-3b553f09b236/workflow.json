@@ -320,12 +320,13 @@
     }
   ],
   "createdAt": 1781255038446,
-  "updatedAt": 1781347589059,
+  "updatedAt": 1781348141071,
   "enabledPlugins": [
     "workflow.aliyun-ai",
     "workflow.epub-parser",
     "workflow.fish-audio",
-    "workflow.custom-view-demo"
+    "workflow.custom-view-demo",
+    "workflow.file-system"
   ],
   "groups": []
 }
