@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useLLMStore } from "@/stores/llm";
 import {
@@ -80,7 +80,6 @@ export function AgentDetail({
   hiddenFields?: AgentDetailHiddenFields;
 }) {
   const t = useTranslations("agent");
-  const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState("");
   const [optimizing, setOptimizing] = useState(false);
@@ -100,16 +99,36 @@ export function AgentDetail({
   const uniqueRoleOptions = Array.from(new Set(roleOptions));
   const selectedProvider = llmProviders.find((p) => p.id === agent.providerId)
     ?? llmProviders.find((p) => p.apiBase === agent.apiBase && p.apiKey === agent.apiKey);
+  const dynamicModelOptions = useMemo(() => {
+    if (!selectedProvider) return [];
+    return llmModels
+      .filter((m) => m.provider === selectedProvider.name)
+      .map((m) => ({ value: m.modelId, label: m.name }));
+  }, [selectedProvider, llmModels]);
 
   useEffect(() => {
     ensureLLM();
   }, [ensureLLM]);
 
+  // 当 provider 确定后（自动匹配或手动选择），将其连接字段同步到 agent。
+  // apiBase / apiKey / modelProvider 在 UI 上是 disabled，只能由 provider 决定，
+  // 因此只要 selectedProvider 存在，就保证这些字段与 provider 一致。
   useEffect(() => {
-    if (!agent.providerId && selectedProvider) {
+    if (!selectedProvider) return;
+    if (!agent.providerId) {
       onChange("providerId", selectedProvider.id);
     }
-  }, [agent.providerId, onChange, selectedProvider]);
+    if (agent.apiBase !== selectedProvider.apiBase) {
+      onChange("apiBase", selectedProvider.apiBase);
+    }
+    if (agent.apiKey !== selectedProvider.apiKey) {
+      onChange("apiKey", selectedProvider.apiKey);
+    }
+    const nextModelProvider = (selectedProvider.modelProvider || "") as AgentPreset["modelProvider"];
+    if (agent.modelProvider !== nextModelProvider) {
+      onChange("modelProvider", nextModelProvider);
+    }
+  }, [agent.providerId, agent.apiBase, agent.apiKey, agent.modelProvider, onChange, selectedProvider]);
 
   const handleSelectProvider = useCallback(
     (provider: LLMProvider) => {
@@ -118,10 +137,8 @@ export function AgentDetail({
       onChange("apiKey", provider.apiKey);
       onChange("modelProvider", (provider.modelProvider || "") as AgentPreset["modelProvider"]);
       const providerModels = llmModels.filter((m) => m.provider === provider.name);
-      const options = providerModels.map((m) => ({ value: m.modelId, label: m.name }));
-      setDynamicModelOptions(options);
-      if (options.length > 0) {
-        onChange("modelId", options[0].value);
+      if (providerModels.length > 0) {
+        onChange("modelId", providerModels[0].modelId);
       }
     },
     [llmModels, onChange],
