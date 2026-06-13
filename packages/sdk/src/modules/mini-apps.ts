@@ -28,6 +28,7 @@ export interface MiniAppAgentConfig {
   /** 引用全局 Agent Preset id，复用其密钥（可选） */
   agentId?: string;
   modelProvider?: string;
+  providerId?: string;
   modelId?: string;
   apiKey?: string;
   apiBase?: string;

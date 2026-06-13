@@ -10,6 +10,7 @@ import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool } from '../adapters/agent-runtime-types.js';
 import { createMiniAppFunctionTools } from './builtin-tools/mini-app-tools.js';
 import { listPresets } from './agent.js';
+import { listProviders } from '../storage/llm-store.js';
 
 export interface ApiCtx {
   projectId: string;
@@ -93,6 +94,7 @@ export function buildApiFunctionTools(
 
 export interface ResolvedAgentCredentials {
   modelProvider?: string;
+  providerId?: string;
   modelId?: string;
   apiKey?: string;
   apiBase?: string;
@@ -112,6 +114,7 @@ export function resolveAgentCredentials(
   entry: {
     agentId?: string;
     modelProvider?: string;
+    providerId?: string;
     modelId?: string;
     apiKey?: string;
     apiBase?: string;
@@ -122,6 +125,7 @@ export function resolveAgentCredentials(
   presets: Array<{
     id: string;
     modelProvider?: string;
+    providerId?: string;
     modelId?: string;
     apiKey?: string;
     apiBase?: string;
@@ -131,15 +135,30 @@ export function resolveAgentCredentials(
   }>,
 ): ResolvedAgentCredentials {
   const preset = entry.agentId ? presets.find((p) => p.id === entry.agentId) : undefined;
+  const provider = resolveProvider(entry.providerId, entry.apiBase, entry.apiKey);
   return {
     modelProvider: entry.modelProvider ?? preset?.modelProvider,
+    providerId: entry.providerId ?? preset?.providerId,
     modelId: entry.modelId ?? preset?.modelId,
-    apiKey: entry.apiKey ?? preset?.apiKey,
-    apiBase: entry.apiBase ?? preset?.apiBase,
+    apiKey: provider?.apiKey ?? entry.apiKey ?? preset?.apiKey,
+    apiBase: provider?.apiBase ?? entry.apiBase ?? preset?.apiBase,
     systemPrompt: entry.systemPrompt ?? preset?.systemPrompt,
     temperature: entry.temperature ?? preset?.temperature,
     maxTokens: entry.maxTokens ?? preset?.maxTokens,
   };
+}
+
+function resolveProvider(providerId?: string, apiBase?: string, apiKey?: string) {
+  const providers = listProviders();
+  if (providerId) {
+    const provider = providers.find((entry) => entry.id === providerId);
+    if (provider) return provider;
+  }
+  if (!apiBase && !apiKey) return undefined;
+  return providers.find((provider) =>
+    (!apiBase || provider.apiBase === apiBase)
+    && (!apiKey || provider.apiKey === apiKey),
+  );
 }
 
 export interface MiniAppAgentRunInput {
@@ -176,7 +195,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const entry = configs.find((c: any) => c && c.id === agentId) as
     | {
         id: string; name: string; avatar?: string; agentId?: string;
-        modelProvider?: string; modelId?: string; apiKey?: string; apiBase?: string;
+        modelProvider?: string; providerId?: string; modelId?: string; apiKey?: string; apiBase?: string;
         systemPrompt?: string; temperature?: number; maxTokens?: number;
         tools?: { api?: boolean; plugin?: boolean };
       }

@@ -416,14 +416,23 @@ export function upsertAgentConfig(
 ): Record<string, unknown> {
   const filePath = join(projectDir(projectId), 'agents.json');
   const configs: unknown[] = readAgentsConfig(projectId) ?? [];
+  const storedEntry = toStoredAgentConfig(entry);
   const idx = configs.findIndex(
     (c) => !!c && typeof c === 'object' && !Array.isArray(c) && (c as Record<string, unknown>).id === agentId,
   );
-  if (idx >= 0) configs[idx] = entry;
-  else configs.push(entry);
+  if (idx >= 0) configs[idx] = storedEntry;
+  else configs.push(storedEntry);
   writeJsonFile(filePath, configs);
   touchProject(projectId);
-  return entry;
+  return storedEntry;
+}
+
+function toStoredAgentConfig(entry: Record<string, unknown>): Record<string, unknown> {
+  const { apiKey: _apiKey, apiBase: _apiBase, baseURL: _baseURL, ...stored } = entry;
+  void _apiKey;
+  void _apiBase;
+  void _baseURL;
+  return stored;
 }
 
 export interface MiniAppChatMessage {
