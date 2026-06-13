@@ -7,7 +7,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-08T05:18:45.999Z",
-    "updatedAt": "2026-06-13T22:02:41.207Z",
+    "updatedAt": "2026-06-13T22:17:03.025Z",
     "enabledPlugins": [
       "workflow.minimax",
       "workflow.fish-audio",
@@ -15,7 +15,7 @@
     ],
     "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
     "description": "配音界面",
-    "icon": "🎵",
+    "icon": "🗣️",
     "avatarUrl": ""
   },
   {
@@ -37,7 +37,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-11T15:44:06.059Z",
-    "updatedAt": "2026-06-13T08:48:16.703Z",
+    "updatedAt": "2026-06-13T22:17:12.375Z",
     "agentConfigId": "49c45e3a-75be-4116-a1e3-b750e6466544",
     "enabledPlugins": [
       "workflow.minimax"
@@ -62,7 +62,8 @@
           "plugin": false
         }
       }
-    ]
+    ],
+    "icon": "🎵"
   },
   {
     "id": "database-demo",
@@ -72,7 +73,8 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T09:48:13.813Z",
-    "updatedAt": "2026-06-13T08:54:34.519Z"
+    "updatedAt": "2026-06-13T22:17:38.670Z",
+    "icon": "💻"
   },
   {
     "id": "copywriting",
@@ -83,7 +85,8 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T10:29:24.362Z",
-    "updatedAt": "2026-06-13T08:54:15.768Z"
+    "updatedAt": "2026-06-13T22:17:48.342Z",
+    "icon": "✍️"
   },
   {
     "id": "ai_image_video",
@@ -101,7 +104,7 @@
     ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T20:28:17.221Z",
-    "updatedAt": "2026-06-13T21:23:53.457Z",
+    "updatedAt": "2026-06-13T22:24:51.697Z",
     "enableAgents": true,
     "agents": [
       {
@@ -122,7 +125,8 @@
           "plugin": false
         }
       }
-    ]
+    ],
+    "icon": "📷"
   },
   {
     "id": "podcast_generator",
@@ -138,9 +142,10 @@
     ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T20:42:23.209Z",
-    "updatedAt": "2026-06-14T00:00:00.000Z",
+    "updatedAt": "2026-06-13T22:18:25.689Z",
     "enabledPlugins": [
       "workflow.epub-parser"
-    ]
+    ],
+    "icon": "🔈"
   }
 ]

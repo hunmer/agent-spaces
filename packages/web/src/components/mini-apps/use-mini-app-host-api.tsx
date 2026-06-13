@@ -238,19 +238,18 @@ export function useMiniAppHostApi(projectId: string) {
       return Object.prototype.hasOwnProperty.call(payload, 'result') ? payload.result : payload;
     };
 
-    // Workflow UI 任务事件订阅：转发 miniApp.* WS 事件给沙箱项目代码
-    const TASK_EVENTS = [
-      'miniApp.taskSnapshot',
-      'miniApp.taskStarted',
-      'miniApp.taskFinished',
-      'miniApp.taskFailed',
-      'miniApp.clientRequest',
-      'miniApp.ttsLaunch',
-    ] as const;
+    // Workflow UI 任务事件订阅：转发所有 miniApp.* WS 事件给沙箱项目代码。
+    // 用通配符订阅 + 前缀过滤，避免每加一个自定义事件就改白名单
+    // （例如 agent api.js broadcast 的 miniApp.setForm / miniApp.playerAction 等）。
     const subscribeTaskEvents = (cb: (event: string, data: any) => void) => {
       const ws = getWS(projectId);
-      const offs = TASK_EVENTS.map((evt) => ws.on(evt, (data) => cb(evt, data)));
-      return () => offs.forEach((off) => { try { off(); } catch { /* noop */ } });
+      const off = ws.on('*', (payload: any) => {
+        const event = payload?.event;
+        if (typeof event === 'string' && event.startsWith('miniApp.')) {
+          cb(event, payload.data);
+        }
+      });
+      return () => { try { off(); } catch { /* noop */ } };
     };
 
     // ---- Config: 服务端为唯一写入方，UI 仅维护内存缓存 + 订阅变更 ----

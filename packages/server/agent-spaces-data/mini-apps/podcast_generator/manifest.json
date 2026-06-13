@@ -4,9 +4,17 @@
   "description": "上传 EPUB 电子书，选择章节，AI 阅读后生成双人播客对话脚本",
   "version": "1.0.0",
   "type": "react",
-  "tags": ["电子书", "播客", "EPUB", "AI"],
+  "tags": [
+    "电子书",
+    "播客",
+    "EPUB",
+    "AI"
+  ],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-12T20:42:23.209Z",
-  "updatedAt": "2026-06-14T00:00:00.000Z",
-  "enabledPlugins": ["workflow.epub-parser"]
+  "updatedAt": "2026-06-13T22:18:25.689Z",
+  "enabledPlugins": [
+    "workflow.epub-parser"
+  ],
+  "icon": "🔈"
 }

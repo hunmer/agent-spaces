@@ -418,7 +418,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
       {showToolbar && (
-        <div className="flex items-center shrink-0 px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
+        <div className="relative isolate z-40 flex items-center shrink-0 px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
           <div className="flex-1 min-w-0">
             {enabledPluginAvatars.length > 0 && (
               <AvatarGroup
@@ -429,7 +429,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                   if (!plugin) return null;
                   const hasConfig = (plugin.config?.length ?? 0) > 0;
                   return (
-                    <div className="w-56 rounded-lg border bg-popover text-popover-foreground p-3 text-left shadow-xl ring-1 ring-black/5 dark:ring-white/10">
+                    <div className="relative isolate z-[60] w-56 rounded-lg border bg-popover text-popover-foreground p-3 text-left shadow-xl ring-1 ring-black/5 dark:ring-white/10">
                       <div className="flex items-start gap-2">
                         <PluginIcon
                           source={plugin.iconPath

@@ -14,7 +14,7 @@
   ],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-12T20:28:17.221Z",
-  "updatedAt": "2026-06-13T21:23:53.457Z",
+  "updatedAt": "2026-06-13T22:24:51.697Z",
   "enableAgents": true,
   "agents": [
     {
@@ -35,5 +35,6 @@
         "plugin": false
       }
     }
-  ]
+  ],
+  "icon": "📷"
 }
