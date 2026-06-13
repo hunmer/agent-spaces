@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { readHistory } from '../utils/storage';
 
 const {
   Sheet, SheetTrigger, SheetContent, SheetTitle,
@@ -13,12 +14,8 @@ export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, 
   const [open, setOpen] = useState(false);
 
   const loadItems = useCallback(async () => {
-    try {
-      const data = await window.AgentSpacesUI.readConfigJson('music-history.json');
-      setItems(data || []);
-    } catch {
-      setItems([]);
-    }
+    const data = await readHistory();
+    setItems(data);
   }, []);
 
   useEffect(() => {

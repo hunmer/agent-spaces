@@ -3,6 +3,7 @@ import useAudioPlayer from './hooks/useAudioPlayer';
 import Background from './components/Background';
 import Player from './components/Player';
 import MusicGenerator from './components/MusicGenerator';
+import { readHistory, writeHistory } from './utils/storage';
 
 const { Sparkles, Alert, AlertTitle, AlertDescription, Loader2, RefreshCw } = window.AgentSpacesUI;
 
@@ -25,16 +26,11 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [playMode, setPlayMode] = useState('sequential');
 
-  // Load playlist from config
+  // Load playlist from local storage
   const loadPlaylist = useCallback(async () => {
-    try {
-      const data = await window.AgentSpacesUI.readConfigJson('music-history.json');
-      setPlaylist(data || []);
-      return data || [];
-    } catch {
-      setPlaylist([]);
-      return [];
-    }
+    const data = await readHistory();
+    setPlaylist(data);
+    return data;
   }, []);
 
   useEffect(() => {
@@ -92,13 +88,10 @@ export default function App() {
     setTrackInfo({ title, artist });
     setCurrentLyrics(lyrics || '');
 
-    // Save to config
+    // Save to local storage (per-project)
     try {
-      let existing = [];
-      try {
-        existing = await window.AgentSpacesUI.readConfigJson('music-history.json') || [];
-      } catch {}
-      await window.AgentSpacesUI.writeConfigJson('music-history.json', [
+      const existing = await readHistory();
+      await writeHistory([
         {
           id: Date.now().toString(),
           audioUrl,
@@ -127,7 +120,7 @@ export default function App() {
   const handleRemove = useCallback(async (item) => {
     try {
       const updated = playlist.filter(p => p.audioUrl !== item.audioUrl);
-      await window.AgentSpacesUI.writeConfigJson('music-history.json', updated);
+      await writeHistory(updated);
       setPlaylist(updated);
       // 如果删除的是当前播放的歌曲，停止播放
       if (player.audioUrl === item.audioUrl) {
@@ -169,6 +162,13 @@ export default function App() {
     }
   }, [playlist, currentIndex, playMode, playTrack]);
 
+  // Random play (driven by play_random command broadcast)
+  const handleRandom = useCallback(() => {
+    if (playlist.length === 0) return;
+    const randomIdx = Math.floor(Math.random() * playlist.length);
+    playTrack(playlist[randomIdx], randomIdx);
+  }, [playlist, playTrack]);
+
   // Subscribe to agent-driven player actions (api.js broadcasts miniApp.playerAction)
   useEffect(() => {
     if (!window.AgentSpaces?.onTaskEvent) return;
@@ -176,6 +176,7 @@ export default function App() {
       if (event === 'miniApp.playerAction') {
         if (data?.dir === 'next') handleNext();
         else if (data?.dir === 'prev') handlePrev();
+        else if (data?.dir === 'random') handleRandom();
       } else if (event === 'miniApp.musicGenerated') {
         if (data?.audioUrl) handleGenerate(data);
       } else if (event === 'miniApp.toggleLike') {
@@ -183,7 +184,7 @@ export default function App() {
       }
     });
     return unsub;
-  }, [handleNext, handlePrev, handleGenerate, player.audioUrl, toggleLiked]);
+  }, [handleNext, handlePrev, handleRandom, handleGenerate, player.audioUrl, toggleLiked]);
 
   return (
     <div className="bg-background text-foreground h-screen overflow-hidden flex flex-col relative">

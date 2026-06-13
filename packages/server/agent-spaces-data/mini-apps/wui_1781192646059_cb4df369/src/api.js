@@ -52,31 +52,10 @@ export default {
   },
 
   /**
-   * 从播放列表中随机选一首歌曲播放
+   * 随机播放一首（播放列表由前端本地 localStorage 维护，后端不再读取）
    */
   play_random: (_input, ctx) => {
-    try {
-      const history = ctx.readConfig('music-history.json');
-      if (!history || !Array.isArray(history) || history.length === 0) {
-        return { ok: false, message: '播放列表为空，请先生成歌曲' };
-      }
-      const index = Math.floor(Math.random() * history.length);
-      const song = history[index];
-      ctx.broadcast('miniApp.playerAction', {
-        dir: 'goto',
-        index,
-        id: song.id,
-        audioUrl: song.audioUrl,
-        title: song.title,
-        artist: song.artist,
-      });
-      return {
-        ok: true,
-        message: `正在播放「${song.title || '未命名'}」- ${song.artist || '未知艺术家'}`,
-        song: { id: song.id, title: song.title, artist: song.artist },
-      };
-    } catch (err) {
-      return { ok: false, message: '读取播放列表失败：' + (err.message || String(err)) };
-    }
+    ctx.broadcast('miniApp.playerAction', { dir: 'random' });
+    return { ok: true, action: 'random', message: '已随机播放一首' };
   },
 };

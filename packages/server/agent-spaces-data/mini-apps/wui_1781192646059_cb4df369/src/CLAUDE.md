@@ -24,7 +24,7 @@ SonicAI 是一个 AI 音乐播放器应用，具有沉浸式视觉效果（动�
 3. **AgentSpacesUI 组件**：使用 Dialog、Button、Textarea、Select、Switch、Label、Card、Popover、Alert 等组件；封面使用 Card + Music 图标占位
 4. **音频管理**：自定义 `useAudioPlayer` hook 处理音频生命周期，支持自动播放新生成的音乐、音量控制、onEnded 回调
 5. **音乐生成**：通过 `window.AgentSpaces.callPluginTool` 调用 `workflow.minimax` 插件的 `minimax_music_generation` 工具
-6. **播放历史持久化**：音乐生成后通过 `writeConfigJson('music-history.json')` 写入记录，播放列表通过 `readConfigJson` 读取
+6. **播放历史持久化（本地 localStorage）**：播放历史经 `src/utils/storage.js`（`readHistory`/`writeHistory`）通过 host `AgentSpaces.getUserSetting/setUserSetting` 存入浏览器 localStorage（per-project，sub-key `music-history`），**不再走服务端 `readConfigJson/writeConfigJson`**；`play_random` 命令改为广播 `miniApp.playerAction dir=random`，由前端从本地列表随机选播
 7. **播放列表**：使用 Popover 组件展示，支持翻页（每页50条），点击可播放
 8. **布局**：页面 `h-screen overflow-hidden` 不滚动，创作按钮固定在底部居中，波形进度条可点击跳转播放位置
 9. **歌词面板**：始终显示在专辑封面右侧，无切换按钮；歌词通过 `\n` 分割后用 `<p>` 标签渲染；无歌词时显示"暂无歌词"占位；歌词面板高度与封面+标题区域对齐
@@ -39,7 +39,7 @@ SonicAI 是一个 AI 音乐播放器应用，具有沉浸式视觉效果（动�
 18. **切歌逻辑**：SkipBack（若当前播放 >3s 则重启当前曲目，否则切上一首，支持循环）、SkipForward（随机模式随机选曲，其他模式按顺序下一首，末尾循环回第一首）
 19. **音量调节**：右侧音量按钮（Volume2/Volume1/VolumeX 图标），点击弹出 Popover 展示音量 range 滑块，点击图标可快速静音/恢复
 20. **生成中提示**：点击生成音乐后立即关闭对话框，页面右上角展示 Alert 提示「正在生成中」，生成完成（成功或失败）后自动隐藏
-21. **播放列表管理**：`index.jsx` 加载 `music-history.json` 作为播放列表，跟踪 `currentIndex`，歌曲结束时根据 `playMode` 决定下一步操作
+21. **播放列表管理**：`index.jsx` 经 `readHistory()` 从本地 localStorage 加载播放列表，跟踪 `currentIndex`，歌曲结束时根据 `playMode` 决定下一步操作
 22. **控制栏布局**：控制栏宽度 `max-w-3xl` 与封面+歌词区域对齐，歌单图标（PlaylistPopover）位于下一首按钮右侧
 23. **单曲循环重播**：使用 `replay()` 方法（seek 0 + play）而非 `loadAudio(同URL)`，避免 React 状态未变化导致不触发重渲染
 24. **主题色管理**：通过 CSS 变量 `--theme-accent: #d6143a`（定义在 index.jsx style 标签）统一管理主题色，PlaylistPopover 等组件使用 `text-[var(--theme-accent)]` 引用，避免硬编码
@@ -57,7 +57,7 @@ SonicAI 是一个 AI 音乐播放器应用，具有沉浸式视觉效果（动�
 - 背景动画 `pulseBlur` 关键帧定义在 index.jsx 的 `<style>` 标签中（Tailwind 无法表达 keyframe）
 - 封面图片使用 Card 组件 + Music 图标占位，不依赖外部图片资源
 - 所有图标使用 Lucide（通过 `window.AgentSpacesUI` 解构），已移除 Google Material Symbols 字体依赖
-- 播放历史存储在 `configs/music-history.json`，格式为 `{ id, audioUrl, title, artist, prompt, lyrics, createdAt }[]`
+- 播放历史存储在浏览器 localStorage（host settings，per-project，sub-key `music-history`），格式为 `{ id, audioUrl, title, artist, prompt, lyrics, createdAt }[]`；不再写入服务端 `configs/` 目录
 - 已移除 Range 进度条，改用波形可视化作为可点击的进度条，占满可用宽度
 - `useAudioPlayer` 的 `onEndedRef` 暴露给父组件，父组件通过直接赋值 ref 注册歌曲结束回调，避免闭包过期
 - 单曲循环模式使用 `replay()` 方法重播（直接 seek 到 0 并 play），不经过 `setAudioUrl` 以避免同 URL 不触发 effect 的问题
