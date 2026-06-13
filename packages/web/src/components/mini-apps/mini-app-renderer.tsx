@@ -65,10 +65,17 @@ interface MiniAppRendererProps {
   onError: (error: string | null) => void;
   componentProps?: Record<string, unknown>;
   className?: string;
+  taskEvents?: MiniAppTaskEvent[];
   /** filename -> content map for local import resolution */
   files?: Record<string, string>;
   /** entry point filename (used to resolve relative imports from sourceCode) */
   mainFile?: string;
+}
+
+export interface MiniAppTaskEvent {
+  event: string;
+  data: unknown;
+  timestamp?: string;
 }
 
 let agentSpacesUiMountCount = 0;
@@ -113,6 +120,7 @@ export function MiniAppRenderer({
   onError,
   componentProps,
   className,
+  taskEvents,
   files,
   mainFile,
 }: MiniAppRendererProps) {
@@ -120,6 +128,7 @@ export function MiniAppRenderer({
   const rootRef = useRef<ReactDOM.Root | null>(null);
   const filesRef = useRef<Record<string, string>>(files || {});
   const mainFileRef = useRef<string>(mainFile || 'index.jsx');
+  const taskEventListenersRef = useRef(new Set<(event: string, data: unknown) => void>());
   const { resolvedTheme } = useTheme();
 
   // Keep refs in sync — renderer reads them during compile, avoiding stale closures
@@ -127,6 +136,37 @@ export function MiniAppRenderer({
   useEffect(() => { mainFileRef.current = mainFile || 'index.jsx'; }, [mainFile]);
 
   useEffect(() => installAgentSpacesUiGlobals(), []);
+
+  useEffect(() => {
+    const previousAgentSpaces = (window as any).AgentSpaces;
+    const previousAgentSpacesApi = (window as any).AgentSpacesAPI;
+    const api = {
+      ...(previousAgentSpaces && typeof previousAgentSpaces === 'object' ? previousAgentSpaces : {}),
+      onTaskEvent: (listener: (event: string, data: unknown) => void) => {
+        taskEventListenersRef.current.add(listener);
+        return () => taskEventListenersRef.current.delete(listener);
+      },
+    };
+    (window as any).AgentSpaces = api;
+    (window as any).AgentSpacesAPI = {
+      ...(previousAgentSpacesApi && typeof previousAgentSpacesApi === 'object' ? previousAgentSpacesApi : {}),
+      ...api,
+    };
+
+    return () => {
+      taskEventListenersRef.current.clear();
+      if (previousAgentSpaces === undefined) delete (window as any).AgentSpaces;
+      else (window as any).AgentSpaces = previousAgentSpaces;
+      if (previousAgentSpacesApi === undefined) delete (window as any).AgentSpacesAPI;
+      else (window as any).AgentSpacesAPI = previousAgentSpacesApi;
+    };
+  }, []);
+
+  useEffect(() => {
+    const latest = taskEvents?.at(-1);
+    if (!latest) return;
+    for (const listener of taskEventListenersRef.current) listener(latest.event, latest.data);
+  }, [taskEvents]);
 
   // Cleanup on unmount only — scheduled outside React's render phase
   useEffect(() => {

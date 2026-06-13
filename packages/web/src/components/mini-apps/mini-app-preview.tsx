@@ -8,6 +8,7 @@ import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
+import { getWS } from '@/lib/ws';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { MINI_APP_HIDDEN_FIELDS, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
-import { MiniAppRenderer } from './mini-app-renderer';
+import { MiniAppRenderer, type MiniAppTaskEvent } from './mini-app-renderer';
 
 interface MiniAppPreviewProps {
   type: 'react' | 'html';
@@ -341,6 +342,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
+  const [taskEvents, setTaskEvents] = useState<MiniAppTaskEvent[]>([]);
 
   // Load plugin metadata for avatar display
   useEffect(() => {
@@ -348,6 +350,20 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     pluginApi.list().then((list) => {
       setAllPlugins(list.map(p => ({ id: p.id, name: p.name, iconPath: p.iconPath })));
     }).catch(() => {});
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const ws = getWS(projectId);
+    return ws.on('*', (payload) => {
+      const message = payload as { event?: unknown; data?: unknown };
+      const eventName = typeof message.event === 'string' ? message.event : '';
+      if (!eventName.startsWith('miniApp.')) return;
+      setTaskEvents((prev) => [
+        ...prev.slice(-49),
+        { event: eventName, data: message.data, timestamp: new Date().toISOString() },
+      ]);
+    });
   }, [projectId]);
 
   const enabledPluginAvatars = useMemo(() => {
@@ -462,6 +478,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         sourceCode={sourceCode}
         onError={handleRendererError}
         className={hideHeader ? "flex-1" : "flex-1 p-4"}
+        taskEvents={taskEvents}
         files={files}
         mainFile={mainFile}
       />

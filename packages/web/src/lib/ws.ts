@@ -61,6 +61,10 @@ export class WorkspaceWS {
         if (handlers) {
           for (const h of handlers) h(data);
         }
+        const wildcardHandlers = this.handlers.get('*');
+        if (wildcardHandlers) {
+          for (const h of wildcardHandlers) h({ event, data });
+        }
       } catch {
         console.error('[WS] parse error');
       }
