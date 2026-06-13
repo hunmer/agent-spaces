@@ -15,8 +15,6 @@ export interface MiniAppProject {
   enableAgents?: boolean;
   /** agents.json 的种子配置：服务器启动时若 agents.json 不存在，则用它落地初始化。 */
   agents?: unknown[];
-  /** 预设消息建议：mini-app 预览聊天输入框的快捷提示 */
-  suggestions?: string[];
   mainFile: string;
   icon?: string;
   avatarUrl?: string;
@@ -506,7 +504,13 @@ export function listAgentChats(projectId: string, sessionId: string): MiniAppCha
       }
     } catch { /* skip malformed */ }
   }
-  messages.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+  // 按 timestamp 升序；时间戳相同（同毫秒落盘的 user/agent 对）时以 role 兜底，
+  // 保证 user 排在 agent 之前，避免重载后历史消息顺序错乱。
+  messages.sort((a, b) => {
+    if (a.timestamp !== b.timestamp) return a.timestamp < b.timestamp ? -1 : 1;
+    if (a.role !== b.role) return a.role === 'user' ? -1 : 1;
+    return 0;
+  });
   return messages;
 }
 

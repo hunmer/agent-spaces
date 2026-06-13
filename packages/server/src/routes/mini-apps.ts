@@ -342,12 +342,11 @@ router.get('/:id/agents', (req: Request<{ id: string }>, res: Response) => {
         id: String(c.id),
         name: String(c.name ?? c.id),
         avatar: typeof c.avatar === 'string' ? c.avatar : undefined,
+        suggestions: Array.isArray(c.suggestions)
+          ? c.suggestions.filter((s): s is string => typeof s === 'string')
+          : [],
       }));
-    res.json({
-      enableAgents: project.enableAgents === true,
-      suggestions: project.suggestions ?? [],
-      agents,
-    });
+    res.json({ enableAgents: project.enableAgents === true, agents });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

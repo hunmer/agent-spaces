@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const {
-  Popover, PopoverContent, PopoverTrigger,
+  Sheet, SheetTrigger, SheetContent, SheetTitle,
   Play, Pause, Music, ChevronLeft, ChevronRight, ListMusic, Heart, Trash2,
 } = window.AgentSpacesUI;
 
@@ -32,22 +32,22 @@ export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, 
   const pageItems = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button className="flex items-center justify-center w-10 h-10 text-muted-foreground hover:text-foreground transition-colors" title="播放列表">
-          <ListMusic className="w-[22px] h-[22px]" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="!w-[520px] bg-popover/95 text-popover-foreground backdrop-blur-xl border-border p-0"
-        align="end"
-        side="top"
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger
+        className="flex items-center justify-center w-10 h-10 text-muted-foreground hover:text-foreground transition-colors"
+        title="播放列表"
       >
-        <div className="px-4 py-3 border-b border-border flex justify-between items-center">
-          <span className="text-sm font-semibold">播放列表</span>
+        <ListMusic className="w-[22px] h-[22px]" />
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="w-[440px] sm:max-w-[440px] gap-0 p-0"
+      >
+        <div className="px-4 py-3 pr-12 border-b border-border flex items-center justify-between">
+          <SheetTitle className="m-0 text-sm font-semibold">播放列表</SheetTitle>
           <span className="text-xs text-muted-foreground">{items.length} 首</span>
         </div>
-        <div className="overflow-y-auto max-h-[350px]">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {pageItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Music className="w-8 h-8 mb-2" />
@@ -98,7 +98,7 @@ export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, 
           )}
         </div>
         {totalPages > 1 && (
-          <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
+          <div className="px-4 py-2.5 border-t border-border flex items-center justify-between shrink-0">
             <button
               disabled={page === 0}
               onClick={() => setPage(p => p - 1)}
@@ -116,7 +116,7 @@ export default function PlaylistPopover({ currentAudioUrl, isPlaying, onSelect, 
             </button>
           </div>
         )}
-      </PopoverContent>
-    </Popover>
+      </SheetContent>
+    </Sheet>
   );
 }

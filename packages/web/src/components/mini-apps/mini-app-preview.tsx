@@ -89,8 +89,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   const route = searchParams.get('route') ?? '/';
 
   const [open, setOpen] = useState(false);
-  const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string }>>([]);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string; suggestions?: string[] }>>([]);
   const [agentId, setAgentId] = useState<string>('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -111,7 +110,6 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
     if (!projectId) return;
     sdk.miniApp.listAgents(projectId).then((r) => {
       setAgents(r.agents);
-      setSuggestions(r.suggestions ?? []);
       if (r.agents.length && !agentId) setAgentId(r.agents[0].id);
     }).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -231,6 +229,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   const current = agents.find((a) => a.id === agentId);
+  const suggestions = current?.suggestions ?? [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

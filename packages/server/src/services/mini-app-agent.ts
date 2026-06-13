@@ -349,6 +349,9 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const systemPrompt = sections.join('\n\n');
 
   // 执行
+  // 用户消息时间戳在执行【前】捕获，确保严格早于 agent 回复时间戳，
+  // 避免 user/agent 同毫秒落盘后历史排序错乱（重载后顺序反转）。
+  const userTimestamp = new Date().toISOString();
   const output: string[] = [];
   const toolCalls = new Map<string, { name: string; input: unknown; result: unknown }>();
   const result = await runtime.execute(message, getProjectDir(projectId), {
@@ -370,10 +373,9 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     },
   });
 
-  const now = new Date().toISOString();
   const userMessage: miniAppStore.MiniAppChatMessage = {
     id: randomUUID(), sessionId, agentId, role: 'user',
-    content: message, route, timestamp: now,
+    content: message, route, timestamp: userTimestamp,
   };
   const agentContent = result.success
     ? (result.output.join('\n').trim() || result.summary)
