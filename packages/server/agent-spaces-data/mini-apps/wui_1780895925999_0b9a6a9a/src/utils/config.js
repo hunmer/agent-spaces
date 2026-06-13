@@ -23,4 +23,9 @@ async function persistProviderStates(states, currentText, currentProvider) {
   await mergeConfig({ text: currentText, provider: currentProvider, providers });
 }
 
-export { readConfig, writeConfig, mergeConfig, persistProviderStates };
+// 持久化多人配音状态（mode / roles / messages）
+async function persistMultiState(mode, roles, messages) {
+  await mergeConfig({ mode, roles, messages });
+}
+
+export { readConfig, writeConfig, mergeConfig, persistProviderStates, persistMultiState };

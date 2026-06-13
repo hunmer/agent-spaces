@@ -35,13 +35,14 @@
         "permissionMode": "dontAsk",
         "loadProjectClaudeMd": false,
         "loadRuleMd": false,
-        "prompt": "你好"
+        "prompt": "你好",
+        "systemPrompt": "ai助手"
       }
     }
   ],
   "edges": [],
   "createdAt": 1781255038446,
-  "updatedAt": 1781342724056,
+  "updatedAt": 1781343642057,
   "enabledPlugins": [
     "workflow.aliyun-ai",
     "workflow.epub-parser",

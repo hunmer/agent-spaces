@@ -76,5 +76,8 @@
       "volume": 100,
       "pitch": 0
     }
-  }
+  },
+  "mode": "single",
+  "roles": [],
+  "messages": []
 }

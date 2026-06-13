@@ -20,20 +20,22 @@ Agent Spaces Workflow UI 项目 —— 多服务商 TTS（文本转语音）配�
 
 ```
 src/
-├── index.jsx                    # 入口组件 App，状态管理中心，组合所有子组件
+├── index.jsx                    # 入口组件 App，状态管理中心；单/多人模式 tabs、服务商切换、组合子组件
 ├── components/
-│   ├── VoiceSelector.jsx        # 音色选择器（搜索、卡片网格、添加/删除/试听）
+│   ├── VoiceSelector.jsx        # 音色选择器（搜索、卡片网格、添加/删除/试听；multi 模式右下角「添加为角色」按钮）
 │   ├── ParameterPanel.jsx       # 参数面板（语速、音量、语调、情绪等，按服务商动态渲染）
-│   └── ControlBar.jsx           # 底部控制栏（开始配音按钮、音频播放器、错误提示）
+│   ├── BackgroundMusic.jsx      # 背景音乐（单人模式，本地混音，随主音频同步播放）
+│   ├── PlayerBar.jsx            # 单人模式播放栏（开始配音、音频播放器、错误提示，置于单人 tab 下）
+│   └── MultiVoicePanel.jsx      # 多人配音面板（角色列表、消息增删改、试听、批量合成、批量下载）
 └── utils/
-    ├── providers.js             # 服务商定义（PROVIDERS）、默认音色、默认参数、情绪列表
-    ├── config.js                # 配置读写（readConfig / writeConfig / persistProviderStates）
-    └── styles.js                # 内联样式对象
+    ├── providers.js             # 服务商定义（PROVIDERS）、默认音色/参数、情绪列表、buildTTSArgs / extractAudioUrl / genId
+    ├── config.js                # 配置读写（persistProviderStates / persistMultiState）
+    └── styles.js                # 内联样式对象（含单人/多人模式样式）
 ```
 
 其他项目文件：
 - `manifest.json` — Workflow UI 项目描述，入口 `index.jsx`，类型 `react`
-- `configs/config.json` — 运行时持久化的用户配置（文本、服务商、音色列表、参数值）
+- `configs/config.json` — 运行时持久化的用户配置（模式、文本、服务商、音色列表、参数值、多人角色 roles、多人消息 messages）
 
 ## 架构设计
 
@@ -43,10 +45,13 @@ src/
 
 | 状态 | 说明 |
 |---|---|
-| `provider` | 当前选中的服务商 key（minimax / fishaudio / qianyin） |
+| `mode` | 配音模式：`single` 单人 / `multi` 多人 |
+| `provider` | 当前选中的服务商 key（minimax / fishaudio / qianyin），两种模式共用，控制音色库筛选 |
 | `providerStates` | 各服务商独立状态（voices、voiceId、speed 等参数） |
-| `text` | 用户输入的待配音文本 |
-| `loading` / `audioUrl` / `error` | TTS 生成流程状态 |
+| `text` | 单人模式待配音文本 |
+| `loading` / `audioUrl` / `error` | 单人模式 TTS 生成流程状态 |
+| `roles` | 多人模式角色列表：`{ id, name, icon, provider, voiceId }` |
+| `messages` | 多人模式消息列表：`{ id, roleId, text, audioUrl, status, error }` |
 
 ### 数据流
 

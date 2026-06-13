@@ -60,4 +60,69 @@ function buildDefaultProviderStates() {
   return states;
 }
 
-export { PROVIDERS, EMOTIONS, buildDefaultProviderStates };
+// 按服务商 + 音色 + 参数 + 文本构建正式 TTS 调用参数
+function buildTTSArgs(providerKey, voiceId, settings, text) {
+  const s = settings || {};
+  const trimmed = (text || '').trim();
+  switch (providerKey) {
+    case 'minimax':
+      return {
+        text: trimmed,
+        voiceId,
+        speed: s.speed ?? 1.0,
+        vol: s.vol ?? 1.0,
+        pitch: s.pitch ?? 0,
+        audioFormat: 'mp3',
+        outputFormat: 'url',
+        ...(s.emotion ? { emotion: s.emotion } : {}),
+      };
+    case 'fishaudio':
+      return {
+        text: trimmed,
+        referenceId: voiceId,
+        speed: s.speed ?? 1.0,
+        temperature: s.temperature ?? 0.7,
+        format: 'mp3',
+      };
+    case 'qianyin':
+      return {
+        text: trimmed,
+        speakerId: voiceId,
+        speed: s.speed ?? 1.0,
+        volume: s.volume ?? 100,
+        pitch: s.pitch ?? 0,
+        format: 'mp3',
+      };
+    default:
+      return { text: trimmed };
+  }
+}
+
+// 从插件返回结果中按优先级提取音频 URL（兼容各服务商返回格式）
+function extractAudioUrl(result) {
+  return (
+    result?.data?.audioUrl ||
+    result?.data?.httpPath?.trim() ||
+    result?.data?.fileUrl?.trim() ||
+    result?.data?.url ||
+    result?.audioUrl ||
+    result?.url ||
+    (typeof result?.data === 'string' ? result.data : null) ||
+    (typeof result === 'string' ? result : null)
+  );
+}
+
+// 生成简单唯一 id（沙箱环境不依赖 uuid 库）
+function genId(prefix) {
+  const rnd = Math.random().toString(36).slice(2, 8);
+  return `${prefix || 'id'}_${Date.now().toString(36)}_${rnd}`;
+}
+
+export {
+  PROVIDERS,
+  EMOTIONS,
+  buildDefaultProviderStates,
+  buildTTSArgs,
+  extractAudioUrl,
+  genId,
+};
