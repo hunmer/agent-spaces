@@ -44,16 +44,7 @@ router.post('/run', async (req: Request, res: Response) => {
   }
 
   const workspaceId = resolveWorkspaceId(body.workspaceId);
-  if (!workspaceId) {
-    res.status(400).json({ error: 'workspaceId is required when no workspace exists' });
-    return;
-  }
-
   const workspace = workspaceService.getById(workspaceId);
-  if (!workspace) {
-    res.status(404).json({ error: 'workspace not found' });
-    return;
-  }
 
   const agentConfigId = (body.agentId ?? body.agentid)?.trim();
   if (!agentConfigId) {
@@ -126,7 +117,7 @@ router.post('/run', async (req: Request, res: Response) => {
           runtimeKind,
           mcpServers: Object.keys(mcpServers ?? {}),
           skills,
-          boundDirs: workspace.boundDirs,
+          boundDirs: workspace?.boundDirs ?? [],
           workingDir,
           excludeNativeClaudeMd: runtimeKind === 'claude-code',
           builtInTools: functionTools.map((tool) => ({ name: tool.name, description: tool.description })),
@@ -197,10 +188,10 @@ function verifyRequestKey(req: Request, body: AgentSseRequestBody): boolean {
   return verifyToken(body.key ?? bearer ?? headerKey ?? null);
 }
 
-function resolveWorkspaceId(workspaceId: string | undefined): string | undefined {
+function resolveWorkspaceId(workspaceId: string | undefined): string {
   const explicit = workspaceId?.trim();
   if (explicit) return explicit;
-  return workspaceService.getAll()[0]?.id;
+  return workspaceService.getAll()[0]?.id ?? 'default';
 }
 
 function prepareSse(res: Response): void {

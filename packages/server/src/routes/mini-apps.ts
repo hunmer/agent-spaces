@@ -388,9 +388,16 @@ router.post('/:id/agents/:agentId/chat', (req: Request<{ id: string; agentId: st
   res.flushHeaders?.();
 
   const ac = new AbortController();
-  req.on('close', () => ac.abort());
+  let completed = false;
+  let closed = false;
+
+  res.on('close', () => {
+    closed = true;
+    if (!completed && !res.writableEnded) ac.abort();
+  });
 
   const write = (event: string, data: unknown) => {
+    if (closed || res.writableEnded) return;
     res.write(`event: ${event}\n`);
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
@@ -410,13 +417,17 @@ router.post('/:id/agents/:agentId/chat', (req: Request<{ id: string; agentId: st
     },
   })
     .then(({ userMessage, agentMessage }) => {
+      completed = true;
       write('message_saved', { userMessage, agentMessage });
-      res.write('event: done\ndata: {}\n\n');
-      res.end();
+      if (!closed && !res.writableEnded) {
+        res.write('event: done\ndata: {}\n\n');
+        res.end();
+      }
     })
     .catch((error: any) => {
+      completed = true;
       write('error', { message: error?.message ?? String(error) });
-      res.end();
+      if (!closed && !res.writableEnded) res.end();
     });
 });
 
