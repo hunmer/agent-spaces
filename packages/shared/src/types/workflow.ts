@@ -271,6 +271,8 @@ export interface NodeTypeDefinition {
   properties: NodeProperty[]
   handles?: NodeHandleConfig
   allowInputFields?: boolean
+  /** 限制本节点「输入字段」允许的输出类型；未声明则允许全部 */
+  allowedInputFieldTypes?: OutputField['type'][]
   outputs?: OutputField[]
   customView?: unknown
   customViewMinSize?: { width?: number; height?: number }
