@@ -106,6 +106,36 @@ project/
 
 同一 mini-app 项目的多个预览实例（编辑器 iframe、独立预览页、多标签）连接同一个 workspace WS 频道（`workspaceId = projectId`）。宿主在 `window.AgentSpaces` 上暴露任务事件订阅能力，使任务事件在所有客户端之间实时同步。**任务队列按发起者（executorId）过滤**——每个客户端只显示自己发起的任务（初始化时调 `invokeService('get_queue')` 主动拉取 running 任务，按 `executorId === getExecutorId()` 过滤；`taskSnapshot`/`taskStarted` 等事件同样过滤）；**生成结果（configs 历史）全局共享**，所有客户端都能看到。
 
+### miniApp.* 事件桥接
+
+`packages/web/src/components/mini-apps/mini-app-preview.tsx` 会通过 `getWS(projectId)` 连接当前 mini-app 项目的 WS 频道，并用 `ws.on('*', ...)` 过滤所有 `miniApp.` 前缀事件。匹配到的事件会作为 `taskEvents` 传给 `MiniAppRenderer`。
+
+`packages/web/src/components/mini-apps/mini-app-renderer.tsx` 负责安装：
+
+```js
+window.AgentSpaces.onTaskEvent((event, data) => {
+  // event: 'miniApp.xxx'
+  // data:  服务端广播的 payload
+});
+```
+
+同一能力也挂在 `window.AgentSpacesAPI.onTaskEvent` 上。订阅函数返回取消订阅函数：
+
+```js
+useEffect(() => {
+  const unsubscribe = window.AgentSpaces.onTaskEvent((event, data) => {
+    if (event !== 'miniApp.playerAction') return;
+    if (data?.dir === 'next') handleNext();
+    if (data?.dir === 'prev') handlePrev();
+  });
+  return unsubscribe;
+}, [handleNext, handlePrev]);
+```
+
+事件桥只分发**新到达**的 WS 事件，不在订阅时回放最后一条事件。不要依赖 `onTaskEvent` 恢复历史状态；需要恢复 running 队列或配置时，使用 `taskSnapshot`、`getConfig` 或项目 service 主动拉取。这样可以避免 React effect 在重订阅时反复消费同一事件，造成 `Maximum update depth exceeded`。
+
+Agent 或项目 service 也可以广播业务事件，例如 `miniApp.playerAction { dir: 'next' }`。前端项目代码只需要监听 `onTaskEvent`，不要直接连接 WS，也不要假设事件一定来自插件任务。
+
 ### callPluginTool 的任务编排
 
 `callPluginTool` 第 4 个参数 `options?: { taskId?, meta? }` 触发后端任务编排：
@@ -324,12 +354,12 @@ SQL 本身不做语法白名单——预览代码可在自己的库内执行任�
 | 文件 | 说明 |
 |------|------|
 | `packages/web/src/components/mini-apps/mini-app-router.tsx` | 内置路由：`Router`/`useRouter`/`Link` + `serializeRoute`/`parseRoute`，iframe hash 同步 + postMessage 透传宿主页 URL |
-| `packages/web/src/components/mini-apps/mini-app-renderer.tsx` | 渲染器核心，包含 Babel 编译和本地模块解析 |
-| `packages/web/src/components/mini-apps/mini-app-preview.tsx` | 预览容器，透传 files/mainFile 给渲染器 |
+| `packages/web/src/components/mini-apps/mini-app-renderer.tsx` | 渲染器核心，包含 Babel 编译、本地模块解析、`window.AgentSpaces.onTaskEvent` 事件分发 |
+| `packages/web/src/components/mini-apps/mini-app-preview.tsx` | 预览容器，透传 files/mainFile 给渲染器，并把当前 projectId 的 `miniApp.*` WS 事件桥接给 renderer |
 | `packages/web/src/components/mini-apps/mini-app-editor.tsx` | 编辑器，加载所有文件并管理预览（预览以 iframe 加载独立预览页） |
 | `packages/web/src/app/mini-apps-preview/[id]/preview-page-client.tsx` | 独立预览页面，挂载宿主 API（`useMiniAppHostApi`） |
 | `packages/web/src/components/mini-apps/use-mini-app-host-api.ts` | 宿主 API 注入：UI 组件、`callPluginTool(options)`、`onTaskEvent`、`getExecutorId`、配置/数据助手、`db(name)` SQLite 句柄 |
-| `packages/web/src/lib/ws.ts` | 前端 WS 单例，`onTaskEvent` 内部基于它按 projectId 订阅 |
+| `packages/web/src/lib/ws.ts` | 前端 WS 单例，支持按事件名订阅和 `'*'` 通配订阅 |
 | `packages/server/src/ws/agent-prompt.ts` | Agent 提示词中的多文件布局规则 |
 | `packages/server/src/services/mini-app.ts` | 后端 CRUD、文件操作、`executeDb` / `executeDbTransaction` 转发 |
 | `packages/server/src/storage/mini-app-store.ts` | 存储层（JSON 文件 + 文件系统） |
