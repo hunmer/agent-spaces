@@ -4,3 +4,4 @@ export { interactionNodes } from './interaction';
 export { displayNodes } from './display';
 export { utilsNodes } from './utils';
 export { stringNodes } from './string';
+export { sqliteNodes } from './sqlite';
