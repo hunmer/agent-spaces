@@ -193,10 +193,18 @@ export interface NodePropertyVisibleWhen {
   in?: unknown[]
 }
 
+export interface NodePropertyDynamicOptions {
+  source: 'sqlite-tables' | 'sqlite-columns'
+  dependsOn: string
+  dependsOnTableKey?: string
+  allOption?: boolean
+  placeholder?: string
+}
+
 export interface NodeProperty {
   key: string
   label: string
-  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields' | 'agent'
+  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields' | 'agent' | 'sqlite'
   dataType?: DataType
   required?: boolean
   readonly?: boolean
@@ -209,6 +217,7 @@ export interface NodeProperty {
   fields?: ArrayFieldItem[]
   itemTemplate?: Record<string, unknown>
   visibleWhen?: NodePropertyVisibleWhen
+  dynamicOptions?: NodePropertyDynamicOptions
 }
 
 export interface NodeNamedHandleConfig {
