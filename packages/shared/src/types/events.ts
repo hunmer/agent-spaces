@@ -119,6 +119,7 @@ export type ClientEventMap = {
   'workflow:debug-node': { workflowId: string; nodeId: string; input?: Record<string, unknown>; env?: Record<string, unknown>; context?: Record<string, unknown>; snapshot?: unknown; embeddedNode?: unknown };
   'workflow:get-execution-recovery': { workflowId: string; executionId?: string | null };
   'workflow:interaction': InteractionResponse;
+  'miniApp.clientResponse': { requestId: string; ok: boolean; result?: unknown; error?: string };
 };
 
 // ---- Workflow UI Task Events ----
@@ -205,6 +206,7 @@ export type ServerEventMap = {
   'miniApp.taskFailed': MiniAppTaskEvent & { error: string };
   'miniApp.configSnapshot': { configs: Record<string, unknown> };
   'miniApp.configChanged': { path: string; value: unknown };
+  'miniApp.clientRequest': { requestId: string; type: string; payload?: unknown };
 };
 
 export type ClientEventName = keyof ClientEventMap;

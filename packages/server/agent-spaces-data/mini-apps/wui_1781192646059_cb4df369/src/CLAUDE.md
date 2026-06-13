@@ -44,7 +44,7 @@ SonicAI 是一个 AI 音乐播放器应用，具有沉浸式视觉效果（动�
 22. **控制栏布局**：控制栏宽度 `max-w-3xl` 与封面+歌词区域对齐，歌单图标（PlaylistPopover）位于下一首按钮右侧
 23. **单曲循环重播**：使用 `replay()` 方法（seek 0 + play）而非 `loadAudio(同URL)`，避免 React 状态未变化导致不触发重渲染
 24. **主题色管理**：通过 CSS 变量 `--theme-accent: #d6143a`（定义在 index.jsx style 标签）统一管理主题色，PlaylistPopover 等组件使用 `text-[var(--theme-accent)]` 引用，避免硬编码
-25. **设置入口**：左上角 `fixed top-4 left-4` 齿轮按钮（Settings 图标，glass 风格 `bg-card/60 backdrop-blur-xl`），点击打开 SettingsDialog；与右上角「生成中」Alert 分层共存（z-40）
+25. **设置入口**：左上角 `absolute top-4 left-4`（相对根 `relative` 容器，非视口 fixed）齿轮按钮（Settings 图标，glass 风格 `bg-card/60 backdrop-blur-xl`），点击打开 SettingsDialog；与右上角「生成中」Alert 分层共存（z-40）
 26. **设置弹窗（SettingsDialog）**：Dialog 组件，包含三项 ——「启动时恢复播放」Switch、「导出数据」按钮（下载 JSON `{ exportedAt, songs }`，文件名 `sonicai-music-YYYY-MM-DD.json`）、「清空歌曲列表」按钮（**两步确认**：首次点击进入红色确认态并显示「再次点击以确认清空」，3 秒内未二次点击自动复位）
 27. **启动恢复播放**：经 `storage.js` 的 `readSettings/writeSettings`（sub-key `music-settings`）持久化 `restoreOnStart` 开关；播放歌曲时（playTrack / handleGenerate）经 `writeLastTrack`（sub-key `music-last`）记录 `{ audioUrl, title, artist, lyrics }`；启动时若开关开启，读取 lastTrack 并 `loadAudio(url, true)` 自动续播，同步 trackInfo/lyrics 及 playlist 中的 currentIndex；清空歌曲列表时一并清除 lastTrack
 

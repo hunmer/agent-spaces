@@ -217,6 +217,7 @@ export function useMiniAppHostApi(projectId: string) {
       'miniApp.taskStarted',
       'miniApp.taskFinished',
       'miniApp.taskFailed',
+      'miniApp.clientRequest',
     ] as const;
     const subscribeTaskEvents = (cb: (event: string, data: any) => void) => {
       const ws = getWS(projectId);
@@ -248,6 +249,10 @@ export function useMiniAppHostApi(projectId: string) {
     const onConfigChanged = (cb: (path: string, value: unknown) => void) => {
       configChangeCallbacksRef.current.add(cb);
       return () => { configChangeCallbacksRef.current.delete(cb); };
+    };
+
+    const respondClientRequest = (requestId: string, result: unknown, ok = true, error?: string) => {
+      getWS(projectId).send('miniApp.clientResponse', { requestId, ok, result, error });
     };
 
     // ---- Services RPC: 调用项目 src/services/*.js 里的 handler（服务端执行） ----
@@ -510,6 +515,7 @@ export function useMiniAppHostApi(projectId: string) {
       toolExists,
       subscribeTaskEvents,
       onTaskEvent: subscribeTaskEvents,
+      respondClientRequest,
       getExecutorId: () => executorIdRef.current,
       getConfig,
       getAllConfigs,

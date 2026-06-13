@@ -11,11 +11,13 @@ import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool } from '.
 import { createMiniAppFunctionTools } from './builtin-tools/mini-app-tools.js';
 import { listPresets } from './agent.js';
 import { listProviders } from '../storage/llm-store.js';
+import { requestMiniAppClient } from './mini-app-client-rpc.js';
 
 export interface ApiCtx {
   projectId: string;
   broadcast(event: string, data: unknown): void;
   callPluginTool(pluginId: string, toolName: string, args: Record<string, unknown>): Promise<unknown>;
+  requestClient(type: string, payload?: unknown, timeoutMs?: number): Promise<unknown>;
   readConfig(path: string): unknown | null;
   writeConfig(path: string, value: unknown): void;
 }
@@ -148,6 +150,7 @@ export function makeApiCtx(projectId: string): ApiCtx {
     broadcast: (event, data) => broadcastToWorkspace(projectId, event, data),
     callPluginTool: (pluginId, toolName, args) =>
       executePluginTool(pluginId, toolName, args, createBuiltinPluginApi()),
+    requestClient: (type, payload, timeoutMs) => requestMiniAppClient(projectId, type, payload, timeoutMs),
     readConfig: (path) => miniAppStore.readConfig(projectId, path),
     writeConfig: (path, value) => miniAppStore.writeConfig(projectId, path, value),
   };

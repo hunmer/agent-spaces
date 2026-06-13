@@ -12,6 +12,7 @@ import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureSchedul
 import { stripHtml, extractMentionIds } from './html-utils.js';
 import { listTasks } from '../services/mini-app-tasks.js';
 import { listConfigs } from '../services/mini-apps.js';
+import { handleMiniAppClientResponse } from '../services/mini-app-client-rpc.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -175,6 +176,10 @@ registerHandler('agent.stop', (_ws, workspaceId, data) => {
 registerHandler('workflow:interaction', (ws, _workspaceId, data) => {
   const clientId = getClientId(ws);
   if (clientId) handleInteractionResponse(data as InteractionResponse, clientId);
+});
+
+registerHandler('miniApp.clientResponse', (_ws, _workspaceId, data) => {
+  handleMiniAppClientResponse(data);
 });
 
 // Register chat handlers

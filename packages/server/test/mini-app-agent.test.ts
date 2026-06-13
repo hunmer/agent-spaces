@@ -38,6 +38,7 @@ export default {
     projectId: 'p1',
     broadcast: () => {},
     callPluginTool: async () => ({ ok: true }),
+    requestClient: async () => ({ ok: true }),
     readConfig: () => null,
     writeConfig: () => {},
   };
@@ -86,6 +87,7 @@ export default {
     projectId: 'p1',
     broadcast: () => {},
     callPluginTool: async () => ({ ok: true }),
+    requestClient: async () => ({ ok: true }),
     readConfig: () => null,
     writeConfig: () => {},
   };

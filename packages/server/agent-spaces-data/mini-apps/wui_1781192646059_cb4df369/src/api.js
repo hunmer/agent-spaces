@@ -1,19 +1,23 @@
 export default {
   /**
-   * 读取服务端镜像的用户歌曲列表。列表由前端从浏览器 localStorage 同步到 configs/agent-music-library.json。
+   * 通过 WS 请求客户端读取浏览器 localStorage 中的用户歌曲列表。
    */
-  get_music_library: (_input, ctx) => {
-    const library = ctx.readConfig('agent-music-library.json');
-    const songs = Array.isArray(library?.songs) ? library.songs : [];
-    return {
-      ok: true,
-      count: songs.length,
-      updatedAt: library?.updatedAt || null,
-      songs,
-      message: songs.length
-        ? '已读取用户歌曲列表'
-        : '用户歌曲列表为空或尚未从客户端同步',
-    };
+  get_music_library: async (_input, ctx) => {
+    try {
+      const library = await ctx.requestClient('musicLibrary');
+      const songs = Array.isArray(library?.songs) ? library.songs : [];
+      return {
+        ok: true,
+        count: songs.length,
+        updatedAt: library?.updatedAt || null,
+        songs,
+        message: songs.length
+          ? '已读取用户歌曲列表'
+          : '用户歌曲列表为空',
+      };
+    } catch (err) {
+      return { ok: false, message: '读取用户歌曲列表失败：' + (err.message || String(err)) };
+    }
   },
 
   /**
@@ -76,8 +80,13 @@ export default {
   /**
    * 根据 id、标题或关键词播放用户歌曲列表中的一首歌。
    */
-  play_music: (input, ctx) => {
-    const library = ctx.readConfig('agent-music-library.json');
+  play_music: async (input, ctx) => {
+    let library;
+    try {
+      library = await ctx.requestClient('musicLibrary');
+    } catch (err) {
+      return { ok: false, message: '读取用户歌曲列表失败：' + (err.message || String(err)) };
+    }
     const songs = Array.isArray(library?.songs) ? library.songs : [];
     if (songs.length === 0) {
       return { ok: false, message: '用户歌曲列表为空或尚未从客户端同步' };

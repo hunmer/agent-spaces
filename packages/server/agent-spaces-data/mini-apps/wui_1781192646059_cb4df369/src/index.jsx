@@ -8,8 +8,6 @@ import { readHistory, writeHistory, readSettings, writeSettings, readLastTrack, 
 
 const { Sparkles, Alert, AlertTitle, AlertDescription, Loader2, RefreshCw, Settings } = window.AgentSpacesUI;
 
-const AGENT_MUSIC_LIBRARY_CONFIG = 'agent-music-library.json';
-
 const toAgentMusicLibrary = (list) => ({
   updatedAt: new Date().toISOString(),
   songs: (Array.isArray(list) ? list : []).slice(0, 100).map((item) => ({
@@ -22,14 +20,6 @@ const toAgentMusicLibrary = (list) => ({
     createdAt: item.createdAt || '',
   })),
 });
-
-const syncAgentMusicLibrary = async (list) => {
-  try {
-    await window.AgentSpacesUI?.writeConfigJson?.(AGENT_MUSIC_LIBRARY_CONFIG, toAgentMusicLibrary(list));
-  } catch (e) {
-    console.error('Failed to sync agent music library:', e);
-  }
-};
 
 export default function App() {
   const player = useAudioPlayer();
@@ -58,7 +48,6 @@ export default function App() {
   const loadPlaylist = useCallback(async () => {
     const data = await readHistory();
     setPlaylist(data);
-    await syncAgentMusicLibrary(data);
     return data;
   }, []);
 
@@ -172,7 +161,6 @@ export default function App() {
       const updated = playlist.filter(p => p.audioUrl !== item.audioUrl);
       await writeHistory(updated);
       setPlaylist(updated);
-      await syncAgentMusicLibrary(updated);
       // 如果删除的是当前播放的歌曲，停止播放
       if (player.audioUrl === item.audioUrl) {
         player.stop();
@@ -251,7 +239,6 @@ export default function App() {
       await writeHistory([]);
       await writeLastTrack(null);
       setPlaylist([]);
-      await syncAgentMusicLibrary([]);
       setCurrentIndex(-1);
       player.stop();
       setTrackInfo({ title: 'Neon Horizon', artist: 'Syntax Error ft. The Algorithm', lyrics: '' });
@@ -281,6 +268,15 @@ export default function App() {
         if (data?.audioUrl) handleGenerate(data);
       } else if (event === 'miniApp.toggleLike') {
         if (player.audioUrl) toggleLiked(player.audioUrl);
+      } else if (event === 'miniApp.clientRequest' && data?.type === 'musicLibrary') {
+        readHistory()
+          .then((list) => window.AgentSpaces?.respondClientRequest?.(data.requestId, toAgentMusicLibrary(list)))
+          .catch((err) => window.AgentSpaces?.respondClientRequest?.(
+            data.requestId,
+            null,
+            false,
+            err?.message || String(err),
+          ));
       }
     });
     return unsub;
@@ -305,7 +301,7 @@ export default function App() {
 
       {/* Settings (top-left) */}
       <button
-        className="fixed top-4 left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card/90 backdrop-blur-xl border border-border transition-colors"
+        className="absolute top-4 left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card/90 backdrop-blur-xl border border-border transition-colors"
         onClick={() => setSettingsOpen(true)}
         title="设置"
       >
