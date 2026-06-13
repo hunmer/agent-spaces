@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import LeftPanel from './components/LeftPanel';
 import RightPanel from './components/RightPanel';
 import useGeneration from './hooks/useGeneration';
@@ -9,11 +9,15 @@ export default function App() {
   const { results, loading, progress, error, taskQueue, generate, clearResults, removeResult } =
     useGeneration();
   const [preset, setPreset] = useState(null);
-  const [leftPanelApi, setLeftPanelApi] = useState(null);
+  const leftPanelApiRef = useRef(null);
 
   // 右侧卡片"二次创作"菜单 → 切换左侧模式并把当前媒体预填为输入源
   const handleUseAsSource = useCallback((item, mode) => {
     setPreset({ seq: Date.now(), item, mode });
+  }, []);
+
+  const handleLeftPanelReady = useCallback((api) => {
+    leftPanelApiRef.current = api;
   }, []);
 
   // ====== Agent 广播事件监听 ======
@@ -25,18 +29,19 @@ export default function App() {
     if (!AS?.onTaskEvent) return;
 
     const unsubscribe = AS.onTaskEvent((event, data) => {
+      const api = leftPanelApiRef.current;
       switch (event) {
         case 'miniApp.switchMode': {
-          leftPanelApi?.switchMode?.(data?.mode);
+          api?.switchMode?.(data?.mode);
           break;
         }
         case 'miniApp.setForm': {
-          leftPanelApi?.applyFormPatch?.(data || {});
+          api?.applyFormPatch?.(data || {});
           break;
         }
         case 'miniApp.triggerGenerate': {
           // 等下一帧确保 setForm 的 setState 已应用
-          setTimeout(() => leftPanelApi?.submit?.(), 0);
+          setTimeout(() => leftPanelApiRef.current?.submit?.(), 0);
           break;
         }
         case 'miniApp.useAsSource': {
@@ -89,7 +94,7 @@ export default function App() {
     return () => {
       try { unsubscribe(); } catch {}
     };
-  }, [leftPanelApi, removeResult, clearResults]);
+  }, [removeResult, clearResults]);
 
   if (!UI) return null;
 
@@ -110,7 +115,7 @@ export default function App() {
                 taskQueue={taskQueue}
                 error={error}
                 preset={preset}
-                onReady={setLeftPanelApi}
+                onReady={handleLeftPanelReady}
               />
             </CardContent>
           </Card>
@@ -128,6 +133,7 @@ export default function App() {
                 loading={loading}
                 progress={progress}
                 onClear={clearResults}
+                onDelete={removeResult}
                 onUseAsSource={handleUseAsSource}
               />
             </CardContent>

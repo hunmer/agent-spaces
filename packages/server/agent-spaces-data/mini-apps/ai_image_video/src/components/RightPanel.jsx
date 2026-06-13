@@ -75,7 +75,7 @@ function groupResults(results) {
 }
 
 /** 单个媒体卡片（懒加载：进入视口后才挂载真实资源，避免一次性请求全部图片/视频） */
-function MediaCard({ item, group, index, onMediaClick, onUseAsSource, UI }) {
+function MediaCard({ item, group, index, onMediaClick, onUseAsSource, onDelete, UI }) {
   const {
     Card, CardContent, Skeleton,
     DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -158,6 +158,9 @@ function MediaCard({ item, group, index, onMediaClick, onUseAsSource, UI }) {
               <DropdownMenuItem onClick={() => onUseAsSource(item, item.mode)}>
                 🔄 重新生成
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDelete?.(item.id)} style={{ color: '#dc2626' }}>
+                删除
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               {item.type === 'image' && (
                 <>
@@ -189,7 +192,7 @@ function MediaCard({ item, group, index, onMediaClick, onUseAsSource, UI }) {
 }
 
 /** 瀑布流布局：Flex 行包含 N 个纵向列 */
-function MasonryGrid({ items, colCount, group, onMediaClick, onUseAsSource, UI }) {
+function MasonryGrid({ items, colCount, group, onMediaClick, onUseAsSource, onDelete, UI }) {
   const columns = useMemo(() => distributeToColumns(items, colCount), [items, colCount]);
 
   return (
@@ -204,6 +207,7 @@ function MasonryGrid({ items, colCount, group, onMediaClick, onUseAsSource, UI }
               index={originalIndex}
               onMediaClick={onMediaClick}
               onUseAsSource={onUseAsSource}
+              onDelete={onDelete}
               UI={UI}
             />
           ))}
@@ -231,7 +235,7 @@ function NotificationToggle({ UI }) {
   );
 }
 
-export default function RightPanel({ results, loading, progress, onClear, onUseAsSource }) {
+export default function RightPanel({ results, loading, progress, onClear, onDelete, onUseAsSource }) {
   const UI = useUI();
   const containerRef = useRef(null);
   const colCount = useColumnCount(containerRef);
@@ -354,6 +358,7 @@ export default function RightPanel({ results, loading, progress, onClear, onUseA
                       group={group}
                       onMediaClick={handleMediaClick}
                       onUseAsSource={onUseAsSource}
+                      onDelete={onDelete}
                       UI={UI}
                     />
                   </div>

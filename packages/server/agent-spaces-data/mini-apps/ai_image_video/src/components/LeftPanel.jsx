@@ -125,6 +125,10 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset, onRead
   const [angle, setAngle] = useState('');
   const [submittingUpload, setSubmittingUpload] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const modeRef = useRef(mode);
+  const providerRef = useRef(provider);
+  modeRef.current = mode;
+  providerRef.current = provider;
 
   const availableProviders = getAvailableProviders(mode);
   const modelOptions = getModelOptions(provider, mode);
@@ -145,25 +149,29 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset, onRead
   const submitRef = useRef(() => {});
 
   const handleModeChange = useCallback((newMode) => {
+    modeRef.current = newMode;
     setMode(newMode);
     clearUploads();
     const available = getAvailableProviders(newMode);
-    const current = available.find((p) => p.id === provider);
-    const effectiveProvider = current ? provider : (available[0]?.id || '');
+    const currentProvider = providerRef.current;
+    const current = available.find((p) => p.id === currentProvider);
+    const effectiveProvider = current ? currentProvider : (available[0]?.id || '');
+    providerRef.current = effectiveProvider;
     if (!current) setProvider(effectiveProvider);
     setModel(getDefaultModel(effectiveProvider, newMode));
     // 重置分辨率到当前 provider+mode 的第一个可用选项
     const resOpts = RESOLUTION_OPTIONS[effectiveProvider]?.[newMode];
     setResolution(resOpts ? resOpts[0]?.value : '');
-  }, [provider]);
+  }, []);
 
   const handleProviderChange = useCallback((newProviderId) => {
+    providerRef.current = newProviderId;
     setProvider(newProviderId);
-    clearUploads();
-    setModel(getDefaultModel(newProviderId, mode));
-    const resOpts = RESOLUTION_OPTIONS[newProviderId]?.[mode];
+    const currentMode = modeRef.current;
+    setModel(getDefaultModel(newProviderId, currentMode));
+    const resOpts = RESOLUTION_OPTIONS[newProviderId]?.[currentMode];
     setResolution(resOpts ? resOpts[0]?.value : '');
-  }, [mode]);
+  }, []);
 
   /** 批量应用表单字段（来自 agent set_form 广播） */
   const applyFormPatch = useCallback((patch) => {
@@ -171,11 +179,13 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset, onRead
     if (typeof patch.prompt === 'string') setPrompt(patch.prompt);
     if (typeof patch.negativePrompt === 'string') setNegativePrompt(patch.negativePrompt);
     if (typeof patch.provider === 'string') {
-      const available = getAvailableProviders(mode);
+      const currentMode = modeRef.current;
+      const available = getAvailableProviders(currentMode);
       if (available.some((p) => p.id === patch.provider)) {
+        providerRef.current = patch.provider;
         setProvider(patch.provider);
-        setModel(getDefaultModel(patch.provider, mode));
-        const resOpts = RESOLUTION_OPTIONS[patch.provider]?.[mode];
+        setModel(getDefaultModel(patch.provider, currentMode));
+        const resOpts = RESOLUTION_OPTIONS[patch.provider]?.[currentMode];
         setResolution(resOpts ? resOpts[0]?.value : '');
       }
     }
@@ -197,7 +207,7 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset, onRead
     if (patch.topOffset != null) setTopOffset(numberOrEmpty(patch.topOffset));
     if (patch.bottomOffset != null) setBottomOffset(numberOrEmpty(patch.bottomOffset));
     if (patch.angle != null) setAngle(numberOrEmpty(patch.angle));
-  }, [mode]);
+  }, []);
 
   /** 切换模式（来自 agent switch_mode 广播） */
   const applySwitchMode = useCallback((targetMode) => {
@@ -212,12 +222,16 @@ export default function LeftPanel({ onGenerate, taskQueue, error, preset, onRead
       (source.provider && available.find((p) => p.id === source.provider)?.id) ||
       available[0]?.id ||
       '';
+    modeRef.current = targetMode;
+    providerRef.current = targetProvider;
     setMode(targetMode);
     setProvider(targetProvider);
     setModel(getDefaultModel(targetProvider, targetMode));
     const resOpts = RESOLUTION_OPTIONS[targetProvider]?.[targetMode];
     setResolution(resOpts ? resOpts[0]?.value : '');
-    setPrompt(source.prompt || '');
+    if (typeof source.prompt === 'string' && source.prompt.trim()) {
+      setPrompt(source.prompt);
+    }
 
     setImageFiles([]);
     setReferenceImages([]);

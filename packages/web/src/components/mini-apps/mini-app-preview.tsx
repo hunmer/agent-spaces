@@ -391,6 +391,14 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     setConfigPlugin({ id: plugin.id, name: plugin.name, config: plugin.config });
   }, [allPlugins]);
 
+  // 加载 mini-app 后同步 document.title，卸载还原
+  useEffect(() => {
+    if (!projectName) return;
+    const prev = document.title;
+    document.title = projectName;
+    return () => { document.title = prev; };
+  }, [projectName]);
+
   // Load projects when drawer opens
   const handleDrawerOpen = useCallback((open: boolean) => {
     setDrawerOpen(open);
