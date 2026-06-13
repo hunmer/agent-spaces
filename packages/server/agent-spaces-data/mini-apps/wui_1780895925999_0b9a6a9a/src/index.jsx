@@ -245,7 +245,6 @@ function App() {
         {/* 左侧：文本输入 */}
         <Card style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
           <CardHeader style={{ padding: '12px 16px' }}>
-            <CardTitle style={{ fontSize: '14px' }}>📝 输入文本</CardTitle>
           </CardHeader>
           <CardContent style={{ flex: '1', display: 'flex', flexDirection: 'column', padding: '0 16px 16px' }}>
             <Textarea

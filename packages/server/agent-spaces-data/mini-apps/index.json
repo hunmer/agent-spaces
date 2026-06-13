@@ -113,15 +113,5 @@
     "createdAt": "2026-06-12T20:42:23.209Z",
     "updatedAt": "2026-06-12T21:49:15.759Z",
     "enabledPlugins": []
-  },
-  {
-    "id": "wui_1781341747753_bbcc2843",
-    "name": "bbb",
-    "version": "1.0.0",
-    "type": "react",
-    "tags": [],
-    "mainFile": "index.jsx",
-    "createdAt": "2026-06-13T09:09:07.753Z",
-    "updatedAt": "2026-06-13T09:09:07.753Z"
   }
 ]

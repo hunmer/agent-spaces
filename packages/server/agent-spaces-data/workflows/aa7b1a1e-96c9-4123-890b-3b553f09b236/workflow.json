@@ -24,61 +24,24 @@
       "data": {}
     },
     {
-      "id": "node_1781297933288_3j7up9",
-      "type": "epub_info",
-      "label": "EPUB书籍信息",
+      "id": "node_1781342685589_rtp8yn",
+      "type": "agent_run",
+      "label": "nodes.agent_run.label",
       "position": {
-        "x": 450,
-        "y": 255
+        "x": 240,
+        "y": 150
       },
       "data": {
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "fileInfo",
-                "type": "object",
-                "children": []
-              },
-              {
-                "key": "metadata",
-                "type": "object",
-                "children": []
-              },
-              {
-                "key": "toc",
-                "type": "object",
-                "children": []
-              },
-              {
-                "key": "spineCount",
-                "type": "number"
-              },
-              {
-                "key": "guide",
-                "type": "object",
-                "children": []
-              }
-            ]
-          }
-        ],
-        "filePath": "/Users/Zhuanz/Downloads/test.epub"
+        "permissionMode": "dontAsk",
+        "loadProjectClaudeMd": false,
+        "loadRuleMd": false,
+        "prompt": "你好"
       }
     }
   ],
   "edges": [],
   "createdAt": 1781255038446,
-  "updatedAt": 1781323736626,
+  "updatedAt": 1781342724056,
   "enabledPlugins": [
     "workflow.aliyun-ai",
     "workflow.epub-parser",
