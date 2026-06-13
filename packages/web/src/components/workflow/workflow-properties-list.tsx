@@ -1,12 +1,13 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useCallback } from 'react';
 import type { NodeProperty } from '@agent-spaces/shared';
 import { Braces, ChevronRight, Info } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTriggerAsChild } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getPropertyValue } from './workflow-properties-utils';
 import { PropertyField } from './workflow-properties-fields';
+import { useDynamicOptions } from './workflow-dynamic-options';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 
 interface PropertiesListProps {
@@ -38,6 +39,29 @@ export function PropertiesList({
   onDataChange,
   onPreviewDataChange,
 }: PropertiesListProps) {
+  // Cascade reset: when a dependency source (e.g. databaseId) changes, clear the
+  // dependent keys (table -> '', columns -> '*') so stale values never survive a
+  // dependency switch. Branches cleanly when no dynamic dependency is involved.
+  const handleDataChange = useCallback((key: string, value: unknown) => {
+    onDataChange(key, value);
+    for (const p of properties) {
+      const cfg = p.dynamicOptions;
+      if (!cfg) continue;
+      if (cfg.dependsOn !== key) continue;
+      // `key` is the dependency source of property `p` — `p` itself is now stale.
+      onDataChange(p.key, p.type === 'select' && cfg.source === 'sqlite-columns' ? '*' : '');
+      // table key chain: if this property is the table that columns depend on, clear columns too.
+      if (cfg.source === 'sqlite-tables') {
+        const tableKey = p.key;
+        for (const col of properties) {
+          if (col.dynamicOptions?.source === 'sqlite-columns' && col.dynamicOptions.dependsOnTableKey === tableKey) {
+            onDataChange(col.key, '*');
+          }
+        }
+      }
+    }
+  }, [properties, onDataChange]);
+
   return (
     <section id="properties-section" className="">
       {properties.map((prop) => {
@@ -47,6 +71,7 @@ export function PropertiesList({
             key={prop.key}
             prop={prop}
             value={value}
+            data={data}
             isPreview={isPreview}
             collapsed={collapsedKeys.has(prop.key)}
             collapsedKeys={collapsedKeys}
@@ -56,7 +81,7 @@ export function PropertiesList({
             onToggleVariableMode={onToggleVariableMode}
             toVariableInputValue={toVariableInputValue}
             onInsertVariable={onInsertVariable}
-            onDataChange={onDataChange}
+            onDataChange={handleDataChange}
             onPreviewDataChange={onPreviewDataChange}
           />
         );
@@ -68,6 +93,7 @@ export function PropertiesList({
 const PropertyItem = memo(function PropertyItem({
   prop,
   value,
+  data,
   isPreview,
   collapsed,
   collapsedKeys,
@@ -82,6 +108,7 @@ const PropertyItem = memo(function PropertyItem({
 }: {
   prop: NodeProperty;
   value: unknown;
+  data: Record<string, unknown>;
   isPreview: boolean;
   collapsed: boolean;
   collapsedKeys: Set<string>;
@@ -147,18 +174,82 @@ const PropertyItem = memo(function PropertyItem({
         )}
       </div>
       <CollapsibleContent>
+        {prop.dynamicOptions && prop.type === 'select' && !effectiveVariableMode ? (
+          <DynamicSelectField
+            prop={prop}
+            value={value}
+            data={data}
+            isPreview={isPreview}
+            variableContext={variableContext}
+            onDataChange={onDataChange}
+            onPreviewDataChange={onPreviewDataChange}
+            onInsertVariable={onInsertVariable}
+          />
+        ) : (
+          <PropertyField
+            prop={prop}
+            value={value}
+            onChange={(nextValue) => onDataChange(prop.key, nextValue)}
+            onPreviewChange={(nextValue) => onPreviewDataChange?.(prop.key, nextValue)}
+            previewMode={isPreview}
+            variableContext={variableContext}
+            variableMode={effectiveVariableMode}
+            variableValue={variableValue}
+            onInsertVariable={(path) => onInsertVariable(prop.key, path)}
+          />
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+});
+
+/**
+ * Renders a select field whose options are loaded asynchronously from the
+ * backend (sqlite tables/columns) based on sibling field values.
+ *
+ * Exists as a dedicated child component so `useDynamicOptions` is called
+ * unconditionally at the top level of a component — React hooks rules forbid
+ * calling hooks inside the `.map()` callback in `PropertiesList` or inside a
+ * conditional branch of `PropertyItem`.
+ */
+function DynamicSelectField({
+  prop,
+  value,
+  data,
+  isPreview,
+  variableContext,
+  onDataChange,
+  onPreviewDataChange,
+  onInsertVariable,
+}: {
+  prop: NodeProperty;
+  value: unknown;
+  data: Record<string, unknown>;
+  isPreview: boolean;
+  variableContext: WorkflowVariableContext | undefined;
+  onDataChange: (key: string, value: unknown) => void;
+  onPreviewDataChange?: (key: string, value: unknown) => void;
+  onInsertVariable: (key: string, path: string) => void;
+}) {
+  const { options, loading } = useDynamicOptions(prop.dynamicOptions, data);
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex-1">
         <PropertyField
-          prop={prop}
+          prop={{ ...prop, options }}
           value={value}
           onChange={(nextValue) => onDataChange(prop.key, nextValue)}
           onPreviewChange={(nextValue) => onPreviewDataChange?.(prop.key, nextValue)}
           previewMode={isPreview}
           variableContext={variableContext}
-          variableMode={effectiveVariableMode}
-          variableValue={variableValue}
+          variableMode={false}
+          variableValue={String(value ?? '')}
           onInsertVariable={(path) => onInsertVariable(prop.key, path)}
         />
-      </CollapsibleContent>
-    </Collapsible>
+      </div>
+      {loading && (
+        <span className="shrink-0 text-[10px] text-muted-foreground animate-pulse">…</span>
+      )}
+    </div>
   );
-});
+}
