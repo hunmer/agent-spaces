@@ -24,7 +24,7 @@ function chatAgentToPreset(agent: ChatAgent): AgentPreset {
     modelProvider: (agent.modelProvider || agent.provider || "") as AgentPreset["modelProvider"],
     providerId: agent.providerId ?? "",
     modelId: agent.modelId || agent.model,
-    apiKey: agent.apiKey,
+    apiKey: agent.apiKey ?? "",
     apiBase: agent.apiBase ?? agent.baseURL ?? "",
     avatarUrl: agent.avatarUrl ?? agent.avatar ?? "",
     icon: agent.icon ?? "",

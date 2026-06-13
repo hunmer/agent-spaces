@@ -122,7 +122,7 @@ export class WorkspaceWS {
   on(event: ServerEventName | string, handler: EventHandler) {
     if (!this.handlers.has(event)) this.handlers.set(event, new Set());
     this.handlers.get(event)!.add(handler);
-    return () => this.handlers.get(event)?.delete(handler);
+    return () => { this.handlers.get(event)?.delete(handler); };
   }
 
   off(event: string, handler: EventHandler) {
