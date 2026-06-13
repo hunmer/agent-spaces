@@ -19,6 +19,7 @@ import {
   type AgentPreset,
   type AgentRole,
   type AgentDetailLockedFields,
+  type AgentDetailHiddenFields,
   type BuiltInRole,
   type ConnectionTestResult,
   type McpDraft,
@@ -49,6 +50,10 @@ export interface AgentEditorProps {
   presetBasePath?: string;
   lockedFields?: AgentDetailLockedFields;
   fixedValues?: Partial<AgentPreset>;
+  /** 持久化钩子。传入则覆盖默认保存路径（全局 AgentPreset + useAgentStore 同步），由调用方负责落盘。返回保存后的 AgentPreset。 */
+  commit?: (draft: AgentPreset) => Promise<AgentPreset>;
+  /** 隐藏 AgentDetail 的指定区块（整段不渲染）。与 lockedFields 正交、可叠加。 */
+  hiddenFields?: AgentDetailHiddenFields;
 }
 
 export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
@@ -63,6 +68,8 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       presetBasePath = "/api/agents/presets",
       lockedFields,
       fixedValues,
+      commit,
+      hiddenFields,
     },
     ref,
   ) {
@@ -104,6 +111,11 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       setError(null);
       try {
         const nextDraft = { ...editDraft, ...fixedValues };
+        if (commit) {
+          const saved = await commit(nextDraft);
+          onSaved(saved);
+          return;
+        }
         const isDraft = isDraftAgent(nextDraft);
         const createBody = serializeAgent(nextDraft);
         const raw = isDraft
@@ -216,6 +228,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
             onMcpChange={updateMcpConfig}
             onTestConnection={handleTestConnection}
             lockedFields={lockedFields}
+            hiddenFields={hiddenFields}
           />
         </div>
 

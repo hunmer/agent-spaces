@@ -62,7 +62,7 @@ export { createAvatarApi } from './modules/avatar';
 export { createAgentCommandsApi } from './modules/agent-commands';
 export { createChatApi } from './modules/chat';
 export type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from './modules/chat';
-export { createMiniAppApi, type MiniAppProject } from './modules/mini-apps';
+export { createMiniAppApi, type MiniAppProject, type MiniAppAgentConfig } from './modules/mini-apps';
 
 // ---- 工厂函数 ----
 

@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 250,
-        "y": 50
+        "x": 630,
+        "y": 60
       },
       "data": {}
     },
@@ -18,8 +18,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": -75,
+        "y": -30
       },
       "data": {}
     },
@@ -28,8 +28,8 @@
       "type": "asr_file_recognition",
       "label": "录音文件转写",
       "position": {
-        "x": 120,
-        "y": 180
+        "x": 180,
+        "y": 135
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -74,8 +74,8 @@
       "type": "epub_info",
       "label": "EPUB书籍信息",
       "position": {
-        "x": 300,
-        "y": 300
+        "x": 450,
+        "y": 255
       },
       "data": {
         "outputs": [
@@ -126,8 +126,8 @@
       "type": "agent_run",
       "label": "nodes.agent_run.label",
       "position": {
-        "x": 585,
-        "y": 210
+        "x": 735,
+        "y": 180
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -138,7 +138,7 @@
   ],
   "edges": [],
   "createdAt": 1781255038446,
-  "updatedAt": 1781298279202,
+  "updatedAt": 1781312388056,
   "enabledPlugins": [
     "workflow.aliyun-ai",
     "workflow.epub-parser",

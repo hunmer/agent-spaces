@@ -49,6 +49,7 @@ import {
   type McpDraft,
   type ConnectionTestResult,
   type AgentDetailLockedFields,
+  type AgentDetailHiddenFields,
   PROVIDER_OPTIONS,
   RUNTIME_OPTIONS,
   Section,
@@ -65,6 +66,7 @@ export function AgentDetail({
   onMcpChange,
   onTestConnection,
   lockedFields,
+  hiddenFields,
 }: {
   agent: AgentPreset;
   roleOptions: AgentRole[];
@@ -74,6 +76,7 @@ export function AgentDetail({
   onMcpChange: (value: McpDraft) => void;
   onTestConnection: () => void;
   lockedFields?: AgentDetailLockedFields;
+  hiddenFields?: AgentDetailHiddenFields;
 }) {
   const t = useTranslations("agent");
   const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -154,7 +157,7 @@ export function AgentDetail({
       <Section icon={<MessageSquare className="size-3.5" />} title={t("detail.basic")}>
         {/* Background + Avatar + Name/Role layout */}
         <div className="flex flex-col">
-          {/* Background image area */}
+          {!hiddenFields?.background && (
           <div className="relative h-24 rounded-t-xl bg-muted overflow-hidden group">
             {agent.backgroundUrl ? (
               <>
@@ -197,6 +200,7 @@ export function AgentDetail({
               />
             </label>
           </div>
+          )}
           {/* Avatar + Name/Row row: avatar overlaps background bottom */}
           <div className="flex items-end gap-4 px-4 -mt-6">
             <div className="relative shrink-0">
@@ -217,6 +221,7 @@ export function AgentDetail({
                 className="h-7 flex-1 text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0"
                 placeholder={t("detail.name")}
               />
+              {!hiddenFields?.role && (
               <select
                 value={agent.role}
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
@@ -229,6 +234,7 @@ export function AgentDetail({
                   </option>
                 ))}
               </select>
+              )}
             </div>
           </div>
         </div>
@@ -248,10 +254,13 @@ export function AgentDetail({
         </FieldGroup>
       </Section>
 
+      {!hiddenFields?.workingDir && (
       <Section icon={<FolderOpen className="size-3.5" />} title={t("detail.workingDirectory")}>
         <Input value={agent.workingDir} onChange={(e) => onChange("workingDir", e.target.value)} placeholder={t("detail.workingDirPlaceholder")} disabled={lockedFields?.workingDir} />
       </Section>
+      )}
 
+      {!hiddenFields?.systemPrompt && (
       <div className="flex flex-col gap-2.5">
         <SectionHeader
           icon={<Sparkles className="size-3.5" />}
@@ -271,7 +280,9 @@ export function AgentDetail({
           disabled={lockedFields?.systemPrompt}
         />
       </div>
+      )}
 
+      {!hiddenFields?.outputStyle && (
       <Section icon={<Sparkles className="size-3.5" />} title={t("detail.outputStyle")}>
         <Textarea
           value={agent.outputStyle}
@@ -280,7 +291,9 @@ export function AgentDetail({
           className="min-h-24 text-xs"
         />
       </Section>
+      )}
 
+      {!hiddenFields?.mcps && (
       <div className="flex flex-col gap-2.5">
         <SectionHeader
           icon={<Wrench className="size-3.5" />}
@@ -334,7 +347,9 @@ export function AgentDetail({
           }}
         />
       </div>
+      )}
 
+      {!hiddenFields?.tools && (
       <div className="flex flex-col gap-2.5">
         <SectionHeader
           icon={<Wrench className="size-3.5" />}
@@ -372,7 +387,9 @@ export function AgentDetail({
           onSelectedToolsChange={(tools) => onChange("tools", tools)}
         />
       </div>
+      )}
 
+      {!hiddenFields?.skills && (
       <div className="flex flex-col gap-2.5">
         <SectionHeader
           icon={<Cpu className="size-3.5" />}
@@ -407,6 +424,7 @@ export function AgentDetail({
           onSelectedSkillsChange={(names) => onChange("skills", names.map((name) => ({ name })))}
         />
       </div>
+      )}
 
       <Section icon={<Sliders className="size-3.5" />} title={t("detail.model")}>
         <div className="space-y-2.5">

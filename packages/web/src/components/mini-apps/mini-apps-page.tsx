@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
+import { pluginApi } from '@/lib/workflow-plugin-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Upload, FileQuestion, Store } from 'lucide-react';
@@ -30,6 +31,7 @@ export function WorkflowsUiPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -43,6 +45,13 @@ export function WorkflowsUiPage() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  // 加载插件清单（供卡片展示已启用插件图标）—— 整页只请求一次
+  useEffect(() => {
+    pluginApi.list().then((list) => {
+      setAllPlugins(list.map(p => ({ id: p.id, name: p.name, iconPath: p.iconPath })));
+    }).catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     if (!search) return projects;
@@ -170,6 +179,7 @@ export function WorkflowsUiPage() {
               project={project}
               onDelete={handleDelete}
               onUpdated={handleUpdated}
+              allPlugins={allPlugins}
             />
           ))}
         </div>

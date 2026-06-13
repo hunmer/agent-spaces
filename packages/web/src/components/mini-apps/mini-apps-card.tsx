@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download, Share2, FolderOpen } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Download, Share2, FolderOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ShareDialog } from '@/components/common/share-dialog';
@@ -14,15 +14,19 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
+import { resolveServerAssetUrl } from '@/lib/server';
+import { AvatarGroup } from '@/components/ui/avatar-group';
 
 interface WorkflowsUiCardProps {
   project: MiniAppProject;
   onDelete: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onUpdated?: (project: MiniAppProject) => void;
+  /** 全部插件清单（由父组件加载，用于展示已启用插件的图标） */
+  allPlugins?: { id: string; name: string; iconPath?: string }[];
 }
 
-export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: WorkflowsUiCardProps) {
+export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, allPlugins }: WorkflowsUiCardProps) {
   const t = useTranslations('mini-apps');
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
@@ -45,7 +49,18 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
 
   const handleRevealFolder = () => sdk.miniApp.revealFolder(project.id);
 
-  const pluginCount = project.enabledPlugins?.length ?? 0;
+  // 参照 mini-app-preview 的 enabledPluginAvatars：用已启用插件 ID 过滤出头像
+  const enabledPluginAvatars = useMemo(() => {
+    const ids = project.enabledPlugins;
+    if (!ids?.length || !allPlugins?.length) return [];
+    const enabledSet = new Set(ids);
+    return allPlugins
+      .filter(p => enabledSet.has(p.id))
+      .map(p => ({
+        imageUrl: p.iconPath ? resolveServerAssetUrl(`/api/plugins/${p.id}/icon`) : '',
+        name: p.name,
+      }));
+  }, [project.enabledPlugins, allPlugins]);
 
   return (
     <Card
@@ -130,10 +145,8 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
               )}
             </div>
           )}
-          {pluginCount > 0 && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <Puzzle className="h-3 w-3" /> {pluginCount}
-            </span>
+          {enabledPluginAvatars.length > 0 && (
+            <AvatarGroup avatarUrls={enabledPluginAvatars} size="sm" />
           )}
         </div>
       </CardContent>

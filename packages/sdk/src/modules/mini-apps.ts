@@ -118,6 +118,14 @@ export function createMiniAppApi(http: HttpClient) {
     listAgents: (id: string): Promise<{ enableAgents: boolean; agents: Array<{ id: string; name: string; avatar?: string }> }> =>
       http.get(`/api/mini-apps/${id}/agents`),
 
+    /** 读取单条 agent 的完整配置（含 apiKey，供编辑器加载） */
+    getAgent: (id: string, agentId: string): Promise<MiniAppAgentConfig> =>
+      http.get(`/api/mini-apps/${id}/agents/${encodeURIComponent(agentId)}`),
+
+    /** 更新单条 agent 配置（整体替换） */
+    updateAgent: (id: string, agentId: string, data: MiniAppAgentConfig): Promise<MiniAppAgentConfig> =>
+      http.put(`/api/mini-apps/${id}/agents/${encodeURIComponent(agentId)}`, data),
+
     agentHistory: (id: string, sessionId: string, agentId?: string): Promise<{ messages: MiniAppChatMessage[] }> =>
       http.get(`/api/mini-apps/${id}/agents/chat?sessionId=${encodeURIComponent(sessionId)}${agentId ? `&agentId=${encodeURIComponent(agentId)}` : ''}`),
 

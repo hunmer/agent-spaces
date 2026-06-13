@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { MiniAppProject } from '@agent-spaces/sdk';
+import type { MiniAppProject, MiniAppAgentConfig } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
@@ -16,7 +16,11 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles } from 'lucide-react';
+import { PanelRightOpen, Loader2, Search, Sparkles, Settings2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AgentEditor } from '@/components/sidebar/agent-editor';
+import { MINI_APP_HIDDEN_FIELDS, type AgentPreset } from '@/components/sidebar/agent-shared';
+import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
 import { MiniAppRenderer } from './mini-app-renderer';
 
 interface MiniAppPreviewProps {
@@ -144,6 +148,32 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
     setSending(false);
   }, []);
 
+  // ---- Agent 设置弹窗 ----
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState<AgentPreset | null>(null);
+  const [originalConfig, setOriginalConfig] = useState<MiniAppAgentConfig | null>(null);
+
+  const openSettings = useCallback(async () => {
+    if (!projectId || !agentId) return;
+    setSettingsOpen(true);
+    setSettingsLoading(true);
+    try {
+      const cfg = await sdk.miniApp.getAgent(projectId, agentId);
+      setOriginalConfig(cfg);
+      setSettingsDraft(miniAppConfigToAgentPreset(cfg));
+    } catch { /* ignore */ }
+    finally { setSettingsLoading(false); }
+  }, [projectId, agentId]);
+
+  // 持久化已在 commit 钩子完成，这里仅做 UI 收尾（关弹窗 + 刷新 agents 列表）
+  const handleSettingsSaved = useCallback(() => {
+    setSettingsOpen(false);
+    if (projectId) {
+      sdk.miniApp.listAgents(projectId).then((r) => setAgents(r.agents)).catch(() => {});
+    }
+  }, [projectId]);
+
   const current = agents.find((a) => a.id === agentId);
 
   return (
@@ -167,19 +197,61 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           onStop={handleStop}
           inputPlaceholder={t('agent.inputPlaceholder')}
           headerActions={
-            agents.length > 1 ? (
-              <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
-                <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {agents.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : undefined
+            <>
+              {agents.length > 1 && (
+                <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
+                  <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {agents.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-background/50"
+                onClick={openSettings}
+                disabled={!agentId}
+                title={t('agent.settings')}
+                aria-label={t('agent.settings')}
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </>
           }
         />
       </PopoverContent>
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="flex max-h-[86vh] min-w-[60vw] flex-col overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4">
+            <DialogTitle>{t('agent.settingsTitle')}</DialogTitle>
+          </DialogHeader>
+          {settingsLoading || !settingsDraft || !originalConfig ? (
+            <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t('agent.loading')}
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <AgentEditor
+                agent={settingsDraft}
+                onSaved={handleSettingsSaved}
+                onBack={() => setSettingsOpen(false)}
+                showFooter
+                hiddenFields={MINI_APP_HIDDEN_FIELDS}
+                commit={async (draft) => {
+                  const cfg = agentPresetToMiniAppConfig(draft, originalConfig);
+                  const updated = await sdk.miniApp.updateAgent(projectId, cfg.id, cfg);
+                  return miniAppConfigToAgentPreset(updated);
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Popover>
   );
 }

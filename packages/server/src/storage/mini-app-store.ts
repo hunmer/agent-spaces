@@ -393,6 +393,37 @@ export function readAgentsConfig(projectId: string): unknown[] | null {
   }
 }
 
+/** 读取单条 agent 的完整配置（含 apiKey，仅供编辑器加载）。缺失返回 null。 */
+export function readAgentConfig(projectId: string, agentId: string): Record<string, unknown> | null {
+  const configs = readAgentsConfig(projectId);
+  if (!configs) return null;
+  return configs.find(
+    (c): c is Record<string, unknown> =>
+      !!c && typeof c === 'object' && !Array.isArray(c) && (c as Record<string, unknown>).id === agentId,
+  ) ?? null;
+}
+
+/**
+ * 写入/更新一条 agent config 到 agents.json（整条替换；不存在则追加）。
+ * @returns 写入的 entry
+ */
+export function upsertAgentConfig(
+  projectId: string,
+  agentId: string,
+  entry: Record<string, unknown>,
+): Record<string, unknown> {
+  const filePath = join(projectDir(projectId), 'agents.json');
+  const configs: unknown[] = readAgentsConfig(projectId) ?? [];
+  const idx = configs.findIndex(
+    (c) => !!c && typeof c === 'object' && !Array.isArray(c) && (c as Record<string, unknown>).id === agentId,
+  );
+  if (idx >= 0) configs[idx] = entry;
+  else configs.push(entry);
+  writeJsonFile(filePath, configs);
+  touchProject(projectId);
+  return entry;
+}
+
 export interface MiniAppChatMessage {
   id: string;
   sessionId: string;

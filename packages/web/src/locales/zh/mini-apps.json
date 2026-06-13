@@ -111,6 +111,9 @@
     "switch": "切换助手",
     "inputPlaceholder": "对助手说点什么…",
     "empty": "暂无消息",
-    "loadError": "加载失败"
+    "loadError": "加载失败",
+    "settings": "Agent 设置",
+    "settingsTitle": "编辑 Agent",
+    "loading": "加载中…"
   }
 }

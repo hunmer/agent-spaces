@@ -51,6 +51,35 @@ export type AgentDetailLockedFields = Partial<Record<
   boolean
 >>;
 
+/**
+ * 隐藏整段 UI（不渲染），与 lockedFields（仅 disable）正交、可叠加。
+ * key 集合是 lockedFields 的超集（多 background / outputStyle）。
+ */
+export type AgentDetailHiddenFields = Partial<Record<
+  | "role"
+  | "runtimeKind"
+  | "workingDir"
+  | "systemPrompt"
+  | "mcps"
+  | "tools"
+  | "skills"
+  | "background"
+  | "outputStyle",
+  boolean
+>>;
+
+/** mini-app agent 设置场景：隐藏不适用区块，保留 name/avatar/description/systemPrompt/model */
+export const MINI_APP_HIDDEN_FIELDS: AgentDetailHiddenFields = {
+  role: true,
+  runtimeKind: true,
+  workingDir: true,
+  outputStyle: true,
+  mcps: true,
+  tools: true,
+  skills: true,
+  background: true,
+};
+
 export type AgentRole = AgentConfig["role"];
 export type BuiltInRole = "agent" | "scheduler" | "task_creator" | "bot";
 

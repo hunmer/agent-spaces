@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, listAgentChats } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats } from '../storage/mini-app-store.js';
 import { runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -361,6 +361,55 @@ router.post('/:id/agents/:agentId/chat', (req: Request<{ id: string; agentId: st
       write('error', { message: error?.message ?? String(error) });
       res.end();
     });
+});
+
+// GET /:id/agents/:agentId — 返回完整 agent config（含 apiKey，敏感字段，仅供编辑器加载）
+router.get('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }>, res: Response) => {
+  try {
+    const project = getProject(req.params.id);
+    if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+    const entry = readAgentConfig(req.params.id, req.params.agentId);
+    if (!entry) { res.status(404).json({ error: 'Agent not found' }); return; }
+    res.json(entry);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// PUT /:id/agents/:agentId — 更新单条 agent config（整体替换）
+router.put('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }>, res: Response) => {
+  try {
+    const project = getProject(req.params.id);
+    if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+
+    const body = req.body ?? {};
+    const agentId = req.params.agentId;
+    if (typeof body.id !== 'string' || body.id !== agentId) {
+      res.status(400).json({ error: 'body.id must match :agentId' }); return;
+    }
+    if (typeof body.name !== 'string' || !body.name.trim()) {
+      res.status(400).json({ error: 'name is required' }); return;
+    }
+
+    const entry: Record<string, unknown> = {
+      id: body.id,
+      name: String(body.name).trim(),
+      avatar: typeof body.avatar === 'string' ? body.avatar : undefined,
+      agentId: typeof body.agentId === 'string' ? body.agentId : undefined,
+      modelProvider: typeof body.modelProvider === 'string' ? body.modelProvider : undefined,
+      modelId: typeof body.modelId === 'string' ? body.modelId : undefined,
+      apiKey: typeof body.apiKey === 'string' ? body.apiKey : undefined,
+      apiBase: typeof body.apiBase === 'string' ? body.apiBase : undefined,
+      systemPrompt: typeof body.systemPrompt === 'string' ? body.systemPrompt : undefined,
+      temperature: typeof body.temperature === 'number' ? body.temperature : undefined,
+      maxTokens: typeof body.maxTokens === 'number' ? body.maxTokens : undefined,
+      tools: body.tools && typeof body.tools === 'object' && !Array.isArray(body.tools) ? body.tools : undefined,
+    };
+    for (const k of Object.keys(entry)) {
+      if (entry[k] === undefined) delete entry[k];
+    }
+
+    const saved = upsertAgentConfig(req.params.id, agentId, entry);
+    res.json(saved);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
 export default router;

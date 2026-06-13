@@ -111,6 +111,9 @@
     "switch": "Switch assistant",
     "inputPlaceholder": "Message assistant…",
     "empty": "No messages",
-    "loadError": "Failed to load"
+    "loadError": "Failed to load",
+    "settings": "Agent settings",
+    "settingsTitle": "Edit Agent",
+    "loading": "Loading…"
   }
 }
