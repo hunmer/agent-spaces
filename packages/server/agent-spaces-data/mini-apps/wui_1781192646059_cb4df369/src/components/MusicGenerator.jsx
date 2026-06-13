@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -6,9 +6,17 @@ const {
   Switch, Label, Sparkles, Loader2,
 } = window.AgentSpacesUI;
 
-export default function MusicGenerator({ open, onClose, onGenerate, onGenerateStart, onGenerateEnd }) {
+export default function MusicGenerator({ open, onClose, onGenerate, onGenerateStart, onGenerateEnd, initialPrompt = '', initialLyrics = '' }) {
   const [prompt, setPrompt] = useState('');
   const [lyrics, setLyrics] = useState('');
+
+  // 当弹窗打开时，同步翻写传入的初始值
+  useEffect(() => {
+    if (open) {
+      setPrompt(initialPrompt);
+      setLyrics(initialLyrics);
+    }
+  }, [open, initialPrompt, initialLyrics]);
   const [model, setModel] = useState('music-2.6');
   const [isInstrumental, setIsInstrumental] = useState(false);
   const [generating, setGenerating] = useState(false);

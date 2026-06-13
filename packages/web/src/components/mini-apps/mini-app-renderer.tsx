@@ -339,7 +339,7 @@ export function MiniAppRenderer({
   return (
     <div
       ref={containerRef}
-      className={cn('h-full w-full overflow-auto', resolvedTheme, className)}
+      className={cn('h-full w-full overflow-hidden', resolvedTheme, className)}
       style={{ colorScheme: resolvedTheme }}
     />
   );

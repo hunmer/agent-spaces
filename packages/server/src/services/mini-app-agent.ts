@@ -26,8 +26,15 @@ export type ApiHandler = (input: Record<string, unknown>, ctx: ApiCtx) => unknow
  * 编译 src/api.js：剥离 import 行（api.js 不依赖外部模块），把 ESM `export default`
  * 转 CJS `module.exports =`，在沙箱求值。默认导出应为 { methodName: handler }。
  * 复用 services 的编译约定（见 mini-app-services.ts）。
+ *
+ * 同时提取方法上方的 JSDoc 注释，解析 `@param {type} name - description` 生成
+ * JSON Schema 参数描述，供 buildApiFunctionTools 注入到 inputSchema。
  */
-export function compileApiJs(code: string): Record<string, ApiHandler> {
+export function compileApiJs(code: string): {
+  handlers: Record<string, ApiHandler>;
+  schemas: Record<string, { description?: string; inputSchema: Record<string, unknown> }>;
+} {
+  const schemas = extractParamSchemas(code);
   let moduleObj: { exports: unknown };
   try {
     const stripped = code
@@ -37,26 +44,115 @@ export function compileApiJs(code: string): Record<string, ApiHandler> {
     const fn = new Function('module', 'exports', stripped);
     fn(moduleObj, moduleObj.exports);
   } catch {
-    return {};
+    return { handlers: {}, schemas: {} };
   }
   const exported = moduleObj.exports;
-  if (!exported || typeof exported !== 'object') return {};
+  if (!exported || typeof exported !== 'object') return { handlers: {}, schemas: {} };
   const handlers: Record<string, ApiHandler> = {};
   for (const [name, h] of Object.entries(exported as Record<string, unknown>)) {
     if (typeof h === 'function') handlers[name] = h as ApiHandler;
   }
-  return handlers;
+  return { handlers, schemas };
 }
 
-/** 从项目目录加载 src/api.js 并编译为方法表。文件缺失返回 {}。 */
-export function loadApiJs(projectId: string): Record<string, ApiHandler> {
+/** JSDoc @param 类型到 JSON Schema 的映射 */
+const TYPE_MAP: Record<string, string> = {
+  string: 'string',
+  number: 'number',
+  boolean: 'boolean',
+  bool: 'boolean',
+  int: 'integer',
+  integer: 'integer',
+  object: 'object',
+  array: 'array',
+};
+
+/**
+ * 从源码中提取每个方法的 JSDoc 注释，解析 @param 生成 inputSchema。
+ *
+ * 支持的 JSDoc 格式：
+ * ```js
+ * /**
+ *  * 方法描述文字
+ *  * @param {string} prompt - 音乐风格描述
+ *  * @param {boolean} [instrumental] - 是否纯音乐（可选）
+ *  * @/
+ * method_name: (input, ctx) => { ... }
+ * ```
+ *
+ * 识别规则：
+ * - `{type}` 映射到 JSON Schema type（string/number/boolean/integer/object/array）
+ * - `[name]` 方括号表示可选参数
+ * - `name - description` 破折号后为参数描述
+ */
+function extractParamSchemas(code: string): Record<string, { description?: string; inputSchema: Record<string, unknown> }> {
+  const result: Record<string, { description?: string; inputSchema: Record<string, unknown> }> = {};
+
+  // 匹配 JSDoc 注释 + 紧跟的方法定义（key: (...) => 或 key: function 或 key: async (...) =>）
+  const jsdocMethodRegex = /\/\*\*[\s\S]*?\*\/\s*(?:async\s+)?(\w+)\s*[:=]\s*(?:async\s+)?(?:function\s*)?\(/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = jsdocMethodRegex.exec(code)) !== null) {
+    const methodName = match[1];
+    const jsdocBlock = match[0].substring(0, match[0].indexOf('*/') + 2);
+
+    // 提取方法描述（@param 之前的内容）
+    const descLines: string[] = [];
+    const params: { name: string; type: string; description: string; optional: boolean }[] = [];
+
+    for (const line of jsdocBlock.split('\n')) {
+      const trimmed = line.replace(/^\s*\*\s?/, '').trim();
+      const paramMatch = trimmed.match(/@param\s+\{(\w+)\}\s+(\[?)(\w+)(\]?)\s*(?:-\s*)?(.*)/);
+      if (paramMatch) {
+        const [, rawType, openBracket, name, closeBracket, desc] = paramMatch;
+        const jsonType = TYPE_MAP[rawType.toLowerCase()] ?? 'string';
+        params.push({
+          name,
+          type: jsonType,
+          description: desc?.trim() || '',
+          optional: openBracket === '[' && closeBracket === ']',
+        });
+      } else if (!trimmed.startsWith('@') && trimmed && !trimmed.startsWith('/**') && !trimmed.startsWith('*/') && trimmed !== '/') {
+        descLines.push(trimmed);
+      }
+    }
+
+    const description = descLines.join(' ').trim() || undefined;
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+
+    for (const p of params) {
+      const prop: Record<string, unknown> = { type: p.type };
+      if (p.description) prop.description = p.description;
+      properties[p.name] = prop;
+      if (!p.optional) required.push(p.name);
+    }
+
+    result[methodName] = {
+      description,
+      inputSchema: {
+        type: 'object',
+        ...(Object.keys(properties).length > 0 ? { properties } : {}),
+        ...(required.length > 0 ? { required } : {}),
+      },
+    };
+  }
+
+  return result;
+}
+
+/** 从项目目录加载 src/api.js 并编译。文件缺失返回空。 */
+export function loadApiJs(projectId: string): {
+  handlers: Record<string, ApiHandler>;
+  schemas: Record<string, { description?: string; inputSchema: Record<string, unknown> }>;
+} {
   const filePath = join(getProjectDir(projectId), 'src', 'api.js');
-  if (!existsSync(filePath)) return {};
+  if (!existsSync(filePath)) return { handlers: {}, schemas: {} };
   try {
     return compileApiJs(readFileSync(filePath, 'utf-8'));
   } catch (err) {
     console.error(`[mini-app-agent] failed to load src/api.js:`, err instanceof Error ? err.message : err);
-    return {};
+    return { handlers: {}, schemas: {} };
   }
 }
 
@@ -72,24 +168,28 @@ export function makeApiCtx(projectId: string): ApiCtx {
 }
 
 /**
- * 把 api.js 方法表包装成 AgentFunctionTool[]。第一版 inputSchema 为空 object
- * （无参 / 简单 object，不做参数描述——见 spec §7.2 限制说明）。
+ * 把 api.js 方法表包装成 AgentFunctionTool[]。
+ * 从 schemas 中读取 JSDoc 提取的参数描述，注入到 inputSchema 和 description。
  */
 export function buildApiFunctionTools(
   methods: Record<string, ApiHandler>,
   ctxProvider: () => ApiCtx,
+  schemas?: Record<string, { description?: string; inputSchema: Record<string, unknown> }>,
 ): AgentFunctionTool[] {
-  return Object.entries(methods).map(([name, handler]) => ({
-    name,
-    description: `${name} (project-defined api.js method)`,
-    inputSchema: { type: 'object', properties: {} },
-    execute: async (input) => {
-      const record = input && typeof input === 'object' && !Array.isArray(input)
-        ? input as Record<string, unknown>
-        : {};
-      return handler(record, ctxProvider());
-    },
-  }));
+  return Object.entries(methods).map(([name, handler]) => {
+    const schema = schemas?.[name];
+    return {
+      name,
+      description: schema?.description ?? `${name} (project-defined api.js method)`,
+      inputSchema: schema?.inputSchema ?? { type: 'object', properties: {} },
+      execute: async (input) => {
+        const record = input && typeof input === 'object' && !Array.isArray(input)
+          ? input as Record<string, unknown>
+          : {};
+        return handler(record, ctxProvider());
+      },
+    };
+  });
 }
 
 export interface ResolvedAgentCredentials {
@@ -226,11 +326,11 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   }
   let apiMethodNames: string[] = [];
   if (toolsCfg.api) {
-    const apiMethods = loadApiJs(projectId);
+    const { handlers: apiMethods, schemas: apiSchemas } = loadApiJs(projectId);
     apiMethodNames = Object.keys(apiMethods);
     if (apiMethodNames.length) {
       const ctxProvider = () => makeApiCtx(projectId);
-      functionTools.push(...buildApiFunctionTools(apiMethods, ctxProvider));
+      functionTools.push(...buildApiFunctionTools(apiMethods, ctxProvider, apiSchemas));
     }
   }
 

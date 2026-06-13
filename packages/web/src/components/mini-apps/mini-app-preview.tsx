@@ -402,7 +402,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   }, [onError, t]);
 
   return (
-    <div className="relative flex flex-col h-full">
+    <div className="relative flex flex-col h-full overflow-hidden">
       {showToolbar && (
         <div className="flex items-center shrink-0 px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
           <div className="flex-1 min-w-0">
@@ -477,7 +477,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         type={type}
         sourceCode={sourceCode}
         onError={handleRendererError}
-        className={hideHeader ? "flex-1" : "flex-1 p-4"}
+        className="flex-1"
         taskEvents={taskEvents}
         files={files}
         mainFile={mainFile}

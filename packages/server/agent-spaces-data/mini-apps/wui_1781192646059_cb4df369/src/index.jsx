@@ -4,11 +4,13 @@ import Background from './components/Background';
 import Player from './components/Player';
 import MusicGenerator from './components/MusicGenerator';
 
-const { Sparkles, Alert, AlertTitle, AlertDescription, Loader2 } = window.AgentSpacesUI;
+const { Sparkles, Alert, AlertTitle, AlertDescription, Loader2, RefreshCw } = window.AgentSpacesUI;
 
 export default function App() {
   const player = useAudioPlayer();
   const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [remixPrompt, setRemixPrompt] = useState('');
+  const [remixLyrics, setRemixLyrics] = useState('');
   const [generatingAlert, setGeneratingAlert] = useState(false);
   const [trackInfo, setTrackInfo] = useState({
     title: 'Neon Horizon',
@@ -218,13 +220,32 @@ export default function App() {
         onGenerate={handleGenerate}
         onGenerateStart={handleGenerateStart}
         onGenerateEnd={handleGenerateEnd}
+        initialPrompt={remixPrompt}
+        initialLyrics={remixLyrics}
       />
 
-      {/* Bottom Center - AI Music Creation Button */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+      {/* Bottom Center - AI Music Creation / Remix Buttons */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3">
+        {player.audioUrl && playlist[currentIndex]?.prompt && (
+          <button
+            className="flex items-center gap-2 px-5 py-3 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 bg-card/60 backdrop-blur-xl transition-colors text-sm font-medium"
+            onClick={() => {
+              setRemixPrompt(playlist[currentIndex].prompt);
+              setRemixLyrics(playlist[currentIndex].lyrics || '');
+              setGeneratorOpen(true);
+            }}
+          >
+            <RefreshCw className="w-4 h-4" />
+            翻写此曲
+          </button>
+        )}
         <button
           className="flex items-center gap-2 px-6 py-3 rounded-full border border-primary text-primary hover:bg-primary/10 transition-colors text-sm font-semibold"
-          onClick={() => setGeneratorOpen(true)}
+          onClick={() => {
+            setRemixPrompt('');
+            setRemixLyrics('');
+            setGeneratorOpen(true);
+          }}
         >
           <Sparkles className="w-5 h-5" />
           AI 音乐创作

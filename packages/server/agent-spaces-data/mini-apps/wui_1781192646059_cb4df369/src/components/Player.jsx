@@ -150,8 +150,16 @@ export default function Player({
             <ModeIcon className="w-[22px] h-[22px]" />
           </button>
 
-          {/* Center: Skip + Play/Pause + Playlist */}
+          {/* Center: Download + Skip + Play/Pause + Playlist */}
           <div className="flex items-center gap-4">
+            <button
+              className="flex items-center justify-center w-10 h-10 text-muted-foreground hover:text-foreground hover:scale-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              onClick={() => currentAudioUrl && window.open(currentAudioUrl, '_blank')}
+              disabled={!currentAudioUrl}
+              title="下载当前歌曲"
+            >
+              <Download className="w-[22px] h-[22px]" />
+            </button>
             <button
               className="flex items-center justify-center w-10 h-10 text-foreground hover:scale-110 transition-transform disabled:opacity-30 disabled:cursor-not-allowed"
               onClick={onPrev}
