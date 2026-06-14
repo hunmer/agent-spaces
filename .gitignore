@@ -44,4 +44,8 @@ packages/server/agent-spaces-data/workspaces/
 packages/electron/out/
 packages/electron/renderer/
 packages/electron/dist/
-packages/electron/build/
+packages/electron/build/*
+!packages/electron/build/icon.png
+!packages/electron/build/icon.ico
+!packages/electron/build/icon.icns
+packages/electron/release/

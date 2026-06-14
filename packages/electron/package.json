@@ -2,21 +2,74 @@
   "name": "@agent-spaces/electron",
   "version": "0.0.0",
   "description": "Agent Spaces Electron 桌面壳：窗口管理、local:// 协议、桌面原生能力、全局快捷键。后端通过外部 server。",
+  "author": "Agent Spaces",
   "type": "module",
   "main": "out/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node -e \"require('fs').writeFileSync('out/preload/package.json','{\\\"type\\\":\\\"commonjs\\\"}\\n')\"",
     "dev": "pnpm build && ELECTRON_RENDERER_URL=http://127.0.0.1:3000 electron .",
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "pnpm build && electron-builder",
+    "dist:mac": "pnpm build && electron-builder --mac",
+    "dist:win": "pnpm build && electron-builder --win",
+    "dist:linux": "pnpm build && electron-builder --linux"
   },
   "dependencies": {
     "@agent-spaces/shared": "workspace:*",
     "@electron-toolkit/utils": "^3.0.0",
-    "electron-store": "^8.2.0"
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "electron": "^31.0.0",
+    "electron-builder": "^25.1.8",
     "typescript": "^5.5.0"
+  },
+  "build": {
+    "appId": "com.agent-spaces.app",
+    "productName": "Agent Spaces",
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "hunmer",
+      "repo": "agent_spaces",
+      "releaseType": "release"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "identity": null,
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

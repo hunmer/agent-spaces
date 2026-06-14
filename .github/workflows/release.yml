@@ -39,6 +39,12 @@ jobs:
             packages/flutter/assets/web
             packages/flutter/pubspec.yaml
 
+      - name: Upload web out (electron renderer source)
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-out
+          path: packages/web/out
+
   build-macos:
     needs: build-web-assets
     runs-on: macos-latest
@@ -269,8 +275,105 @@ jobs:
             packages/flutter/build/app/outputs/flutter-apk/*.apk
             packages/flutter/build/app/outputs/bundle/release/*.aab
 
+  build-electron-macos:
+    needs: build-web-assets
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared
+        run: pnpm --filter @agent-spaces/shared build
+
+      - name: Download web assets into renderer
+        uses: actions/download-artifact@v4
+        with:
+          name: web-out
+          path: packages/electron/renderer
+
+      - name: Build Electron main/preload
+        run: pnpm --filter @agent-spaces/electron build
+
+      - name: Set version from tag
+        working-directory: packages/electron
+        run: |
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('package.json'));j.version=process.argv[1];fs.writeFileSync('package.json',JSON.stringify(j,null,2))" "${GITHUB_REF_NAME#v}"
+
+      - name: Package (macOS, arm64 + x64)
+        working-directory: packages/electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: electron-builder --mac --arm64 --x64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-macos
+          path: |
+            packages/electron/release/*.dmg
+            packages/electron/release/*-mac.zip
+            packages/electron/release/latest-mac.yml
+
+  build-electron-windows:
+    needs: build-web-assets
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared
+        run: pnpm --filter @agent-spaces/shared build
+
+      - name: Download web assets into renderer
+        uses: actions/download-artifact@v4
+        with:
+          name: web-out
+          path: packages/electron/renderer
+
+      - name: Build Electron main/preload
+        run: pnpm --filter @agent-spaces/electron build
+
+      - name: Set version from tag
+        working-directory: packages/electron
+        shell: bash
+        run: |
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('package.json'));j.version=process.argv[1];fs.writeFileSync('package.json',JSON.stringify(j,null,2))" "${GITHUB_REF_NAME#v}"
+
+      - name: Package (Windows, x64)
+        working-directory: packages/electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: electron-builder --win --x64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-windows
+          path: |
+            packages/electron/release/*.exe
+            packages/electron/release/latest.yml
+
   release:
-    needs: [build-macos, build-ios, build-windows, build-android]
+    needs: [build-macos, build-ios, build-windows, build-android, build-electron-macos, build-electron-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -339,5 +442,10 @@ jobs:
             artifacts/windows/*.zip
             artifacts/android/**/*.apk
             artifacts/android/**/*.aab
+            artifacts/electron-macos/*.dmg
+            artifacts/electron-macos/*-mac.zip
+            artifacts/electron-macos/latest-mac.yml
+            artifacts/electron-windows/*.exe
+            artifacts/electron-windows/latest.yml
           generateReleaseNotes: true
           token: ${{ secrets.GITHUB_TOKEN }}

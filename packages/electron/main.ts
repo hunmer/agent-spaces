@@ -6,6 +6,7 @@ import { readFileSync, statSync, openSync, readSync, closeSync, existsSync } fro
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 import { electronApp, optimizer } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
 import { registerGlobalShortcuts, unregisterGlobalShortcuts } from './ipc/shortcut.js'
 import { registerFsIpcHandlers } from './ipc/fs.js'
 import { getWindowMaximized, setWindowMaximized } from './services/store.js'
@@ -249,6 +250,17 @@ app.whenReady().then(async () => {
   productionRendererUrl = process.env.ELECTRON_RENDERER_URL ? undefined : await startRendererServer()
   createWindow(productionRendererUrl)
   registerGlobalShortcuts()
+
+  // 自动更新：仅打包版从 GitHub Release 拉取（dev 跳过）。下载完成后退出时静默安装。
+  if (app.isPackaged) {
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.on('error', (err) => console.error('[autoUpdater] error:', err))
+    autoUpdater.on('update-downloaded', (info) =>
+      console.log('[autoUpdater] downloaded', info.version, '— installs on quit'),
+    )
+    autoUpdater.checkForUpdates().catch((err) => console.error('[autoUpdater] check failed:', err))
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
