@@ -6,7 +6,7 @@ import { readFileSync, statSync, openSync, readSync, closeSync, existsSync } fro
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { autoUpdater } from 'electron-updater'
+import electronUpdater from 'electron-updater'
 import { registerGlobalShortcuts, unregisterGlobalShortcuts } from './ipc/shortcut.js'
 import { registerFsIpcHandlers } from './ipc/fs.js'
 import { getWindowMaximized, setWindowMaximized } from './services/store.js'
@@ -253,6 +253,7 @@ app.whenReady().then(async () => {
 
   // 自动更新：仅打包版从 GitHub Release 拉取（dev 跳过）。下载完成后退出时静默安装。
   if (app.isPackaged) {
+    const { autoUpdater } = electronUpdater
     autoUpdater.autoDownload = true
     autoUpdater.autoInstallOnAppQuit = true
     autoUpdater.on('error', (err) => console.error('[autoUpdater] error:', err))
