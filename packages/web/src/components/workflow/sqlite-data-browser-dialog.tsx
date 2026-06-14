@@ -55,6 +55,43 @@ const NEW_TABLE = '__new__';
 // 字段描述无法存进 SQLite 列定义（PRAGMA 读不到），单独用元数据表持久化
 const META_TABLE = '__sqlite_field_meta__';
 const quoteIdent = (name: string) => `"${name.replaceAll('"', '""')}"`;
+const DATA_LIMIT = 100;
+
+// 转义 LIKE 通配符，保证「包含」等语义与本地子串匹配一致
+const escapeLike = (s: string) => s.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+
+// 把筛选条件编译成 SELECT ... WHERE ... LIMIT 的参数化 SQL（服务端过滤）
+function buildSelect(table: string, filters: Filter[]): { sql: string; params: unknown[] } {
+  const params: unknown[] = [];
+  const clauses: string[] = [];
+  for (const f of getActiveFilters(filters)) {
+    const ident = quoteIdent(f.field);
+    const col = `CAST(${ident} AS TEXT)`;
+    const term = typeof f.values[0] === 'string' ? f.values[0] : String(f.values[0] ?? '');
+    switch (f.operator) {
+      case 'empty':
+        clauses.push(`(${ident} IS NULL OR ${col} = '')`);
+        break;
+      case 'not_empty':
+        clauses.push(`(${ident} IS NOT NULL AND ${col} != '')`);
+        break;
+      case 'is':
+        clauses.push(`${col} = ?`); params.push(term); break;
+      case 'is_not':
+        clauses.push(`${col} != ?`); params.push(term); break;
+      case 'contains':
+        clauses.push(`${col} LIKE ? ESCAPE '\\'`); params.push(`%${escapeLike(term)}%`); break;
+      case 'not_contains':
+        clauses.push(`(${ident} IS NULL OR ${col} NOT LIKE ? ESCAPE '\\')`); params.push(`%${escapeLike(term)}%`); break;
+      case 'starts_with':
+        clauses.push(`${col} LIKE ? ESCAPE '\\'`); params.push(`${escapeLike(term)}%`); break;
+      case 'ends_with':
+        clauses.push(`${col} LIKE ? ESCAPE '\\'`); params.push(`%${escapeLike(term)}`); break;
+    }
+  }
+  const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
+  return { sql: `SELECT rowid AS __rowid__, * FROM ${quoteIdent(table)}${where} LIMIT ?`, params: [...params, DATA_LIMIT] };
+}
 
 interface FieldDef {
   id: string;
@@ -106,17 +143,31 @@ interface ResultDataPanelProps {
   error?: string | null;
   onDelete?: (row: ResultRow) => void;
   className?: string;
+  // 受控筛选（服务端过滤）：传入后筛选条件由外部持有，面板不在本地过滤、也不在结果变化时清空
+  filters?: Filter[];
+  onFiltersChange?: (filters: Filter[]) => void;
 }
 
 // 结果数据面板：FilterPanel + SortableTable，列与筛选字段都按查询结果动态生成
-function ResultDataPanel({ result, isLoading = false, error = null, onDelete, className }: ResultDataPanelProps) {
+function ResultDataPanel({
+  result,
+  isLoading = false,
+  error = null,
+  onDelete,
+  className,
+  filters: controlledFilters,
+  onFiltersChange,
+}: ResultDataPanelProps) {
   const t = useTranslations();
-  const [filters, setFilters] = useState<Filter[]>([]);
+  const controlled = onFiltersChange !== undefined;
+  const [localFilters, setLocalFilters] = useState<Filter[]>([]);
+  const filters = controlled ? (controlledFilters ?? []) : localFilters;
+  const handleFiltersChange = controlled ? onFiltersChange! : setLocalFilters;
 
   const rows = useMemo<ResultRow[]>(() => (result?.rows ?? []) as ResultRow[], [result]);
 
-  // 结果集变化时清空筛选条件
-  useEffect(() => { setFilters([]); }, [result]);
+  // 仅本地（非受控）模式：结果集变化时清空筛选；受控模式由父组件决定何时重置
+  useEffect(() => { if (!controlled) setLocalFilters([]); }, [result, controlled]);
 
   const allCols = useMemo(
     () => result?.columns ?? (rows[0] ? Object.keys(rows[0]) : []),
@@ -161,13 +212,15 @@ function ResultDataPanel({ result, isLoading = false, error = null, onDelete, cl
     [visibleCols, t],
   );
 
+  // 受控模式直接渲染服务端已过滤的结果；本地模式才在客户端再过滤
   const activeFilters = getActiveFilters(filters);
   const filteredRows = useMemo(
-    () => (activeFilters.length === 0 ? rows : rows.filter((row) => applyFilters(row, activeFilters))),
-    [rows, activeFilters],
+    () => (controlled || activeFilters.length === 0 ? rows : rows.filter((row) => applyFilters(row, activeFilters))),
+    [rows, activeFilters, controlled],
   );
 
-  const showFilter = !isLoading && !error && !!result && rows.length > 0;
+  // 查询完成就展示筛选条；过滤到 0 行时也得保留入口，否则用户改不了/清不了条件
+  const showFilter = !!result && !isLoading && !error && (rows.length > 0 || filters.length > 0);
 
   let body: ReactNode;
   if (isLoading) {
@@ -183,7 +236,9 @@ function ResultDataPanel({ result, isLoading = false, error = null, onDelete, cl
       </div>
     );
   } else if (!result || rows.length === 0) {
-    body = <div className="p-6 text-center text-sm text-muted-foreground">{t('sqlite.emptyResult')}</div>;
+    // 有筛选条件 = 被过滤光；否则 = 表本身为空
+    const empty = result && filters.length > 0 ? t('sqlite.noMatch') : t('sqlite.emptyResult');
+    body = <div className="p-6 text-center text-sm text-muted-foreground">{empty}</div>;
   } else {
     body = (
       <>
@@ -208,8 +263,8 @@ function ResultDataPanel({ result, isLoading = false, error = null, onDelete, cl
         <FilterPanel
           fields={filterFields}
           filters={filters}
-          onFiltersChange={setFilters}
-          onClear={() => setFilters([])}
+          onFiltersChange={handleFiltersChange}
+          onClear={() => handleFiltersChange([])}
           clearLabel={t('sqlite.clearFilter')}
         />
       )}
@@ -241,6 +296,9 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [insertError, setInsertError] = useState<string | null>(null);
   const [insertMsg, setInsertMsg] = useState<string | null>(null);
+  // 服务端过滤条件 + 写操作后的本地刷新版本号
+  const [dataFilters, setDataFilters] = useState<Filter[]>([]);
+  const [dataVersion, setDataVersion] = useState(0);
 
   // 自定义 SQL
   const [sqlOpen, setSqlOpen] = useState(false);
@@ -313,25 +371,32 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
     finally { setSchemaLoading(false); }
   }, [databaseId, loadDescriptions, loadIndexedColumns]);
 
-  const browseData = useCallback(async (name: string) => {
-    setResult(null);
-    setDataError(null);
-    if (!name || name === NEW_TABLE) return;
-    setDataLoading(true);
-    try { setResult(await sdk.sqlite.query(databaseId, `SELECT rowid AS __rowid__, * FROM "${name}" LIMIT ?`, [100])); }
-    catch (e) { setDataError((e as Error).message); }
-    finally { setDataLoading(false); }
-  }, [databaseId]);
+  // 数据查询的唯一入口：表 / 筛选条件 / 写操作版本任一变化即重新向服务端查询
+  useEffect(() => {
+    if (!schemaTable || schemaTable === NEW_TABLE) { setResult(null); return; }
+    let cancelled = false;
+    (async () => {
+      setResult(null);
+      setDataError(null);
+      setDataLoading(true);
+      try {
+        const { sql, params } = buildSelect(schemaTable, dataFilters);
+        const r = await sdk.sqlite.query(databaseId, sql, params);
+        if (!cancelled) setResult(r);
+      } catch (e) { if (!cancelled) setDataError((e as Error).message); }
+      finally { if (!cancelled) setDataLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [schemaTable, dataFilters, dataVersion, databaseId]);
 
-  // 打开时自动选中第一个表
+  // 打开时自动选中第一个表（数据查询交给上面的查询 effect）
   useEffect(() => {
     if (!schemaTable && tables.length > 0) {
       const first = tables[0].name;
       setSchemaTable(first);
       loadSchema(first);
-      browseData(first);
     }
-  }, [tables, schemaTable, loadSchema, browseData]);
+  }, [tables, schemaTable, loadSchema]);
 
   // 参照字段表新增行：每个字段一个输入，空值绑 NULL，BOOLEAN 转 0/1
   const insertRow = async () => {
@@ -354,7 +419,8 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
       setInsertMsg(t('sqlite.rowInserted'));
       setNewRow({});
       setNewRowOpen(false);
-      await Promise.all([browseData(schemaTable), loadTables()]);
+      setDataVersion((v) => v + 1);
+      await loadTables();
     } catch (e) { setInsertError((e as Error).message); }
   };
 
@@ -386,8 +452,8 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
       if (all.length > 0) {
         const first = all[0].name;
         setSchemaTable(first);
+        setDataFilters([]);
         loadSchema(first);
-        browseData(first);
       } else {
         setSchemaTable('');
         setFields([]);
@@ -405,9 +471,10 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
     setInsertError(null);
     try {
       await sdk.sqlite.exec(databaseId, `DELETE FROM ${quoteIdent(schemaTable)} WHERE rowid = ?`, [rowid]);
-      await Promise.all([browseData(schemaTable), loadTables()]);
+      setDataVersion((v) => v + 1);
+      await loadTables();
     } catch (e) { setInsertError((e as Error).message); }
-  }, [schemaTable, databaseId, browseData, loadTables, t]);
+  }, [schemaTable, databaseId, loadTables, t]);
 
   const updateField = (id: string, patch: Partial<FieldDef>) =>
     setFields((fs) => fs.map((f) => (f.id === id ? { ...f, ...patch } : f)));
@@ -497,13 +564,14 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
               onValueChange={(v) => {
                 const val = v ?? '';
                 setSchemaTable(val);
+                setDataFilters([]);
                 setSchemaMsg(null);
                 setNewRow({});
                 setNewRowOpen(false);
                 setInsertError(null);
                 setInsertMsg(null);
                 if (val === NEW_TABLE) { setFields([newField()]); setResult(null); }
-                else { loadSchema(val); browseData(val); }
+                else { loadSchema(val); }
               }}
             >
               <SelectTrigger size="sm" className="w-60">
@@ -700,6 +768,8 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
               error={dataError}
               onDelete={deleteRow}
               className="min-h-0 flex-1"
+              filters={dataFilters}
+              onFiltersChange={setDataFilters}
             />
           </TabsContent>
         </Tabs>
