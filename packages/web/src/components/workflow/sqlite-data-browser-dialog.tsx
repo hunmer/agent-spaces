@@ -46,6 +46,8 @@ import { cn } from '@/lib/utils';
 
 const TYPE_OPTIONS = ['TEXT', 'INTEGER', 'REAL', 'NUMERIC', 'BLOB', 'BOOLEAN', 'DATETIME'];
 const NEW_TABLE = '__new__';
+// 字段描述无法存进 SQLite 列定义（PRAGMA 读不到），单独用元数据表持久化
+const META_TABLE = '__sqlite_field_meta__';
 
 interface FieldDef {
   id: string;
@@ -105,10 +107,26 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   const [dataError, setDataError] = useState<string | null>(null);
 
   const loadTables = useCallback(async () => {
-    try { setTables(await sdk.sqlite.listTables(databaseId)); } catch { setTables([]); }
+    try {
+      const all = await sdk.sqlite.listTables(databaseId);
+      setTables(all.filter((tb) => tb.name !== META_TABLE));
+    } catch { setTables([]); }
   }, [databaseId]);
 
   useEffect(() => { loadTables(); }, [loadTables]);
+
+  const loadDescriptions = useCallback(async (table: string): Promise<Record<string, string>> => {
+    try {
+      const r = await sdk.sqlite.query(
+        databaseId,
+        `SELECT "column", "description" FROM "${META_TABLE}" WHERE "table" = ?`,
+        [table],
+      );
+      const m: Record<string, string> = {};
+      for (const row of r.rows) m[String(row.column)] = String(row.description ?? '');
+      return m;
+    } catch { return {}; }
+  }, [databaseId]);
 
   const loadSchema = useCallback(async (name: string) => {
     setSchemaError(null);
@@ -116,18 +134,21 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
     if (!name) { setFields([]); return; }
     setSchemaLoading(true);
     try {
-      const cols = await sdk.sqlite.describeTable(databaseId, name);
+      const [cols, descMap] = await Promise.all([
+        sdk.sqlite.describeTable(databaseId, name),
+        loadDescriptions(name),
+      ]);
       setFields(cols.map((c) => ({
         id: `f${++fieldSeq}`,
         name: c.name,
-        description: '',
+        description: descMap[c.name] ?? '',
         type: (c.type || 'TEXT').toUpperCase(),
         indexed: false,
         required: c.notNull,
       })));
     } catch (e) { setSchemaError((e as Error).message); setFields([]); }
     finally { setSchemaLoading(false); }
-  }, [databaseId]);
+  }, [databaseId, loadDescriptions]);
 
   const browseData = useCallback(async (name: string) => {
     setResult(null);
@@ -173,10 +194,22 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
       const blocks = valid.map((f) => {
         let def = `"${f.name}" ${f.type || 'TEXT'}`;
         if (f.required) def += ' NOT NULL';
-        const desc = f.description.trim().replace(/[\r\n]/g, ' ');
-        return desc ? `-- ${f.name}: ${desc}\n  ${def}` : def;
+        return def;
       });
       await sdk.sqlite.exec(databaseId, `CREATE TABLE "${targetTable}" (\n  ${blocks.join(',\n  ')}\n)`);
+      // 字段描述写入元数据表（参数化绑定，避免注入）
+      await sdk.sqlite.exec(
+        databaseId,
+        `CREATE TABLE IF NOT EXISTS "${META_TABLE}" ("table" TEXT NOT NULL, "column" TEXT NOT NULL, "description" TEXT, PRIMARY KEY ("table","column"))`,
+      );
+      await sdk.sqlite.exec(databaseId, `DELETE FROM "${META_TABLE}" WHERE "table" = ?`, [targetTable]);
+      for (const f of valid) {
+        await sdk.sqlite.exec(
+          databaseId,
+          `INSERT OR REPLACE INTO "${META_TABLE}" ("table","column","description") VALUES (?,?,?)`,
+          [targetTable, f.name, f.description],
+        );
+      }
       for (const f of valid) {
         if (f.indexed) {
           await sdk.sqlite.exec(
