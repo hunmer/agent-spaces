@@ -9,7 +9,9 @@
     "dist",
     "public",
     "!dist/**/*.map",
-    "!dist/shared"
+    "!dist/shared",
+    "!public/uploads",
+    "!public/avatars"
   ],
   "publishConfig": {
     "access": "public"

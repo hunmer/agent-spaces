@@ -2,3 +2,5 @@ src/
 node_modules/
 *.map
 install.sh
+public/uploads/
+public/avatars/
