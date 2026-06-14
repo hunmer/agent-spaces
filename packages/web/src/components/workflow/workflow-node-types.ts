@@ -51,21 +51,22 @@ export type NodeColorDef = {
   value: string | null;
   className: string;
   borderClassName: string;
+  backgroundClassName: string;
 };
 
 export const NODE_COLORS: NodeColorDef[] = [
-  { label: 'nodeUi.colors.default', value: null, className: 'bg-background border border-border', borderClassName: 'border-border' },
-  { label: 'nodeUi.colors.emerald', value: 'emerald', className: 'bg-emerald-500', borderClassName: 'border-emerald-500' },
-  { label: 'nodeUi.colors.blue', value: 'blue', className: 'bg-blue-500', borderClassName: 'border-blue-500' },
-  { label: 'nodeUi.colors.violet', value: 'violet', className: 'bg-violet-500', borderClassName: 'border-violet-500' },
-  { label: 'nodeUi.colors.rose', value: 'rose', className: 'bg-rose-500', borderClassName: 'border-rose-500' },
-  { label: 'nodeUi.colors.orange', value: 'orange', className: 'bg-orange-500', borderClassName: 'border-orange-500' },
-  { label: 'nodeUi.colors.amber', value: 'amber', className: 'bg-amber-500', borderClassName: 'border-amber-500' },
-  { label: 'nodeUi.colors.cyan', value: 'cyan', className: 'bg-cyan-500', borderClassName: 'border-cyan-500' },
-  { label: 'nodeUi.colors.pink', value: 'pink', className: 'bg-pink-500', borderClassName: 'border-pink-500' },
-  { label: 'nodeUi.colors.slate', value: 'slate', className: 'bg-slate-500', borderClassName: 'border-slate-500' },
-  { label: 'nodeUi.colors.red', value: 'red', className: 'bg-red-500', borderClassName: 'border-red-500' },
-  { label: 'nodeUi.colors.indigo', value: 'indigo', className: 'bg-indigo-500', borderClassName: 'border-indigo-500' },
+  { label: 'nodeUi.colors.default', value: null, className: 'bg-background border border-border', borderClassName: 'border-border', backgroundClassName: 'bg-background' },
+  { label: 'nodeUi.colors.emerald', value: 'emerald', className: 'bg-emerald-500', borderClassName: 'border-emerald-500', backgroundClassName: 'bg-emerald-500/10' },
+  { label: 'nodeUi.colors.blue', value: 'blue', className: 'bg-blue-500', borderClassName: 'border-blue-500', backgroundClassName: 'bg-blue-500/10' },
+  { label: 'nodeUi.colors.violet', value: 'violet', className: 'bg-violet-500', borderClassName: 'border-violet-500', backgroundClassName: 'bg-violet-500/10' },
+  { label: 'nodeUi.colors.rose', value: 'rose', className: 'bg-rose-500', borderClassName: 'border-rose-500', backgroundClassName: 'bg-rose-500/10' },
+  { label: 'nodeUi.colors.orange', value: 'orange', className: 'bg-orange-500', borderClassName: 'border-orange-500', backgroundClassName: 'bg-orange-500/10' },
+  { label: 'nodeUi.colors.amber', value: 'amber', className: 'bg-amber-500', borderClassName: 'border-amber-500', backgroundClassName: 'bg-amber-500/10' },
+  { label: 'nodeUi.colors.cyan', value: 'cyan', className: 'bg-cyan-500', borderClassName: 'border-cyan-500', backgroundClassName: 'bg-cyan-500/10' },
+  { label: 'nodeUi.colors.pink', value: 'pink', className: 'bg-pink-500', borderClassName: 'border-pink-500', backgroundClassName: 'bg-pink-500/10' },
+  { label: 'nodeUi.colors.slate', value: 'slate', className: 'bg-slate-500', borderClassName: 'border-slate-500', backgroundClassName: 'bg-slate-500/10' },
+  { label: 'nodeUi.colors.red', value: 'red', className: 'bg-red-500', borderClassName: 'border-red-500', backgroundClassName: 'bg-red-500/10' },
+  { label: 'nodeUi.colors.indigo', value: 'indigo', className: 'bg-indigo-500', borderClassName: 'border-indigo-500', backgroundClassName: 'bg-indigo-500/10' },
 ];
 
 export const NODE_COLOR_MAP: Record<string, string> = {

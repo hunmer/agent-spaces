@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { type EdgeChange } from '@xyflow/react';
 import type { Workflow } from '@agent-spaces/shared';
 

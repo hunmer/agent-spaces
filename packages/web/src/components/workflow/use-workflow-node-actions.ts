@@ -91,8 +91,8 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
   const handleExecuteWorkflow = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     if (isCanvasLocked || isExecutionBusy) return;
-    window.dispatchEvent(new CustomEvent('workflow:execute-from-node'));
-  }, [isCanvasLocked, isExecutionBusy]);
+    window.dispatchEvent(new CustomEvent('workflow:open-execution-input', { detail: { startNodeId: id } }));
+  }, [id, isCanvasLocked, isExecutionBusy]);
 
   const handlePartialTest = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();

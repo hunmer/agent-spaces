@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import type { ColumnDef } from '@tanstack/react-table';
 import { sdk } from '@/lib/sdk';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,8 +26,12 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
-import { Table2, Trash2, Plus, GripVertical, Code2, Play } from 'lucide-react';
-import { ResultTable } from '@/components/table/result-table';
+import { Table2, Trash2, Plus, GripVertical, Code2, Play, AlertCircle } from 'lucide-react';
+import { SortableTable } from '@/components/table/sortable-table';
+import { FilterPanel, getActiveFilters, applyFilters } from '@/components/table/filter-panel';
+import { DataGridColumnHeader } from '@/components/reui/data-grid/data-grid-column-header';
+import type { Filter, FilterFieldConfig } from '@/components/reui/filters';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { SqliteTableInfo, SqliteQueryResult } from '@agent-spaces/shared';
 import {
   DndContext,
@@ -84,6 +89,132 @@ function SortableRow({ id, children }: {
     <TableRow ref={setNodeRef} style={style} className={cn(isDragging && 'relative z-10 opacity-70')}>
       {children(sortable)}
     </TableRow>
+  );
+}
+
+type ResultRow = Record<string, unknown>;
+
+function renderCell(v: unknown): ReactNode {
+  if (v == null) return <span className="text-muted-foreground/50">NULL</span>;
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+interface ResultDataPanelProps {
+  result: SqliteQueryResult | null;
+  isLoading?: boolean;
+  error?: string | null;
+  onDelete?: (row: ResultRow) => void;
+  className?: string;
+}
+
+// 结果数据面板：FilterPanel + SortableTable，列与筛选字段都按查询结果动态生成
+function ResultDataPanel({ result, isLoading = false, error = null, onDelete, className }: ResultDataPanelProps) {
+  const t = useTranslations();
+  const [filters, setFilters] = useState<Filter[]>([]);
+
+  const rows = useMemo<ResultRow[]>(() => (result?.rows ?? []) as ResultRow[], [result]);
+
+  // 结果集变化时清空筛选条件
+  useEffect(() => { setFilters([]); }, [result]);
+
+  const allCols = useMemo(
+    () => result?.columns ?? (rows[0] ? Object.keys(rows[0]) : []),
+    [result?.columns, rows],
+  );
+  // 有删除操作时隐藏内部 rowid 列
+  const visibleCols = useMemo(
+    () => (onDelete ? allCols.filter((k) => k !== '__rowid__') : allCols),
+    [allCols, onDelete],
+  );
+
+  const columns = useMemo<ColumnDef<ResultRow>[]>(() => {
+    const built: ColumnDef<ResultRow>[] = visibleCols.map((key) => ({
+      accessorKey: key,
+      id: key,
+      header: ({ column }) => <DataGridColumnHeader title={key} column={column} />,
+      cell: ({ row }) => renderCell(row.original[key]),
+      enableSorting: true,
+    }));
+    if (onDelete) {
+      built.push({
+        id: '__delete',
+        header: '',
+        enableSorting: false,
+        size: 40,
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="flex size-5 items-center justify-center text-muted-foreground transition-colors hover:text-destructive"
+            onClick={() => onDelete(row.original)}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        ),
+      });
+    }
+    return built;
+  }, [visibleCols, onDelete]);
+
+  const filterFields = useMemo<FilterFieldConfig[]>(
+    () => visibleCols.map((key) => ({ key, label: key, type: 'text', className: 'w-40', placeholder: t('sqlite.searchColumn') })),
+    [visibleCols, t],
+  );
+
+  const activeFilters = getActiveFilters(filters);
+  const filteredRows = useMemo(
+    () => (activeFilters.length === 0 ? rows : rows.filter((row) => applyFilters(row, activeFilters))),
+    [rows, activeFilters],
+  );
+
+  const showFilter = !isLoading && !error && !!result && rows.length > 0;
+
+  let body: ReactNode;
+  if (isLoading) {
+    body = (
+      <div className="space-y-2 p-3">
+        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
+      </div>
+    );
+  } else if (error) {
+    body = (
+      <div className="flex items-center gap-2 p-4 text-sm text-destructive">
+        <AlertCircle className="size-4" />{error}
+      </div>
+    );
+  } else if (!result || rows.length === 0) {
+    body = <div className="p-6 text-center text-sm text-muted-foreground">{t('sqlite.emptyResult')}</div>;
+  } else {
+    body = (
+      <>
+        {result.truncated && (
+          <div className="rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-400">
+            {t('sqlite.truncated', { n: 10000 })}
+          </div>
+        )}
+        <SortableTable
+          data={filteredRows}
+          columns={columns}
+          getRowId={(row, i) => String(row.__rowid__ ?? i)}
+          emptyMessage={t('sqlite.noMatch')}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className={cn('flex min-h-0 flex-col gap-2', className)}>
+      {showFilter && (
+        <FilterPanel
+          fields={filterFields}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClear={() => setFilters([])}
+          clearLabel={t('sqlite.clearFilter')}
+        />
+      )}
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border">{body}</div>
+    </div>
   );
 }
 
@@ -563,9 +694,13 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
               </div>
             )}
 
-            <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-              <ResultTable result={result} isLoading={dataLoading} error={dataError} onDelete={deleteRow} />
-            </div>
+            <ResultDataPanel
+              result={result}
+              isLoading={dataLoading}
+              error={dataError}
+              onDelete={deleteRow}
+              className="min-h-0 flex-1"
+            />
           </TabsContent>
         </Tabs>
 
@@ -594,9 +729,7 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
               )}
             </div>
             {sqlResult && (
-              <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                <ResultTable result={sqlResult} />
-              </div>
+              <ResultDataPanel result={sqlResult} className="min-h-0 flex-1" />
             )}
           </DialogContent>
         </Dialog>

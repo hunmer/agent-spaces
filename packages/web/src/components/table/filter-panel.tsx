@@ -1,13 +1,6 @@
 "use client"
 
-import {
-  BuildingIcon,
-  FunnelXIcon,
-  ListFilterIcon,
-  MailIcon,
-  MapPinIcon,
-  UserIcon,
-} from "lucide-react"
+import { FunnelXIcon, ListFilterIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -16,200 +9,82 @@ import {
   type FilterFieldConfig,
 } from "@/components/reui/filters"
 
-// Helper to check if a filter has meaningful values
-export const getActiveFilters = (filters: Filter[]) => {
-  return filters.filter((filter) => {
+// 只保留有实际值的筛选条件
+export const getActiveFilters = (filters: Filter[]) =>
+  filters.filter((filter) => {
     const { values } = filter
-
-    // Check if filter has meaningful values
     if (!values || values.length === 0) return false
-
-    // For text/string values, check if they're not empty strings
-    if (
-      values.every((value) => typeof value === "string" && value.trim() === "")
-    )
-      return false
-
-    // For number values, check if they're not null/undefined
-    if (values.every((value) => value === null || value === undefined))
-      return false
-
-    // For arrays, check if they're not empty
-    if (values.every((value) => Array.isArray(value) && value.length === 0))
-      return false
-
+    if (values.every((v) => typeof v === "string" && v.trim() === "")) return false
+    if (values.every((v) => v === null || v === undefined)) return false
+    if (values.every((v) => Array.isArray(v) && v.length === 0)) return false
     return true
   })
+
+function asString(raw: unknown): string {
+  if (raw == null) return ""
+  if (typeof raw === "object") return JSON.stringify(raw)
+  return String(raw)
 }
 
-// Filter field configurations
-const fields: FilterFieldConfig[] = [
-  {
-    key: "name",
-    label: "Name",
-    icon: <UserIcon className="size-3.5" />,
-    type: "text",
-    className: "w-40",
-    placeholder: "Search names...",
-  },
-  {
-    key: "email",
-    label: "Email",
-    icon: <MailIcon className="size-3.5" />,
-    type: "text",
-    className: "w-48",
-    placeholder: "user@example.com",
-  },
-  {
-    key: "company",
-    label: "Company",
-    icon: <BuildingIcon className="size-3.5" />,
-    type: "select",
-    searchable: true,
-    className: "w-[180px]",
-    options: [
-      { value: "Apple", label: "Apple" },
-      { value: "OpenAI", label: "OpenAI" },
-      { value: "Meta", label: "Meta" },
-      { value: "Tesla", label: "Tesla" },
-      { value: "SAP", label: "SAP" },
-      { value: "Keenthemes", label: "Keenthemes" },
-      { value: "BBVA", label: "BBVA" },
-      { value: "Sony", label: "Sony" },
-      { value: "LVMH", label: "LVMH" },
-      { value: "ENI", label: "ENI" },
-      { value: "Vale", label: "Vale" },
-      { value: "Tata", label: "Tata" },
-    ],
-  },
-  {
-    key: "role",
-    label: "Role",
-    icon: <UserIcon className="size-3.5" />,
-    type: "select",
-    searchable: true,
-    className: "w-[160px]",
-    options: [
-      { value: "CEO", label: "CEO" },
-      { value: "CTO", label: "CTO" },
-      { value: "Designer", label: "Designer" },
-      { value: "Developer", label: "Developer" },
-      { value: "Lawyer", label: "Lawyer" },
-      { value: "Director", label: "Director" },
-      { value: "Product Manager", label: "Product Manager" },
-      { value: "Marketing Lead", label: "Marketing Lead" },
-      { value: "Data Scientist", label: "Data Scientist" },
-      { value: "Engineer", label: "Engineer" },
-      { value: "Software Engineer", label: "Software Engineer" },
-      { value: "Sales Manager", label: "Sales Manager" },
-    ],
-  },
-  {
-    key: "status",
-    label: "Status",
-    icon: <UserIcon className="size-3.5" />,
-    type: "select",
-    searchable: false,
-    className: "w-[140px]",
-    options: [
-      {
-        value: "active",
-        label: "Active",
-        icon: <div className="size-2 rounded-full bg-green-500"></div>,
-      },
-      {
-        value: "inactive",
-        label: "Inactive",
-        icon: <div className="bg-destructive size-2 rounded-full"></div>,
-      },
-      {
-        value: "archived",
-        label: "Archived",
-        icon: <div className="size-2 rounded-full bg-zinc-400"></div>,
-      },
-    ],
-  },
-  {
-    key: "availability",
-    label: "Availability",
-    icon: <UserIcon className="size-3.5" />,
-    type: "select",
-    searchable: false,
-    className: "w-[160px]",
-    options: [
-      {
-        value: "online",
-        label: "Online",
-        icon: (
-          <div className="flex items-center gap-2">
-            <div className="size-2 rounded-full bg-green-500" />
-            <span>Online</span>
-          </div>
-        ),
-      },
-      {
-        value: "away",
-        label: "Away",
-        icon: (
-          <div className="flex items-center gap-2">
-            <div className="size-2 rounded-full bg-yellow-500" />
-            <span>Away</span>
-          </div>
-        ),
-      },
-      {
-        value: "busy",
-        label: "Busy",
-        icon: (
-          <div className="flex items-center gap-2">
-            <div className="size-2 rounded-full bg-red-500" />
-            <span>Busy</span>
-          </div>
-        ),
-      },
-      {
-        value: "offline",
-        label: "Offline",
-        icon: (
-          <div className="flex items-center gap-2">
-            <div className="size-2 rounded-full bg-gray-400" />
-            <span>Offline</span>
-          </div>
-        ),
-      },
-    ],
-  },
-  {
-    key: "location",
-    label: "Location",
-    icon: <MapPinIcon className="size-3.5" />,
-    type: "text",
-    className: "w-40",
-    placeholder: "Search locations...",
-  },
-]
+// 单元格匹配单个筛选条件（文本运算符，大小写不敏感）
+function matchFilter(raw: unknown, filter: Filter): boolean {
+  const isEmpty = raw == null || (typeof raw === "string" && raw.trim() === "")
+  const cell = asString(raw).toLowerCase()
+  const term = asString(filter.values[0]).toLowerCase()
+  switch (filter.operator) {
+    case "empty":
+      return isEmpty
+    case "not_empty":
+      return !isEmpty
+    case "is":
+      return cell === term
+    case "is_not":
+      return cell !== term
+    case "contains":
+      return !isEmpty && cell.includes(term)
+    case "not_contains":
+      return isEmpty || !cell.includes(term)
+    case "starts_with":
+      return !isEmpty && cell.startsWith(term)
+    case "ends_with":
+      return !isEmpty && cell.endsWith(term)
+    default:
+      return true
+  }
+}
+
+// 行匹配全部筛选条件（AND 语义）
+export const applyFilters = <T extends Record<string, unknown>>(
+  row: T,
+  filters: Filter[]
+): boolean => filters.every((f) => matchFilter(row[f.field], f))
 
 export interface FilterPanelProps {
+  fields: FilterFieldConfig[]
   filters: Filter[]
   onFiltersChange: (filters: Filter[]) => void
   onClear: () => void
   isLoading?: boolean
+  clearLabel?: string
 }
 
 /**
  * FilterPanel — 筛选器面板。
  *
- * 从 c-filters-7 的 Filters 区抽离而来，自包含筛选字段配置，
- * 仅把当前 `filters`、变化回调与清空回调交给容器，便于和外部数据源组合。
+ * 字段配置由调用方传入（`fields`），自身只负责渲染 `Filters` 与「清除」按钮，
+ * 并把当前 `filters` / 变化回调 / 清空回调交给容器。
+ * 配合 `getActiveFilters` / `applyFilters` 即可与任意数据源组合。
  */
 export function FilterPanel({
+  fields,
   filters,
   onFiltersChange,
   onClear,
   isLoading = false,
+  clearLabel = "Clear",
 }: FilterPanelProps) {
   return (
-    <div className="mb-3.5 flex items-start gap-2.5">
+    <div className="flex items-start gap-2.5">
       <div className="flex-1">
         <Filters
           filters={filters}
@@ -224,14 +99,9 @@ export function FilterPanel({
         />
       </div>
       {filters.length > 0 && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onClear}
-          disabled={isLoading}
-        >
+        <Button variant="outline" size="sm" onClick={onClear} disabled={isLoading}>
           <FunnelXIcon />
-          Clear
+          {clearLabel}
         </Button>
       )}
     </div>

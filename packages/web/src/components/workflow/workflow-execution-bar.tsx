@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { ExecutionLog, OutputField, WorkflowNode } from '@agent-spaces/shared';
 import { Badge } from '@/components/ui/badge';
@@ -121,7 +121,7 @@ export function WorkflowExecutionBar({
     return map;
   }, [logs]);
 
-  const executeFromStartNode = (node?: WorkflowNode | null) => {
+  const executeFromStartNode = useCallback((node?: WorkflowNode | null) => {
     const startNode = node ?? startNodes[0] ?? null;
     setSelectedStartNodeId(startNode?.id ?? null);
     const fields = Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields as OutputField[] : [];
@@ -130,7 +130,19 @@ export function WorkflowExecutionBar({
       return;
     }
     onExecute(undefined, startNode?.id);
-  };
+  }, [onExecute, startNodes, variableFields.length]);
+
+  useEffect(() => {
+    const handleOpenExecutionInput = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { startNodeId?: string | null } | undefined;
+      const startNode = detail?.startNodeId
+        ? startNodes.find(node => node.id === detail.startNodeId)
+        : null;
+      executeFromStartNode(startNode);
+    };
+    window.addEventListener('workflow:open-execution-input', handleOpenExecutionInput);
+    return () => window.removeEventListener('workflow:open-execution-input', handleOpenExecutionInput);
+  }, [executeFromStartNode, startNodes]);
 
   const submitInput = (values: Record<string, unknown>, env?: Record<string, unknown>) => {
     onExecute(values, activeStartNode?.id, env);
