@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { Handle, NodeResizeControl, NodeToolbar, Position, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps, ReactFlowState } from '@xyflow/react';
 import {
+  ChevronDown,
+  ChevronUp,
   Flag,
   Grip,
   Loader2,
@@ -14,8 +16,9 @@ import {
   Square,
   X,
 } from 'lucide-react';
-import { getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
+import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import {
+  type WorkflowNode as SharedWorkflowNode,
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
 } from '@agent-spaces/shared';
@@ -23,7 +26,7 @@ import { BorderGlide } from '@/components/ui/border-glide';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
-import { getWorkflowNodeSize } from './workflow-node-size';
+import { getWorkflowNodeSize, getWorkflowNodeVariableReferences } from './workflow-node-size';
 import {
   isPluginWorkflowCustomViewDefinition,
   PluginWorkflowCustomView,
@@ -46,6 +49,7 @@ import {
   type HandleContext,
 } from './workflow-node-handles';
 import { WorkflowNodeExecutionLog } from './workflow-node-execution-log';
+import { VariableBadgeInput } from './workflow-variable-input';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
 
@@ -55,14 +59,32 @@ const DEFAULT_DYNAMIC_HANDLE_COLOR = '#10b981';
 const DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR = '#f97316';
 const SOURCE_HANDLE_KEY = 'source';
 const COMPACT_NODE_ZOOM_THRESHOLD = 0.65;
-
+const COLLAPSED_NODE_SIZE = 56;
 const showFullNodeSelector = (state: ReactFlowState) =>
   state.transform[2] >= COMPACT_NODE_ZOOM_THRESHOLD;
+
+const workflowNodesSelector = (state: ReactFlowState) => state.nodes;
+
+function getVariableContextNodeLabel(
+  nodeType: string,
+  data: Record<string, unknown>,
+  fallbackLabel: unknown,
+  t: (key: string) => string,
+): string {
+  const resolveLabel = (value: unknown) => {
+    const label = String(value ?? '');
+    return label && !label.startsWith('nodes.') ? label : '';
+  };
+  const definition = getNodeDefinition(nodeType);
+  const label = resolveLabel(data.label) || resolveLabel(fallbackLabel) || definition?.label || nodeType;
+  return label.startsWith('nodes.') ? t(label) : label;
+}
 
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const t = useTranslations('workflows');
   const showFullNode = useStore(showFullNodeSelector);
+  const workflowNodes = useStore(workflowNodesSelector);
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
   const updateNodeInternals = useUpdateNodeInternals();
   useSyncExternalStore(
@@ -83,6 +105,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   const { collapsed: logsCollapsed } = useWorkflowLogsCollapsed();
   const [isLogExpanded, setIsLogExpanded] = useState(false);
+  const [isNodeCollapsed, setIsNodeCollapsed] = useState(false);
   // 全局切换时同步本地状态
   useEffect(() => {
     setIsLogExpanded(!logsCollapsed);
@@ -131,6 +154,24 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const logPanelLayout = nodeData.logPanelLayout === 'tabs' ? 'tabs' : 'vertical';
   const floatingHandleClassName = floatingHandles ? 'workflow-node-floating-handle' : '';
   const floatingLabelClassName = floatingHandles ? 'workflow-node-floating-handle-label' : '';
+  const variableReferences = useMemo(
+    () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
+    [nodeData],
+  );
+  const variableContext = useMemo(() => ({
+    nodes: workflowNodes.map((node): SharedWorkflowNode => {
+      const currentData = node.data as Record<string, unknown>;
+      const currentType = typeof currentData.nodeType === 'string' ? currentData.nodeType : node.type || '';
+      return {
+        id: node.id,
+        type: currentType,
+        label: getVariableContextNodeLabel(currentType, currentData, node.id, t),
+        position: node.position,
+        data: currentData,
+      };
+    }),
+    edges: [],
+  }), [workflowNodes, t]);
 
   // Dynamic handles for switch node
   const dynamicSource = definition?.handles?.dynamicSource;
@@ -160,14 +201,18 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     height: nodeHeight,
     sourceHandleCount,
   } = nodeSize;
+  const displayNodeWidth = isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeWidth;
+  const displayNodeHeight = isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeHeight;
+  const canShowNodeContent = showFullNode && !isNodeCollapsed;
+  const canShowVariableReferences = !isLoopBody && !hasCustomView && variableReferences.length > 0;
 
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight, handlePositions.target, handlePositions.source, workflowNodeType]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType]);
 
   const handleCtx: HandleContext = useMemo(
-    () => ({ isLoopBody, nodeHeight, handlePositions }),
-    [isLoopBody, nodeHeight, handlePositions],
+    () => ({ isLoopBody, nodeHeight: displayNodeHeight, handlePositions }),
+    [isLoopBody, displayNodeHeight, handlePositions],
   );
 
   const getSourceHandleColor = useCallback((handleId: string, fallback: string) => {
@@ -334,10 +379,10 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         ${selected ? 'workflow-node-floating-handles-visible' : ''}
         ${stateBackgroundClass}`}
       style={{
-        minWidth: nodeMinWidth,
-        minHeight: nodeMinHeight,
-        width: nodeWidth,
-        height: nodeHeight,
+        minWidth: isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeMinWidth,
+        minHeight: isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeMinHeight,
+        width: displayNodeWidth,
+        height: displayNodeHeight,
         ...nodeColorStyle,
       }}
     >
@@ -355,6 +400,21 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <div className="h-full w-full" />
         </BorderGlide>
       )}
+      {showFullNode ? (
+        <button
+          type="button"
+          className="nodrag nopan absolute -left-2 -top-2 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+          title={isNodeCollapsed ? t('nodeUi.expand') : t('nodeUi.collapse')}
+          aria-label={isNodeCollapsed ? t('nodeUi.expand') : t('nodeUi.collapse')}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsNodeCollapsed(prev => !prev);
+          }}
+        >
+          {isNodeCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+        </button>
+      ) : null}
 
       {/* Target handle */}
       {showTargetHandle && (
@@ -365,6 +425,23 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           style={getTargetHandleStyle(handlePositions.target, handleCtx)}
         />
       )}
+      <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
+        {showFullNode && hasCustomView && !isLoopBody && !isCanvasLocked ? (
+          <button
+            type="button"
+            className={cn(
+              WORKFLOW_NODE_DRAG_HANDLE_CLASS,
+              'inline-flex h-5 w-5 cursor-grab items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground active:cursor-grabbing',
+            )}
+            title={t('nodeUi.drag')}
+            aria-label={t('nodeUi.drag')}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Grip className="h-3 w-3" />
+          </button>
+        ) : null}
+      </div>
+
       {showFullNode && stateBadge ? (
         <span
           className={cn(
@@ -415,8 +492,16 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
+      {showFullNode && isNodeCollapsed ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="flex h-9 w-9 items-center justify-center rounded border border-border bg-muted/40">
+            <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </div>
+      ) : null}
+
       {/* Header */}
-      {showFullNode && !isLoopBody && !hasCustomView && (
+      {canShowNodeContent && !isLoopBody && !hasCustomView && (
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
           <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
           {isEditing ? (
@@ -456,7 +541,24 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       )}
 
-      {showFullNode && CustomView ? (
+      {canShowNodeContent && canShowVariableReferences ? (
+        <div className="flex w-full min-w-0 flex-wrap gap-1 overflow-hidden border-b border-border/50 px-3 py-1.5">
+          {variableReferences.map(reference => (
+            <VariableBadgeInput
+              key={reference}
+              value={reference}
+              readOnly
+              showClear={false}
+              className="min-w-0 max-w-full flex-none px-0"
+              badgeClassName="h-4 max-w-full rounded px-1.5 text-[9px] font-normal"
+              variableContext={variableContext}
+              onClear={() => undefined}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {canShowNodeContent && CustomView ? (
         <div className={cn(
           'absolute inset-0 overflow-hidden rounded-lg',
           isLoopBody && 'pointer-events-none',
@@ -465,7 +567,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
-      {showFullNode && pluginCustomView ? (
+      {canShowNodeContent && pluginCustomView ? (
         <div className={cn(
           'absolute inset-0 overflow-hidden rounded-lg',
           isLoopBody && 'pointer-events-none',
@@ -490,7 +592,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <>
             {staticSourceHandles.map((h, index) => (
               <React.Fragment key={h.id}>
-                {showFullNode ? (
+                {canShowNodeContent ? (
                   <div
                     className={cn('source-handle-label', floatingLabelClassName)}
                     style={getSourceLabelStyle(index, staticSourceHandles.length, handleCtx)}
@@ -524,7 +626,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         <>
           {dynamicHandles.map(h => (
             <React.Fragment key={h.id}>
-              {showFullNode ? (
+              {canShowNodeContent ? (
                 <div
                   className={cn('source-handle-label', floatingLabelClassName)}
                   style={getSourceLabelStyle(h.index, h.total, handleCtx)}
@@ -561,26 +663,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           position={Position.Top}
           align="center"
           offset={8}
-          className="nopan flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-md"
+          className="nodrag nopan flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-md"
         >
-          {hasCustomView && !isLoopBody && !isCanvasLocked ? (
-            <button
-              type="button"
-              className={cn(
-                WORKFLOW_NODE_DRAG_HANDLE_CLASS,
-                'inline-flex h-7 w-7 cursor-grab items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing',
-              )}
-              title={t('nodeUi.drag')}
-              aria-label={t('nodeUi.drag')}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Grip className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
           {!isBoundaryNode ? (
             <button
               type="button"
-              className="nodrag inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={actions.handleTestNode}
               title={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
               aria-label={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
@@ -591,7 +679,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           {canDeleteNode && !isDeleteDisabled ? (
             <button
               type="button"
-              className="nodrag inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
               onClick={actions.handleDelete}
               title={t('nodeUi.delete')}
               aria-label={t('nodeUi.delete')}
@@ -601,7 +689,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           ) : null}
         </NodeToolbar>
       ) : null}
-      {showFullNode && selected && !isCanvasLocked ? (
+      {showFullNode && selected && !isCanvasLocked && !isNodeCollapsed ? (
         <NodeResizeControl
           className="workflow-node-resize-control"
           minWidth={nodeMinWidth}
@@ -618,7 +706,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         selectedNodeIds={selectedNodeIds}
         isDeleteProtected={!canDeleteNode}
         isCanvasLocked={!!isCanvasLocked}
-        style={{ width: nodeWidth, height: nodeHeight }}
+        style={{ width: displayNodeWidth, height: displayNodeHeight }}
         onSetColor={actions.setNodeColor}
         onSetState={actions.setNodeState}
         onSetBreakpoint={actions.setNodeBreakpoint}
@@ -636,7 +724,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       </WorkflowNodeContextMenu>
 
       {/* Collapsible execution log card below the node */}
-      {showFullNode && canShowExecutionLog && executionStep ? (
+      {canShowNodeContent && canShowExecutionLog && executionStep ? (
         <WorkflowNodeExecutionLog
           nodeId={id}
           executionStep={executionStep}

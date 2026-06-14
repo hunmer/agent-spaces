@@ -810,6 +810,8 @@
     "resume": "继续运行",
     "abort": "中断",
     "drag": "拖拽节点",
+    "collapse": "折叠节点",
+    "expand": "展开节点",
     "delete": "删除节点",
     "condition": "条件 {index}",
     "conditionDefault": "默认",

@@ -7,7 +7,7 @@ import { sdk } from '@/lib/sdk';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { MiniAppPreviewToolbar } from './mini-app-preview-toolbar';
 import { MiniAppChat } from './mini-app-chat';
-import { MiniAppPluginToolsDialog } from './mini-app-plugin-tools-dialog';
+import { PluginToolDialog } from '@/components/workflow/plugin-tool-dialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { BackButton } from '@/components/common/back-button';
 import { ShareDialog } from '@/components/common/share-dialog';
@@ -657,7 +657,7 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
 
             <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={project.name} url={shareUrl} />
 
-            <MiniAppPluginToolsDialog
+            <PluginToolDialog
                 open={pluginDialogOpen}
                 onOpenChange={setPluginDialogOpen}
                 projectId={project.id}

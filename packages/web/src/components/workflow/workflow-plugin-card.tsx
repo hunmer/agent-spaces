@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { resolveStoreUrl } from '@/lib/agent-store';
@@ -8,6 +9,7 @@ import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-
 import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PluginIcon } from './workflow-plugin-icon';
+import { PluginToolDialog } from './plugin-tool-dialog';
 
 export function LocalPluginCard({
   plugin,
@@ -18,6 +20,9 @@ export function LocalPluginCard({
   onConfigAction,
   onUninstallAction,
   onUpdateAction,
+  projectId,
+  enabledPlugins,
+  onEnabledPluginsChange,
 }: {
   plugin: WorkflowPlugin;
   inWorkflow: boolean;
@@ -27,42 +32,64 @@ export function LocalPluginCard({
   onConfigAction?: () => void;
   onUninstallAction?: () => void;
   onUpdateAction?: () => void;
+  /** 传入后点击卡片主体打开插件工具对话框 */
+  projectId?: string;
+  enabledPlugins?: string[];
+  onEnabledPluginsChange?: (plugins: string[]) => void;
 }) {
   const t = useTranslations('workflows');
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const canShowTools = Boolean(projectId && enabledPlugins && onEnabledPluginsChange);
   const iconSrc = plugin.iconPath
     ? { type: 'url' as const, url: resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(plugin.id)}/icon`) }
     : { type: 'builtin' as const, variant: 'local' as const };
 
   return (
-    <PluginCardShell
-      iconSrc={iconSrc}
-      name={plugin.name}
-      version={plugin.version}
-      description={plugin.description}
-      tags={plugin.tags}
-      badge={inWorkflow ? t('pluginCard.added') : t('pluginCard.notAdded')}
-      badgeVariant={inWorkflow ? 'default' : 'secondary'}
-      headerExtra={onUninstallAction ? (
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={onUninstallAction}>
-          <Trash2 className="h-3.5 w-3.5" />
+    <>
+      <PluginCardShell
+        iconSrc={iconSrc}
+        name={plugin.name}
+        version={plugin.version}
+        description={plugin.description}
+        tags={plugin.tags}
+        badge={inWorkflow ? t('pluginCard.added') : t('pluginCard.notAdded')}
+        badgeVariant={inWorkflow ? 'default' : 'secondary'}
+        clickable={canShowTools}
+        onClick={canShowTools ? () => setToolsOpen(true) : undefined}
+        headerExtra={onUninstallAction ? (
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); onUninstallAction(); }}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        ) : undefined}
+      >
+        {plugin.config?.length ? (
+          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); onConfigAction?.(); }}>
+            <Settings className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
+        {needsUpdate && onUpdateAction && (
+          <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-500 border-orange-300 hover:bg-orange-50" onClick={(e) => { e.stopPropagation(); onUpdateAction(); }}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            更新
+          </Button>
+        )}
+        <Button size="sm" variant={inWorkflow ? 'outline' : 'default'} className="ml-auto h-7 text-xs" disabled={disabled} onClick={(e) => { e.stopPropagation(); onToggleAction(); }}>
+          {inWorkflow ? t('pluginCard.remove') : t('pluginCard.addToWorkflow')}
         </Button>
-      ) : undefined}
-    >
-      {plugin.config?.length ? (
-        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onConfigAction}>
-          <Settings className="h-3.5 w-3.5" />
-        </Button>
-      ) : null}
-      {needsUpdate && onUpdateAction && (
-        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-500 border-orange-300 hover:bg-orange-50" onClick={onUpdateAction}>
-          <RefreshCw className="h-3.5 w-3.5" />
-          更新
-        </Button>
+      </PluginCardShell>
+
+      {canShowTools && (
+        <PluginToolDialog
+          open={toolsOpen}
+          onOpenChange={setToolsOpen}
+          projectId={projectId!}
+          enabledPlugins={enabledPlugins!}
+          onEnabledPluginsChange={onEnabledPluginsChange!}
+          defaultPluginId={plugin.id}
+          persistEnabledPlugins={false}
+        />
       )}
-      <Button size="sm" variant={inWorkflow ? 'outline' : 'default'} className="ml-auto h-7 text-xs" disabled={disabled} onClick={onToggleAction}>
-        {inWorkflow ? t('pluginCard.remove') : t('pluginCard.addToWorkflow')}
-      </Button>
-    </PluginCardShell>
+    </>
   );
 }
 
@@ -130,6 +157,8 @@ function PluginCardShell({
   badge,
   badgeVariant,
   headerExtra,
+  clickable,
+  onClick,
   children,
 }: {
   iconSrc: Parameters<typeof PluginIcon>[0]['source'];
@@ -140,12 +169,17 @@ function PluginCardShell({
   badge: string;
   badgeVariant: 'default' | 'secondary' | 'outline';
   headerExtra?: React.ReactNode;
+  clickable?: boolean;
+  onClick?: () => void;
   children: React.ReactNode;
 }) {
   const t = useTranslations('workflows');
 
   return (
-    <div className="group flex min-h-[156px] flex-col rounded-md border bg-background p-3">
+    <div
+      className={`group flex min-h-[156px] flex-col rounded-md border bg-background p-3 ${clickable ? 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-start gap-2">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted">
           <PluginIcon source={iconSrc} />

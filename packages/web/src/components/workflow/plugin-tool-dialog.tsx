@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, PackagePlus, Play, Settings, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
-import { MiniAppToolExecuteDialog } from './mini-app-tool-execute-dialog';
+import { MiniAppToolExecuteDialog } from '@/components/mini-apps/mini-app-tool-execute-dialog';
 import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { usePluginList } from '@/hooks/use-plugin-list';
@@ -27,24 +27,31 @@ interface PluginTool {
   input_schema?: Record<string, unknown>;
 }
 
-interface MiniAppPluginToolsDialogProps {
+interface PluginToolDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
   enabledPlugins: string[];
   onEnabledPluginsChange: (plugins: string[]) => void;
+  /** 打开时默认选中并滚动到的插件 id */
+  defaultPluginId?: string;
+  /** 切换开关时是否调用 sdk.miniApp.update 持久化；mini-app 场景 true，workflow 场景 false（由 workflow 自行持久化） */
+  persistEnabledPlugins?: boolean;
 }
 
-export function MiniAppPluginToolsDialog({
+export function PluginToolDialog({
   open,
   onOpenChange,
   projectId,
   enabledPlugins,
   onEnabledPluginsChange,
-}: MiniAppPluginToolsDialogProps) {
+  defaultPluginId,
+  persistEnabledPlugins = true,
+}: PluginToolDialogProps) {
   const t = useTranslations('mini-apps');
   const rightScrollRef = useRef<HTMLDivElement>(null);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
+  const [selectedPluginId, setSelectedPluginId] = useState<string | undefined>(defaultPluginId);
   const [executeDialog, setExecuteDialog] = useState<{
     pluginId: string;
     pluginName: string;
@@ -73,6 +80,7 @@ export function MiniAppPluginToolsDialog({
     enabledPlugins,
     onEnabledPluginsChange,
     loadTools: true,
+    persistEnabledPlugins,
   });
 
   const scrollToPlugin = useCallback((pluginId: string) => {
@@ -81,6 +89,19 @@ export function MiniAppPluginToolsDialog({
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, []);
+
+  // 打开时默认选中并滚动到指定插件
+  useEffect(() => {
+    if (!open || !defaultPluginId) return;
+    setSelectedPluginId(defaultPluginId);
+    const timer = setTimeout(() => scrollToPlugin(defaultPluginId), 60);
+    return () => clearTimeout(timer);
+  }, [open, defaultPluginId, scrollToPlugin]);
+
+  const handleSelectPlugin = useCallback((pluginId: string) => {
+    setSelectedPluginId(pluginId);
+    scrollToPlugin(pluginId);
+  }, [scrollToPlugin]);
 
   const handleOpenToolDialog = useCallback((pluginId: string, pluginName: string, pluginIconPath: string | undefined, tool: PluginTool) => {
     setExecuteDialog({ pluginId, pluginName, pluginIconPath, tool });
@@ -96,7 +117,7 @@ export function MiniAppPluginToolsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="!w-[80vw] !h-[80vh] !max-w-none sm:!max-w-none !flex !flex-col !overflow-hidden !p-0"
+        className="!w-[80vw] !h-[85vh] !max-h-[85vh] !max-w-none sm:!max-w-none !flex !flex-col !overflow-hidden !p-0"
       >
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
@@ -126,11 +147,12 @@ export function MiniAppPluginToolsDialog({
                     const isEnabled = enabledSet.has(plugin.id);
                     const tools = toolsByPlugin[plugin.id] || [];
                     const hasConfig = (plugin.config?.length ?? 0) > 0;
+                    const isSelected = selectedPluginId === plugin.id;
                     return (
                       <div
                         key={plugin.id}
-                        className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted/60 cursor-pointer transition-colors group"
-                        onClick={() => scrollToPlugin(plugin.id)}
+                        className={`flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted/60 cursor-pointer transition-colors group ${isSelected ? 'bg-muted ring-1 ring-primary/40' : ''}`}
+                        onClick={() => handleSelectPlugin(plugin.id)}
                       >
                         <PluginIcon
                           source={plugin.iconPath
@@ -177,7 +199,7 @@ export function MiniAppPluginToolsDialog({
                     const tools = toolsByPlugin[plugin.id] || [];
                     const hasConfig = (plugin.config?.length ?? 0) > 0;
                     return (
-                      <div key={plugin.id} id={`plugin-section-${plugin.id}`} className="rounded-md border">
+                      <div key={plugin.id} id={`plugin-section-${plugin.id}`} className={`rounded-md border ${selectedPluginId === plugin.id ? 'ring-1 ring-primary/40' : ''}`}>
                         {/* Group header */}
                         <div className="flex items-center gap-2 px-3 py-2 bg-muted/40">
                           <PluginIcon

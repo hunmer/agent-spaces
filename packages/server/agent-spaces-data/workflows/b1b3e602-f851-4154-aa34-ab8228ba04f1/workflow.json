@@ -28,17 +28,11 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 585,
+        "x": 600,
         "y": -465
       },
       "data": {
-        "outputs": [
-          {
-            "key": "url",
-            "type": "string",
-            "value": "{{ __data__[\"node_1780936569387_6ru4wx\"].data.audioUrl }}"
-          }
-        ]
+        "outputs": []
       }
     },
     {
@@ -47,7 +41,7 @@
       "label": "nodes.run_code.label",
       "position": {
         "x": 255,
-        "y": -390
+        "y": -412.5
       },
       "data": {
         "code": "async function main({ params }) {\n  console.log({params})\n  const ret = params;\n\n  return ret\n}",
@@ -68,7 +62,9 @@
             "value": "{{ __data__[\"node_1780936344467_start\"].input }}",
             "children": []
           }
-        ]
+        ],
+        "width": 250,
+        "height": 135
       }
     },
     {
@@ -76,8 +72,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 30,
-        "y": -255
+        "x": 15,
+        "y": -247.5
       },
       "data": {
         "width": 320,
@@ -98,7 +94,7 @@
       "type": "music_player",
       "label": "nodes.music_player.label",
       "position": {
-        "x": 720,
+        "x": 705,
         "y": 60
       },
       "data": {
@@ -129,8 +125,8 @@
       "type": "custom_view_demo_react",
       "label": "Custom View Demo",
       "position": {
-        "x": 315,
-        "y": -30
+        "x": 330,
+        "y": -15
       },
       "data": {
         "title": "Custom View Demo",
@@ -156,7 +152,7 @@
       "type": "custom_view_demo_html",
       "label": "HTML Custom View Demo",
       "position": {
-        "x": 675,
+        "x": 690,
         "y": -180
       },
       "data": {
@@ -189,8 +185,8 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": -300,
-        "y": -30
+        "x": -270,
+        "y": -75
       },
       "data": {
         "strategy": "first_non_empty",
@@ -201,7 +197,8 @@
             "type": "object"
           }
         ]
-      }
+      },
+      "nodeColor": "blue"
     },
     {
       "id": "node_1781407443390_4jg2y9",
@@ -302,8 +299,8 @@
       "type": "minimax_chat",
       "label": "文本合成",
       "position": {
-        "x": 500.5313084817087,
-        "y": 359.9811698366865
+        "x": 535.1740207027699,
+        "y": 375.40869931380723
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
@@ -346,7 +343,9 @@
               }
             ]
           }
-        ]
+        ],
+        "width": 265,
+        "height": 120
       }
     },
     {
@@ -354,16 +353,16 @@
       "type": "minimax_image_to_video",
       "label": "图生视频",
       "position": {
-        "x": 620.5313084817087,
-        "y": 554.9811698366865
+        "x": 645,
+        "y": 585
       },
       "data": {
-        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "apiKey": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
         "model": "MiniMax-Hailuo-2.3",
         "duration": 6,
         "resolution": "768P",
         "promptOptimizer": "true",
-        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "baseUrl": "",
         "outputs": [
           {
             "key": "success",
@@ -383,7 +382,9 @@
               }
             ]
           }
-        ]
+        ],
+        "width": 250,
+        "height": 75
       }
     }
   ],
@@ -451,7 +452,7 @@
     }
   ],
   "createdAt": 1780936344470,
-  "updatedAt": 1781407530339,
+  "updatedAt": 1781409664272,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng",
@@ -469,8 +470,8 @@
       "locked": false,
       "disabled": false,
       "savedNodeStates": {},
-      "x": 476.5313084817087,
-      "y": 311.9811698366865,
+      "x": 511.17402070276995,
+      "y": 327.40869931380723,
       "width": 388,
       "height": 387
     }

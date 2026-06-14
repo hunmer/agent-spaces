@@ -364,6 +364,11 @@ export function WorkflowPluginsDialog({
                   onConfigAction={() => setConfigPlugin(plugin)}
                   onUninstallAction={() => uninstallPlugin(plugin)}
                   onUpdateAction={() => handleUpdatePlugin(plugin)}
+                  projectId={workflow?.id}
+                  enabledPlugins={workflow?.enabledPlugins}
+                  onEnabledPluginsChange={(plugins) => {
+                    if (workflow) onWorkflowChange({ ...workflow, enabledPlugins: plugins });
+                  }}
                 />
               ))}
 

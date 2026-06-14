@@ -8,6 +8,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { FIELD_TYPES } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 
@@ -53,18 +54,24 @@ function getVariableBadgeLabel(
   return expression;
 }
 
-function VariableBadgeInput({
+export function VariableBadgeInput({
   value,
   readOnly,
   placeholder,
   variableContext,
   onClear,
+  showClear = true,
+  className,
+  badgeClassName,
 }: {
   value: string | number;
   readOnly: boolean;
   placeholder?: string;
   variableContext?: WorkflowVariableContext;
   onClear: () => void;
+  showClear?: boolean;
+  className?: string;
+  badgeClassName?: string;
 }) {
   const label = getVariableBadgeLabel(value, variableContext);
 
@@ -73,23 +80,25 @@ function VariableBadgeInput({
   return (
     <div
       data-slot="input-group-control"
-      className="flex min-w-0 flex-1 items-center px-2"
+      className={cn('flex min-w-0 flex-1 items-center px-2', className)}
       title={String(value)}
     >
       <Badge
         variant="secondary"
-        className="h-5 max-w-full gap-1 rounded px-1.5 py-0 font-mono text-[10px]"
+        className={cn('h-5 max-w-full gap-1 rounded px-1.5 py-0 font-mono text-[10px]', badgeClassName)}
       >
         <span className="min-w-0 truncate">{label}</span>
-        <button
-          type="button"
-          aria-label={`Clear ${placeholder ?? 'variable'}`}
-          className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:bg-background/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-          disabled={readOnly}
-          onClick={onClear}
-        >
-          <X className="h-2.5 w-2.5" />
-        </button>
+        {showClear ? (
+          <button
+            type="button"
+            aria-label={`Clear ${placeholder ?? 'variable'}`}
+            className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:bg-background/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            disabled={readOnly}
+            onClick={onClear}
+          >
+            <X className="h-2.5 w-2.5" />
+          </button>
+        ) : null}
       </Badge>
     </div>
   );

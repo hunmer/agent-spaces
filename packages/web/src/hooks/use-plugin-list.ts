@@ -12,19 +12,22 @@ export interface PluginWithTools extends WorkflowPlugin {
 
 /**
  * 加载插件列表 + 插件工具 + 开关管理
- * mini-app-plugin-tools-dialog 和 workflow-node-sidebar 共用
+ * plugin-tool-dialog 和 workflow-node-sidebar 共用
  */
 export function usePluginList({
   projectId,
   enabledPlugins,
   onEnabledPluginsChange,
   loadTools = false,
+  persistEnabledPlugins = true,
 }: {
   projectId: string;
   enabledPlugins: string[];
   onEnabledPluginsChange: (plugins: string[]) => void;
   /** dialog 需要 tools，sidebar 不需要 */
   loadTools?: boolean;
+  /** 切换开关时是否调用 sdk.miniApp.update 持久化（mini-app 场景 true，workflow 场景 false） */
+  persistEnabledPlugins?: boolean;
 }) {
   const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
   const [toolsByPlugin, setToolsByPlugin] = useState<Record<string, PluginWithTools['tools']>>({});
@@ -77,8 +80,10 @@ export function usePluginList({
     }
     const arr = Array.from(next);
     onEnabledPluginsChange(arr);
-    await sdk.miniApp.update(projectId, { enabledPlugins: arr });
-  }, [enabledPlugins, plugins, projectId, onEnabledPluginsChange]);
+    if (persistEnabledPlugins) {
+      await sdk.miniApp.update(projectId, { enabledPlugins: arr });
+    }
+  }, [enabledPlugins, plugins, projectId, onEnabledPluginsChange, persistEnabledPlugins]);
 
   /** 拿到某个插件的 config 字段 */
   const getPluginConfig = useCallback((pluginId: string): PluginConfigField[] => {

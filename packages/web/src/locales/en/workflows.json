@@ -810,6 +810,8 @@
     "resume": "Resume",
     "abort": "Abort",
     "drag": "Drag node",
+    "collapse": "Collapse node",
+    "expand": "Expand node",
     "delete": "Delete node",
     "condition": "Case {index}",
     "conditionDefault": "Default",
