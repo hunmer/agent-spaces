@@ -29,7 +29,8 @@ function createWindow(rendererUrl?: string): void {
     webPreferences: {
       preload: join(__dirname, 'preload/index.js'),
       sandbox: false,
-      spellcheck: false
+      spellcheck: false,
+      webviewTag: true
     }
   })
 

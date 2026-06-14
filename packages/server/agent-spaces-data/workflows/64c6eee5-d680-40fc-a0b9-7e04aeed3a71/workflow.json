@@ -102,8 +102,8 @@
       "type": "sqlite_query",
       "label": "nodes.sqlite_query.label",
       "position": {
-        "x": 270,
-        "y": 345
+        "x": 285,
+        "y": 270
       },
       "data": {
         "columns": "*",
@@ -216,7 +216,7 @@
       "type": "create_window",
       "label": "创建窗口",
       "position": {
-        "x": -135,
+        "x": -177.5,
         "y": 600
       },
       "data": {
@@ -258,16 +258,16 @@
       }
     },
     {
-      "id": "node_1781462173283_19d75o",
+      "id": "node_1781462791086_chs6n1",
       "type": "open_webview",
       "label": "打开 Webview",
       "position": {
-        "x": -210,
-        "y": 240
+        "x": -720,
+        "y": -210
       },
       "data": {
-        "url": "https://www.baidu.com",
-        "title": "Webview",
+        "url": "https://www.google.com",
+        "title": "Webview11",
         "outputs": [
           {
             "key": "success",
@@ -296,10 +296,10 @@
             ]
           }
         ],
-        "width": 420,
-        "height": 300,
-        "nodeWidth": 435,
-        "nodeHeight": 330
+        "width": 630,
+        "height": 510,
+        "nodeWidth": 675,
+        "nodeHeight": 555
       }
     }
   ],
@@ -316,14 +316,11 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781462270587,
+  "updatedAt": 1781463392550,
   "enabledPlugins": [
-    "workflow.minimax",
-    "workflow.jimeng",
     "workflow.fetch",
-    "workflow.desktop-native",
-    "workflow.window-manager",
-    "workflow.webview"
+    "workflow.webview",
+    "workflow.custom-view-demo"
   ],
   "groups": []
 }

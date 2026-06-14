@@ -94,8 +94,54 @@ export interface MiniAppTaskEvent {
   timestamp?: string;
 }
 
+type MiniAppRootRecord = {
+  root: ReactDOM.Root;
+  unmountTimer: ReturnType<typeof setTimeout> | null;
+};
+
+const miniAppRootRecords = new WeakMap<HTMLDivElement, MiniAppRootRecord>();
+
 let agentSpacesUiMountCount = 0;
 let initialAgentSpacesUi: unknown;
+
+function getMiniAppRoot(container: HTMLDivElement): ReactDOM.Root {
+  const existing = miniAppRootRecords.get(container);
+  if (existing) {
+    if (existing.unmountTimer) {
+      clearTimeout(existing.unmountTimer);
+      existing.unmountTimer = null;
+    }
+    return existing.root;
+  }
+
+  const record: MiniAppRootRecord = {
+    root: ReactDOM.createRoot(container),
+    unmountTimer: null,
+  };
+  miniAppRootRecords.set(container, record);
+  return record.root;
+}
+
+function unmountMiniAppRoot(container: HTMLDivElement) {
+  const record = miniAppRootRecords.get(container);
+  if (!record) return;
+  if (record.unmountTimer) {
+    clearTimeout(record.unmountTimer);
+    record.unmountTimer = null;
+  }
+  miniAppRootRecords.delete(container);
+  try { record.root.unmount(); } catch { /* ignore */ }
+}
+
+function scheduleMiniAppRootUnmount(container: HTMLDivElement) {
+  const record = miniAppRootRecords.get(container);
+  if (!record || record.unmountTimer) return;
+  record.unmountTimer = setTimeout(() => {
+    if (miniAppRootRecords.get(container) !== record) return;
+    record.unmountTimer = null;
+    unmountMiniAppRoot(container);
+  }, 0);
+}
 
 function installAgentSpacesUiGlobals() {
   if (agentSpacesUiMountCount === 0) {
@@ -180,11 +226,12 @@ export function MiniAppRenderer({
   useEffect(() => {
     const previousAgentSpaces = (window as any).AgentSpaces;
     const previousAgentSpacesApi = (window as any).AgentSpacesAPI;
+    const taskEventListeners = taskEventListenersRef.current;
     const api = {
       ...(previousAgentSpaces && typeof previousAgentSpaces === 'object' ? previousAgentSpaces : {}),
       onTaskEvent: (listener: (event: string, data: unknown) => void) => {
-        taskEventListenersRef.current.add(listener);
-        return () => taskEventListenersRef.current.delete(listener);
+        taskEventListeners.add(listener);
+        return () => taskEventListeners.delete(listener);
       },
     };
     (window as any).AgentSpaces = api;
@@ -194,7 +241,7 @@ export function MiniAppRenderer({
     };
 
     return () => {
-      taskEventListenersRef.current.clear();
+      taskEventListeners.clear();
       if (previousAgentSpaces === undefined) delete (window as any).AgentSpaces;
       else (window as any).AgentSpaces = previousAgentSpaces;
       if (previousAgentSpacesApi === undefined) delete (window as any).AgentSpacesAPI;
@@ -210,10 +257,10 @@ export function MiniAppRenderer({
 
   // Cleanup on unmount only — scheduled outside React's render phase
   useEffect(() => {
+    const container = containerRef.current;
     return () => {
-      const root = rootRef.current;
       rootRef.current = null;
-      if (root) queueMicrotask(() => { try { root.unmount(); } catch { /* ignore */ } });
+      if (container) scheduleMiniAppRootUnmount(container);
     };
   }, []);
 
@@ -318,10 +365,8 @@ export function MiniAppRenderer({
         return;
       }
 
-      // Reuse existing root or create a new one
-      if (!rootRef.current) {
-        rootRef.current = ReactDOM.createRoot(containerRef.current);
-      }
+      // Reuse an existing root for the same container, including StrictMode remounts.
+      rootRef.current = getMiniAppRoot(containerRef.current);
       rootRef.current.render(
         React.createElement(RenderErrorBoundary, { onError },
           React.createElement(Component, componentProps)
@@ -337,12 +382,9 @@ export function MiniAppRenderer({
     if (!containerRef.current) return;
 
     // Destroy react root before HTML mode takes over the container
-    if (rootRef.current) {
-      const oldRoot = rootRef.current;
-      rootRef.current = null;
-      queueMicrotask(() => { try { oldRoot.unmount(); } catch { /* ignore */ } });
-    }
     const container = containerRef.current;
+    unmountMiniAppRoot(container);
+    rootRef.current = null;
     const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
     const scripts: string[] = [];
     const cleanHtml = html.replace(scriptRegex, (_match, content) => {

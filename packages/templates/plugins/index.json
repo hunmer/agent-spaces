@@ -418,8 +418,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "webview",
-    "md5": "a47e4cf87568086164ceff6a3ea75f6b",
-    "updatedAt": "2026-06-14T18:34:09.186Z"
+    "md5": "70de8536293ac200a603c98d8a0309b8",
+    "updatedAt": "2026-06-14T18:50:42.239Z"
   },
   {
     "id": "workflow.window-manager",
