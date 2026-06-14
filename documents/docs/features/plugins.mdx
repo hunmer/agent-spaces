@@ -1,0 +1,278 @@
+---
+sidebar_position: 19
+---
+
+# Plugin 插件系统
+
+Plugin 是 Agent Spaces 的可复用能力包机制。一个 Plugin 封装了一组可被 [Workflow](/docs/features/workflow) 节点、Mini-app 沙箱、Agent 工具调用共同复用的能力——例如调用阿里云百炼 AI 生图、向钉钉群发消息、用 FFmpeg 处理音视频、操作对象存储等。插件以独立目录形式组织，按约定暴露入口文件（`main.js` / `actions.js` / `workflow.js` 等），由后端在沙箱化的 `vm` 上下文中加载、激活并按需调用。
+
+> 与 [Hook 系统](/docs/features/hooks) 的区别：Hook 是绑定到 Agent 运行时生命周期事件的触发器（`SessionStart`、`PreToolUse` 等），fire-and-forget，只能做通知/记录；Plugin 是被主动调用的能力包，提供可被 Workflow 节点、Mini-app preview 或 Agent 调用的具名工具/节点，可以返回结果。
+
+## 插件目录结构
+
+每个 Plugin 是 `~/.agent-spaces-data/plugins/<plugin-dir>/` 下的一个目录（仓库内置模板位于 `packages/templates/plugins/`，安装时复制到数据目录）。典型结构（以 `fetch` 网络请求插件为例）：
+
+```text
+fetch/
+├── info.json      # 插件清单（id / 名称 / 描述 / tags / config / entries）
+├── main.js        # 服务端入口：exports.activate(context) 注册 actions
+├── actions.js     # 导出 (t) => [{ name, label, properties, outputs, run }] 的 action 工厂
+├── workflow.js    # 静态 Workflow 节点清单（actions 模式下可为占位 { nodes: [] }）
+├── tools.js       # 静态 Agent 工具清单（actions 模式下可为占位 { tools: [] }）
+├── lang.json      # i18n 词条（zh / en 两个 locale 对象）
+└── icon.png       # 图标（svg / png / jpeg / webp 任一，命名为 icon.*）
+```
+
+复杂插件（如 `aliyun-ai`、`minimax`）会进一步把 actions 按域拆分为 `tools-image.js`、`tools-video.js`、`tools-asr.js`、`shared.js` 等多个文件，再由 `actions.js` 聚合导出。
+
+### 清单文件 `info.json`
+
+`info.json` 是插件核心元数据，服务端通过 `readManifestFromDir` 在多个候选清单名（`plugin.json` / `manifest.json` / `info.json` / `web-plugin.json` / `package.json`）中按顺序读取，第一个含 `id` 或 `name` 的即为生效清单（`packages/server/src/services/plugin.ts:141`）。关键字段：
+
+| 字段 | 说明 |
+|------|------|
+| `id` | 插件全局唯一标识，约定前缀 `workflow.` 或自定义命名空间（如 `workflow.fetch`、`workfox.dingtalk`） |
+| `name` / `name_zh` / `name_en` | 显示名称及中英文本地化 |
+| `version` | 语义化版本 |
+| `description` / `description_zh` / `description_en` | 描述及本地化 |
+| `tags` / `tags_zh` / `tags_en` | 标签（用于商店过滤） |
+| `type` | 运行时类型：`server`（后端 vm 加载）/ `client`（前端 WebView 加载）/ `both` |
+| `hasView` | 是否含独立视图（`true` 时前端加载 `view.js`，参见 `test-plugin`） |
+| `hasWorkflow` | 是否注册 Workflow 节点 |
+| `entries` | 各入口文件名覆盖，默认 `server: main.js`、`workflow: workflow.js`、`tools: tools.js` |
+| `config` | 插件配置项声明（见下文「配置」），运行时注入 action 的 `ctx.config` |
+| `icon` / `iconPath` | 图标相对路径，缺省时按 `icon.svg` → `icon.png` → `icon.jpg` → `icon.jpeg` → `icon.webp` 顺序探测 |
+
+### 入口约定
+
+`PluginEntryKind` 在 `packages/shared/src/types/workflow-plugin.ts:93` 中定义了 7 种入口类别及默认文件名：
+
+| kind | 默认文件 | 用途 |
+|------|---------|------|
+| `main` / `server` | `main.js` | 服务端激活入口，导出 `activate(context)` / `deactivate(context)` |
+| `client` | `main.js` | 前端激活入口 |
+| `workflow` | `workflow.js` | 静态 Workflow 节点清单（`{ nodes: [...] }` 或纯数组） |
+| `tools` | `tools.js` | 静态 Agent 工具清单（`{ tools: [...] }`） |
+| `api` | `api.js` | 自定义 API 注入（保留） |
+| `view` | `view.js` | 前端自定义视图 |
+
+清单 `entries` 字段可覆盖任一默认文件名。`aliyun-ai` 即通过 `entries.server`/`entries.workflow` 指向各自文件。
+
+## 加载与执行模型
+
+后端 `pluginService`（`packages/server/src/services/plugin.ts`）以「按需激活 + 进程内缓存」的方式管理插件：
+
+1. **清单扫描** — `listPlugins()` 扫描数据目录下所有子目录，读取清单并 `normalizePlugin` 为 `PluginMeta`（合并 state.json 中的启用状态、配置、md5、安装时间）。
+2. **激活** — 当某插件首次需要被调用时，`activatePlugin()` 在隔离的 `vm.Script` 上下文中读取 `main.js` 源码并执行（`runInNewContext`，注入 `console` / `Buffer` / `URL` / `fetch` / `setTimeout` 等全局，并用受限 `require` 拦截 Node 内置与相对路径、对外部 npm 包返回 Proxy stub），随后调用导出的 `activate(context)`。
+3. **注册 actions** — `activate` 通过 `context.registerActions(actions)` 把 actions 注册到 `pluginRuntimeState`（按 pluginId 缓存），actions 可以是数组或 `(t) => actions[]` 工厂（支持按 locale 本地化）。
+4. **派生节点与工具** — `createPluginActions(actions)` 把同一份 actions 派生出三类产物：
+   - Workflow 节点（`nodes`，含 `properties` / `outputs` / `handler`）
+   - Agent 工具（`tools`，含 `input_schema` / `outputs`，自动由 `properties` 推导 JSON Schema）
+   - 工具调用 handler 映射（按 `name` 与可选的 `tool.name` 索引）
+
+`context`（`createPluginContext`，`plugin.ts:543`）暴露：
+
+- `plugin` — 当前插件元信息
+- `config` — 合并了清单默认值与用户配置的键值对象（凭据等敏感值从这里读取，**前端不应直接收集**）
+- `t(key, fallback)` — i18n 翻译函数（读取 `lang.json`，按 `zh` / `en` locale，缺失回退另一 locale）
+- `logger.info/warning/error` — 带 `[plugin:<id>]` 前缀的日志
+- `registerActions(actions)` — 注册 action 工厂或数组
+
+### Workflow 节点派发
+
+Workflow 执行引擎遇到一个未知 `nodeType` 时，调用 `pluginService.canExecuteWorkflowNode(nodeType)` 与 `executeWorkflowNode(nodeType, args, hooks)`（`plugin.ts:1073`、`1077`）。`getExecutablePluginByNodeType` 遍历所有 **已启用** 的 Workflow 插件，按以下顺序匹配 handler：
+
+1. 优先匹配 actions 注册的节点（带 handler）
+2. 回退到静态 `workflow.js` 文件（`loadCommonJsWorkflowModule` 同样在 vm 中加载并提取 `handlers` 映射）
+
+匹配不到则节点无法执行。
+
+### Agent 工具调用
+
+Mini-app preview 通过宿主注入的 `window.AgentSpaces.callPluginTool(pluginId, toolName, args)`（`packages/web/src/components/mini-apps/use-mini-app-host-api.tsx`）发起工具调用，最终命中 `POST /api/plugins/:pluginId/tools/execute`。该端点：
+
+- 调用 `pluginService.executePluginTool(pluginId, name, args, builtinApi, locale)`
+- 自动把插件 `config`（含凭据）合并进 `args`，再交给 `createPluginActions(actions).tools().handler` 执行
+- 当 `pluginId === '@agent-spaces/builtin'` 时走内置工具分支（`executeMiniAppBuiltinTool`），无需真实插件目录
+
+### 内置虚拟插件
+
+`@agent-spaces/builtin`（`packages/server/src/services/builtin-tools/mini-app-tools.ts:267`）是一个不落盘的虚拟插件，把平台核心能力以 plugin tool 的形式暴露给 Mini-app，例如：
+
+- `list_agent_presets` — 列出可用 Agent preset
+- `agent_run` — 在沙箱中运行 Agent 执行任务
+
+这让 Mini-app 既能调用三方插件工具，也能调用平台内置 Agent 编排，调用路径统一。
+
+## 配置
+
+插件可在 `info.json` 的 `config` 字段声明一组配置项（类型 `PluginConfigField`，定义于 `packages/shared/src/types/workflow-plugin.ts:11`）：
+
+```json
+"config": [
+  {
+    "key": "defaultTimeout",
+    "label": "默认超时(ms)",
+    "desc": "请求的默认超时时间",
+    "type": "number",
+    "value": "30000"
+  },
+  {
+    "key": "userAgent",
+    "label": "User-Agent",
+    "type": "string",
+    "value": "workflow/1.0"
+  }
+]
+```
+
+支持类型：`string` / `number` / `boolean` / `select`（带 `options`）/ `object`。配置值持久化在 `~/.agent-spaces-data/plugins/state.json` 的 `config[pluginId]` 字典中，`getPluginConfig` 会把清单默认值与用户值合并后返回。`select` 类型的 `options` 形如 `[{ label, value }]`。
+
+凭据（如 OSS AccessKey、COS SecretId、API Key）应通过 config 注入，**Workflow UI 表单不要收集或传递凭据**——`callPluginTool` 在执行时会自动合并 config，preview 代码应省略凭据参数（凭据由插件 config 自动注入，详见 `docs/plugin-faq.md`）。
+
+### 工作流级配置方案（Plugin Schemes）
+
+除插件全局配置外，SDK 还提供「按 Workflow 隔离的插件配置方案」（`Plugin Scheme`，`packages/sdk/src/modules/workflow-plugin.ts:35`）：
+
+- `listSchemes(workflowId, pluginId)`
+- `createScheme(workflowId, pluginId, schemeName)`
+- `readScheme(workflowId, pluginId, schemeName)`
+- `saveScheme(workflowId, pluginId, schemeName, data)`
+- `deleteScheme(workflowId, pluginId, schemeName)`
+
+对应后端路由 `GET/POST/PUT/DELETE /api/workflows/:workflowId/plugin-schemes/:pluginId/:schemeName`，用于在同一插件下为不同 Workflow 维护不同的参数预设。
+
+## REST API
+
+Plugin 路由统一挂载在 `/api/plugins`（`packages/server/src/app.ts:249`），均需 Bearer Token 鉴权：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/plugins` | 列出所有插件（支持 `?locale=` 本地化） |
+| `GET` | `/api/plugins/workflow` | 仅列出 `hasWorkflow` 的插件 |
+| `GET` | `/api/plugins/:pluginId/icon` | 返回插件图标文件 |
+| `GET` | `/api/plugins/:pluginId/config` | 读取插件配置 |
+| `PUT` | `/api/plugins/:pluginId/config` | 保存插件配置 |
+| `GET` | `/api/plugins/:pluginId/tools` | 列出插件暴露的 Agent 工具 |
+| `POST` | `/api/plugins/:pluginId/tools/execute` | 执行具名工具（参数 `name` / `args` / `workspaceId` / `executorId` / `taskId` / `meta`） |
+| `GET` | `/api/plugins/:pluginId/workflow-nodes` | 列出插件提供的 Workflow 节点定义 |
+| `POST` | `/api/plugins/:pluginId/enable` | 启用插件 |
+| `POST` | `/api/plugins/:pluginId/disable` | 禁用插件 |
+| `DELETE` | `/api/plugins/:pluginId` | 卸载插件（删除目录并清理 state.json） |
+| `POST` | `/api/plugins/store/:pluginId/install` | 从商店或远程 URL 安装插件（body 含 `sourceUrl` / `md5`） |
+
+前端统一通过 `sdk.workflowPlugin.*`（`packages/sdk/src/modules/workflow-plugin.ts`）调用。
+
+### 工具执行的任务编排
+
+`POST /api/plugins/:pluginId/tools/execute` 支持可选的任务编排：当请求体带 `workspaceId`（即 projectId）时，后端会通过 `mini-app-tasks` 服务生成 `taskId`，并通过 WebSocket 广播任务生命周期事件（`plugin.ts:134-179`）：
+
+- `miniApp.taskStarted` — 任务开始（携带 `taskId` / `executorId` / `pluginId` / `toolName` / `meta`）
+- `miniApp.taskFinished` — 任务完成（额外携带 `result`）
+- `miniApp.taskFailed` — 任务失败（额外携带 `error`）
+
+任务状态缓存在进程内（projectId 维度，TTL 10 分钟清理终态），客户端可通过 `miniApp.taskSnapshot` 拉取当前快照。不带 `workspaceId` 的调用不触发编排，向后兼容普通一次性执行。
+
+> 注意：插件本身没有专属的 `plugin.*` WebSocket 事件域——所有与插件工具执行相关的实时通知都复用 `miniApp.*` 命名空间。
+
+## 安装与商店
+
+### 从内置模板安装
+
+`installTemplatePlugin(pluginId, sourceUrl?, md5?)`（`plugin.ts:922`）是统一入口。当不带 `sourceUrl` 时，从 `packages/templates/plugins/` 找到对应目录，复制（排除 `node_modules`）到数据目录，并按需运行 `npm install` 安装 `package.json` 声明的依赖（受 `npm-settings` 控制 registry / proxy）。安装完成后自动启用并记录 `md5` / `installedAt`。
+
+### 从远程商店安装
+
+带 `sourceUrl` 时按以下顺序尝试（`installStorePlugin`，`plugin.ts:907`）：
+
+1. **GitHub 目录安装**（`tryInstallGithubStoreDir`）— 当 URL 匹配 `raw.githubusercontent.com/<owner>/<repo>/<ref>/<dir>` 或 `github.com/<owner>/<repo>/raw/refs/heads/<ref>/<dir>` 时，调用 GitHub Contents API 递归拉取目录下所有文件（跳过 `node_modules`），写入数据目录。
+2. **ZIP 安装**（`tryInstallStoreZip`）— 在 URL 后追加 `.zip` 下载并解压（支持嵌套单层目录展平）。
+3. **公共文件安装**（`tryInstallStoreCommonFiles`）— 按清单候选名依次尝试拉取 `info.json` / `manifest.json` 等，再补拉一组约定文件（`main.js` / `workflow.js` / `tools.js` / `actions.js` / `lang.json` / `shared.js` / 图标 / `entries` 中声明的入口）。
+
+三种策略都要求远程清单 `id` 与请求 `pluginId` 一致，否则抛出 id mismatch 错误。
+
+### 依赖安装
+
+`installPluginDependencies(dir)` 在插件目录含 `package.json` 且无 `node_modules` 时，按 `npm-settings` 配置的 registry / proxy 同步运行 `npm install --omit=dev`（`plugin.ts:178`）。安装失败会抛错并阻止插件启用。
+
+## 内置插件清单
+
+仓库 `packages/templates/plugins/` 当前内置约 19 个插件（`index.json` 中登记 19 条），按能力域分组：
+
+**AI 生成**
+
+- `workflow.aliyun-ai` — 阿里云百炼 AI（千问文生图、万相视频生成/编辑、可灵生图、图像扩图、声动人像、ASR 语音识别）
+- `workflow.minimax` — MiniMax 多模态（文本合成、角色对话 M2-her、TTS、音乐生成、视频生成、歌词生成）
+- `workflow.openai` — OpenAI 集成（文生图、图片编辑、Chat Completions、Embeddings、Audio TTS/STT）
+- `workflow.jimeng` — 即梦 AI（文生图、图生图、文生视频）
+- `workflow.fish-audio` — FishAudio 语音合成与识别（TTS / STT）
+- `workflow.qianyin` — 千音 TTS 语音合成
+
+**云存储**
+
+- `workflow.aliyun-oss` — 阿里云 OSS（上传/下载/删除/列举/签名 URL）
+- `workflow.tencent-cos` — 腾讯云 COS（同上）
+
+**通知与通信**
+
+- `workfox.dingtalk` — 钉钉自定义机器人 Webhook（text/markdown/link/actionCard/feedCard）
+- `workflow.mail` — SMTP 邮件发送（HTML/纯文本、附件、抄送/密送）
+
+**音视频与文件处理**
+
+- `workflow.ffmpeg` — FFmpeg 音视频处理（格式转换、合并、分离）
+- `workflow.epub-parser` — EPUB 电子书解析（书籍信息、目录、章节）
+- `workflow.file-system` — 文件系统操作（读写、编辑、枚举、删除、目录管理）
+- `workflow.fetch` — 网络请求（网页抓取、文件下载、批量下载）
+
+**SDK 与集成**
+
+- `workflow.mira-sdk` — Mira App Server SDK（素材库管理、文件上传下载、设备通信、系统监控）
+
+**桌面与窗口（client 类型）**
+
+- `workflow.desktop-native` — 桌面原生能力（剪贴板读写、系统通知）
+- `workflow.window-manager` — 浏览器窗口管理（创建、导航、关闭、截图）
+
+**示例与测试**
+
+- `workflow.custom-view-demo` — 演示 Workflow 节点如何用 React/HTML `customView` 渲染节点界面
+- `workflow.test-plugin` — Web client 插件示例（`hasView: true`，通过 CDN 加载 runtime 与 view）
+
+每个插件的 `actions.js` 中实际可用的工具/节点数远多于上面列出的能力描述（例如 `aliyun-ai` 的 `actions.js` 单文件就含数十个 action）。
+
+## 与 Mini-app 协同
+
+Mini-app preview 通过宿主注入的 `window.AgentSpaces` 全局对象访问插件能力（`packages/web/src/components/mini-apps/use-mini-app-host-api.tsx`）：
+
+```js
+const result = await window.AgentSpaces.callPluginTool(
+  'workflow.minimax',
+  'text_to_speech',
+  { text: '你好' }
+);
+const audioUrl = result?.data?.url;
+```
+
+调用模式与字段约定参见 `docs/plugin-faq.md`：内置虚拟插件使用 `pluginId = '@agent-spaces/builtin'`；返回值通常包裹为 `{ success, message, data }`，业务侧读取 `data` 中的字段；带 `default` 的 schema 属性可省略参数；凭据由插件 config 自动注入，preview 代码不应收集或传递。
+
+## 安全约束
+
+- **沙箱执行** — 插件代码运行在 `vm.Script` 的 `runInNewContext` 隔离上下文中，`require` 被代理：Node 内置模块与相对/绝对路径走真实 `require`，外部 npm 包返回 Proxy stub（任意属性访问/调用都返回新的 Proxy，避免逃逸）。
+- **凭据隔离** — AccessKey、SecretId 等敏感字段保存在插件 config（state.json），不进入 Workflow UI 表单，由后端在 `executePluginTool` 时合并进 `args`。
+- **远程安装校验** — 远程清单 `id` 必须与请求 `pluginId` 一致；GitHub 目录安装跳过 `node_modules`；安装前会清空同名目标目录。
+- **依赖隔离** — 插件依赖在各自目录内独立 `npm install`，registry / proxy 受 `npm-settings` 控制。
+
+## 常见问题
+
+### 节点要求「公网 URL」，但只有本地文件
+
+很多三方生成 API（如阿里云扩图、视频编辑、数字人）只接受公网可访问的 `imageUrl` / `videoUrl` / `audioUrl`，不接受本地路径、`File`、base64 或内网 URL。正确数据流：`/api/upload` 落盘 → 调 OSS/COS 插件转存到公网 → 用对象存储公网 URL 调目标节点。详见 `docs/plugin-faq.md`。
+
+### 不要把浏览器 `File.path` 当成本地绝对路径
+
+`File.path` 可能只是文件名，服务端按当前工作目录解析会出现 `ENOENT`。应使用 `/api/upload` 返回的 `path`，并命名保存为 `uploadedPath` 避免混淆。
+
+### 提交按钮未禁用导致拿到空路径
+
+文件上传是异步的，提交按钮必须在上传完成前禁用，否则生成工具可能拿到空路径、旧路径或相对路径。

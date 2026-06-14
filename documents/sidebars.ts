@@ -34,6 +34,13 @@ const sidebars: SidebarsConfig = {
         'features/worktree',
         'features/hooks',
         'features/output-styles',
+        'features/mini-app',
+        'features/plugins',
+        'features/skills',
+        'features/mcp',
+        'features/agent-store',
+        'features/models',
+        'features/prompts',
       ],
     },
     {

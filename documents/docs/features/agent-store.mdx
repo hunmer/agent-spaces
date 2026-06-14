@@ -1,0 +1,228 @@
+---
+sidebar_position: 22
+---
+
+# Agent Store（模板市场）
+
+Agent Store 是 Agent Spaces 的**在线模板市场**。它把仓库内置的 `packages/templates` 模板库以静态资源方式对外暴露，让用户无需手动复制文件，就能在侧边栏各类「商店」对话框里浏览、搜索并一键导入 Agent 预设、Chat 助手、MCP 服务器、Skill、Plugin、Workflow、Prompt、输出风格、Mini-app 等九类资源。
+
+默认情况下商店指向官方远程仓库（经 gh-proxy 代理 GitHub raw 地址），你也可以把 Base URL 改成自建服务器或留空回退到本地内置资源。所有索引由 `packages/templates/generate-index.mjs` 自动生成。
+
+## 覆盖的九类资源
+
+`packages/templates` 下按子目录组织九类模板，每类目录都有对应的 `index.json` 索引：
+
+| 资源类型 | 目录 | 形态 | 数量（约） |
+|---------|------|------|-----------|
+| Agent 预设 | `agents/` | Markdown + YAML frontmatter，按 15 个分组 | 180+ 个 |
+| Chat 助手 | `chat/` | Markdown + YAML frontmatter | 约 6 个 |
+| MCP 服务器 | `mcps/` | JSON 配置（`mcpServers` 形态） | 约 9 个 |
+| Skill | `skills/` | `group/skill-name/SKILL.md` | 20+ 个 |
+| Workflow Plugin | `plugins/` | 插件目录（含 `plugin.json`/`info.json` 等 manifest） | 约 19 个 |
+| Workflow 模板 | `workflows/` | JSON（含 `data.nodes`/`data.edges`/`data.agents`） | 约 1 个 |
+| Prompt 模板 | `prompt/` | Markdown | 约 2 个 |
+| 输出风格 | `output-styles/` | Markdown | 约 7 个 |
+| Mini-app | `mini-app/` | 目录（含 `manifest.json` + 源码） | 约 1 个 |
+
+> 数量随仓库迭代持续增长，此处为当前快照的约数。具体以各目录 `index.json` 为准。
+
+## 索引生成机制
+
+模板不是直接被前端读取的——每类目录都需要先由 `packages/templates/generate-index.mjs` 扫描生成 `index.json`，前端只消费索引文件。
+
+### 生成命令
+
+```bash
+pnpm --filter @agent-spaces/agents generate-index
+# 或在 packages/templates 下直接
+node generate-index.mjs
+```
+
+脚本定义在 `packages/templates/package.json` 的 `generate-index` 脚本中（参见 `package.json:6`）。
+
+### 每类资源的扫描逻辑
+
+脚本为每类资源调用一个 `scanXxxStore()` 函数（`packages/templates/generate-index.mjs`），核心逻辑高度一致：
+
+1. **遍历目标子目录**，过滤出合法模板（按 `.md` / `.json` / 子目录区分）
+2. **解析 frontmatter / manifest** 提取 `name`、`description`、`group`、`emoji` 等字段
+3. **计算 MD5 指纹**——文件级用 `fileMD5`，目录级（Skill / Plugin / Mini-app）用 `folderMD5`（递归哈希所有文件后聚合）
+4. **保留 `updatedAt`**：若 MD5 与上次索引一致则沿用旧时间戳，否则取最新 mtime，避免索引无谓变动
+5. **写出 `index.json`**
+
+各扫描函数关键产出字段：
+
+| 扫描函数 | 行号 | 索引产出字段示例 |
+|---------|------|------------------|
+| `scanAgentStore` | `generate-index.mjs:163` | `{ id, name, group, path, description, emoji, md5, updatedAt }` |
+| `scanChatStore` | `generate-index.mjs:264` | `{ id, name, group: 'chat', path, description, emoji, md5, updatedAt }` |
+| `scanMcpStore` | `generate-index.mjs:132` | `{ id, name, description, filename, needsEnv, md5, updatedAt }` |
+| `scanSkillStore` | `generate-index.mjs:99` | `{ id, name, group, path, md5, updatedAt }` |
+| `scanPluginStore` | `generate-index.mjs:202` | `{ id, name, version, description, author, tags, type, hasView, hasWorkflow, path, iconUrl, md5, updatedAt }` |
+| `scanWorkflowStore` | `generate-index.mjs:306` | `{ id, name, description, filename, nodeCount, agentCount, md5, updatedAt }` |
+| `scanPromptStore` | `generate-index.mjs:57` | `{ id, name, filename, md5, updatedAt }` |
+| `scanOutputStyleStore` | `generate-index.mjs:78` | `{ id, name, filename, md5, updatedAt }` |
+| `scanMiniAppStore` | `generate-index.mjs:336` | `{ id, name, icon, iconUrl, files, md5, updatedAt }` |
+
+### Plugin 的多语言索引
+
+Plugin 是唯一生成多份索引的资源。`scanPluginStore`（`generate-index.mjs:202`）会同时输出三份文件：
+
+- `plugins/index.json` — 默认索引，兼容未做多语言的远程商店
+- `plugins/index_zh.json` — 优先读取 manifest 中的 `_zh` 后缀字段（如 `name_zh`）
+- `plugins/index_en.json` — 优先读取 `_en` 后缀字段
+
+字段缺失时回退到无后缀字段（`pickLocalized` 实现：先取带语言后缀的字段名，如 `name_zh`，缺失则回退到无后缀字段 `name`）。Manifest 还可与远程 `plugins/plugins.json` 合并——`manifestUrl`/`downloadUrl` 解析出的目录名会与本地目录匹配，远程字段优先级低于本地 manifest。
+
+> 注意：插件**运行时**的多语言（workflow node 的 `label`/`description`、字段 tooltip、执行结果 `message`）不通过商店索引处理，而由插件目录下的 `lang.json` 配合运行时 `t(key, fallback)` 完成。调试日志统一使用英文。
+
+## 前端加载链路
+
+前端通过统一的 `fetchStoreIndex` 工具函数加载索引，定义在 `packages/web/src/lib/agent-store.ts`：
+
+```ts
+export function resolveStoreUrl(path: string): string {
+  const base = getStoreApiBase();
+  const cleanPath = path.replace(/^\/+/, '');
+  if (base) return `${base.replace(/\/+$/, '')}/${cleanPath}`;
+  if (typeof window === 'undefined') return `/agents-store/${cleanPath}`;
+  return new URL(`/agents-store/${cleanPath}`, window.location.origin).toString();
+}
+
+export async function fetchStoreIndex<T>(path: string): Promise<T[]> {
+  const url = resolveStoreUrl(path);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`fetch ${url} failed: ${res.status}`);
+  return res.json();
+}
+```
+
+数据流向：
+
+```
+getStoreApiBase()（localStorage: agent-spaces:store-api-base）
+  ├─ 有值 → 拼成 {apiBase}/{path}        （默认 = 官方远程仓库经 gh-proxy 代理）
+  └─ 留空 → /agents-store/{path}         （回退到本地内置资源）
+       ↓
+   fetch → 返回索引 JSON
+```
+
+`getStoreApiBase` 的默认值是官方远程仓库地址（`packages/web/src/lib/agent-store.ts:7`，经 gh-proxy 代理 GitHub raw），所以开箱即用是从远程拉取。一旦用户在设置里清空 Base URL，`resolveStoreUrl` 会回退到 `/agents-store` 路径，由后端静态服务提供本地内置资源。
+
+> 注意：部分消费组件（如 `mcps-dialog.tsx:250`、`workflow-templates-dialog.tsx:59`）会直接读 `localStorage` 而非调用 `getStoreApiBase()`，但回退逻辑与 `resolveStoreUrl` 一致——有 base 用远程，无 base 用 `/agents-store`。
+
+### 各商店消费方
+
+| 商店组件 | 加载索引 | 资源类型 |
+|---------|---------|---------|
+| `sidebar/agent-dialog-data.ts:102` | `agents/index.json` | Agent 预设 |
+| `chat/chat-agent-picker-dialog.tsx:96` | `chat/index.json` | Chat 助手 |
+| `sidebar/mcps-dialog.tsx:140` | `mcps/index.json` | MCP 服务器 |
+| `sidebar/skills-dialog/use-skills-data.ts:43` | `skills/index.json` | Skill |
+| `workflow/workflow-plugins-dialog.tsx:130` | `plugins/index_${locale}.json`（回退 `plugins/index.json`） | Workflow Plugin |
+| `workflows/workflow-templates-dialog.tsx:46` | `workflows/index.json` | Workflow 模板 |
+| `sidebar/prompts-dialog.tsx:125` | `prompt/index.json` | Prompt 模板 |
+| `sidebar/output-styles-dialog.tsx:125` | `output-styles/index.json` | 输出风格 |
+| `mini-apps/mini-apps-store-dialog.tsx:43` | `mini-app/index.json` | Mini-app |
+
+## 浏览模板
+
+每个商店对话框都提供基本的浏览能力：
+
+- **分类筛选**：带 `group`/`category` 字段的资源（Agent、Skill、Plugin）显示左侧分类树
+- **搜索框**：按 `name`、`description` 模糊匹配（小写比较，例如 `mcps-dialog.tsx:266`）
+- **去重提示**：商店列表会标注哪些项已经在本地导入（用本地资源名做 `Set` 匹配，如 `mcps-dialog.tsx:243`）
+
+## 导入模板
+
+Agent Spaces 的模板导入**按资源类型分散**到各自的 REST 路由，并不存在一个统一的 import 入口。下面按类型列出实际链路。
+
+### Skill
+
+在 Skills 对话框点导入，前端调用 `sdk.skills.importStore(path, group)`，对应：
+
+- SDK：`packages/sdk/src/modules/skills.ts:32` → `POST /api/skills/import-store`，body `{ path, group }`
+- 后端路由：`packages/server/src/routes/skill.ts`
+
+`path` 形如 `superpowers/brainstorming`，后端会从模板库定位对应 `SKILL.md` 并写入本地 Skills。除 `importStore` 外，Skills 还支持从 Git 仓库导入（`POST /api/skills/import-git`）和批量导入已有内容（`POST /api/skills/import-batch`）。
+
+### MCP 服务器
+
+MCP 商店的导入会先 `fetch` 模板的 JSON 内容，再调用 `sdk.mcps.importJson(jsonText)`：
+
+- SDK：`packages/sdk/src/modules/mcps.ts:24` → `POST /api/mcps/import`，body `{ jsonText }`
+- 后端服务：`packages/server/src/services/mcp.ts:90` 的 `importMcps(jsonText)`
+
+流程参见 `mcps-dialog.tsx:245` 的 `handleStoreImport`：先取 `mcps/{filename}`，再把 JSON 文本交给后端解析并落库。
+
+### Workflow 模板
+
+Workflow 商店导入走纯前端：`workflow-templates-dialog.tsx:56` 的 `handleImport` 先 `fetch` 模板的 `.json` 文件，取出 `template.data`（含 `nodes`/`edges`/`agents`），再调用上层 `onImport(template.data)` 直接落到 Workflow 编辑器，无需后端导入接口。
+
+### Workflow Plugin
+
+Plugin 商店列表请求 `plugins/index_${locale}.json`（失败回退 `plugins/index.json`），点击安装时通过 `plugins/${plugin.path}` 路径下载插件。详见 [插件系统](/docs/features/plugins)。
+
+### 其他资源
+
+- **Agent 预设 / Chat 助手 / Prompt / 输出风格**：均为 Markdown 模板，导入方式是拉取内容后写入对应本地资源（具体由各自的对话框驱动）
+- **Mini-app**：`mini-apps-store-dialog.tsx` 拉取 `mini-app/index.json` 后按 `files` 列表逐个下载并组装
+- **cc-switch 迁移**：另有专门的迁移入口 `packages/server/src/routes/import.ts`，用于一次性从 `~/.cc-switch` 导入已存在的 Provider / Skill / MCP 配置（`GET /api/import/cc-switch/preview` + `POST /api/import/cc-switch/execute`），不属于商店日常导入流程
+
+> 注意：导入商店资源不会自动绑定到任何 Agent 或频道，需要在各自管理界面手动关联（例如把导入的 Skill 绑定到具体 Agent 预设）。
+
+## 导出与分享
+
+仓库内置的 `packages/templates` 本身就是「分享」的载体——任何人 `pnpm install` 后都能通过本地 `/agents-store` 静态服务或 `pnpm --filter @agent-spaces/agents serve`（端口 3101）拉到完整模板库。要分享自建模板：
+
+1. 在对应子目录下按格式新增文件（详见下方「添加新资源」）
+2. 运行 `pnpm --filter @agent-spaces/agents generate-index` 重建索引
+3. 把整个 `packages/templates` 目录发布到任意静态托管（GitHub raw、对象存储、自建服务器）
+4. 在团队各端的「设置 → 在线商店」填入你的 Base URL
+
+## 远程商店配置
+
+Base URL 持久化在 localStorage 的 `agent-spaces:store-api-base` 键（`agent-store.ts:3`）。在 **设置** 面板的在线商店配置项里可以填入任意 HTTPS 静态地址，前端所有商店会统一改从该地址加载。清空后会回退到 `/agents-store` 本地路径。
+
+填入的 URL 需指向一个目录根，使 `{apiBase}/agents/index.json`、`{apiBase}/skills/index.json` 等路径都能命中——也就是说，该目录的布局要和 `packages/templates` 一致。
+
+## 添加新资源
+
+每类资源都有自己的存放约定（详见 `docs/agent-store.md`）：
+
+- **输出风格 / Prompt**：在 `output-styles/` 或 `prompt/` 下新建 `.md` 文件，首行 `# 名称` 会被索引当作 `name`
+- **Skill**：在 `skills/{group}/{skill-name}/` 下新建 `SKILL.md`，frontmatter 中 `name` 字段决定显示名
+- **Agent 预设 / Chat 助手**：按分组放在 `agents/{group}/` 或 `chat/` 下，frontmatter 含 `name`/`description`/`emoji`
+- **MCP**：在 `mcps/` 下新建 `.json`（`mcpServers` 形态，第一个 server 名作为商店项名）
+- **Workflow**：在 `workflows/` 下新建 `.json`，含 `id`/`name`/`description`/`data`
+- **Plugin**：在 `plugins/{plugin-dir}/` 下放置 manifest（`plugin.json`/`info.json`/`manifest.json`/`web-plugin.json`/`package.json` 任一）。多语言字段加 `_zh`/`_en` 后缀
+- **Mini-app**：在 `mini-app/{name}/` 下放置 `manifest.json` + 源码 + 可选 `avatar.png`
+
+新增后务必运行 `pnpm --filter @agent-spaces/agents generate-index` 重建索引，前端才能发现新资源。
+
+## 后端静态服务
+
+`packages/server/src/app.ts:115-116` 把 `packages/templates` 目录挂载为 `/agents-store` 静态路径：
+
+```ts
+const agentsDir = resolveRuntimeDir('../templates');
+app.use('/agents-store', express.static(agentsDir));
+```
+
+生产部署时这就是内置资源的来源。开发模式下如果想脱离后端独立预览模板，可以单独跑：
+
+```bash
+pnpm --filter @agent-spaces/agents serve
+# 基于 http-server，监听 3101，--cors 允许跨域，-c-1 关闭缓存
+```
+
+命令定义在 `packages/templates/package.json:7`。
+
+## 与其他功能的关系
+
+- 模板里的 **Skill** 导入后可在 Agent 预设里绑定，详见 Skill 系统文档
+- **MCP** 导入后绑定到 Agent 预设，详见 [MCP 集成](/docs/features/mcp)
+- **Workflow 模板**用于创建 Issue 时选择执行流程，详见 [Workflow 编辑器](/docs/features/workflow)
+- **Workflow Plugin** 是 Workflow 节点能力的扩展来源，详见插件系统文档
+- **输出风格**会注入到 Agent 的 systemPrompt，详见输出风格文档
+- **Mini-app** 模板用于在 Mini-app 编辑器中创建沙箱应用，详见 Mini-app 文档

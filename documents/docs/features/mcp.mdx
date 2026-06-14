@@ -1,0 +1,186 @@
+---
+sidebar_position: 21
+---
+
+# MCP 服务器
+
+MCP（Model Context Protocol，模型上下文协议）是一个开放协议，用于让大模型以统一方式连接外部工具与数据源。Agent Spaces 把 MCP 作为扩展 Agent 能力的核心机制：你可以在工作空间中集中管理一组 MCP 服务器配置，再按需把它们绑定到具体 Agent，运行时各运行时会拉起或连接这些 MCP 服务器，把其暴露的工具注入到 Agent 的可用工具集中。
+
+## 什么是 MCP？
+
+MCP 规定了「客户端（Agent 运行时）」与「服务器（能力提供方）」之间的通信契约。一个 MCP 服务器可以对外暴露三类能力：
+
+- **工具（Tools）** — Agent 可调用的函数，例如搜索、抓取网页、查询数据库、操作文件系统
+- **资源（Resources）** — 可读取的数据源
+- **提示（Prompts）** — 可复用的提示模板
+
+在 Agent Spaces 中，MCP 主要承载「工具注入」这一用途：当 Agent 被配置了若干 MCP 服务器后，这些服务器暴露的工具会作为 Agent 的可用工具参与任务执行。
+
+## 连接方式
+
+每个 MCP 服务器配置对象支持两类连接方式（由配置中是否存在 `command` 或 `url` 决定，二者至少具备其一）：
+
+- **stdio（本地进程）** — 通过 `command` + `args` + `env` 拉起一个本地子进程，运行时以 stdio 方式与之通信。这是绝大多数内置模板使用的形态，例如 `npx -y @modelcontextprotocol/server-filesystem`。
+- **HTTP / SSE（远程）** — 通过 `url` 直接连到一个已部署的远程 MCP 服务器；当配置声明 `transport: "sse"` 或 `type: "sse"` 时走 SSE，否则按 HTTP 处理，可附加 `headers`。
+
+后端在解析配置时（`packages/server/src/services/agent.ts` 的 `getRunnableMcpServerConfig`）只接受「带 `command`」或「带 `url`」的配置，其余视为非法。
+
+> 不同运行时对传输类型的归一化略有差异：LangChain 运行时（`packages/server/src/adapters/langchain-runtime.ts` 的 `normalizeLangChainMcpServer`）会显式把配置改写为带 `transport` 字段（`stdio` / `http` / `sse`），并保留 `args`、`env`、`cwd`、`headers` 等字段；Open Agent SDK 运行时还会对内置 `fetch` 模板做一次特殊归一化（把 `npx @modelcontextprotocol/server-fetch` 改写为 `uvx mcp-server-fetch`，并注入 `PYTHONIOENCODING=utf-8`），以规避其已知兼容性问题。
+
+## MCP 服务器配置
+
+### 配置形态
+
+所有 MCP 配置都以「命名服务器表」的形式存放，外层是 `{ mcpServers: { ... } }`，每个 server 形如：
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"],
+      "env": {}
+    }
+  }
+}
+```
+
+远程形态：
+
+```json
+{
+  "mcpServers": {
+    "remote": {
+      "url": "https://mcp.example.com/sse",
+      "transport": "sse",
+      "headers": { "Authorization": "Bearer xxx" }
+    }
+  }
+}
+```
+
+### 持久化位置
+
+MCP 配置以 JSON 文件方式落盘到工作空间数据目录下：
+
+- **路径**：`~/.agent-spaces-data/mcps/<name>.json`
+- **收藏元信息**：`~/.agent-spaces-data/mcps/_meta.json`（记录 `favorites` 列表）
+
+每个 `<name>.json` 文件结构为 `{ name, description?, config }`，其中 `config` 即上文的 server 配置（`command`/`args`/`env` 或 `url`/`headers`）。文件名经清洗（仅保留 `[a-zA-Z0-9._-]`，空名兜底为 `mcp-server`）。
+
+## Agent 绑定 MCP
+
+MCP 配置本身不直接驱动 Agent —— 你需要把命名好的 MCP 服务器绑定到某个 Agent 预设。绑定的承载字段是 `AgentConfig.mcps`（`packages/shared/src/types/workspace.ts`），结构同样为 `{ mcpServers: { <name>: <config> } }`，即 Agent 在自身配置中保留「它用到了哪些 MCP server、各自如何连接」。
+
+运行时（执行 Agent 或 SSE 调用）会调用 `agentService.getMcpServers(mcps)`：
+
+1. 读取 `agent.mcps.mcpServers`；
+2. 对每个 server，优先取内联配置（若已包含 `command` 或 `url`，视为可直接运行）；
+3. 否则按名称回退读取 `~/.agent-spaces-data/mcps/<name>.json` 中的 `config`；
+4. 最终产出一份 `name -> 可运行配置` 的映射，交给对应运行时。
+
+这意味着你可以：在 Agent 预设里只写 `mcpServers: { "github": {} }`（空配置占位），实际连接参数由全局 MCP 仓库统一维护；也可以在 Agent 内联写入完整的 `command`/`url`，跳过全局仓库。
+
+### 在界面中绑定
+
+在「设置 → MCP 服务器」页或 Agent 详情面板中，每个 MCP 条目会展示其**已绑定的 Agent 列表**（`boundAgents`，含 `id` / `name` / `avatarUrl`）。Agent 详情面板提供 MCP 选择弹窗，支持勾选/取消勾选；取消勾选会从 `mcpServers` 中删除对应键。
+
+## 内置 MCP 模板
+
+`packages/templates/mcps/` 提供约 9 个开箱即用的 MCP 模板，覆盖搜索、抓取、文件、版本控制、浏览器、数据库等常见场景：
+
+| 名称 | 启动命令 | 必填环境变量 | 说明 |
+|------|----------|--------------|------|
+| `brave-search` | `npx -y @modelcontextprotocol/server-brave-search` | `BRAVE_API_KEY` | Brave 搜索 |
+| `everything` | `npx -y @modelcontextprotocol/server-everything` | — | MCP 协议示例/测试服务器 |
+| `fetch` | `uvx mcp-server-fetch` | — | 网页抓取（Python 实现，建议 `PYTHONIOENCODING=utf-8`） |
+| `filesystem` | `npx -y @modelcontextprotocol/server-filesystem <允许目录>` | — | 受限目录的文件系统操作 |
+| `git` | `npx -y @modelcontextprotocol/server-git` | — | 本地 Git 仓库操作 |
+| `github` | `npx -y @modelcontextprotocol/server-github` | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub API 工具 |
+| `memory` | `npx -y @modelcontextprotocol/server-memory` | — | 基于知识图谱的记忆 |
+| `puppeteer` | `npx -y @modelcontextprotocol/server-puppeteer` | — | 浏览器自动化 |
+| `sqlite` | `npx -y @modelcontextprotocol/server-sqlite --db-path <db路径>` | — | SQLite 数据库读写 |
+
+模板清单与元信息（`id` / `name` / `description` / `filename` / `needsEnv` / `md5` / `updatedAt`）登记在 `packages/templates/mcps/index.json` 中。需要环境变量的模板（如 `brave-search`、`github`）在导入或编辑时必须填写对应的密钥/Token，否则子进程启动后无法正常工作。
+
+## 添加自定义 MCP
+
+除使用内置模板外，可以通过两种方式新增 MCP 服务器：
+
+### 1. 导入 JSON
+
+调用导入接口（`POST /api/mcps/import`），传入一段 JSON 文本。后端 `importMcps` 同时兼容两种格式：
+
+- 标准 `{ mcpServers: { ... } }`；
+- 扁平的 `{ name: {...} }`。
+
+每个 server 会按清洗后的名称写入 `~/.agent-spaces-data/mcps/<name>.json`（结构为 `{ name, config }`），并返回解析后的列表。
+
+### 2. 编辑已有条目
+
+- **新建/覆盖配置**：`PUT /api/mcps/:name`，body 为 `{ config }`（更新 `config` 字段，文件不存在返回 404）。
+- **删除**：`DELETE /api/mcps/:name`。
+- **收藏切换**：`POST /api/mcps/:name/favorite`，写入 `_meta.json` 的 `favorites` 数组。
+
+> 注意：`PUT` 与 `DELETE` 均要求目标 MCP 文件已存在；新建需走 `import` 接口。
+
+## 在 SSE API 中传递 MCP
+
+通过 [Agent SSE API](/docs/advanced/agent-sse-api) 直接调用 Agent 时，可以在请求体里覆盖该 Agent 的 MCP 配置，而不必修改预设。相关字段（`packages/server/src/routes/agent-sse.ts`）：
+
+- `mcps` — 标准 MCP 配置（`{ mcpServers: { ... } }`）；
+- `mcp` — 同义的别名。
+
+优先级为 `body.mcps ?? body.mcp ?? preset.mcps`，即请求体显式传入时覆盖 Agent 预设；未传则回退到预设里绑定的 MCP。SSE 接口随后用 `agentService.getMcpServers(...)` 解析为运行时可用的 `name -> config` 映射，再交给运行时执行。
+
+典型请求片段：
+
+```json
+{
+  "agentId": "<preset-id>",
+  "message": "搜索一下 Agent Spaces 最新动态",
+  "mcps": {
+    "mcpServers": {
+      "brave-search": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+        "env": { "BRAVE_API_KEY": "<your-key>" }
+      }
+    }
+  }
+}
+```
+
+## REST API
+
+MCP 相关 REST 路由集中在 `packages/server/src/routes/mcp.ts`，挂在 `/api/mcps` 下，需 Bearer Token 鉴权：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/mcps` | 列出全部 MCP 服务器（含 `name` / `description` / `config` / `favorited` / `boundAgents`） |
+| `POST` | `/api/mcps/import` | 按 `jsonText` 批量导入 MCP 配置 |
+| `PUT` | `/api/mcps/:name` | 更新指定 MCP 的 `config` |
+| `POST` | `/api/mcps/:name/favorite` | 切换收藏状态 |
+| `DELETE` | `/api/mcps/:name` | 删除指定 MCP |
+
+`GET /api/mcps` 返回的 `boundAgents` 是该 MCP 当前被哪些 Agent 绑定的反向索引——后端会遍历所有 Agent 预设，检查其 `mcps.mcpServers` 中是否包含同名键。
+
+## 运行时如何使用 MCP
+
+不同运行时拿到 `mcpServers` 映射后，处理方式各不相同：
+
+- **Claude Code**（`packages/server/src/adapters/claude-code-runtime/`）— 经 `normalizeMcpServers` 归一化后连同函数工具一起交给 Claude Code SDK，由 SDK 自身负责 stdio/HTTP 传输与工具发现。
+- **Open Agent SDK**（`packages/server/src/adapters/open-agent-sdk-runtime.ts`）— 经 `normalizeOpenAgentMcpServers` 归一化（含 `fetch` 模板改写）后传入 `createAgent`。
+- **LangChain**（`packages/server/src/adapters/langchain-runtime.ts`）— 用 `MultiServerMCPClient` 建立连接，开启 `prefixToolNameWithServerName` 和 `additionalToolNamePrefix: 'mcp'`，把 MCP 工具挂载到 LangChain 工具集，并在 `beforeToolCall` / `afterToolCall` 中输出工具调用与结果事件。
+- **Codex / Hermes / Oh-My-Pi** — 各自具备独立的归一化函数（如 codex-runtime 中的 `normalizeMcpServers`），按各自 SDK 期望的形态透传。
+
+无论哪种运行时，最终结果都是：MCP 服务器暴露的工具，与 Agent 原生工具一起，构成该次执行可用工具集合。工具调用过程会通过执行事件（`tool_use` / `tool_result` 等）实时上报，便于在工具时间线中观察。
+
+## 与 Skills 的区别
+
+[Skills](/docs/features/skills) 和 MCP 都用于扩展 Agent 能力，但定位不同：
+
+- **Skills** 是 Markdown 形态的提示/流程资产，注入到 Agent 的上下文中作为指引；
+- **MCP** 是协议级的能力接入，提供可被 Agent 调用的真实工具函数。
+
+两者可以同时绑定到同一个 Agent，互不冲突。
