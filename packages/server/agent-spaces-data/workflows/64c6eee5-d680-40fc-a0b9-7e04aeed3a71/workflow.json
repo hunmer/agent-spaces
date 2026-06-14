@@ -325,6 +325,19 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1781468750425_volzw1",
+      "type": "markdown",
+      "label": "nodes.markdown.label",
+      "position": {
+        "x": 960,
+        "y": 900
+      },
+      "data": {
+        "content": "# a\nwwww\n"
+      },
+      "nodeColor": "rose"
     }
   ],
   "edges": [
@@ -347,7 +360,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781468716872,
+  "updatedAt": 1781468778126,
   "enabledPlugins": [
     "workflow.fetch",
     "workflow.webview",
