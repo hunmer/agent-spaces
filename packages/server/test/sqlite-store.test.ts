@@ -64,6 +64,36 @@ test('describeTable returns columns', () => {
   } finally { cleanup(id); }
 });
 
+test('describeTable returns indexed columns', () => {
+  const id = setup();
+  try {
+    exec(id, 'CREATE TABLE c(a TEXT, b INTEGER NOT NULL)');
+    exec(id, 'CREATE INDEX IF NOT EXISTS "idx_c_b" ON "c"("b")');
+    const cols = describeTable(id, 'c');
+    assert.equal(cols.find((c) => c.name === 'a')?.indexed, false);
+    assert.equal(cols.find((c) => c.name === 'b')?.indexed, true);
+  } finally { cleanup(id); }
+});
+
+test('describeTable returns column descriptions from sqlite field metadata', () => {
+  const id = setup();
+  try {
+    exec(id, 'CREATE TABLE c(a TEXT, b INTEGER NOT NULL)');
+    exec(
+      id,
+      'CREATE TABLE IF NOT EXISTS "__sqlite_field_meta__" ("table" TEXT NOT NULL, "column" TEXT NOT NULL, "description" TEXT, PRIMARY KEY ("table","column"))',
+    );
+    exec(
+      id,
+      'INSERT OR REPLACE INTO "__sqlite_field_meta__" ("table","column","description") VALUES (?,?,?)',
+      ['c', 'b', 'required name'],
+    );
+    const cols = describeTable(id, 'c');
+    assert.equal(cols.find((c) => c.name === 'a')?.description, '');
+    assert.equal(cols.find((c) => c.name === 'b')?.description, 'required name');
+  } finally { cleanup(id); }
+});
+
 test('workflow association filter', () => {
   const db = createDatabase({ name: 'wf_' + Date.now(), workflowIds: ['wf-A'] });
   try {

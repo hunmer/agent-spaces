@@ -18,6 +18,8 @@ export interface SqliteColumnInfo {
   notNull: boolean;
   pk: boolean;
   defaultValue: string | null;
+  description: string;
+  indexed: boolean;
 }
 
 export interface SqliteQueryResult {

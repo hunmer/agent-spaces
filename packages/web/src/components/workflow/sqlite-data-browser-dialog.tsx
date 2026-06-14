@@ -48,6 +48,7 @@ const TYPE_OPTIONS = ['TEXT', 'INTEGER', 'REAL', 'NUMERIC', 'BLOB', 'BOOLEAN', '
 const NEW_TABLE = '__new__';
 // 字段描述无法存进 SQLite 列定义（PRAGMA 读不到），单独用元数据表持久化
 const META_TABLE = '__sqlite_field_meta__';
+const quoteIdent = (name: string) => `"${name.replaceAll('"', '""')}"`;
 
 interface FieldDef {
   id: string;
@@ -128,27 +129,45 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
     } catch { return {}; }
   }, [databaseId]);
 
+  const loadIndexedColumns = useCallback(async (table: string): Promise<Set<string>> => {
+    try {
+      const indexes = await sdk.sqlite.query(databaseId, `PRAGMA index_list(${quoteIdent(table)})`);
+      const columns = new Set<string>();
+      for (const index of indexes.rows) {
+        const indexName = String(index.name ?? '');
+        if (!indexName) continue;
+        const info = await sdk.sqlite.query(databaseId, `PRAGMA index_info(${quoteIdent(indexName)})`);
+        for (const row of info.rows) {
+          const columnName = String(row.name ?? '');
+          if (columnName) columns.add(columnName);
+        }
+      }
+      return columns;
+    } catch { return new Set(); }
+  }, [databaseId]);
+
   const loadSchema = useCallback(async (name: string) => {
     setSchemaError(null);
     setSchemaMsg(null);
     if (!name) { setFields([]); return; }
     setSchemaLoading(true);
     try {
-      const [cols, descMap] = await Promise.all([
+      const [cols, descMap, indexedColumns] = await Promise.all([
         sdk.sqlite.describeTable(databaseId, name),
         loadDescriptions(name),
+        loadIndexedColumns(name),
       ]);
       setFields(cols.map((c) => ({
         id: `f${++fieldSeq}`,
         name: c.name,
-        description: descMap[c.name] ?? '',
+        description: c.description || descMap[c.name] || '',
         type: (c.type || 'TEXT').toUpperCase(),
-        indexed: false,
+        indexed: c.indexed ?? indexedColumns.has(c.name),
         required: c.notNull,
       })));
     } catch (e) { setSchemaError((e as Error).message); setFields([]); }
     finally { setSchemaLoading(false); }
-  }, [databaseId, loadDescriptions]);
+  }, [databaseId, loadDescriptions, loadIndexedColumns]);
 
   const browseData = useCallback(async (name: string) => {
     setResult(null);
@@ -214,7 +233,7 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
         if (f.indexed) {
           await sdk.sqlite.exec(
             databaseId,
-            `CREATE INDEX IF NOT EXISTS "idx_${targetTable}_${f.name}" ON "${targetTable}"("${f.name}")`,
+            `CREATE INDEX IF NOT EXISTS ${quoteIdent(`idx_${targetTable}_${f.name}`)} ON ${quoteIdent(targetTable)}(${quoteIdent(f.name)})`,
           );
         }
       }

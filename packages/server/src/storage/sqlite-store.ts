@@ -10,6 +10,7 @@ import { checkSql, validateDbName, bindArgs, MAX_ROWS, type SqlParams } from './
 
 const META_FILE = join(getDataDir(), 'sqlite', 'databases.json');
 const DB_DIR = join(getDataDir(), 'sqlite');
+const FIELD_META_TABLE = '__sqlite_field_meta__';
 const POOL = new Map<string, DatabaseSync>();
 
 let metaCache: SqliteDatabaseMeta[] | null = null;
@@ -102,8 +103,32 @@ export function describeTable(id: string, table: string): SqliteColumnInfo[] {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
     name: string; type: string; notnull: number; pk: number; dflt_value: string | null;
   }>;
+  let descriptions = new Map<string, string>();
+  const metaExists = db.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
+  ).get(FIELD_META_TABLE);
+  if (metaExists) {
+    const rows = db.prepare(
+      `SELECT "column", "description" FROM "${FIELD_META_TABLE}" WHERE "table" = ?`
+    ).all(table) as Array<{ column: string; description: string | null }>;
+    descriptions = new Map(rows.map((r) => [r.column, r.description ?? '']));
+  }
+  const indexedColumns = new Set<string>();
+  const indexes = db.prepare(`PRAGMA index_list("${table}")`).all() as Array<{ name: string }>;
+  for (const index of indexes) {
+    const rows = db.prepare(`PRAGMA index_info("${index.name}")`).all() as Array<{ name: string | null }>;
+    for (const row of rows) {
+      if (row.name) indexedColumns.add(row.name);
+    }
+  }
   return cols.map((c) => ({
-    name: c.name, type: c.type, notNull: !!c.notnull, pk: !!c.pk, defaultValue: c.dflt_value,
+    name: c.name,
+    type: c.type,
+    notNull: !!c.notnull,
+    pk: !!c.pk,
+    defaultValue: c.dflt_value,
+    description: descriptions.get(c.name) ?? '',
+    indexed: indexedColumns.has(c.name),
   }));
 }
 
@@ -111,10 +136,10 @@ export function query(id: string, sql: string, params?: SqlParams): SqliteQueryR
   checkSql(sql);
   const db = openDb(id);
   const stmt = db.prepare(sql);
-  // StatementSync.columns() available on Node 22.5+. Verified working in this env
-  // (returns column list even for empty result sets, which is the preferred behavior).
-  const columns = stmt.columns().map((c) => c.name);
   const rows = stmt.all(...bindArgs(params)) as Record<string, unknown>[];
+  const columns = 'columns' in stmt && typeof stmt.columns === 'function'
+    ? stmt.columns().map((c) => c.name)
+    : (rows[0] ? Object.keys(rows[0]) : []);
   const truncated = rows.length > MAX_ROWS;
   return { columns, rows: truncated ? rows.slice(0, MAX_ROWS) : rows, rowCount: rows.length, truncated };
 }
