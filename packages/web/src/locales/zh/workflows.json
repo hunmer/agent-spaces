@@ -734,6 +734,14 @@
         "content_tooltip": "便签文本内容"
       }
     },
+    "markdown": {
+      "label": "Markdown",
+      "description": "在画布上渲染 Markdown 内容（支持 GFM）",
+      "props": {
+        "content": "内容",
+        "content_tooltip": "Markdown 源文本"
+      }
+    },
     "file_display": {
       "label": "文件展示",
       "description": "展示在线文件卡片，右上角支持下载",

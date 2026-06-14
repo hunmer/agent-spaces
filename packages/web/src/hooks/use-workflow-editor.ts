@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getWorkflowEditorStore } from '@/stores/workflow-editor';
-import type { Workflow, WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
+import type { WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
 
 // ---- useWorkflowEditor ----
 

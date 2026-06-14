@@ -64,6 +64,10 @@ import {
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
+type CanvasViewportRef = {
+  exportCanvas: (format: 'png' | 'jpeg') => void;
+  getViewportCenter: () => { x: number; y: number };
+};
 
 interface WorkflowCanvasProps {
   workflow: Workflow;
@@ -119,7 +123,7 @@ interface WorkflowCanvasProps {
   }) => void;
   onRectangleDrawNodeSelect?: (context: DrawArea) => void;
   onInsertExistingNodeOnEdge?: (edgeId: string, nodeId: string) => void;
-  canvasExportRef?: React.RefObject<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>;
+  canvasExportRef?: React.RefObject<CanvasViewportRef | null>;
   onNodeDragStateChange?: (dragging: boolean) => void;
 }
 
@@ -505,15 +509,24 @@ export function WorkflowCanvas({
     workflow.name,
   );
 
+  const getViewportCenter = useCallback(() => {
+    const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+    if (!bounds) return { x: 250, y: 250 };
+    return screenToFlowPosition({
+      x: bounds.left + bounds.width / 2,
+      y: bounds.top + bounds.height / 2,
+    });
+  }, [screenToFlowPosition]);
+
   useEffect(() => {
     if (!canvasExportRef) return;
-    canvasExportRef.current = { exportCanvas };
+    canvasExportRef.current = { exportCanvas, getViewportCenter };
     return () => {
       if (canvasExportRef.current?.exportCanvas === exportCanvas) {
         canvasExportRef.current = null;
       }
     };
-  }, [canvasExportRef, exportCanvas]);
+  }, [canvasExportRef, exportCanvas, getViewportCenter]);
 
   // --- Interaction handlers ---
 

@@ -73,7 +73,7 @@ export function useNodeOperations({
     setSelectedNodeId(created.rootNode.id);
     setSelectedNodeIds([created.rootNode.id]);
     markDirty();
-  }, [workflow, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
+  }, [workflow, isReadOnly, pushUndo, markDirty, setWorkflow, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleConnectionDrop = useCallback((context: {
     sourceNodeId: string;

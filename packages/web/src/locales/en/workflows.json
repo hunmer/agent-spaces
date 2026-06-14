@@ -734,6 +734,14 @@
         "content_tooltip": "Sticky note text content"
       }
     },
+    "markdown": {
+      "label": "Markdown",
+      "description": "Render Markdown content on the canvas (GFM supported)",
+      "props": {
+        "content": "Content",
+        "content_tooltip": "Markdown source text"
+      }
+    },
     "file_display": {
       "label": "File Display",
       "description": "Display an online file card with a download button",

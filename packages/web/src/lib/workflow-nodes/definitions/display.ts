@@ -1,5 +1,6 @@
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { CodeRenderView, FileDisplayView, GalleryPreviewView, MusicPlayerView, TableDisplayView } from '@/components/workflow/display-node-views';
+import { MarkdownNodeView } from '@/components/workflow/markdown-node-view';
 import { StickyNoteView } from '@/components/workflow/sticky-note-view';
 
 const CODE_RENDER_DEFAULT_REACT = `export default function View() {
@@ -197,6 +198,20 @@ export const displayNodes: NodeTypeDefinition[] = [
     customViewMinSize: { width: 180, height: 120 },
     properties: [
       { key: 'content', label: 'nodes.sticky_note.props.content', type: 'textarea', tooltip: 'nodes.sticky_note.props.content_tooltip' },
+    ],
+    handles: { source: false, target: false },
+    debuggable: false,
+  },
+  {
+    type: 'markdown',
+    label: 'nodes.markdown.label',
+    category: 'nodes.categories.display',
+    icon: 'AlignLeft',
+    description: 'nodes.markdown.description',
+    customView: MarkdownNodeView,
+    customViewMinSize: { width: 220, height: 150 },
+    properties: [
+      { key: 'content', label: 'nodes.markdown.props.content', type: 'textarea', tooltip: 'nodes.markdown.props.content_tooltip' },
     ],
     handles: { source: false, target: false },
     debuggable: false,

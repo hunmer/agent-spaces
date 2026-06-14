@@ -131,6 +131,62 @@ function readBlobAsDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+function readImageSize(src: string): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
+function getGalleryPreviewSize(imageSize: { width: number; height: number } | null) {
+  if (!imageSize || imageSize.width <= 0 || imageSize.height <= 0) {
+    return { width: 320, height: 220 };
+  }
+  const aspect = imageSize.width / imageSize.height;
+  const minWidth = 220;
+  const minHeight = 180;
+  const maxWidth = 520;
+  const maxHeight = 420;
+  let width = Math.round(240 * aspect);
+  let height = 240;
+
+  if (width < minWidth) {
+    width = minWidth;
+    height = Math.round(width / aspect);
+  }
+  if (width > maxWidth) {
+    width = maxWidth;
+    height = Math.round(width / aspect);
+  }
+  if (height < minHeight) {
+    height = minHeight;
+    width = Math.round(height * aspect);
+  }
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = Math.round(height * aspect);
+  }
+
+  return {
+    width: Math.max(minWidth, Math.min(maxWidth, width)),
+    height: Math.max(minHeight, Math.min(maxHeight, height)),
+  };
+}
+
+function getCenteredNodePosition(center: { x: number; y: number }, size: { width: number; height: number }) {
+  return {
+    x: center.x - size.width / 2,
+    y: center.y - size.height / 2,
+  };
+}
+
+type WorkflowCanvasViewportRef = {
+  exportCanvas: (format: 'png' | 'jpeg') => void;
+  getViewportCenter: () => { x: number; y: number };
+};
+
 function WorkflowEditorInner({
   template, onBack,
 }: {
@@ -138,7 +194,7 @@ function WorkflowEditorInner({
   onBack: () => void;
 }) {
   const t = useTranslations('workflows');
-  const canvasExportRef = useRef<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>(null);
+  const canvasExportRef = useRef<WorkflowCanvasViewportRef | null>(null);
   // ---- State ----
   const state = useWorkflowEditorState(template);
   const workspaces = useWorkspaceStore((store) => store.workspaces);
@@ -224,8 +280,11 @@ function WorkflowEditorInner({
           if (imageType) imageBlobs.push(await item.getType(imageType));
         }
         if (imageBlobs.length > 0) {
-          const sources = await Promise.all(imageBlobs.map(readBlobAsDataUrl));
-          canvas.handleNodeAdd('gallery_preview', { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 }, undefined, {
+          const sources = (await Promise.all(imageBlobs.map(readBlobAsDataUrl))).filter(Boolean);
+          const previewSize = getGalleryPreviewSize(await readImageSize(sources[0] || ''));
+          const center = canvasExportRef.current?.getViewportCenter() ?? { x: 250, y: 250 };
+          const position = getCenteredNodePosition(center, previewSize);
+          canvas.handleNodeAdd('gallery_preview', position, previewSize, {
             items: sources.filter(Boolean).map((src, index) => ({
               id: `clipboard_image_${Date.now()}_${index}`,
               src,
@@ -245,7 +304,9 @@ function WorkflowEditorInner({
       try {
         const text = (await navigator.clipboard.readText()).trim();
         if (text) {
-          canvas.handleNodeAdd('sticky_note', { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 }, undefined, {
+          const center = canvasExportRef.current?.getViewportCenter() ?? { x: 250, y: 250 };
+          const position = getCenteredNodePosition(center, { width: 180, height: 120 });
+          canvas.handleNodeAdd('sticky_note', position, undefined, {
             content: text,
           });
           return;
@@ -662,7 +723,23 @@ function WorkflowEditorInner({
       default:
         return null;
     }
-  }, [state, execution, canvas, isWorkflowRunning, isWorkflowReadOnly, addStagedNodeToCanvas, exitExecutionPreview, handlePreviewNodeDataUpdate, markEditorDirty, previewResult]);
+  }, [
+    state,
+    execution,
+    canvas,
+    isWorkflowRunning,
+    isWorkflowReadOnly,
+    addStagedNodeToCanvas,
+    clipboard.clear,
+    clipboard.count,
+    exitExecutionPreview,
+    handlePreviewNodeDataUpdate,
+    markEditorDirty,
+    moveClipboardNodesToStaging,
+    pasteClipboardNodes,
+    previewResult,
+    saveWorkflow,
+  ]);
 
   // ---- Render ----
   if (state.isLoading) {

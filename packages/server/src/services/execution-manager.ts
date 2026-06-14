@@ -610,6 +610,7 @@ export class ExecutionManager {
       }
       case 'loop_body':
       case 'sticky_note':
+      case 'markdown':
         return null;
       case 'loop_break':
         return this.executeLoopBreak(session, appendLog);
