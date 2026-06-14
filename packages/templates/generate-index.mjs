@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync, statSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync, statSync, mkdirSync } from 'node:fs';
+import { join, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { inflateRawSync } from 'node:zlib';
 
 const agentsDir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -333,53 +334,114 @@ function scanWorkflowStore() {
 }
 scanWorkflowStore();
 
+// ---- Minimal zero-dependency ZIP reader (store + deflate) ----
+function readZipEntries(buf) {
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
+    if (buf[i] === 0x50 && buf[i + 1] === 0x4b && buf[i + 2] === 0x05 && buf[i + 3] === 0x06) {
+      const cdCount = buf.readUInt16LE(i + 10);
+      const cdOffset = buf.readUInt32LE(i + 16);
+      const entries = [];
+      let p = cdOffset;
+      for (let j = 0; j < cdCount; j++) {
+        if (buf.readUInt32LE(p) !== 0x02014b50) break;
+        const compMethod = buf.readUInt16LE(p + 10);
+        const compSize = buf.readUInt32LE(p + 20);
+        const nameLen = buf.readUInt16LE(p + 28);
+        const extraLen = buf.readUInt16LE(p + 30);
+        const commentLen = buf.readUInt16LE(p + 32);
+        const localHeaderOffset = buf.readUInt32LE(p + 42);
+        const name = buf.toString('utf8', p + 46, p + 46 + nameLen);
+        entries.push({ name, compMethod, compSize, localHeaderOffset });
+        p += 46 + nameLen + extraLen + commentLen;
+      }
+      return entries;
+    }
+  }
+  throw new Error('Invalid zip: EOCD not found');
+}
+
+function readZipEntry(buf, entry) {
+  if (entry.name.endsWith('/')) return null; // directory
+  const lh = entry.localHeaderOffset;
+  const dataStart = lh + 30 + buf.readUInt16LE(lh + 26) + buf.readUInt16LE(lh + 28);
+  const raw = buf.subarray(dataStart, dataStart + entry.compSize);
+  if (entry.compMethod === 0) return raw;      // stored
+  if (entry.compMethod === 8) return inflateRawSync(raw); // deflated
+  throw new Error(`Unsupported zip compression for ${entry.name}: ${entry.compMethod}`);
+}
+
+function readZip(filePath) {
+  const buf = readFileSync(filePath);
+  const entries = readZipEntries(buf);
+  const findEntry = (name) =>
+    entries.find((e) => e.name === name) ||
+    entries.find((e) => !e.name.endsWith('/') && e.name.split('/').pop() === name);
+  const ICON_RE = /(^|\/)(icon|avatar)\.(png|jpe?g|webp|gif|svg)$/i;
+  return {
+    read: (name) => {
+      const e = findEntry(name);
+      return e ? readZipEntry(buf, e) : null;
+    },
+    findIcon: () =>
+      entries.find((e) => e.name === 'icon.png') ||
+      entries.find((e) => e.name === 'avatar.png') ||
+      entries.find((e) => ICON_RE.test(e.name)) ||
+      null,
+  };
+}
+
 function scanMiniAppStore() {
   const dir = join(agentsDir, 'mini-app');
   if (!existsSync(dir)) return;
   const indexPath = join(dir, 'index.json');
+  const iconsDir = join(dir, 'icons');
+  mkdirSync(iconsDir, { recursive: true });
   const existing = loadExistingIndex(indexPath);
   const index = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true})) {
-    if (!entry.isDirectory()) continue;
-    const templateDir = join(dir, entry.name);
-    const manifestFile = join(templateDir, 'manifest.json');
-    let name = entry.name.replace(/[-_]/g, ' ');
+  const seenIds = new Set();
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.zip')) continue;
+    const id = basename(entry.name, '.zip');
+    seenIds.add(id);
+    const zipPath = join(dir, entry.name);
+    const zip = readZip(zipPath);
+
+    let name = id.replace(/[-_]/g, ' ');
     let icon;
     let iconUrl;
-    if (existsSync(manifestFile)) {
+    let description;
+    let type;
+    const manifestBuf = zip.read('manifest.json');
+    if (manifestBuf) {
       try {
-        const manifest = JSON.parse(readFileSync(manifestFile, 'utf-8'));
+        const manifest = JSON.parse(manifestBuf.toString('utf-8'));
         name = manifest.name || name;
         icon = manifest.icon;
-        if (manifest.icon && existsSync(join(templateDir, manifest.icon))) {
-          iconUrl = `mini-app/${entry.name}/${manifest.icon}`;
-        }
+        description = manifest.description;
+        type = manifest.type;
       } catch { /* ignore */ }
     }
-    // Fallback: use avatar.png if no iconUrl yet
-    if (!iconUrl && existsSync(join(templateDir, 'avatar.png'))) {
-      iconUrl = `mini-app/${entry.name}/avatar.png`;
-    }
-    // Collect relative file paths instead of generating zip
-    const files = [];
-    function walk(d, prefix) {
-      for (const f of readdirSync(d, { withFileTypes: true })) {
-        const rel = prefix ? `${prefix}/${f.name}` : f.name;
-        if (f.isDirectory()) {
-          walk(join(d, f.name), rel);
-        } else {
-          files.push(rel);
-        }
+
+    // Extract icon.png (fallback: avatar.png) to mini-app/icons/{id}.{ext}
+    const iconEntry = zip.findIcon();
+    if (iconEntry) {
+      const iconData = readZipEntry(readFileSync(zipPath), iconEntry);
+      if (iconData) {
+        const ext = (extname(iconEntry.name) || '.png').slice(1).toLowerCase() || 'png';
+        writeFileSync(join(iconsDir, `${id}.${ext}`), iconData);
+        iconUrl = `mini-app/icons/${id}.${ext}`;
       }
     }
-    walk(templateDir, '');
-    // Remove stale zip if exists
-    const zipPath = join(dir, `${entry.name}.zip`);
-    if (existsSync(zipPath)) unlinkSync(zipPath);
-    const md5 = folderMD5(templateDir);
-    const prev = existing.get(entry.name);
-    const updatedAt = (!prev || prev.md5 !== md5) ? getLatestMtime(templateDir) : prev.updatedAt;
-    index.push({ id: entry.name, name, icon, iconUrl, files, md5, updatedAt });
+
+    const md5 = fileMD5(zipPath);
+    const prev = existing.get(id);
+    const updatedAt = (!prev || prev.md5 !== md5) ? fileMtime(zipPath) : prev.updatedAt;
+    index.push({ id, name, type, icon, iconUrl, description, zipUrl: `mini-app/${entry.name}`, md5, updatedAt });
+  }
+
+  // Clean stale icons whose template zip no longer exists
+  for (const f of readdirSync(iconsDir)) {
+    if (!seenIds.has(f.replace(/\.[^.]+$/, ''))) unlinkSync(join(iconsDir, f));
   }
   writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
   console.log(`[mini-app] ${index.length} templates`);

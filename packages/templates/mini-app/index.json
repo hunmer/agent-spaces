@@ -1,15 +1,78 @@
 [
   {
+    "id": "ai_image_video",
+    "name": "ai_image_video",
+    "type": "react",
+    "icon": "📷",
+    "zipUrl": "mini-app/ai_image_video.zip",
+    "md5": "9c82898687a2f83ffb1f6d9c461e8223",
+    "updatedAt": "2026-06-14T13:16:37.010Z"
+  },
+  {
+    "id": "ai_music",
+    "name": "ai_music",
+    "type": "react",
+    "icon": "🎵",
+    "zipUrl": "mini-app/ai_music.zip",
+    "md5": "7d51409b29d4b3568d93341630920604",
+    "updatedAt": "2026-06-14T13:16:37.015Z"
+  },
+  {
+    "id": "copywriting",
+    "name": "copywriting",
+    "type": "react",
+    "icon": "✍️",
+    "description": "文案库",
+    "zipUrl": "mini-app/copywriting.zip",
+    "md5": "ac59766d402fe6250a20ab5a90859816",
+    "updatedAt": "2026-06-14T13:16:37.017Z"
+  },
+  {
+    "id": "database-demo",
+    "name": "database-demo",
+    "type": "react",
+    "icon": "💻",
+    "zipUrl": "mini-app/database-demo.zip",
+    "md5": "7d6a04c98ef7150c7bea44966bf0228a",
+    "updatedAt": "2026-06-14T13:16:37.018Z"
+  },
+  {
     "id": "minimax_tts",
     "name": "minimax tts",
+    "type": "react",
     "icon": "🫨",
-    "iconUrl": "mini-app/minimax_tts/avatar.png",
-    "files": [
-      "avatar.png",
-      "manifest.json",
-      "src/index.jsx"
-    ],
-    "md5": "d55cf273d7162391b735ab9ab3942b72",
-    "updatedAt": "2026-06-09T01:14:48.324Z"
+    "iconUrl": "mini-app/icons/minimax_tts.png",
+    "description": "minimax配音界面",
+    "zipUrl": "mini-app/minimax_tts.zip",
+    "md5": "0870523dbdc38642f1150d49b3b22e66",
+    "updatedAt": "2026-06-14T13:02:44.074Z"
+  },
+  {
+    "id": "podcast_generator",
+    "name": "电子书转播客",
+    "type": "react",
+    "icon": "🔈",
+    "description": "上传 EPUB 电子书，选择章节，AI 阅读后生成双人播客对话脚本",
+    "zipUrl": "mini-app/podcast_generator.zip",
+    "md5": "07bed31b6a470d445c5d15301840bf41",
+    "updatedAt": "2026-06-14T13:16:37.020Z"
+  },
+  {
+    "id": "tts",
+    "name": "tts",
+    "type": "react",
+    "icon": "🗣️",
+    "description": "配音界面",
+    "zipUrl": "mini-app/tts.zip",
+    "md5": "5549cfe44e770dab13091bdde9365443",
+    "updatedAt": "2026-06-14T13:16:37.023Z"
+  },
+  {
+    "id": "ui-demo",
+    "name": "ui-demo",
+    "type": "react",
+    "zipUrl": "mini-app/ui-demo.zip",
+    "md5": "336f8cbb73552edb11faa3c232b963d5",
+    "updatedAt": "2026-06-14T13:16:37.026Z"
   }
 ]

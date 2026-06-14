@@ -54,7 +54,7 @@ export function SqliteDatabaseListDialog({ open, onOpenChange, mode = 'pick', wo
   return (
     <>
       <Dialog open={open && !browseId} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="!flex !h-[80vh] !w-[80vw] !max-w-[80vw] !flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Database className="size-4" />{t('sqlite.title')}</DialogTitle>
           </DialogHeader>
@@ -70,7 +70,7 @@ export function SqliteDatabaseListDialog({ open, onOpenChange, mode = 'pick', wo
             <Input className="h-8 flex-1 text-xs" placeholder={t('sqlite.searchPlaceholder')} value={keyword} onChange={(e) => setKeyword(e.target.value)} />
             <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setCreating(true)}><Plus className="mr-1 size-3.5" />{t('sqlite.create')}</Button>
           </div>
-          <div className="max-h-[50vh] space-y-1 overflow-auto">
+          <div className="min-h-0 flex-1 space-y-1 overflow-auto">
             {filtered.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">{t('sqlite.empty')}</div>}
             {filtered.map((d) => (
               <div key={d.id} className="flex items-center gap-2 rounded-md border px-3 py-2">

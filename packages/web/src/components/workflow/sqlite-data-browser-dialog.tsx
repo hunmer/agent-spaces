@@ -51,9 +51,9 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-h-[85vh] max-w-5xl">
+      <DialogContent className="!flex !h-[80vh] !w-[80vw] !max-w-[80vw] !flex-col">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Table2 className="size-4" />{t('sqlite.browserTitle')}</DialogTitle></DialogHeader>
-        <div className="flex min-h-0 gap-3" style={{ height: '70vh' }}>
+        <div className="flex min-h-0 flex-1 gap-3">
           <ScrollArea className="w-48 shrink-0 rounded-md border">
             <div className="p-1">
               {tables.map((tb) => (

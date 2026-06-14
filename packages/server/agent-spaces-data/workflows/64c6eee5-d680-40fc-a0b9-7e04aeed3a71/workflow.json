@@ -96,27 +96,28 @@
       }
     },
     {
-      "id": "node_1781421257387_lw0lqf",
-      "type": "run_code",
-      "label": "nodes.run_code.label",
+      "id": "node_1781442077992_tsna68",
+      "type": "sqlite_query",
+      "label": "nodes.sqlite_query.label",
       "position": {
-        "x": 30,
-        "y": 270
+        "x": 270,
+        "y": 345
       },
       "data": {
-        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
-      }
-    },
-    {
-      "id": "node_1781421263182_htgyr5",
-      "type": "toast",
-      "label": "nodes.toast.label",
-      "position": {
-        "x": 375,
-        "y": 360
-      },
-      "data": {
-        "type": "info"
+        "columns": "*",
+        "limit": 1000,
+        "outputs": [
+          {
+            "key": "rows",
+            "type": "any"
+          },
+          {
+            "key": "rowCount",
+            "type": "number"
+          }
+        ],
+        "database": "840e4de0-392f-43f5-b7c2-64b72ccbc198",
+        "table": ""
       }
     }
   ],
@@ -130,17 +131,10 @@
       "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
       "source": "node_1781410340016_69wfat",
       "target": "node_1781410107452_end"
-    },
-    {
-      "id": "e-node_1781421257387_lw0lqf-source-node_1781421263182_htgyr5-target",
-      "source": "node_1781421257387_lw0lqf",
-      "target": "node_1781421263182_htgyr5",
-      "sourceHandle": "source",
-      "targetHandle": "target"
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781421275374,
+  "updatedAt": 1781442116759,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng"

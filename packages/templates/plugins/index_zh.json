@@ -195,8 +195,8 @@
     "hasWorkflow": true,
     "path": "file-system",
     "iconUrl": "plugins/file-system/icon.svg",
-    "md5": "635ffa4d73c8de0e1a7192e552ae6616",
-    "updatedAt": "2026-06-09T02:37:20.828Z"
+    "md5": "5a96efb733b6c776b396cba5a1529e76",
+    "updatedAt": "2026-06-13T14:02:53.481Z"
   },
   {
     "id": "workflow.fish-audio",

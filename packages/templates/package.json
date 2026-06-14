@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "generate-index": "node generate-index.mjs",
+    "pack-mini-apps": "node pack-mini-apps.mjs",
     "serve": "http-server . -p 3101 --cors -c-1"
   }
 }

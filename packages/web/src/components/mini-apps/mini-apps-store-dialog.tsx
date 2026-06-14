@@ -25,10 +25,11 @@ interface WorkflowsUiStoreDialogProps {
 interface MiniAppIndexItem {
   id: string;
   name: string;
+  type?: 'react' | 'html';
   icon?: string;
   iconUrl?: string;
-  desc?: string;
-  files: string[];
+  description?: string;
+  zipUrl?: string;
 }
 
 export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: WorkflowsUiStoreDialogProps) {
@@ -41,19 +42,7 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
     setLoading(true);
     try {
       const index = await fetchStoreIndex<MiniAppIndexItem>('mini-app/index.json');
-      const withDesc = await Promise.all(
-        index.map(async (item) => {
-          try {
-            const res = await fetch(resolveStoreUrl(`mini-app/${item.id}/manifest.json`));
-            if (res.ok) {
-              const manifest = await res.json();
-              return { ...item, desc: manifest.description as string | undefined };
-            }
-          } catch { /* ignore */ }
-          return item;
-        }),
-      );
-      setTemplates(withDesc);
+      setTemplates(index);
     } catch {
       /* ignore */
     }
@@ -67,39 +56,25 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
   const handleImport = async (item: MiniAppIndexItem) => {
     setImporting(item.id);
     try {
-      // Fetch manifest first
-      const manifestRes = await fetch(resolveStoreUrl(`mini-app/${item.id}/manifest.json`));
-      const manifest = manifestRes.ok ? await manifestRes.json() : {};
-      const type = manifest.type === 'html' ? 'html' : 'react';
+      // Download the template zip and let the server unpack it (manifest + src + icon)
+      const zipUrl = resolveStoreUrl(item.zipUrl || `mini-app/${item.id}.zip`);
+      const res = await fetch(zipUrl);
+      if (!res.ok) throw new Error(`download failed: ${res.status}`);
 
-      // Create project
-      const project = await sdk.miniApp.create({
-        name: item.name,
-        type,
-        description: manifest.description,
-        tags: manifest.tags,
-      });
-
-      // Write source files (under src/)
-      const srcFiles = item.files.filter(f => f.startsWith('src/'));
-      await Promise.all(
-        srcFiles.map(async (file) => {
-          const res = await fetch(resolveStoreUrl(`mini-app/${item.id}/${file}`));
-          if (!res.ok) return;
-          const content = await res.text();
-          const relPath = file.replace(/^src\//, '');
-          await sdk.miniApp.writeFile(project.id, relPath, content);
-        }),
-      );
-
-      // Update project metadata from manifest
-      if (manifest.enabledPlugins || manifest.agentConfigId || manifest.icon) {
-        await sdk.miniApp.update(project.id, {
-          enabledPlugins: manifest.enabledPlugins,
-          agentConfigId: manifest.agentConfigId,
-          icon: manifest.icon,
-        });
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk) as unknown as number[]);
       }
+      const zip = btoa(binary);
+
+      await sdk.miniApp.importZip({
+        zip,
+        name: item.name,
+        type: item.type === 'html' ? 'html' : 'react',
+        description: item.description,
+      });
 
       onImported();
       onOpenChange(false);
@@ -139,8 +114,8 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
                     />
                     <span className="font-medium text-sm truncate">{item.name}</span>
                   </div>
-                  {item.desc && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">{item.desc}</p>
+                  {item.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                   )}
                   <Button
                     variant="outline"
