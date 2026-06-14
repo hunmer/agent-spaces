@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SERVER_PORT = "3100";
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 
 function normalizeServerUrl(input: string): string {
   const value = input.trim();
@@ -15,15 +16,27 @@ function normalizeServerUrl(input: string): string {
   }
 }
 
-function getDefaultServerUrl(): string {
-  return normalizeServerUrl(process.env.NEXT_PUBLIC_SERVER_URL || "127.0.0.1");
+function isLoopbackUrl(url: string): boolean {
+  try {
+    return LOOPBACK_HOSTS.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function getDefaultServerUrl(request: NextRequest): string {
+  return normalizeServerUrl(process.env.NEXT_PUBLIC_SERVER_URL || request.nextUrl.hostname || "127.0.0.1");
 }
 
 export function proxy(request: NextRequest) {
-  const activeServer = normalizeServerUrl(request.cookies.get("active-server")?.value || getDefaultServerUrl());
+  const defaultServer = getDefaultServerUrl(request);
+  const cookieServer = request.cookies.get("active-server")?.value;
+  const activeServer = cookieServer ? normalizeServerUrl(cookieServer) : defaultServer;
+  const requestIsLoopback = LOOPBACK_HOSTS.has(request.nextUrl.hostname);
+  const targetServer = !requestIsLoopback && isLoopbackUrl(activeServer) ? defaultServer : activeServer;
 
   try {
-    const targetUrl = `${activeServer}${request.nextUrl.pathname}${request.nextUrl.search}`;
+    const targetUrl = `${targetServer}${request.nextUrl.pathname}${request.nextUrl.search}`;
     return NextResponse.rewrite(new URL(targetUrl));
   } catch {
     return NextResponse.next();
