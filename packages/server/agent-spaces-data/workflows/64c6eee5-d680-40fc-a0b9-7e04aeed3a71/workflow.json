@@ -93,7 +93,8 @@
         "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
         "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
         "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
-      }
+      },
+      "nodeColor": "violet"
     },
     {
       "id": "node_1781442077992_tsna68",
@@ -135,7 +136,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781447565875,
+  "updatedAt": 1781447674079,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng"

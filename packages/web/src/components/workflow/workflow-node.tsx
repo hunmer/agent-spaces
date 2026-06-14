@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Flag,
   Grip,
+  Info,
   Loader2,
   MoveDiagonal,
   Palette,
@@ -133,7 +134,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     () => Array.isArray(nodeData.selectedNodeIds) ? nodeData.selectedNodeIds : [],
     [nodeData.selectedNodeIds],
   );
-  const canShowNodeToolbar = !isCanvasLocked && (!isBoundaryNode || canDeleteNode);
+  const canShowNodeToolbar = !isCanvasLocked;
   const handleColors = useMemo(() => {
     const raw = nodeData.handleColors;
     return raw && typeof raw === 'object' ? raw : {};
@@ -307,7 +308,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     ? t('nodeUi.breakpointBadge.start')
     : currentBreakpoint === 'end' ? t('nodeUi.breakpointBadge.end') : '';
   const nodeColorStyle = nodeData.nodeColor && NODE_COLOR_MAP[nodeData.nodeColor]
-    ? { backgroundColor: `${NODE_COLOR_MAP[nodeData.nodeColor]}1a` }
+    ? { backgroundColor: `color-mix(in srgb, ${NODE_COLOR_MAP[nodeData.nodeColor]} 14%, hsl(var(--background)))` }
     : undefined;
   const stateBackgroundClass = currentNodeState === 'disabled'
     ? 'bg-red-500/10'
@@ -695,6 +696,20 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               aria-label={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
             >
               {isCurrentNodeDebugging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            </button>
+          ) : null}
+          {isBoundaryNode ? (
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={(event) => {
+                event.stopPropagation();
+                actions.handleShowInfo();
+              }}
+              title={t('nodeUi.contextMenu.info')}
+              aria-label={t('nodeUi.contextMenu.info')}
+            >
+              <Info className="h-3.5 w-3.5" />
             </button>
           ) : null}
           {canDeleteNode && !isDeleteDisabled ? (

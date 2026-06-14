@@ -46,5 +46,6 @@
   "addRow": "Add Row",
   "insert": "Insert",
   "rowInserted": "Row inserted",
-  "noColumns": "Select a table with columns first"
+  "noColumns": "Select a table with columns first",
+  "confirmDrop": "Delete this table and all its data? This cannot be undone."
 }

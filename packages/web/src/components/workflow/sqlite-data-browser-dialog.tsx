@@ -6,6 +6,7 @@ import { sdk } from '@/lib/sdk';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -24,7 +25,7 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
-import { Table2, Trash2, Plus, GripVertical } from 'lucide-react';
+import { Table2, Trash2, Plus, GripVertical, Code2, Play } from 'lucide-react';
 import { ResultTable } from '@/components/table/result-table';
 import type { SqliteTableInfo, SqliteQueryResult } from '@agent-spaces/shared';
 import {
@@ -110,11 +111,20 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   const [insertError, setInsertError] = useState<string | null>(null);
   const [insertMsg, setInsertMsg] = useState<string | null>(null);
 
-  const loadTables = useCallback(async () => {
+  // 自定义 SQL
+  const [sqlOpen, setSqlOpen] = useState(false);
+  const [sqlText, setSqlText] = useState('');
+  const [sqlRunning, setSqlRunning] = useState(false);
+  const [sqlResult, setSqlResult] = useState<SqliteQueryResult | null>(null);
+  const [sqlExec, setSqlExec] = useState<{ changes: number; lastInsertRowid: number | null } | null>(null);
+  const [sqlError, setSqlError] = useState<string | null>(null);
+
+  const loadTables = useCallback(async (): Promise<SqliteTableInfo[]> => {
     try {
-      const all = await sdk.sqlite.listTables(databaseId);
-      setTables(all.filter((tb) => tb.name !== META_TABLE));
-    } catch { setTables([]); }
+      const all = (await sdk.sqlite.listTables(databaseId)).filter((tb) => tb.name !== META_TABLE);
+      setTables(all);
+      return all;
+    } catch { setTables([]); return []; }
   }, [databaseId]);
 
   useEffect(() => { loadTables(); }, [loadTables]);
@@ -217,6 +227,44 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
     } catch (e) { setInsertError((e as Error).message); }
   };
 
+  // 自定义 SQL：读语句走 query，写/DDL 走 exec
+  const runSql = async () => {
+    setSqlError(null);
+    setSqlResult(null);
+    setSqlExec(null);
+    const stmt = sqlText.trim();
+    if (!stmt) return;
+    setSqlRunning(true);
+    try {
+      const isQuery = /^\s*(SELECT|PRAGMA|WITH|EXPLAIN)\b/i.test(stmt);
+      if (isQuery) setSqlResult(await sdk.sqlite.query(databaseId, stmt));
+      else setSqlExec(await sdk.sqlite.exec(databaseId, stmt));
+      await loadTables(); // DDL/DML 后刷新表列表与行数
+    } catch (e) { setSqlError((e as Error).message); }
+    finally { setSqlRunning(false); }
+  };
+
+  // 删除当前表：DROP + 清理字段元数据，切到第一个表或清空
+  const dropTable = async (name: string) => {
+    if (!window.confirm(t('sqlite.confirmDrop'))) return;
+    setInsertError(null);
+    try {
+      await sdk.sqlite.exec(databaseId, `DROP TABLE IF EXISTS ${quoteIdent(name)}`);
+      await sdk.sqlite.exec(databaseId, `DELETE FROM "${META_TABLE}" WHERE "table" = ?`, [name]);
+      const all = await loadTables();
+      if (all.length > 0) {
+        const first = all[0].name;
+        setSchemaTable(first);
+        loadSchema(first);
+        browseData(first);
+      } else {
+        setSchemaTable('');
+        setFields([]);
+        setResult(null);
+      }
+    } catch (e) { setInsertError((e as Error).message); }
+  };
+
   const updateField = (id: string, patch: Partial<FieldDef>) =>
     setFields((fs) => fs.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   const removeField = (id: string) => setFields((fs) => fs.filter((f) => f.id !== id));
@@ -288,6 +336,9 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Table2 className="size-4" />{t('sqlite.browserTitle')}
+            <Button variant="outline" size="sm" className="ml-auto h-7 me-5 gap-1 text-xs" onClick={() => setSqlOpen(true)}>
+              <Code2 className="size-3.5" />{t('sqlite.runSql')}
+            </Button>
           </DialogTitle>
         </DialogHeader>
 
@@ -471,6 +522,15 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
               </Button>
               {insertError && <span className="text-xs text-destructive">{insertError}</span>}
               {insertMsg && <span className="text-xs text-muted-foreground">{insertMsg}</span>}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                onClick={() => schemaTable && dropTable(schemaTable)}
+                disabled={!schemaTable || schemaTable === NEW_TABLE}
+              >
+                <Trash2 className="size-3.5" />{t('sqlite.delete')}
+              </Button>
             </div>
 
             {newRowOpen && schemaTable && schemaTable !== NEW_TABLE && (
@@ -495,6 +555,38 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
             </div>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={sqlOpen} onOpenChange={setSqlOpen}>
+          <DialogContent className="!flex !h-[70vh] !w-[60vw] !max-w-[60vw] !flex-col gap-3">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Code2 className="size-4" />{t('sqlite.runSql')}
+              </DialogTitle>
+            </DialogHeader>
+            <Textarea
+              className="min-h-[100px] resize-none font-mono text-xs"
+              placeholder={t('sqlite.sqlPlaceholder')}
+              value={sqlText}
+              onChange={(e) => setSqlText(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="h-7 gap-1 text-xs" onClick={runSql} disabled={sqlRunning || !sqlText.trim()}>
+                <Play className="size-3.5" />{t('sqlite.run')}
+              </Button>
+              {sqlError && <span className="text-xs text-destructive">{sqlError}</span>}
+              {sqlExec && (
+                <span className="text-xs text-muted-foreground">
+                  {t('sqlite.execSummary', { changes: sqlExec.changes, id: sqlExec.lastInsertRowid ?? '-' })}
+                </span>
+              )}
+            </div>
+            {sqlResult && (
+              <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                <ResultTable result={sqlResult} />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

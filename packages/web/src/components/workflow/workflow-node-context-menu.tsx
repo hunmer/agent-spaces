@@ -85,7 +85,7 @@ export function WorkflowNodeContextMenu({
 }: WorkflowNodeContextMenuProps) {
   const t = useTranslations('workflows');
   const isMultiSelect = selectedNodeIds.length >= 2;
-  const showContextMenu = (!isDeleteProtected || isMultiSelect) && !isCanvasLocked;
+  const showContextMenu = !isCanvasLocked;
 
   const handleContextMenu = (event: React.MouseEvent) => {
     if (showContextMenu) return;
@@ -195,15 +195,19 @@ export function WorkflowNodeContextMenu({
                 <Archive className="h-3 w-3" />
                 {t('nodeUi.contextMenu.stage')}
               </ContextMenuItem>
-              <ContextMenuItem className="text-xs gap-2" onClick={onMoveToStage}>
-                <ArchiveRestore className="h-3 w-3" />
-                {t('nodeUi.contextMenu.moveToStage')}
-              </ContextMenuItem>
+              {!isDeleteProtected ? (
+                <ContextMenuItem className="text-xs gap-2" onClick={onMoveToStage}>
+                  <ArchiveRestore className="h-3 w-3" />
+                  {t('nodeUi.contextMenu.moveToStage')}
+                </ContextMenuItem>
+              ) : null}
               <ContextMenuSeparator />
-              <ContextMenuItem className="text-xs gap-2" variant="destructive" onClick={onDelete}>
-                <Trash2 className="h-3 w-3" />
-                {t('nodeUi.contextMenu.delete')}
-              </ContextMenuItem>
+              {!isDeleteProtected ? (
+                <ContextMenuItem className="text-xs gap-2" variant="destructive" onClick={onDelete}>
+                  <Trash2 className="h-3 w-3" />
+                  {t('nodeUi.contextMenu.delete')}
+                </ContextMenuItem>
+              ) : null}
             </>
           )}
         </ContextMenuContent>

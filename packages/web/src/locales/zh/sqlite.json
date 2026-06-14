@@ -46,5 +46,6 @@
   "addRow": "新增数据",
   "insert": "插入",
   "rowInserted": "数据已插入",
-  "noColumns": "请先选择一个含字段的表"
+  "noColumns": "请先选择一个含字段的表",
+  "confirmDrop": "删除该表及其所有数据？此操作不可撤销。"
 }
