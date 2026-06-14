@@ -98,8 +98,8 @@
       "type": "music_player",
       "label": "nodes.music_player.label",
       "position": {
-        "x": 150,
-        "y": -660
+        "x": 720,
+        "y": 60
       },
       "data": {
         "volume": 80,
@@ -129,8 +129,8 @@
       "type": "custom_view_demo_react",
       "label": "Custom View Demo",
       "position": {
-        "x": 300,
-        "y": 75
+        "x": 315,
+        "y": -30
       },
       "data": {
         "title": "Custom View Demo",
@@ -156,8 +156,8 @@
       "type": "custom_view_demo_html",
       "label": "HTML Custom View Demo",
       "position": {
-        "x": 885,
-        "y": -120
+        "x": 675,
+        "y": -180
       },
       "data": {
         "title": "HTML Custom View",
@@ -170,6 +170,218 @@
           {
             "key": "message",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781407063425_m3z847",
+      "type": "sticky_note",
+      "label": "nodes.sticky_note.label",
+      "position": {
+        "x": -270,
+        "y": -345
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781407077337_nodkqi",
+      "type": "variable_aggregate",
+      "label": "nodes.variable_aggregate.label",
+      "position": {
+        "x": -300,
+        "y": -30
+      },
+      "data": {
+        "strategy": "first_non_empty",
+        "groups": [],
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781407443390_4jg2y9",
+      "type": "start",
+      "label": "nodes.start.label",
+      "position": {
+        "x": -270,
+        "y": 135
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781407471375_q7rixw",
+      "type": "loop",
+      "label": "nodes.loop.label",
+      "position": {
+        "x": -180,
+        "y": 240
+      },
+      "data": {
+        "loopType": "count",
+        "count": 1,
+        "concurrency": 1,
+        "sharedVariables": [],
+        "outputs": [
+          {
+            "key": "items",
+            "type": "any"
+          }
+        ],
+        "sourceNodeId": "node_1781407443390_4jg2y9",
+        "sourceHandle": "source"
+      },
+      "composite": {
+        "role": "loop",
+        "generated": false,
+        "hidden": false,
+        "scopeBoundary": false,
+        "rootId": "node_1781407471375_q7rixw",
+        "parentId": null
+      }
+    },
+    {
+      "id": "node_1781407471375_udpuyy",
+      "type": "loop_body",
+      "label": "nodes.loop_body.label",
+      "position": {
+        "x": -115.37988245271754,
+        "y": 386.328963367666
+      },
+      "data": {
+        "width": 466,
+        "height": 453
+      },
+      "composite": {
+        "role": "loop_body",
+        "generated": true,
+        "hidden": false,
+        "scopeBoundary": true,
+        "rootId": "node_1781407471375_q7rixw",
+        "parentId": "node_1781407471375_q7rixw"
+      }
+    },
+    {
+      "id": "node_1781407471375_j5imua",
+      "type": "start",
+      "label": "nodes.loop.label开始",
+      "position": {
+        "x": -59.37988245271754,
+        "y": 486.328963367666
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781407471375_udpuyy",
+        "parentId": "node_1781407471375_udpuyy",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781407471375_6hc1cz",
+      "type": "end",
+      "label": "nodes.loop.label结束",
+      "position": {
+        "x": 75,
+        "y": 675
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781407471375_udpuyy",
+        "parentId": "node_1781407471375_udpuyy",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781407499656_xowl3c",
+      "type": "minimax_chat",
+      "label": "文本合成",
+      "position": {
+        "x": 500.5313084817087,
+        "y": 359.9811698366865
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "model": "MiniMax-M2.7",
+        "temperature": 0.7,
+        "topP": 0.95,
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "content",
+                "type": "string"
+              },
+              {
+                "key": "reasoningContent",
+                "type": "string"
+              },
+              {
+                "key": "toolCalls",
+                "type": "string"
+              },
+              {
+                "key": "totalTokens",
+                "type": "number"
+              },
+              {
+                "key": "id",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781407502557_e58c32",
+      "type": "minimax_image_to_video",
+      "label": "图生视频",
+      "position": {
+        "x": 620.5313084817087,
+        "y": 554.9811698366865
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "model": "MiniMax-Hailuo-2.3",
+        "duration": 6,
+        "resolution": "768P",
+        "promptOptimizer": "true",
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
           }
         ]
       }
@@ -188,14 +400,79 @@
       "target": "node_1780936344467_end",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781407443390_4jg2y9-source-node_1781407471375_q7rixw-target",
+      "source": "node_1781407443390_4jg2y9",
+      "target": "node_1781407471375_q7rixw",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781407471375_q7rixw-loop-body-node_1781407471375_udpuyy-target",
+      "source": "node_1781407471375_q7rixw",
+      "target": "node_1781407471375_udpuyy",
+      "sourceHandle": "loop-body",
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781407471375_q7rixw",
+        "parentId": "node_1781407471375_q7rixw",
+        "generated": true,
+        "hidden": false,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781407471375_udpuyy-source-node_1781407471375_j5imua-target",
+      "source": "node_1781407471375_udpuyy",
+      "target": "node_1781407471375_j5imua",
+      "sourceHandle": null,
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781407471375_udpuyy",
+        "parentId": "node_1781407471375_udpuyy",
+        "generated": true,
+        "hidden": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781407471375_j5imua-source-node_1781407471375_6hc1cz-target",
+      "source": "node_1781407471375_j5imua",
+      "target": "node_1781407471375_6hc1cz",
+      "sourceHandle": null,
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781407499656_xowl3c-source-node_1781407502557_e58c32-target",
+      "source": "node_1781407499656_xowl3c",
+      "target": "node_1781407502557_e58c32",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1780936344470,
-  "updatedAt": 1781025483060,
+  "updatedAt": 1781407530339,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng",
     "workflow.custom-view-demo"
   ],
-  "groups": []
+  "groups": [
+    {
+      "id": "group_1781407512552_7cfphp",
+      "name": "分组 1",
+      "childNodeIds": [
+        "node_1781407499656_xowl3c",
+        "node_1781407502557_e58c32"
+      ],
+      "childGroupIds": [],
+      "locked": false,
+      "disabled": false,
+      "savedNodeStates": {},
+      "x": 476.5313084817087,
+      "y": 311.9811698366865,
+      "width": 388,
+      "height": 387
+    }
+  ]
 }

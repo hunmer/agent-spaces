@@ -739,6 +739,50 @@
         "reason": "等待原因",
         "reason_tooltip": "可选，用于日志记录。"
       }
+    },
+    "sqlite": {
+      "props": {
+        "database": "数据库",
+        "database_tooltip": "选择本工作空间下的一个 SQL 数据库",
+        "table": "表",
+        "columns": "列",
+        "selectDbFirst": "请先选择数据库",
+        "selectTableFirst": "请先选择表",
+        "where": "条件 (WHERE)",
+        "where_tooltip": "SQL 片段，值用 ? 占位，从输入字段绑定。如：age > ?",
+        "orderBy": "排序 (ORDER BY)",
+        "limit": "行数上限",
+        "fields": "字段",
+        "fields_tooltip": "每行一个列与值，值用 ? 占位",
+        "setFields": "设置字段",
+        "column": "列",
+        "value": "值",
+        "sql": "SQL",
+        "sql_tooltip": "原生 SQL，? 占位符从输入字段绑定",
+        "mode": "模式",
+        "modeQuery": "查询(返回行)",
+        "modeExec": "执行(写入/DDL)"
+      }
+    },
+    "sqlite_query": {
+      "label": "查询数据",
+      "description": "从选定的表查询数据，返回行数组。"
+    },
+    "sqlite_insert": {
+      "label": "新增数据",
+      "description": "向表中插入一行或多行。"
+    },
+    "sqlite_update": {
+      "label": "更新数据",
+      "description": "按条件更新表中的数据。"
+    },
+    "sqlite_delete": {
+      "label": "删除数据",
+      "description": "按条件删除表中的数据。"
+    },
+    "sqlite_raw": {
+      "label": "SQL 自定义",
+      "description": "执行任意原生 SQL，? 参数从输入字段绑定。"
     }
   },
   "nodeUi": {
@@ -799,50 +843,6 @@
       "slate": "石板灰",
       "red": "红色",
       "indigo": "靛蓝"
-    },
-    "sqlite": {
-      "props": {
-        "database": "数据库",
-        "database_tooltip": "选择本工作空间下的一个 SQL 数据库",
-        "table": "表",
-        "columns": "列",
-        "selectDbFirst": "请先选择数据库",
-        "selectTableFirst": "请先选择表",
-        "where": "条件 (WHERE)",
-        "where_tooltip": "SQL 片段，值用 ? 占位，从输入字段绑定。如：age > ?",
-        "orderBy": "排序 (ORDER BY)",
-        "limit": "行数上限",
-        "fields": "字段",
-        "fields_tooltip": "每行一个列与值，值用 ? 占位",
-        "setFields": "设置字段",
-        "column": "列",
-        "value": "值",
-        "sql": "SQL",
-        "sql_tooltip": "原生 SQL，? 占位符从输入字段绑定",
-        "mode": "模式",
-        "modeQuery": "查询(返回行)",
-        "modeExec": "执行(写入/DDL)"
-      }
-    },
-    "sqlite_query": {
-      "label": "查询数据",
-      "description": "从选定的表查询数据，返回行数组。"
-    },
-    "sqlite_insert": {
-      "label": "新增数据",
-      "description": "向表中插入一行或多行。"
-    },
-    "sqlite_update": {
-      "label": "更新数据",
-      "description": "按条件更新表中的数据。"
-    },
-    "sqlite_delete": {
-      "label": "删除数据",
-      "description": "按条件删除表中的数据。"
-    },
-    "sqlite_raw": {
-      "label": "SQL 自定义",
-      "description": "执行任意原生 SQL，? 参数从输入字段绑定。"
     }
   },
   "nodeSelect": {
