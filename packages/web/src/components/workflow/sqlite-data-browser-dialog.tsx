@@ -102,10 +102,13 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   const [schemaMsg, setSchemaMsg] = useState<string | null>(null);
 
   // 数据列表 tab
-  const [dataTable, setDataTable] = useState<string>('');
   const [result, setResult] = useState<SqliteQueryResult | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [newRowOpen, setNewRowOpen] = useState(false);
+  const [newRow, setNewRow] = useState<Record<string, string>>({});
+  const [insertError, setInsertError] = useState<string | null>(null);
+  const [insertMsg, setInsertMsg] = useState<string | null>(null);
 
   const loadTables = useCallback(async () => {
     try {
@@ -115,6 +118,16 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   }, [databaseId]);
 
   useEffect(() => { loadTables(); }, [loadTables]);
+
+  // 打开时自动选中第一个表
+  useEffect(() => {
+    if (!schemaTable && tables.length > 0) {
+      const first = tables[0].name;
+      setSchemaTable(first);
+      loadSchema(first);
+      browseData(first);
+    }
+  }, [tables, schemaTable, loadSchema, browseData]);
 
   const loadDescriptions = useCallback(async (table: string): Promise<Record<string, string>> => {
     try {
@@ -172,12 +185,37 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   const browseData = useCallback(async (name: string) => {
     setResult(null);
     setDataError(null);
-    if (!name) return;
+    if (!name || name === NEW_TABLE) return;
     setDataLoading(true);
     try { setResult(await sdk.sqlite.query(databaseId, `SELECT * FROM "${name}" LIMIT ?`, [100])); }
     catch (e) { setDataError((e as Error).message); }
     finally { setDataLoading(false); }
   }, [databaseId]);
+
+  // 参照字段表新增行：每个字段一个输入，空值绑 NULL，BOOLEAN 转 0/1
+  const insertRow = async () => {
+    setInsertError(null);
+    setInsertMsg(null);
+    const cols = fields.filter((f) => f.name.trim());
+    if (!schemaTable || schemaTable === NEW_TABLE) { setInsertError(t('sqlite.tableRequired')); return; }
+    if (cols.length === 0) { setInsertError(t('sqlite.noColumns')); return; }
+    const values = cols.map((f) => {
+      const raw = (newRow[f.name] ?? '').trim();
+      if (f.type === 'BOOLEAN') return raw === '' ? null : /^(1|true|yes|on)$/i.test(raw) ? 1 : 0;
+      return raw === '' ? null : raw;
+    });
+    try {
+      await sdk.sqlite.exec(
+        databaseId,
+        `INSERT INTO ${quoteIdent(schemaTable)} (${cols.map((f) => quoteIdent(f.name)).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+        values,
+      );
+      setInsertMsg(t('sqlite.rowInserted'));
+      setNewRow({});
+      setNewRowOpen(false);
+      await Promise.all([browseData(schemaTable), loadTables()]);
+    } catch (e) { setInsertError((e as Error).message); }
+  };
 
   const updateField = (id: string, patch: Partial<FieldDef>) =>
     setFields((fs) => fs.map((f) => (f.id === id ? { ...f, ...patch } : f)));
@@ -254,35 +292,42 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
         </DialogHeader>
 
         <Tabs defaultValue="schema" className="flex min-h-0 flex-1 flex-col gap-2">
-          <TabsList className="w-fit">
-            <TabsTrigger value="schema">{t('sqlite.tabSchema')}</TabsTrigger>
-            <TabsTrigger value="data">{t('sqlite.tabData')}</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            <TabsList className="w-fit">
+              <TabsTrigger value="schema">{t('sqlite.tabSchema')}</TabsTrigger>
+              <TabsTrigger value="data">{t('sqlite.tabData')}</TabsTrigger>
+            </TabsList>
+            <Select
+              value={schemaTable || undefined}
+              onValueChange={(v) => {
+                const val = v ?? '';
+                setSchemaTable(val);
+                setSchemaMsg(null);
+                setNewRow({});
+                setNewRowOpen(false);
+                setInsertError(null);
+                setInsertMsg(null);
+                if (val === NEW_TABLE) { setFields([newField()]); setResult(null); }
+                else { loadSchema(val); browseData(val); }
+              }}
+            >
+              <SelectTrigger size="sm" className="w-60">
+                <SelectValue placeholder={t('sqlite.selectTable')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NEW_TABLE}>+ {t('sqlite.newTable')}</SelectItem>
+                {tables.map((tb) => (
+                  <SelectItem key={tb.name} value={tb.name}>
+                    {tb.name} <span className="text-muted-foreground">({tb.rowCount})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* 表结构 */}
           <TabsContent value="schema" className="flex min-h-0 flex-1 flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={schemaTable || undefined}
-                onValueChange={(v) => {
-                  const val = v ?? '';
-                  setSchemaTable(val);
-                  setSchemaMsg(null);
-                  if (val === NEW_TABLE) setFields([newField()]);
-                  else loadSchema(val);
-                }}
-              >
-                <SelectTrigger size="sm" className="w-52">
-                  <SelectValue placeholder={t('sqlite.selectTable')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NEW_TABLE}>+ {t('sqlite.newTable')}</SelectItem>
-                  {tables.map((tb) => (
-                    <SelectItem key={tb.name} value={tb.name}>{tb.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
               {schemaTable === NEW_TABLE && (
                 <Input
                   className="h-7 w-40 text-xs"
@@ -415,23 +460,35 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
 
           {/* 数据列表 */}
           <TabsContent value="data" className="flex min-h-0 flex-1 flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Select
-                value={dataTable || undefined}
-                onValueChange={(v) => { const val = v ?? ''; setDataTable(val); browseData(val); }}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => { setNewRowOpen((o) => !o); setInsertError(null); setInsertMsg(null); }}
+                disabled={!schemaTable || schemaTable === NEW_TABLE}
               >
-                <SelectTrigger size="sm" className="w-60">
-                  <SelectValue placeholder={t('sqlite.selectTable')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {tables.map((tb) => (
-                    <SelectItem key={tb.name} value={tb.name}>
-                      {tb.name} <span className="text-muted-foreground">({tb.rowCount})</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus className="size-3.5" />{t('sqlite.addRow')}
+              </Button>
+              {insertError && <span className="text-xs text-destructive">{insertError}</span>}
+              {insertMsg && <span className="text-xs text-muted-foreground">{insertMsg}</span>}
             </div>
+
+            {newRowOpen && schemaTable && schemaTable !== NEW_TABLE && (
+              <div className="flex flex-wrap items-end gap-2 rounded-md border p-2">
+                {fields.filter((f) => f.name.trim()).map((f) => (
+                  <div key={f.id} className="flex w-36 flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">{f.name}</label>
+                    <Input
+                      className="h-7 text-xs"
+                      placeholder={f.type}
+                      value={newRow[f.name] ?? ''}
+                      onChange={(e) => setNewRow((r) => ({ ...r, [f.name]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+                <Button size="sm" className="h-7 text-xs" onClick={insertRow}>{t('sqlite.insert')}</Button>
+              </div>
+            )}
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
               <ResultTable result={result} isLoading={dataLoading} error={dataError} />

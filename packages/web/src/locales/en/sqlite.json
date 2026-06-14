@@ -42,5 +42,9 @@
   "confirmRebuild": "Rebuilding the table will erase its data. Continue?",
   "noFields": "Please add at least one field",
   "schemaApplied": "Table schema applied",
-  "tableRequired": "Please select or enter a table name"
+  "tableRequired": "Please select or enter a table name",
+  "addRow": "Add Row",
+  "insert": "Insert",
+  "rowInserted": "Row inserted",
+  "noColumns": "Select a table with columns first"
 }

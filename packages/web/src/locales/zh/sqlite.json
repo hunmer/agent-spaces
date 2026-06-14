@@ -42,5 +42,9 @@
   "confirmRebuild": "重建表将清空该表现有数据，确定继续？",
   "noFields": "请至少添加一个字段",
   "schemaApplied": "表结构已应用",
-  "tableRequired": "请选择或输入表名"
+  "tableRequired": "请选择或输入表名",
+  "addRow": "新增数据",
+  "insert": "插入",
+  "rowInserted": "数据已插入",
+  "noColumns": "请先选择一个含字段的表"
 }

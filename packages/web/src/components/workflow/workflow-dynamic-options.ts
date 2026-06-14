@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { sdk } from '@/lib/sdk';
 import type { NodePropertyDynamicOptions } from '@agent-spaces/shared';
 
+const SQLITE_FIELD_META_TABLE = '__sqlite_field_meta__';
+
 export function useDynamicOptions(
   cfg: NodePropertyDynamicOptions | undefined,
   nodeData: Record<string, unknown>,
@@ -18,7 +20,9 @@ export function useDynamicOptions(
     if (cfg.source === 'sqlite-columns' && !table) { setOptions([]); return; }
     setLoading(true);
     const p = cfg.source === 'sqlite-tables'
-      ? sdk.sqlite.listTables(dbId).then((ts) => ts.map((t) => ({ label: `${t.name} (${t.rowCount})`, value: t.name })))
+      ? sdk.sqlite.listTables(dbId).then((ts) => ts
+          .filter((t) => t.name !== SQLITE_FIELD_META_TABLE)
+          .map((t) => ({ label: `${t.name} (${t.rowCount})`, value: t.name })))
       : sdk.sqlite.describeTable(dbId, table).then((cs) => {
           const opts = cs.map((c) => ({ label: c.name, value: c.name }));
           return cfg.allOption ? [{ label: '*（全部）', value: '*' }, ...opts] : opts;
