@@ -75,6 +75,10 @@ type DrawArea = {
   size: { width: number; height: number };
 };
 type LocalPoint = { x: number; y: number };
+type LocalRect = { left: number; top: number; width: number; height: number };
+type WorkflowNodeResizePreviewEventDetail = {
+  rect: { left: number; top: number; width: number; height: number } | null;
+};
 const GROUP_DRAG_PREVIEW_BACKGROUND = 'rgba(59,130,246,0.06)';
 const LOOP_BODY_DRAG_PREVIEW_BACKGROUND = 'rgba(6,182,212,0.06)';
 
@@ -212,6 +216,20 @@ function pointsToSvgPath(points: LocalPoint[]) {
   ].join(' ');
 }
 
+function RectangleOverlayRect({ rect }: { rect: LocalRect }) {
+  return (
+    <div
+      className="pointer-events-none absolute z-10 rounded-md border-2 border-dashed border-primary bg-primary/10 shadow-sm"
+      style={{
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      }}
+    />
+  );
+}
+
 function RectangleDrawTool({
   onComplete,
 }: {
@@ -282,7 +300,7 @@ function RectangleDrawTool({
     });
   }, [getPoint, onComplete, reset, screenToFlowPosition, start]);
 
-  const rect = start && end
+  const rect: LocalRect | null = start && end
     ? {
         left: Math.min(start.x, end.x),
         top: Math.min(start.y, end.y),
@@ -299,17 +317,7 @@ function RectangleDrawTool({
       onPointerUp={handlePointerUp}
       onPointerCancel={reset}
     >
-      {rect && (
-        <div
-          className="pointer-events-none absolute rounded-md border-2 border-dashed border-primary bg-primary/10 shadow-sm"
-          style={{
-            left: rect.left,
-            top: rect.top,
-            width: rect.width,
-            height: rect.height,
-          }}
-        />
-      )}
+      {rect ? <RectangleOverlayRect rect={rect} /> : null}
     </div>
   );
 }
@@ -514,6 +522,7 @@ export function WorkflowCanvas({
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
+  const [resizePreviewRect, setResizePreviewRect] = useState<LocalRect | null>(null);
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
@@ -528,8 +537,32 @@ export function WorkflowCanvas({
     if (isCanvasLocked) {
       setRectangleDrawActive(false);
       setLassoSelectionActive(false);
+      setResizePreviewRect(null);
     }
   }, [isCanvasLocked]);
+
+  useEffect(() => {
+    const handleResizePreview = (event: Event) => {
+      const detail = (event as CustomEvent<WorkflowNodeResizePreviewEventDetail>).detail;
+      if (!detail?.rect) {
+        setResizePreviewRect(null);
+        return;
+      }
+
+      const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+      if (!bounds) return;
+
+      setResizePreviewRect({
+        left: detail.rect.left - bounds.left,
+        top: detail.rect.top - bounds.top,
+        width: detail.rect.width,
+        height: detail.rect.height,
+      });
+    };
+
+    window.addEventListener('workflow:node-resize-preview', handleResizePreview);
+    return () => window.removeEventListener('workflow:node-resize-preview', handleResizePreview);
+  }, []);
 
   // --- Canvas preferences (persisted in workflow.layoutSnapshot) ---
   const canvasPrefs = useMemo(() => workflow.layoutSnapshot ?? {}, [workflow.layoutSnapshot]);
@@ -1193,6 +1226,7 @@ export function WorkflowCanvas({
       {rectangleDrawActive && !isCanvasLocked && onRectangleDrawNodeSelect && (
         <RectangleDrawTool onComplete={onRectangleDrawNodeSelect} />
       )}
+      {resizePreviewRect ? <RectangleOverlayRect rect={resizePreviewRect} /> : null}
       {lassoSelectionActive && !isCanvasLocked && onNodesSelect && (
         <LassoSelectionTool workflow={workflow} onSelect={handleLassoSelect} />
       )}

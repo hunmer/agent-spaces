@@ -17,10 +17,17 @@ export function GalleryPreviewView({ data }: DisplayNodeViewProps) {
     return <EmptyDisplay icon={<Play className="h-5 w-5" />} text="暂无资源" />;
   }
 
+  const visible = items.slice(0, 6);
+  const cols = Math.min(items.length, 3);
+  const rows = Math.ceil(visible.length / cols);
+
   return (
-    <div className="nodrag nopan grid h-full w-full grid-cols-3 gap-1 overflow-hidden rounded-lg bg-background p-1">
-      {items.slice(0, 6).map((item, index) => {
-        const last = index === 5 && items.length > 6;
+    <div
+      className="nodrag nopan grid h-full w-full gap-1 overflow-hidden rounded-lg bg-background p-1"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
+    >
+      {visible.map((item, index) => {
+        const last = index === visible.length - 1 && items.length > visible.length;
         return (
           <button
             key={item.id || `${item.src}-${index}`}
@@ -29,7 +36,7 @@ export function GalleryPreviewView({ data }: DisplayNodeViewProps) {
               e.stopPropagation();
               openMediaGallery(mediaItems, index);
             }}
-            className="relative aspect-square overflow-hidden rounded border border-border bg-muted transition-opacity hover:opacity-80"
+            className="relative min-h-0 min-w-0 overflow-hidden rounded border border-border bg-muted transition-opacity hover:opacity-80"
             title={item.caption || item.src}
           >
             {item.type === 'video' ? (

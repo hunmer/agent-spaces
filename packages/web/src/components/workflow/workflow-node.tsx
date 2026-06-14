@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { Handle, NodeResizeControl, NodeToolbar, Position, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import { Handle, NodeToolbar, Position, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps, ReactFlowState } from '@xyflow/react';
 import {
   ChevronDown,
@@ -63,6 +63,7 @@ const COMPACT_NODE_ZOOM_THRESHOLD = 0.65;
 const COLLAPSED_NODE_SIZE = 56;
 const showFullNodeSelector = (state: ReactFlowState) =>
   state.transform[2] >= COMPACT_NODE_ZOOM_THRESHOLD;
+const canvasZoomSelector = (state: ReactFlowState) => state.transform[2] || 1;
 
 const workflowNodesSelector = (state: ReactFlowState) => state.nodes;
 
@@ -85,6 +86,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const t = useTranslations('workflows');
   const showFullNode = useStore(showFullNodeSelector);
+  const canvasZoom = useStore(canvasZoomSelector);
   const workflowNodes = useStore(workflowNodesSelector);
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
   const updateNodeInternals = useUpdateNodeInternals();
@@ -115,6 +117,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const [editLabel, setEditLabel] = useState('');
   const [handleColorMenuId, setHandleColorMenuId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const nodeBodyRef = useRef<HTMLDivElement>(null);
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
 
   const displayLabel = useMemo(
     () => {
@@ -342,6 +346,73 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     nodeMinHeight,
   });
 
+  const dispatchResizePreview = useCallback((rect: { left: number; top: number; width: number; height: number } | null) => {
+    window.dispatchEvent(new CustomEvent('workflow:node-resize-preview', { detail: { rect } }));
+  }, []);
+
+  useEffect(() => () => {
+    resizeCleanupRef.current?.();
+    dispatchResizePreview(null);
+  }, [dispatchResizePreview]);
+
+  const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (isCanvasLocked) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const nodeRect = nodeBodyRef.current?.getBoundingClientRect();
+    if (!nodeRect) return;
+
+    resizeCleanupRef.current?.();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startWidth = displayNodeWidth;
+    const startHeight = displayNodeHeight;
+    const zoom = canvasZoom || 1;
+    let nextSize = { width: startWidth, height: startHeight };
+
+    const updatePreview = (size: { width: number; height: number }) => {
+      dispatchResizePreview({
+        left: nodeRect.left,
+        top: nodeRect.top,
+        width: size.width * zoom,
+        height: size.height * zoom,
+      });
+    };
+
+    updatePreview(nextSize);
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const width = Math.max(nodeMinWidth, Math.round(startWidth + (moveEvent.clientX - startX) / zoom));
+      const height = Math.max(nodeMinHeight, Math.round(startHeight + (moveEvent.clientY - startY) / zoom));
+      nextSize = { width, height };
+      updatePreview(nextSize);
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      resizeCleanupRef.current = null;
+    };
+
+    const handlePointerUp = () => {
+      cleanup();
+      dispatchResizePreview(null);
+      actions.handleResizeEnd(null, nextSize);
+    };
+
+    const handlePointerCancel = () => {
+      cleanup();
+      dispatchResizePreview(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    resizeCleanupRef.current = handlePointerCancel;
+  }, [actions, canvasZoom, dispatchResizePreview, displayNodeHeight, displayNodeWidth, isCanvasLocked, nodeMinHeight, nodeMinWidth]);
+
   const setHandleColor = useCallback((handleId: string, color: string | null) => {
     const nextColors = { ...handleColors };
     if (color) {
@@ -395,6 +466,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   const nodeBody = (
     <div
+      ref={nodeBodyRef}
       className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
         ${floatingHandles ? 'workflow-node-has-floating-handles' : ''}
@@ -459,6 +531,19 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
             onClick={(event) => event.stopPropagation()}
           >
             <Grip className="h-3 w-3" />
+          </button>
+        ) : null}
+      </div>
+      <div className="absolute -bottom-1 -right-1 z-30 flex items-center gap-1">
+        {showFullNode && selected && !isCanvasLocked && !isNodeCollapsed ? (
+          <button
+            type="button"
+            className="nodrag nopan inline-flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+            title={t('nodeUi.resize')}
+            aria-label={t('nodeUi.resize')}
+            onPointerDown={handleResizePointerDown}
+          >
+            <MoveDiagonal className="h-3 w-3" />
           </button>
         ) : null}
       </div>
@@ -724,18 +809,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           ) : null}
         </NodeToolbar>
       ) : null}
-      {showFullNode && selected && !isCanvasLocked && !isNodeCollapsed ? (
-        <NodeResizeControl
-          className="workflow-node-resize-control"
-          minWidth={nodeMinWidth}
-          minHeight={nodeMinHeight}
-          onResizeEnd={actions.handleResizeEnd}
-          position="bottom-right"
-          style={{ background: 'transparent', border: 'none' }}
-        >
-          <MoveDiagonal className="workflow-node-resize-icon" />
-        </NodeResizeControl>
-      ) : null}
       <WorkflowNodeContextMenu
         nodeId={id}
         selectedNodeIds={selectedNodeIds}
@@ -791,20 +864,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         .workflow-canvas-show-floating-handles .workflow-node-floating-handle,
         .workflow-canvas-show-floating-handles .workflow-node-floating-handle-label {
           opacity: 1;
-        }
-        .workflow-node-resize-icon {
-          position: absolute;
-          right: 0;
-          bottom: 0;
-          width: 18px;
-          height: 18px;
-          color: var(--primary);
-          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
-        }
-        .workflow-node-resize-control {
-          right: 4px !important;
-          bottom: 4px !important;
-          z-index: 40;
         }
         .source-handle-label { position: absolute; display: flex; align-items: center; pointer-events: none; }
       `}</style>

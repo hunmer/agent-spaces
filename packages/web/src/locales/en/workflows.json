@@ -810,6 +810,7 @@
     "resume": "Resume",
     "abort": "Abort",
     "drag": "Drag node",
+    "resize": "Resize node",
     "collapse": "Collapse node",
     "expand": "Expand node",
     "delete": "Delete node",

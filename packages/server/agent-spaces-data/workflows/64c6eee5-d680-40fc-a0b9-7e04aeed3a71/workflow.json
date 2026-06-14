@@ -93,7 +93,11 @@
         "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
         "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
         "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
-        "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+        "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}",
+        "width": 160,
+        "height": 209,
+        "nodeWidth": 235,
+        "nodeHeight": 209
       },
       "nodeColor": "orange"
     },
@@ -124,98 +128,6 @@
       }
     },
     {
-      "id": "node_1781456973124_styyyu",
-      "type": "read_clipboard",
-      "label": "Read Clipboard",
-      "position": {
-        "x": 315,
-        "y": -117.83203125
-      },
-      "data": {
-        "outputs": [
-          {
-            "key": "text",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "node_1781458835000_eqgm40",
-      "type": "write_clipboard",
-      "label": "写入剪贴板",
-      "position": {
-        "x": 120,
-        "y": -207.333984375
-      },
-      "data": {
-        "text": "ss",
-        "width": 185,
-        "height": 195,
-        "nodeWidth": 140,
-        "nodeHeight": 150
-      }
-    },
-    {
-      "id": "node_1781458862225_a7djsi",
-      "type": "show_open_dialog",
-      "label": "打开文件对话框",
-      "position": {
-        "x": 555,
-        "y": -221.25
-      },
-      "data": {
-        "outputs": [
-          {
-            "key": "filePaths",
-            "type": "object"
-          }
-        ]
-      }
-    },
-    {
-      "id": "node_1781458876535_w40ag3",
-      "type": "show_notification",
-      "label": "发送通知",
-      "position": {
-        "x": 357.5,
-        "y": -311.25
-      },
-      "data": {
-        "silent": false,
-        "title": "aa",
-        "body": "bb"
-      }
-    },
-    {
-      "id": "node_1781459023584_jeahql",
-      "type": "beep",
-      "label": "系统蜂鸣",
-      "position": {
-        "x": 195,
-        "y": -420
-      },
-      "data": {}
-    },
-    {
-      "id": "node_1781459031058_etq13e",
-      "type": "show_message_box",
-      "label": "消息对话框",
-      "position": {
-        "x": 77.5,
-        "y": -297.333984375
-      },
-      "data": {
-        "type": "none",
-        "outputs": [
-          {
-            "key": "response",
-            "type": "number"
-          }
-        ]
-      }
-    },
-    {
       "id": "node_1781460858256_b7t2a0",
       "type": "create_window",
       "label": "创建窗口",
@@ -224,8 +136,8 @@
         "y": 600
       },
       "data": {
-        "width": 300,
-        "height": 800,
+        "width": 340,
+        "height": 150,
         "outputs": [
           {
             "key": "success",
@@ -258,52 +170,9 @@
             ]
           }
         ],
-        "url": "https://www.baidu.com"
-      }
-    },
-    {
-      "id": "node_1781462791086_chs6n1",
-      "type": "open_webview",
-      "label": "打开 Webview",
-      "position": {
-        "x": -930,
-        "y": -315
-      },
-      "data": {
-        "url": "https://www.google.com",
-        "title": "Webview11",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "url",
-                "type": "string"
-              },
-              {
-                "key": "title",
-                "type": "string"
-              },
-              {
-                "key": "fallback",
-                "type": "boolean"
-              }
-            ]
-          }
-        ],
-        "width": 870,
-        "height": 570,
-        "nodeWidth": 900,
-        "nodeHeight": 720
+        "url": "https://www.baidu.com",
+        "nodeWidth": 391,
+        "nodeHeight": 229
       }
     },
     {
@@ -311,8 +180,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": -915,
-        "y": 570
+        "x": -1095,
+        "y": 315
       },
       "data": {
         "items": [
@@ -322,8 +191,78 @@
             "thumb": "",
             "type": "image",
             "caption": ""
+          },
+          {
+            "id": 1781465471042,
+            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
+          },
+          {
+            "id": 1781465472426,
+            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
+          },
+          {
+            "id": 1781465481909,
+            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
+          },
+          {
+            "id": 1781465490994,
+            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
+          },
+          {
+            "id": 1781465494368,
+            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
+          },
+          {
+            "id": 1781465498378,
+            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
           }
-        ]
+        ],
+        "width": 280,
+        "height": 225,
+        "nodeWidth": 717,
+        "nodeHeight": 653
+      }
+    },
+    {
+      "id": "node_1781464600938_wpv2zl",
+      "type": "toast",
+      "label": "nodes.toast.label",
+      "position": {
+        "x": 918.0169274171041,
+        "y": 424.4949162816513
+      },
+      "data": {
+        "type": "info"
+      }
+    },
+    {
+      "id": "node_1781464603070_lwcr8b",
+      "type": "toast",
+      "label": "nodes.toast.label",
+      "position": {
+        "x": 1233.016927417104,
+        "y": 319.4949162816513
+      },
+      "data": {
+        "type": "info"
       }
     }
   ],
@@ -337,14 +276,39 @@
       "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
       "source": "node_1781410340016_69wfat",
       "target": "node_1781410107452_end"
+    },
+    {
+      "id": "e-node_1781464600938_wpv2zl-source-node_1781464603070_lwcr8b-target",
+      "source": "node_1781464600938_wpv2zl",
+      "target": "node_1781464603070_lwcr8b",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781464190938,
+  "updatedAt": 1781465832325,
   "enabledPlugins": [
     "workflow.fetch",
     "workflow.webview",
     "workflow.custom-view-demo"
   ],
-  "groups": []
+  "groups": [
+    {
+      "id": "group_1781464610400_rnlw93",
+      "name": "分组 1",
+      "childNodeIds": [
+        "node_1781464600938_wpv2zl",
+        "node_1781464603070_lwcr8b"
+      ],
+      "childGroupIds": [],
+      "locked": false,
+      "disabled": false,
+      "savedNodeStates": {},
+      "x": 894.0169274171041,
+      "y": 271.49491628165134,
+      "width": 583,
+      "height": 297
+    }
+  ],
+  "variables": []
 }

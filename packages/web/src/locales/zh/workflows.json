@@ -810,6 +810,7 @@
     "resume": "继续运行",
     "abort": "中断",
     "drag": "拖拽节点",
+    "resize": "调整节点大小",
     "collapse": "折叠节点",
     "expand": "展开节点",
     "delete": "删除节点",
