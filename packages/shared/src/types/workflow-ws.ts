@@ -149,6 +149,7 @@ export interface ClientNodeRequest<Data = Record<string, unknown>> {
   executionId: string
   workflowId: string
   nodeId: string
+  pluginId: string
   nodeType: string
   args: Data
   timeoutMs?: number

@@ -139,6 +139,77 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1781458835000_eqgm40",
+      "type": "write_clipboard",
+      "label": "写入剪贴板",
+      "position": {
+        "x": 120,
+        "y": -225
+      },
+      "data": {
+        "text": "ss"
+      }
+    },
+    {
+      "id": "node_1781458862225_a7djsi",
+      "type": "show_open_dialog",
+      "label": "打开文件对话框",
+      "position": {
+        "x": 555,
+        "y": -225
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "filePaths",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781458876535_w40ag3",
+      "type": "show_notification",
+      "label": "发送通知",
+      "position": {
+        "x": 345,
+        "y": -285
+      },
+      "data": {
+        "silent": false,
+        "title": "aa",
+        "body": "bb"
+      }
+    },
+    {
+      "id": "node_1781459023584_jeahql",
+      "type": "beep",
+      "label": "系统蜂鸣",
+      "position": {
+        "x": 195,
+        "y": -420
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781459031058_etq13e",
+      "type": "show_message_box",
+      "label": "消息对话框",
+      "position": {
+        "x": 90,
+        "y": -270
+      },
+      "data": {
+        "type": "none",
+        "outputs": [
+          {
+            "key": "response",
+            "type": "number"
+          }
+        ]
+      }
     }
   ],
   "edges": [
@@ -154,7 +225,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781456983480,
+  "updatedAt": 1781459041245,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng",

@@ -11,27 +11,10 @@ interface UseWorkflowEditorExecutionParams {
   workflowId: string | null;
 }
 
-type DesktopNativeApi = {
-  readClipboardText?: () => Promise<string>;
-  writeClipboardText?: (text: string) => Promise<void>;
-  readClipboardImage?: () => Promise<string>;
-  writeClipboardImage?: (dataUrl: string) => Promise<void>;
-  clearClipboard?: () => Promise<void>;
-  showNotification?: (opts: { title: string; body?: string; silent?: boolean }) => Promise<void>;
-  showItemInFolder?: (fullPath: string) => Promise<void>;
-  openPath?: (path: string) => Promise<void>;
-  openExternal?: (url: string) => Promise<void>;
-  beep?: () => Promise<void>;
-  showOpenDialogSync?: (opts: unknown) => Promise<string[] | undefined>;
-  showSaveDialogSync?: (opts: unknown) => Promise<string | undefined>;
-  showMessageBoxSync?: (opts: unknown) => Promise<number>;
-  showErrorBox?: (title: string, content: string) => Promise<void>;
-};
-
 type ElectronApi = {
-  desktopNative?: DesktopNativeApi;
-  shell?: { openExternal?: (url: string) => Promise<void> };
-  fs?: { openInExplorer?: (targetPath: string) => Promise<void> };
+  clientPlugins?: {
+    executeNode?: (pluginId: string, nodeType: string, args: Record<string, unknown>) => Promise<unknown>;
+  };
 };
 
 function getElectronApi(): ElectronApi | undefined {
@@ -39,103 +22,10 @@ function getElectronApi(): ElectronApi | undefined {
   return (window as typeof window & { electronAPI?: ElectronApi }).electronAPI;
 }
 
-async function executeDesktopNativeClientNode(nodeType: string, args: Record<string, unknown>): Promise<unknown> {
-  const desktopNative = getElectronApi()?.desktopNative;
-  switch (nodeType) {
-    case 'read_clipboard': {
-      const text = desktopNative?.readClipboardText
-        ? await desktopNative.readClipboardText()
-        : await navigator.clipboard.readText();
-      return { success: true, data: { text } };
-    }
-    case 'write_clipboard':
-      if (desktopNative?.writeClipboardText) await desktopNative.writeClipboardText(String(args.text ?? ''));
-      else await navigator.clipboard.writeText(String(args.text ?? ''));
-      return { success: true };
-    case 'read_clipboard_image':
-      if (!desktopNative?.readClipboardImage) throw new Error('当前客户端不支持读取剪贴板图片');
-      return { success: true, data: { dataUrl: await desktopNative.readClipboardImage() } };
-    case 'write_clipboard_image':
-      if (!desktopNative?.writeClipboardImage) throw new Error('当前客户端不支持写入剪贴板图片');
-      await desktopNative.writeClipboardImage(String(args.dataUrl ?? ''));
-      return { success: true };
-    case 'clear_clipboard':
-      if (desktopNative?.clearClipboard) await desktopNative.clearClipboard();
-      else await navigator.clipboard.writeText('');
-      return { success: true };
-    case 'show_notification':
-      if (desktopNative?.showNotification) {
-        await desktopNative.showNotification({
-          title: String(args.title ?? ''),
-          body: args.body == null ? undefined : String(args.body),
-          silent: Boolean(args.silent),
-        });
-      } else {
-        if (Notification.permission === 'default') await Notification.requestPermission();
-        if (Notification.permission !== 'granted') throw new Error('通知权限未授予');
-        new Notification(String(args.title ?? ''), {
-          body: args.body == null ? undefined : String(args.body),
-          silent: Boolean(args.silent),
-        });
-      }
-      return { success: true };
-    case 'show_item_in_folder':
-      if (!desktopNative?.showItemInFolder) throw new Error('当前客户端不支持在文件夹中显示');
-      await desktopNative.showItemInFolder(String(args.fullPath ?? ''));
-      return { success: true };
-    case 'open_path':
-      if (!desktopNative?.openPath) throw new Error('当前客户端不支持打开本地路径');
-      await desktopNative.openPath(String(args.path ?? ''));
-      return { success: true };
-    case 'open_external':
-      if (desktopNative?.openExternal) await desktopNative.openExternal(String(args.url ?? ''));
-      else window.open(String(args.url ?? ''), '_blank', 'noopener,noreferrer');
-      return { success: true };
-    case 'beep':
-      if (!desktopNative?.beep) throw new Error('当前客户端不支持系统蜂鸣');
-      await desktopNative.beep();
-      return { success: true };
-    case 'show_open_dialog': {
-      if (!desktopNative?.showOpenDialogSync) throw new Error('当前客户端不支持文件选择对话框');
-      const filePaths = await desktopNative.showOpenDialogSync(parseDialogOptions(args));
-      return { success: true, data: { filePaths: filePaths || [] } };
-    }
-    case 'show_save_dialog': {
-      if (!desktopNative?.showSaveDialogSync) throw new Error('当前客户端不支持保存对话框');
-      const filePath = await desktopNative.showSaveDialogSync(parseDialogOptions(args));
-      return { success: true, data: { filePath: filePath || '' } };
-    }
-    case 'show_message_box': {
-      if (!desktopNative?.showMessageBoxSync) throw new Error('当前客户端不支持消息对话框');
-      const response = await desktopNative.showMessageBoxSync(parseMessageBoxOptions(args));
-      return { success: true, data: { response } };
-    }
-    case 'show_error_box':
-      if (!desktopNative?.showErrorBox) throw new Error('当前客户端不支持错误对话框');
-      await desktopNative.showErrorBox(String(args.title ?? ''), String(args.content ?? args.message ?? ''));
-      return { success: true };
-    default:
-      throw new Error(`Unsupported client node type: ${nodeType}`);
-  }
-}
-
-function parseDialogOptions(args: Record<string, unknown>) {
-  const opts: Record<string, unknown> = {};
-  if (args.title) opts.title = String(args.title);
-  if (args.defaultPath) opts.defaultPath = String(args.defaultPath);
-  if (args.filters) opts.filters = JSON.parse(String(args.filters));
-  if (args.properties) opts.properties = JSON.parse(String(args.properties));
-  return opts;
-}
-
-function parseMessageBoxOptions(args: Record<string, unknown>) {
-  const opts: Record<string, unknown> = {
-    title: String(args.title ?? ''),
-    message: String(args.message ?? ''),
-    type: String(args.type || 'none'),
-  };
-  if (args.buttons) opts.buttons = JSON.parse(String(args.buttons));
-  return opts;
+async function executeClientPluginNode(request: ClientNodeRequest): Promise<unknown> {
+  const executeNode = getElectronApi()?.clientPlugins?.executeNode;
+  if (!executeNode) throw new Error('当前客户端不支持 client 插件运行时');
+  return executeNode(request.pluginId, request.nodeType, request.args || {});
 }
 
 export function useWorkflowEditorExecution({
@@ -221,7 +111,7 @@ export function useWorkflowEditorExecution({
     if (request.type !== 'client_node_request') return;
     const ws = getWS('workflows');
     try {
-      const data = await executeDesktopNativeClientNode(request.nodeType, request.args || {});
+      const data = await executeClientPluginNode(request);
       ws.send('workflow:client-node', {
         id: request.id,
         channel: 'workflow:client-node',

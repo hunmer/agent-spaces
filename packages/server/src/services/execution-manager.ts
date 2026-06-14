@@ -703,12 +703,15 @@ export class ExecutionManager {
     resolvedData: Record<string, any>,
     appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
   ): Promise<Record<string, unknown>> {
+    const pluginId = pluginService.getPluginIdByNodeType(node.type);
+    if (!pluginId) throw new Error(`Client plugin not found for node type: ${node.type}`);
     appendLog('info', `Requesting client execution for ${node.type}`);
     const result = await this.deps.clientNodeManager.request({
       clientId: session.ownerClientId,
       executionId: session.id,
       workflowId: session.workflow.id,
       nodeId: node.id,
+      pluginId,
       nodeType: node.type,
       args: resolvedData,
     });

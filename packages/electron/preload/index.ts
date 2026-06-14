@@ -27,26 +27,9 @@ const electronAPI = {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url),
   },
 
-  desktopNative: {
-    readClipboardText: (): Promise<string> => ipcRenderer.invoke('desktopNative:readClipboardText'),
-    writeClipboardText: (text: string): Promise<void> => ipcRenderer.invoke('desktopNative:writeClipboardText', text),
-    readClipboardImage: (): Promise<string> => ipcRenderer.invoke('desktopNative:readClipboardImage'),
-    writeClipboardImage: (dataUrl: string): Promise<void> => ipcRenderer.invoke('desktopNative:writeClipboardImage', dataUrl),
-    clearClipboard: (): Promise<void> => ipcRenderer.invoke('desktopNative:clearClipboard'),
-    showNotification: (opts: { title: string; body?: string; silent?: boolean }): Promise<void> =>
-      ipcRenderer.invoke('desktopNative:showNotification', opts),
-    showItemInFolder: (fullPath: string): Promise<void> => ipcRenderer.invoke('desktopNative:showItemInFolder', fullPath),
-    openPath: (path: string): Promise<void> => ipcRenderer.invoke('desktopNative:openPath', path),
-    openExternal: (url: string): Promise<void> => ipcRenderer.invoke('desktopNative:openExternal', url),
-    beep: (): Promise<void> => ipcRenderer.invoke('desktopNative:beep'),
-    showOpenDialogSync: (opts: Electron.OpenDialogSyncOptions): Promise<string[] | undefined> =>
-      ipcRenderer.invoke('desktopNative:showOpenDialogSync', opts),
-    showSaveDialogSync: (opts: Electron.SaveDialogSyncOptions): Promise<string | undefined> =>
-      ipcRenderer.invoke('desktopNative:showSaveDialogSync', opts),
-    showMessageBoxSync: (opts: Electron.MessageBoxSyncOptions): Promise<number> =>
-      ipcRenderer.invoke('desktopNative:showMessageBoxSync', opts),
-    showErrorBox: (title: string, content: string): Promise<void> =>
-      ipcRenderer.invoke('desktopNative:showErrorBox', title, content),
+  clientPlugins: {
+    executeNode: (pluginId: string, nodeType: string, args: Record<string, unknown>): Promise<unknown> =>
+      ipcRenderer.invoke('clientPlugin:executeNode', pluginId, nodeType, args),
   },
 
   fs: {

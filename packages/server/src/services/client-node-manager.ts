@@ -7,6 +7,7 @@ interface RequestClientNodeParams {
   executionId: string
   workflowId: string
   nodeId: string
+  pluginId: string
   nodeType: string
   args: Record<string, any>
   timeoutMs?: number
@@ -18,6 +19,7 @@ interface PendingClientNode {
   executionId: string
   workflowId: string
   nodeId: string
+  pluginId: string
   nodeType: string
   payload: ClientNodeRequest
   resolve: (data: ClientNodeResponse['data']) => void
@@ -54,6 +56,7 @@ export class ClientNodeManager {
       executionId: params.executionId,
       workflowId: params.workflowId,
       nodeId: params.nodeId,
+      pluginId: params.pluginId,
       nodeType: params.nodeType,
       args: params.args,
       timeoutMs,
@@ -71,6 +74,7 @@ export class ClientNodeManager {
         executionId: params.executionId,
         workflowId: params.workflowId,
         nodeId: params.nodeId,
+        pluginId: params.pluginId,
         nodeType: params.nodeType,
         payload,
         resolve,
