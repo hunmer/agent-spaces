@@ -13,6 +13,9 @@ const SERVER_PORT = "3100";
 function getDefaultServerUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_SERVER_URL?.trim();
   if (configuredUrl) return normalizeServerUrl(configuredUrl);
+  if (typeof window !== "undefined" && window.location.hostname) {
+    return normalizeServerUrl(window.location.hostname);
+  }
   return normalizeServerUrl("127.0.0.1");
 }
 
