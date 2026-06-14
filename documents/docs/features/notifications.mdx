@@ -13,16 +13,18 @@ sidebar_position: 9
 通过飞书 Bot 推送通知：
 
 1. 在飞书开放平台创建应用，获取 App ID 和 App Secret
-2. 在项目设置中配置飞书通知
-3. 扫码授权后，Agent 状态变更会自动推送到飞书群
+2. 在「Robot 账号」Tab 添加飞书账号（表单输入 name + appId + appSecret），或在项目设置中选择已有 Robot Account
+3. 在飞书客户端给 Bot 发送任意消息后，后端会记录 `chat_id` 到 `notificationSettings.lark.chatIds`，用于后续推送
+4. Agent 状态变更会自动推送到飞书会话（格式化为 message card）
 
 ### 企业微信（WeChat Work）
 
 通过企业微信 Bot 推送通知：
 
-1. 在企业微信管理后台创建应用
-2. 在项目设置中配置企业微信通知
-3. 扫码登录后，通知自动推送到企业微信
+1. 在「Robot 账号」Tab 点击「添加微信账号」，QR 扫码登录后系统自动创建 Robot Account
+2. 在项目设置中选择该 Robot Account
+3. 在企业微信给 Bot 发送任意消息后，后端记录 `userIds`，用于后续推送
+4. 通知自动推送到企业微信
 
 ### Native 通知
 
@@ -39,12 +41,15 @@ Agent Spaces 内置应用内通知系统，在工作空间内直接接收通知�
 
 ### 通知类型
 
+应用内通知由后端 `persistInAppNotification()` 根据内部 WS 事件自动生成。当前支持的通知类型：
+
 | 通知类型 | 触发场景 |
 |----------|----------|
-| `issue_completed` | Issue 执行完成 |
-| `issue_failed` | Issue 执行失败 |
-| `task_completed` | Task 执行完成 |
-| `task_failed` | Task 执行失败 |
+| `issue_completed` | Issue 状态变更为 `completed` |
+| `issue_failed` | Issue 状态变更为 `error` |
+| `task_completed` | Task 状态变更为 `done` |
+| `task_failed` | Task 状态变更为 `failed` |
+| `channel_agent_completed` | 频道 Agent 回复完成（仅当频道开启 `notifyOnComplete` 且执行成功） |
 
 ### 通知操作
 
@@ -63,27 +68,56 @@ Agent Spaces 内置应用内通知系统，在工作空间内直接接收通知�
 
 ## 通知内容
 
-以下事件会触发通知：
+外部渠道通知事件由 `WorkspaceNotificationSettings.events` 配置，可选类型（`NotificationEventKey`）：
 
-- 议题状态变更（创建、进行中、完成、关闭、失败）
-- 任务执行进度更新（完成、失败）
-- Agent 执行完成或失败
-- 代码审核结果
+- `issue_started` — 议题开始执行
+- `issue_completed` — 议题完成
+- `issue_task_completed` — 议题下的 Task 完成
+- `channel_agent_completed` — 频道 Agent 回复完成（仅当频道开启 `notifyOnComplete`）
+
+内部 WS 事件会映射成外部通知事件（`notification-hub/events.ts`）：
+
+```text
+issue.status_changed        -> issuse_status_change（兼容历史 typo）
+task.status_changed running -> issue_task_start
+task.status_changed done/failed/cancelled -> issue_task_done
+```
+
+为了避免刷屏，外部平台不会推送 `task.output`、`agent.output`、`tool_call` / `tool_result` 等中间输出，只接收状态类消息和 Task 最终结果。飞书格式化为 message card，内容包括 Event / Workspace / Issue / Task / Status / Message 以及 Task 结果摘要，不再附带 slash commands。
 
 ## Bot 斜杠命令
 
-在飞书或企业微信中与 Bot 对话时，可以使用内置命令远程操控 Agent：
+在飞书或企业微信中与 Bot 对话时，以 `/` 开头的消息会被识别为内置命令，不会进入 Bot Agent。命令实现在 `notification-hub/bot-commands.ts`，`/help` 返回的命令清单共 20 项（含 `/workspac` 别名和 `/issue` 子命令）；实际有 15 个顶级命令分支，下表按用法展开列出：
 
 | 命令 | 说明 |
 |------|------|
-| `/status` | 查看当前议题和任务状态 |
-| `/list` | 列出所有议题 |
-| `/agents` | 查看已配置的 Agent 预设列表 |
-| `/workspace` | 查看工作空间信息 |
-| `/usage` | 查看 Token 用量统计 |
+| `/workspace` | 查看当前工作空间信息，支持 `/workspace [id/name]` 切换 |
+| `/workspaces` | 列出所有工作空间的简略信息 |
+| `/workspac [id/name]` | 切换到指定工作空间（`/workspace` 的切换别名） |
+| `/agents` | 查看当前工作空间的 Agent 预设列表 |
+| `/issues` | 查看当前工作空间的所有议题 |
+| `/issue` | 查看当前议题详情（含标题、注释、状态、tasks、成员） |
+| `/issue [id/index]` | 进入指定议题 |
+| `/issue new [title] [desc]` | 创建新议题 |
+| `/issue start` | 将当前议题切换为 `planned` 并触发自动化 |
+| `/issue close` | 将当前议题标记为失败/关闭 |
+| `/issue [id/index] agent agent_id,agent_id,...` | 设置议题成员 |
+| `/task` | 查看当前 Bot Agent 的任务 |
+| `/comment [msg]` | 在当前议题发表评论 |
+| `/comments` | 查看当前议题的评论 |
+| `/markdown [on/off]` | 切换 Bot 回复的 Markdown 渲染 |
 | `/help` | 查看所有可用命令 |
 
-Bot Agent 支持自然语言对话和 16 个内置斜杠命令。
+此外 Git 相关命令支持远程仓库操作：
+
+| 命令 | 说明 |
+|------|------|
+| `/changes` | 查看当前 diff 文件列表 |
+| `/commit [desc/auto]` | 提交 commit；参数为 `auto` 时走 commit-agent 自动生成提交信息 |
+| `/push` | 推送到远程 Git |
+| `/pull` | 从远程 Git 拉取 |
+
+普通用户消息（非 `/` 开头）会交给 Bot Agent 处理。Bot Agent 支持自然语言对话，未配置时会回复「请先设置 agent」。需要维护会话上下文的命令（如 `/workspac`、`/issue [id]`、`/task`）会记住当前所在的工作空间、议题和 Agent 选择。
 
 ## 配置方式
 
@@ -101,23 +135,36 @@ Bot Agent 支持自然语言对话和 16 个内置斜杠命令。
 
 ## Robot Account 凭证管理
 
-Robot Account 是集中管理飞书/企微通知凭证的机制，避免在每个工作空间中重复配置：
+Robot Account 是全局的 Bot 凭证（飞书 appId/appSecret 或企微 token/accountId），集中存储避免在每个工作空间中重复配置。类型定义在 `RobotAccount`，存储在 `~/.agent-spaces-data/robot-accounts.json`。
 
-### 凭证管理
+### 凭证管理入口
 
-- 在项目设置的「Robot Accounts」标签中管理凭证
-- 支持创建、编辑、删除 Robot Account
-- 每个 Robot Account 存储飞书或企微的应用凭证
-- 工作空间通过 `robotAccountId` 引用凭证，不直接存储敏感信息
+在全局 Settings 对话框的「Robot 账号」Tab 管理（`components/sidebar/settings/robot-accounts-tab.tsx`）：
+
+- 添加飞书账号：表单输入 name + appId + appSecret
+- 添加企微账号：QR 扫码登录，自动创建账号
+- 编辑、删除已有账号
+- 每个 Robot Account 的 `type` 为 `'lark' | 'wechat'`
+
+### 工作空间引用
+
+工作空间的通知设置（`notification-settings-tab.tsx`）中，飞书/企微 Tab 改为 select 下拉选择已有的 Robot Account，选择后调用 `patchNotifications({ robotAccountId: account.id })`。工作空间只引用 ID，不直接存储敏感信息。
 
 ### 企业微信 QR Code 登录
 
-支持全局企业微信 QR Code 扫码登录，系统自动创建 Robot Account 凭证：
+支持全局企业微信 QR Code 扫码登录（`services/global-wechat-qr.ts`，不绑定 workspace）：
 
-1. 在 Robot Accounts 标签点击「企微扫码登录」
-2. 扫描二维码完成授权
+1. 在「Robot 账号」Tab 点击「添加微信账号」
+2. 扫描二维码完成授权（轮询 `POST /api/robot-accounts/wechat/qr/poll` 获取扫码状态）
 3. 系统自动创建包含凭证的 Robot Account
 4. 工作空间可直接引用该凭证
+
+### 凭证解析逻辑
+
+`resolveCredentials(settings)` 在 `services/robot-account.ts` 中按以下优先级返回凭证：
+
+1. 若 `settings.robotAccountId` 存在，从 `robot-accounts.json` 查找对应账号返回凭证
+2. 否则 fallback 到 `settings.lark` / `settings.wechat` 内嵌凭证（兼容旧数据）
 
 ### 优势
 

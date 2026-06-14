@@ -4,11 +4,15 @@ sidebar_position: 4
 
 # 频道聊天
 
-频道是工作空间内的沟通中心，你可以在这里与 Agent 进行对话。
+频道是工作空间内的沟通中心，你可以在这里与 Agent 进行对话。频道类型包括 `general` / `issue` / `agent` / `mini-apps`，issue 类型的频道会关联到具体议题（`issueId`）。
+
+## Chat 独立页
+
+除了工作空间内的聊天侧边栏，Agent Spaces 还提供独立的 Chat 页面，路由为 `/chat`（`packages/web/src/app/chat/page.tsx`），适合全屏沉浸式对话场景。
 
 ## 频道与消息
 
-每个工作空间包含多个频道，频道内可以发送消息、@mention Agent。
+每个工作空间包含多个频道，频道内可以发送消息、@mention Agent。频道支持 `pinnedMentionId`、草稿（`draft`）、待办列表（`todos`）以及 `notifyOnComplete`（控制 Agent 回复完成是否触发通知）等能力。
 
 ### 富文本编辑
 
@@ -58,14 +62,40 @@ Agent 在执行过程中可以向你提问（AskUserQuestion）：
 
 ## AI 消息渲染
 
-Agent 的回复消息采用结构化渲染：
+Agent 的回复消息采用结构化渲染，由后端 `runMentionedAgent()`（`packages/server/src/ws/handler.ts`）通过 `buildAgentMessageParts()` 把 runtime 实时输出累加为 `parts`，并通过 `channel.message.updated` 事件节流广播（约 120ms）：
 
-- **工具调用链** — 展示 Agent 的完整思考链路，每一步工具调用都清晰可见
-- **工具详情** — 点击工具调用可展开查看输入参数、输出结果、代码 diff
-- **中间输出** — Agent 的推理过程和中间结论
-- **思考过程** — Agent 的思维链展示（reasoning）
-- **子 Agent** — Agent 自主调用的子 agent 信息
-- **Token 使用量** — 每条消息的 input/output Token 统计
-- **最终结论** — Agent 的最终回答或执行结果
+- **工具调用链（chain）** — 统一 chain 容器，按 runtime 输出顺序包含 AI 中间消息 step（`kind: "message"`）和工具调用 step（`kind: "tool"`）
+- **工具详情懒加载** — chain item 只保存 `detailId`，展开时再查询 `GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:detailId`。详情包含 `input` / `output` / `raw`，Edit/MultiEdit 用 `diff-viewer.tsx` 渲染 diff，JSON 详情用只读 Monaco 渲染
+- **中间输出** — chain 内的 AI message step 展示推理和中间结论
+- **思考过程（reasoning）** — 初始化/兼容用思考状态，可带 `streaming` / `completed` 状态
+- **子 Agent（subagent）** — 仅当 Agent 内部主动调用 Task/subagent 工具时生成；普通用户 `@` 触发的主 Agent 不生成 subagent part
+- **Token 使用量（context）** — 每条消息的 input/output Token 统计（`MessageTokenUsage`）
+- **权限确认（confirmation）** — 工具权限确认请求
+- **终端输出（terminal）** — Bash / 命令输出
+- **Agent 提问（ask_user_question）** — Agent 向用户提问，回复后 Agent 继续
+- **最终结论（text）** — 最后一段连续的非工具 AI 输出合并为最终 Markdown
 
-消息渲染通过 `MessagePart` 系统实现，支持 text、reasoning、chain、terminal、confirmation、context、subagent、ask_user_question 8 种类型。
+### MessagePart 类型
+
+消息渲染通过 `MessagePart` 系统实现（`packages/shared/src/types/channel.ts`），共 10 种类型：
+
+| type | 说明 |
+|------|------|
+| `text` | 最终结论文本 |
+| `user_message` | 用户消息（带 senderName） |
+| `reasoning` | 思考过程 |
+| `chain` | 统一 chain 容器（含 chains 数组） |
+| `terminal` | 命令和终端输出 |
+| `error` | 错误消息 |
+| `confirmation` | 工具权限确认请求 |
+| `context` | 上下文窗口和 token 使用 |
+| `subagent` | Agent 自主调用的子 agent |
+| `ask_user_question` | Agent 向用户提问 |
+
+### @agent 上下文历史
+
+`runMentionedAgent()` 会从当前频道读取最近 20 条消息作为历史上下文。历史只包含用户消息文本和 Agent 消息的 final message（`parts` 中 `type: "text"` 的内容），不传入完整结构化 transcript、原始 tool call / tool result。
+
+### 消息状态语义
+
+`Message.status` 当前语义：`pending`（已创建未产出） / `streaming`（Agent 运行中持续更新 parts） / `waiting_for_user`（Agent 调用 AskUserQuestion 等待回复） / `completed`（成功） / `error`（失败）。

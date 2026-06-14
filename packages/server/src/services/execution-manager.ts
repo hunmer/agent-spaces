@@ -296,7 +296,7 @@ export class ExecutionManager {
     const startNodes = rootNodes.filter(n => n.type === 'start');
 
     if (request.startNodeId) {
-      const startNode = startNodes.find(n => n.id === request.startNodeId);
+      const startNode = rootNodes.find(n => n.id === request.startNodeId);
       if (!startNode) {
         throw createErrorShape('BAD_REQUEST', `Start node not found: ${request.startNodeId}`);
       }

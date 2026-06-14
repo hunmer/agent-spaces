@@ -1,5 +1,95 @@
 [
   {
+    "id": "1781423290275-0",
+    "type": "image",
+    "url": "https://vigen-invi.oss-cn-shanghai.aliyuncs.com/service_dashscope/ImageOutPainting/2026-06-14/public/9f24e9e0-764e-4aef-910f-0f6198e58b5b/result-9d0bb926-c1a4-4a47-ba8b-89a051be6cb1.jpg?OSSAccessKeyId=LTAI5t7aiMEUzu1F2xPMCdFj&Expires=1781509680&Signature=OnuGZUUN9xyFjRj9WmeJHX8UxMk%3D",
+    "mode": "image_outpainting",
+    "provider": "aliyun",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:48:10"
+  },
+  {
+    "id": "1781423097778-0",
+    "type": "image",
+    "url": "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/8a5c19a5bafa4b24a6650c2e0f0173a7~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=QUN3Tpk8XDDUuiz7wLDrnN3bAsU%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:57"
+  },
+  {
+    "id": "1781423097778-1",
+    "type": "image",
+    "url": "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/0aad52b3b21949dc94f816477becb88d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=Ci%2BSfWhqyszAQR0aGUGnthQUTig%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:57"
+  },
+  {
+    "id": "1781423097778-2",
+    "type": "image",
+    "url": "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/870007e32b55416ebbd4e27425269b92~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=8jFE%2FbzdLSZLjepCE%2FgFdBNvgIE%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:57"
+  },
+  {
+    "id": "1781423097778-3",
+    "type": "image",
+    "url": "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/b72e366c630c46d89cb0372d43d377eb~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=30%2BRoLjo0L%2FVJKs34LaIrN0tsPc%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:57"
+  },
+  {
+    "id": "1781423075540-0",
+    "type": "image",
+    "url": "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3250996a6b9145c3a27f6557c99d3de8~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=kLOV30r%2Bxk8m68QiIpqfw104yeo%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:35"
+  },
+  {
+    "id": "1781423075540-1",
+    "type": "image",
+    "url": "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/31c6f5049a744d31826867cdc6e64eb9~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=hRifxHLNyUQBA8ZafzpqkLAlvxQ%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:35"
+  },
+  {
+    "id": "1781423075540-2",
+    "type": "image",
+    "url": "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/86e5418785884e16819ccadc48c21311~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=6VRHDQDFQTn3aPWCTJiTwPKTra8%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:35"
+  },
+  {
+    "id": "1781423075540-3",
+    "type": "image",
+    "url": "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/f73b679b125548dd8513212d6903b01c~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781427600&x-signature=%2F15xwkrDS03orHD9cQw5SkLfkyw%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:44:35"
+  },
+  {
+    "id": "1781423007351-0",
+    "type": "image",
+    "url": "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ba/20260614/51613171/dbc0dbb0-a609-4c58-9e44-71318a88c86e.png?Expires=1782028806&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=b0uYkCf1cNbE%2FKfN28LXoOiOLhI%3D",
+    "mode": "text_to_image",
+    "provider": "aliyun",
+    "prompt": "海报图，工作流节点连线，最终连接到一个app，9:16",
+    "createdAt": "2026/6/14 15:43:27"
+  },
+  {
     "id": "1781412973652-0",
     "type": "video",
     "url": "https://dashscope-a717.oss-accelerate.aliyuncs.com/1d/4b/20260614/8b446308/73501352-metadata_user_4d83801c2b20f647.mp4?Expires=1781499367&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=PHOsbPXDhb39Fdv%2F6xeT2M04IT4%3D",

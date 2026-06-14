@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import {
+  type ExecutionStep,
   type WorkflowNode as SharedWorkflowNode,
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
@@ -265,6 +266,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const currentNodeState = nodeData.nodeState || 'normal';
   const currentBreakpoint = nodeData.breakpoint || null;
   const isCurrentNodeDebugging = nodeData.debugNodeId === id && nodeData.debugStatus === 'running';
+  const currentNodeDebugStatus = nodeData.debugNodeId === id ? nodeData.debugStatus : 'idle';
+  const hasCurrentNodeDebugResult = nodeData.debugNodeId === id && currentNodeDebugStatus !== 'idle';
   const isDebugging = nodeData.debugStatus === 'running';
   const isExecutionBusy = nodeData.execStatus === 'running' || nodeData.execStatus === 'paused';
   const isDeleteDisabled = isExecutionBusy || isDebugging;
@@ -276,11 +279,25 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       || nodeData.pausedReason === 'breakpoint-end'
       || !!currentBreakpoint
     );
-  const canShowExecutionLog = !!executionStep
+  const debugExecutionStep = useMemo<ExecutionStep | undefined>(() => {
+    if (!hasCurrentNodeDebugResult) return undefined;
+    const status = currentNodeDebugStatus === 'error'
+      ? 'error'
+      : currentNodeDebugStatus === 'running' ? 'running' : 'completed';
+    return {
+      nodeId: id,
+      nodeLabel: displayLabel,
+      startedAt: 0,
+      finishedAt: status === 'running' ? undefined : 0,
+      status,
+    };
+  }, [currentNodeDebugStatus, displayLabel, hasCurrentNodeDebugResult, id]);
+  const displayExecutionStep = executionStep ?? debugExecutionStep;
+  const canShowExecutionLog = !!displayExecutionStep
     && (
-      executionStep.status === 'running'
-      || executionStep.status === 'completed'
-      || executionStep.status === 'error'
+      displayExecutionStep.status === 'running'
+      || displayExecutionStep.status === 'completed'
+      || displayExecutionStep.status === 'error'
     );
 
   const stateBadge = currentNodeState === 'disabled'
@@ -298,6 +315,10 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   const statusColor = isPausedAtThisNode
     ? 'border-blue-600 ring-2 ring-blue-500 shadow-blue-500/40 shadow-md animate-pulse'
+    : currentNodeDebugStatus === 'completed'
+    ? 'border-green-500 shadow-green-500/15 shadow-sm'
+    : currentNodeDebugStatus === 'error'
+    ? 'border-destructive shadow-destructive/20 shadow-sm'
     : nodeStatus === 'running'
     ? 'border-blue-500 shadow-blue-500/30 shadow-md'
     : nodeStatus === 'completed'
@@ -724,10 +745,10 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       </WorkflowNodeContextMenu>
 
       {/* Collapsible execution log card below the node */}
-      {canShowNodeContent && canShowExecutionLog && executionStep ? (
+      {!isNodeCollapsed && canShowExecutionLog && displayExecutionStep ? (
         <WorkflowNodeExecutionLog
           nodeId={id}
-          executionStep={executionStep}
+          executionStep={displayExecutionStep}
           executionSteps={Array.isArray(nodeData.executionSteps) ? nodeData.executionSteps : undefined}
           nodeType={workflowNodeType}
           loopExecutionScopeId={nodeData.loopExecutionScopeId}

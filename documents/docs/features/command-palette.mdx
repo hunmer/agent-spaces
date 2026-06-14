@@ -15,21 +15,23 @@ Command Palette 是 Agent Spaces 的全局快捷面板，通过 `Ctrl+K` 快捷�
 - 搜索议题（Issue）
 - 搜索文件
 - 搜索服务器
+- 搜索工作流（Workflow）
 - 执行注册的自定义命令
 
 ## 搜索提供者
 
-Command Palette 内置多个搜索提供者，覆盖主要数据类型：
+Command Palette 内置 6 个搜索提供者（`stores/search-commands/` 目录下共 7 个文件：6 个 provider + `types.ts` + `index.ts` 聚合导出），覆盖主要数据类型：
 
-| 搜索类型 | 说明 |
-|----------|------|
-| 工作空间搜索 | 按名称搜索已创建的工作空间 |
-| 频道搜索 | 搜索当前工作空间下的频道 |
-| 议题搜索 | 按标题搜索议题 |
-| 文件搜索 | 搜索当前工作空间的文件 |
-| 服务器搜索 | 搜索已配置的后端服务器 |
+| 搜索类型 | 实现文件 | 说明 |
+|----------|----------|------|
+| 工作空间搜索 | `workspace-search.ts` | 按名称搜索已创建的工作空间 |
+| 频道搜索 | `channel-search.ts` | 搜索当前工作空间下的频道 |
+| 议题搜索 | `issue-search.ts` | 按标题搜索议题 |
+| 文件搜索 | `file-search.ts` | 搜索当前工作空间的文件 |
+| 服务器搜索 | `server-search.ts` | 搜索已配置的后端服务器 |
+| 工作流搜索 | `workflow-search.ts` | 搜索工作流 |
 
-搜索结果实时显示，点击即可跳转到对应页面。
+每个 provider 有 `prefix` 和 `aliases`，`matchProvider(input)` 通过 `prefix + ' '` 或 `alias + ' '` 匹配输入，匹配到的 provider 负责返回该类型的结果。搜索结果实时显示，点击即可跳转到对应页面。
 
 ## 自定义命令
 

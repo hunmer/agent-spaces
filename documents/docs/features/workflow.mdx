@@ -74,22 +74,28 @@ Workflow 编辑器内置了一组功能节点，按分类组织在左侧节点�
 
 保存 Workflow 时，系统会自动校验：
 
+- **至少一个节点** — Workflow 必须包含节点
 - **环检测** — DAG 不能包含环路
 - **重复边** — 两个节点之间不能有多条边
 - **自环** — 节点不能连接到自身
-- **运行时校验** — 节点绑定的 Agent 预设必须存在且配置正确
+- **边引用** — 边的 source/target 必须引用已存在的节点
+- **Agent 节点有效性** — 每个 Agent 节点绑定的 `agentConfigId` 必须存在于当前工作空间的 Agent 列表中（保存时会重新解析节点的 role/avatarUrl/modelId，避免 Agent 预设改名或改角色后节点过期）
+
+注意：保存时只校验 Agent 是否存在，不校验是否启用、也不校验是否属于某个 Issue 频道成员——这些条件在运行时才会校验。
 
 ## Issue 与 Workflow
 
-创建 Issue 时，可以选择一个 Workflow 模板。Issue 启动自动化后：
+创建 Issue 时，可以选择一个 Workflow 模板（`workflowId` 字段）。Issue 启动自动化后：
 
 1. 系统加载选定的 Workflow 模板
-2. 将 Workflow 中的节点映射为可执行的 Task
-3. 按依赖关系拓扑排序调度执行
-4. 无依赖的 Task 并行执行
-5. 所有 Task 完成后，Issue 标记为 completed
+2. 将 Workflow 中的 Agent 节点映射为可执行的 Task（每个节点 → 一个 Task）
+3. 节点的入边作为 Task 的 `dependsOnTaskIds` 依赖
+4. 按依赖关系调度执行：只有当某个 Task 的所有前置 Task 都为 `done` 时才会启动
+5. 所有 Task 完成后，Issue 标记为 `completed`
 
-如果没有选择 Workflow 模板，Issue 将无法自动执行（进入 error 状态）。
+> 注意：当前同一轮可运行的 Task **按数组顺序串行启动**，DAG 表达的是依赖关系，但同一层并不会真正并行运行多个 Agent。
+
+如果没有选择 Workflow 模板，或模板不存在、运行前校验失败，Issue 将无法自动执行并进入 `error` 状态（旧的 planner/task_creator 硬编码链路已不再作为 fallback）。
 
 ## 迷你预览
 
@@ -104,6 +110,20 @@ Workflow 列表页面展示所有已创建的模板：
 - 删除不需要的模板
 - 查看使用该模板的 Issue 数量
 
+## 运行时校验与执行
+
+Workflow 模板运行前会进行校验：
+
+1. 每个节点绑定的 Agent 仍然存在
+2. 每个 Agent 处于启用状态
+3. 每个 Agent 都在当前 Issue 的频道成员（channel members）中
+
+这意味着 Workflow 模板可以跨 Issue 复用，但实际运行某个 Issue 时，其频道里必须包含 Workflow 用到的所有 Agent。
+
+Workflow 中的每个 Agent 节点在执行时是一个普通 Task，因此同样享有 Task 的失败重试机制（`retryCount` / `maxRetries`）：Agent 运行失败会重置为 `pending` 并重新调度，超过最大重试次数后 Issue 进入 `error`。
+
+> 详见议题重试恢复机制：[议题管理](/docs/features/issue-management)。
+
 ## WebSocket 事件
 
 Workflow 的变更通过 WebSocket 实时通知前端：
@@ -111,3 +131,5 @@ Workflow 的变更通过 WebSocket 实时通知前端：
 - `workflow.created` — 新模板创建
 - `workflow.updated` — 模板更新
 - `workflow.deleted` — 模板删除
+
+运行时 Issue 与 Task 的状态变化会广播 `issue.status_changed`、`issue.updated`、`task.created`、`task.status_changed`、`task.updated`、`task.output` 以及 `agent.started/status_changed/output/completed` 等事件。

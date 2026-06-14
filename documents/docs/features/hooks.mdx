@@ -4,77 +4,132 @@ sidebar_position: 16
 
 # Hook 系统
 
-Hook 系统允许你在 Agent 工具调用前后执行自定义操作，实现精细化的 Agent 行为控制。
+Hook 系统允许你在 Agent 运行生命周期的关键节点（会话开始、工具调用前后、子 Agent 启停、任务创建完成、会话结束等）执行自定义操作，实现精细化的 Agent 行为控制与外部集成。
 
 ## 核心概念
 
-Hook 是 per-tool-call 粒度的钩子，支持在 Agent 调用工具前（PreToolUse）和调用后（PostToolUse）触发自定义动作。
+Hook 以工作空间（workspace）为作用域，按「事件 + 匹配器」触发规则。每条规则可配置一种动作类型（command / webhook / script）。Hook 引擎在 Agent 运行时启动时加载一次启用配置，匹配到的规则并发执行（`Promise.allSettled`），错误会被记录并吞掉，不会阻塞 Agent 运行。
 
-## Hook 类型
+Hook 是 fire-and-forget 的：主要用于记录、通知、外部集成，**当前不支持阻塞或修改工具执行**。
 
-### PreToolUse
+## 支持的事件
 
-在 Agent 调用工具之前触发：
+后端 Hook 引擎支持以下事件类型（完整类型见 `ClaudeHookEventName`，定义于 `packages/shared/src/types/hooks.ts`）：
 
-- 可以拦截工具调用
-- 可以修改工具输入参数
-- 可以记录调用信息
+**会话生命周期**
+- `SessionStart` — Agent 查询开始前
+- `SessionEnd` — 运行时清理时
+- `Stop` — 一轮对话结束或等待用户输入
+- `StopFailure` — 运行时失败
 
-### PostToolUse
+**用户输入与指令**
+- `UserPromptSubmit` — 用户提示词提交给 Claude 之前
+- `UserPromptExpansion` — 提示词展开相关
+- `InstructionsLoaded` — 展开后的提示词包含已加载的指令标记
+- `CwdChanged` — 工作目录变更
 
-在 Agent 工具调用完成后触发：
+**工具调用**
+- `PreToolUse` — 工具调用之前
+- `PostToolUse` — 工具调用（tool_result）之后
+- `PostToolUseFailure` — 工具结果看起来是失败时
+- `PostToolBatch` — 来自 Claude 的 `tool_use_summary`
+- `PermissionDenied` — 权限被拒绝
 
-- 可以处理工具输出
-- 可以发送通知
-- 可以触发后续操作
+**通知与子 Agent**
+- `Notification` — SDK 通知类系统消息
+- `SubagentStart` — 子 Agent 启动
+- `SubagentStop` — 子 Agent 停止
+- `TeammateIdle` — 队友 Agent 空闲
+
+**任务与压缩**
+- `TaskCreated` — 观察到匹配的工具调用名时
+- `TaskCompleted` — 观察到匹配的工具调用名时
+- `PreCompact` — 压缩前
+- `PostCompact` — 压缩后
+
+**其他**
+- `WorktreeRemove` — Worktree 移除
+- `Elicitation` — 引导交互
+- `ElicitationResult` — 引导交互结果
+
+> 注意：引擎支持上述全部事件键，但只有运行时实际发出的事件才会触发规则。某些上游 Claude Code 存在但当前后端未发出的事件，不在本地支持的类型联合中。完整说明参见 `docs/hook-engine.md`。
+
+## 匹配器
+
+每个事件有一个 `matcherValue`：
+
+- **工具事件**：`matcherValue` 是工具名（例如 `TodoWrite`、`Edit`、`CreateCurrentChannelIssue`）。
+- **生命周期事件**：`matcherValue` 通常为 `*`。
+
+规则匹配支持三种 matcher 写法：
+
+- `*` — 匹配所有
+- 精确字符串 — 完全相等
+- 正则字符串 — 以 `/` 开头并以 `/` 结尾，例如 `/.*Database.*/`
+
+无效的正则 matcher 不会抛错，引擎会记录 warning 并回退到精确匹配。
 
 ## 动作类型
 
-每种 Hook 支持三种动作类型：
+每条规则支持三种动作类型（`HookRule.type`）：
 
-### Shell Command
+### command（Shell 命令）
 
-执行本地 Shell 命令：
+使用 `node:child_process.exec` 执行本地 Shell 命令：
 
-- 在工作空间目录下执行
-- 可以访问工具调用的上下文信息
-- 支持环境变量注入
+- 超时默认 `10000ms`，上限 `30000ms`
+- 进程继承服务器环境变量，并额外注入一批 `HOOK_*` 环境变量（如 `HOOK_EVENT_NAME`、`HOOK_EVENT_PAYLOAD`、`HOOK_MATCHER_VALUE`、`HOOK_TOOL_NAME`、`HOOK_TOOL_INPUT`、`HOOK_TOOL_RESULT`、`HOOK_WORKSPACE_ID`、`HOOK_TRIGGERED_AT` 等）
+- 对 `UserPromptSubmit`，`HOOK_EVENT_PAYLOAD` 同时包含低噪声的 `userMessage`（用户原始提示）和完整展开的 `fullPrompt`（发给 Claude 的提示）；Hook 消费者应读取 `userMessage`
 
-### Webhook
+### webhook
 
-发送 HTTP 请求到指定 URL：
+向 `rule.url` 发送 JSON `POST` 请求：
 
-- 支持 POST/GET 等 HTTP 方法
-- 请求体包含工具调用的完整信息
-- 可用于集成外部系统
+- 请求体包含 `event`、`toolName`、`matcherValue`、`toolInput`、`toolResult`、`payload`、`timestamp`、`workspaceId`
+- 非 2xx 响应和网络失败会被记录但不会导致 Agent 运行失败
 
-### Script
+### script
 
-执行自定义脚本：
-
-- 支持 JavaScript 脚本
-- 可以访问工具调用的输入/输出
-- 灵活的处理逻辑
+`script` 类型被 schema 识别但**当前未实现**，引擎会记录 warning 并跳过该规则。
 
 ## Hook 配置
 
-Hook 配置存储在工作空间的 `.hook.json` 文件中：
+每个工作空间的 Hook 配置存储为 `*.hook.json` 文件，位置在：
+
+```text
+~/.agent-spaces-data/workspaces/<workspace-id>/hooks/*.hook.json
+```
+
+加载器只读取以 `.hook.json` 结尾的文件。配置结构如下（`HookConfig` + `HookRule`）：
 
 ```json
 {
-  "hooks": [
-    {
-      "name": "通知代码修改",
-      "phase": "PostToolUse",
-      "toolName": "Edit",
-      "action": {
+  "name": "通知代码修改",
+  "description": "在 Edit 工具调用后发送 webhook 通知",
+  "enabled": true,
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
         "type": "webhook",
-        "url": "https://example.com/notify"
+        "url": "https://example.com/notify",
+        "timeout": 10000
       }
-    }
-  ]
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "type": "command",
+        "command": "echo 'session ended' >> ~/.agent-spaces-data/hook-debug.log"
+      }
+    ]
+  }
 }
 ```
+
+其中 `hooks` 是一个以事件名为键、规则数组为值的映射（`Partial<Record<ClaudeHookEventName, HookRule[]>>`）。每条规则包含 `matcher`、`type`（`command`/`webhook`/`script`），以及对应动作的字段（`command` / `url` / `function`）和可选 `timeout`。
+
+> 注意：Hook 在每次 Agent 运行开始时加载一次。编辑 hook 文件只影响新的运行，不会影响已经在运行的引擎实例。
 
 ## 管理 Hook
 
@@ -96,11 +151,15 @@ Hook 配置存储在工作空间的 `.hook.json` 文件中：
 - 启用/禁用 Hook
 - 测试 Hook 是否正常工作
 
-## 技术实现
+## 执行流程
 
-Hook 系统通过 `wrapOnEventWithHooks()` 函数拦截 `AgentRuntimeEvent`：
+Hook 引擎通过 `wrapOnEventWithHooks(onEvent, workspaceId, hooksEnabled)` 包裹 Agent 运行时事件，工作流程：
 
-1. Agent 运行时产生工具调用事件
-2. Hook 引擎匹配对应的 Hook 规则
-3. 按规则执行 shell/webhook/script 动作
-4. 将处理结果返回给运行时
+1. 运行时启动时一次性加载该工作空间所有启用的 Hook 配置
+2. 对正常运行时事件，转发给原始 handler
+3. 对内部 `hook_event` 事件，仅在后端处理，不会转发给 UI / SSE 消费者
+4. 解析 tool-use id，使 `tool_result` 能触发 `PostToolUse`
+5. 当 Claude Code 返回 tool result 但缺少 `toolUseId` 时，回退到最近一次 `tool_use`
+6. 所有匹配规则通过 `Promise.allSettled` 并发执行
+
+Hook 的 command/webhook 错误会被记录并吞掉，不会阻塞或影响 Agent 运行结果。

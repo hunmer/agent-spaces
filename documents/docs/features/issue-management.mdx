@@ -8,15 +8,35 @@ sidebar_position: 5
 
 ## 议题生命周期
 
-一个议题会经历以下状态：
+一个议题（Issue）有 9 种状态，遵循以下状态机：
 
 | 状态 | 说明 |
 |------|------|
-| 待处理 (Open) | 刚创建，等待启动自动化 |
-| 进行中 (In Progress) | Agent 正在通过 Workflow 执行任务 |
-| 已完成 (Done) | 所有任务执行完毕 |
-| 已关闭 (Closed) | 手动关闭或标记为不需要 |
-| 错误 (Error) | 未绑定 Workflow 或执行过程中出错 |
+| `draft` | 刚创建（草稿），等待启动自动化 |
+| `planned` | 已规划，planner/Workflow 已分析并准备拆分任务 |
+| `in_progress` | 进行中，Workflow 映射出的 Task 正在执行 |
+| `review_pending` | 待审查，等待 reviewer 评审 |
+| `changes_requested` | 要求修改，人工或 reviewer 反馈后回到 `planned` 重新处理 |
+| `approved` | 已通过审查 |
+| `completed` | 已完成，所有 Task 执行完毕 |
+| `archived` | 已归档 |
+| `error` | 错误，未绑定 Workflow、模板缺失、运行前校验失败，或重试超过上限 |
+
+典型成功路径：
+
+```text
+draft -> planned -> in_progress -> completed
+```
+
+异常或人工反馈路径：
+
+```text
+changes_requested -> planned -> in_progress -> completed
+planned -> error
+in_progress -> changes_requested
+```
+
+Issue 完成由依赖调度器根据所有 Task 的状态判定：当所有 Task 都为 `done` 时，Issue 被标记为 `completed`。
 
 ## 创建议题
 
@@ -36,15 +56,33 @@ sidebar_position: 5
 议题启动自动化后，系统会：
 
 1. 加载选定的 Workflow 模板
-2. 将 Workflow 中的节点映射为可执行的 Task
-3. 按 DAG 拓扑排序确定执行顺序
-4. 无依赖的 Task 并行执行
-5. 所有 Task 完成后 Issue 标记为 completed
+2. 将 Workflow 中的 Agent 节点映射为可执行的 Task（每节点 → 一 Task）
+3. 节点的入边作为 Task 的 `dependsOnTaskIds` 依赖
+4. 调度执行：只有所有前置 Task 都为 `done` 时，Task 才会启动
+5. 所有 Task 完成后 Issue 标记为 `completed`
+
+> 注意：当前同一轮可运行的 Task **按数组顺序串行执行**，DAG 表达依赖关系，但同层不会真正并行运行多个 Agent。
+
+### Task 状态
+
+每个 Task 有 8 种状态：
+
+| 状态 | 说明 |
+|------|------|
+| `pending` | 待执行 |
+| `running` | 正在执行 |
+| `reviewing` | 正在被 reviewer 审查 |
+| `waiting_review` | 等待审查 |
+| `retrying` | 重试中 |
+| `done` | 已完成 |
+| `failed` | 失败 |
+| `cancelled` | 已取消 |
 
 每个 Task 包含：
-- 绑定的 Agent 预设
-- 执行状态
-- 工具调用记录和代码变更
+- 绑定的 Agent 预设（`agentConfigId`）与运行时实际分配的 Agent session（`assignedAgentId`）
+- 执行状态、重试计数（`retryCount` / `maxRetries`）
+- 依赖关系（`dependsOnTaskIds`）
+- 工具调用记录、代码变更（diff）与执行日志
 
 详见 [Workflow 编辑器](/docs/features/workflow)。
 
@@ -56,9 +94,37 @@ sidebar_position: 5
 - 与 Agent 交互讨论
 - 记录决策和变更
 
-## 议题重试
+## 失败重试与恢复
 
-如果 Issue 执行失败进入 error 状态，可以通过重试机制重新启动自动化流程。
+Task 和 Issue 都有独立的重试计数：Task 有 `retryCount` / `maxRetries`，Issue 有 `retryCount` / `maxRetries` / `retryPaused`。
+
+### Task 失败重试
+
+Agent 执行失败时：
+
+- `retryCount < maxRetries`：Task 重置为 `pending` 并重新调度
+- `retryCount >= maxRetries`：Task 保持 `failed`，并设置 Issue 错误信息
+
+### Issue 错误与自动重试
+
+Issue 进入 `error` 后，后台调度器会在后续 tick 中通过 error issue retry service 处理：
+
+- `retryCount < maxRetries`：将失败的 Task 重置为 `pending`，Issue 切回 `in_progress`，继续调度
+- `retryCount >= maxRetries`：设置 `retryPaused = true`，停止自动重试
+
+### 手动恢复
+
+- 后端：`POST /api/workspaces/:workspaceId/issues/:issueId/resume`
+- 前端：Issue 详情页在 `error` 状态显示 `Resume failed tasks` 按钮
+- 单个 `failed` Task 也可单独重试，后端会将其恢复为 `pending` 并立即重新调度
+
+### 服务器启动恢复
+
+服务器启动时会执行恢复流程（`issue-retry.ts`）：
+
+1. 所有状态为 `running` 或 `retrying` 的 Task 被标记为 `failed`
+2. 所有状态为 `in_progress` 的 Issue 被切换为 `error`
+3. 后续由调度器的 error issue retry service 继续自动恢复，超过最大重试次数后暂停
 
 ## 替代方式：频道聊天
 

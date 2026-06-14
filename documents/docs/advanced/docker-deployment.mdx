@@ -4,7 +4,18 @@ sidebar_position: 4
 
 # Docker 部署
 
-本文档记录使用 Docker 运行 Agent Spaces Server 的常用命令。当前 Web 前端已经在镜像构建阶段打包并复制到 Server 中，不需要单独启动 Web 容器。
+本文档记录使用 Docker 运行 Agent Spaces Server 的常用命令。当前 Web 前端已经在镜像构建阶段打包（`scripts/copy-web.mjs`）并复制到 Server 镜像中，不需要单独启动 Web 容器。
+
+## 快速开始（npm 脚本）
+
+仓库根目录 `package.json` 提供了封装好的 Docker 脚本，等价于底层的 `docker build` / `docker compose` 命令：
+
+```bash
+pnpm build:docker   # = docker build -f Dockerfile.server -t agent-spaces-server:latest .
+pnpm up             # = docker compose up -d --build
+```
+
+镜像基于 `Dockerfile.server`（多阶段构建），最终镜像内仅包含 Server 编译产物（`dist/`）、静态资源（`public/`）、内置 Web 资源（`web/`）与 `node_modules`，监听 `3100` 端口，数据目录为 `/root/.agent-spaces-data`。
 
 ## 安装 Docker
 
@@ -137,7 +148,7 @@ docker rm agent-spaces-server
 
 ## 使用 Docker Compose
 
-仓库根目录已提供 `docker-compose.yml`，只包含 `server` 服务。
+仓库根目录已提供 `docker-compose.yml`，只包含 `server` 服务（与 `pnpm up` 等价）。
 
 构建并启动：
 

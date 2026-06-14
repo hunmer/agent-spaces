@@ -29,15 +29,26 @@ sidebar_position: 1
 
 ## 工作空间元数据
 
-绑定目录后，系统自动创建 `.agentspace` 隐藏目录，用于存储：
+绑定目录后，系统自动在 `boundDirs[0]` 下创建 `.agentspace` 隐藏目录，用于存储项目级数据：
 
-- 工作空间配置信息
-- Agent 上下文和知识库（`claude.md`）
-- 工具详情历史记录
-- Hook 配置（`.hook.json`）
-- 输出风格模板
+- 知识库（`claude.md`）
+- 技能库（`skills/`）
+- Agent 配置与工作目录（`agents/{agentId}/`）
 
 建议将 `.agentspace` 加入 `.gitignore`，避免提交到远程仓库。
+
+工作空间的运行时业务数据则集中存储在全局数据目录 `~/.agent-spaces-data/workspaces/{workspaceId}/` 下：
+
+- `workspace.json` — Workspace 详情（`agentspaceDir` 指向上面 `.agentspace` 的绝对路径）
+- `prompt.md` — 工作空间 Prompt
+- `notifications.json` — 应用内通知
+- `code-favorites.json` — 代码收藏
+- `hooks/{name}.hook.json` — Hook 配置
+- `workflows/` — Workflow 模板
+- `channels/{channelId}/` — 频道消息（`messages.json`）和工具详情（`tool-details.json`）
+- `issues/` — 议题与评论
+- `tasks/` — 任务
+- `commands/` — 快捷命令
 
 ## Worktree 子工作空间
 

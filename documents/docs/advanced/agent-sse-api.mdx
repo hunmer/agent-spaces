@@ -26,15 +26,21 @@ POST /api/agent-sse/run
 
 ```json
 {
-  "agentId": "string",           // 必填：Agent 预设 ID
-  "workspaceId": "string",       // 可选：工作空间 ID
+  "agentId": "string",           // 必填：Agent 预设 ID（也接受别名 agentid）
+  "workspaceId": "string",       // 可选：工作空间 ID（缺省取第一个 workspace）
   "message": "string",           // 方式一：单条消息
   "prompt": "string",            // 方式二：Prompt（同 message）
-  "messages": [...],             // 方式三：消息数组
+  "messages": [...],             // 方式三：消息数组（取最后一条 senderId 为 user 的内容）
   "systemPrompt": "string",      // 可选：覆盖系统提示词
-  "maxTurns": 10,                // 可选：最大轮次
-  "skills": ["skill-name"],      // 可选：技能列表
-  "mcps": {...}                  // 可选：MCP 配置
+  "outputStyle": "string",       // 可选：输出风格（覆盖预设）
+  "maxTurns": 10,                // 可选：最大轮次（缺省 100）
+  "skills": ["skill-name"],      // 可选：技能列表（也接受单值 skill 字段）
+  "mcps": {...},                 // 可选：MCP 配置（也接受别名 mcp）
+  "workflowAgent": {             // 可选：触发 Workflow 编辑器 Agent（强制使用 langchain 运行时）
+    "workflow": {...},
+    "nodeDefinitions": [...],
+    "selectedNodes": [...]
+  }
 }
 ```
 
@@ -71,7 +77,7 @@ event: tool_result
 data: {"type":"tool_result","toolUseId":"tool-1","result":"文件内容..."}
 
 event: done
-data: {"agentId":"abc-123","success":true,"summary":"分析完成","output":["正在分析代码..."],"usage":{"inputTokens":1500,"outputTokens":800,"totalTokens":2300},"durationMs":5234}
+data: {"agentId":"abc-123","success":true,"summary":"分析完成","artifacts":[],"error":null,"output":["正在分析代码..."],"usage":{"inputTokens":1500,"outputTokens":800,"totalTokens":2300},"costUsd":0.012,"durationMs":5234}
 ```
 
 ## 使用示例
@@ -129,17 +135,19 @@ const reader = response.body.getReader();
 
 ## 流式行为
 
-不同 Agent 运行时的 SSE 事件流行为不同：
+Agent Spaces 共有 6 种运行时（Claude Code / Codex / LangChain / Hermes / Oh-My-Pi / Open Agent SDK），它们在 SSE 事件流上的行为不同：
 
 | 运行时 | 实时流式 | 说明 |
 |--------|---------|------|
 | `claude-code` | ✅ | 工具调用、思考、输出均实时推送 |
 | `codex` | ✅ | 实时推送事件 |
-| `langchain` | ✅ | 实时推送事件 |
+| `langchain` | ✅ | 通过节流的事件 sink 实时推送（节流间隔 100ms） |
+| `hermes` | ✅ | 按行解析 Hermes CLI 的 stdout/stderr，逐行推送 `output` |
+| `oh-my-pi` | ✅ | 解析 OMP CLI 的 JSON 事件流，实时推送 `output`/`tool_use`/`tool_result`/`reasoning` |
 | `open-agent-sdk`（默认） | ❌ | SDK `prompt()` 为阻塞调用，所有事件在执行结束后一次性推送 |
 
 :::caution
-`open-agent-sdk` 运行时执行期间不会发送 `output`/`tool_use`/`tool_result` 事件，仅在执行结束后发送单条 `output` 事件和 `done` 事件。如需实时流式输出，请使用 `claude-code`、`codex` 或 `langchain` 运行时。
+`open-agent-sdk` 运行时执行期间不会发送 `output`/`tool_use`/`tool_result` 事件，仅在执行结束后发送单条 `output` 事件和 `done` 事件。如需实时流式输出，请使用 `claude-code`、`codex`、`langchain`、`hermes` 或 `oh-my-pi` 运行时。
 :::
 
 ## 注意事项

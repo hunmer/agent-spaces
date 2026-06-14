@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Flutter 多平台客户端
 
-Agent Spaces 提供 Flutter 多平台客户端，支持 Android、iOS、macOS、Windows 和 Web 平台。Flutter 客户端是一个原生壳应用，内嵌 Web 前端，并提供原生增强能力。
+Agent Spaces 提供 Flutter 多平台客户端，支持 Android、iOS、macOS、Windows 和 Web 平台。Flutter 客户端的定位是**原生壳应用**：内嵌 Web 前端（WebView Tab 浏览器），同时提供原生能力桥接层、SSH 终端与多协议文件管理器。业务逻辑全部在 Web 前端（`packages/web`）与服务端（`packages/server`），客户端通过 HTTP / WebSocket 连接后端，不依赖 `packages/shared` 或 `packages/server`。
 
 ## 平台支持
 
@@ -50,6 +50,12 @@ Flutter 与 WebView 之间的双向通信桥梁：
 - 自动列出可用的服务器实例
 - 一键连接，无需手动输入地址
 
+### i18n 与主题
+
+- 国际化支持中文 / 英文（与 Web 端 next-intl 命名空间对齐）
+- 主题切换：明亮 / 暗黑 / 跟随系统
+- 桌面端额外的窗口状态管理（位置、尺寸记忆）
+
 ## 终端功能
 
 Flutter 客户端提供完整的终端体验：
@@ -85,13 +91,14 @@ Flutter 客户端提供完整的终端体验：
 - 快速连接已保存的服务器
 - 书签的增删改查
 
-## Tab 管理
+## Tab 与分屏管理
 
-基于 Docking 库的多 WebView Tab 管理：
+基于 Docking 库的多 WebView Tab 浏览器：
 
 - 可拖拽的多窗口布局
 - Tab 的创建、切换、关闭
-- Split Layout 分屏
+- Split Layout 分屏（同一屏幕并列多个 WebView）
+- 每个独立的 Tab 加载独立的 Web 前端实例
 
 ## 安装与运行
 
@@ -114,13 +121,26 @@ flutter build ios
 flutter build macos
 ```
 
+## 测试
+
+```bash
+cd packages/flutter
+flutter test
+```
+
+包含 `widget_test.dart`（App 构建冒烟测试）和 `webdav_url_test.dart`（WebDAV URL 规范化单元测试）。
+
 ## 技术栈
 
-| 技术 | 版本 |
+| 技术 | 说明 |
 |------|------|
-| Flutter | ^3.10.1 |
-| flutter_riverpod | ^2.6.1 |
+| Flutter SDK | ^3.10.1 |
+| flutter_riverpod | 2.x（StateNotifierProvider 模式） |
 | flutter_inappwebview | ^6.1.5 |
-| go_router | ^14.8.1 |
+| go_router | ^14.8.1（7 条路由） |
 | awesome_notifications | ^0.11.0 |
-| docking | - |
+| docking | 分屏 / 多 Tab 布局 |
+| SharedPreferences | 持久化（JSON 序列化） |
+| flutter_lints | 代码检查 |
+
+更多架构、路由、JS Bridge API 与文件地图细节参见 `packages/flutter/claude/` 子目录文档。

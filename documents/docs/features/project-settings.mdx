@@ -38,7 +38,7 @@ Agent Spaces 提供工作空间级别的项目设置和全局独立设置页，�
 
 - 添加、编辑、删除 Agent 预设
 - 配置角色（agent / scheduler / task_creator / bot + 自定义）
-- 选择运行时（Claude Code / Codex / Open Agent SDK / LangChain / Hermes）
+- 选择运行时（Claude Code / Codex / Open Agent SDK / LangChain / Hermes / Oh-My-Pi，共 6 种）
 - 设置模型和 API Key
 - 自定义系统提示词
 - 配置权限模式（自动批准、需确认等）
@@ -86,7 +86,7 @@ Agent Spaces 提供工作空间级别的项目设置和全局独立设置页，�
 - **中文（简体）** — 默认语言
 - **English** — 英文界面
 
-切换语言即时生效，影响所有界面文本。52 个组件已完成国际化改造。
+切换语言即时生效，影响所有界面文本。i18n 基于 next-intl，按 34 个命名空间拆分（中/英各一份，位于 `src/locales/{en,zh}/*.json`）。
 
 ## 独立设置页
 
@@ -152,8 +152,8 @@ Prompt 模板的 CRUD 管理：
 Hook 的 CRUD 管理：
 
 - 创建、编辑、删除 Hook
-- 支持 shell command / webhook / script 三种动作类型
-- 配置 PreToolUse / PostToolUse 阶段
+- 支持 `command` / `webhook` / `script` 三种动作类型（`HookRule.type`）
+- 配置触发事件（`ClaudeHookEventName`，共 24 种，如 `PreToolUse` / `PostToolUse` / `SessionStart` / `Stop` / `Notification` / `SubagentStart` 等）
 - 上传 `.hook.json` 文件
 - Monaco 编辑器编辑 Hook 配置
 

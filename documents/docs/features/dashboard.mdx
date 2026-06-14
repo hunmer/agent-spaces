@@ -8,7 +8,12 @@ Agent Spaces 内置用量统计仪表盘和订阅余额面板，帮助你了解 
 
 ## 首页仪表盘
 
-登录后首页展示全局用量概览：
+登录后首页通过顶部 `ExpandableTabs` 切换两个 Tab：
+
+- **Agent** — 用量仪表盘（`UsageDashboard`），包含用量统计与订阅余额面板
+- **Workflow** — Workflow 执行面板（`WorkflowExecutionPanel`），查看工作流执行情况
+
+用量仪表盘通过 `sdk.agent.usageDashboard(days)` 拉取数据，支持周期选择（7d / 30d / 自定义范围）。
 
 ### 趋势图表
 
@@ -50,22 +55,22 @@ Agent Spaces 内置用量统计仪表盘和订阅余额面板，帮助你了解 
 
 ## 订阅余额面板
 
-首页展示各 AI 服务供应商的余额和配额信息：
+首页展示各 AI 服务供应商的余额和配额信息。后端在 `services/subscription/` 下实现三个 provider，统一通过 `fetchQuota(config)` 查询：
 
 ### 支持的供应商
 
 | 供应商 | 查询内容 |
 |--------|----------|
-| 智谱（ZhiPu） | API 配额使用情况 |
-| MiniMax | Coding Plan 配额 |
-| AI Code | 账户余额 |
+| 智谱（ZhiPu） | API 配额使用情况（limits 数组，含 usage / remaining / percentage / nextResetTime / 按模型 usageDetails） |
+| MiniMax | Coding Plan 配额（按模型 `MiniMax-M*`、`coding-plan-vlm`、`coding-plan-search` 的剩余次数和重置时间） |
+| AI Code | 账户余额（balance + bonusBalance，通过 Cookie 认证访问 aicodemirror.com 钱包接口） |
 
 ### 配置订阅
 
-1. 在首页订阅面板点击「配置」
+1. 在首页订阅面板点击编辑按钮
 2. 选择供应商类型
-3. 填写认证信息（Headers/Cookie 等）
-4. 保存后自动查询余额
+3. 填写认证信息（Headers / Cookie 等）
+4. 保存后通过 `sdk.subscription.list()` 拉取配置，并并发调用各 provider 的 `fetchQuota` 查询余额
 
 ### 配额信息展示
 
@@ -74,7 +79,7 @@ Agent Spaces 内置用量统计仪表盘和订阅余额面板，帮助你了解 
 - 当前使用量和剩余额度
 - 使用百分比进度条
 - 下次重置时间（如有）
-- 详细使用明细
+- 详细使用明细（智谱按模型拆分）
 
 ## 数据来源
 
