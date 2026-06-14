@@ -1,6 +1,6 @@
 {
   "text": "大家好，今天的演讲我要献给生命中最重要的人，我的妈妈。我出生在湖北省新山县高桥乡下湾村，这些年我见过不少的人，可是依然觉得妈妈是我这辈子见过最美丽的女人。",
-  "provider": "qianyin",
+  "provider": "minimax",
   "providers": {
     "minimax": {
       "voices": [
@@ -30,7 +30,7 @@
           "icon": "🎙️"
         }
       ],
-      "voiceId": "female-shaonv",
+      "voiceId": "male-qn-badao",
       "speed": 1,
       "vol": 1,
       "pitch": 0,
@@ -77,7 +77,7 @@
       "pitch": 0
     }
   },
-  "mode": "single",
+  "mode": "multi",
   "roles": [
     {
       "id": "role_mqcw2qqh_71hisv",
@@ -97,7 +97,7 @@
   "messages": [
     {
       "id": "msg_mqcwvc3b_oiq6ql",
-      "roleId": "",
+      "roleId": "role_mqcw2qqh_71hisv",
       "text": "主持人：今天咱们来聊一个很有意思的心理话题。设想一下这个场景：昨天下午，一个年轻人在咖啡馆看书，服务员不小心把咖啡洒在了他刚买的新外套上。这人当场火冒三丈，对着服务员大吼大叫，完全不顾及公共场合的体面。如果是你，你会怎么看这件事？",
       "matchPrefix": "",
       "audioUrl": "",

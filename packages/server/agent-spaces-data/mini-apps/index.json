@@ -7,7 +7,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-08T05:18:45.999Z",
-    "updatedAt": "2026-06-14T04:04:08.355Z",
+    "updatedAt": "2026-06-14T04:21:48.071Z",
     "enabledPlugins": [
       "workflow.minimax",
       "workflow.fish-audio",
@@ -147,5 +147,15 @@
       "workflow.epub-parser"
     ],
     "icon": "🔈"
+  },
+  {
+    "id": "test",
+    "name": "test",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-06-14T04:23:35.472Z",
+    "updatedAt": "2026-06-14T04:23:35.472Z"
   }
 ]

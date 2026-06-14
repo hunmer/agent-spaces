@@ -64,7 +64,7 @@
           }
         ],
         "width": 250,
-        "height": 135
+        "height": 89
       }
     },
     {
@@ -452,7 +452,7 @@
     }
   ],
   "createdAt": 1780936344470,
-  "updatedAt": 1781409766017,
+  "updatedAt": 1781409947814,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng",

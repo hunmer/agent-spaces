@@ -1,0 +1,118 @@
+{
+  "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+  "name": "测试",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781410107452_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "prompt",
+            "type": "string",
+            "description": "图片描述，描述你想生成的图片内容",
+            "required": true
+          },
+          {
+            "key": "model",
+            "type": "string",
+            "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+            "required": false
+          },
+          {
+            "key": "ratio",
+            "type": "string",
+            "description": "图片比例，如 1:1、16:9、9:16",
+            "required": false
+          },
+          {
+            "key": "resolution",
+            "type": "string",
+            "description": "分辨率，如 1k、2k、4k",
+            "required": false
+          },
+          {
+            "key": "negativePrompt",
+            "type": "string",
+            "description": "反向提示词，排除不想出现的内容",
+            "required": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781410107452_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "images",
+            "type": "image[]",
+            "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+            "description": "生成的图片列表"
+          },
+          {
+            "key": "success",
+            "type": "boolean",
+            "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+            "description": "是否生成成功"
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+            "description": "返回消息"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781410340016_69wfat",
+      "type": "jimeng_text_to_image",
+      "label": "图片生成",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "data": {
+        "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+        "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+        "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+        "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+        "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+        "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+        "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+      "source": "node_1781410107452_start",
+      "target": "node_1781410340016_69wfat"
+    },
+    {
+      "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+      "source": "node_1781410340016_69wfat",
+      "target": "node_1781410107452_end"
+    }
+  ],
+  "createdAt": 1781410107460,
+  "updatedAt": 1781410378304,
+  "enabledPlugins": [
+    "workflow.minimax",
+    "workflow.jimeng"
+  ],
+  "groups": []
+}

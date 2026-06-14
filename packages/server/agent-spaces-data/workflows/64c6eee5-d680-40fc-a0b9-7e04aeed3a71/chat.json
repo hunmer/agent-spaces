@@ -1,0 +1,2041 @@
+[
+  {
+    "id": "workflow-agent-user-1781410317303",
+    "role": "user",
+    "content": "创建一个图片生成节点，接收开始节点的输入参数，结束节点输出图片列表",
+    "timestamp": "2026-06-14T04:11:57.303Z"
+  },
+  {
+    "id": "workflow-agent-assistant-1781410317303",
+    "role": "agent",
+    "content": "",
+    "timestamp": "2026-06-14T04:11:57.303Z",
+    "timeline": [
+      {
+        "id": "message-1781410320575-s1fh",
+        "type": "message",
+        "content": "我来帮你创建一个图片生成节点的工作流。首先让我查找可用的图片生成节点类型。"
+      },
+      {
+        "id": "list_node_types-1781410320823-rrv72h",
+        "name": "list_node_types",
+        "input": {
+          "keyword": "图片生成"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "page": 1,
+          "page_size": 20,
+          "total": 3,
+          "available_total": 49,
+          "nodes": [
+            {
+              "type": "jimeng_text_to_video",
+              "label": "AI视频生成",
+              "category": "即梦AI",
+              "description": "通过文字描述或图片生成视频（文生视频/图生视频/首尾帧）"
+            },
+            {
+              "type": "minimax_start_end_to_video",
+              "label": "首尾帧视频",
+              "category": "MiniMax AI",
+              "description": "MiniMax 首尾帧生成视频：基于起始帧和结束帧图片生成过渡视频"
+            },
+            {
+              "type": "minimax_subject_to_video",
+              "label": "主体参考视频",
+              "category": "MiniMax AI",
+              "description": "MiniMax 主体参考视频：基于人物主体图片生成视频（保持人物一致性）"
+            }
+          ]
+        }
+      },
+      {
+        "id": "list_node_types-1781410322330-x8it6l",
+        "name": "list_node_types",
+        "input": {
+          "keyword": "图片"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "page": 1,
+          "page_size": 20,
+          "total": 7,
+          "available_total": 49,
+          "nodes": [
+            {
+              "type": "jimeng_text_to_image",
+              "label": "AI文生图",
+              "category": "即梦AI",
+              "description": "通过文字描述使用即梦AI生成图片"
+            },
+            {
+              "type": "jimeng_image_to_image",
+              "label": "AI图生图",
+              "category": "即梦AI",
+              "description": "基于输入图片和文字描述生成新图片（风格迁移、图片融合等）"
+            },
+            {
+              "type": "jimeng_text_to_video",
+              "label": "AI视频生成",
+              "category": "即梦AI",
+              "description": "通过文字描述或图片生成视频（文生视频/图生视频/首尾帧）"
+            },
+            {
+              "type": "minimax_chat",
+              "label": "文本合成",
+              "category": "MiniMax AI",
+              "description": "MiniMax 文本合成：支持多轮对话、工具调用(Function Calling)、图片理解、思维链推理"
+            },
+            {
+              "type": "minimax_image_to_video",
+              "label": "图生视频",
+              "category": "MiniMax AI",
+              "description": "MiniMax 图生视频：基于图片和文字描述生成视频"
+            },
+            {
+              "type": "minimax_start_end_to_video",
+              "label": "首尾帧视频",
+              "category": "MiniMax AI",
+              "description": "MiniMax 首尾帧生成视频：基于起始帧和结束帧图片生成过渡视频"
+            },
+            {
+              "type": "minimax_subject_to_video",
+              "label": "主体参考视频",
+              "category": "MiniMax AI",
+              "description": "MiniMax 主体参考视频：基于人物主体图片生成视频（保持人物一致性）"
+            }
+          ]
+        }
+      },
+      {
+        "id": "search_node_usage-1781410324811-79ej0z",
+        "name": "search_node_usage",
+        "input": {
+          "type": "jimeng_text_to_image"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "total": 1,
+          "available_total": 49,
+          "nodes": [
+            {
+              "type": "jimeng_text_to_image",
+              "label": "AI文生图",
+              "category": "即梦AI",
+              "icon": "Image",
+              "description": "通过文字描述使用即梦AI生成图片",
+              "properties": [
+                {
+                  "key": "sessionId",
+                  "label": "Session Token",
+                  "type": "text",
+                  "required": true,
+                  "tooltip": "即梦sessionid（国际站加前缀 us-/hk-/jp-/sg-）",
+                  "default": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}"
+                },
+                {
+                  "key": "prompt",
+                  "label": "图片描述",
+                  "type": "textarea",
+                  "required": true,
+                  "tooltip": "描述你想生成的图片内容"
+                },
+                {
+                  "key": "model",
+                  "label": "模型",
+                  "type": "select",
+                  "default": "jimeng-4.5",
+                  "options": [
+                    {
+                      "label": "jimeng-4.5 (默认)",
+                      "value": "jimeng-4.5"
+                    },
+                    {
+                      "label": "jimeng-5.0",
+                      "value": "jimeng-5.0"
+                    },
+                    {
+                      "label": "jimeng-4.6",
+                      "value": "jimeng-4.6"
+                    },
+                    {
+                      "label": "jimeng-4.1",
+                      "value": "jimeng-4.1"
+                    },
+                    {
+                      "label": "jimeng-4.0",
+                      "value": "jimeng-4.0"
+                    },
+                    {
+                      "label": "jimeng-3.1 (仅中国站)",
+                      "value": "jimeng-3.1"
+                    },
+                    {
+                      "label": "jimeng-3.0",
+                      "value": "jimeng-3.0"
+                    }
+                  ]
+                },
+                {
+                  "key": "ratio",
+                  "label": "比例",
+                  "type": "select",
+                  "default": "1:1",
+                  "options": [
+                    {
+                      "label": "1:1",
+                      "value": "1:1"
+                    },
+                    {
+                      "label": "4:3",
+                      "value": "4:3"
+                    },
+                    {
+                      "label": "3:4",
+                      "value": "3:4"
+                    },
+                    {
+                      "label": "16:9",
+                      "value": "16:9"
+                    },
+                    {
+                      "label": "9:16",
+                      "value": "9:16"
+                    },
+                    {
+                      "label": "3:2",
+                      "value": "3:2"
+                    },
+                    {
+                      "label": "2:3",
+                      "value": "2:3"
+                    },
+                    {
+                      "label": "21:9",
+                      "value": "21:9"
+                    }
+                  ]
+                },
+                {
+                  "key": "resolution",
+                  "label": "分辨率",
+                  "type": "select",
+                  "default": "2k",
+                  "options": [
+                    {
+                      "label": "1K",
+                      "value": "1k"
+                    },
+                    {
+                      "label": "2K (默认)",
+                      "value": "2k"
+                    },
+                    {
+                      "label": "4K",
+                      "value": "4k"
+                    }
+                  ]
+                },
+                {
+                  "key": "negativePrompt",
+                  "label": "反向提示词",
+                  "type": "textarea",
+                  "tooltip": "排除不想出现的内容"
+                },
+                {
+                  "key": "baseUrl",
+                  "label": "API地址",
+                  "type": "text",
+                  "default": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "tooltip": "即梦API服务地址"
+                }
+              ],
+              "outputs": [
+                {
+                  "key": "success",
+                  "type": "boolean"
+                },
+                {
+                  "key": "message",
+                  "type": "string"
+                },
+                {
+                  "key": "data",
+                  "type": "object",
+                  "children": [
+                    {
+                      "key": "images",
+                      "type": "image[]"
+                    },
+                    {
+                      "key": "created",
+                      "type": "number"
+                    }
+                  ]
+                }
+              ],
+              "pluginId": "workflow.jimeng",
+              "pluginIconPath": "icon.png",
+              "exampleData": {
+                "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                "model": "jimeng-4.5",
+                "ratio": "1:1",
+                "resolution": "2k",
+                "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}"
+              },
+              "usage": {
+                "variables": "字符串字段支持 {{ __data__[\"节点ID\"].字段路径 }} 和 {{ context.some.path }}。开始节点的工作流输入也通过 {{ __data__[\"开始节点ID\"].字段 }} 引用；{{ __inputs__[\"节点ID\"].字段路径 }} 仅作为普通节点输入字段的兼容语法。",
+                "handles": {}
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "message-1781410331631-v12z",
+        "type": "message",
+        "content": "我来帮你创建一个图片生成节点的工作流。我会使用即梦AI的文生图功能。\n\n首先，让我为开始节点添加输入字段，以便接收图片描述、比例、分辨率等参数："
+      },
+      {
+        "id": "set_node_io_fields-1781410335796-5fsqu8",
+        "name": "set_node_io_fields",
+        "input": {
+          "nodeId": "node_1781410107452_start",
+          "field_kind": "inputFields",
+          "fields": [
+            {
+              "key": "prompt",
+              "type": "string",
+              "required": true,
+              "description": "图片描述，描述你想生成的图片内容"
+            },
+            {
+              "key": "model",
+              "type": "string",
+              "required": false,
+              "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6"
+            },
+            {
+              "key": "ratio",
+              "type": "string",
+              "required": false,
+              "description": "图片比例，如 1:1、16:9、9:16"
+            },
+            {
+              "key": "resolution",
+              "type": "string",
+              "required": false,
+              "description": "分辨率，如 1k、2k、4k"
+            },
+            {
+              "key": "negativePrompt",
+              "type": "string",
+              "required": false,
+              "description": "反向提示词，排除不想出现的内容"
+            }
+          ]
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "name": "测试",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              }
+            ],
+            "edges": [],
+            "createdAt": 1781410107460,
+            "updatedAt": 1781410335796,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ],
+            "groups": []
+          },
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              }
+            ],
+            "edges": [],
+            "updatedAt": 1781410335796
+          }
+        }
+      },
+      {
+        "id": "create_node-1781410340016-j1debc",
+        "name": "create_node",
+        "input": {
+          "type": "jimeng_text_to_image",
+          "label": "图片生成",
+          "data": {
+            "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+            "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+            "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+            "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+            "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+          }
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "name": "测试",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [],
+            "createdAt": 1781410107460,
+            "updatedAt": 1781410340016,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ],
+            "groups": []
+          },
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [],
+            "updatedAt": 1781410340016
+          }
+        }
+      },
+      {
+        "id": "create_edge-1781410343454-mh1uli",
+        "name": "create_edge",
+        "input": {
+          "source": "node_1781410107452_start",
+          "target": "node_1781410340016_69wfat"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "name": "测试",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              }
+            ],
+            "createdAt": 1781410107460,
+            "updatedAt": 1781410343454,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ],
+            "groups": []
+          },
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              }
+            ],
+            "updatedAt": 1781410343454
+          }
+        }
+      },
+      {
+        "id": "create_edge-1781410346236-g7ar5j",
+        "name": "create_edge",
+        "input": {
+          "source": "node_1781410340016_69wfat",
+          "target": "node_1781410107452_end"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "name": "测试",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "createdAt": 1781410107460,
+            "updatedAt": 1781410346237,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ],
+            "groups": []
+          },
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "updatedAt": 1781410346237
+          }
+        }
+      },
+      {
+        "id": "set_node_io_fields-1781410352898-fl3cl6",
+        "name": "set_node_io_fields",
+        "input": {
+          "field_kind": "outputs",
+          "fields": [
+            {
+              "key": "images",
+              "type": "image[]",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+              "description": "生成的图片列表"
+            },
+            {
+              "key": "success",
+              "type": "boolean",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+              "description": "是否生成成功"
+            },
+            {
+              "key": "message",
+              "type": "string",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+              "description": "返回消息"
+            }
+          ],
+          "nodeId": "node_1781410107452_end"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "name": "测试",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    },
+                    {
+                      "key": "images",
+                      "type": "image[]",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+                      "description": "生成的图片列表"
+                    },
+                    {
+                      "key": "success",
+                      "type": "boolean",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+                      "description": "是否生成成功"
+                    },
+                    {
+                      "key": "message",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+                      "description": "返回消息"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "createdAt": 1781410107460,
+            "updatedAt": 1781410352898,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ],
+            "groups": []
+          },
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "",
+                      "type": "string",
+                      "value": ""
+                    },
+                    {
+                      "key": "images",
+                      "type": "image[]",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+                      "description": "生成的图片列表"
+                    },
+                    {
+                      "key": "success",
+                      "type": "boolean",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+                      "description": "是否生成成功"
+                    },
+                    {
+                      "key": "message",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+                      "description": "返回消息"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "updatedAt": 1781410352898
+          }
+        }
+      },
+      {
+        "id": "set_node_io_fields-1781410359144-tuklpb",
+        "name": "set_node_io_fields",
+        "input": {
+          "field_kind": "outputs",
+          "fields": [
+            {
+              "key": "images",
+              "type": "image[]",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+              "description": "生成的图片列表"
+            },
+            {
+              "key": "success",
+              "type": "boolean",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+              "description": "是否生成成功"
+            },
+            {
+              "key": "message",
+              "type": "string",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+              "description": "返回消息"
+            }
+          ],
+          "nodeId": "node_1781410107452_end",
+          "mode": "replace"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "name": "测试",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "images",
+                      "type": "image[]",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+                      "description": "生成的图片列表"
+                    },
+                    {
+                      "key": "success",
+                      "type": "boolean",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+                      "description": "是否生成成功"
+                    },
+                    {
+                      "key": "message",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+                      "description": "返回消息"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "createdAt": 1781410107460,
+            "updatedAt": 1781410359144,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ],
+            "groups": []
+          },
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "images",
+                      "type": "image[]",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+                      "description": "生成的图片列表"
+                    },
+                    {
+                      "key": "success",
+                      "type": "boolean",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+                      "description": "是否生成成功"
+                    },
+                    {
+                      "key": "message",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+                      "description": "返回消息"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "updatedAt": 1781410359144
+          }
+        }
+      },
+      {
+        "id": "set_node_io_fields-1781410365492-w8q5q1",
+        "name": "set_node_io_fields",
+        "input": {
+          "field_kind": "outputs",
+          "fields": [
+            {
+              "key": "images",
+              "type": "image[]",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+              "description": "生成的图片列表"
+            },
+            {
+              "key": "success",
+              "type": "boolean",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+              "description": "是否生成成功"
+            },
+            {
+              "key": "message",
+              "type": "string",
+              "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+              "description": "返回消息"
+            }
+          ],
+          "mode": "replace",
+          "nodeId": "node_1781410107452_end"
+        },
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "workflow": {
+            "id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "name": "测试",
+            "folderId": null,
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "images",
+                      "type": "image[]",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+                      "description": "生成的图片列表"
+                    },
+                    {
+                      "key": "success",
+                      "type": "boolean",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+                      "description": "是否生成成功"
+                    },
+                    {
+                      "key": "message",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+                      "description": "返回消息"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "createdAt": 1781410107460,
+            "updatedAt": 1781410365493,
+            "enabledPlugins": [
+              "workflow.minimax",
+              "workflow.jimeng"
+            ],
+            "groups": []
+          },
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 0,
+                  "y": 400
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "images",
+                      "type": "image[]",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+                      "description": "生成的图片列表"
+                    },
+                    {
+                      "key": "success",
+                      "type": "boolean",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+                      "description": "是否生成成功"
+                    },
+                    {
+                      "key": "message",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+                      "description": "返回消息"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 260,
+                  "y": 200
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "updatedAt": 1781410365493
+          }
+        }
+      },
+      {
+        "id": "auto_layout-1781410368235-909jx9",
+        "name": "auto_layout",
+        "input": {},
+        "status": "success",
+        "type": "tool",
+        "result": {
+          "success": true,
+          "message": "updated",
+          "affected_node_count": 2,
+          "workflow_patch": {
+            "workflow_id": "64c6eee5-d680-40fc-a0b9-7e04aeed3a71",
+            "nodes": [
+              {
+                "id": "node_1781410107452_start",
+                "type": "start",
+                "label": "开始",
+                "position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "data": {
+                  "inputFields": [
+                    {
+                      "key": "prompt",
+                      "type": "string",
+                      "description": "图片描述，描述你想生成的图片内容",
+                      "required": true
+                    },
+                    {
+                      "key": "model",
+                      "type": "string",
+                      "description": "模型选择，如 jimeng-4.5（默认）、jimeng-5.0、jimeng-4.6",
+                      "required": false
+                    },
+                    {
+                      "key": "ratio",
+                      "type": "string",
+                      "description": "图片比例，如 1:1、16:9、9:16",
+                      "required": false
+                    },
+                    {
+                      "key": "resolution",
+                      "type": "string",
+                      "description": "分辨率，如 1k、2k、4k",
+                      "required": false
+                    },
+                    {
+                      "key": "negativePrompt",
+                      "type": "string",
+                      "description": "反向提示词，排除不想出现的内容",
+                      "required": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410107452_end",
+                "type": "end",
+                "label": "结束",
+                "position": {
+                  "x": 600,
+                  "y": 0
+                },
+                "data": {
+                  "outputs": [
+                    {
+                      "key": "images",
+                      "type": "image[]",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].data.images }}",
+                      "description": "生成的图片列表"
+                    },
+                    {
+                      "key": "success",
+                      "type": "boolean",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].success }}",
+                      "description": "是否生成成功"
+                    },
+                    {
+                      "key": "message",
+                      "type": "string",
+                      "value": "{{ __data__[\"node_1781410340016_69wfat\"].message }}",
+                      "description": "返回消息"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "node_1781410340016_69wfat",
+                "type": "jimeng_text_to_image",
+                "label": "图片生成",
+                "position": {
+                  "x": 300,
+                  "y": 0
+                },
+                "data": {
+                  "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+                  "model": "{{ __data__[\"node_1781410107452_start\"].model }}",
+                  "ratio": "{{ __data__[\"node_1781410107452_start\"].ratio }}",
+                  "resolution": "{{ __data__[\"node_1781410107452_start\"].resolution }}",
+                  "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+                  "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
+                  "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
+                }
+              }
+            ],
+            "edges": [
+              {
+                "id": "e-node_1781410107452_start-node_1781410340016_69wfat-mqd9q23i",
+                "source": "node_1781410107452_start",
+                "target": "node_1781410340016_69wfat"
+              },
+              {
+                "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
+                "source": "node_1781410340016_69wfat",
+                "target": "node_1781410107452_end"
+              }
+            ],
+            "updatedAt": 1781410368236
+          }
+        }
+      }
+    ]
+  }
+]
