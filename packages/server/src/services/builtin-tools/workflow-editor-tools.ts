@@ -584,8 +584,8 @@ function layoutNodes(
   for (const node of layoutNodes) {
     const definition = definitionByType.get(node.type);
     const size = {
-      width: typeof node.data?.width === 'number' ? node.data.width : definition?.customViewMinSize?.width || 220,
-      height: typeof node.data?.height === 'number' ? node.data.height : definition?.customViewMinSize?.height || 120,
+      width: typeof node.data?.nodeWidth === 'number' ? node.data.nodeWidth : definition?.customViewMinSize?.width || 220,
+      height: typeof node.data?.nodeHeight === 'number' ? node.data.nodeHeight : definition?.customViewMinSize?.height || 120,
     };
     nodeSizes.set(node.id, size);
     graph.setNode(node.id, size);

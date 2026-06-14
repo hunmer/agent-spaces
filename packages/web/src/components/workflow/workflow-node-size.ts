@@ -98,8 +98,8 @@ export function getWorkflowNodeSize(
   return {
     minWidth,
     minHeight,
-    width: Math.max(minWidth, typeof data.width === 'number' ? data.width : DEFAULT_NODE_WIDTH),
-    height: Math.max(minHeight, typeof data.height === 'number' ? data.height : minHeight),
+    width: Math.max(minWidth, typeof data.nodeWidth === 'number' ? data.nodeWidth : DEFAULT_NODE_WIDTH),
+    height: Math.max(minHeight, typeof data.nodeHeight === 'number' ? data.nodeHeight : minHeight),
     sourceHandleCount,
   };
 }

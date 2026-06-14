@@ -129,7 +129,7 @@
       "label": "Read Clipboard",
       "position": {
         "x": 315,
-        "y": -150
+        "y": -117.83203125
       },
       "data": {
         "outputs": [
@@ -146,7 +146,7 @@
       "label": "写入剪贴板",
       "position": {
         "x": 120,
-        "y": -225
+        "y": -207.333984375
       },
       "data": {
         "text": "ss"
@@ -158,7 +158,7 @@
       "label": "打开文件对话框",
       "position": {
         "x": 555,
-        "y": -225
+        "y": -221.25
       },
       "data": {
         "outputs": [
@@ -174,8 +174,8 @@
       "type": "show_notification",
       "label": "发送通知",
       "position": {
-        "x": 345,
-        "y": -285
+        "x": 357.5,
+        "y": -311.25
       },
       "data": {
         "silent": false,
@@ -198,8 +198,8 @@
       "type": "show_message_box",
       "label": "消息对话框",
       "position": {
-        "x": 90,
-        "y": -270
+        "x": 77.5,
+        "y": -297.333984375
       },
       "data": {
         "type": "none",
@@ -209,6 +209,52 @@
             "type": "number"
           }
         ]
+      }
+    },
+    {
+      "id": "node_1781460858256_b7t2a0",
+      "type": "create_window",
+      "label": "创建窗口",
+      "position": {
+        "x": -135,
+        "y": 600
+      },
+      "data": {
+        "width": 300,
+        "height": 800,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "id",
+                "type": "number"
+              },
+              {
+                "key": "webContentsId",
+                "type": "number"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              },
+              {
+                "key": "title",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "url": "https://www.baidu.com"
       }
     }
   ],
@@ -225,7 +271,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781459041245,
+  "updatedAt": 1781461121061,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng",

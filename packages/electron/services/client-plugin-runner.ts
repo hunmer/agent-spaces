@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
+import vm from 'node:vm'
 import type { PluginInfo } from '@agent-spaces/shared'
 import { resolvePluginEntryFile } from '@agent-spaces/shared'
 import { desktopNative } from './desktop-native.js'
@@ -77,8 +78,13 @@ function resolvePluginDir(pluginId: string): string | null {
 
 function loadCommonJsModule<T>(filePath: string): T | null {
   if (!existsSync(filePath)) return null
-  delete require.cache[require.resolve(filePath)]
-  return require(filePath) as T
+  const source = readFileSync(filePath, 'utf-8')
+  const module = { exports: {} as T }
+  const localRequire = createRequire(filePath)
+  const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: filePath })
+  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout })
+  runner(localRequire, module, module.exports, filePath, dirname(filePath))
+  return module.exports
 }
 
 function createTranslator(dir: string) {

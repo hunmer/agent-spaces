@@ -10,8 +10,8 @@ export type WorkflowNodeData = Record<string, unknown> & {
   label?: string;
   nodeType?: string;
   selectedNodeIds?: string[];
-  width?: number;
-  height?: number;
+  nodeWidth?: number;
+  nodeHeight?: number;
   isPreview?: boolean;
   isCanvasLocked?: boolean;
   isRunning?: boolean;

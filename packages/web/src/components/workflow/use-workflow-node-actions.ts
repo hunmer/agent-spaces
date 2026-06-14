@@ -127,7 +127,7 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
     const width = Math.max(nodeMinWidth, Math.round(params.width));
     const height = Math.max(nodeMinHeight, Math.round(params.height));
     window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
-      detail: { nodeId: id, data: { width, height } },
+      detail: { nodeId: id, data: { nodeWidth: width, nodeHeight: height } },
     }));
   }, [id, isCanvasLocked, nodeMinHeight, nodeMinWidth]);
 
