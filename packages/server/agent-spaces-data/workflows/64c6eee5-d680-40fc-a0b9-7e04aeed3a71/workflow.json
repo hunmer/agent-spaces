@@ -94,6 +94,30 @@
         "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
         "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
       }
+    },
+    {
+      "id": "node_1781421257387_lw0lqf",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 30,
+        "y": 270
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
+      }
+    },
+    {
+      "id": "node_1781421263182_htgyr5",
+      "type": "toast",
+      "label": "nodes.toast.label",
+      "position": {
+        "x": 375,
+        "y": 360
+      },
+      "data": {
+        "type": "info"
+      }
     }
   ],
   "edges": [
@@ -106,10 +130,17 @@
       "id": "e-node_1781410340016_69wfat-node_1781410107452_end-mqd9q48t",
       "source": "node_1781410340016_69wfat",
       "target": "node_1781410107452_end"
+    },
+    {
+      "id": "e-node_1781421257387_lw0lqf-source-node_1781421263182_htgyr5-target",
+      "source": "node_1781421257387_lw0lqf",
+      "target": "node_1781421263182_htgyr5",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781410378304,
+  "updatedAt": 1781421275374,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng"

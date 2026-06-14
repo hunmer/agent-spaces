@@ -8,13 +8,20 @@ Agent Spaces 内置 Git 操作面板，提供可视化的版本管理功能。
 
 ## 功能概览
 
-- **状态查看** — 查看当前工作区的文件变更状态
-- **分支管理** — 创建、切换、合并分支
-- **变更暂存** — 选择要提交的文件变更
-- **提交记录** — 查看完整的提交历史
-- **Diff 查看** — 查看文件的具体变更内容
-- **Worktree 并行开发** — 独立分支并行开发，Diff 查看、PR 创建/合并
-- **Git 操作日志** — 操作审计记录
+Git 面板分为左右两个可拖拽调整大小的子面板（变更列表 / 提交历史），布局持久化在 localStorage，移动端与桌面端分别记忆：
+
+- **变更状态查看** — 查看当前工作区的文件变更状态（新增/修改/删除/未跟踪）
+- **变更暂存** — 选择文件变更进入暂存区，支持文件级右键菜单
+- **提交** — 填写提交信息并提交，提交对话框支持 `git-prompt`（基于变更生成 commit message 建议）
+- **提交记录** — 查看完整的提交历史、单次提交详情（`commit-diff-viewer`）和提交级 Diff
+- **Diff 查看** — 查看文件/提交的具体变更内容（`diff-viewer`，支持暂存/工作区/历史对比）
+- **丢弃变更** — 通过 `git-discard-dialog` 丢弃工作区改动
+- **.gitignore 管理** — `git-gitignore-dialog` 直接编辑项目的 `.gitignore` 模板
+- **远程仓库设置** — `git-remote-dialog` 管理远程仓库地址
+- **Git 配置** — `git-settings-form` 配置用户名/邮箱等本地 Git 参数
+- **初始化检测** — 工作区未初始化 Git 时显示引导（`git-not-initialized`）
+- **Worktree 并行开发** — 独立分支并行开发，Diff 查看、PR 创建/合并，详见 [Worktree 并行开发](/docs/features/worktree)
+- **Git 操作日志** — 操作审计记录（`git-op-log-dialog`）
 
 ## Agent 自动提交
 

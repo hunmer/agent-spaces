@@ -34,17 +34,18 @@ Agent 是 Agent Spaces 的核心执行单元。不同的 Agent 角色各司其�
 
 ## Agent 运行时
 
-每个 Agent 基于特定的 AI 运行时运行：
+每个 Agent 基于特定的 AI 运行时运行。系统支持 6 种运行时：
 
-| 运行时 | SDK | 适用模型 | 特点 |
+| 运行时 | SDK / 适配形态 | 适用模型 | 特点 |
 |--------|-----|----------|------|
 | Claude Code | @anthropic-ai/claude-agent-sdk | Claude 系列模型 | 内置 Anthropic Bridge，支持通过 Claude Code SDK 调用非 Anthropic 模型 |
 | OpenAI Codex | @openai/codex-sdk | GPT 系列模型 | 沙盒化执行环境 |
 | Open Agent SDK | @codeany/open-agent-sdk | 多模型支持 | 通用 Agent SDK |
 | LangChain | langchain + @langchain/openai/anthropic/google-genai | OpenAI/Anthropic/Google 等 | 基于 LangChain.js createAgent API，provider-neutral |
 | Hermes | Hermes CLI（外部进程） | 多模型支持 | 外部 CLI 进程适配器，支持自定义 Hermes 运行时 |
+| Oh My Pi | `omp` CLI（外部进程） | 多模型支持 | 通过 `omp --mode json` 子进程对接 OMP newline-delimited JSON 事件，隔离 OMP home、session 和模型注册表 |
 
-运行时通过工厂函数 `createAgentRuntime()` 按配置切换，无需修改代码即可更换 Agent 的底层运行时。
+运行时通过工厂函数 `createAgentRuntime()` 按 `runtimeKind` 切换（可选值：`claude-code` / `codex` / `open-agent-sdk` / `langchain` / `hermes` / `oh-my-pi`），无需修改代码即可更换 Agent 的底层运行时。各运行时在底层共享同一套 Function Call 工具抽象（见下文），但模型加载、session 管理、工具暴露方式由各适配器自行实现。
 
 ## Agent 预设
 
@@ -96,39 +97,73 @@ Agent 通过 Workflow 实现自动化协作。创建一个 Workflow 模板，将
 
 ## Function Call Tools
 
-Agent 通过 Function Call Tools 与系统交互，分为 Issue、Command、Database、Kanban 四大类，共 22 种内置工具：
+Agent 通过 Function Call Tools 与系统交互。内置工具共 **35 种**，按职责分为 Issue、Terminal、Command、Database、Kanban、Workspace File、Workflow 七大类：
 
-### Issue 工具
+### Issue 工具（3）
 
 - **CreateCurrentChannelIssue** — 为当前频道创建并绑定 Issue
-- **ViewCurrentChannelIssue** — 查看当前频道绑定的 Issue 详情
+- **ViewCurrentChannelIssue** — 查看当前频道绑定的 Issue 及评论
 - **AddCurrentChannelComment** — 为当前频道绑定的 Issue 添加评论
 
-### Command 工具
+Issue 工具仅在当前频道上下文中可用，并在服务端强制校验 `issueId` 必须等于当前频道绑定的 `issueId`，无法操作其他频道的 Issue。
 
-- **RunCommand** — 运行快捷命令
-- **StopCommand** — 停止正在运行的命令
-- **ListCommands** — 列出可用命令
+### Terminal 工具（1）
 
-### Database 工具
+- **ReadTerminalOutput** — 按 session ID 分页读取终端输出（默认最新 100 行）
 
-- **CreateDocNode** — 创建文档节点
-- **UpdateDocNode** — 更新文档内容
-- **SearchDocNodes** — 搜索文档（含向量搜索）
-- **GetDocNode** — 获取文档详情
+### Command 工具（3）
 
-### Kanban 工具
+- **ListQuickCommands** — 列出工作空间的快捷命令及运行状态
+- **RunQuickCommand** — 按 ID 启动快捷命令，返回终端 session ID
+- **StopQuickCommand** — 按 ID 停止运行中的快捷命令
 
-- **CreateKanbanTask** — 创建看板任务
-- **UpdateKanbanTask** — 更新看板任务
-- **MoveKanbanTask** — 移动任务到不同列
-- **ListKanbanTasks** — 列出看板任务
+### Database 工具（11）
 
-### Terminal 工具
+知识库（Notion 风格文档数据库 + 向量搜索）操作工具：
 
-- 终端创建、执行命令、输出获取等
+- **ListDatabases** — 列出工作空间的数据库及其 ID
+- **ListDatabaseNodes** — 列出某路径下的知识库节点（可按标题过滤）
+- **SearchDatabaseNodes** — 按标题或内容搜索知识库节点
+- **QueryDatabaseVectors** — 基于数据库绑定的 embedding 模型做向量相似度搜索
+- **ReadDatabaseNode** — 按 ID 读取知识库节点内容和元数据
+- **ListDatabaseNodeVersions** — 列出知识库节点的内容版本历史与 diff
+- **CreateDatabaseNode** — 在指定父路径或父 ID 下创建节点
+- **WriteDatabaseNode** — 按 ID 插入 / 替换 / 覆盖节点内容
+- **DeleteDatabaseNode** — 移入回收站或永久删除节点及其后代
+- **MoveDatabaseNode** — 移动节点或目录到其他父路径 / 父 ID
+- **UpdateDatabaseNodeMeta** — 更新节点元数据（标题、图标、封面、parent、回收站状态等）
 
-工具层通过 `AgentFunctionTool` 抽象统一管理，不同运行时的 Agent 使用相同的工具接口。输入校验通过 `input-helpers.ts` 统一处理（assertRecord/readRequiredString 等）。
+### Kanban 工具（5）
+
+- **ListKanbanBoards** — 列出工作空间的看板
+- **ViewKanbanBoard** — 查看看板元数据、列和任务
+- **CreateKanbanBoard** — 创建工作空间看板
+- **UpdateKanbanBoard** — 更新看板元数据、列或任务（完整数组替换）
+- **DeleteKanbanBoard** — 删除看板及其列和任务
+
+### Workspace File 工具（6）
+
+直接操作工作空间文件系统：
+
+- **ListWorkspaceFiles** — 列出工作空间文件和目录
+- **SearchWorkspaceFiles** — 搜索工作空间文件路径和 UTF-8 文本内容
+- **ReadWorkspaceFile** — 读取工作空间 UTF-8 文本文件
+- **WriteWorkspaceFile** — 向工作空间文件写入 UTF-8 文本
+- **DeleteWorkspacePath** — 递归删除工作空间文件或目录
+- **MoveWorkspacePath** — 移动或重命名工作空间文件 / 目录
+
+### Workflow 工具（6）
+
+- **list_workflows** — 列出已保存的 Workflow 及其起始节点输入字段
+- **search_workflow** — 按名称或描述搜索 Workflow
+- **execute_workflow_sync** — 启动 Workflow 并等待完成 / 暂停 / 失败 / 超时
+- **execute_workflow_async** — 启动 Workflow 并立即返回执行 ID
+- **get_workflow_result** — 按执行 ID 读取 Workflow 执行结果
+- **get_workflow_latest_result** — 读取某 Workflow 的最近一次执行结果
+
+工具层通过 `AgentFunctionTool` 抽象（定义于 `packages/server/src/adapters/agent-runtime-types.ts`）统一管理，不同运行时的 Agent 使用相同的工具接口，内置工具声明集中在 `packages/shared/src/types/tool.ts` 的 `BUILT_IN_AGENT_TOOLS`。工具输入校验通过 `input-helpers.ts` 统一处理（assertRecord / readRequiredString 等），服务端始终是信任边界。
+
+在 Claude Code 运行时中，工具通过 SDK MCP Server 暴露，模型实际调用名为 `mcp__agent-spaces__<工具名>`（例如 `mcp__agent-spaces__WriteDatabaseNode`）。Codex 与 Oh My Pi 运行时则会启动一个仅监听 `127.0.0.1` 的短生命周期本地 Streamable HTTP MCP server 暴露同样的工具。
 
 ## 实时状态
 

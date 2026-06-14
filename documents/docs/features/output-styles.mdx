@@ -10,6 +10,22 @@ sidebar_position: 17
 
 输出风格是 Markdown 格式的模板，通过 `resolveOutputStyleContent()` 注入到 Agent 的 systemPrompt 中。每个工作空间可以配置不同的输出风格。
 
+## 内置模板
+
+系统内置 **7 个**开发者风格模板（位于 `packages/templates/output-styles/`），可在创建自定义风格时参考或直接复用：
+
+| 模板 | 风格定位 |
+|------|----------|
+| **carmack-mode** | John Carmack 风格 — 极简、务实、直击性能与本质 |
+| **codex-rigor-mode** | Codex Rigor 风格 — 严谨、结构化、强调工程纪律 |
+| **dhh-mode** | DHH（David Heinemeier Hansson）风格 — 主观鲜明、重视约定与设计 |
+| **evan-you-mode** | 尤雨溪（Evan You）风格 — 平衡、克制、注重渐进与兼容 |
+| **jobs-mode** | Steve Jobs 风格 — 极致打磨、聚焦用户体验与取舍 |
+| **linus-mode** | Linus Torvalds 风格 — 直接、高效、代码说话 |
+| **uncle-bob-mode** | Uncle Bob（Robert C. Martin）风格 — 强调整洁代码与可维护性 |
+
+这些模板可通过 Store 从模板库导入。模板内容采用 Markdown + YAML frontmatter 格式（`name` / `description` 必填）。
+
 ## 创建输出风格
 
 1. 在 `/settings/output-styles` 页面点击「创建」
