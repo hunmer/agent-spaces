@@ -203,6 +203,48 @@ function WorkflowEditorInner({
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
 
   const { enterPreview, exitPreview, isPreview, markPreviewDirty, saveWorkflow, setWorkflow } = state;
+  const pasteClipboardNodes = useCallback(() => {
+    const pasted = clipboard.paste();
+    if (pasted && state.workflow) {
+      state.pushUndo('paste');
+      state.setWorkflow(w => w ? {
+        ...w,
+        nodes: [...w.nodes, ...pasted.nodes],
+        edges: [...w.edges, ...pasted.edges],
+      } : null);
+      const pastedNodeIds = pasted.nodes.map(node => node.id);
+      state.setSelectedNodeIds(pastedNodeIds);
+      state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
+      markEditorDirty();
+    }
+  }, [clipboard, markEditorDirty, state]);
+
+  const moveClipboardNodesToStaging = useCallback(async () => {
+    const copied = clipboard.getData();
+    if (!copied || !state.workflowId) return;
+    const stagedNodes: StagedNode[] = copied.nodes.map((node, index) => ({
+      id: `staged_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}`,
+      sourceNodeId: node.id,
+      type: node.type,
+      label: node.label,
+      data: JSON.parse(JSON.stringify(node.data)),
+      composite: node.composite ? JSON.parse(JSON.stringify(node.composite)) : undefined,
+      stagedAt: Date.now(),
+    }));
+    if (stagedNodes.length === 0) return;
+
+    try {
+      const existing = await stagingApi.load(state.workflowId);
+      await stagingApi.save(state.workflowId, [...existing, ...stagedNodes]);
+      for (const staged of stagedNodes) {
+        window.dispatchEvent(new CustomEvent('workflow:node-staged', { detail: { staged } }));
+      }
+      clipboard.clear();
+    } catch {
+      // Staging is optional
+    }
+  }, [clipboard, state.workflowId]);
+
   const handlePreviewNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
     if (!isPreview) return;
     setWorkflow((current) => {
@@ -299,21 +341,7 @@ function WorkflowEditorInner({
       const edges = state.workflow!.edges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target));
       if (nodes.length > 0) clipboard.copy(nodes, edges);
     } : undefined,
-    onPaste: isWorkflowReadOnly ? undefined : () => {
-      const pasted = clipboard.paste();
-      if (pasted && state.workflow) {
-        state.pushUndo('paste');
-        state.setWorkflow(w => w ? {
-          ...w,
-          nodes: [...w.nodes, ...pasted.nodes],
-          edges: [...w.edges, ...pasted.edges],
-        } : null);
-        const pastedNodeIds = pasted.nodes.map(node => node.id);
-        state.setSelectedNodeIds(pastedNodeIds);
-        state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
-        markEditorDirty();
-      }
-    },
+    onPaste: isWorkflowReadOnly ? undefined : pasteClipboardNodes,
   });
 
   const addStagedNodeToCanvas = useCallback((staged: StagedNode, position: { x: number; y: number }) => {
@@ -443,6 +471,10 @@ function WorkflowEditorInner({
                 onRedo={isWorkflowReadOnly ? undefined : state.handleRedo}
                 onExitPreview={exitExecutionPreview}
                 onAutoLayout={canvas.handleAutoLayout}
+                copiedNodeCount={clipboard.count}
+                onPasteCopiedNodes={isWorkflowReadOnly ? undefined : pasteClipboardNodes}
+                onMoveCopiedNodesToStaging={isWorkflowReadOnly ? undefined : moveClipboardNodesToStaging}
+                onClearCopiedNodes={clipboard.clear}
                 canvasExportRef={canvasExportRef}
               />
             </div>

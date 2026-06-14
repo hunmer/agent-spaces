@@ -108,6 +108,10 @@ interface WorkflowCanvasProps {
   onRedo?: () => void;
   onExitPreview?: () => void;
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void;
+  copiedNodeCount?: number;
+  onPasteCopiedNodes?: () => void;
+  onMoveCopiedNodesToStaging?: () => void;
+  onClearCopiedNodes?: () => void;
   onConnectionDrop?: (context: {
     sourceNodeId: string;
     sourceHandle: string | null;
@@ -124,6 +128,7 @@ export function WorkflowCanvas({
   selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
   onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
+  copiedNodeCount = 0, onPasteCopiedNodes, onMoveCopiedNodesToStaging, onClearCopiedNodes,
   onConnectionDrop,
   onRectangleDrawNodeSelect,
   onInsertExistingNodeOnEdge,
@@ -872,6 +877,10 @@ export function WorkflowCanvas({
         onExitPreview={onExitPreview}
         onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
         layoutEngine={layoutEngine}
+        copiedNodeCount={isCanvasLocked ? 0 : copiedNodeCount}
+        onPasteCopiedNodes={isCanvasLocked ? undefined : onPasteCopiedNodes}
+        onMoveCopiedNodesToStaging={isCanvasLocked ? undefined : onMoveCopiedNodesToStaging}
+        onClearCopiedNodes={isCanvasLocked ? undefined : onClearCopiedNodes}
         onToggleRectangleDraw={
           isCanvasLocked || !onRectangleDrawNodeSelect
             ? undefined

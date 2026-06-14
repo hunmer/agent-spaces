@@ -95,12 +95,14 @@ export function useEditorShortcuts({
 
 export function useClipboard() {
   const clipboardRef = useRef<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null>(null);
+  const [count, setCount] = useState(0);
 
   const copy = useCallback((nodes: WorkflowNode[], edges: WorkflowEdge[]) => {
     clipboardRef.current = {
       nodes: JSON.parse(JSON.stringify(nodes)),
       edges: JSON.parse(JSON.stringify(edges)),
     };
+    setCount(nodes.length);
   }, []);
 
   const paste = useCallback((): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
@@ -122,9 +124,19 @@ export function useClipboard() {
     return { nodes: newNodes, edges: newEdges };
   }, []);
 
-  const hasData = clipboardRef.current !== null;
+  const getData = useCallback((): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
+    if (!clipboardRef.current) return null;
+    return JSON.parse(JSON.stringify(clipboardRef.current));
+  }, []);
 
-  return { copy, paste, hasData };
+  const clear = useCallback(() => {
+    clipboardRef.current = null;
+    setCount(0);
+  }, []);
+
+  const hasData = count > 0;
+
+  return { copy, paste, getData, clear, hasData, count };
 }
 
 // ---- useExecutionPanel ----

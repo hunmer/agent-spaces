@@ -12,6 +12,19 @@
         "nodeHeight": 137
       },
       "stagedAt": 1781467055218
+    },
+    {
+      "id": "staged_1781467955785_0_ihqh9i",
+      "sourceNodeId": "node_1781466743335_qncdru",
+      "type": "file_display",
+      "label": "nodes.file_display.label",
+      "data": {
+        "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+        "fileName": "44.jpg",
+        "nodeWidth": 278,
+        "nodeHeight": 137
+      },
+      "stagedAt": 1781467955785
     }
   ]
 }

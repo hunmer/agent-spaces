@@ -12,6 +12,7 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext, useSortable, verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useTranslations } from 'next-intl';
@@ -22,12 +23,27 @@ interface StagingPanelProps {
   onAddFromStaging: (node: StagedNode) => void;
 }
 
+const WIDE_BREAKPOINT = 1024;
+
+function useIsWide() {
+  const [isWide, setIsWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${WIDE_BREAKPOINT}px)`);
+    const update = () => setIsWide(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return isWide;
+}
+
 function SortableStagedItem({
-  node, onDelete, onUse,
+  node, onDelete, onUse, horizontal,
 }: {
   node: StagedNode;
   onDelete: () => void;
   onUse: () => void;
+  horizontal?: boolean;
 }) {
   const t = useTranslations('workflows');
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id });
@@ -49,7 +65,7 @@ function SortableStagedItem({
       style={style}
       draggable
       onDragStart={handleDragStart}
-      className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors border border-transparent hover:border-border"
+      className={`group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors border border-transparent hover:border-border${horizontal ? ' w-44 shrink-0 bg-card' : ''}`}
     >
       <button {...attributes} {...listeners} className="cursor-grab touch-none">
         <GripVertical className="h-3 w-3 text-muted-foreground" />
@@ -75,6 +91,7 @@ export function WorkflowStagingPanel({ workflowId, onAddFromStaging }: StagingPa
   const [nodes, setNodes] = useState<StagedNode[]>([]);
   const [loading, setLoading] = useState(true);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const isWide = useIsWide();
 
   const loadStaging = useCallback(async () => {
     try {
@@ -140,43 +157,66 @@ export function WorkflowStagingPanel({ workflowId, onAddFromStaging }: StagingPa
     );
   }
 
-  return (
-    <ScrollArea className="h-full">
-      <div className="p-3 space-y-3">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">{t('staging.count', { count: nodes.length })}</span>
-          {nodes.length > 0 && (
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleClear}>
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-
-        {/* Staged nodes */}
-        {nodes.length === 0 ? (
-          <div className="text-xs text-muted-foreground text-center py-6">
-            <Inbox className="h-6 w-6 mx-auto mb-2 opacity-50" />
-            <p>{t('staging.empty')}</p>
-            <p className="text-[10px] mt-1">{t('staging.emptyHint')}</p>
+  const renderNodes = () => (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext
+        items={nodes.map(n => n.id)}
+        strategy={isWide ? horizontalListSortingStrategy : verticalListSortingStrategy}
+      >
+        {isWide ? (
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {nodes.map(node => (
+              <SortableStagedItem
+                key={node.id}
+                node={node}
+                horizontal
+                onDelete={() => handleDelete(node.id)}
+                onUse={() => onAddFromStaging(node)}
+              />
+            ))}
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={nodes.map(n => n.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-0.5">
-                {nodes.map(node => (
-                  <SortableStagedItem
-                    key={node.id}
-                    node={node}
-                    onDelete={() => handleDelete(node.id)}
-                    onUse={() => onAddFromStaging(node)}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+          <div className="space-y-0.5">
+            {nodes.map(node => (
+              <SortableStagedItem
+                key={node.id}
+                node={node}
+                onDelete={() => handleDelete(node.id)}
+                onUse={() => onAddFromStaging(node)}
+              />
+            ))}
+          </div>
+        )}
+      </SortableContext>
+    </DndContext>
+  );
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 shrink-0">
+        <span className="text-xs font-medium">{t('staging.count', { count: nodes.length })}</span>
+        {nodes.length > 0 && (
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleClear}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
         )}
       </div>
-    </ScrollArea>
+
+      {/* Staged nodes */}
+      {nodes.length === 0 ? (
+        <div className="flex-1 text-xs text-muted-foreground text-center py-6">
+          <Inbox className="h-6 w-6 mx-auto mb-2 opacity-50" />
+          <p>{t('staging.empty')}</p>
+          <p className="text-[10px] mt-1">{t('staging.emptyHint')}</p>
+        </div>
+      ) : isWide ? (
+        <div className="px-3">{renderNodes()}</div>
+      ) : (
+        <ScrollArea className="flex-1">
+          <div className="px-3 pb-3">{renderNodes()}</div>
+        </ScrollArea>
+      )}
+    </div>
   );
 }

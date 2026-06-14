@@ -220,7 +220,11 @@
     "hideMinimap": "Hide Minimap",
     "showMinimap": "Show Minimap",
     "expandLogs": "Expand Logs",
-    "collapseLogs": "Collapse Logs"
+    "collapseLogs": "Collapse Logs",
+    "copiedNodes": "Copied Nodes",
+    "pasteCopiedNodes": "Paste",
+    "moveCopiedNodesToStaging": "Move to Staging",
+    "clearCopiedNodes": "Clear"
   },
   "canvas": {
     "mergeToWorkflow": "Merge to Workflow",
