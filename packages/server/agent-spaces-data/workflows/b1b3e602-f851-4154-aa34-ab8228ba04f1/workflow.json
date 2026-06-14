@@ -452,7 +452,7 @@
     }
   ],
   "createdAt": 1780936344470,
-  "updatedAt": 1781409664272,
+  "updatedAt": 1781409766017,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng",

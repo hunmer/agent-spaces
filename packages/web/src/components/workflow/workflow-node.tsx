@@ -400,7 +400,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <div className="h-full w-full" />
         </BorderGlide>
       )}
-      {showFullNode ? (
+      {showFullNode && selected ? (
         <button
           type="button"
           className="nodrag nopan absolute -left-2 -top-2 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
@@ -661,7 +661,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       {showFullNode && canShowNodeToolbar ? (
         <NodeToolbar
           position={Position.Top}
-          align="center"
+          align={isNodeCollapsed ? 'start' : 'center'}
           offset={8}
           className="nodrag nopan flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-md"
         >
