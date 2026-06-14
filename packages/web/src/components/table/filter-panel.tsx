@@ -12,6 +12,7 @@ import {
 // 只保留有实际值的筛选条件
 export const getActiveFilters = (filters: Filter[]) =>
   filters.filter((filter) => {
+    if (filter.operator === "empty" || filter.operator === "not_empty") return true
     const { values } = filter
     if (!values || values.length === 0) return false
     if (values.every((v) => typeof v === "string" && v.trim() === "")) return false

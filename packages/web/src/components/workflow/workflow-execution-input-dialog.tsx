@@ -341,9 +341,10 @@ function isElectronEnvironment(): boolean {
   if (typeof window === 'undefined') return false;
   const maybeWindow = window as Window & {
     electron?: unknown;
-    electronAPI?: unknown;
+    electronAPI?: { isElectron?: boolean } | unknown;
     require?: unknown;
   };
+  if (maybeWindow.electronAPI && maybeWindow.electronAPI.isElectron === true) return true;
   const userAgent = navigator.userAgent.toLowerCase();
   return Boolean(maybeWindow.electron || maybeWindow.electronAPI || userAgent.includes('electron'));
 }

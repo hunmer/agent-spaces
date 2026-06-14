@@ -38,3 +38,9 @@ packages/server/agent-spaces-data/mini-apps/*/data/
 packages/server/agent-spaces-data/database/database.sqlite
 packages/server/agent-spaces-data/kanban/kanban.sqlite
 packages/server/agent-spaces-data/workspaces/
+
+# electron
+packages/electron/out/
+packages/electron/renderer/
+packages/electron/dist/
+packages/electron/build/

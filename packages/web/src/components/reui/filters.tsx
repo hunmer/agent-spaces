@@ -625,6 +625,14 @@ const getOperatorsForField = <T = unknown,>(
   return operators[fieldType] || operators.select
 }
 
+const getDefaultOperatorForField = <T = unknown,>(
+  field: FilterFieldConfig<T>
+): string => {
+  if (field.defaultOperator) return field.defaultOperator
+  if (field.operators?.[0]?.value) return field.operators[0].value
+  return field.type === "multiselect" ? "is_any_of" : "is"
+}
+
 interface FilterOperatorDropdownProps<T = unknown> {
   field: FilterFieldConfig<T>
   operator: string
@@ -1531,9 +1539,7 @@ export function Filters<T = unknown>({
     (fieldKey: string) => {
       const field = fieldsMap[fieldKey]
       if (field && field.key) {
-        const defaultOperator =
-          field.defaultOperator ||
-          (field.type === "multiselect" ? "is_any_of" : "is")
+        const defaultOperator = getDefaultOperatorForField(field)
         const defaultValues: unknown[] = field.type === "text" ? [""] : []
         const newFilter = createFilter<T>(
           fieldKey,
@@ -1829,7 +1835,7 @@ export function Filters<T = unknown>({
                                       } else {
                                         const newFilter = createFilter<T>(
                                           fieldKey,
-                                          field.defaultOperator || "is_any_of",
+                                          getDefaultOperatorForField(field),
                                           nextValues
                                         )
                                         onChange([...filters, newFilter])
@@ -1841,7 +1847,7 @@ export function Filters<T = unknown>({
                                     } else {
                                       const newFilter = createFilter<T>(
                                         fieldKey,
-                                        field.defaultOperator || "is",
+                                        getDefaultOperatorForField(field),
                                         [value] as T[]
                                       )
                                       setLastAddedFilterId(newFilter.id)

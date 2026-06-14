@@ -57,6 +57,17 @@ const META_TABLE = '__sqlite_field_meta__';
 const quoteIdent = (name: string) => `"${name.replaceAll('"', '""')}"`;
 const DATA_LIMIT = 100;
 
+const SQLITE_TEXT_FILTER_OPERATORS = [
+  { value: 'contains', label: 'contains' },
+  { value: 'not_contains', label: 'does not contain' },
+  { value: 'starts_with', label: 'starts with' },
+  { value: 'ends_with', label: 'ends with' },
+  { value: 'is', label: 'is' },
+  { value: 'is_not', label: 'is not' },
+  { value: 'empty', label: 'is empty' },
+  { value: 'not_empty', label: 'is not empty' },
+];
+
 // 转义 LIKE 通配符，保证「包含」等语义与本地子串匹配一致
 const escapeLike = (s: string) => s.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 
@@ -143,6 +154,7 @@ interface ResultDataPanelProps {
   error?: string | null;
   onDelete?: (row: ResultRow) => void;
   className?: string;
+  fallbackColumns?: string[];
   // 受控筛选（服务端过滤）：传入后筛选条件由外部持有，面板不在本地过滤、也不在结果变化时清空
   filters?: Filter[];
   onFiltersChange?: (filters: Filter[]) => void;
@@ -155,6 +167,7 @@ function ResultDataPanel({
   error = null,
   onDelete,
   className,
+  fallbackColumns = [],
   filters: controlledFilters,
   onFiltersChange,
 }: ResultDataPanelProps) {
@@ -170,8 +183,12 @@ function ResultDataPanel({
   useEffect(() => { if (!controlled) setLocalFilters([]); }, [result, controlled]);
 
   const allCols = useMemo(
-    () => result?.columns ?? (rows[0] ? Object.keys(rows[0]) : []),
-    [result?.columns, rows],
+    () => {
+      if (result?.columns?.length) return result.columns;
+      if (rows[0]) return Object.keys(rows[0]);
+      return fallbackColumns;
+    },
+    [result, rows, fallbackColumns],
   );
   // 有删除操作时隐藏内部 rowid 列
   const visibleCols = useMemo(
@@ -208,7 +225,15 @@ function ResultDataPanel({
   }, [visibleCols, onDelete]);
 
   const filterFields = useMemo<FilterFieldConfig[]>(
-    () => visibleCols.map((key) => ({ key, label: key, type: 'text', className: 'w-40', placeholder: t('sqlite.searchColumn') })),
+    () => visibleCols.map((key) => ({
+      key,
+      label: key,
+      type: 'text',
+      operators: SQLITE_TEXT_FILTER_OPERATORS,
+      defaultOperator: 'contains',
+      className: 'w-40',
+      placeholder: t('sqlite.searchColumn'),
+    })),
     [visibleCols, t],
   );
 
@@ -219,8 +244,8 @@ function ResultDataPanel({
     [rows, activeFilters, controlled],
   );
 
-  // 查询完成就展示筛选条；过滤到 0 行时也得保留入口，否则用户改不了/清不了条件
-  const showFilter = !!result && !isLoading && !error && (rows.length > 0 || filters.length > 0);
+  // 刷新期间也保留筛选条，避免输入框因重新查询被卸载后失焦
+  const showFilter = !error && (visibleCols.length > 0 || filters.length > 0) && (!!result || isLoading || controlled);
 
   let body: ReactNode;
   if (isLoading) {
@@ -493,6 +518,10 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   };
 
   const targetTable = schemaTable === NEW_TABLE ? tableName.trim() : schemaTable;
+  const dataFallbackColumns = useMemo(
+    () => fields.map((field) => field.name).filter(Boolean),
+    [fields],
+  );
 
   const applySchema = async () => {
     setSchemaError(null);
@@ -768,6 +797,7 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
               error={dataError}
               onDelete={deleteRow}
               className="min-h-0 flex-1"
+              fallbackColumns={dataFallbackColumns}
               filters={dataFilters}
               onFiltersChange={setDataFilters}
             />

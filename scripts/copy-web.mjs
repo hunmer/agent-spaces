@@ -35,6 +35,16 @@ if (existsSync(tauriProject)) {
   copiedTargets.push('packages/tauri/web');
 }
 
+const electronProject = resolve(root, 'packages/electron');
+const electronRenderer = resolve(root, 'packages/electron/renderer');
+if (existsSync(electronProject)) {
+  if (existsSync(electronRenderer)) {
+    rmSync(electronRenderer, { recursive: true, force: true });
+  }
+  cpSync(webOut, electronRenderer, { recursive: true });
+  copiedTargets.push('packages/electron/renderer');
+}
+
 const flutterWeb = resolve(root, 'packages/flutter/assets/web');
 const flutterPubspec = resolve(root, 'packages/flutter/pubspec.yaml');
 if (existsSync(flutterPubspec)) {
