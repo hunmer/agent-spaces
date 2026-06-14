@@ -42,7 +42,7 @@
     "publish": {
       "provider": "github",
       "owner": "hunmer",
-      "repo": "agent_spaces",
+      "repo": "agent-spaces",
       "releaseType": "release"
     },
     "mac": {
