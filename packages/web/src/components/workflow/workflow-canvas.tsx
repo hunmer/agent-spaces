@@ -8,9 +8,7 @@ import {
   MiniMap,
   BackgroundVariant,
   ViewportPortal,
-  getSimpleBezierPath,
   getOutgoers,
-  useNodes,
   useReactFlow,
   applyNodeChanges,
   type Node,
@@ -22,7 +20,6 @@ import {
   type OnConnectStart,
   type OnNodeDrag,
 } from '@xyflow/react';
-import { Group, Trash2, Workflow as WorkflowIcon } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
@@ -36,7 +33,6 @@ import {
   getWorkflowCanvasThemePreset,
   parseWorkflowCanvasCustomTheme,
 } from './workflow-canvas-theme';
-import { useTranslations } from 'next-intl';
 import { CanvasToolbar } from './workflow-canvas-toolbar';
 import { useCanvasData } from './use-workflow-canvas-data';
 import { useCanvasDomEvents } from './use-workflow-canvas-dom-events';
@@ -46,400 +42,28 @@ import { getWorkflowNodeSize } from './workflow-node-size';
 import type { HandlePositionMode } from './workflow-node-types';
 import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
 import { useTheme } from '@/components/layout/theme-provider';
+import { WorkflowSelectionConnectionLine } from './workflow-selection-connection-line';
+import { DragPreviewOverlay, RectangleOverlayRect } from './workflow-canvas-overlays';
+import { LassoSelectionTool, RectangleDrawTool } from './workflow-canvas-selection-tools';
+import { WorkflowSelectionMenu } from './workflow-canvas-selection-menu';
+import {
+  GROUP_DRAG_PREVIEW_BACKGROUND,
+  LOOP_BODY_DRAG_PREVIEW_BACKGROUND,
+  type DragPreview,
+  type DrawArea,
+  type LocalRect,
+  type NodePreviewDragEventDetail,
+  type WorkflowNodeResizePreviewEventDetail,
+} from './workflow-canvas-types';
+import {
+  areStringArraysEqual,
+  isConnectionEndOnCanvasNode,
+  isNonNull,
+  isPositionNodeChange,
+} from './workflow-canvas-helpers';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
-type WorkflowConnectionLineProps =
-  NonNullable<React.ComponentProps<typeof ReactFlow>['connectionLineComponent']> extends React.ComponentType<infer Props>
-    ? Props
-    : never;
-type DragPreview = {
-  id: string;
-  bounds: { x: number; y: number; width: number; height: number };
-  delta: { x: number; y: number };
-  backgroundColor: string;
-};
-type LoopBodyDragEventDetail = {
-  nodeId: string;
-  phase: 'start' | 'move' | 'end' | 'cancel';
-  screenDelta: { x: number; y: number };
-};
-type NodePreviewDragEventDetail = LoopBodyDragEventDetail;
-type DrawPoint = {
-  clientX: number;
-  clientY: number;
-  x: number;
-  y: number;
-};
-type DrawArea = {
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-};
-type LocalPoint = { x: number; y: number };
-type LocalRect = { left: number; top: number; width: number; height: number };
-type WorkflowNodeResizePreviewEventDetail = {
-  rect: { left: number; top: number; width: number; height: number } | null;
-};
-const GROUP_DRAG_PREVIEW_BACKGROUND = 'rgba(59,130,246,0.06)';
-const LOOP_BODY_DRAG_PREVIEW_BACKGROUND = 'rgba(6,182,212,0.06)';
-
-function WorkflowSelectionConnectionLine({
-  fromNode,
-  fromHandle,
-  toX,
-  toY,
-  toNode,
-  connectionLineStyle,
-}: WorkflowConnectionLineProps) {
-  const { getInternalNode } = useReactFlow();
-  const nodes = useNodes();
-  const selectedNodes = nodes.filter(node => node.selected);
-  const shouldUseSelection = selectedNodes.some(node => node.id === fromNode.id);
-  const sourceNodes = (shouldUseSelection ? selectedNodes : nodes.filter(node => node.id === fromNode.id))
-    .filter(node => node.id !== toNode?.id);
-  const sourceHandleId = fromHandle.id ?? null;
-
-  const handleBounds = sourceNodes.flatMap((userNode) => {
-    const node = getInternalNode(userNode.id);
-    if (!node) return [];
-
-    const sourceBounds = node.internals.handleBounds?.source ?? [];
-
-    return sourceBounds
-      .filter(bounds => (bounds.id ?? null) === sourceHandleId)
-      .map(bounds => ({
-        id: node.id,
-        positionAbsolute: node.internals.positionAbsolute,
-        bounds,
-      }));
-  });
-
-  return (
-    <>
-      {handleBounds.map(({ id, positionAbsolute, bounds }) => {
-        const fromHandleX = bounds.x + bounds.width / 2;
-        const fromHandleY = bounds.y + bounds.height / 2;
-        const fromX = positionAbsolute.x + fromHandleX;
-        const fromY = positionAbsolute.y + fromHandleY;
-        const [path] = getSimpleBezierPath({
-          sourceX: fromX,
-          sourceY: fromY,
-          targetX: toX,
-          targetY: toY,
-        });
-
-        return (
-          <g key={`${id}-${bounds.id ?? 'source'}`}>
-            <path
-              fill="none"
-              strokeWidth={1.5}
-              stroke="var(--muted-foreground)"
-              style={connectionLineStyle}
-              d={path}
-            />
-            <circle
-              cx={toX}
-              cy={toY}
-              r={3}
-              fill="var(--background)"
-              stroke="var(--foreground)"
-              strokeWidth={1.5}
-            />
-          </g>
-        );
-      })}
-    </>
-  );
-}
-
-function areStringArraysEqual(a: string[], b: string[]) {
-  return a.length === b.length && a.every((item, index) => item === b[index]);
-}
-
-function isNonNull<T>(value: T | null): value is T {
-  return value !== null;
-}
-
-function isPositionNodeChange(
-  change: NodeChange,
-): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } {
-  return change.type === 'position' && !!change.position;
-}
-
-function isConnectionEndOnCanvasNode(position: { x: number; y: number }) {
-  return document.elementsFromPoint(position.x, position.y).some(element =>
-    element.closest('.react-flow__node, .react-flow__handle')
-  );
-}
-
-function DragPreviewOverlay({ preview }: { preview: DragPreview }) {
-  return (
-    <div
-      className="pointer-events-none absolute"
-      style={{
-        left: preview.bounds.x + preview.delta.x,
-        top: preview.bounds.y + preview.delta.y,
-        width: preview.bounds.width,
-        height: preview.bounds.height,
-        border: '2px solid var(--primary)',
-        borderRadius: 8,
-        backgroundColor: preview.backgroundColor,
-        boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
-        zIndex: 2,
-      }}
-    />
-  );
-}
-
-function isPointInPolygon(point: LocalPoint, polygon: LocalPoint[]) {
-  let inside = false;
-
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const current = polygon[i];
-    const previous = polygon[j];
-    const intersects = ((current.y > point.y) !== (previous.y > point.y))
-      && point.x < ((previous.x - current.x) * (point.y - current.y)) / (previous.y - current.y) + current.x;
-
-    if (intersects) inside = !inside;
-  }
-
-  return inside;
-}
-
-function pointsToSvgPath(points: LocalPoint[]) {
-  if (points.length === 0) return '';
-
-  const [first, ...rest] = points;
-  return [
-    `M ${first.x} ${first.y}`,
-    ...rest.map(point => `L ${point.x} ${point.y}`),
-    points.length > 2 ? 'Z' : '',
-  ].join(' ');
-}
-
-function RectangleOverlayRect({ rect }: { rect: LocalRect }) {
-  return (
-    <div
-      className="pointer-events-none absolute z-10 rounded-md border-2 border-dashed border-primary bg-primary/10 shadow-sm"
-      style={{
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-      }}
-    />
-  );
-}
-
-function RectangleDrawTool({
-  onComplete,
-}: {
-  onComplete: (area: DrawArea) => void;
-}) {
-  const [start, setStart] = useState<DrawPoint | null>(null);
-  const [end, setEnd] = useState<DrawPoint | null>(null);
-  const { screenToFlowPosition } = useReactFlow();
-
-  const getPoint = useCallback((event: React.PointerEvent<HTMLDivElement>): DrawPoint => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    return {
-      clientX: event.clientX,
-      clientY: event.clientY,
-      x: event.clientX - bounds.left,
-      y: event.clientY - bounds.top,
-    };
-  }, []);
-
-  const reset = useCallback(() => {
-    setStart(null);
-    setEnd(null);
-  }, []);
-
-  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const point = getPoint(event);
-    setStart(point);
-    setEnd(point);
-  }, [getPoint]);
-
-  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!start || event.buttons !== 1) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setEnd(getPoint(event));
-  }, [getPoint, start]);
-
-  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!start) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const finalEnd = getPoint(event);
-    const width = Math.abs(finalEnd.x - start.x);
-    const height = Math.abs(finalEnd.y - start.y);
-    reset();
-    if (width < 12 || height < 12) return;
-
-    const minClientX = Math.min(start.clientX, finalEnd.clientX);
-    const minClientY = Math.min(start.clientY, finalEnd.clientY);
-    const maxClientX = Math.max(start.clientX, finalEnd.clientX);
-    const maxClientY = Math.max(start.clientY, finalEnd.clientY);
-    const position = screenToFlowPosition({ x: minClientX, y: minClientY }, { snapToGrid: false });
-    const endPosition = screenToFlowPosition({ x: maxClientX, y: maxClientY }, { snapToGrid: false });
-
-    onComplete({
-      position: {
-        x: Math.round(position.x),
-        y: Math.round(position.y),
-      },
-      size: {
-        width: Math.round(Math.abs(endPosition.x - position.x)),
-        height: Math.round(Math.abs(endPosition.y - position.y)),
-      },
-    });
-  }, [getPoint, onComplete, reset, screenToFlowPosition, start]);
-
-  const rect: LocalRect | null = start && end
-    ? {
-        left: Math.min(start.x, end.x),
-        top: Math.min(start.y, end.y),
-        width: Math.abs(end.x - start.x),
-        height: Math.abs(end.y - start.y),
-      }
-    : null;
-
-  return (
-    <div
-      className="nopan nodrag absolute inset-0 z-10 cursor-crosshair"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={reset}
-    >
-      {rect ? <RectangleOverlayRect rect={rect} /> : null}
-    </div>
-  );
-}
-
-function LassoSelectionTool({
-  workflow,
-  onSelect,
-}: {
-  workflow: Workflow;
-  onSelect: (ids: string[]) => void;
-}) {
-  const [points, setPoints] = useState<LocalPoint[]>([]);
-  const pointsRef = useRef<LocalPoint[]>([]);
-  const { flowToScreenPosition, getInternalNode } = useReactFlow();
-
-  const getPoint = useCallback((event: React.PointerEvent<HTMLDivElement>): LocalPoint => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    return {
-      x: event.clientX - bounds.left,
-      y: event.clientY - bounds.top,
-    };
-  }, []);
-
-  const getSelectedNodeIds = useCallback((polygon: LocalPoint[], bounds: DOMRect) => {
-    if (polygon.length < 3) return [];
-
-    return workflow.nodes
-      .filter((node) => {
-        const internalNode = getInternalNode(node.id);
-        if (!internalNode) return false;
-
-        const { x, y } = internalNode.internals.positionAbsolute;
-        const width = internalNode.measured.width ?? 0;
-        const height = internalNode.measured.height ?? 0;
-        if (width <= 0 || height <= 0) return false;
-
-        const corners = [
-          { x, y },
-          { x: x + width, y },
-          { x: x + width, y: y + height },
-          { x, y: y + height },
-        ].map((point) => {
-          const screenPoint = flowToScreenPosition(point);
-          return {
-            x: screenPoint.x - bounds.left,
-            y: screenPoint.y - bounds.top,
-          };
-        });
-
-        return corners.every(point => isPointInPolygon(point, polygon));
-      })
-      .map(node => node.id);
-  }, [flowToScreenPosition, getInternalNode, workflow.nodes]);
-
-  const updateSelection = useCallback((nextPoints: LocalPoint[], bounds: DOMRect) => {
-    onSelect(getSelectedNodeIds(nextPoints, bounds));
-  }, [getSelectedNodeIds, onSelect]);
-
-  const reset = useCallback(() => {
-    pointsRef.current = [];
-    setPoints([]);
-  }, []);
-
-  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const point = getPoint(event);
-    const nextPoints = [point];
-    pointsRef.current = nextPoints;
-    setPoints(nextPoints);
-  }, [getPoint]);
-
-  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.buttons !== 1 || pointsRef.current.length === 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const point = getPoint(event);
-    const previous = pointsRef.current[pointsRef.current.length - 1];
-    if (Math.hypot(point.x - previous.x, point.y - previous.y) < 3) return;
-
-    const nextPoints = [...pointsRef.current, point];
-    pointsRef.current = nextPoints;
-    setPoints(nextPoints);
-    updateSelection(nextPoints, event.currentTarget.getBoundingClientRect());
-  }, [getPoint, updateSelection]);
-
-  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (pointsRef.current.length === 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    updateSelection(pointsRef.current, event.currentTarget.getBoundingClientRect());
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    reset();
-  }, [reset, updateSelection]);
-
-  const path = pointsToSvgPath(points);
-
-  return (
-    <div
-      className="nopan nodrag absolute inset-0 z-10 cursor-crosshair"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={reset}
-    >
-      <svg className="pointer-events-none h-full w-full">
-        {path && (
-          <path
-            d={path}
-            fill="rgba(59, 130, 246, 0.12)"
-            stroke="rgba(37, 99, 235, 0.9)"
-            strokeDasharray="4 3"
-            strokeWidth={1.5}
-          />
-        )}
-      </svg>
-    </div>
-  );
-}
 
 interface WorkflowCanvasProps {
   workflow: Workflow;
@@ -513,7 +137,6 @@ export function WorkflowCanvas({
   canvasExportRef,
   onNodeDragStateChange,
 }: WorkflowCanvasProps) {
-  const t = useTranslations('workflows');
   const { resolvedTheme } = useTheme();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
@@ -637,12 +260,6 @@ export function WorkflowCanvas({
       nodeIds: [...selectedNodeIds],
     });
   }, [isCanvasLocked, selectedNodeIds]);
-
-  const runSelectionAction = useCallback((action?: (ids: string[]) => void) => {
-    if (!selectionMenu || !action) return;
-    action(selectionMenu.nodeIds);
-    closeSelectionMenu();
-  }, [closeSelectionMenu, selectionMenu]);
 
   const screenDeltaToFlowDelta = useCallback((delta: { x: number; y: number }) => {
     const origin = screenToFlowPosition({ x: 0, y: 0 }, { snapToGrid: false });
@@ -1234,41 +851,13 @@ export function WorkflowCanvas({
         <LassoSelectionTool workflow={workflow} onSelect={handleLassoSelect} />
       )}
       {selectionMenu && (
-        <div
-          data-workflow-selection-menu="true"
-          className="fixed z-50 min-w-40 rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
-          style={{ left: selectionMenu.x, top: selectionMenu.y }}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-        >
-          <button
-            type="button"
-            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
-            onClick={() => runSelectionAction(onMergeNodesToWorkflow)}
-          >
-            <WorkflowIcon className="h-3 w-3" />
-            {t('canvas.mergeToWorkflow')}
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
-            onClick={() => runSelectionAction(onMergeNodesToGroup)}
-          >
-            <Group className="h-3 w-3" />
-            {t('canvas.mergeToGroup')}
-          </button>
-          <div className="-mx-1 my-1 h-px bg-border" />
-          <button
-            type="button"
-            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-destructive hover:bg-destructive/10"
-            onClick={() => runSelectionAction(onBatchDeleteNodes)}
-          >
-            <Trash2 className="h-3 w-3" />
-            {t('canvas.batchDelete')}
-          </button>
-        </div>
+        <WorkflowSelectionMenu
+          menu={selectionMenu}
+          onMergeNodesToWorkflow={onMergeNodesToWorkflow}
+          onMergeNodesToGroup={onMergeNodesToGroup}
+          onBatchDeleteNodes={onBatchDeleteNodes}
+          onClose={closeSelectionMenu}
+        />
       )}
       <CanvasToolbar
         workflow={workflow}

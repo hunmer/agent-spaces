@@ -59,6 +59,7 @@ const defaultJson: IJsonModel = {
       location: 'bottom',
       children: [
         { type: 'tab', name: 'Execution', component: 'execution-bar', id: 'execution-bar' },
+        { type: 'tab', name: 'Canvas Style', component: 'canvas-style', id: 'canvas-style' },
       ],
     },
   ],
@@ -77,6 +78,7 @@ const defaultJson: IJsonModel = {
         weight: 0.52,
         children: [
           { type: 'tab', name: 'Canvas', component: 'canvas', id: 'canvas' },
+          { type: 'tab', name: 'Staging', component: 'staging', id: 'staging' },
         ],
       },
       {
@@ -84,11 +86,9 @@ const defaultJson: IJsonModel = {
         weight: 0.30,
         children: [
           { type: 'tab', name: 'Properties', component: 'properties', id: 'properties' },
-          { type: 'tab', name: 'Canvas Style', component: 'canvas-style', id: 'canvas-style' },
           { type: 'tab', name: 'Variables', component: 'variables', id: 'variables' },
           { type: 'tab', name: 'Groups', component: 'groups', id: 'groups' },
           { type: 'tab', name: 'History', component: 'history', id: 'history' },
-          { type: 'tab', name: 'Staging', component: 'staging', id: 'staging' },
         ],
       },
     ],

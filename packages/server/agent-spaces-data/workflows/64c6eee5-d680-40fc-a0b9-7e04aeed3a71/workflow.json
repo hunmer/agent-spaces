@@ -259,7 +259,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781466846834,
+  "updatedAt": 1781466896330,
   "enabledPlugins": [
     "workflow.fetch",
     "workflow.webview",
