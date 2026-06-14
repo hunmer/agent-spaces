@@ -122,6 +122,23 @@
         "table": "table1",
         "where": ""
       }
+    },
+    {
+      "id": "node_1781456973124_styyyu",
+      "type": "read_clipboard",
+      "label": "Read Clipboard",
+      "position": {
+        "x": 315,
+        "y": -150
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "text",
+            "type": "string"
+          }
+        ]
+      }
     }
   ],
   "edges": [
@@ -137,10 +154,13 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781450067581,
+  "updatedAt": 1781456983480,
   "enabledPlugins": [
     "workflow.minimax",
-    "workflow.jimeng"
+    "workflow.jimeng",
+    "workflow.fetch",
+    "workflow.desktop-native",
+    "workflow.window-manager"
   ],
   "groups": []
 }
