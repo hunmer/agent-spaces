@@ -32,7 +32,6 @@ export default function WebviewCustomView({ data }) {
   const viewer = isWeb ? (
     <iframe
       ref={viewerRef}
-      key={url}
       src={url}
       title={title}
       className="h-full w-full border-0"
@@ -43,7 +42,6 @@ export default function WebviewCustomView({ data }) {
   ) : (
     <webview
       ref={viewerRef}
-      key={url}
       src={url}
       className="h-full w-full border-0"
       style={{ display: 'inline-flex', width: '100%', height: '100%', minHeight: 0 }}

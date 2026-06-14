@@ -149,7 +149,11 @@
         "y": -207.333984375
       },
       "data": {
-        "text": "ss"
+        "text": "ss",
+        "width": 185,
+        "height": 195,
+        "nodeWidth": 140,
+        "nodeHeight": 150
       }
     },
     {
@@ -262,8 +266,8 @@
       "type": "open_webview",
       "label": "打开 Webview",
       "position": {
-        "x": -720,
-        "y": -210
+        "x": -930,
+        "y": -315
       },
       "data": {
         "url": "https://www.google.com",
@@ -296,10 +300,10 @@
             ]
           }
         ],
-        "width": 630,
-        "height": 510,
-        "nodeWidth": 675,
-        "nodeHeight": 555
+        "width": 870,
+        "height": 570,
+        "nodeWidth": 900,
+        "nodeHeight": 720
       }
     }
   ],
@@ -316,7 +320,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781463392550,
+  "updatedAt": 1781463758219,
   "enabledPlugins": [
     "workflow.fetch",
     "workflow.webview",

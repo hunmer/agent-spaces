@@ -207,6 +207,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const displayNodeWidth = isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeWidth;
   const displayNodeHeight = isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeHeight;
   const canShowNodeContent = showFullNode && !isNodeCollapsed;
+  const keepCustomViewMounted = hasCustomView && !isNodeCollapsed;
   const canShowVariableReferences = !isLoopBody && !hasCustomView && variableReferences.length > 0;
 
   React.useEffect(() => {
@@ -578,18 +579,20 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
-      {canShowNodeContent && CustomView ? (
+      {keepCustomViewMounted && CustomView ? (
         <div className={cn(
           'absolute inset-0 overflow-hidden rounded-lg',
+          !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
           <CustomView nodeId={id} data={nodeData} />
         </div>
       ) : null}
 
-      {canShowNodeContent && pluginCustomView ? (
+      {keepCustomViewMounted && pluginCustomView ? (
         <div className={cn(
           'absolute inset-0 overflow-hidden rounded-lg',
+          !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
           <PluginWorkflowCustomView nodeId={id} data={nodeData} view={pluginCustomView} />

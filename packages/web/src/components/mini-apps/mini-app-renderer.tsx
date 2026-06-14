@@ -212,12 +212,15 @@ export function MiniAppRenderer({
 }: MiniAppRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<ReactDOM.Root | null>(null);
+  const reactComponentRef = useRef<React.ComponentType<Record<string, unknown>> | null>(null);
+  const componentPropsRef = useRef<Record<string, unknown> | undefined>(componentProps);
   const filesRef = useRef<Record<string, string>>(files || {});
   const mainFileRef = useRef<string>(mainFile || 'index.jsx');
   const taskEventListenersRef = useRef(new Set<(event: string, data: unknown) => void>());
   const { resolvedTheme } = useTheme();
 
   // Keep refs in sync — renderer reads them during compile, avoiding stale closures
+  useEffect(() => { componentPropsRef.current = componentProps; }, [componentProps]);
   useEffect(() => { filesRef.current = files || {}; }, [files]);
   useEffect(() => { mainFileRef.current = mainFile || 'index.jsx'; }, [mainFile]);
 
@@ -264,7 +267,21 @@ export function MiniAppRenderer({
     };
   }, []);
 
-  const renderReact = useCallback((code: string) => {
+  const renderCompiledReact = useCallback(() => {
+    const container = containerRef.current;
+    const Component = reactComponentRef.current;
+    if (!container || !Component) return;
+
+    rootRef.current = getMiniAppRoot(container);
+    rootRef.current.render(
+      React.createElement(RenderErrorBoundary, { onError },
+        React.createElement(Component, componentPropsRef.current)
+      )
+    );
+    onError(null);
+  }, [onError]);
+
+  const compileReact = useCallback((code: string) => {
     if (!containerRef.current) return;
 
     try {
@@ -365,18 +382,13 @@ export function MiniAppRenderer({
         return;
       }
 
-      // Reuse an existing root for the same container, including StrictMode remounts.
-      rootRef.current = getMiniAppRoot(containerRef.current);
-      rootRef.current.render(
-        React.createElement(RenderErrorBoundary, { onError },
-          React.createElement(Component, componentProps)
-        )
-      );
+      reactComponentRef.current = Component as React.ComponentType<Record<string, unknown>>;
+      renderCompiledReact();
       onError(null);
     } catch (err: any) {
       onError(err.message || String(err));
     }
-  }, [componentProps, onError]);
+  }, [onError, renderCompiledReact]);
 
   const renderHtml = useCallback((html: string) => {
     if (!containerRef.current) return;
@@ -385,6 +397,7 @@ export function MiniAppRenderer({
     const container = containerRef.current;
     unmountMiniAppRoot(container);
     rootRef.current = null;
+    reactComponentRef.current = null;
     const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
     const scripts: string[] = [];
     const cleanHtml = html.replace(scriptRegex, (_match, content) => {
@@ -413,10 +426,19 @@ export function MiniAppRenderer({
   }, [componentProps, onError]);
 
   useEffect(() => {
-    if (!sourceCode) return;
-    if (type === 'react') renderReact(sourceCode);
-    else renderHtml(sourceCode);
-  }, [sourceCode, type, renderReact, renderHtml]);
+    if (!sourceCode || type !== 'react') return;
+    compileReact(sourceCode);
+  }, [sourceCode, type, compileReact]);
+
+  useEffect(() => {
+    if (!sourceCode || type !== 'html') return;
+    renderHtml(sourceCode);
+  }, [sourceCode, type, renderHtml]);
+
+  useEffect(() => {
+    if (type !== 'react') return;
+    renderCompiledReact();
+  }, [type, componentProps, renderCompiledReact]);
 
   return (
     <div
