@@ -272,6 +272,7 @@ function formatMiniAppPromptContext(context: MiniAppPromptContext): string[] {
     'Workflow UI project rules:',
     `- Current Workflow UI project id: ${context.projectId}`,
     `- Current Workflow UI project mode: ${projectType}`,
+    '- All source code MUST be written under the project `src/` directory (e.g. `src/index.jsx`, `src/components/Foo.jsx`). The project root only holds `manifest.json`, `configs/`, `data/`, and `CLAUDE.md`; do NOT create source files outside `src/`.',
     `- AgentSpacesUI component categories for list_agent_spaces_ui_components: ${componentCategories}.`,
   ];
   if (context.activeFilePath) lines.push(`- Current active file: ${context.activeFilePath}`);
@@ -319,7 +320,7 @@ function formatMiniAppPromptContext(context: MiniAppPromptContext): string[] {
     '  - `components/` — one file per UI component (e.g. `components/Header.jsx`, `components/VoiceSelector.jsx`).',
     '  - `hooks/` — custom React hooks shared across components (e.g. `hooks/useTTS.js`).',
     '  - `utils/` — pure utility functions, constants, configuration helpers (e.g. `utils/providers.js`, `utils/styles.js`).',
-    '- Files under `src/` are auto-discovered. Sub-directories are supported.',
+    '- All files live under `src/` and are auto-discovered there. Sub-directories are supported, but do not place source files in the project root or in `configs/`/`data/`.',
     '- Each file should have a single responsibility. If a component exceeds ~200 lines, split it.',
     '- Do NOT use barrel re-export files (index.jsx that only re-exports). Import directly from the target file.',
     '- All files share the same `window.AgentSpacesUI`, `window.AgentSpaces`, and `window.AgentSpacesAPI` globals. Do not pass them through imports.',

@@ -413,7 +413,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
 
   const handleProjectSwitch = useCallback((id: string) => {
     setDrawerOpen(false);
-    router.push(`/mini-apps-preview/${id}`);
+    router.push(`/mini-apps-preview/${encodeURIComponent(id)}`);
   }, [router]);
 
   const showToolbar = !!projectId && !hideHeader;

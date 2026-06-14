@@ -35,7 +35,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/mini-apps-preview/${project.id}`
+    ? `${window.location.origin}/mini-apps-preview/${encodeURIComponent(project.id)}`
     : '';
 
   const handleExportZip = async () => {
@@ -84,7 +84,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
             className="size-24"
           />
         }
-        onClick={() => nativeNavigate(router, `/mini-apps/${project.id}`)}
+        onClick={() => nativeNavigate(router, `/mini-apps/${encodeURIComponent(project.id)}`)}
       >
         {/* Dropdown menu (top-right) */}
         <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>

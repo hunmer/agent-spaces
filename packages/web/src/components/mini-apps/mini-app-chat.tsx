@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { MessageSquare, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatPanel } from '@/components/chat/chat-panel';
 import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
-import { useWorkspaceStore } from '@/stores/workspace';
-import { workspaceIdFromLocation } from '@/lib/routes';
 import { sdk } from '@/lib/sdk';
 import { cn } from '@/lib/utils';
 import type { MentionedAgent } from '@/components/chat/chat-input-utils';
@@ -34,17 +32,9 @@ export function MiniAppChat({
   const [channelId, setChannelId] = useState<string | null>(null);
 
   const ensureAgents = useAgentStore((s) => s.ensure);
-  const workspaces = useWorkspaceStore((s) => s.workspaces);
   const { loadChannels, upsertChannel } = useChannelStore();
 
-  const resolvedWorkspaceId = useMemo(() => {
-    if (workspaceId) return workspaceId;
-    if (typeof window !== 'undefined') {
-      const fromLocation = workspaceIdFromLocation(window.location.pathname, window.location.search);
-      if (fromLocation) return fromLocation;
-    }
-    return workspaces[0]?.id ?? null;
-  }, [workspaceId, workspaces]);
+  const resolvedWorkspaceId = workspaceId ?? project.id;
 
   useEffect(() => {
     ensureAgents();

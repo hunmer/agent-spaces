@@ -39,7 +39,7 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
       setName('');
       setDescription('');
       setType('react');
-      nativeNavigate(router, `/mini-apps/${project.id}`);
+      nativeNavigate(router, `/mini-apps/${encodeURIComponent(project.id)}`);
     } catch (e: unknown) {
       if (getApiErrorStatus(e) === 409) {
         setError(t('create.nameExists'));

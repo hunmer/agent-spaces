@@ -1,12 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, Pencil, Share2, Puzzle, FolderOpen, Copy, Upload } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import type { MiniAppProject } from '@agent-spaces/sdk';
-import { useWorkspaceStore } from '@/stores/workspace';
-import { workspaceIdFromLocation } from '@/lib/routes';
 import { MiniAppPreviewToolbar } from './mini-app-preview-toolbar';
 import { MiniAppChat } from './mini-app-chat';
 import { PluginToolDialog } from '@/components/workflow/plugin-tool-dialog';
@@ -124,7 +122,6 @@ interface MiniAppEditorProps {
 export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
     const t = useTranslations('mini-apps');
     const [project, setProject] = useState<MiniAppProject | null>(null);
-    const workspaces = useWorkspaceStore((s) => s.workspaces);
     const [files, setFiles] = useState<string[]>([]);
     const [activeFile, setActiveFile] = useState<string>('');
     const [sourceCode, setSourceCode] = useState('');
@@ -138,16 +135,9 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
         if (typeof window === 'undefined') return '';
         let route = '';
         try { route = new URLSearchParams(window.location.search).get('route') || ''; } catch { /* noop */ }
-        const base = `${window.location.origin}/mini-apps-preview/${projectId}`;
+        const base = `${window.location.origin}/mini-apps-preview/${encodeURIComponent(projectId)}`;
         return route ? `${base}?route=${encodeURIComponent(route)}` : base;
     })();
-    const resolvedWorkspaceId = useMemo(() => {
-        if (typeof window !== 'undefined') {
-            const fromLocation = workspaceIdFromLocation(window.location.pathname, window.location.search);
-            if (fromLocation) return fromLocation;
-        }
-        return workspaces[0]?.id ?? null;
-    }, [workspaces]);
     const localDirtyRef = useRef(false);
     const loadedFileContentRef = useRef('');
     const filesRef = useRef<string[]>([]);
@@ -494,7 +484,7 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
         return <div className="p-4 text-muted-foreground">{t('editor.notFound')}</div>;
     }
 
-    const previewUrl = `/mini-apps-preview/${project.id}?embedded=1&refresh=${previewRefreshKey}`;
+    const previewUrl = `/mini-apps-preview/${encodeURIComponent(project.id)}?embedded=1&refresh=${previewRefreshKey}`;
 
     return (
         <div className="flex flex-col h-full gap-2 p-2">
@@ -655,7 +645,6 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
 
             <MiniAppChat
                 project={project}
-                workspaceId={resolvedWorkspaceId ?? undefined}
                 activeFilePath={activeFile}
                 fileContent={sourceCode}
                 onUpdateProject={(updates) => {

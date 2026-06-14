@@ -8,8 +8,14 @@ import { MiniAppPreview } from '@/components/mini-apps/mini-app-preview';
 import { useMiniAppHostApi } from '@/components/mini-apps/use-mini-app-host-api';
 import { Loader2 } from 'lucide-react';
 
+function decodeRouteParam(value: string) {
+  try { return decodeURIComponent(value); }
+  catch { return value; }
+}
+
 export default function MiniAppPreviewPageClient() {
   const params = useParams<{ id: string }>();
+  const projectId = decodeRouteParam(params.id);
   const searchParams = useSearchParams();
   const embedded = searchParams.get('embedded') === '1';
   const [project, setProject] = useState<MiniAppProject | null>(null);
@@ -18,19 +24,19 @@ export default function MiniAppPreviewPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const host = useMiniAppHostApi(params.id);
+  const host = useMiniAppHostApi(projectId);
 
   const loadProject = useCallback(async () => {
     try {
-      const p = await sdk.miniApp.get(params.id);
+      const p = await sdk.miniApp.get(projectId);
       setProject(p);
 
       // Load ALL files for multi-file import resolution
-      const tree = await sdk.miniApp.getFileTree(params.id);
+      const tree = await sdk.miniApp.getFileTree(projectId);
       const files: Record<string, string> = {};
       for (const file of tree) {
         try {
-          const { content } = await sdk.miniApp.readFile(params.id, file);
+          const { content } = await sdk.miniApp.readFile(projectId, file);
           files[file] = content;
         } catch { /* skip */ }
       }
@@ -53,7 +59,7 @@ export default function MiniAppPreviewPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [projectId]);
 
   useEffect(() => { loadProject(); }, [loadProject]);
 

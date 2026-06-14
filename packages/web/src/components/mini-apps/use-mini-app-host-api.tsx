@@ -203,6 +203,8 @@ export function useMiniAppHostApi(projectId: string) {
   };
 
   useEffect(() => {
+    const encodedProjectId = encodeURIComponent(projectId);
+
     if (!executorIdRef.current) {
       // sessionStorage 标签级持久：同标签刷新/重连 executorId 不变，
       // 可认领自己之前发起的 running 任务；不同标签各自独立。
@@ -284,7 +286,7 @@ export function useMiniAppHostApi(projectId: string) {
 
     // ---- Services RPC: 调用项目 src/services/*.js 里的 handler（服务端执行） ----
     const invokeService = async (name: string, payload?: unknown) => {
-      const resp = await fetchWithAuth(`/api/mini-apps/${projectId}/services/invoke`, {
+      const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/services/invoke`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, payload }),
@@ -296,7 +298,7 @@ export function useMiniAppHostApi(projectId: string) {
 
     const readConfigJson = async <T,>(filePath = LAST_SELECTION_CONFIG): Promise<T | null> => {
       const path = normalizeRelativePath(filePath, LAST_SELECTION_CONFIG);
-      const resp = await fetchWithAuth(`/api/mini-apps/${projectId}/configs/content?path=${encodeURIComponent(path)}`);
+      const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/configs/content?path=${encodeURIComponent(path)}`);
       if (!resp.ok) throw new Error(`Failed to read config: ${resp.status} ${resp.statusText}`);
       const { value } = await resp.json();
       return value;
@@ -304,7 +306,7 @@ export function useMiniAppHostApi(projectId: string) {
 
     const writeConfigJson = async (filePath: string, value: unknown) => {
       const path = normalizeRelativePath(filePath, LAST_SELECTION_CONFIG);
-      const resp = await fetchWithAuth(`/api/mini-apps/${projectId}/configs/content`, {
+      const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/configs/content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path, value }),
@@ -319,7 +321,7 @@ export function useMiniAppHostApi(projectId: string) {
     const saveDataFile = async (filePath: string, content: string | Blob | ArrayBuffer | Uint8Array) => {
       const path = normalizeRelativePath(filePath, 'download.bin');
       if (typeof content === 'string') {
-        const resp = await fetchWithAuth(`/api/mini-apps/${projectId}/data/content`, {
+        const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/data/content`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path, content }),
@@ -330,7 +332,7 @@ export function useMiniAppHostApi(projectId: string) {
 
       const blob = content instanceof Blob ? content : new Blob([content as BlobPart]);
       const base64 = await blobToBase64(blob);
-      const resp = await fetchWithAuth(`/api/mini-apps/${projectId}/data/content`, {
+      const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/data/content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path, content: base64, encoding: 'base64' }),
@@ -344,7 +346,7 @@ export function useMiniAppHostApi(projectId: string) {
       if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
       const path = normalizeRelativePath(filePath ?? inferDownloadFileName(url), 'download.bin');
       const base64 = await blobToBase64(await response.blob());
-      const resp = await fetchWithAuth(`/api/mini-apps/${projectId}/data/content`, {
+      const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/data/content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path, content: base64, encoding: 'base64' }),
@@ -384,7 +386,7 @@ export function useMiniAppHostApi(projectId: string) {
       if (!DB_NAME_RE.test(dbName)) {
         throw new Error(`Invalid db name: ${dbName}`);
       }
-      const base = `/api/mini-apps/${projectId}/db/${encodeURIComponent(dbName)}`;
+      const base = `/api/mini-apps/${encodedProjectId}/db/${encodeURIComponent(dbName)}`;
       const post = async <T,>(url: string, body: unknown): Promise<T> => {
         const resp = await fetchWithAuth(url, {
           method: 'POST',
