@@ -43,7 +43,6 @@ import { WorkflowNodeContextMenu } from './workflow-node-context-menu';
 import { useWorkflowLogsCollapsed } from './workflow-logs-collapsed-context';
 import {
   HANDLE_POSITION_MAP,
-  WORKFLOW_NODE_DRAG_HANDLE_CLASS,
   getHandleStyle,
   getSourceLabelStyle,
   getTargetHandleStyle,
@@ -66,6 +65,7 @@ const showFullNodeSelector = (state: ReactFlowState) =>
 const canvasZoomSelector = (state: ReactFlowState) => state.transform[2] || 1;
 
 const workflowNodesSelector = (state: ReactFlowState) => state.nodes;
+type NodePreviewDragPhase = 'start' | 'move' | 'end' | 'cancel';
 
 function getVariableContextNodeLabel(
   nodeType: string,
@@ -413,6 +413,64 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     resizeCleanupRef.current = handlePointerCancel;
   }, [actions, canvasZoom, dispatchResizePreview, displayNodeHeight, displayNodeWidth, isCanvasLocked, nodeMinHeight, nodeMinWidth]);
 
+  const dispatchNodePreviewDrag = useCallback((phase: NodePreviewDragPhase, screenDelta: { x: number; y: number }) => {
+    window.dispatchEvent(new CustomEvent('workflow:node-preview-drag', {
+      detail: { nodeId: id, phase, screenDelta },
+    }));
+  }, [id]);
+
+  const handleCustomViewDragPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (isCanvasLocked) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const pointerId = event.pointerId;
+    const element = event.currentTarget;
+    const start = { x: event.clientX, y: event.clientY };
+    let frameId: number | null = null;
+    let pendingScreenDelta = { x: 0, y: 0 };
+
+    dispatchNodePreviewDrag('start', pendingScreenDelta);
+    element.setPointerCapture(pointerId);
+
+    const flushPreview = () => {
+      frameId = null;
+      dispatchNodePreviewDrag('move', pendingScreenDelta);
+    };
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      pendingScreenDelta = {
+        x: moveEvent.clientX - start.x,
+        y: moveEvent.clientY - start.y,
+      };
+      if (frameId === null) {
+        frameId = requestAnimationFrame(flushPreview);
+      }
+    };
+
+    const finishDrag = (phase: 'end' | 'cancel') => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+      dispatchNodePreviewDrag(phase, pendingScreenDelta);
+      if (element.hasPointerCapture(pointerId)) {
+        element.releasePointerCapture(pointerId);
+      }
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerCancel);
+    };
+
+    const handlePointerUp = () => finishDrag('end');
+    const handlePointerCancel = () => finishDrag('cancel');
+
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('pointercancel', handlePointerCancel);
+  }, [dispatchNodePreviewDrag, isCanvasLocked]);
+
   const setHandleColor = useCallback((handleId: string, color: string | null) => {
     const nextColors = { ...handleColors };
     if (color) {
@@ -522,13 +580,10 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         {showFullNode && hasCustomView && !isLoopBody && !isCanvasLocked ? (
           <button
             type="button"
-            className={cn(
-              WORKFLOW_NODE_DRAG_HANDLE_CLASS,
-              'inline-flex h-5 w-5 cursor-grab items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground active:cursor-grabbing',
-            )}
+            className="nodrag nopan inline-flex h-5 w-5 cursor-grab items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground active:cursor-grabbing"
             title={t('nodeUi.drag')}
             aria-label={t('nodeUi.drag')}
-            onClick={(event) => event.stopPropagation()}
+            onPointerDown={handleCustomViewDragPointerDown}
           >
             <Grip className="h-3 w-3" />
           </button>

@@ -180,53 +180,11 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": -1095,
-        "y": 315
+        "x": -1303.7003469567778,
+        "y": 319.4457114962871
       },
       "data": {
         "items": [
-          {
-            "id": 1781464146224,
-            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
-            "thumb": "",
-            "type": "image",
-            "caption": ""
-          },
-          {
-            "id": 1781465471042,
-            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
-            "thumb": "",
-            "type": "image",
-            "caption": ""
-          },
-          {
-            "id": 1781465472426,
-            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
-            "thumb": "",
-            "type": "image",
-            "caption": ""
-          },
-          {
-            "id": 1781465481909,
-            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
-            "thumb": "",
-            "type": "image",
-            "caption": ""
-          },
-          {
-            "id": 1781465490994,
-            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
-            "thumb": "",
-            "type": "image",
-            "caption": ""
-          },
-          {
-            "id": 1781465494368,
-            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
-            "thumb": "",
-            "type": "image",
-            "caption": ""
-          },
           {
             "id": 1781465498378,
             "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
@@ -237,8 +195,8 @@
         ],
         "width": 280,
         "height": 225,
-        "nodeWidth": 717,
-        "nodeHeight": 653
+        "nodeWidth": 470,
+        "nodeHeight": 719
       }
     },
     {
@@ -286,7 +244,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781465832325,
+  "updatedAt": 1781466026527,
   "enabledPlugins": [
     "workflow.fetch",
     "workflow.webview",

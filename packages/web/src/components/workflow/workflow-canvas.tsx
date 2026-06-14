@@ -64,6 +64,7 @@ type LoopBodyDragEventDetail = {
   phase: 'start' | 'move' | 'end' | 'cancel';
   screenDelta: { x: number; y: number };
 };
+type NodePreviewDragEventDetail = LoopBodyDragEventDetail;
 type DrawPoint = {
   clientX: number;
   clientY: number;
@@ -753,9 +754,9 @@ export function WorkflowCanvas({
   }, [rfNodes]);
 
   useEffect(() => {
-    const handleLoopBodyDrag = (event: Event) => {
+    const handleNodePreviewDrag = (event: Event) => {
       if (isCanvasLocked || !(event instanceof CustomEvent)) return;
-      const detail = event.detail as Partial<LoopBodyDragEventDetail> | undefined;
+      const detail = event.detail as Partial<NodePreviewDragEventDetail> | undefined;
       if (
         !detail
         || typeof detail.nodeId !== 'string'
@@ -834,9 +835,11 @@ export function WorkflowCanvas({
       }
     };
 
-    window.addEventListener('workflow:loop-body-drag', handleLoopBodyDrag);
+    window.addEventListener('workflow:loop-body-drag', handleNodePreviewDrag);
+    window.addEventListener('workflow:node-preview-drag', handleNodePreviewDrag);
     return () => {
-      window.removeEventListener('workflow:loop-body-drag', handleLoopBodyDrag);
+      window.removeEventListener('workflow:loop-body-drag', handleNodePreviewDrag);
+      window.removeEventListener('workflow:node-preview-drag', handleNodePreviewDrag);
     };
   }, [isCanvasLocked, onNodeDragStateChange, onNodeSelect, onNodesChange, screenDeltaToFlowDelta]);
 
