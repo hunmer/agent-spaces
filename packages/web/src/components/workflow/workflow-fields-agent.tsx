@@ -28,6 +28,22 @@ function resolveAgentValue(value: unknown, agents: AgentConfig[]): AgentConfig |
   return fresh ?? (record as AgentConfig);
 }
 
+function toWorkflowAgentValue(agent: AgentConfig | AgentPreset) {
+  return {
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    description: agent.description,
+    runtimeKind: agent.runtimeKind,
+    modelProvider: agent.modelProvider,
+    providerId: agent.providerId,
+    modelId: agent.modelId,
+    avatarUrl: agent.avatarUrl,
+    icon: agent.icon,
+    enabled: agent.enabled,
+  };
+}
+
 export function AgentPropertyEditor({
   value,
   disabled,
@@ -53,7 +69,7 @@ export function AgentPropertyEditor({
   const handleSelectAgent = (agentId: string) => {
     const agent = agents.find((item) => item.id === agentId);
     if (!agent) return;
-    onChange(agent);
+    onChange(toWorkflowAgentValue(agent));
     setPickerOpen(false);
   };
 
@@ -63,7 +79,7 @@ export function AgentPropertyEditor({
   };
 
   const handleSavedAgent = (saved: AgentPreset) => {
-    onChange(saved);
+    onChange(toWorkflowAgentValue(saved));
     setEditorOpen(false);
     setCreateDraft(null);
   };

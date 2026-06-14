@@ -26,5 +26,21 @@
   "sqlPlaceholder": "SELECT * FROM users  or  CREATE TABLE ...",
   "emptyResult": "No rows",
   "truncated": "Result truncated to {n} rows",
-  "execSummary": "{changes} row(s) affected, last insert id: {id}"
+  "execSummary": "{changes} row(s) affected, last insert id: {id}",
+  "tabSchema": "Schema",
+  "tabData": "Data",
+  "fieldName": "Field Name",
+  "dataType": "Data Type",
+  "indexed": "Indexed",
+  "required": "Required",
+  "action": "Action",
+  "addField": "Add Field",
+  "selectTable": "Select table",
+  "newTable": "New table",
+  "tableName": "Table name",
+  "applySchema": "Apply Schema",
+  "confirmRebuild": "Rebuilding the table will erase its data. Continue?",
+  "noFields": "Please add at least one field",
+  "schemaApplied": "Table schema applied",
+  "tableRequired": "Please select or enter a table name"
 }

@@ -26,5 +26,21 @@
   "sqlPlaceholder": "SELECT * FROM users  或  CREATE TABLE ...",
   "emptyResult": "无数据",
   "truncated": "结果已截断至 {n} 行",
-  "execSummary": "影响 {changes} 行，最后插入 ID：{id}"
+  "execSummary": "影响 {changes} 行，最后插入 ID：{id}",
+  "tabSchema": "表结构",
+  "tabData": "数据列表",
+  "fieldName": "存储字段名称",
+  "dataType": "数据类型",
+  "indexed": "设为索引",
+  "required": "是否必要",
+  "action": "操作",
+  "addField": "新增字段",
+  "selectTable": "选择表",
+  "newTable": "新建表",
+  "tableName": "表名",
+  "applySchema": "应用结构",
+  "confirmRebuild": "重建表将清空该表现有数据，确定继续？",
+  "noFields": "请至少添加一个字段",
+  "schemaApplied": "表结构已应用",
+  "tableRequired": "请选择或输入表名"
 }

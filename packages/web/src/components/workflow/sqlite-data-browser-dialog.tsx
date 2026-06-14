@@ -1,15 +1,87 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { sdk } from '@/lib/sdk';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Table2, Play, ChevronDown, ChevronRight } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
+import { Table2, Trash2, Plus, GripVertical } from 'lucide-react';
 import { ResultTable } from '@/components/table/result-table';
-import type { SqliteTableInfo, SqliteQueryResult, SqliteExecResult } from '@agent-spaces/shared';
+import type { SqliteTableInfo, SqliteQueryResult } from '@agent-spaces/shared';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
+
+const TYPE_OPTIONS = ['TEXT', 'INTEGER', 'REAL', 'NUMERIC', 'BLOB', 'BOOLEAN', 'DATETIME'];
+const NEW_TABLE = '__new__';
+
+interface FieldDef {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  indexed: boolean;
+  required: boolean;
+}
+
+let fieldSeq = 0;
+const newField = (): FieldDef => ({
+  id: `f${++fieldSeq}`,
+  name: '',
+  description: '',
+  type: 'TEXT',
+  indexed: false,
+  required: false,
+});
+
+function SortableRow({ id, children }: {
+  id: string;
+  children: (sortable: ReturnType<typeof useSortable>) => ReactNode;
+}) {
+  const sortable = useSortable({ id });
+  const { setNodeRef, transform, transition, isDragging } = sortable;
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  return (
+    <TableRow ref={setNodeRef} style={style} className={cn(isDragging && 'relative z-10 opacity-70')}>
+      {children(sortable)}
+    </TableRow>
+  );
+}
 
 export function SqliteDataBrowserDialog({ databaseId, onClose }: {
   databaseId: string;
@@ -17,13 +89,20 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
 }) {
   const t = useTranslations();
   const [tables, setTables] = useState<SqliteTableInfo[]>([]);
-  const [activeTable, setActiveTable] = useState<string | null>(null);
+
+  // 表结构 tab
+  const [schemaTable, setSchemaTable] = useState<string>('');
+  const [tableName, setTableName] = useState('');
+  const [fields, setFields] = useState<FieldDef[]>([]);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [schemaMsg, setSchemaMsg] = useState<string | null>(null);
+
+  // 数据列表 tab
+  const [dataTable, setDataTable] = useState<string>('');
   const [result, setResult] = useState<SqliteQueryResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sql, setSql] = useState('');
-  const [sqlOpen, setSqlOpen] = useState(false);
-  const [execResult, setExecResult] = useState<SqliteExecResult | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const loadTables = useCallback(async () => {
     try { setTables(await sdk.sqlite.listTables(databaseId)); } catch { setTables([]); }
@@ -31,62 +110,282 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
 
   useEffect(() => { loadTables(); }, [loadTables]);
 
-  const browseTable = async (name: string) => {
-    setActiveTable(name);
-    setLoading(true); setError(null); setExecResult(null);
+  const loadSchema = useCallback(async (name: string) => {
+    setSchemaError(null);
+    setSchemaMsg(null);
+    if (!name) { setFields([]); return; }
+    setSchemaLoading(true);
+    try {
+      const cols = await sdk.sqlite.describeTable(databaseId, name);
+      setFields(cols.map((c) => ({
+        id: `f${++fieldSeq}`,
+        name: c.name,
+        description: '',
+        type: (c.type || 'TEXT').toUpperCase(),
+        indexed: false,
+        required: c.notNull,
+      })));
+    } catch (e) { setSchemaError((e as Error).message); setFields([]); }
+    finally { setSchemaLoading(false); }
+  }, [databaseId]);
+
+  const browseData = useCallback(async (name: string) => {
+    setResult(null);
+    setDataError(null);
+    if (!name) return;
+    setDataLoading(true);
     try { setResult(await sdk.sqlite.query(databaseId, `SELECT * FROM "${name}" LIMIT ?`, [100])); }
-    catch (e) { setError((e as Error).message); setResult(null); }
-    finally { setLoading(false); }
+    catch (e) { setDataError((e as Error).message); }
+    finally { setDataLoading(false); }
+  }, [databaseId]);
+
+  const updateField = (id: string, patch: Partial<FieldDef>) =>
+    setFields((fs) => fs.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  const removeField = (id: string) => setFields((fs) => fs.filter((f) => f.id !== id));
+  const addField = () => setFields((fs) => [...fs, newField()]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = fields.findIndex((f) => f.id === active.id);
+    const newIndex = fields.findIndex((f) => f.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    setFields(arrayMove(fields, oldIndex, newIndex));
   };
 
-  const runSql = async () => {
-    setLoading(true); setError(null); setExecResult(null);
+  const targetTable = schemaTable === NEW_TABLE ? tableName.trim() : schemaTable;
+
+  const applySchema = async () => {
+    setSchemaError(null);
+    setSchemaMsg(null);
+    const valid = fields.filter((f) => f.name.trim());
+    if (!targetTable) { setSchemaError(t('sqlite.tableRequired')); return; }
+    if (valid.length === 0) { setSchemaError(t('sqlite.noFields')); return; }
+
+    const exists = tables.some((tb) => tb.name === targetTable);
+    if (exists && !window.confirm(t('sqlite.confirmRebuild'))) return;
+
+    setSchemaLoading(true);
     try {
-      const mode = /^\s*(select|with|pragma|explain)\b/i.test(sql) ? 'query' : 'exec';
-      if (mode === 'query') setResult(await sdk.sqlite.query(databaseId, sql));
-      else { const r = await sdk.sqlite.exec(databaseId, sql); setExecResult(r); setResult(null); await loadTables(); }
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
+      if (exists) await sdk.sqlite.exec(databaseId, `DROP TABLE IF EXISTS "${targetTable}"`);
+      const blocks = valid.map((f) => {
+        let def = `"${f.name}" ${f.type || 'TEXT'}`;
+        if (f.required) def += ' NOT NULL';
+        const desc = f.description.trim().replace(/[\r\n]/g, ' ');
+        return desc ? `-- ${f.name}: ${desc}\n  ${def}` : def;
+      });
+      await sdk.sqlite.exec(databaseId, `CREATE TABLE "${targetTable}" (\n  ${blocks.join(',\n  ')}\n)`);
+      for (const f of valid) {
+        if (f.indexed) {
+          await sdk.sqlite.exec(
+            databaseId,
+            `CREATE INDEX IF NOT EXISTS "idx_${targetTable}_${f.name}" ON "${targetTable}"("${f.name}")`,
+          );
+        }
+      }
+      setSchemaMsg(t('sqlite.schemaApplied'));
+      await loadTables();
+      if (schemaTable === NEW_TABLE) { setSchemaTable(targetTable); setTableName(''); }
+    } catch (e) { setSchemaError((e as Error).message); }
+    finally { setSchemaLoading(false); }
   };
 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="!flex !h-[80vh] !w-[80vw] !max-w-[80vw] !flex-col">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Table2 className="size-4" />{t('sqlite.browserTitle')}</DialogTitle></DialogHeader>
-        <div className="flex min-h-0 flex-1 gap-3">
-          <ScrollArea className="w-48 shrink-0 rounded-md border">
-            <div className="p-1">
-              {tables.map((tb) => (
-                <button key={tb.name}
-                  onClick={() => browseTable(tb.name)}
-                  className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${activeTable === tb.name ? 'bg-accent font-medium' : ''}`}>
-                  <span className="truncate">{tb.name}</span>
-                  <span className="ml-1 shrink-0 text-[10px] text-muted-foreground">{tb.rowCount}</span>
-                </button>
-              ))}
-              {tables.length === 0 && <div className="p-3 text-xs text-muted-foreground">{t('sqlite.noTables')}</div>}
-            </div>
-          </ScrollArea>
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="mb-2">
-              <button className="flex items-center gap-1 text-xs text-muted-foreground" onClick={() => setSqlOpen((v) => !v)}>
-                {sqlOpen ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}{t('sqlite.runSql')}
-              </button>
-              {sqlOpen && (
-                <div className="mt-1 space-y-1">
-                  <Textarea className="font-mono text-xs" rows={3} value={sql} onChange={(e) => setSql(e.target.value)} placeholder={t('sqlite.sqlPlaceholder')} />
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={runSql} disabled={!sql.trim()}><Play className="mr-1 size-3" />{t('sqlite.run')}</Button>
-                </div>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Table2 className="size-4" />{t('sqlite.browserTitle')}
+          </DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="schema" className="flex min-h-0 flex-1 flex-col gap-2">
+          <TabsList className="w-fit">
+            <TabsTrigger value="schema">{t('sqlite.tabSchema')}</TabsTrigger>
+            <TabsTrigger value="data">{t('sqlite.tabData')}</TabsTrigger>
+          </TabsList>
+
+          {/* 表结构 */}
+          <TabsContent value="schema" className="flex min-h-0 flex-1 flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={schemaTable || undefined}
+                onValueChange={(v) => {
+                  const val = v ?? '';
+                  setSchemaTable(val);
+                  setSchemaMsg(null);
+                  if (val === NEW_TABLE) setFields([newField()]);
+                  else loadSchema(val);
+                }}
+              >
+                <SelectTrigger size="sm" className="w-52">
+                  <SelectValue placeholder={t('sqlite.selectTable')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NEW_TABLE}>+ {t('sqlite.newTable')}</SelectItem>
+                  {tables.map((tb) => (
+                    <SelectItem key={tb.name} value={tb.name}>{tb.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {schemaTable === NEW_TABLE && (
+                <Input
+                  className="h-7 w-40 text-xs"
+                  placeholder={t('sqlite.tableName')}
+                  value={tableName}
+                  onChange={(e) => setTableName(e.target.value)}
+                />
               )}
+
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                onClick={applySchema}
+                disabled={schemaLoading || !targetTable}
+              >
+                {t('sqlite.applySchema')}
+              </Button>
+
+              {schemaError && <span className="text-xs text-destructive">{schemaError}</span>}
+              {schemaMsg && <span className="text-xs text-muted-foreground">{schemaMsg}</span>}
             </div>
+
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-              <ResultTable result={result} isLoading={loading} error={error} />
-              {execResult && (
-                <div className="p-2 text-xs text-muted-foreground">{t('sqlite.execSummary', { changes: execResult.changes, id: execResult.lastInsertRowid ?? '-' })}</div>
-              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8" />
+                    <TableHead className="w-44">{t('sqlite.fieldName')}</TableHead>
+                    <TableHead>{t('sqlite.description')}</TableHead>
+                    <TableHead className="w-36">{t('sqlite.dataType')}</TableHead>
+                    <TableHead className="w-20 text-center">{t('sqlite.indexed')}</TableHead>
+                    <TableHead className="w-20 text-center">{t('sqlite.required')}</TableHead>
+                    <TableHead className="w-12 text-center">{t('sqlite.action')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                      {fields.map((f) => {
+                        const opts = TYPE_OPTIONS.includes(f.type) ? TYPE_OPTIONS : [f.type, ...TYPE_OPTIONS];
+                        return (
+                          <SortableRow key={f.id} id={f.id}>
+                            {({ attributes, listeners }) => (
+                              <>
+                                <TableCell className="w-8">
+                                  <button
+                                    type="button"
+                                    {...attributes}
+                                    {...listeners}
+                                    className="flex size-5 cursor-grab touch-none items-center justify-center text-muted-foreground/60 transition-colors hover:text-foreground active:cursor-grabbing"
+                                  >
+                                    <GripVertical className="size-3.5" />
+                                  </button>
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    className="h-7 text-xs"
+                                    value={f.name}
+                                    onChange={(e) => updateField(f.id, { name: e.target.value })}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    className="h-7 text-xs"
+                                    value={f.description}
+                                    onChange={(e) => updateField(f.id, { description: e.target.value })}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Select value={f.type} onValueChange={(v) => updateField(f.id, { type: v ?? 'TEXT' })}>
+                                    <SelectTrigger size="sm" className="h-7 w-full text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {opts.map((tp) => (
+                                        <SelectItem key={tp} value={tp}>{tp}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex justify-center">
+                                    <Checkbox
+                                      checked={f.indexed}
+                                      onCheckedChange={(v) => updateField(f.id, { indexed: !!v })}
+                                    />
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex justify-center">
+                                    <Switch
+                                      size="sm"
+                                      checked={f.required}
+                                      onCheckedChange={(v) => updateField(f.id, { required: !!v })}
+                                    />
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex justify-center">
+                                    <button
+                                      className="text-muted-foreground transition-colors hover:text-destructive"
+                                      onClick={() => removeField(f.id)}
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </button>
+                                  </div>
+                                </TableCell>
+                              </>
+                            )}
+                          </SortableRow>
+                        );
+                      })}
+                    </SortableContext>
+                  </DndContext>
+
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7}>
+                      <button
+                        className="flex w-full items-center justify-center gap-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={addField}
+                      >
+                        <Plus className="size-3.5" />{t('sqlite.addField')}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* 数据列表 */}
+          <TabsContent value="data" className="flex min-h-0 flex-1 flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Select
+                value={dataTable || undefined}
+                onValueChange={(v) => { const val = v ?? ''; setDataTable(val); browseData(val); }}
+              >
+                <SelectTrigger size="sm" className="w-60">
+                  <SelectValue placeholder={t('sqlite.selectTable')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {tables.map((tb) => (
+                    <SelectItem key={tb.name} value={tb.name}>
+                      {tb.name} <span className="text-muted-foreground">({tb.rowCount})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+              <ResultTable result={result} isLoading={dataLoading} error={dataError} />
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

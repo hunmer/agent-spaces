@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { sdk } from '@/lib/sdk';
@@ -14,6 +15,10 @@ export function SqliteDatabasePicker({ value, onChange }: {
   const t = useTranslations();
   const [open, setOpen] = useState(false);
   const [dbName, setDbName] = useState('');
+  // 当前编辑的工作流 id：路由 `?workflowId=` 优先，回退到 `/workflows/[id]`（`_` 为静态生成占位符）
+  const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const workflowId = searchParams.get('workflowId') ?? (params.id && params.id !== '_' ? params.id : undefined);
 
   useEffect(() => {
     let active = true;
@@ -38,6 +43,7 @@ export function SqliteDatabasePicker({ value, onChange }: {
         open={open}
         onOpenChange={setOpen}
         mode="pick"
+        workflowId={workflowId}
         onPicked={(id) => { onChange(id); setOpen(false); }}
       />
     </div>

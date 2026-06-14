@@ -38,8 +38,8 @@
       "type": "agent_run",
       "label": "nodes.agent_run.label",
       "position": {
-        "x": 450,
-        "y": 345
+        "x": 270,
+        "y": 75
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -57,35 +57,24 @@
         ],
         "prompt": "你好",
         "agent": {
-          "id": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
-          "name": "test",
+          "id": "6005773f-07c1-4904-b9f7-bf85c91c8a9c",
+          "name": "Agent",
           "role": "agent",
-          "description": "",
-          "runtimeKind": "langchain",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "claude-code",
           "modelProvider": "openai-chat-completions",
-          "providerId": "575f5fea-467e-4aa2-8b17-f4522dc74429",
+          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
           "modelId": "GLM-4.7",
-          "workingDir": "",
-          "mcps": {},
-          "skills": [],
-          "tools": [],
-          "systemPrompt": "",
-          "outputStyle": "",
-          "temperature": 0.3,
-          "maxTokens": 4096,
           "avatarUrl": "",
           "icon": "",
-          "enabled": true,
-          "backgroundUrl": "",
-          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
-          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O"
+          "enabled": true
         }
       }
     }
   ],
   "edges": [],
   "createdAt": 1781255038446,
-  "updatedAt": 1781352140145,
+  "updatedAt": 1781444913944,
   "enabledPlugins": [
     "workflow.aliyun-ai",
     "workflow.epub-parser",

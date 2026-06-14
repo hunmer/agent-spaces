@@ -130,6 +130,37 @@ function resolveStaleRoles(nodes: WorkflowNode[]): { nodes: WorkflowNode[]; inva
   return { nodes: resolved, invalidIds };
 }
 
+function sanitizeWorkflowAgentValue(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const agent = value as Record<string, unknown>;
+  return {
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    description: agent.description,
+    runtimeKind: agent.runtimeKind,
+    modelProvider: agent.modelProvider,
+    providerId: agent.providerId,
+    modelId: agent.modelId,
+    avatarUrl: agent.avatarUrl,
+    icon: agent.icon,
+    enabled: agent.enabled,
+  };
+}
+
+function sanitizeAgentRunNodes(nodes: WorkflowNode[]): WorkflowNode[] {
+  return nodes.map((node) => {
+    if (node.type !== 'agent_run') return node;
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        agent: sanitizeWorkflowAgentValue(node.data.agent),
+      },
+    };
+  });
+}
+
 // ---- Workflow CRUD ----
 
 export function listWorkflows(folderId?: string | null): Workflow[] {
@@ -147,10 +178,11 @@ export function createWorkflow(
   const nodes = input.nodes ?? [];
   const edges = input.edges ?? [];
 
-  const { nodes: resolvedNodes, invalidIds } = resolveStaleRoles(nodes);
+  const { nodes: staleRoleResolvedNodes, invalidIds } = resolveStaleRoles(nodes);
   if (invalidIds.length > 0) {
     throw new Error(`Invalid agent references in nodes: ${invalidIds.join(', ')}`);
   }
+  const resolvedNodes = sanitizeAgentRunNodes(staleRoleResolvedNodes);
 
   const workflow: Workflow = {
     id: uuid(),
@@ -190,6 +222,7 @@ export function updateWorkflow(
     }
     nodes = resolved.nodes;
   }
+  nodes = sanitizeAgentRunNodes(nodes);
 
   const updated: Workflow = {
     ...existing,
@@ -224,6 +257,7 @@ export function duplicateWorkflow(workflowId: string): Workflow {
     ...existing,
     id: uuid(),
     name: `${existing.name} (Copy)`,
+    nodes: sanitizeAgentRunNodes(existing.nodes),
     createdAt: now,
     updatedAt: now,
   };

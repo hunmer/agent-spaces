@@ -37,17 +37,6 @@
     "updatedAt": "2026-06-14T13:16:37.018Z"
   },
   {
-    "id": "minimax_tts",
-    "name": "minimax tts",
-    "type": "react",
-    "icon": "🫨",
-    "iconUrl": "mini-app/icons/minimax_tts.png",
-    "description": "minimax配音界面",
-    "zipUrl": "mini-app/minimax_tts.zip",
-    "md5": "0870523dbdc38642f1150d49b3b22e66",
-    "updatedAt": "2026-06-14T13:02:44.074Z"
-  },
-  {
     "id": "podcast_generator",
     "name": "电子书转播客",
     "type": "react",

@@ -19,6 +19,46 @@ function normalizeExecutionLogs(value: unknown): ExecutionLog[] {
   return [];
 }
 
+function sanitizeWorkflowAgentValue(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const agent = value as Record<string, unknown>;
+  return {
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    description: agent.description,
+    runtimeKind: agent.runtimeKind,
+    modelProvider: agent.modelProvider,
+    providerId: agent.providerId,
+    modelId: agent.modelId,
+    avatarUrl: agent.avatarUrl,
+    icon: agent.icon,
+    enabled: agent.enabled,
+  };
+}
+
+function sanitizeWorkflowNodes(nodes: WorkflowNode[] | undefined): WorkflowNode[] | undefined {
+  if (!nodes) return undefined;
+  return nodes.map((node) => {
+    if (node.type !== 'agent_run') return node;
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        agent: sanitizeWorkflowAgentValue(node.data.agent),
+      },
+    };
+  });
+}
+
+function sanitizeWorkflowData<T extends Partial<Workflow>>(data: T): T {
+  if (!data.nodes) return data;
+  return {
+    ...data,
+    nodes: sanitizeWorkflowNodes(data.nodes),
+  };
+}
+
 // ---- Workflow CRUD ----
 
 export const workflowApi = {
@@ -38,12 +78,12 @@ export const workflowApi = {
   },
 
   create(data: Partial<Workflow>): Promise<Workflow> {
-    return sdk.workflow.create(data);
+    return sdk.workflow.create(sanitizeWorkflowData(data));
   },
 
   update(id: string, data: Partial<Workflow>): Promise<Workflow> {
     pendingWorkflowGets.delete(id);
-    return sdk.workflow.update(id, data);
+    return sdk.workflow.update(id, sanitizeWorkflowData(data));
   },
 
   delete(id: string): Promise<void> {
