@@ -1,12 +1,48 @@
 [
   {
-    "id": "1781390651956-0",
+    "id": "1781412973652-0",
     "type": "video",
-    "url": "https://v6-default.365yg.com/0d632b2e17c15dec0052a3f44ca0aa47/6a2deb50/video/tos/cn/tos-cn-v-148450/ooCAS61EtXf4aAM3QZhTuKsm9DJg4QFOkddEBI/?a=0&ch=0&cr=0&dr=0&er=0&lr=default&cd=0%7C0%7C0%7C0&br=2096&bt=2096&cs=0&ds=4&ft=Oi.pi77JWH6BMYeMwJr0PD1IN&mime_type=video_mp4&qs=0&rc=ZjVpNjszZzY6NDdpPDlnaEBpanlyNTprb2Z3OzczNDM7M0AvYDRfMi0uNjMxYGJiMl8tYSNicXAucWdmbmphLS1kNC9zcw%3D%3D&btag=80000e00008000&cquery=100X&dy_q=1781390651&feature_id=f0150a16a324336cda5d6dd0b69ed299&l=202606140644117A0958CCE6253A491EB2",
+    "url": "https://dashscope-a717.oss-accelerate.aliyuncs.com/1d/4b/20260614/8b446308/73501352-metadata_user_4d83801c2b20f647.mp4?Expires=1781499367&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=PHOsbPXDhb39Fdv%2F6xeT2M04IT4%3D",
     "mode": "image_to_video",
+    "provider": "aliyun",
+    "prompt": "赛博朋克风格的城市夜景",
+    "createdAt": "2026/6/14 12:56:13"
+  },
+  {
+    "id": "1781412886280-0",
+    "type": "image",
+    "url": "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/75a943674b764d0c9532ecd1dcc86eff~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781416800&x-signature=dI5Ko5ClqDJJRIEdiWhxlUeDdkk%3D&format=.png",
+    "mode": "text_to_image",
     "provider": "jimeng",
-    "prompt": "可爱的猫咪头像",
-    "createdAt": "2026/6/14 06:44:11"
+    "prompt": "赛博朋克风格的城市夜景",
+    "createdAt": "2026/6/14 12:54:46"
+  },
+  {
+    "id": "1781412886280-1",
+    "type": "image",
+    "url": "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/1fc749b1a25e40d0b01825e3317e1e75~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781416800&x-signature=2HvExihRaP0Mv2huXAlnee78aCc%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "赛博朋克风格的城市夜景",
+    "createdAt": "2026/6/14 12:54:46"
+  },
+  {
+    "id": "1781412886280-2",
+    "type": "image",
+    "url": "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/6e45e2af356a42c794f1ed251ae0a21e~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781416800&x-signature=gTdSP7GjJn%2Frf22sV4pBB33i0aY%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "赛博朋克风格的城市夜景",
+    "createdAt": "2026/6/14 12:54:46"
+  },
+  {
+    "id": "1781412886280-3",
+    "type": "image",
+    "url": "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/adfb006bfb6e498085ea885d1aeeca9a~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1781416800&x-signature=joy6alY6k1oVn%2BLJ88c2X1N%2FR4Y%3D&format=.png",
+    "mode": "text_to_image",
+    "provider": "jimeng",
+    "prompt": "赛博朋克风格的城市夜景",
+    "createdAt": "2026/6/14 12:54:46"
   },
   {
     "id": "1781389095531-0",

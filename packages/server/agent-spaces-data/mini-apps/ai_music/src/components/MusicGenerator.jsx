@@ -114,7 +114,7 @@ export default function MusicGenerator({ open, onClose, onGenerate, onGenerateSt
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={5}
-              className="border-border placeholder:text-muted-foreground bg-background/40 resize-none"
+              className="border-border placeholder:text-muted-foreground bg-background/40 resize-none max-h-[30vh] overflow-y-auto"
             />
           </div>
 
@@ -127,7 +127,7 @@ export default function MusicGenerator({ open, onClose, onGenerate, onGenerateSt
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value)}
                 rows={5}
-                className="border-border placeholder:text-muted-foreground bg-background/40 resize-none pb-9"
+                className="border-border placeholder:text-muted-foreground bg-background/40 resize-none pb-9 max-h-[35vh] overflow-y-auto"
               />
               <button
                 type="button"
