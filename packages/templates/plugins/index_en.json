@@ -402,6 +402,26 @@
     "updatedAt": "2026-06-08T01:21:28.138Z"
   },
   {
+    "id": "workflow.webview",
+    "name": "Webview",
+    "version": "1.0.0",
+    "description": "Provides a webview workflow node rendered with customView and iframe fallback on Web.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Webview",
+      "iframe",
+      "customView"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "webview",
+    "md5": "a47e4cf87568086164ceff6a3ea75f6b",
+    "updatedAt": "2026-06-14T18:34:09.186Z"
+  },
+  {
     "id": "workflow.window-manager",
     "name": "Window Manager",
     "version": "1.0.0",

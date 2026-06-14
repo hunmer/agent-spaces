@@ -256,6 +256,51 @@
         ],
         "url": "https://www.baidu.com"
       }
+    },
+    {
+      "id": "node_1781462173283_19d75o",
+      "type": "open_webview",
+      "label": "打开 Webview",
+      "position": {
+        "x": -210,
+        "y": 240
+      },
+      "data": {
+        "url": "https://www.baidu.com",
+        "title": "Webview",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "url",
+                "type": "string"
+              },
+              {
+                "key": "title",
+                "type": "string"
+              },
+              {
+                "key": "fallback",
+                "type": "boolean"
+              }
+            ]
+          }
+        ],
+        "width": 420,
+        "height": 300,
+        "nodeWidth": 435,
+        "nodeHeight": 330
+      }
     }
   ],
   "edges": [
@@ -271,13 +316,14 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781461121061,
+  "updatedAt": 1781462270587,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng",
     "workflow.fetch",
     "workflow.desktop-native",
-    "workflow.window-manager"
+    "workflow.window-manager",
+    "workflow.webview"
   ],
   "groups": []
 }

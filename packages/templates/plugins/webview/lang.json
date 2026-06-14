@@ -1,0 +1,24 @@
+{
+  "zh": {
+    "category": "Webview",
+    "action.open_webview.label": "打开 Webview",
+    "action.open_webview.description": "增加一个 webview 节点。Electron 中使用 webview；Web 中在 customView 内回退使用 iframe。",
+    "field.url.label": "URL",
+    "field.url.tooltip": "要在 webview 中展示的 URL",
+    "field.title.label": "标题",
+    "field.title.tooltip": "Webview 标题",
+    "message.urlRequired": "URL 不能为空",
+    "message.webviewReady": "Webview 已就绪"
+  },
+  "en": {
+    "category": "Webview",
+    "action.open_webview.label": "Open Webview",
+    "action.open_webview.description": "Add a webview node rendered with customView. Electron uses webview; Web falls back to iframe.",
+    "field.url.label": "URL",
+    "field.url.tooltip": "The URL to show in the webview",
+    "field.title.label": "Title",
+    "field.title.tooltip": "Webview title",
+    "message.urlRequired": "URL is required",
+    "message.webviewReady": "Webview ready"
+  }
+}
