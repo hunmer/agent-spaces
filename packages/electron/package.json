@@ -6,7 +6,7 @@
   "main": "out/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node -e \"require('fs').writeFileSync('out/preload/package.json','{\\\"type\\\":\\\"commonjs\\\"}\\n')\"",
-    "dev": "pnpm build && electron .",
+    "dev": "pnpm build && ELECTRON_RENDERER_URL=http://127.0.0.1:3000 electron .",
     "start": "electron ."
   },
   "dependencies": {

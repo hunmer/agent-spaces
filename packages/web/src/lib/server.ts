@@ -8,24 +8,12 @@ export type ServerConfig = {
 const STORAGE_KEY = "agent-spaces-servers";
 const ACTIVE_KEY = "agent-spaces-active-server";
 const COOKIE_KEY = "active-server";
-
-function isLocalhost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1";
-}
+const SERVER_PORT = "3100";
 
 function getDefaultServerUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_SERVER_URL?.trim();
-  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
-
-  if (typeof window === "undefined") return "http://localhost:3100";
-
-  const { hostname, port } = window.location;
-
-  if (isLocalhost(hostname) && port === "3000") {
-    return `http://${hostname}:3100`;
-  }
-
-  return window.location.origin;
+  if (configuredUrl) return normalizeServerUrl(configuredUrl);
+  return normalizeServerUrl("127.0.0.1");
 }
 
 const DEFAULT_SERVERS: ServerConfig[] = [
@@ -34,24 +22,37 @@ const DEFAULT_SERVERS: ServerConfig[] = [
 
 function normalizeServers(servers: ServerConfig[]): ServerConfig[] {
   return servers.map((server) => {
-    if (server.id !== "default") return server;
-    if (server.url) return server;
-    return { ...server, url: getDefaultServerUrl() };
+    if (server.id === "default") {
+      return { ...server, url: getDefaultServerUrl() };
+    }
+    return { ...server, url: normalizeServerUrl(server.url || getDefaultServerUrl()) };
   });
 }
 
+export function normalizeServerUrl(input: string): string {
+  const value = input.trim();
+  if (!value) return `http://127.0.0.1:${SERVER_PORT}`;
+
+  try {
+    const parsed = new URL(value.includes("://") ? value : `http://${value}`);
+    return `http://${parsed.hostname}:${SERVER_PORT}`;
+  } catch {
+    return `http://${value.replace(/^https?:\/\//, "").split("/")[0].split(":")[0]}:${SERVER_PORT}`;
+  }
+}
+
 export function loadServers(): ServerConfig[] {
-  if (typeof window === "undefined") return DEFAULT_SERVERS;
+  if (typeof window === "undefined") return normalizeServers(DEFAULT_SERVERS);
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? normalizeServers(JSON.parse(data)) : DEFAULT_SERVERS;
+    return data ? normalizeServers(JSON.parse(data)) : normalizeServers(DEFAULT_SERVERS);
   } catch {
-    return DEFAULT_SERVERS;
+    return normalizeServers(DEFAULT_SERVERS);
   }
 }
 
 export function saveServers(servers: ServerConfig[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(servers));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeServers(servers)));
 }
 
 export function loadActiveId(): string {
@@ -87,7 +88,7 @@ export function resolveServerAssetUrl(url: string | null | undefined): string {
 
 export function setActiveServerCookie(url: string | null) {
   if (url) {
-    document.cookie = `${COOKIE_KEY}=${encodeURIComponent(url)}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = `${COOKIE_KEY}=${encodeURIComponent(normalizeServerUrl(url))}; path=/; max-age=31536000; SameSite=Lax`;
   } else {
     document.cookie = `${COOKIE_KEY}=; path=/; max-age=0`;
   }

@@ -11,12 +11,6 @@
 3. **全局快捷键**：`globalShortcut` 注册系统级快捷键，绑定存 electron-store
 4. **桥接 API**：preload 暴露 `window.electronAPI`，前端据其判断 electron 环境（见 `packages/web/src/components/workflow/workflow-execution-input-dialog.tsx` 的 `isElectronEnvironment()`）
 
-## 已删除（相较 WorkFox 源）
-
-- `backend-process.ts` + `ipc/backend.ts`：不 fork server，连外部 `packages/server`
-- 整个 plugin 系统（`plugin-*` + `ipc/plugin.ts`）：用 server 自带 plugin 系统
-- workflow 节点 + store + chat IPC（`workflow-node-registry`/`builtin-nodes`/`nodes/`/`workflow-store`/`workflow-browser-node-runtime`/`ipc/chat.ts`/`ipc/workflow.ts`）：用 server workflow 引擎
-
 ## 入口与启动
 
 - **入口**：`main.ts`（编译到 `out/main.js`）

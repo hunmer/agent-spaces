@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, Pencil, Plus, Server, Trash2, Wifi } from "lucide-react";
-import { type ServerConfig } from "@/lib/server";
+import { normalizeServerUrl, type ServerConfig } from "@/lib/server";
 import { sdk } from "@/lib/sdk";
 import { useTranslations } from "next-intl";
 
@@ -57,8 +57,7 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
 
   const saveEdit = () => {
     if (!name.trim() || !url.trim()) return;
-    let u = url.trim().replace(/\/$/, "");
-    if (!/^https?:\/\//.test(u)) u = "http://" + u;
+    const u = normalizeServerUrl(url);
     const updated = servers.map((s) =>
       s.id === editId ? { ...s, name: name.trim(), url: u, secret: secret.trim() || undefined } : s
     );
@@ -68,8 +67,7 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
 
   const addServer = () => {
     if (!newName.trim() || !newUrl.trim()) return;
-    let u = newUrl.trim().replace(/\/$/, "");
-    if (!/^https?:\/\//.test(u)) u = "http://" + u;
+    const u = normalizeServerUrl(newUrl);
     const server: ServerConfig = { id: Date.now().toString(), name: newName.trim(), url: u, secret: newSecret.trim() || undefined };
     onUpdate([...servers, server]);
     setNewName("");
@@ -170,7 +168,7 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
               {editId === server.id ? (
                 <>
                   <Input className="h-7 text-sm flex-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" autoFocus />
-                  <Input className="h-7 text-sm flex-[1.5]" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://..." onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} />
+                  <Input className="h-7 text-sm flex-[1.5]" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="192.168.1.100" onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} />
                   <Button size="sm" variant="ghost" onClick={saveEdit} className="h-7 px-2">{tc("save")}</Button>
                   <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-2">{tc("cancel")}</Button>
                 </>
@@ -215,7 +213,7 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <Input className="h-8 text-sm flex-1" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="http://..." />
+              <Input className="h-8 text-sm flex-1" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="192.168.1.100" />
             </div>
             <div className="flex items-center gap-2">
               <Input

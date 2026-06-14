@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type ServerConfig } from "@/lib/server";
+import { normalizeServerUrl, type ServerConfig } from "@/lib/server";
 import { useTranslations } from "next-intl";
 
 interface ServerFormDialogProps {
@@ -46,8 +46,7 @@ export function ServerFormDialog({ open, onOpenChange, editingId, servers, onSav
 
   const saveForm = () => {
     if (!name.trim() || !url.trim()) return;
-    let u = url.trim().replace(/\/$/, "");
-    if (!/^https?:\/\//.test(u)) u = "http://" + u;
+    const u = normalizeServerUrl(url);
     if (editingId) {
       const updated = servers.map((s) =>
         s.id === editingId ? { ...s, name: name.trim(), url: u, secret: secret.trim() || undefined } : s
@@ -79,7 +78,7 @@ export function ServerFormDialog({ open, onOpenChange, editingId, servers, onSav
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="http://192.168.1.100:3100"
+              placeholder="192.168.1.100"
               onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
             />
           </div>
