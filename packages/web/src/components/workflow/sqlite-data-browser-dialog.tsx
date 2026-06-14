@@ -187,7 +187,7 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
     setDataError(null);
     if (!name || name === NEW_TABLE) return;
     setDataLoading(true);
-    try { setResult(await sdk.sqlite.query(databaseId, `SELECT * FROM "${name}" LIMIT ?`, [100])); }
+    try { setResult(await sdk.sqlite.query(databaseId, `SELECT rowid AS __rowid__, * FROM "${name}" LIMIT ?`, [100])); }
     catch (e) { setDataError((e as Error).message); }
     finally { setDataLoading(false); }
   }, [databaseId]);
@@ -264,6 +264,19 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
       }
     } catch (e) { setInsertError((e as Error).message); }
   };
+
+  // 删除单行：用查询带回的 __rowid__ 定位
+  const deleteRow = useCallback(async (row: Record<string, unknown>) => {
+    if (!schemaTable || schemaTable === NEW_TABLE) return;
+    const rowid = row.__rowid__;
+    if (rowid == null) { setInsertError(t('sqlite.noRowid')); return; }
+    if (!window.confirm(t('sqlite.confirmDeleteRow'))) return;
+    setInsertError(null);
+    try {
+      await sdk.sqlite.exec(databaseId, `DELETE FROM ${quoteIdent(schemaTable)} WHERE rowid = ?`, [rowid]);
+      await Promise.all([browseData(schemaTable), loadTables()]);
+    } catch (e) { setInsertError((e as Error).message); }
+  }, [schemaTable, databaseId, browseData, loadTables, t]);
 
   const updateField = (id: string, patch: Partial<FieldDef>) =>
     setFields((fs) => fs.map((f) => (f.id === id ? { ...f, ...patch } : f)));
@@ -551,7 +564,7 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
             )}
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-              <ResultTable result={result} isLoading={dataLoading} error={dataError} />
+              <ResultTable result={result} isLoading={dataLoading} error={dataError} onDelete={deleteRow} />
             </div>
           </TabsContent>
         </Tabs>

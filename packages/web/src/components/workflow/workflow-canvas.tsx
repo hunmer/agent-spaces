@@ -456,7 +456,7 @@ interface WorkflowCanvasProps {
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   onNodeDebug?: (id: string) => void;
   onCancelDebug?: () => void;
-  onExecuteFromNode?: (id: string) => void;
+  onExecuteFromNode?: (id?: string) => void;
   onResumeExecution?: () => void;
   onStopExecution?: () => void;
   pausedNodeId?: string | null;

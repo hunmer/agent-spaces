@@ -8,7 +8,7 @@ import { DataGridTable } from '@/components/reui/data-grid/data-grid-table';
 import { DataGridPagination } from '@/components/reui/data-grid/data-grid-pagination';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Trash2 } from 'lucide-react';
 import type { SqliteQueryResult } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 
@@ -16,6 +16,7 @@ export interface ResultTableProps {
   result: SqliteQueryResult | null;
   isLoading?: boolean;
   error?: string | null;
+  onDelete?: (row: Record<string, unknown>) => void;
 }
 
 function renderCell(v: unknown): React.ReactNode {
@@ -24,7 +25,7 @@ function renderCell(v: unknown): React.ReactNode {
   return String(v);
 }
 
-export function ResultTable({ result, isLoading = false, error = null }: ResultTableProps) {
+export function ResultTable({ result, isLoading = false, error = null, onDelete }: ResultTableProps) {
   const t = useTranslations();
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -32,15 +33,34 @@ export function ResultTable({ result, isLoading = false, error = null }: ResultT
   const rows = result?.rows ?? [];
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     const cols = result?.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
-    return cols.map((key) => ({
+    const display = onDelete ? cols.filter((k) => k !== '__rowid__') : cols;
+    const built: ColumnDef<Record<string, unknown>>[] = display.map((key) => ({
       accessorKey: key,
       id: key,
       header: key,
       cell: ({ row }) => renderCell(row.original[key]),
       enableSorting: true,
     }));
+    if (onDelete) {
+      built.push({
+        id: '__delete',
+        header: '',
+        enableSorting: false,
+        size: 40,
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="flex size-5 items-center justify-center text-muted-foreground transition-colors hover:text-destructive"
+            onClick={() => onDelete(row.original)}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        ),
+      });
+    }
+    return built;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result?.columns, rows[0]]);
+  }, [result?.columns, rows[0], onDelete]);
 
   useEffect(() => { setPagination((p) => ({ ...p, pageIndex: 0 })); }, [result]);
 

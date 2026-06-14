@@ -88,6 +88,12 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
     window.dispatchEvent(new CustomEvent('workflow:debug-node', { detail: { nodeId: id } }));
   }, [id, isBoundaryNode, isCanvasLocked, isCurrentNodeDebugging]);
 
+  const handleExecuteWorkflow = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (isCanvasLocked || isExecutionBusy) return;
+    window.dispatchEvent(new CustomEvent('workflow:execute-from-node'));
+  }, [isCanvasLocked, isExecutionBusy]);
+
   const handlePartialTest = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     if (isCanvasLocked || isBoundaryNode || isExecutionBusy) return;
@@ -137,6 +143,7 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
     handleBatchDelete,
     handleShowInfo,
     handleTestNode,
+    handleExecuteWorkflow,
     handlePartialTest,
     handleResumeFromBreakpoint,
     handleStopAtBreakpoint,

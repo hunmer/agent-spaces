@@ -18,7 +18,7 @@ interface UseCanvasDomEventsParams {
   onBatchDeleteNodes?: (ids: string[]) => void;
   onNodeDebug?: (id: string) => void;
   onCancelDebug?: () => void;
-  onExecuteFromNode?: (id: string) => void;
+  onExecuteFromNode?: (id?: string) => void;
   onResumeExecution?: () => void;
   onStopExecution?: () => void;
 }
@@ -156,8 +156,7 @@ export function useCanvasDomEvents({
   const handleExecuteFromNodeEvent = useCallback((e: Event) => {
     if (isCanvasLocked || !onExecuteFromNode) return;
     const detail = (e as CustomEvent).detail as { nodeId?: string | null } | undefined;
-    if (!detail?.nodeId) return;
-    onExecuteFromNode(detail.nodeId);
+    onExecuteFromNode(detail?.nodeId || undefined);
   }, [isCanvasLocked, onExecuteFromNode]);
 
   const handleResumeExecutionEvent = useCallback(() => {

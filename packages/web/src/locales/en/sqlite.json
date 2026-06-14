@@ -47,5 +47,7 @@
   "insert": "Insert",
   "rowInserted": "Row inserted",
   "noColumns": "Select a table with columns first",
-  "confirmDrop": "Delete this table and all its data? This cannot be undone."
+  "confirmDrop": "Delete this table and all its data? This cannot be undone.",
+  "confirmDeleteRow": "Delete this row?",
+  "noRowid": "Row has no rowid, cannot delete"
 }

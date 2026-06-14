@@ -44,7 +44,8 @@
             "required": false
           }
         ]
-      }
+      },
+      "nodeColor": "violet"
     },
     {
       "id": "node_1781410107452_end",
@@ -94,7 +95,7 @@
         "prompt": "{{ __data__[\"node_1781410107452_start\"].prompt }}",
         "negativePrompt": "{{ __data__[\"node_1781410107452_start\"].negativePrompt }}"
       },
-      "nodeColor": "violet"
+      "nodeColor": "rose"
     },
     {
       "id": "node_1781442077992_tsna68",
@@ -136,7 +137,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781447674079,
+  "updatedAt": 1781448048617,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng"

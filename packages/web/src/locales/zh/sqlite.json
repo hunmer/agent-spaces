@@ -47,5 +47,7 @@
   "insert": "插入",
   "rowInserted": "数据已插入",
   "noColumns": "请先选择一个含字段的表",
-  "confirmDrop": "删除该表及其所有数据？此操作不可撤销。"
+  "confirmDrop": "删除该表及其所有数据？此操作不可撤销。",
+  "confirmDeleteRow": "删除该行数据？",
+  "noRowid": "该行无 rowid，无法删除"
 }
