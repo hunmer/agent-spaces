@@ -923,6 +923,9 @@
     "collisionDesc": "拖拽结束后自动避让",
     "deleteReconnect": "删除重连",
     "deleteReconnectDesc": "删除节点后自动连接",
+    "clipboardPaste": "剪贴板粘贴",
+    "clipboardPasteImageDesc": "图片粘贴为画廊预览节点",
+    "clipboardPasteTextDesc": "文本粘贴为便签节点",
     "autoPreviewLastRun": "自动预览上次结果",
     "autoPreviewLastRunDesc": "打开工作流时自动进入上次运行结果的预览",
     "background": {

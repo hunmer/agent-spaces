@@ -122,6 +122,15 @@ function toPreviewDebugResult(step: ExecutionStep | undefined): DebugResult | nu
   };
 }
 
+function readBlobAsDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 function WorkflowEditorInner({
   template, onBack,
 }: {
@@ -196,6 +205,8 @@ function WorkflowEditorInner({
   const selectedNodeIds = state.selectedNodeIds.length > 0
     ? state.selectedNodeIds
     : state.selectedNodeId ? [state.selectedNodeId] : [];
+  const clipboardImagePasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardImagesAsGallery !== false;
+  const clipboardTextPasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardTextAsStickyNote !== false;
   const previewResult = useMemo(() => {
     if (!state.isPreview || !state.selectedNodeId) return null;
     const step = execution.executionLog?.steps.find(item => item.nodeId === state.selectedNodeId);
@@ -203,7 +214,47 @@ function WorkflowEditorInner({
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
 
   const { enterPreview, exitPreview, isPreview, markPreviewDirty, saveWorkflow, setWorkflow } = state;
-  const pasteClipboardNodes = useCallback(() => {
+  const pasteClipboardNodes = useCallback(async () => {
+    if (clipboardImagePasteEnabled && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
+      try {
+        const items = await navigator.clipboard.read();
+        const imageBlobs: Blob[] = [];
+        for (const item of items) {
+          const imageType = item.types.find(type => type.startsWith('image/'));
+          if (imageType) imageBlobs.push(await item.getType(imageType));
+        }
+        if (imageBlobs.length > 0) {
+          const sources = await Promise.all(imageBlobs.map(readBlobAsDataUrl));
+          canvas.handleNodeAdd('gallery_preview', { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 }, undefined, {
+            items: sources.filter(Boolean).map((src, index) => ({
+              id: `clipboard_image_${Date.now()}_${index}`,
+              src,
+              thumb: src,
+              type: 'image',
+              caption: '',
+            })),
+          });
+          return;
+        }
+      } catch {
+        // Browser clipboard image access is optional.
+      }
+    }
+
+    if (clipboardTextPasteEnabled && typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+      try {
+        const text = (await navigator.clipboard.readText()).trim();
+        if (text) {
+          canvas.handleNodeAdd('sticky_note', { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 }, undefined, {
+            content: text,
+          });
+          return;
+        }
+      } catch {
+        // Fall back to workflow node clipboard.
+      }
+    }
+
     const pasted = clipboard.paste();
     if (pasted && state.workflow) {
       state.pushUndo('paste');
@@ -215,9 +266,9 @@ function WorkflowEditorInner({
       const pastedNodeIds = pasted.nodes.map(node => node.id);
       state.setSelectedNodeIds(pastedNodeIds);
       state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
-      markEditorDirty();
-    }
-  }, [clipboard, markEditorDirty, state]);
+        markEditorDirty();
+      }
+  }, [canvas, clipboard, clipboardImagePasteEnabled, clipboardTextPasteEnabled, markEditorDirty, state]);
 
   const moveClipboardNodesToStaging = useCallback(async () => {
     const copied = clipboard.getData();

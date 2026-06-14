@@ -36,6 +36,8 @@ export function WorkflowCanvasStylePanel({
   const autoConnectAfterNodeDelete = canvasPrefs.autoConnectAfterNodeDelete !== false;
   const autoPreviewLastRun = canvasPrefs.autoPreviewLastRun === true;
   const collisionBoxEnabled = canvasPrefs.collisionBoxEnabled !== false;
+  const pasteClipboardImagesAsGallery = canvasPrefs.pasteClipboardImagesAsGallery !== false;
+  const pasteClipboardTextAsStickyNote = canvasPrefs.pasteClipboardTextAsStickyNote !== false;
   const themeKey = (canvasPrefs.canvasTheme as string) || 'default';
   const customThemeCss = (canvasPrefs.canvasCustomThemeCss as string) || '';
   const edgeLineStyle = (canvasPrefs.edgeLineStyle as string) || 'solid';
@@ -255,6 +257,33 @@ export function WorkflowCanvasStylePanel({
             onCheckedChange={(checked) => update({ autoConnectAfterNodeDelete: checked })}
           />
         </FieldLabel>
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-xs font-medium text-muted-foreground">{t('canvasStyle.clipboardPaste')}</h3>
+        <div className="space-y-2">
+          <FieldLabel
+            htmlFor="paste-clipboard-images-as-gallery"
+            className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-sm"
+          >
+            <span>{t('canvasStyle.clipboardPasteImageDesc')}</span>
+            <Switch
+              id="paste-clipboard-images-as-gallery"
+              checked={pasteClipboardImagesAsGallery}
+              onCheckedChange={(checked) => update({ pasteClipboardImagesAsGallery: checked })}
+            />
+          </FieldLabel>
+          <FieldLabel
+            htmlFor="paste-clipboard-text-as-sticky-note"
+            className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-sm"
+          >
+            <span>{t('canvasStyle.clipboardPasteTextDesc')}</span>
+            <Switch
+              id="paste-clipboard-text-as-sticky-note"
+              checked={pasteClipboardTextAsStickyNote}
+              onCheckedChange={(checked) => update({ pasteClipboardTextAsStickyNote: checked })}
+            />
+          </FieldLabel>
+        </div>
       </div>
       <div className="space-y-2">
         <h3 className="text-xs font-medium text-muted-foreground">{t('canvasStyle.autoPreviewLastRun')}</h3>

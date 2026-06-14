@@ -60,9 +60,13 @@ export function useNodeOperations({
   const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
   const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
 
-  const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }, size?: NodeSize) => {
+  const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }, size?: NodeSize, data?: Record<string, unknown>) => {
     if (!workflow || isReadOnly) return;
-    const created = createNodesForDefinition(type, position, size);
+    const rootData = {
+      ...(size ? { nodeWidth: size.width, nodeHeight: size.height } : {}),
+      ...(data || {}),
+    };
+    const created = createNodesForDefinition(type, position, rootData);
     if (!created) return;
     pushUndo('add node');
     setWorkflow(w => w ? { ...w, nodes: [...w.nodes, ...created.nodes], edges: [...w.edges, ...created.edges] } : null);
