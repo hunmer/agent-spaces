@@ -305,6 +305,26 @@
         "nodeWidth": 900,
         "nodeHeight": 720
       }
+    },
+    {
+      "id": "node_1781464137439_2tpsfv",
+      "type": "gallery_preview",
+      "label": "nodes.gallery_preview.label",
+      "position": {
+        "x": -915,
+        "y": 570
+      },
+      "data": {
+        "items": [
+          {
+            "id": 1781464146224,
+            "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
+          }
+        ]
+      }
     }
   ],
   "edges": [
@@ -320,7 +340,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781463758219,
+  "updatedAt": 1781464190938,
   "enabledPlugins": [
     "workflow.fetch",
     "workflow.webview",
