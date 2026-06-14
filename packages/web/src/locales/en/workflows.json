@@ -730,6 +730,21 @@
         "content_tooltip": "Sticky note text content"
       }
     },
+    "file_display": {
+      "label": "File Display",
+      "description": "Display an online file card with a download button",
+      "props": {
+        "src": "File URL",
+        "src_tooltip": "Online file access URL",
+        "src_placeholder": "https://example.com/file.pdf",
+        "fileName": "File Name",
+        "fileName_tooltip": "Display name (optional, parsed from URL if empty)",
+        "fileName_placeholder": "report.pdf",
+        "fileSize": "File Size (bytes)",
+        "fileSize_tooltip": "File size in bytes (optional)",
+        "fileSize_placeholder": "1048576"
+      }
+    },
     "delay": {
       "label": "Delay",
       "description": "Wait for a specified duration in milliseconds before continuing. Does not depend on a browser tab.",

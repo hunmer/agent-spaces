@@ -222,6 +222,21 @@
       "data": {
         "type": "info"
       }
+    },
+    {
+      "id": "node_1781466743335_qncdru",
+      "type": "file_display",
+      "label": "nodes.file_display.label",
+      "position": {
+        "x": -750,
+        "y": 30
+      },
+      "data": {
+        "src": "https://i.pinimg.com/1200x/d8/7b/58/d87b58b58b878eb0e59c20a2a9a29b86.jpg",
+        "fileName": "44.jpg",
+        "nodeWidth": 278,
+        "nodeHeight": 137
+      }
     }
   ],
   "edges": [
@@ -244,7 +259,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781466026527,
+  "updatedAt": 1781466846834,
   "enabledPlugins": [
     "workflow.fetch",
     "workflow.webview",

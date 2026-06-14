@@ -730,6 +730,21 @@
         "content_tooltip": "便签文本内容"
       }
     },
+    "file_display": {
+      "label": "文件展示",
+      "description": "展示在线文件卡片，右上角支持下载",
+      "props": {
+        "src": "文件地址",
+        "src_tooltip": "在线文件的访问 URL",
+        "src_placeholder": "https://example.com/file.pdf",
+        "fileName": "文件名",
+        "fileName_tooltip": "显示的文件名（可选，留空则从地址解析）",
+        "fileName_placeholder": "report.pdf",
+        "fileSize": "文件大小(字节)",
+        "fileSize_tooltip": "文件字节数（可选）",
+        "fileSize_placeholder": "1048576"
+      }
+    },
     "delay": {
       "label": "延迟",
       "description": "延迟等待指111定毫秒数后继续执行。不依赖标签页。",

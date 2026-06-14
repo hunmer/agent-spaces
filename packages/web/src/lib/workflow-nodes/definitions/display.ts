@@ -1,5 +1,5 @@
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
-import { CodeRenderView, GalleryPreviewView, MusicPlayerView, TableDisplayView } from '@/components/workflow/display-node-views';
+import { CodeRenderView, FileDisplayView, GalleryPreviewView, MusicPlayerView, TableDisplayView } from '@/components/workflow/display-node-views';
 import { StickyNoteView } from '@/components/workflow/sticky-note-view';
 
 const CODE_RENDER_DEFAULT_REACT = `export default function View() {
@@ -197,6 +197,41 @@ export const displayNodes: NodeTypeDefinition[] = [
     customViewMinSize: { width: 180, height: 120 },
     properties: [
       { key: 'content', label: 'nodes.sticky_note.props.content', type: 'textarea', tooltip: 'nodes.sticky_note.props.content_tooltip' },
+    ],
+    handles: { source: false, target: false },
+    debuggable: false,
+  },
+  {
+    type: 'file_display',
+    label: 'nodes.file_display.label',
+    category: 'nodes.categories.display',
+    icon: 'FileText',
+    description: 'nodes.file_display.description',
+    customView: FileDisplayView,
+    customViewMinSize: { width: 260, height: 120 },
+    properties: [
+      {
+        key: 'src',
+        label: 'nodes.file_display.props.src',
+        type: 'text',
+        required: true,
+        tooltip: 'nodes.file_display.props.src_tooltip',
+        placeholder: 'nodes.file_display.props.src_placeholder',
+      },
+      {
+        key: 'fileName',
+        label: 'nodes.file_display.props.fileName',
+        type: 'text',
+        tooltip: 'nodes.file_display.props.fileName_tooltip',
+        placeholder: 'nodes.file_display.props.fileName_placeholder',
+      },
+      {
+        key: 'fileSize',
+        label: 'nodes.file_display.props.fileSize',
+        type: 'number',
+        tooltip: 'nodes.file_display.props.fileSize_tooltip',
+        placeholder: 'nodes.file_display.props.fileSize_placeholder',
+      },
     ],
     handles: { source: false, target: false },
     debuggable: false,

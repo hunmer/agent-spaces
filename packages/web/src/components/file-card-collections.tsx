@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
-type FormatFileProps =
+export type FormatFileProps =
   | "doc"
   | "pdf"
   | "md"
