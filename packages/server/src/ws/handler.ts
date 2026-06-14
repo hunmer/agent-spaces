@@ -1,7 +1,7 @@
 import type { WebSocket } from 'ws';
 import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
-import { addConnection, broadcastToWorkspace, getClientId, handleInteractionResponse, onClientConnected, getConnectionByClientId, sendToClient } from './connection-manager.js';
-import type { InteractionResponse } from '@agent-spaces/shared';
+import { addConnection, broadcastToWorkspace, getClientId, handleClientNodeResponse, handleInteractionResponse, onClientConnected, getConnectionByClientId, sendToClient } from './connection-manager.js';
+import type { ClientNodeResponse, InteractionResponse } from '@agent-spaces/shared';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
 import { registerChatHandlers } from './chat-handler.js';
 import { appendMessageReply, createMessage } from '../services/message.js';
@@ -176,6 +176,11 @@ registerHandler('agent.stop', (_ws, workspaceId, data) => {
 registerHandler('workflow:interaction', (ws, _workspaceId, data) => {
   const clientId = getClientId(ws);
   if (clientId) handleInteractionResponse(data as InteractionResponse, clientId);
+});
+
+registerHandler('workflow:client-node', (ws, _workspaceId, data) => {
+  const clientId = getClientId(ws);
+  if (clientId) handleClientNodeResponse(data as ClientNodeResponse, clientId);
 });
 
 registerHandler('miniApp.clientResponse', (_ws, _workspaceId, data) => {

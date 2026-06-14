@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { WebSocket } from 'ws';
-import type { InteractionResponse } from '@agent-spaces/shared';
+import type { ClientNodeResponse, InteractionResponse } from '@agent-spaces/shared';
 import { publishWorkspaceEvent } from '../services/notification-hub/index.js';
 
 interface ManagedConnection {
@@ -12,6 +12,7 @@ interface ManagedConnection {
 type ClientConnectedCallback = (clientId: string, ws: WebSocket) => void;
 type ClientDisconnectedCallback = (clientId: string) => void;
 type InteractionResponseHandler = (response: InteractionResponse, clientId: string) => void;
+type ClientNodeResponseHandler = (response: ClientNodeResponse, clientId: string) => void;
 
 const connections = new Map<WebSocket, ManagedConnection>();
 const clientIdIndex = new Map<string, ManagedConnection>();
@@ -19,6 +20,7 @@ const clientIdIndex = new Map<string, ManagedConnection>();
 const clientConnectedCallbacks: ClientConnectedCallback[] = [];
 const clientDisconnectedCallbacks: ClientDisconnectedCallback[] = [];
 let interactionResponseHandler: InteractionResponseHandler | null = null;
+let clientNodeResponseHandler: ClientNodeResponseHandler | null = null;
 
 export function addConnection(ws: WebSocket, workspaceId: string): string {
   const clientId = randomUUID();
@@ -72,6 +74,14 @@ export function setInteractionResponseHandler(handler: InteractionResponseHandle
 
 export function handleInteractionResponse(response: InteractionResponse, clientId: string) {
   interactionResponseHandler?.(response, clientId);
+}
+
+export function setClientNodeResponseHandler(handler: ClientNodeResponseHandler) {
+  clientNodeResponseHandler = handler;
+}
+
+export function handleClientNodeResponse(response: ClientNodeResponse, clientId: string) {
+  clientNodeResponseHandler?.(response, clientId);
 }
 
 export function getConnectionsByWorkspace(workspaceId: string): WebSocket[] {

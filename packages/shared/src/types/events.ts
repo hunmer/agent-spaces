@@ -1,7 +1,7 @@
 import type { Workflow } from './workflow.js';
 import type { CommandProcessEvent } from './command.js';
 import type { AppNotification } from './notification.js';
-import type { InteractionRequest, InteractionResponse } from './workflow-ws.js';
+import type { ClientNodeRequest, ClientNodeResponse, InteractionRequest, InteractionResponse } from './workflow-ws.js';
 
 export interface WSEvent<T = unknown> {
   event: string;
@@ -119,6 +119,7 @@ export type ClientEventMap = {
   'workflow:debug-node': { workflowId: string; nodeId: string; input?: Record<string, unknown>; env?: Record<string, unknown>; context?: Record<string, unknown>; snapshot?: unknown; embeddedNode?: unknown };
   'workflow:get-execution-recovery': { workflowId: string; executionId?: string | null };
   'workflow:interaction': InteractionResponse;
+  'workflow:client-node': ClientNodeResponse;
   'miniApp.clientResponse': { requestId: string; ok: boolean; result?: unknown; error?: string };
 };
 
@@ -199,6 +200,7 @@ export type ServerEventMap = {
   'workflow:get-execution-recovery:result': unknown;
   'workflow:get-execution-recovery:error': { error: string };
   'workflow:interaction': InteractionRequest;
+  'workflow:client-node': ClientNodeRequest;
   'interaction:ui_required': unknown;
   'miniApp.taskSnapshot': { tasks: MiniAppTask[] };
   'miniApp.taskStarted': MiniAppTaskEvent;

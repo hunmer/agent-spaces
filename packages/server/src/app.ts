@@ -59,6 +59,7 @@ import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
 import { startPersistedNotificationServices } from './services/notification-hub/index.js';
 import { InteractionManager } from './services/interaction-manager.js';
+import { ClientNodeManager } from './services/client-node-manager.js';
 import { ExecutionManager } from './services/execution-manager.js';
 import { WorkflowTriggerService } from './services/workflow-trigger-service.js';
 import { registerExecutionChannels } from './ws/execution-channels.js';
@@ -250,8 +251,10 @@ app.use('/api/plugins', pluginRouter);
 
 // Initialize workflow execution infrastructure
 const interactionManager = new InteractionManager();
+const clientNodeManager = new ClientNodeManager();
 const executionManager = new ExecutionManager({
   interactionManager,
+  clientNodeManager,
   emit: (channel, payload) => {
     // Broadcast execution events to all workspace connections
     const anyPayload = payload as Record<string, unknown>;

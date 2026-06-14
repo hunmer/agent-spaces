@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { getCompositeParentId, LOOP_BODY_NODE_TYPE, type ExecutionLog, type InteractionRequest, type Workflow } from '@agent-spaces/shared';
+import { createErrorShape, getCompositeParentId, LOOP_BODY_NODE_TYPE, type ClientNodeRequest, type ExecutionLog, type InteractionRequest, type Workflow } from '@agent-spaces/shared';
 import { executionLogApi } from '@/lib/workflow-api';
 import { getWS } from '@/lib/ws';
 import type { DebugResult } from './workflow-editor-types';
@@ -9,6 +9,133 @@ import type { DebugResult } from './workflow-editor-types';
 interface UseWorkflowEditorExecutionParams {
   workflow: Workflow | null;
   workflowId: string | null;
+}
+
+type DesktopNativeApi = {
+  readClipboardText?: () => Promise<string>;
+  writeClipboardText?: (text: string) => Promise<void>;
+  readClipboardImage?: () => Promise<string>;
+  writeClipboardImage?: (dataUrl: string) => Promise<void>;
+  clearClipboard?: () => Promise<void>;
+  showNotification?: (opts: { title: string; body?: string; silent?: boolean }) => Promise<void>;
+  showItemInFolder?: (fullPath: string) => Promise<void>;
+  openPath?: (path: string) => Promise<void>;
+  openExternal?: (url: string) => Promise<void>;
+  beep?: () => Promise<void>;
+  showOpenDialogSync?: (opts: unknown) => Promise<string[] | undefined>;
+  showSaveDialogSync?: (opts: unknown) => Promise<string | undefined>;
+  showMessageBoxSync?: (opts: unknown) => Promise<number>;
+  showErrorBox?: (title: string, content: string) => Promise<void>;
+};
+
+type ElectronApi = {
+  desktopNative?: DesktopNativeApi;
+  shell?: { openExternal?: (url: string) => Promise<void> };
+  fs?: { openInExplorer?: (targetPath: string) => Promise<void> };
+};
+
+function getElectronApi(): ElectronApi | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as typeof window & { electronAPI?: ElectronApi }).electronAPI;
+}
+
+async function executeDesktopNativeClientNode(nodeType: string, args: Record<string, unknown>): Promise<unknown> {
+  const desktopNative = getElectronApi()?.desktopNative;
+  switch (nodeType) {
+    case 'read_clipboard': {
+      const text = desktopNative?.readClipboardText
+        ? await desktopNative.readClipboardText()
+        : await navigator.clipboard.readText();
+      return { success: true, data: { text } };
+    }
+    case 'write_clipboard':
+      if (desktopNative?.writeClipboardText) await desktopNative.writeClipboardText(String(args.text ?? ''));
+      else await navigator.clipboard.writeText(String(args.text ?? ''));
+      return { success: true };
+    case 'read_clipboard_image':
+      if (!desktopNative?.readClipboardImage) throw new Error('当前客户端不支持读取剪贴板图片');
+      return { success: true, data: { dataUrl: await desktopNative.readClipboardImage() } };
+    case 'write_clipboard_image':
+      if (!desktopNative?.writeClipboardImage) throw new Error('当前客户端不支持写入剪贴板图片');
+      await desktopNative.writeClipboardImage(String(args.dataUrl ?? ''));
+      return { success: true };
+    case 'clear_clipboard':
+      if (desktopNative?.clearClipboard) await desktopNative.clearClipboard();
+      else await navigator.clipboard.writeText('');
+      return { success: true };
+    case 'show_notification':
+      if (desktopNative?.showNotification) {
+        await desktopNative.showNotification({
+          title: String(args.title ?? ''),
+          body: args.body == null ? undefined : String(args.body),
+          silent: Boolean(args.silent),
+        });
+      } else {
+        if (Notification.permission === 'default') await Notification.requestPermission();
+        if (Notification.permission !== 'granted') throw new Error('通知权限未授予');
+        new Notification(String(args.title ?? ''), {
+          body: args.body == null ? undefined : String(args.body),
+          silent: Boolean(args.silent),
+        });
+      }
+      return { success: true };
+    case 'show_item_in_folder':
+      if (!desktopNative?.showItemInFolder) throw new Error('当前客户端不支持在文件夹中显示');
+      await desktopNative.showItemInFolder(String(args.fullPath ?? ''));
+      return { success: true };
+    case 'open_path':
+      if (!desktopNative?.openPath) throw new Error('当前客户端不支持打开本地路径');
+      await desktopNative.openPath(String(args.path ?? ''));
+      return { success: true };
+    case 'open_external':
+      if (desktopNative?.openExternal) await desktopNative.openExternal(String(args.url ?? ''));
+      else window.open(String(args.url ?? ''), '_blank', 'noopener,noreferrer');
+      return { success: true };
+    case 'beep':
+      if (!desktopNative?.beep) throw new Error('当前客户端不支持系统蜂鸣');
+      await desktopNative.beep();
+      return { success: true };
+    case 'show_open_dialog': {
+      if (!desktopNative?.showOpenDialogSync) throw new Error('当前客户端不支持文件选择对话框');
+      const filePaths = await desktopNative.showOpenDialogSync(parseDialogOptions(args));
+      return { success: true, data: { filePaths: filePaths || [] } };
+    }
+    case 'show_save_dialog': {
+      if (!desktopNative?.showSaveDialogSync) throw new Error('当前客户端不支持保存对话框');
+      const filePath = await desktopNative.showSaveDialogSync(parseDialogOptions(args));
+      return { success: true, data: { filePath: filePath || '' } };
+    }
+    case 'show_message_box': {
+      if (!desktopNative?.showMessageBoxSync) throw new Error('当前客户端不支持消息对话框');
+      const response = await desktopNative.showMessageBoxSync(parseMessageBoxOptions(args));
+      return { success: true, data: { response } };
+    }
+    case 'show_error_box':
+      if (!desktopNative?.showErrorBox) throw new Error('当前客户端不支持错误对话框');
+      await desktopNative.showErrorBox(String(args.title ?? ''), String(args.content ?? args.message ?? ''));
+      return { success: true };
+    default:
+      throw new Error(`Unsupported client node type: ${nodeType}`);
+  }
+}
+
+function parseDialogOptions(args: Record<string, unknown>) {
+  const opts: Record<string, unknown> = {};
+  if (args.title) opts.title = String(args.title);
+  if (args.defaultPath) opts.defaultPath = String(args.defaultPath);
+  if (args.filters) opts.filters = JSON.parse(String(args.filters));
+  if (args.properties) opts.properties = JSON.parse(String(args.properties));
+  return opts;
+}
+
+function parseMessageBoxOptions(args: Record<string, unknown>) {
+  const opts: Record<string, unknown> = {
+    title: String(args.title ?? ''),
+    message: String(args.message ?? ''),
+    type: String(args.type || 'none'),
+  };
+  if (args.buttons) opts.buttons = JSON.parse(String(args.buttons));
+  return opts;
 }
 
 export function useWorkflowEditorExecution({
@@ -90,6 +217,33 @@ export function useWorkflowEditorExecution({
     setPendingInteraction(null);
   }, []);
 
+  const handleClientNodeRequest = useCallback(async (request: ClientNodeRequest) => {
+    if (request.type !== 'client_node_request') return;
+    const ws = getWS('workflows');
+    try {
+      const data = await executeDesktopNativeClientNode(request.nodeType, request.args || {});
+      ws.send('workflow:client-node', {
+        id: request.id,
+        channel: 'workflow:client-node',
+        type: 'client_node_response',
+        executionId: request.executionId,
+        workflowId: request.workflowId,
+        nodeId: request.nodeId,
+        data,
+      });
+    } catch (error) {
+      ws.send('workflow:client-node', {
+        id: request.id,
+        channel: 'workflow:client-node',
+        type: 'client_node_response',
+        executionId: request.executionId,
+        workflowId: request.workflowId,
+        nodeId: request.nodeId,
+        error: createErrorShape('WORKFLOW_ERROR', error instanceof Error ? error.message : String(error)),
+      });
+    }
+  }, []);
+
   const handleResolveInteraction = useCallback((request: InteractionRequest, data: unknown) => {
     sendInteractionResponse(request, data, false);
   }, [sendInteractionResponse]);
@@ -153,7 +307,12 @@ export function useWorkflowEditorExecution({
       if (request.type !== 'interaction_required' || request.nodeId !== nodeId) return;
       setPendingInteraction(request);
     });
-    debugCleanupRef.current = [offResult, offError, offInteraction];
+    const offClientNode = ws.on('workflow:client-node', (data) => {
+      const request = data as ClientNodeRequest;
+      if (request.type !== 'client_node_request' || request.nodeId !== nodeId) return;
+      void handleClientNodeRequest(request);
+    });
+    debugCleanupRef.current = [offResult, offError, offInteraction, offClientNode];
 
     if (ws.connected) {
       sendDebugRequest();
@@ -165,7 +324,7 @@ export function useWorkflowEditorExecution({
       });
       debugCleanupRef.current.push(offConnected);
     }
-  }, [workflow, cleanupDebugListeners]);
+  }, [workflow, cleanupDebugListeners, handleClientNodeRequest]);
 
   // ---- Execution ----
   const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>) => {
@@ -270,7 +429,12 @@ export function useWorkflowEditorExecution({
       setExecStatus('error');
       void loadExecutionLogs();
     });
-    executionCleanupRef.current = [offResult, offError, offLog, offProgress, offPaused, offResumed, offCompleted, offFailed];
+    const offClientNode = ws.on('workflow:client-node', (data) => {
+      const request = data as ClientNodeRequest;
+      if (request.type !== 'client_node_request' || request.workflowId !== workflow.id) return;
+      void handleClientNodeRequest(request);
+    });
+    executionCleanupRef.current = [offResult, offError, offLog, offProgress, offPaused, offResumed, offCompleted, offFailed, offClientNode];
 
     if (ws.connected) {
       sendExecuteRequest();
@@ -282,7 +446,7 @@ export function useWorkflowEditorExecution({
       });
       executionCleanupRef.current.push(offConnected);
     }
-  }, [workflow, cleanupExecutionListeners, loadExecutionLogs]);
+  }, [workflow, cleanupExecutionListeners, handleClientNodeRequest, loadExecutionLogs]);
 
   const handlePauseExecution = useCallback(() => {
     if (!currentExecutionId) return;

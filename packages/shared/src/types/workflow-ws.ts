@@ -142,6 +142,29 @@ export interface InteractionResponse<Data = unknown> {
   error?: BackendErrorShape
 }
 
+export interface ClientNodeRequest<Data = Record<string, unknown>> {
+  id: string
+  channel: 'workflow:client-node'
+  type: 'client_node_request'
+  executionId: string
+  workflowId: string
+  nodeId: string
+  nodeType: string
+  args: Data
+  timeoutMs?: number
+}
+
+export interface ClientNodeResponse<Data = unknown> {
+  id: string
+  channel: 'workflow:client-node'
+  type: 'client_node_response'
+  executionId: string
+  workflowId: string
+  nodeId: string
+  data?: Data
+  error?: BackendErrorShape
+}
+
 export type WSIncomingMessage =
   | WSRequest
   | WSResponse
@@ -149,6 +172,8 @@ export type WSIncomingMessage =
   | WSError
   | InteractionRequest
   | InteractionResponse
+  | ClientNodeRequest
+  | ClientNodeResponse
 
 export type WSOutgoingMessage = WSIncomingMessage
 

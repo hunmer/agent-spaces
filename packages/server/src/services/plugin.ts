@@ -1074,6 +1074,11 @@ export function canExecuteWorkflowNode(nodeType: string): boolean {
   return Boolean(getExecutablePluginByNodeType(nodeType));
 }
 
+export function requiresClientExecution(nodeType: string): boolean {
+  const executable = getExecutablePluginByNodeType(nodeType);
+  return executable?.plugin.type === 'client' || executable?.plugin.type === 'both';
+}
+
 export async function executeWorkflowNode(
   nodeType: string,
   args: Record<string, any>,

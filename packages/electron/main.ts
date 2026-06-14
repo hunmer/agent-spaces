@@ -9,6 +9,7 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { registerGlobalShortcuts, unregisterGlobalShortcuts } from './ipc/shortcut.js'
 import { registerFsIpcHandlers } from './ipc/fs.js'
 import { getWindowMaximized, setWindowMaximized } from './services/store.js'
+import { desktopNative } from './services/desktop-native.js'
 
 const RENDERER_DIR = join(__dirname, '../renderer')
 
@@ -240,6 +241,20 @@ app.whenReady().then(async () => {
     const { shell } = require('electron')
     shell.openExternal(url)
   })
+  ipcMain.handle('desktopNative:readClipboardText', () => desktopNative.readClipboardText())
+  ipcMain.handle('desktopNative:writeClipboardText', (_e, text: string) => desktopNative.writeClipboardText(text))
+  ipcMain.handle('desktopNative:readClipboardImage', () => desktopNative.readClipboardImage())
+  ipcMain.handle('desktopNative:writeClipboardImage', (_e, dataUrl: string) => desktopNative.writeClipboardImage(dataUrl))
+  ipcMain.handle('desktopNative:clearClipboard', () => desktopNative.clearClipboard())
+  ipcMain.handle('desktopNative:showNotification', (_e, opts) => desktopNative.showNotification(opts))
+  ipcMain.handle('desktopNative:showItemInFolder', (_e, fullPath: string) => desktopNative.showItemInFolder(fullPath))
+  ipcMain.handle('desktopNative:openPath', (_e, path: string) => desktopNative.openPath(path))
+  ipcMain.handle('desktopNative:openExternal', (_e, url: string) => desktopNative.openExternal(url))
+  ipcMain.handle('desktopNative:beep', () => desktopNative.beep())
+  ipcMain.handle('desktopNative:showOpenDialogSync', (_e, opts) => desktopNative.showOpenDialogSync(opts))
+  ipcMain.handle('desktopNative:showSaveDialogSync', (_e, opts) => desktopNative.showSaveDialogSync(opts))
+  ipcMain.handle('desktopNative:showMessageBoxSync', (_e, opts) => desktopNative.showMessageBoxSync(opts))
+  ipcMain.handle('desktopNative:showErrorBox', (_e, title: string, content: string) => desktopNative.showErrorBox(title, content))
 
   productionRendererUrl = process.env.ELECTRON_RENDERER_URL ? undefined : await startRendererServer()
   createWindow(productionRendererUrl)

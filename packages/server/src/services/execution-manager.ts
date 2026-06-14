@@ -36,6 +36,7 @@ import type {
 import { createErrorShape } from '@agent-spaces/shared';
 import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
 import type { InteractionManager } from './interaction-manager.js';
+import type { ClientNodeManager } from './client-node-manager.js';
 import * as workflowStore from '../storage/workflow-store.js';
 import * as sqliteStore from '../storage/sqlite-store.js';
 import { validateIdentifier } from '../storage/sql-safety.js';
@@ -47,6 +48,7 @@ import { buildAgentPrompt } from '../ws/agent-prompt.js';
 
 interface ExecutionManagerDeps {
   interactionManager: InteractionManager
+  clientNodeManager: ClientNodeManager
   emit: (channel: string, payload: unknown) => void
 }
 
@@ -251,6 +253,7 @@ export class ExecutionManager {
 
     session.stopRequested = true;
     this.deps.interactionManager.cancelExecution(executionId, 'Execution stopped');
+    this.deps.clientNodeManager.cancelExecution(executionId, 'Execution stopped');
 
     if (session.status === 'running' || session.status === 'paused') {
       session.status = 'error';
@@ -677,6 +680,9 @@ export class ExecutionManager {
         return this.executeFormDialog(session, node, resolvedData, appendLog);
       default:
         if (pluginService.canExecuteWorkflowNode(node.type)) {
+          if (pluginService.requiresClientExecution(node.type)) {
+            return this.executeClientNode(session, node, resolvedData, appendLog);
+          }
           return pluginService.executeWorkflowNode(node.type, resolvedData, {
             logger: {
               info: (message) => appendLog('info', message),
@@ -690,6 +696,36 @@ export class ExecutionManager {
   }
 
   // ---- Private: Node type implementations ----
+
+  private async executeClientNode(
+    session: ExecutionSession,
+    node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<Record<string, unknown>> {
+    appendLog('info', `Requesting client execution for ${node.type}`);
+    const result = await this.deps.clientNodeManager.request({
+      clientId: session.ownerClientId,
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      nodeType: node.type,
+      args: resolvedData,
+    });
+    return this.normalizeNodeResult(result);
+  }
+
+  private normalizeNodeResult(result: unknown): Record<string, unknown> {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return { result };
+    const record = result as Record<string, unknown>;
+    if (record.success === true && record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
+      return record.data as Record<string, unknown>;
+    }
+    if (record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
+      return record.data as Record<string, unknown>;
+    }
+    return record;
+  }
 
   private async executeDelayNode(
     resolvedData: Record<string, any>,
