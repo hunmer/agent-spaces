@@ -64,11 +64,11 @@ export class LangChainRuntime implements AgentRuntime {
         () => initChatModel(model, buildModelConfig(this.config)),
       );
       d(`chat model initialized | type=${getObjectTypeName(chatModel)}`);
-      mcpClient = createLangChainMcpClient(runtimeOptions?.mcpServers, output, runtimeOptions, d, progress);
+      mcpClient = createLangChainMcpClient(runtimeOptions?.mcpServers, runtimeOptions, d, progress);
       d(`MCP client ${mcpClient ? 'created' : 'not created'}`);
       const mcpTools = mcpClient ? await mcpClient.getTools() : [];
       if (mcpClient) d(`resolved MCP tools | servers=${Object.keys(runtimeOptions?.mcpServers ?? {}).join(',') || '-'} count=${mcpTools.length} tools=${mcpTools.map((mcpTool) => mcpTool.name).join(',') || '-'}`);
-      const runtimeTools = buildLangChainTools(runtimeOptions?.functionTools, output, runtimeOptions, d, progress);
+      const runtimeTools = buildLangChainTools(runtimeOptions?.functionTools, runtimeOptions, d, progress);
       d(`creating agent | runtimeTools=${runtimeTools.length} mcpTools=${mcpTools.length} systemPrompt=${runtimeOptions?.systemPrompt ? `${runtimeOptions.systemPrompt.length}chars` : '-'} outputStyle=${runtimeOptions?.outputStyle ?? '-'}`);
       const agent = createAgent({
         model: chatModel,
@@ -411,7 +411,6 @@ function sanitizeSkillName(name: string | undefined): string {
 
 function buildLangChainTools(
   functionTools: AgentFunctionTool[] | undefined,
-  output: string[],
   options: AgentRunOptions | undefined,
   log: (message: string) => void,
   progress: LangChainRunProgress = createLangChainRunProgress(),
@@ -424,7 +423,6 @@ function buildLangChainTools(
       const line = `Tool: ${runtimeTool.name} input=${JSON.stringify(input)}`;
       progress.recordToolUse();
       log(`tool use | source=function id=${toolUseId} name=${runtimeTool.name} descriptionChars=${runtimeTool.description.length} input=${summarizeForLog(input, 800)}`);
-      output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: toolUseId, name: runtimeTool.name, input, line });
       try {
         const result = await runtimeTool.execute(input);
@@ -525,7 +523,6 @@ export function stringifyToolResult(result: unknown): string {
 
 function createLangChainMcpClient(
   mcpServers: Record<string, unknown> | undefined,
-  output: string[],
   options: AgentRunOptions | undefined,
   log: (message: string) => void,
   progress: LangChainRunProgress = createLangChainRunProgress(),
@@ -549,7 +546,6 @@ function createLangChainMcpClient(
       const line = `Tool: ${name} input=${JSON.stringify(request.args ?? {})}`;
       progress.recordToolUse();
       log(`tool use | source=mcp server=${request.serverName} name=${name} input=${summarizeForLog(request.args ?? {}, 800)}`);
-      output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: name, name, input: request.args ?? {}, line });
     },
     afterToolCall: (result) => {

@@ -5,31 +5,31 @@
     "store": "商店",
     "importZip": "导入 ZIP",
     "create": "新建",
-    "searchPlaceholder": "Search pages...",
-    "loading": "Loading...",
-    "empty": "No custom pages yet.",
+    "searchPlaceholder": "搜索页面…",
+    "loading": "加载中…",
+    "empty": "暂无自定义页面。",
     "createFirst": "创建第一个页面",
-    "noMatch": "No pages match your search."
+    "noMatch": "没有匹配的页面。"
   },
   "card": {
-    "edit": "Edit",
-    "duplicate": "Duplicate",
-    "delete": "Delete",
-    "exportZip": "Export ZIP",
-    "share": "Share",
-    "deleteTitle": "Delete Project",
-    "deleteConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
-    "cancel": "Cancel",
+    "edit": "编辑",
+    "duplicate": "复制",
+    "delete": "删除",
+    "exportZip": "导出 ZIP",
+    "share": "分享",
+    "deleteTitle": "删除项目",
+    "deleteConfirm": "确定要删除「{name}」吗？此操作无法撤销。",
+    "cancel": "取消",
     "revealFolder": "打开所在文件夹"
   },
   "create": {
-    "title": "Create Custom Page",
-    "name": "Name",
-    "namePlaceholder": "Page name",
-    "description": "Description",
-    "descriptionPlaceholder": "Optional description",
-    "type": "Type",
-    "submit": "Create",
+    "title": "创建自定义页面",
+    "name": "名称",
+    "namePlaceholder": "页面名称",
+    "description": "描述",
+    "descriptionPlaceholder": "可选描述",
+    "type": "类型",
+    "submit": "创建",
     "nameExists": "该名称已存在，请换一个"
   },
   "edit": {
@@ -48,7 +48,7 @@
     "import": "导入"
   },
   "editor": {
-    "loadingEditor": "Loading editor...",
+    "loadingEditor": "正在加载编辑器…",
     "notFound": "项目不存在",
     "files": "文件",
     "fileCount": "{count} 文件",
@@ -102,7 +102,7 @@
     "title": "插件管理",
     "store": "插件商店",
     "noPlugins": "未安装任何插件",
-    "tools": "{count} tools",
+    "tools": "{count} 个工具",
     "config": "配置"
   },
   "toolExecute": {
