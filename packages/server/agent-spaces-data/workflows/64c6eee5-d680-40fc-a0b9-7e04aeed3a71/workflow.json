@@ -117,7 +117,8 @@
           }
         ],
         "database": "840e4de0-392f-43f5-b7c2-64b72ccbc198",
-        "table": "table1"
+        "table": "table1",
+        "where": ""
       }
     }
   ],
@@ -134,7 +135,7 @@
     }
   ],
   "createdAt": 1781410107460,
-  "updatedAt": 1781447127123,
+  "updatedAt": 1781447565875,
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.jimeng"

@@ -119,16 +119,6 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
 
   useEffect(() => { loadTables(); }, [loadTables]);
 
-  // 打开时自动选中第一个表
-  useEffect(() => {
-    if (!schemaTable && tables.length > 0) {
-      const first = tables[0].name;
-      setSchemaTable(first);
-      loadSchema(first);
-      browseData(first);
-    }
-  }, [tables, schemaTable, loadSchema, browseData]);
-
   const loadDescriptions = useCallback(async (table: string): Promise<Record<string, string>> => {
     try {
       const r = await sdk.sqlite.query(
@@ -191,6 +181,16 @@ export function SqliteDataBrowserDialog({ databaseId, onClose }: {
     catch (e) { setDataError((e as Error).message); }
     finally { setDataLoading(false); }
   }, [databaseId]);
+
+  // 打开时自动选中第一个表
+  useEffect(() => {
+    if (!schemaTable && tables.length > 0) {
+      const first = tables[0].name;
+      setSchemaTable(first);
+      loadSchema(first);
+      browseData(first);
+    }
+  }, [tables, schemaTable, loadSchema, browseData]);
 
   // 参照字段表新增行：每个字段一个输入，空值绑 NULL，BOOLEAN 转 0/1
   const insertRow = async () => {
