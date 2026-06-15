@@ -10,7 +10,7 @@ import electronUpdater from 'electron-updater'
 import { registerGlobalShortcuts, unregisterGlobalShortcuts } from './ipc/shortcut.js'
 import { registerFsIpcHandlers } from './ipc/fs.js'
 import { getWindowMaximized, setWindowMaximized } from './services/store.js'
-import { executeClientPluginNode } from './services/client-plugin-runner.js'
+import { executeClientPluginNode, getClientWorkflowNodes, listClientWorkflowPlugins } from './services/client-plugin-runner.js'
 
 const RENDERER_DIR = join(__dirname, '../renderer')
 
@@ -246,6 +246,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('clientPlugin:executeNode', (_e, pluginId: string, nodeType: string, args: Record<string, unknown>) =>
     executeClientPluginNode(pluginId, nodeType, args),
   )
+  ipcMain.handle('clientPlugin:listWorkflowPlugins', () => listClientWorkflowPlugins())
+  ipcMain.handle('clientPlugin:getWorkflowNodes', (_e, pluginId: string) => getClientWorkflowNodes(pluginId))
 
   productionRendererUrl = process.env.ELECTRON_RENDERER_URL ? undefined : await startRendererServer()
   createWindow(productionRendererUrl)

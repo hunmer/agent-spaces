@@ -28,6 +28,10 @@ const electronAPI = {
   },
 
   clientPlugins: {
+    listWorkflowPlugins: (): Promise<unknown> =>
+      ipcRenderer.invoke('clientPlugin:listWorkflowPlugins'),
+    getWorkflowNodes: (pluginId: string): Promise<unknown> =>
+      ipcRenderer.invoke('clientPlugin:getWorkflowNodes', pluginId),
     executeNode: (pluginId: string, nodeType: string, args: Record<string, unknown>): Promise<unknown> =>
       ipcRenderer.invoke('clientPlugin:executeNode', pluginId, nodeType, args),
   },

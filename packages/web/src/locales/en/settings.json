@@ -18,6 +18,7 @@
   "zoomReset": "Reset",
   "showWorkspaceTabs": "Show Workspace Tabs",
   "autoActivateWorkspace": "Auto-open last workspace on startup",
+  "showConsoleBall": "Show Console Floating Ball",
   "layout": "Layout",
   "resetLayout": "Reset to Default",
   "speech": "Speech Recognition",

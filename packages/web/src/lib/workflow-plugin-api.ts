@@ -25,6 +25,34 @@ function getPluginLocaleQuery(): string {
 const pendingWorkflowPluginList = new Map<string, Promise<PluginMeta[]>>();
 const pendingWorkflowNodes = new Map<string, Promise<NodeTypeDefinition[]>>();
 
+type ElectronPluginApi = {
+  clientPlugins?: {
+    listWorkflowPlugins?: () => Promise<PluginMeta[]>;
+    getWorkflowNodes?: (pluginId: string) => Promise<NodeTypeDefinition[]>;
+  };
+};
+
+function getElectronPluginApi() {
+  if (typeof window === 'undefined') return undefined;
+  return (window as typeof window & { electronAPI?: ElectronPluginApi }).electronAPI?.clientPlugins;
+}
+
+async function listClientWorkflowPlugins(): Promise<PluginMeta[]> {
+  try {
+    return await (getElectronPluginApi()?.listWorkflowPlugins?.() ?? Promise.resolve([]));
+  } catch (error) {
+    console.warn('[pluginApi] failed to list client workflow plugins', error);
+    return [];
+  }
+}
+
+function mergeWorkflowPlugins(serverPlugins: PluginMeta[], clientPlugins: PluginMeta[]): PluginMeta[] {
+  const merged = new Map<string, PluginMeta>();
+  for (const plugin of serverPlugins) merged.set(plugin.id, plugin);
+  for (const plugin of clientPlugins) merged.set(plugin.id, plugin);
+  return [...merged.values()];
+}
+
 function clearPluginRequestCache() {
   pendingWorkflowPluginList.clear();
   pendingWorkflowNodes.clear();
@@ -39,7 +67,10 @@ export const pluginApi = {
     const pending = pendingWorkflowPluginList.get(localeQuery);
     if (pending) return pending;
 
-    const request = sdk.workflowPlugin.listWorkflow(localeQuery).finally(() => {
+    const request = Promise.all([
+      sdk.workflowPlugin.listWorkflow(localeQuery),
+      listClientWorkflowPlugins(),
+    ]).then(([serverPlugins, clientPlugins]) => mergeWorkflowPlugins(serverPlugins, clientPlugins)).finally(() => {
       pendingWorkflowPluginList.delete(localeQuery);
     });
     pendingWorkflowPluginList.set(localeQuery, request);
@@ -67,7 +98,13 @@ export const pluginApi = {
     const pending = pendingWorkflowNodes.get(cacheKey);
     if (pending) return pending;
 
-    const request = sdk.workflowPlugin.getWorkflowNodes(pluginId, localeQuery).finally(() => {
+    const request = (async () => {
+      const clientPlugins = await listClientWorkflowPlugins();
+      if (clientPlugins.some(plugin => plugin.id === pluginId)) {
+        return await (getElectronPluginApi()?.getWorkflowNodes?.(pluginId) ?? Promise.resolve([]));
+      }
+      return sdk.workflowPlugin.getWorkflowNodes(pluginId, localeQuery);
+    })().finally(() => {
       pendingWorkflowNodes.delete(cacheKey);
     });
     pendingWorkflowNodes.set(cacheKey, request);

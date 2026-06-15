@@ -27,6 +27,11 @@ export function StartupTab() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("autoActivateWorkspace") === "true";
   });
+  const [showConsoleBall, setShowConsoleBall] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const saved = localStorage.getItem("showConsoleBall");
+    return saved === null ? false : saved !== "false";
+  });
 
   const applyZoom = useCallback((value: number) => {
     localStorage.setItem("pageZoom", String(value));
@@ -68,6 +73,21 @@ export function StartupTab() {
           onCheckedChange={(checked) => {
             setAutoActivate(checked);
             localStorage.setItem("autoActivateWorkspace", String(checked));
+          }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          {t("showConsoleBall")}
+        </label>
+        <Switch
+          size="sm"
+          checked={showConsoleBall}
+          onCheckedChange={(checked) => {
+            setShowConsoleBall(checked);
+            localStorage.setItem("showConsoleBall", String(checked));
+            window.dispatchEvent(new CustomEvent("console-ball-visibility", { detail: checked }));
           }}
         />
       </div>
