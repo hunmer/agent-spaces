@@ -188,6 +188,7 @@ function getCenteredNodePosition(center: { x: number; y: number }, size: { width
 type WorkflowCanvasViewportRef = {
   exportCanvas: (format: 'png' | 'jpeg') => void;
   getViewportCenter: () => { x: number; y: number };
+  focusNode: (nodeId: string) => void;
 };
 
 function WorkflowEditorInner({
@@ -510,7 +511,14 @@ function WorkflowEditorInner({
     if (canvasNode && canvasNode instanceof TabNode) {
       model.doAction(Actions.selectTab(canvasNode.getId()));
     }
-  }, [model, state]);
+    // 切到 Canvas tab 后等一帧再居中，确保 reactflow 节点已渲染
+    setTimeout(() => canvasExportRef.current?.focusNode(nodeId), 120);
+  }, [canvasExportRef, model, state]);
+
+  const handleDeleteGroup = useCallback((nodeIds: string[]) => {
+    if (isWorkflowReadOnly || nodeIds.length === 0) return;
+    canvas.handleBatchDeleteNodes(nodeIds);
+  }, [canvas, isWorkflowReadOnly]);
 
   const onModelChange = useCallback((_model: Model, action: Action) => {
     try {
@@ -716,6 +724,7 @@ function WorkflowEditorInner({
             edges={workflow.edges}
             selectedNodeId={state.selectedNodeId}
             onSelectNode={handleSelectNodeFromList}
+            onDeleteGroup={isWorkflowReadOnly ? undefined : handleDeleteGroup}
           />
         );
       case 'staging':
@@ -760,6 +769,7 @@ function WorkflowEditorInner({
     isWorkflowReadOnly,
     addStagedNodeToCanvas,
     handleSelectNodeFromList,
+    handleDeleteGroup,
     clipboard.clear,
     clipboard.count,
     exitExecutionPreview,

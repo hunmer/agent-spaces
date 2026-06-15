@@ -174,7 +174,12 @@
       "groups": "groups",
       "group": "Group",
       "unconnected": "Unconnected",
-      "empty": "No nodes"
+      "empty": "No nodes",
+      "deleteGroup": "Delete group",
+      "deleteTitle": "Delete group",
+      "deleteConfirm": "Delete {count} node(s) in {group}?",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete"
     },
     "exportPng": "Export PNG",
     "exportJpeg": "Export JPEG",

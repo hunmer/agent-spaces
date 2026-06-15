@@ -174,7 +174,12 @@
       "groups": "个分组",
       "group": "分组",
       "unconnected": "未连接",
-      "empty": "暂无节点"
+      "empty": "暂无节点",
+      "deleteGroup": "删除分组",
+      "deleteTitle": "删除分组",
+      "deleteConfirm": "确定删除{group}下的 {count} 个节点？",
+      "cancel": "取消",
+      "confirmDelete": "删除"
     },
     "exportPng": "导出 PNG",
     "exportJpeg": "导出 JPEG",

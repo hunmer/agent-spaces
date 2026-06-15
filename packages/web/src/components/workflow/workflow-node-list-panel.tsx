@@ -1,8 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 type NodeLike = { id: string; type?: string; label?: string };
 type EdgeLike = { source: string; target: string };
@@ -12,6 +15,7 @@ type WorkflowNodeListPanelProps = {
   edges: EdgeLike[];
   selectedNodeId?: string | null;
   onSelectNode: (nodeId: string) => void;
+  onDeleteGroup?: (nodeIds: string[]) => void;
 };
 
 // 连通分量着色板 —— bar 为色条实色，bg 为分区淡色背景。完整类名，供 Tailwind 静态扫描。
@@ -63,8 +67,10 @@ export function WorkflowNodeListPanel({
   edges,
   selectedNodeId,
   onSelectNode,
+  onDeleteGroup,
 }: WorkflowNodeListPanelProps) {
   const t = useTranslations('workflows');
+  const [deleteTarget, setDeleteTarget] = useState<{ nodeIds: string[]; label: string } | null>(null);
 
   const { connectedGroups, isolatedNodes, nodeMap } = useMemo(() => {
     const map = new Map<string, NodeLike>();
@@ -102,6 +108,11 @@ export function WorkflowNodeListPanel({
     );
   };
 
+  const confirmDelete = () => {
+    if (deleteTarget) onDeleteGroup?.(deleteTarget.nodeIds);
+    setDeleteTarget(null);
+  };
+
   return (
     <div className="flex h-full flex-col p-3">
       <div className="mb-2 border-b pb-2 text-xs text-muted-foreground">
@@ -112,13 +123,28 @@ export function WorkflowNodeListPanel({
         {connectedGroups.map((group, index) => {
           const color = GROUP_PALETTE[index % GROUP_PALETTE.length];
           return (
-            <div key={group.join('|')} className={cn('rounded', color.bg)}>
+            <div key={group.join('|')} className={cn('group rounded', color.bg)}>
               <div className="flex items-center gap-2 px-2 py-1.5">
                 <span className={cn('h-3 w-1 rounded-full', color.bar)} />
                 <span className="text-xs font-medium">
                   {t('editor.nodeList.group')} {index + 1}
                 </span>
                 <span className="text-xs text-muted-foreground">({group.length})</span>
+                {onDeleteGroup && (
+                  <button
+                    type="button"
+                    className="ml-auto rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
+                    title={t('editor.nodeList.deleteGroup')}
+                    onClick={() =>
+                      setDeleteTarget({
+                        nodeIds: group,
+                        label: `${t('editor.nodeList.group')} ${index + 1}`,
+                      })
+                    }
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               </div>
               <div className="space-y-0.5 px-1 pb-1">{group.map(renderNode)}</div>
             </div>
@@ -142,6 +168,28 @@ export function WorkflowNodeListPanel({
           </div>
         )}
       </div>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('editor.nodeList.deleteTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {t('editor.nodeList.deleteConfirm', {
+              count: deleteTarget?.nodeIds.length ?? 0,
+              group: deleteTarget?.label ?? '',
+            })}
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)}>
+              {t('editor.nodeList.cancel')}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={confirmDelete}>
+              {t('editor.nodeList.confirmDelete')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

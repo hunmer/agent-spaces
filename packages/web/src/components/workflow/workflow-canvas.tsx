@@ -67,6 +67,7 @@ const edgeTypes = { custom: WorkflowEdgeComponent };
 type CanvasViewportRef = {
   exportCanvas: (format: 'png' | 'jpeg') => void;
   getViewportCenter: () => { x: number; y: number };
+  focusNode: (nodeId: string) => void;
 };
 
 interface WorkflowCanvasProps {
@@ -161,7 +162,7 @@ export function WorkflowCanvas({
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
   const [lassoSelectionActive, setLassoSelectionActive] = useState(false);
   const [logsCollapsed, setLogsCollapsed] = useState(true);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
   const isCanvasLocked = isRunning;
@@ -518,15 +519,19 @@ export function WorkflowCanvas({
     });
   }, [screenToFlowPosition]);
 
+  const focusNode = useCallback((nodeId: string) => {
+    fitView({ nodes: [{ id: nodeId }], duration: 500, maxZoom: 1, padding: 0.3 });
+  }, [fitView]);
+
   useEffect(() => {
     if (!canvasExportRef) return;
-    canvasExportRef.current = { exportCanvas, getViewportCenter };
+    canvasExportRef.current = { exportCanvas, getViewportCenter, focusNode };
     return () => {
       if (canvasExportRef.current?.exportCanvas === exportCanvas) {
         canvasExportRef.current = null;
       }
     };
-  }, [canvasExportRef, exportCanvas, getViewportCenter]);
+  }, [canvasExportRef, exportCanvas, getViewportCenter, focusNode]);
 
   // --- Interaction handlers ---
 
