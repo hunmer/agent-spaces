@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft, Loader2,
-  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon,
+  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { WorkflowInfoDialog } from './workflow-info-dialog';
 import type { Workflow } from '@agent-spaces/shared';
@@ -34,6 +34,7 @@ interface EditorToolbarProps {
   onImport: () => void;
   onOpenPluginManager: () => void;
   onOpenWorkflowLocation: () => void;
+  onClearNodes: () => void;
   onWorkflowInfoChange: (updates: Partial<Workflow>) => void;
 }
 
@@ -54,10 +55,11 @@ export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview, isPreviewDirty,
   onBack, onExitPreview, onSave, onSavePreviewEdits,
   onExport, onImport, isExporting,
-  onOpenPluginManager, onOpenWorkflowLocation, onWorkflowInfoChange,
+  onOpenPluginManager, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [clearNodesOpen, setClearNodesOpen] = useState(false);
   const [savePreviewOpen, setSavePreviewOpen] = useState(false);
   const [versionName, setVersionName] = useState('');
   const [savingPreview, setSavingPreview] = useState<'save' | 'version' | null>(null);
@@ -182,6 +184,15 @@ export function WorkflowEditorToolbar({
             <FolderOpen className="h-4 w-4 mr-2" />
             {t('editor.openLocation')}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            disabled={!workflow}
+            onClick={() => setClearNodesOpen(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {t('editor.clearNodes')}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -211,6 +222,19 @@ export function WorkflowEditorToolbar({
               {savingPreview === 'version' && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
               {t('editor.createVersionAndSave')}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={clearNodesOpen} onOpenChange={setClearNodesOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('editor.clearNodesConfirmTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('editor.clearNodesConfirmDesc')}</p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setClearNodesOpen(false)}>{t('editor.cancel')}</Button>
+            <Button variant="destructive" size="sm" onClick={() => { setClearNodesOpen(false); onClearNodes(); }}>{t('editor.clearNodes')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

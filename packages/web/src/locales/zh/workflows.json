@@ -190,6 +190,9 @@
     },
     "exportPng": "导出 PNG",
     "exportJpeg": "导出 JPEG",
+    "clearNodes": "清空节点",
+    "clearNodesConfirmTitle": "清空所有节点",
+    "clearNodesConfirmDesc": "将删除所有节点和连线，仅保留开始与结束节点，并清空输入输出参数。此操作不可撤销，确定继续吗？",
     "codeFullscreen": {
       "saved": "已保存",
       "unsaved": "未保存"

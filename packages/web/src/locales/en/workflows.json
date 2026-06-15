@@ -190,6 +190,9 @@
     },
     "exportPng": "Export PNG",
     "exportJpeg": "Export JPEG",
+    "clearNodes": "Clear Nodes",
+    "clearNodesConfirmTitle": "Clear All Nodes",
+    "clearNodesConfirmDesc": "This will delete all nodes and edges, keeping only the start and end nodes, and clear input/output parameters. This cannot be undone. Continue?",
     "codeFullscreen": {
       "saved": "Saved",
       "unsaved": "Unsaved"

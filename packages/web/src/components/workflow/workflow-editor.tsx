@@ -876,6 +876,16 @@ function WorkflowEditorInner({
             fetch(`/api/folder/reveal?path=${encodeURIComponent(`workflows/${workflow.id}`)}`, { method: 'POST' });
           }
         }}
+        onClearNodes={() => {
+          if (!workflow || isWorkflowReadOnly) return;
+          const nodes = workflow.nodes
+            .filter(n => n.type === 'start' || n.type === 'end')
+            .map(n => (n.type === 'start' ? { ...n, data: { inputFields: [] } } : { ...n, data: {} }));
+          const updated = { ...workflow, nodes, edges: [], variables: [] };
+          state.setWorkflow(updated);
+          if (state.isPreview) markEditorDirty();
+          else saveWorkflow(updated);
+        }}
         onWorkflowInfoChange={(updates) => {
           if (workflow && !isWorkflowReadOnly) {
             const updated = { ...workflow, ...updates };
