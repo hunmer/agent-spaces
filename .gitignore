@@ -49,3 +49,4 @@ packages/electron/build/*
 !packages/electron/build/icon.ico
 !packages/electron/build/icon.icns
 packages/electron/release/
+packages/server/agent-spaces-data/workflows/*/chat.json

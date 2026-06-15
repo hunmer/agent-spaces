@@ -93,20 +93,47 @@ export class LangChainRuntime implements AgentRuntime {
         {
           signal: this.abortController?.signal,
           recursionLimit,
-          streamMode: ['messages', 'values'],
+          streamMode: ['messages', 'values', 'updates'],
         },
       );
 
       const textParts: string[] = [];
       let finalStateMessages: unknown[] = [];
+      let seenStateMessageCount = 0;
       let usage: AgentRunResult['usage'];
       let emptyAiChunkCount = 0;
       let emptyAiChunkStart = 0;
       let emptyAiChunkLastId = '';
+      const appendOutputText = (text: string) => {
+        if (!text) return;
+        progress.recordAiText();
+        textParts.push(text);
+        runtimeOptions?.onEvent?.({ type: 'output', line: text });
+      };
+      const appendStateOutputText = (text: string) => {
+        if (!text) return;
+        const currentText = textParts.join('');
+        if (currentText.endsWith(text)) return;
+        appendOutputText(text.startsWith(currentText) ? text.slice(currentText.length) : text);
+      };
       for await (const chunk of stream) {
         const streamChunk = splitLangChainStreamChunk(chunk);
-        if (streamChunk.mode === 'values') {
-          finalStateMessages = extractStateMessages(streamChunk.payload);
+        if (streamChunk.mode === 'values' || streamChunk.mode === 'updates') {
+          const stateMessages = streamChunk.mode === 'values'
+            ? extractStateMessages(streamChunk.payload)
+            : extractUpdateMessages(streamChunk.payload);
+          if (streamChunk.mode === 'values') finalStateMessages = stateMessages;
+          const newMessages = streamChunk.mode === 'values'
+            ? stateMessages.slice(seenStateMessageCount)
+            : stateMessages;
+          if (streamChunk.mode === 'values') seenStateMessageCount = Math.max(seenStateMessageCount, stateMessages.length);
+          for (const message of newMessages) {
+            if (!isRecord(message)) continue;
+            const tokenUsage = extractUsageFromMessage(message);
+            if (tokenUsage) usage = tokenUsage;
+            if (!isAiStreamToken(message) || countToolCalls(message) > 0) continue;
+            appendStateOutputText(extractTextFromToken(message));
+          }
           continue;
         }
 
@@ -161,9 +188,7 @@ export class LangChainRuntime implements AgentRuntime {
           runtimeOptions?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'streaming' });
         }
         if (text) {
-          progress.recordAiText();
-          textParts.push(text);
-          runtimeOptions?.onEvent?.({ type: 'output', line: text });
+          appendOutputText(text);
         }
       }
       eventSink.flush();
@@ -173,9 +198,7 @@ export class LangChainRuntime implements AgentRuntime {
       const fallbackText = extractFinalAssistantTextFromState(finalStateMessages);
       if (fallbackText && !textParts.join('').endsWith(fallbackText)) {
         d(`final state fallback text | chars=${fallbackText.length} preview=${truncateForLog(fallbackText, 1200)}`);
-        progress.recordAiText();
-        textParts.push(fallbackText);
-        runtimeOptions?.onEvent?.({ type: 'output', line: fallbackText });
+        appendStateOutputText(fallbackText);
         eventSink.flush();
       }
       const incompleteBeforeToolFallback = progress.getIncompleteReason();
@@ -184,9 +207,7 @@ export class LangChainRuntime implements AgentRuntime {
         : undefined;
       if (toolResultFallbackText) {
         d(`tool result fallback text | chars=${toolResultFallbackText.length} preview=${truncateForLog(toolResultFallbackText, 1200)}`);
-        progress.recordAiText();
-        textParts.push(toolResultFallbackText);
-        runtimeOptions?.onEvent?.({ type: 'output', line: toolResultFallbackText });
+        appendStateOutputText(toolResultFallbackText);
         eventSink.flush();
       }
 
@@ -733,6 +754,15 @@ function extractStateMessages(state: unknown): unknown[] {
   return state.messages;
 }
 
+function extractUpdateMessages(update: unknown): unknown[] {
+  if (Array.isArray(update)) {
+    return update.flatMap((entry) => extractUpdateMessages(entry));
+  }
+  if (!isRecord(update)) return [];
+  if (Array.isArray(update.messages)) return update.messages;
+  return Object.values(update).flatMap((value) => extractUpdateMessages(value));
+}
+
 function extractFinalAssistantTextFromState(messages: unknown[]): string {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
@@ -981,3 +1011,9 @@ function isStringRecord(value: unknown): value is Record<string, string> {
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
 }
+
+export const __testables = {
+  extractStateMessages,
+  extractUpdateMessages,
+  splitLangChainStreamChunk,
+};

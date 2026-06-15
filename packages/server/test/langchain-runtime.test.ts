@@ -14,6 +14,7 @@ import {
   resolveLangChainModelSettings,
   stringifyToolResult,
   summarizeToolResultForAssistant,
+  __testables,
 } from '../src/adapters/langchain-runtime.js';
 
 test('LangChain run progress flags tool results without final assistant text as incomplete', () => {
@@ -148,6 +149,23 @@ test('LangChain stream event sink throttles text chunks and flushes before tool 
   sink.emit({ type: 'output', line: '!' });
   await new Promise((resolve) => setTimeout(resolve, 100));
   assert.deepEqual(events.at(-1), { type: 'output', line: '!' });
+});
+
+test('LangChain stream update extraction flattens nested update payloads', () => {
+  assert.deepEqual(__testables.extractUpdateMessages({
+    nodeA: { messages: [{ role: 'assistant', contentBlocks: [{ type: 'text', text: 'step 1' }] }] },
+    nodeB: [{ messages: [{ role: 'assistant', contentBlocks: [{ type: 'text', text: 'step 2' }] }] }],
+  }), [
+    { role: 'assistant', contentBlocks: [{ type: 'text', text: 'step 1' }] },
+    { role: 'assistant', contentBlocks: [{ type: 'text', text: 'step 2' }] },
+  ]);
+});
+
+test('LangChain stream state extraction uses messages arrays only', () => {
+  assert.deepEqual(__testables.extractStateMessages({
+    messages: [{ role: 'assistant', content: 'final' }],
+  }), [{ role: 'assistant', content: 'final' }]);
+  assert.deepEqual(__testables.extractStateMessages({ state: [] }), []);
 });
 
 test('normalizeLangChainMcpServers maps retired fetch npm package to uvx', () => {

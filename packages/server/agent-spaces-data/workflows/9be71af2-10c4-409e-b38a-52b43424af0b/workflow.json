@@ -1,0 +1,30 @@
+{
+  "id": "9be71af2-10c4-409e-b38a-52b43424af0b",
+  "name": "loop测试",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781507395557_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781507395557_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    }
+  ],
+  "edges": [],
+  "createdAt": 1781507395559,
+  "updatedAt": 1781507395559
+}
