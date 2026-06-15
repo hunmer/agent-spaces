@@ -13,9 +13,9 @@ import { sdk } from "@/lib/sdk";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [showTabs, setShowTabs] = useState(() => {
-    if (typeof window === "undefined") return true;
+    if (typeof window === "undefined") return false;
     const saved = localStorage.getItem("showWorkspaceTabs");
-    return saved === null ? true : saved !== "false";
+    return saved === null ? false : saved !== "false";
   });
 
   useEffect(() => {

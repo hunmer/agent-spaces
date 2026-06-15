@@ -29,11 +29,9 @@ interface ServerManagerDialogProps {
 export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onUpdate, onRemove, onSwitch }: ServerManagerDialogProps) {
   const t = useTranslations("sidebar");
   const tc = useTranslations("common");
-  const [editId, setEditId] = React.useState<string | null>(null);
-  const [name, setName] = React.useState("");
-  const [url, setUrl] = React.useState("");
-  const [secret, setSecret] = React.useState("");
-  // New server fields
+  // New / edit server fields
+  const [formOpen, setFormOpen] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
   const [newName, setNewName] = React.useState("");
   const [newUrl, setNewUrl] = React.useState("");
   const [newSecret, setNewSecret] = React.useState("");
@@ -41,38 +39,43 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
   const [diagOpen, setDiagOpen] = React.useState(false);
   const [diagServerName, setDiagServerName] = React.useState("");
 
-  const startEdit = (server: ServerConfig) => {
-    setEditId(server.id);
-    setName(server.name);
-    setUrl(server.url);
-    setSecret(server.secret || "");
-  };
-
-  const cancelEdit = () => {
-    setEditId(null);
-    setName("");
-    setUrl("");
-    setSecret("");
-  };
-
-  const saveEdit = () => {
-    if (!name.trim() || !url.trim()) return;
-    const u = normalizeServerUrl(url);
-    const updated = servers.map((s) =>
-      s.id === editId ? { ...s, name: name.trim(), url: u, secret: secret.trim() || undefined } : s
-    );
-    onUpdate(updated);
-    cancelEdit();
-  };
-
-  const addServer = () => {
-    if (!newName.trim() || !newUrl.trim()) return;
-    const u = normalizeServerUrl(newUrl);
-    const server: ServerConfig = { id: Date.now().toString(), name: newName.trim(), url: u, secret: newSecret.trim() || undefined };
-    onUpdate([...servers, server]);
+  const openAddForm = () => {
+    setEditingId(null);
     setNewName("");
     setNewUrl("");
     setNewSecret("");
+    setFormOpen(true);
+  };
+
+  const openEditForm = (server: ServerConfig) => {
+    setEditingId(server.id);
+    setNewName(server.name);
+    setNewUrl(server.url);
+    setNewSecret(server.secret || "");
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    setEditingId(null);
+    setNewName("");
+    setNewUrl("");
+    setNewSecret("");
+  };
+
+  const submitServer = () => {
+    if (!newName.trim() || !newUrl.trim()) return;
+    const u = normalizeServerUrl(newUrl);
+    if (editingId) {
+      const updated = servers.map((s) =>
+        s.id === editingId ? { ...s, name: newName.trim(), url: u, secret: newSecret.trim() || undefined } : s
+      );
+      onUpdate(updated);
+    } else {
+      const server: ServerConfig = { id: Date.now().toString(), name: newName.trim(), url: u, secret: newSecret.trim() || undefined };
+      onUpdate([...servers, server]);
+    }
+    closeForm();
   };
 
   const appendDiagnostic = React.useCallback((line: string) => {
@@ -155,7 +158,7 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) cancelEdit(); }}>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) closeForm(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("server.manageServers")}</DialogTitle>
@@ -165,51 +168,46 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
           {servers.map((server) => (
             <div key={server.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
               <Server className="size-4 shrink-0 text-muted-foreground" />
-              {editId === server.id ? (
-                <>
-                  <Input className="h-7 text-sm flex-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" autoFocus />
-                  <Input className="h-7 text-sm flex-[1.5]" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="192.168.1.100" onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} />
-                  <Button size="sm" variant="ghost" onClick={saveEdit} className="h-7 px-2">{tc("save")}</Button>
-                  <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-2">{tc("cancel")}</Button>
-                </>
+              <div
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={() => { if (server.id !== activeId) onSwitch(server); }}
+              >
+                <div className="text-sm font-medium truncate">{server.name}</div>
+                <div className="text-xs text-muted-foreground truncate">{server.url}</div>
+              </div>
+              {server.id === activeId ? (
+                <Check className="size-4 shrink-0 text-primary" />
               ) : (
-                <>
-                  <div
-                    className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => { if (server.id !== activeId) onSwitch(server); }}
-                  >
-                    <div className="text-sm font-medium truncate">{server.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{server.url}</div>
-                  </div>
-                  {server.id === activeId ? (
-                    <Check className="size-4 shrink-0 text-primary" />
-                  ) : (
-                    <Button size="sm" variant="ghost" onClick={() => onSwitch(server)} className="h-7 px-2 text-xs shrink-0">
-                      {t("server.switch")}
-                    </Button>
-                  )}
-                  <>
-                    <Wifi
-                      className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground"
-                      onClick={() => runDiagnostics(server)}
-                    />
-                    <Pencil className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => startEdit(server)} />
-                    {server.id !== "default" && (
-                      <Trash2 className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-destructive" onClick={() => onRemove(server.id)} />
-                    )}
-                  </>
-                </>
+                <Button size="sm" variant="ghost" onClick={() => onSwitch(server)} className="h-7 px-2 text-xs shrink-0">
+                  {t("server.switch")}
+                </Button>
+              )}
+              <Wifi
+                className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground"
+                onClick={() => runDiagnostics(server)}
+              />
+              <Pencil
+                className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground"
+                onClick={() => openEditForm(server)}
+              />
+              {server.id !== "default" && (
+                <Trash2 className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-destructive" onClick={() => onRemove(server.id)} />
               )}
             </div>
           ))}
         </div>
-        {editId === null && (
+        {formOpen ? (
           <div className="border-t pt-3 mt-2 space-y-2">
-            <div className="text-xs font-medium text-muted-foreground mb-2">{t("server.newServer")}</div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">
+              {editingId ? t("server.editServer") : t("server.newServer")}
+            </div>
             <div className="flex items-center gap-2">
-              <Input className="h-8 text-sm" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Name" />
-              <Button size="sm" onClick={addServer} disabled={!newName.trim() || !newUrl.trim()}>
-                <Plus className="size-4" />
+              <Input className="h-8 text-sm" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Name" autoFocus />
+              <Button size="sm" onClick={submitServer} disabled={!newName.trim() || !newUrl.trim()}>
+                {editingId ? tc("save") : <Plus className="size-4" />}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={closeForm} className="h-8 px-2">
+                {tc("cancel")}
               </Button>
             </div>
             <div className="flex items-center gap-2">
@@ -226,6 +224,10 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
               />
             </div>
           </div>
+        ) : (
+          <Button size="sm" variant="outline" className="w-full mt-2" onClick={openAddForm}>
+            <Plus className="size-4 mr-1" /> {t("server.newServer")}
+          </Button>
         )}
         {diagOpen && (
           <Dialog open={diagOpen} onOpenChange={setDiagOpen}>

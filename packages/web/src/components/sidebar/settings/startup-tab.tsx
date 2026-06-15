@@ -19,9 +19,9 @@ export function StartupTab() {
   });
   const [showZoomSetting, setShowZoomSetting] = useState(false);
   const [showTabs, setShowTabs] = useState(() => {
-    if (typeof window === "undefined") return true;
+    if (typeof window === "undefined") return false;
     const saved = localStorage.getItem("showWorkspaceTabs");
-    return saved === null ? true : saved !== "false";
+    return saved === null ? false : saved !== "false";
   });
   const [autoActivate, setAutoActivate] = useState(() => {
     if (typeof window === "undefined") return false;

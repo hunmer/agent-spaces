@@ -33,7 +33,7 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
 
   return (
     <div className='flex h-full w-full flex-col overflow-auto'>
-      <div className='border-b border-border px-4 pt-4 sm:px-6'>
+      <div className='px-4 pt-4 sm:px-6'>
         <ExpandableTabs tabs={TABS} value={activeTab} onValueChange={handleTabChange} />
       </div>
       <main className='w-full flex-1 px-4 py-6 sm:px-6'>
