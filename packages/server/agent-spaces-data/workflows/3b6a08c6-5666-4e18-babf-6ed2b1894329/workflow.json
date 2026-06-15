@@ -68,7 +68,38 @@
           "id": "script-master",
           "name": "文案生成脚本大师",
           "role": "文案生成脚本大师",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "langchain",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "ee63f218-910d-4ecb-82d7-a719def26867",
+          "modelId": "MiniMax-M3",
+          "apiBase": "https://api.minimaxi.com/v1",
+          "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [
+            {
+              "name": "coding.md",
+              "content": "# coding\n"
+            },
+            {
+              "name": "debugging.md",
+              "content": "# debugging\n"
+            },
+            {
+              "name": "testing.md",
+              "content": "# testing\n"
+            }
+          ],
+          "tools": [],
           "systemPrompt": "你是一个专业的文案生成脚本大师，擅长创作各种类型的文案和脚本。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
           "enabled": true
         }
       }
@@ -134,13 +165,13 @@
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 419.6696811855444,
-        "y": 292.0015607915407
+        "x": 443.6696811855444,
+        "y": 272.0015607915407
       },
       "data": {
         "width": 150,
         "height": 260,
-        "nodeWidth": 932,
+        "nodeWidth": 932.0000000000001,
         "nodeHeight": 264
       },
       "composite": {
@@ -157,8 +188,8 @@
       "type": "start",
       "label": "遍历分镜开始",
       "position": {
-        "x": 475.6696811855444,
-        "y": 392.0015607915407
+        "x": 499.6696811855444,
+        "y": 372.0015607915407
       },
       "data": {},
       "composite": {
@@ -173,8 +204,8 @@
       "type": "end",
       "label": "遍历分镜结束",
       "position": {
-        "x": 1075.6696811855445,
-        "y": 392.0015607915407
+        "x": 1099.6696811855445,
+        "y": 372.0015607915407
       },
       "data": {},
       "composite": {
@@ -189,8 +220,8 @@
       "type": "jimeng_text_to_image",
       "label": "生成分镜图片",
       "position": {
-        "x": 775.6696811855444,
-        "y": 392.0015607915407
+        "x": 799.6696811855444,
+        "y": 372.0015607915407
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -222,7 +253,7 @@
             ]
           }
         ],
-        "prompt": "{{ context.item.prompt }}"
+        "prompt": "{{ __loop__.item.story }}"
       },
       "composite": {
         "rootId": "node_1781515208814_nerfw9",
@@ -294,7 +325,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781526569897,
+  "updatedAt": 1781528553521,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"

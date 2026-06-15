@@ -47,7 +47,7 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 11. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
 12. 修改后必须调用 auto_layout 整理画布，然后调用 saveworkflow 保存并读取后端返回文本；如果 saveworkflow 返回 success=false，必须根据返回文本继续修正，不能声称已完成。
 13. 在 loop 内创建节点时，必须把节点放进 loop_body：create_node 传 scopeNodeId/scope_node_id 为 loop_body 节点 ID；如果从 loop 的 loop-body 句柄继续创建，也可以传 source 和 sourceHandle=loop-body 让工具自动推断。
-14. loop_body 内节点要引用当前迭代项或循环中间变量时，必须先在父 loop 节点 data.sharedVariables 中声明对应字段；否则不要直接写 {{ context.item.xxx }} 或 {{ context.shared.xxx }} 之类的引用。array loop 常用写法是在 loop.data.sharedVariables 增加 { key: "item", type: "object", value: "{{ context.item }}" }，loop_body 内再引用 {{ context.item.xxx }}。
+14. loop_body 内节点引用当前循环项时使用 {{ loop.item }} 或 {{ loop.item.xxx }}，不要使用 {{ context.item }}。中间变量不是当前循环项；只有需要在 loop_body 内读写额外中间变量时，才先在父 loop 节点 data.sharedVariables 中声明对应字段，再在 loop_body 内引用该中间变量。
 
 约束：
 - 只能使用本次 Agent Spaces runtime 暴露的工作流编辑工具。
@@ -695,7 +695,7 @@ function describeNodeUsage(definition: NodeTypeDefinition) {
     : {};
   const loopUsage = definition.type === 'loop'
     ? {
-        loop: 'loop 节点通过 data.loopType 控制循环方式：array 使用 data.arrayPath 指向数组变量，count 使用 data.count，infinite 表示无限循环。loop 有两个出口：sourceHandle="loop-body" 进入循环体，sourceHandle="loop-next" 连接循环结束后的后续节点。loop_body 内节点如需使用当前迭代项或循环中间变量，先在父 loop.data.sharedVariables 声明字段，例如 { key: "item", type: "object", value: "{{ context.item }}" }，再在 loop_body 内使用 {{ context.item.prompt }}、{{ context.item.copy }} 等字段引用；不要只在 loop_body 节点里直接引用未声明的中间变量。',
+        loop: 'loop 节点通过 data.loopType 控制循环方式：array 使用 data.arrayPath 指向数组变量，count 使用 data.count，infinite 表示无限循环。loop 有两个出口：sourceHandle="loop-body" 进入循环体，sourceHandle="loop-next" 连接循环结束后的后续节点。loop_body 内节点引用当前循环项时使用 {{ loop.item }} 或 {{ loop.item.xxx }}，例如 {{ loop.item.prompt }}、{{ loop.item.copy }}；不要使用 {{ context.item }}。data.sharedVariables 用于声明循环内需要读写的额外中间变量，不用于获取当前循环项；如果 loop_body 要引用某个中间变量，必须先在父 loop.data.sharedVariables 中声明该字段。',
       }
     : {};
   return {

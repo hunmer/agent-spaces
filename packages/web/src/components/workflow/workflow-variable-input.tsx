@@ -128,7 +128,8 @@ export function WorkflowVariableInput({
   onSelectVariable?: (path: string) => void;
 }) {
   const [variableTypeFilter, setVariableTypeFilter] = useState<OutputField['type']>('any');
-  const variableBadgeLabel = getVariableBadgeLabel(value, variableContext);
+  const [isEditing, setIsEditing] = useState(false);
+  const variableBadgeLabel = isEditing ? null : getVariableBadgeLabel(value, variableContext);
   const selectVariable = onSelectVariable ?? onChange;
 
   return (
@@ -147,6 +148,8 @@ export function WorkflowVariableInput({
           readOnly={readOnly}
           placeholder={placeholder}
           className={inputClassName}
+          onFocus={() => setIsEditing(true)}
+          onBlur={() => setIsEditing(false)}
           onChange={(e) => onChange(e.target.value)}
         />
       )}

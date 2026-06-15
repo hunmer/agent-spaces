@@ -74,10 +74,10 @@ export function ArrayFieldEditor({
     return '';
   };
   const updateArrayItemField = (index: number, key: string, nextValue: unknown) => {
-    clearDisabledOverride(fieldModeKey(index, key));
     updateItem(index, key, nextValue);
   };
   const insertArrayVariable = (index: number, key: string, path: string) => {
+    clearDisabledOverride(fieldModeKey(index, key));
     updateArrayItemField(index, key, path);
   };
 

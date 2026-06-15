@@ -122,9 +122,8 @@ export function WorkflowPropertiesPanel({
   }, []);
   const handleDataChange = useCallback((key: string, value: unknown) => {
     if (!nodeId) return;
-    clearVariableModeDisabledOverride(key);
     onUpdateData(nodeId, { [key]: value });
-  }, [clearVariableModeDisabledOverride, nodeId, onUpdateData]);
+  }, [nodeId, onUpdateData]);
   const handlePreviewDataChange = useCallback((key: string, value: unknown) => {
     if (!nodeId) return;
     onPreviewUpdateData?.(nodeId, { [key]: value });
@@ -139,8 +138,9 @@ export function WorkflowPropertiesPanel({
     return '';
   }, []);
   const insertVariable = useCallback((key: string, variablePath: string) => {
+    clearVariableModeDisabledOverride(key);
     handleDataChange(key, variablePath);
-  }, [handleDataChange]);
+  }, [clearVariableModeDisabledOverride, handleDataChange]);
   const updateJsonPresets = useCallback((presets: JsonPreset[]) => {
     handleDataChange(JSON_PRESETS_KEY, presets);
   }, [handleDataChange]);
