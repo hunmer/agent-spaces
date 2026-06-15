@@ -7,7 +7,7 @@ import { summarizeResult } from '../agent-runtime-types.js';
 import { prepareClaudeOutputStyleFile } from '../../services/output-style.js';
 import { normalizeAdditionalDirectories, normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
-import { extractClaudeHookEvents, extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
+import { extractClaudeHookEvents, extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, normalizeUsage } from './message-format.js';
 
 type ClaudeQueryOptions = Options & {
   outputStyle?: string;
@@ -123,7 +123,6 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let turns = 0;
       let tokenCount = 0;
       let error: string | undefined;
-      let usageLine: string | null = null;
       let usage: AgentRunResult['usage'];
       let costUsd: number | undefined;
       let sawResult = false;
@@ -193,7 +192,6 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           sawResult = true;
           turns = message.num_turns;
           tokenCount = countUsageTokens(message.usage);
-          usageLine = formatUsageLine(message.usage);
           usage = normalizeUsage(message.usage);
           costUsd = readTotalCostUsd(message);
           sessionId = readSessionId(message) ?? sessionId;
@@ -223,7 +221,6 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           tokenCount,
           sessionId,
         });
-        if (usageLine) output.push(usageLine);
         return {
           success: true,
           summary: 'Waiting for user answer',
@@ -267,7 +264,6 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           tokenCount,
           sessionId,
         });
-        if (usageLine) output.push(usageLine);
         return {
           success: true,
           summary: 'Waiting for user answer',
@@ -284,7 +280,6 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${runtimeError}`);
         emitHook('StopFailure', '*', { error: runtimeError, elapsedMs: elapsed, turns, tokenCount, sessionId, stderr: stderrLines });
         appendUnique(output, stderrLines);
-        if (usageLine) output.push(usageLine);
         return {
           success: false,
           summary: 'Claude Code execution failed',
@@ -304,7 +299,6 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       d(`done ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
 
       const finalOutput = resultText && !output.includes(resultText) ? [...output, resultText] : output;
-      if (usageLine && !finalOutput.includes(usageLine)) finalOutput.push(usageLine);
       emitHook('Stop', '*', {
         status: 'success',
         message: text,

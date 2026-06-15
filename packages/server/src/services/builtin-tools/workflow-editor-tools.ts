@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import Dagre from '@dagrejs/dagre';
 import type { NodeTypeDefinition, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import {
@@ -135,12 +134,17 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'create_workflow_version',
-      description: '为当前工作流草稿创建会话内版本快照，适合复杂或破坏性编辑前备份。',
+      description: '为当前工作流草稿创建版本快照，适合复杂或破坏性编辑前备份。',
       inputSchema: schema({ name: { type: 'string', description: '版本名称。' } }),
       execute: async (input) => {
-        const id = `workflow-agent-version-${uuid()}`;
-        versions.set(id, { nodes: clone(draft.nodes), edges: clone(draft.edges) });
-        return { success: true, version_id: id, name: stringInput(asRecord(input), 'name') ?? 'AI 修改前备份' };
+        const name = stringInput(asRecord(input), 'name') ?? 'AI 修改前备份';
+        const version = workflowService.createVersion(draft.id, {
+          name,
+          nodes: draft.nodes,
+          edges: draft.edges,
+        });
+        versions.set(version.id, { nodes: clone(version.snapshot.nodes), edges: clone(version.snapshot.edges) });
+        return { success: true, version_id: version.id, name: version.name };
       },
     },
     {

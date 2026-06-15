@@ -237,7 +237,8 @@
     "copiedNodes": "Copied Nodes",
     "pasteCopiedNodes": "Paste",
     "moveCopiedNodesToStaging": "Move to Staging",
-    "clearCopiedNodes": "Clear"
+    "clearCopiedNodes": "Clear",
+    "recordCount": "{count} nodes"
   },
   "canvas": {
     "mergeToWorkflow": "Merge to Workflow",

@@ -93,29 +93,45 @@ export function useEditorShortcuts({
 
 // ---- useClipboard ----
 
+export interface ClipboardRecord {
+  id: string;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  count: number;
+  label: string;
+}
+
+const MAX_CLIPBOARD_RECORDS = 10;
+
 export function useClipboard() {
-  const clipboardRef = useRef<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null>(null);
-  const [count, setCount] = useState(0);
+  const recordsRef = useRef<ClipboardRecord[]>([]);
+  const [records, setRecords] = useState<ClipboardRecord[]>([]);
 
   const copy = useCallback((nodes: WorkflowNode[], edges: WorkflowEdge[]) => {
-    clipboardRef.current = {
+    if (nodes.length === 0) return;
+    const record: ClipboardRecord = {
+      id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       nodes: JSON.parse(JSON.stringify(nodes)),
       edges: JSON.parse(JSON.stringify(edges)),
+      count: nodes.length,
+      label: nodes[0]?.label?.trim() || nodes[0]?.type || 'node',
     };
-    setCount(nodes.length);
+    const next = [record, ...recordsRef.current].slice(0, MAX_CLIPBOARD_RECORDS);
+    recordsRef.current = next;
+    setRecords(next);
   }, []);
 
-  const paste = useCallback((): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
-    if (!clipboardRef.current) return null;
-    const { nodes, edges } = clipboardRef.current;
-    // Generate new IDs to avoid conflicts
+  // record 省略时取最近一次复制
+  const paste = useCallback((record?: ClipboardRecord): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
+    const target = record ?? recordsRef.current[0];
+    if (!target) return null;
     const idMap = new Map<string, string>();
-    const newNodes = nodes.map(n => {
+    const newNodes = target.nodes.map(n => {
       const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       idMap.set(n.id, newId);
       return { ...n, id: newId, position: { x: n.position.x + 20, y: n.position.y + 20 } };
     });
-    const newEdges = edges.map(e => ({
+    const newEdges = target.edges.map(e => ({
       ...e,
       id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       source: idMap.get(e.source) || e.source,
@@ -124,19 +140,21 @@ export function useClipboard() {
     return { nodes: newNodes, edges: newEdges };
   }, []);
 
-  const getData = useCallback((): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
-    if (!clipboardRef.current) return null;
-    return JSON.parse(JSON.stringify(clipboardRef.current));
+  const getData = useCallback((record?: ClipboardRecord): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
+    const target = record ?? recordsRef.current[0];
+    if (!target) return null;
+    return JSON.parse(JSON.stringify({ nodes: target.nodes, edges: target.edges }));
   }, []);
 
   const clear = useCallback(() => {
-    clipboardRef.current = null;
-    setCount(0);
+    recordsRef.current = [];
+    setRecords([]);
   }, []);
 
-  const hasData = count > 0;
+  const hasData = records.length > 0;
+  const count = records[0]?.count ?? 0;
 
-  return { copy, paste, getData, clear, hasData, count };
+  return { copy, paste, getData, clear, hasData, count, records };
 }
 
 // ---- useExecutionPanel ----

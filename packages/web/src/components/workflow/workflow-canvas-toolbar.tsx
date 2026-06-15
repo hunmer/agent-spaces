@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Workflow } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
@@ -15,6 +16,12 @@ import {
   EyeOff, LassoSelect, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw, SquareDashedMousePointer,
   PanelBottomClose, PanelBottomOpen,
 } from 'lucide-react';
+
+export interface WorkflowClipboardRecord {
+  id: string;
+  label: string;
+  count: number;
+}
 
 function CanvasToolbarButton({
   tooltip,
@@ -45,8 +52,9 @@ export function CanvasToolbar({
   onAutoLayout,
   layoutEngine,
   copiedNodeCount = 0,
-  onPasteCopiedNodes,
-  onMoveCopiedNodesToStaging,
+  copiedRecords = [],
+  onPasteRecord,
+  onMoveRecord,
   onClearCopiedNodes,
   onToggleRectangleDraw,
   onToggleLassoSelection,
@@ -67,8 +75,9 @@ export function CanvasToolbar({
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string }) => void;
   layoutEngine?: string;
   copiedNodeCount?: number;
-  onPasteCopiedNodes?: () => void;
-  onMoveCopiedNodesToStaging?: () => void;
+  copiedRecords?: WorkflowClipboardRecord[];
+  onPasteRecord?: (id: string) => void;
+  onMoveRecord?: (id: string) => void;
   onClearCopiedNodes?: () => void;
   onToggleRectangleDraw?: () => void;
   onToggleLassoSelection?: () => void;
@@ -77,6 +86,7 @@ export function CanvasToolbar({
   onToggleLogsCollapsed: () => void;
 }) {
   const t = useTranslations("workflows");
+  const [clipboardOpen, setClipboardOpen] = useState(false);
   const hasNodes = workflow.nodes.length > 0;
   const autoLayoutOptions = layoutEngine ? { layoutEngine } : undefined;
 
@@ -113,12 +123,12 @@ export function CanvasToolbar({
           </CanvasToolbarButton>
         )}
 
-        {copiedNodeCount > 0 && (
-          <DropdownMenu>
+        {copiedRecords.length > 0 && (
+          <Popover open={clipboardOpen} onOpenChange={setClipboardOpen}>
             <Tooltip>
               <TooltipTrigger
                 render={(
-                  <DropdownMenuTrigger
+                  <PopoverTrigger
                     render={<Button variant="ghost" size="sm" className="relative h-7 w-7 p-0 text-blue-500" />}
                   />
                 )}
@@ -130,22 +140,50 @@ export function CanvasToolbar({
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">{t('canvasToolbar.copiedNodes')}</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="center" side="top" className="w-36">
-              <DropdownMenuItem className="text-xs" onClick={onPasteCopiedNodes}>
-                <ClipboardPaste className="h-3.5 w-3.5" />
-                {t('canvasToolbar.pasteCopiedNodes')}
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs" onClick={onMoveCopiedNodesToStaging}>
-                <Archive className="h-3.5 w-3.5" />
-                {t('canvasToolbar.moveCopiedNodesToStaging')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs" variant="destructive" onClick={onClearCopiedNodes}>
-                <Trash2 className="h-3.5 w-3.5" />
-                {t('canvasToolbar.clearCopiedNodes')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <PopoverContent align="center" side="top" className="w-60 gap-0 p-1.5">
+              <div className="flex max-h-72 flex-col overflow-y-auto">
+                {copiedRecords.map((record) => (
+                  <div key={record.id} className="flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-accent">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-medium">{record.label}</div>
+                      <div className="text-[10px] text-muted-foreground">{t('canvasToolbar.recordCount', { count: record.count })}</div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 shrink-0 p-0"
+                      disabled={!onPasteRecord}
+                      onClick={() => { setClipboardOpen(false); onPasteRecord?.(record.id); }}
+                    >
+                      <ClipboardPaste className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 shrink-0 p-0"
+                      disabled={!onMoveRecord}
+                      onClick={() => { setClipboardOpen(false); onMoveRecord?.(record.id); }}
+                    >
+                      <Archive className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              {onClearCopiedNodes && (
+                <div className="mt-1 border-t border-border pt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-full justify-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => { setClipboardOpen(false); onClearCopiedNodes(); }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    {t('canvasToolbar.clearCopiedNodes')}
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
 
         <CanvasToolbarButton

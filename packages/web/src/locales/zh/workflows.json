@@ -237,7 +237,8 @@
     "copiedNodes": "已复制节点",
     "pasteCopiedNodes": "粘贴",
     "moveCopiedNodesToStaging": "移动到暂存",
-    "clearCopiedNodes": "清空"
+    "clearCopiedNodes": "清空",
+    "recordCount": "{count} 个节点"
   },
   "canvas": {
     "mergeToWorkflow": "合并为工作流",

@@ -9,7 +9,7 @@
       "label": "开始",
       "position": {
         "x": 0,
-        "y": 30
+        "y": 4.5
       },
       "data": {
         "inputFields": [
@@ -28,16 +28,237 @@
       "label": "结束",
       "position": {
         "x": 0,
-        "y": 210
+        "y": 815
       },
-      "data": {}
+      "data": {
+        "outputs": [
+          {
+            "key": "imageList",
+            "type": "image[]",
+            "value": "{{ __data__[\"node_1781503824292_ymjbwp\"].imageList }}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781503809476_157yy8",
+      "type": "agent_run",
+      "label": "文案转分镜",
+      "position": {
+        "x": 0,
+        "y": 209
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "loadProjectClaudeMd": true,
+        "loadRuleMd": true,
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "请将以下故事文本转换为分镜镜头JSON数组。每个分镜包含：\n- 文案文本：该镜头的文字描述\n- 画面提示词：用于生成图片的详细描述\n\n输出格式必须是严格的JSON数组，不要有任何其他文字说明。\n\n故事文本：\n{{ __data__[\"node_1781500461235_start\"].story }}",
+        "agent": {
+          "id": "6005773f-07c1-4904-b9f7-bf85c91c8a9c",
+          "name": "Agent",
+          "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "claude-code",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
+          "modelId": "GLM-4.7",
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        }
+      }
+    },
+    {
+      "id": "node_1781503818004_py141h",
+      "type": "run_code",
+      "label": "解析分镜JSON",
+      "position": {
+        "x": 0,
+        "y": 409
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  // 解析 agent_run 返回的 JSON 字符串\n  const jsonStr = params.jsonString;\n  const scenes = JSON.parse(jsonStr);\n  \n  return {\n    scenes: scenes\n  };\n}",
+        "inputFields": [
+          {
+            "key": "jsonString",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "outputs": [
+          {
+            "key": "scenes",
+            "type": "any"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781503824292_ymjbwp",
+      "type": "loop",
+      "label": "遍历分镜",
+      "position": {
+        "x": 0,
+        "y": 609
+      },
+      "data": {
+        "loopType": "array",
+        "count": 1,
+        "concurrency": 1,
+        "sharedVariables": [
+          {
+            "key": "imageList",
+            "type": "image[]",
+            "defaultValue": "[]"
+          }
+        ],
+        "outputs": [
+          {
+            "key": "items",
+            "type": "any"
+          }
+        ],
+        "arrayPath": "{{ __data__[\"node_1781503818004_py141h\"].scenes }}"
+      },
+      "composite": {
+        "role": "loop",
+        "generated": false,
+        "hidden": false,
+        "scopeBoundary": false,
+        "rootId": "node_1781503824292_ymjbwp",
+        "parentId": null
+      }
+    },
+    {
+      "id": "node_1781503824292_v016o2",
+      "type": "loop_body",
+      "label": "nodes.loop_body.label",
+      "position": {
+        "x": 979,
+        "y": 153.6272072049769
+      },
+      "data": {
+        "width": 692,
+        "height": 579.2479705810547,
+        "nodeWidth": 737,
+        "nodeHeight": 553
+      },
+      "composite": {
+        "role": "loop_body",
+        "generated": true,
+        "hidden": false,
+        "scopeBoundary": true,
+        "rootId": "node_1781503824292_ymjbwp",
+        "parentId": "node_1781503824292_ymjbwp"
+      }
+    },
+    {
+      "id": "node_1781503824292_626fbh",
+      "type": "start",
+      "label": "遍历分镜开始",
+      "position": {
+        "x": 1035,
+        "y": 253.6272072049769
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781503824292_v016o2",
+        "parentId": "node_1781503824292_v016o2",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781504211709_8z4pa3",
+      "type": "end",
+      "label": "遍历分镜结束",
+      "position": {
+        "x": 1395,
+        "y": 568.8751777860316
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781503824292_v016o2",
+        "parentId": "node_1781503824292_v016o2",
+        "generated": true,
+        "hidden": false
+      }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1781503824292_ymjbwp-loop-body-node_1781503824292_v016o2-target",
+      "source": "node_1781503824292_ymjbwp",
+      "target": "node_1781503824292_v016o2",
+      "sourceHandle": "loop-body",
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781503824292_ymjbwp",
+        "parentId": "node_1781503824292_ymjbwp",
+        "generated": true,
+        "hidden": false,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781503824292_v016o2-source-node_1781503824292_626fbh-target",
+      "source": "node_1781503824292_v016o2",
+      "target": "node_1781503824292_626fbh",
+      "sourceHandle": null,
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781503824292_v016o2",
+        "parentId": "node_1781503824292_v016o2",
+        "generated": true,
+        "hidden": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781500461235_start-node_1781503809476_157yy8-mqetijiw",
+      "source": "node_1781500461235_start",
+      "target": "node_1781503809476_157yy8"
+    },
+    {
+      "id": "e-node_1781503809476_157yy8-node_1781503818004_py141h-mqetird9",
+      "source": "node_1781503809476_157yy8",
+      "target": "node_1781503818004_py141h"
+    },
+    {
+      "id": "e-node_1781503818004_py141h-node_1781503824292_ymjbwp-mqetird9",
+      "source": "node_1781503818004_py141h",
+      "target": "node_1781503824292_ymjbwp"
+    },
+    {
+      "id": "e-node_1781503824292_ymjbwp-loop-next-node_1781500461235_end-target",
+      "source": "node_1781503824292_ymjbwp",
+      "target": "node_1781500461235_end",
+      "sourceHandle": "loop-next",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781503824292_626fbh-source-node_1781504211709_8z4pa3-target",
+      "source": "node_1781503824292_626fbh",
+      "target": "node_1781504211709_8z4pa3",
+      "sourceHandle": null,
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781502481907,
+  "updatedAt": 1781506284476,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"
-  ]
+  ],
+  "variables": []
 }

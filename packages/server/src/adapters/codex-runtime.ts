@@ -11,7 +11,6 @@ import type {
   ThreadItem,
   ThreadOptions,
   TodoListItem,
-  TurnCompletedEvent,
   Usage,
 } from '@openai/codex-sdk';
 import type {
@@ -112,9 +111,6 @@ export class CodexRuntime implements AgentRuntime {
         } else if (event.type === 'turn.completed') {
           tokenCount = countUsageTokens(event.usage);
           usage = normalizeUsage(event.usage);
-          const usageLine = formatUsageLine(event);
-          output.push(usageLine);
-          options?.onEvent?.({ type: 'output', line: usageLine });
         } else if (event.type === 'turn.failed') {
           error = event.error.message;
         } else if (event.type === 'error') {
@@ -478,12 +474,6 @@ function formatTodoListLine(item: TodoListItem): string {
     { total: 0, completed: 0 },
   );
   return `Todo: ${counts.completed}/${counts.total} completed`;
-}
-
-function formatUsageLine(event: TurnCompletedEvent): string {
-  const usage = event.usage;
-  const total = countUsageTokens(usage);
-  return `[Usage] tokens=${total} input=${usage.input_tokens} output=${usage.output_tokens} reasoning=${usage.reasoning_output_tokens}`;
 }
 
 function logEventDebug(event: ThreadEvent, d: (message: string) => void): void {

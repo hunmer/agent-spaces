@@ -33,7 +33,7 @@ import {
   getWorkflowCanvasThemePreset,
   parseWorkflowCanvasCustomTheme,
 } from './workflow-canvas-theme';
-import { CanvasToolbar } from './workflow-canvas-toolbar';
+import { CanvasToolbar, type WorkflowClipboardRecord } from './workflow-canvas-toolbar';
 import { useCanvasData } from './use-workflow-canvas-data';
 import { useCanvasDomEvents } from './use-workflow-canvas-dom-events';
 import { useCanvasExport } from './use-workflow-canvas-export';
@@ -114,8 +114,9 @@ interface WorkflowCanvasProps {
   onExitPreview?: () => void;
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void;
   copiedNodeCount?: number;
-  onPasteCopiedNodes?: () => void;
-  onMoveCopiedNodesToStaging?: () => void;
+  copiedRecords?: WorkflowClipboardRecord[];
+  onPasteRecord?: (id: string) => void;
+  onMoveRecord?: (id: string) => void;
   onClearCopiedNodes?: () => void;
   onConnectionDrop?: (context: {
     sourceNodeId: string;
@@ -133,7 +134,7 @@ export function WorkflowCanvas({
   selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
   onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
-  copiedNodeCount = 0, onPasteCopiedNodes, onMoveCopiedNodesToStaging, onClearCopiedNodes,
+  copiedNodeCount = 0, copiedRecords = [], onPasteRecord, onMoveRecord, onClearCopiedNodes,
   onConnectionDrop,
   onRectangleDrawNodeSelect,
   onInsertExistingNodeOnEdge,
@@ -896,8 +897,9 @@ export function WorkflowCanvas({
         onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
         layoutEngine={layoutEngine}
         copiedNodeCount={isCanvasLocked ? 0 : copiedNodeCount}
-        onPasteCopiedNodes={isCanvasLocked ? undefined : onPasteCopiedNodes}
-        onMoveCopiedNodesToStaging={isCanvasLocked ? undefined : onMoveCopiedNodesToStaging}
+        copiedRecords={isCanvasLocked ? [] : copiedRecords}
+        onPasteRecord={isCanvasLocked ? undefined : onPasteRecord}
+        onMoveRecord={isCanvasLocked ? undefined : onMoveRecord}
         onClearCopiedNodes={isCanvasLocked ? undefined : onClearCopiedNodes}
         onToggleRectangleDraw={
           isCanvasLocked || !onRectangleDrawNodeSelect

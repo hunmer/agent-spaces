@@ -1,11 +1,26 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
+import { ApiError } from '@agent-spaces/sdk';
 import type { ExecutionLog, OperationEntry, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { operationHistoryApi, workflowApi, workflowVersionApi } from '@/lib/workflow-api';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
+
+function resolveApiError(err: unknown): string {
+  if (err instanceof ApiError) {
+    try {
+      const parsed = JSON.parse(err.body) as { error?: unknown; message?: unknown };
+      const msg = parsed.error ?? parsed.message;
+      if (typeof msg === 'string' && msg.trim()) return msg;
+    } catch {
+      // body 非 JSON，回退到 message
+    }
+  }
+  return err instanceof Error ? err.message : '保存失败';
+}
 
 type WorkflowSnapshot = Pick<Workflow, 'nodes' | 'edges'> & {
   variables?: Workflow['variables'];
@@ -258,10 +273,10 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   }, [redoStack, workflow, markDirty]);
 
   // ---- Save ----
-  const saveWorkflow = useCallback(async (workflowToSave?: Workflow) => {
-    if (isPreview) return;
+  const saveWorkflow = useCallback(async (workflowToSave?: Workflow): Promise<boolean> => {
+    if (isPreview) return false;
     const nextWorkflow = workflowToSave ?? workflow;
-    if (!nextWorkflow) return;
+    if (!nextWorkflow) return false;
     setIsSaving(true);
     try {
       const saved = await workflowApi.update(nextWorkflow.id, {
@@ -271,6 +286,10 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       setWorkflow(saved);
       setIsDirty(false);
       store.upsertWorkflow(saved);
+      return true;
+    } catch (err) {
+      toast.error('保存工作流失败', { description: resolveApiError(err) });
+      return false;
     } finally {
       setIsSaving(false);
     }

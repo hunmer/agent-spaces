@@ -74,7 +74,6 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
       const cacheCreation = usage.cache_creation_input_tokens ?? 0;
 
       output.push(result.text);
-      output.push(`[Usage] tokens=${inputTokens + outputTokens + Number(cacheRead) + Number(cacheCreation)} input=${inputTokens} output=${outputTokens} cached=${Number(cacheRead) + Number(cacheCreation)}`);
       options?.onEvent?.({ type: 'output', line: result.text });
       d(`done ${elapsed}ms | turns=${result.num_turns} tokens=${inputTokens + outputTokens} (in=${inputTokens} out=${outputTokens})${Number(cacheRead) > 0 || Number(cacheCreation) > 0 ? ` cache=(read=${cacheRead},create=${cacheCreation})` : ''}`);
 

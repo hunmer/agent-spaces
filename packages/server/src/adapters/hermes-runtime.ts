@@ -630,7 +630,6 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
   let inVerboseThinkingBlock = false;
   let inCapturedReasoningBlock = false;
   let toolUseIndex = 0;
-  let emittedUsage = false;
 
   const emitOutput = (line: string): void => {
     output.push(line);
@@ -641,12 +640,6 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
     const normalized = text.trim();
     if (!normalized) return;
     options?.onEvent?.({ type: 'reasoning', text: normalized, status: 'completed' });
-  };
-
-  const emitUsage = (usageLine: string): void => {
-    if (emittedUsage) return;
-    emittedUsage = true;
-    emitOutput(usageLine);
   };
 
   const emitToolUse = (tool: { name: string; input?: unknown; rawInput?: string }): void => {
@@ -688,11 +681,7 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
         return;
       }
 
-      const usageLine = parseHermesUsageLine(normalized);
-      if (usageLine) {
-        emitUsage(usageLine);
-        return;
-      }
+      if (isHermesUsageLine(normalized)) return;
 
       const reasoning = parseHermesReasoningLine(normalized);
       if (reasoning) {
@@ -802,38 +791,12 @@ function isHermesLogLine(line: string): boolean {
   return /^\d{2}:\d{2}:\d{2}\s+-\s+/.test(line);
 }
 
-function parseHermesUsageLine(line: string): string | undefined {
+function isHermesUsageLine(line: string): boolean {
   const apiCallMatch = line.match(/\bAPI call #\d+:.*?\bin=([\d,]+)\s+out=([\d,]+)\s+total=([\d,]+)/i);
-  if (apiCallMatch) {
-    const cache = line.match(/\bcache=([\d,]+)\/[\d,]+/i)?.[1];
-    return formatUsageLine({
-      input: apiCallMatch[1],
-      output: apiCallMatch[2],
-      total: apiCallMatch[3],
-      cached: cache,
-    });
-  }
+  if (apiCallMatch) return true;
 
   const tokenUsageMatch = line.match(/\bToken usage:\s*prompt=([\d,]+),\s*completion=([\d,]+),\s*total=([\d,]+)/i);
-  if (tokenUsageMatch) {
-    return formatUsageLine({
-      input: tokenUsageMatch[1],
-      output: tokenUsageMatch[2],
-      total: tokenUsageMatch[3],
-    });
-  }
-
-  return undefined;
-}
-
-function formatUsageLine(usage: { input: string; output: string; total: string; cached?: string }): string {
-  const parts = [
-    `[Usage] total: ${usage.total}`,
-    `input: ${usage.input}`,
-    `output: ${usage.output}`,
-  ];
-  if (usage.cached) parts.push(`cached: ${usage.cached}`);
-  return parts.join(' ');
+  return Boolean(tokenUsageMatch);
 }
 
 function parseJsonObject(value: string): unknown | undefined {

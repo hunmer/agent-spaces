@@ -228,18 +228,6 @@ export function countUsageTokens(usage: unknown): number {
   return values.reduce<number>((total, value) => total + (typeof value === 'number' ? value : 0), 0);
 }
 
-export function formatUsageLine(usage: unknown): string | null {
-  const normalized = normalizeClaudeUsage(usage);
-  if (!normalized) return null;
-  return [
-    `[Usage] tokens=${normalized.totalTokens}`,
-    `input=${normalized.inputTokens}`,
-    `output=${normalized.outputTokens}`,
-    `cached=${normalized.cachedInputTokens}`,
-    `reasoning=${normalized.reasoningTokens}`,
-  ].join(' ');
-}
-
 export function normalizeUsage(usage: unknown): MessageTokenUsage | undefined {
   const normalized = normalizeClaudeUsage(usage);
   if (!normalized) return undefined;

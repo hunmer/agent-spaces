@@ -29,7 +29,7 @@ import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play, Palette, ListTree } from 'lucide-react';
-import { useEditorShortcuts, useClipboard } from '@/hooks/use-workflow-editor';
+import { useEditorShortcuts, useClipboard, type ClipboardRecord } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorkflowEditorState } from './use-workflow-editor-state';
@@ -274,6 +274,23 @@ function WorkflowEditorInner({
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
 
   const { enterPreview, exitPreview, isPreview, markPreviewDirty, saveWorkflow, setWorkflow } = state;
+
+  // 仅粘贴工作流节点剪贴板（指定 record 时粘贴该条，否则粘贴最近一次）
+  const pasteWorkflowNodes = useCallback((record?: ClipboardRecord) => {
+    const pasted = clipboard.paste(record);
+    if (!pasted || !state.workflow) return;
+    state.pushUndo('paste');
+    state.setWorkflow(w => w ? {
+      ...w,
+      nodes: [...w.nodes, ...pasted.nodes],
+      edges: [...w.edges, ...pasted.edges],
+    } : null);
+    const pastedNodeIds = pasted.nodes.map(node => node.id);
+    state.setSelectedNodeIds(pastedNodeIds);
+    state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
+    markEditorDirty();
+  }, [clipboard, markEditorDirty, state]);
+
   const pasteClipboardNodes = useCallback(async () => {
     if (clipboardImagePasteEnabled && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
       try {
@@ -320,23 +337,11 @@ function WorkflowEditorInner({
       }
     }
 
-    const pasted = clipboard.paste();
-    if (pasted && state.workflow) {
-      state.pushUndo('paste');
-      state.setWorkflow(w => w ? {
-        ...w,
-        nodes: [...w.nodes, ...pasted.nodes],
-        edges: [...w.edges, ...pasted.edges],
-      } : null);
-      const pastedNodeIds = pasted.nodes.map(node => node.id);
-      state.setSelectedNodeIds(pastedNodeIds);
-      state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
-        markEditorDirty();
-      }
-  }, [canvas, clipboard, clipboardImagePasteEnabled, clipboardTextPasteEnabled, markEditorDirty, state]);
+    pasteWorkflowNodes();
+  }, [canvas, pasteWorkflowNodes, clipboardImagePasteEnabled, clipboardTextPasteEnabled]);
 
-  const moveClipboardNodesToStaging = useCallback(async () => {
-    const copied = clipboard.getData();
+  const moveClipboardNodesToStaging = useCallback(async (record?: ClipboardRecord) => {
+    const copied = clipboard.getData(record);
     if (!copied || !state.workflowId) return;
     const stagedNodes: StagedNode[] = copied.nodes.map((node, index) => ({
       id: `staged_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}`,
@@ -628,8 +633,15 @@ function WorkflowEditorInner({
                 onExitPreview={exitExecutionPreview}
                 onAutoLayout={canvas.handleAutoLayout}
                 copiedNodeCount={clipboard.count}
-                onPasteCopiedNodes={isWorkflowReadOnly ? undefined : pasteClipboardNodes}
-                onMoveCopiedNodesToStaging={isWorkflowReadOnly ? undefined : moveClipboardNodesToStaging}
+                copiedRecords={isWorkflowReadOnly ? [] : clipboard.records}
+                onPasteRecord={isWorkflowReadOnly ? undefined : (id) => {
+                  const record = clipboard.records.find(r => r.id === id);
+                  if (record) pasteWorkflowNodes(record);
+                }}
+                onMoveRecord={isWorkflowReadOnly ? undefined : (id) => {
+                  const record = clipboard.records.find(r => r.id === id);
+                  if (record) void moveClipboardNodesToStaging(record);
+                }}
                 onClearCopiedNodes={clipboard.clear}
                 canvasExportRef={canvasExportRef}
               />
