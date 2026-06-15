@@ -40,7 +40,6 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
   const [editSkill, setEditSkill] = useState<SkillInfo | null>(null);
   const [editContent, setEditContent] = useState('');
   const [bindDialogSkill, setBindDialogSkill] = useState<SkillInfo | null>(null);
-  const [bindSelected, setBindSelected] = useState<string[]>([]);
 
   // Store state
 
@@ -51,7 +50,6 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
 
   const openBindDialog = (skill: SkillInfo) => {
     setBindDialogSkill(skill);
-    setBindSelected(skill.boundAgents.map((a) => a.id));
   };
 
   const BIND_ALL_KEY = '__bind_all__';
@@ -67,7 +65,6 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
       group: '',
       boundAgents: [],
     });
-    setBindSelected([]);
   };
 
   const handleSaveEdit = async () => {
@@ -76,15 +73,15 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
     if (ok) setEditSkill(null);
   };
 
-  const handleBindConfirm = async () => {
+  const handleBindConfirm = async (selectedIds: string[]) => {
     if (!bindDialogSkill) return;
     if (isBindAllMode) {
       const skillNames = skills.map((s) => s.name);
-      for (const agentId of bindSelected) {
+      for (const agentId of selectedIds) {
         await actions.applyAllToAgent(agentId, skillNames);
       }
     } else {
-      await actions.bindConfirm(bindDialogSkill, bindSelected, agents);
+      await actions.bindConfirm(bindDialogSkill, selectedIds, agents);
     }
     setBindDialogSkill(null);
   };
@@ -334,12 +331,9 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
         titleOverride={isBindAllMode ? t('applyAllToAgent') : undefined}
         descriptionOverride={isBindAllMode ? t('applyAllToAgentDescription') : undefined}
         agents={agents}
-        selected={bindSelected}
-        onToggle={(id) => setBindSelected((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-        )}
+        initialSelected={isBindAllMode ? [] : (bindDialogSkill?.boundAgents.map((a) => a.id) ?? [])}
         onClose={() => setBindDialogSkill(null)}
-        onConfirm={handleBindConfirm}
+        onSubmit={handleBindConfirm}
       />
     </>
   );

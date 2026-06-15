@@ -120,7 +120,10 @@ export function SendToChannelDialog() {
       <AgentPickerDialog
         open={agentPickerOpen}
         onClose={() => setAgentPickerOpen(false)}
-        onConfirm={() => setAgentPickerOpen(false)}
+        onSubmit={(ids: string[]) => {
+          setSelectedAgent(ids);
+          setAgentPickerOpen(false);
+        }}
         title="选择 Agent"
         description="选择一个 Agent 作为频道目标"
         agents={enabledAgents.map((a: AgentConfig) => ({
@@ -130,8 +133,7 @@ export function SendToChannelDialog() {
           icon: a.icon,
           description: a.description,
         }))}
-        selected={selectedAgent}
-        onToggle={(id: string) => setSelectedAgent([id])}
+        initialSelected={selectedAgent}
         confirmText="选择"
         singleSelect
       />

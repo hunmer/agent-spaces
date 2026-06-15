@@ -9,13 +9,12 @@ interface SkillBindDialogProps {
   titleOverride?: string;
   descriptionOverride?: string;
   agents: AgentCandidate[];
-  selected: string[];
-  onToggle: (id: string) => void;
+  initialSelected: string[];
   onClose: () => void;
-  onConfirm: () => void;
+  onSubmit: (selectedIds: string[]) => void;
 }
 
-export function SkillBindDialog({ skill, titleOverride, descriptionOverride, agents, selected, onToggle, onClose, onConfirm }: SkillBindDialogProps) {
+export function SkillBindDialog({ skill, titleOverride, descriptionOverride, agents, initialSelected, onClose, onSubmit }: SkillBindDialogProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
 
@@ -23,12 +22,11 @@ export function SkillBindDialog({ skill, titleOverride, descriptionOverride, age
     <AgentPickerDialog
       open={!!skill}
       onClose={onClose}
-      onConfirm={onConfirm}
+      onSubmit={onSubmit}
       title={titleOverride || t('bindTitle', { name: skill?.name || '' })}
       description={descriptionOverride || t('bindDescription')}
       agents={agents}
-      selected={selected}
-      onToggle={onToggle}
+      initialSelected={initialSelected}
       cancelText={tc('cancel')}
       confirmText={tc('confirm')}
     />

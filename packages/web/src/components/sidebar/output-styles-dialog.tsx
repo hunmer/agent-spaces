@@ -102,7 +102,6 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
 
   // Apply dialog state
   const [applyTemplate, setApplyTemplate] = useState<OutputStyleTemplate | null>(null);
-  const [applySelected, setApplySelected] = useState<string[]>([]);
   const [applying, setApplying] = useState(false);
 
   const fetchTemplates = useCallback(async () => {
@@ -250,14 +249,13 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
 
   const openApplyDialog = (tmpl: OutputStyleTemplate) => {
     setApplyTemplate(tmpl);
-    setApplySelected([]);
   };
 
-  const handleApply = async () => {
-    if (!applyTemplate || applySelected.length === 0) return;
+  const handleApply = async (selectedIds: string[]) => {
+    if (!applyTemplate || selectedIds.length === 0) return;
     setApplying(true);
     try {
-      await sdk.outputStyles.apply(applyTemplate.id, applySelected);
+      await sdk.outputStyles.apply(applyTemplate.id, selectedIds);
       setApplyTemplate(null);
     } catch { /* ignore */ }
     setApplying(false);
@@ -601,16 +599,12 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
       <AgentPickerDialog
         open={!!applyTemplate}
         onClose={() => setApplyTemplate(null)}
-        onConfirm={handleApply}
+        onSubmit={handleApply}
         title={t('applyTitle', { name: applyTemplate?.name || '' })}
         description={t('applyDescription')}
         agents={agentPickerItems}
-        selected={applySelected}
-        onToggle={(id) => setApplySelected((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-        )}
         cancelText={tc('cancel')}
-        confirmText={t('applyConfirm', { count: applySelected.length })}
+        confirmText={(ids) => t('applyConfirm', { count: ids.length })}
         loading={applying}
       />
     </>

@@ -81,7 +81,6 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
 
   // Apply state
   const [applyCommand, setApplyCommand] = useState<CommandItem | null>(null);
-  const [applySelected, setApplySelected] = useState<string[]>([]);
   const [applying, setApplying] = useState(false);
 
   const fetchAgents = useCallback(async () => {
@@ -212,14 +211,13 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
 
   const openApplyDialog = (cmd: CommandItem) => {
     setApplyCommand(cmd);
-    setApplySelected([]);
   };
 
-  const handleApply = async () => {
-    if (!applyCommand || applySelected.length === 0) return;
+  const handleApply = async (selectedIds: string[]) => {
+    if (!applyCommand || selectedIds.length === 0) return;
     setApplying(true);
     try {
-      await sdk.agentCommands.apply(applyCommand.agentId, applyCommand.name, { group: applyCommand.group, agentIds: applySelected });
+      await sdk.agentCommands.apply(applyCommand.agentId, applyCommand.name, { group: applyCommand.group, agentIds: selectedIds });
       setApplyCommand(null);
       fetchAllCommands();
     } catch { /* ignore */ }
@@ -520,7 +518,7 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
       <AgentPickerDialog
         open={!!applyCommand}
         onClose={() => setApplyCommand(null)}
-        onConfirm={handleApply}
+        onSubmit={handleApply}
         title={t('applyTitle', { name: applyCommand?.name || '' })}
         description={t('applyDescription')}
         agents={agents.map((a) => ({
@@ -528,12 +526,8 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
           name: a.agentName,
           avatarUrl: a.avatarUrl,
         }))}
-        selected={applySelected}
-        onToggle={(id) => setApplySelected((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-        )}
         cancelText={tc('cancel')}
-        confirmText={t('applyConfirm', { count: applySelected.length })}
+        confirmText={(ids) => t('applyConfirm', { count: ids.length })}
         loading={applying}
       />
     </>

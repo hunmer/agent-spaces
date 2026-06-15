@@ -66,10 +66,14 @@ export function AgentPropertyEditor({
   const selectedAgent = resolveAgentValue(value, agents);
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
 
-  const handleSelectAgent = (agentId: string) => {
-    const agent = agents.find((item) => item.id === agentId);
-    if (!agent) return;
-    onChange(toWorkflowAgentValue(agent));
+  const handleSubmitAgent = (ids: string[]) => {
+    const agentId = ids[0];
+    if (agentId) {
+      const agent = agents.find((item) => item.id === agentId);
+      onChange(agent ? toWorkflowAgentValue(agent) : null);
+    } else {
+      onChange(null);
+    }
     setPickerOpen(false);
   };
 
@@ -126,7 +130,7 @@ export function AgentPropertyEditor({
       <AgentPickerDialog
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onConfirm={() => setPickerOpen(false)}
+        onSubmit={handleSubmitAgent}
         title="选择 Agent"
         description="选择一个 Agent 保存到当前节点"
         agents={enabledAgents.map((agent) => ({
@@ -136,8 +140,7 @@ export function AgentPropertyEditor({
           icon: agent.icon,
           description: agent.description,
         }))}
-        selected={selectedAgent ? [selectedAgent.id] : []}
-        onToggle={handleSelectAgent}
+        initialSelected={selectedAgent ? [selectedAgent.id] : []}
         confirmText="选择"
         singleSelect
       />

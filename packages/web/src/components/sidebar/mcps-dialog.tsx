@@ -105,7 +105,6 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
   const [bindDialogMcp, setBindDialogMcp] = useState<McpServerInfo | null>(null);
-  const [bindSelected, setBindSelected] = useState<string[]>([]);
   const [editMcp, setEditMcp] = useState<McpServerInfo | null>(null);
   const [editContent, setEditContent] = useState('');
 
@@ -180,7 +179,6 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
 
   const openBindDialog = (mcp: McpServerInfo) => {
     setBindDialogMcp(mcp);
-    setBindSelected(mcp.boundAgents.map((a) => a.id));
   };
 
   const openEditDialog = (mcp: McpServerInfo) => {
@@ -212,11 +210,11 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
     } catch { /* ignore */ }
   };
 
-  const handleBindConfirm = async () => {
+  const handleBindConfirm = async (selectedIds: string[]) => {
     if (!bindDialogMcp) return;
 
     for (const agent of agents) {
-      const shouldBeBound = bindSelected.includes(agent.id);
+      const shouldBeBound = selectedIds.includes(agent.id);
       const preset = await sdk.agent.getPreset(agent.id) as Record<string, any>;
       if (!preset) continue;
       const mcps = (preset.mcps || {}) as Record<string, unknown>;
@@ -231,12 +229,6 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
 
     setBindDialogMcp(null);
     fetchMcps();
-  };
-
-  const toggleBindAgent = (id: string) => {
-    setBindSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
   };
 
   // Track which store mcps are already imported locally
@@ -785,12 +777,11 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
       <AgentPickerDialog
         open={!!bindDialogMcp}
         onClose={() => setBindDialogMcp(null)}
-        onConfirm={handleBindConfirm}
+        onSubmit={handleBindConfirm}
         title={t('bindTitle', { name: bindDialogMcp?.name || '' })}
         description={t('bindDescription')}
         agents={agents}
-        selected={bindSelected}
-        onToggle={toggleBindAgent}
+        initialSelected={bindDialogMcp?.boundAgents.map((a) => a.id) ?? []}
         cancelText={tc('cancel')}
         confirmText={tc('confirm')}
       />

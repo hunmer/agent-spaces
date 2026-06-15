@@ -32,28 +32,26 @@ export interface AgentPickerItem {
 interface AgentPickerDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onSubmit: (selectedIds: string[]) => void;
   title: string;
   description?: string;
   agents: AgentPickerItem[];
-  selected: string[];
-  onToggle: (id: string) => void;
+  initialSelected?: string[];
   cancelText?: string;
-  confirmText?: string;
+  confirmText?: string | ((selectedIds: string[]) => string);
   loading?: boolean;
-  /** 开启后点击 Agent 立即选中并关闭对话框 */
+  /** 开启后只允许选中一个 Agent */
   singleSelect?: boolean;
 }
 
 export function AgentPickerDialog({
   open,
   onClose,
-  onConfirm,
+  onSubmit,
   title,
   description,
   agents,
-  selected,
-  onToggle,
+  initialSelected,
   cancelText,
   confirmText,
   loading,
@@ -61,15 +59,17 @@ export function AgentPickerDialog({
 }: AgentPickerDialogProps) {
   const { workflows, loadWorkflows } = useWorkflowStore();
   const [workflowId, setWorkflowId] = useState<string>('');
+  const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
 
   useEffect(() => {
     if (open) {
       setWorkflowId('');
+      setSelected(initialSelected ?? []);
       if (useWorkflowStore.getState().workflows.length === 0) {
         loadWorkflows();
       }
     }
-  }, [open, loadWorkflows]);
+  }, [open, initialSelected, loadWorkflows]);
 
   const filteredAgents = useMemo(() => {
     if (!workflowId || workflowId === '__all__') return agents;
@@ -82,6 +82,20 @@ export function AgentPickerDialog({
     );
     return agents.filter((a) => agentIds.has(a.id));
   }, [agents, workflowId, workflows]);
+
+  const handleToggle = (id: string) => {
+    setSelected((prev) => {
+      if (singleSelect) return prev.includes(id) ? [] : [id];
+      return prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+    });
+  };
+
+  const handleConfirm = () => {
+    onSubmit(selected);
+  };
+
+  const resolvedConfirmText =
+    typeof confirmText === 'function' ? confirmText(selected) : confirmText;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -111,10 +125,7 @@ export function AgentPickerDialog({
               <button
                 key={agent.id}
                 type="button"
-                onClick={() => {
-                  onToggle(agent.id);
-                  if (singleSelect) onConfirm();
-                }}
+                onClick={() => handleToggle(agent.id)}
                 className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left text-sm transition-colors"
               >
                 <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-5 rounded-full" />
@@ -143,7 +154,7 @@ export function AgentPickerDialog({
                   <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs max-w-[160px] min-w-0">
                     <AgentIcon agentId={id} name={agent?.name} avatarUrl={agent?.avatarUrl} className="size-3.5 rounded-full shrink-0" />
                     <span className="truncate">{agent?.name || id}</span>
-                    <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0 cursor-pointer">
+                    <button type="button" onClick={() => handleToggle(id)} className="hover:text-destructive shrink-0 cursor-pointer">
                       <X className="size-3" />
                     </button>
                   </span>
@@ -152,16 +163,14 @@ export function AgentPickerDialog({
             </div>
           )}
         </div>
-        {!singleSelect && (
         <div className="shrink-0 flex justify-end gap-2 border-t px-6 py-4">
           <Button variant="outline" onClick={onClose}>
             {cancelText || 'Cancel'}
           </Button>
-          <Button onClick={onConfirm} disabled={loading}>
-            {confirmText || 'Confirm'}
+          <Button onClick={handleConfirm} disabled={loading}>
+            {resolvedConfirmText || 'Confirm'}
           </Button>
         </div>
-        )}
       </DialogContent>
     </Dialog>
   );
