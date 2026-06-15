@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { AgentConfig } from '@agent-spaces/shared';
-import { Bot, Plus } from 'lucide-react';
+import { Bot, Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,7 +14,7 @@ import {
 import { AgentIcon } from '@/components/common/agent-icon';
 import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
-import { newAgentDraft, type AgentPreset } from '@/components/sidebar/agent-shared';
+import { newAgentDraft, normalizeAgent, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { useAgentStore } from '@/stores/agent';
 
 function resolveAgentValue(value: unknown, agents: AgentConfig[]): AgentConfig | AgentPreset | null {
@@ -24,8 +24,7 @@ function resolveAgentValue(value: unknown, agents: AgentConfig[]): AgentConfig |
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Partial<AgentConfig>;
   if (typeof record.id !== 'string' || !record.id.trim()) return null;
-  const fresh = agents.find((agent) => agent.id === record.id);
-  return fresh ?? (record as AgentConfig);
+  return record as AgentConfig;
 }
 
 function toWorkflowAgentValue(agent: AgentConfig | AgentPreset) {
@@ -88,8 +87,8 @@ export function AgentPropertyEditor({
     setPickerOpen(false);
   };
 
-  const handleCreateAgent = () => {
-    setCreateDraft(newAgentDraft('agent'));
+  const handleEditAgent = () => {
+    setCreateDraft(selectedAgent ? normalizeAgent(selectedAgent as AgentConfig) : newAgentDraft('agent'));
     setEditorOpen(true);
   };
 
@@ -131,10 +130,10 @@ export function AgentPropertyEditor({
           size="icon"
           className="h-8 w-8 shrink-0"
           disabled={disabled}
-          title="新建 Agent"
-          onClick={handleCreateAgent}
+          title={selectedAgent ? '修改 Agent' : '新建 Agent'}
+          onClick={handleEditAgent}
         >
-          <Plus className="size-4" />
+          {selectedAgent ? <Pencil className="size-4" /> : <Plus className="size-4" />}
         </Button>
       </div>
 
@@ -165,7 +164,7 @@ export function AgentPropertyEditor({
       >
         <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
           <DialogHeader className="border-b px-5 py-3">
-            <DialogTitle>新建 Agent</DialogTitle>
+            <DialogTitle>{selectedAgent ? '修改 Agent' : '新建 Agent'}</DialogTitle>
             <DialogDescription />
           </DialogHeader>
           {createDraft && (
@@ -177,17 +176,6 @@ export function AgentPropertyEditor({
                 setCreateDraft(null);
               }}
               commit={async (draft) => toWorkflowAgentValue(draft) as AgentPreset}
-              hiddenFields={{
-                role: true,
-                runtimeKind: true,
-                workingDir: true,
-                systemPrompt: true,
-                outputStyle: true,
-                mcps: true,
-                tools: true,
-                skills: true,
-                background: true,
-              }}
               showFooter
             />
           )}

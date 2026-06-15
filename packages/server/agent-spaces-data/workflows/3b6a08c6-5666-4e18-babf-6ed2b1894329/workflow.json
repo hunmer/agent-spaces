@@ -63,7 +63,81 @@
             "type": "object"
           }
         ],
-        "prompt": "将以下故事文本转换为分镜镜头JSON格式，每个分镜包含：\n- copy: 文案文本\n- prompt: 画面提示词\n\n请返回一个分镜数组，格式如下：\n```json\n[\n  {\n    \"copy\": \"文案内容\",\n    \"prompt\": \"画面描述\"\n  }\n]\n```\n\n故事文本：{{ __data__[\"node_1781500461235_start\"].story }}"
+        "prompt": "将以下故事文本转换为分镜镜头JSON格式，每个分镜包含：\n- copy: 文案文本\n- prompt: 画面提示词\n\n请返回一个分镜数组，格式如下：\n```json\n[\n  {\n    \"copy\": \"文案内容\",\n    \"prompt\": \"画面描述\"\n  }\n]\n```\n\n故事文本：{{ __data__[\"node_1781500461235_start\"].story }}",
+        "agent": {
+          "id": "draft-agent-1781522009946",
+          "name": "Agent1",
+          "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "claude-code",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
+          "modelId": "GLM-4.7",
+          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [
+            {
+              "name": "coding.md",
+              "content": "# coding\n"
+            },
+            {
+              "name": "debugging.md",
+              "content": "# debugging\n"
+            },
+            {
+              "name": "testing.md",
+              "content": "# testing\n"
+            }
+          ],
+          "tools": [
+            "CreateCurrentChannelIssue",
+            "ViewCurrentChannelIssue",
+            "AddCurrentChannelComment",
+            "ReadTerminalOutput",
+            "ListQuickCommands",
+            "RunQuickCommand",
+            "StopQuickCommand",
+            "ListDatabases",
+            "ListDatabaseNodes",
+            "SearchDatabaseNodes",
+            "QueryDatabaseVectors",
+            "ReadDatabaseNode",
+            "ListDatabaseNodeVersions",
+            "CreateDatabaseNode",
+            "WriteDatabaseNode",
+            "DeleteDatabaseNode",
+            "MoveDatabaseNode",
+            "UpdateDatabaseNodeMeta",
+            "ListKanbanBoards",
+            "ViewKanbanBoard",
+            "CreateKanbanBoard",
+            "UpdateKanbanBoard",
+            "DeleteKanbanBoard",
+            "ListWorkspaceFiles",
+            "SearchWorkspaceFiles",
+            "ReadWorkspaceFile",
+            "WriteWorkspaceFile",
+            "DeleteWorkspacePath",
+            "MoveWorkspacePath",
+            "list_workflows",
+            "search_workflow",
+            "execute_workflow_sync",
+            "execute_workflow_async",
+            "get_workflow_result",
+            "get_workflow_latest_result"
+          ],
+          "systemPrompt": "你是通用 Agent。根据 issue 和当前任务上下文完成被分配的工作，遵循项目规范，必要时修改代码、运行验证，并清晰汇报结果。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        }
       }
     },
     {
@@ -287,7 +361,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781520181242,
+  "updatedAt": 1781522028859,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"
