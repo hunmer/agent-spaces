@@ -8,9 +8,9 @@ import multer from 'multer';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, statSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname, extname, resolve, basename } from 'node:path';
+import { join, dirname, extname, resolve, basename, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
@@ -329,18 +329,39 @@ if (existsSync(webDir)) {
 
   // SPA fallback: serve correct HTML for each route
   const indexHtml = join(webDir, 'index.html');
-  const workspaceHtml = join(webDir, 'workspace', '_.html');
+  const isInsideWebDir = (filePath: string) => {
+    const rel = relative(webDir, filePath);
+    return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  };
+  const tryWebFiles = (...rels: string[]) => {
+    for (const rel of rels) {
+      const filePath = resolve(webDir, rel.replace(/^\/+/, ''));
+      if (isInsideWebDir(filePath) && existsSync(filePath) && statSync(filePath).isFile()) return filePath;
+    }
+    return null;
+  };
+  const resolveWebFallback = (pathname: string) => {
+    let clean = pathname;
+    try { clean = decodeURIComponent(pathname); } catch { /* keep raw pathname */ }
+    clean = clean.replace(/\.html$/i, '').replace(/\/+$/, '');
+    if (!clean) return indexHtml;
 
-  // /workspace/* -> workspace SPA page
-  if (existsSync(workspaceHtml)) {
-    app.get('/workspace/:id', (_req, res) => {
-      res.sendFile(workspaceHtml);
-    });
-  }
+    const exact = tryWebFiles(clean, `${clean}/index.html`, `${clean}.html`);
+    if (exact) return exact;
+
+    const segs = clean.split('/').filter(Boolean);
+    if (segs.length >= 2) {
+      const dyn = [...segs.slice(0, -1), '_'].join('/');
+      const fallback = tryWebFiles(`${dyn}.html`, `${dyn}/index.html`, dyn);
+      if (fallback) return fallback;
+    }
+
+    return indexHtml;
+  };
 
   // Everything else -> root index.html
-  app.use((_req, res) => {
-    res.sendFile(indexHtml);
+  app.use((req, res) => {
+    res.sendFile(resolveWebFallback(req.path));
   });
 
   console.log(`[server] serving web frontend from ${webDir}`);
