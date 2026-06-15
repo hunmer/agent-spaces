@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -61,15 +61,22 @@ export function AgentPickerDialog({
   const [workflowId, setWorkflowId] = useState<string>('');
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
 
+  // 用 ref 持有最新的 initialSelected，避免父组件每次渲染传入新数组引用导致
+  // 下面的 effect 反复触发 setState（曾引发 Maximum update depth exceeded）。
+  const initialSelectedRef = useRef(initialSelected);
+  initialSelectedRef.current = initialSelected;
+
   useEffect(() => {
     if (open) {
       setWorkflowId('');
-      setSelected(initialSelected ?? []);
+      setSelected(initialSelectedRef.current ?? []);
       if (useWorkflowStore.getState().workflows.length === 0) {
         loadWorkflows();
       }
     }
-  }, [open, initialSelected, loadWorkflows]);
+    // 仅在 open 翻转时初始化，不依赖 initialSelected 引用
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, loadWorkflows]);
 
   const filteredAgents = useMemo(() => {
     if (!workflowId || workflowId === '__all__') return agents;

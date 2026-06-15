@@ -7,7 +7,6 @@ Agent Spaces 是一个**本地多 Agent 协同编程平台**。基于 pnpm monor
 数据持久化采用 JSON 文件 + SQLite（位于 `~/.agent-spaces-data/`），WebSocket 事件命名 `domain.action`，REST API 按资源分组并以 Bearer Token 鉴权。
 
 ## 约定的规则
-
 - TypeScript strict 模式，ESNext 模块，后端 ESM（`"type": "module"`）
 - 前端 Next.js App Router + `"use client"`；状态管理 Zustand（web）/ Riverpod（flutter）
 - 前端 API 调用统一经 `@agent-spaces/sdk`（`packages/web/src/lib/sdk.ts` 单例）
@@ -91,7 +90,6 @@ pnpm publish          # 构建 shared/server 并发布到 npm
 - `packages/web/AGENTS.md`、`packages/web/DESIGN.md` —— Next.js 16 注意事项、UI 设计规范（MiniMax 风格）
 - `docs/` —— 45+ 项目文档，涵盖 Agent 运行时、Workflow、Mini-app、通知中心、Hook、LSP、Chat、Worktree 等
 - `docs/superpowers/{plans,specs}/` —— 按日期归档的功能设计与实施计划
-- `PRD.md` —— 需求文档
 - `codegraph` MCP —— 基于 AST 的代码知识图谱，做结构性查询（定义/调用/影响面）时优先使用
 - `fff` MCP —— 快速文件查找（frecency 排序）
 

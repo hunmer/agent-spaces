@@ -75,7 +75,7 @@
         "y": 15
       },
       "data": {
-        "code": "async function main({ params, context }) {\n  const resultStr = String(params.agentResult || '');\n  try {\n    const parsed = JSON.parse(resultStr);\n    return {\n      scenes: Array.isArray(parsed) ? parsed : []\n    };\n  } catch (e) {\n    const match = resultStr.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n    if (match) {\n      const parsed = JSON.parse(match[1]);\n      return {\n        scenes: Array.isArray(parsed) ? parsed : []\n      };\n    }\n    throw new Error('无法解析JSON结果');\n  }\n}",
+        "code": "async function main({ params, context }) {\n  const resultStr = String(params.agentResult || '').trim();\n\n  const parseScenes = (text) => {\n    const parsed = JSON.parse(text);\n    return { scenes: Array.isArray(parsed) ? parsed : [] };\n  };\n\n  const extractFirstJsonArray = (text) => {\n    const start = text.indexOf('[');\n    if (start === -1) return null;\n    let depth = 0;\n    let inString = false;\n    let escaped = false;\n\n    for (let i = start; i < text.length; i++) {\n      const ch = text[i];\n      if (inString) {\n        if (escaped) {\n          escaped = false;\n        } else if (ch === '\\\\') {\n          escaped = true;\n        } else if (ch === '\"') {\n          inString = false;\n        }\n        continue;\n      }\n      if (ch === '\"') {\n        inString = true;\n      } else if (ch === '[') {\n        depth++;\n      } else if (ch === ']') {\n        depth--;\n        if (depth === 0) return text.slice(start, i + 1);\n      }\n    }\n    return null;\n  };\n\n  try {\n    return parseScenes(resultStr);\n  } catch (e) {\n    const blockMatch = resultStr.match(/```(?:json)?\\s*([\\s\\S]*?)\\s*```/);\n    if (blockMatch) return parseScenes(blockMatch[1]);\n\n    const firstArray = extractFirstJsonArray(resultStr);\n    if (firstArray) return parseScenes(firstArray);\n\n    throw new Error('无法解析JSON结果');\n  }\n}",
         "outputs": [
           {
             "key": "scenes",
@@ -287,7 +287,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781519901594,
+  "updatedAt": 1781520181242,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"
