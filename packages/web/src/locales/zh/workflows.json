@@ -179,7 +179,8 @@
       "deleteTitle": "删除分组",
       "deleteConfirm": "确定删除{group}下的 {count} 个节点？",
       "cancel": "取消",
-      "confirmDelete": "删除"
+      "confirmDelete": "删除",
+      "run": "运行"
     },
     "exportPng": "导出 PNG",
     "exportJpeg": "导出 JPEG",

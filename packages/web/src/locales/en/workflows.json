@@ -179,7 +179,8 @@
       "deleteTitle": "Delete group",
       "deleteConfirm": "Delete {count} node(s) in {group}?",
       "cancel": "Cancel",
-      "confirmDelete": "Delete"
+      "confirmDelete": "Delete",
+      "run": "Run"
     },
     "exportPng": "Export PNG",
     "exportJpeg": "Export JPEG",

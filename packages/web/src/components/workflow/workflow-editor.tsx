@@ -73,6 +73,7 @@ const defaultJson: IJsonModel = {
         children: [
           { type: 'tab', name: 'Nodes', component: 'node-sidebar', id: 'node-sidebar' },
           { type: 'tab', name: 'Canvas Style', component: 'canvas-style', id: 'canvas-style' },
+          { type: 'tab', name: 'Variables', component: 'variables', id: 'variables' },
         ],
       },
       {
@@ -87,7 +88,6 @@ const defaultJson: IJsonModel = {
         weight: 0.30,
         children: [
           { type: 'tab', name: 'Properties', component: 'properties', id: 'properties' },
-          { type: 'tab', name: 'Variables', component: 'variables', id: 'variables' },
           { type: 'tab', name: 'Groups', component: 'groups', id: 'groups' },
           { type: 'tab', name: 'History', component: 'history', id: 'history' },
           { type: 'tab', name: 'Node List', component: 'node-list', id: 'node-list' },
@@ -520,6 +520,22 @@ function WorkflowEditorInner({
     canvas.handleBatchDeleteNodes(nodeIds);
   }, [canvas, isWorkflowReadOnly]);
 
+  // 节点运行：与 workflow-node.tsx handleTestNode 一致，调试/取消调试该节点
+  const handleTestNodeFromList = useCallback((nodeId: string) => {
+    if (isWorkflowRunning) return;
+    if (execution.debugNodeId === nodeId) {
+      window.dispatchEvent(new CustomEvent('workflow:cancel-debug-node', { detail: { nodeId } }));
+    } else {
+      window.dispatchEvent(new CustomEvent('workflow:debug-node', { detail: { nodeId } }));
+    }
+  }, [execution.debugNodeId, isWorkflowRunning]);
+
+  // 分组运行：与 execution-bar 一致，从默认 start node 执行整个 workflow
+  const handleExecuteWorkflowFromList = useCallback(() => {
+    if (isWorkflowRunning) return;
+    execution.handleExecute();
+  }, [execution, isWorkflowRunning]);
+
   const onModelChange = useCallback((_model: Model, action: Action) => {
     try {
       localStorage.setItem(WORKFLOW_LAYOUT_KEY, JSON.stringify(_model.toJson()));
@@ -725,6 +741,9 @@ function WorkflowEditorInner({
             selectedNodeId={state.selectedNodeId}
             onSelectNode={handleSelectNodeFromList}
             onDeleteGroup={isWorkflowReadOnly ? undefined : handleDeleteGroup}
+            onTestNode={handleTestNodeFromList}
+            onExecuteWorkflow={handleExecuteWorkflowFromList}
+            isExecuting={isWorkflowRunning}
           />
         );
       case 'staging':
@@ -770,6 +789,8 @@ function WorkflowEditorInner({
     addStagedNodeToCanvas,
     handleSelectNodeFromList,
     handleDeleteGroup,
+    handleTestNodeFromList,
+    handleExecuteWorkflowFromList,
     clipboard.clear,
     clipboard.count,
     exitExecutionPreview,

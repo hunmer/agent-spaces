@@ -22,35 +22,13 @@
         "y": 210
       },
       "data": {}
-    },
-    {
-      "id": "node_1781500523891_wytnqn",
-      "type": "gallery_preview",
-      "label": "图片预览",
-      "position": {
-        "x": 300,
-        "y": 0
-      },
-      "data": {
-        "items": [
-          {
-            "src": "https://i.pinimg.com/736x/6c/a6/b3/6ca6b3ee401c996e4362feacf4a46eda.jpg",
-            "type": "image",
-            "thumb": "https://i.pinimg.com/736x/6c/a6/b3/6ca6b3ee401c996e4362feacf4a46eda.jpg"
-          }
-        ],
-        "nodeWidth": 257,
-        "nodeHeight": 373
-      }
     }
   ],
-  "edges": [
-    {
-      "id": "e-node_1781500461235_start-node_1781500523891_wytnqn-mqerf1ds",
-      "source": "node_1781500461235_start",
-      "target": "node_1781500523891_wytnqn"
-    }
-  ],
+  "edges": [],
   "createdAt": 1781500461239,
-  "updatedAt": 1781500569143
+  "updatedAt": 1781501820942,
+  "groups": [],
+  "enabledPlugins": [
+    "workflow.jimeng"
+  ]
 }

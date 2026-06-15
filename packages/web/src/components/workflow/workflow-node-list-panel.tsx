@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Trash2 } from 'lucide-react';
+import { Play, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,9 @@ type WorkflowNodeListPanelProps = {
   selectedNodeId?: string | null;
   onSelectNode: (nodeId: string) => void;
   onDeleteGroup?: (nodeIds: string[]) => void;
+  onTestNode?: (nodeId: string) => void;
+  onExecuteWorkflow?: () => void;
+  isExecuting?: boolean;
 };
 
 // 连通分量着色板 —— bar 为色条实色，bg 为分区淡色背景。完整类名，供 Tailwind 静态扫描。
@@ -68,6 +71,9 @@ export function WorkflowNodeListPanel({
   selectedNodeId,
   onSelectNode,
   onDeleteGroup,
+  onTestNode,
+  onExecuteWorkflow,
+  isExecuting = false,
 }: WorkflowNodeListPanelProps) {
   const t = useTranslations('workflows');
   const [deleteTarget, setDeleteTarget] = useState<{ nodeIds: string[]; label: string } | null>(null);
@@ -89,11 +95,10 @@ export function WorkflowNodeListPanel({
     const label = node.label || node.type || id;
     const active = selectedNodeId === id;
     return (
-      <button
+      <div
         key={id}
-        type="button"
         className={cn(
-          'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent/60',
+          'group/node flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/60',
           active && 'bg-accent',
         )}
         onClick={() => onSelectNode(id)}
@@ -104,7 +109,18 @@ export function WorkflowNodeListPanel({
             {node.type}
           </span>
         )}
-      </button>
+        {onTestNode && (
+          <button
+            type="button"
+            className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-green-600 disabled:opacity-30 group-hover/node:opacity-100"
+            title={t('editor.nodeList.run')}
+            disabled={isExecuting}
+            onClick={(event) => { event.stopPropagation(); onTestNode(id); }}
+          >
+            <Play className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     );
   };
 
@@ -130,20 +146,35 @@ export function WorkflowNodeListPanel({
                   {t('editor.nodeList.group')} {index + 1}
                 </span>
                 <span className="text-xs text-muted-foreground">({group.length})</span>
-                {onDeleteGroup && (
-                  <button
-                    type="button"
-                    className="ml-auto rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
-                    title={t('editor.nodeList.deleteGroup')}
-                    onClick={() =>
-                      setDeleteTarget({
-                        nodeIds: group,
-                        label: `${t('editor.nodeList.group')} ${index + 1}`,
-                      })
-                    }
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                {(onExecuteWorkflow || onDeleteGroup) && (
+                  <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    {onExecuteWorkflow && (
+                      <button
+                        type="button"
+                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-green-600 disabled:opacity-30"
+                        title={t('editor.nodeList.run')}
+                        disabled={isExecuting}
+                        onClick={() => onExecuteWorkflow()}
+                      >
+                        <Play className="h-3 w-3" />
+                      </button>
+                    )}
+                    {onDeleteGroup && (
+                      <button
+                        type="button"
+                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+                        title={t('editor.nodeList.deleteGroup')}
+                        onClick={() =>
+                          setDeleteTarget({
+                            nodeIds: group,
+                            label: `${t('editor.nodeList.group')} ${index + 1}`,
+                          })
+                        }
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="space-y-0.5 px-1 pb-1">{group.map(renderNode)}</div>
