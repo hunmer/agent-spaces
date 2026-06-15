@@ -18,12 +18,9 @@ import type {
   ExecutionLog,
   ExecutionStep,
   ExecutionLogEntry,
-  EngineStatus,
-  ConditionItem,
   OutputField,
 } from '@agent-spaces/shared';
 import type {
-  ExecutionBacklogEvent,
   ExecutionEventChannel,
   ExecutionEventMap,
   ExecutionRecoveryRequest,
@@ -35,8 +32,6 @@ import type {
 } from '@agent-spaces/shared';
 import { createErrorShape } from '@agent-spaces/shared';
 import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
-import type { InteractionManager } from './interaction-manager.js';
-import type { ClientNodeManager } from './client-node-manager.js';
 import * as workflowStore from '../storage/workflow-store.js';
 import * as sqliteStore from '../storage/sqlite-store.js';
 import { validateIdentifier } from '../storage/sql-safety.js';
@@ -45,78 +40,43 @@ import { executeCommandNode } from './workflow-command-runner.js';
 import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import * as workspaceService from './workspace.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
+import { getNestedValue, normalizeVariablePath } from './execution-value-access.js';
+import {
+  clone,
+  normalizeNodeResult,
+  isClientPluginNode,
+  getClientPluginId,
+  executePluckArrayKey,
+  executeFlattenArray,
+  executeParseJson,
+  executeStringConcat,
+  executeStringSplit,
+  executeArrayTextReplace,
+  executeSwitch,
+  executeVariableAggregate,
+  executeSetVariable,
+  executeGetVariable,
+  executeDeleteVariable,
+  getInputFieldValues,
+  resolveWhereParams,
+  resolveLoopIterations,
+  initLoopSharedVars,
+  buildExecutionOrder,
+  buildOutputObject,
+  getFirstObjectOutputKey,
+  getStepInput,
+} from './execution-node-helpers.js';
+import type {
+  ExecutionManagerDeps,
+  ExecutionSession,
+  LoopExecutionFrame,
+  LoopIterations,
+  LoopWorkerState,
+  FinishedExecutionRecovery,
+} from './execution-types.js';
 
-interface ExecutionManagerDeps {
-  interactionManager: InteractionManager
-  clientNodeManager: ClientNodeManager
-  emit: (channel: string, payload: unknown) => void
-}
-
-interface ExecutionSession {
-  id: string
-  workflow: Workflow
-  ownerClientId: string
-  nodes: WorkflowNode[]
-  edges: WorkflowEdge[]
-  groups?: WorkflowGroup[]
-  variables?: OutputField[]
-  context: Record<string, any>
-  status: EngineStatus
-  executionOrder: WorkflowNode[]
-  currentIndex: number
-  pauseRequested: boolean
-  pauseReason?: 'manual' | 'breakpoint-start' | 'breakpoint-end'
-  pauseNodeId?: string
-  pauseBreakpoint?: 'start' | 'end'
-  stopRequested: boolean
-  startedAt: number
-  finishedAt?: number
-  steps: ExecutionStep[]
-  activeBranches: Map<string, string>
-  lastErrorMessage?: string
-  persisted: boolean
-  lastUpdatedAt: number
-  eventSequence: number
-  recentEvents: ExecutionBacklogEvent[]
-  loopStack: LoopExecutionFrame[]
-  breakpointBypassKeys: Set<string>
-  eventSink?: (channel: string, payload: unknown) => void
-}
-
-interface LoopExecutionFrame {
-  loopNodeId: string
-  parentData?: Record<string, unknown>
-  bodyAnchorId: string
-  variables: Record<string, unknown>
-  breakRequested?: boolean
-  metadata: {
-    index: number
-    count: number | null
-    item: unknown
-    isFirst: boolean
-    isLast: boolean
-  }
-}
-
-interface LoopIterations {
-  count: number | null
-  items: unknown[]
-  infinite: boolean
-}
-
-interface LoopWorkerState {
-  branch: Map<string, string>
-  data: Record<string, any>
-  frame: LoopExecutionFrame
-  inputs: Record<string, any>
-}
-
-interface FinishedExecutionRecovery {
-  ownerClientId: string
-  workflowId: string
-  recovery: NonNullable<ExecutionRecoveryResponse['execution']>
-  expiresAt: number
-}
+// 保留公共导出（外部测试直接引用），实际定义已移至 execution-value-access.ts
+export { getNestedValue } from './execution-value-access.js';
 
 const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
@@ -345,7 +305,7 @@ export class ExecutionManager {
     env?: Record<string, unknown>,
     eventSink?: (channel: string, payload: unknown) => void,
   ): ExecutionSession {
-    const defaultEnv = this.buildOutputObject(snapshot?.variables ?? workflow.variables) ?? {};
+    const defaultEnv = buildOutputObject(snapshot?.variables ?? workflow.variables) ?? {};
     return {
       id: executionId, workflow, ownerClientId,
       nodes: snapshot?.nodes ? clone(snapshot.nodes) : clone(workflow.nodes),
@@ -375,7 +335,7 @@ export class ExecutionManager {
 
   private async run(session: ExecutionSession): Promise<void> {
     try {
-      session.executionOrder = this.buildExecutionOrder(session.nodes, session.edges);
+      session.executionOrder = buildExecutionOrder(session.nodes, session.edges);
       if (session.executionOrder.length === 0) {
         session.status = 'error';
         session.lastErrorMessage = 'Empty workflow or no execution order';
@@ -525,8 +485,8 @@ export class ExecutionManager {
     }
 
     const resolvedData = this.resolveContextVariables(session, { ...node.data });
-    const stepInput = this.getStepInput(node, resolvedData);
-    this.setNodeExecutionInput(session, node.id, node.type === 'end' ? {} : this.buildOutputObject(resolvedData.inputFields) ?? {});
+    const stepInput = getStepInput(node, resolvedData);
+    this.setNodeExecutionInput(session, node.id, node.type === 'end' ? {} : buildOutputObject(resolvedData.inputFields) ?? {});
 
     const step: ExecutionStep = {
       nodeId: node.id, nodeLabel: node.label, startedAt: Date.now(), status: 'running',
@@ -604,7 +564,7 @@ export class ExecutionManager {
   ): Promise<any> {
     switch (node.type) {
       case 'start': {
-        const fieldOutput = this.buildOutputObject(resolvedData.inputFields) ?? {};
+        const fieldOutput = buildOutputObject(resolvedData.inputFields) ?? {};
         const runtimeInput = session.context.__input__ ?? {};
         return { ...fieldOutput, ...runtimeInput };
       }
@@ -615,7 +575,7 @@ export class ExecutionManager {
       case 'loop_break':
         return this.executeLoopBreak(session, appendLog);
       case 'end':
-        return this.buildOutputObject(resolvedData.outputs);
+        return buildOutputObject(resolvedData.outputs);
       case 'gallery_preview':
         return { items: Array.isArray(resolvedData.items) ? resolvedData.items : [] };
       case 'table_display':
@@ -644,29 +604,29 @@ export class ExecutionManager {
       case 'delay':
         return this.executeDelayNode(resolvedData, appendLog);
       case 'switch':
-        return this.executeSwitch(resolvedData.conditions);
+        return executeSwitch(resolvedData.conditions);
       case 'variable_aggregate': {
-        const outputKey = this.getFirstObjectOutputKey(resolvedData.outputs) ?? 'result';
-        return { [outputKey]: this.executeVariableAggregate(resolvedData.groups || []) };
+        const outputKey = getFirstObjectOutputKey(resolvedData.outputs) ?? 'result';
+        return { [outputKey]: executeVariableAggregate(resolvedData.groups || []) };
       }
       case 'flatten_array':
-        return this.executeFlattenArray(resolvedData);
+        return executeFlattenArray(resolvedData);
       case 'pluck_array_key':
-        return this.executePluckArrayKey(resolvedData);
+        return executePluckArrayKey(resolvedData);
       case 'array_text_replace':
-        return this.executeArrayTextReplace(resolvedData);
+        return executeArrayTextReplace(resolvedData);
       case 'parse_json':
-        return this.executeParseJson(resolvedData);
+        return executeParseJson(resolvedData);
       case 'string_concat':
-        return this.executeStringConcat(resolvedData);
+        return executeStringConcat(resolvedData);
       case 'string_split':
-        return this.executeStringSplit(resolvedData);
+        return executeStringSplit(resolvedData);
       case 'set_variable':
-        return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
+        return executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
-        return this.executeGetVariable(session, resolvedData);
+        return executeGetVariable(session, resolvedData);
       case 'delete_variable':
-        return this.executeDeleteVariable(session, resolvedData, appendLog);
+        return executeDeleteVariable(session, resolvedData, appendLog);
       case 'sub_workflow':
         return this.executeSubWorkflow(session, resolvedData, appendLog);
       case 'loop':
@@ -680,7 +640,7 @@ export class ExecutionManager {
       case 'form':
         return this.executeFormDialog(session, node, resolvedData, appendLog);
       default:
-        if (this.isClientPluginNode(node)) {
+        if (isClientPluginNode(node)) {
           return this.executeClientNode(session, node, resolvedData, appendLog);
         }
         if (pluginService.canExecuteWorkflowNode(node.type)) {
@@ -707,7 +667,7 @@ export class ExecutionManager {
     resolvedData: Record<string, any>,
     appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
   ): Promise<Record<string, unknown>> {
-    const pluginId = this.getClientPluginId(node) || pluginService.getPluginIdByNodeType(node.type);
+    const pluginId = getClientPluginId(node) || pluginService.getPluginIdByNodeType(node.type);
     if (!pluginId) throw new Error(`Client plugin not found for node type: ${node.type}`);
     appendLog('info', `Requesting client execution for ${node.type}`);
     const result = await this.deps.clientNodeManager.request({
@@ -719,29 +679,7 @@ export class ExecutionManager {
       nodeType: node.type,
       args: resolvedData,
     });
-    return this.normalizeNodeResult(result);
-  }
-
-  private isClientPluginNode(node: WorkflowNode): boolean {
-    const pluginType = node.data?.pluginType;
-    return (pluginType === 'client' || pluginType === 'both') && typeof node.data?.pluginId === 'string';
-  }
-
-  private getClientPluginId(node: WorkflowNode): string | null {
-    const pluginId = node.data?.pluginId;
-    return typeof pluginId === 'string' && pluginId ? pluginId : null;
-  }
-
-  private normalizeNodeResult(result: unknown): Record<string, unknown> {
-    if (!result || typeof result !== 'object' || Array.isArray(result)) return { result };
-    const record = result as Record<string, unknown>;
-    if (record.success === true && record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
-      return record.data as Record<string, unknown>;
-    }
-    if (record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
-      return record.data as Record<string, unknown>;
-    }
-    return record;
+    return normalizeNodeResult(result);
   }
 
   private async executeDelayNode(
@@ -768,137 +706,6 @@ export class ExecutionManager {
     frame.breakRequested = true;
     appendLog('info', 'Loop break requested');
     return { break: true };
-  }
-
-  private executePluckArrayKey(resolvedData: Record<string, any>): Record<string, unknown[]> {
-    const array = Array.isArray(resolvedData.array) ? resolvedData.array : [];
-    const key = String(resolvedData.key || '').trim();
-    if (!key) return { result: [] };
-
-    return {
-      result: array.map((item) => (
-        item && typeof item === 'object' && key in item ? item[key] : undefined
-      )),
-    };
-  }
-
-  private executeFlattenArray(resolvedData: Record<string, any>): Record<string, unknown[]> {
-    const array = Array.isArray(resolvedData.array) ? resolvedData.array : [];
-    const key = String(resolvedData.key || '').trim();
-    const result: unknown[] = [];
-
-    for (const item of array) {
-      const value = key && item && typeof item === 'object' && key in item
-        ? item[key]
-        : item;
-
-      if (Array.isArray(value)) {
-        result.push(...value);
-      } else if (value !== undefined) {
-        result.push(value);
-      }
-    }
-
-    return { result };
-  }
-
-  private executeParseJson(resolvedData: Record<string, any>): Record<string, unknown> {
-    const text = String(resolvedData.text ?? '').trim();
-    if (!text) return { result: {} };
-    try {
-      const parsed = JSON.parse(text);
-      return { result: parsed && typeof parsed === 'object' ? parsed : { value: parsed } };
-    } catch {
-      return { result: {} };
-    }
-  }
-
-  /**
-   * 字符串拼接节点：用 {{expression}} 占位符引用输入字段的值进行插值。
-   * 表达式以输入字段为上下文执行，例如 {{users[0]}}、{{today.hour}}。
-   */
-  private executeStringConcat(resolvedData: Record<string, any>): Record<string, string> {
-    const template = typeof resolvedData.template === 'string' ? resolvedData.template : '';
-    const context = this.buildOutputObject(resolvedData.inputFields) ?? {};
-    return { result: this.interpolateTemplate(template, context) };
-  }
-
-  /**
-   * 字符串分割节点：将 source 字符串按分隔符切成数组。
-   * 源字符串来自 source 属性（支持变量），分隔符来自 text 属性（默认 |）。
-   */
-  private executeStringSplit(resolvedData: Record<string, any>): Record<string, string[]> {
-    const source = typeof resolvedData.source === 'string' ? resolvedData.source : '';
-    const delimiter = typeof resolvedData.text === 'string' && resolvedData.text !== ''
-      ? resolvedData.text
-      : '|';
-    if (source === '') return { result: [] };
-    return { result: source.split(delimiter) };
-  }
-
-  private interpolateTemplate(template: string, context: Record<string, any>): string {
-    if (!template) return '';
-    const keys = Object.keys(context);
-    return template.replace(/\{\{([\s\S]*?)\}\}/g, (match, expr: string) => {
-      const trimmed = expr.trim();
-      if (!trimmed) return '';
-      try {
-        const fn = new Function(...keys, `"use strict"; return (${trimmed});`);
-        const value = fn(...keys.map(k => context[k]));
-        if (value === null || value === undefined) return '';
-        if (typeof value === 'object') return JSON.stringify(value);
-        return String(value);
-      } catch {
-        return match;
-      }
-    });
-  }
-
-  private executeArrayTextReplace(resolvedData: Record<string, any>): Record<string, string[]> {
-    const array = Array.isArray(resolvedData.array) ? resolvedData.array : [];
-    const findText = String(resolvedData.findText ?? '');
-    const replaceText = String(resolvedData.replaceText ?? '');
-    const replaceMode = resolvedData.replaceMode === 'regex' ? 'regex' : 'literal';
-    const rawReplaceCount = Number(resolvedData.replaceCount);
-    const replaceCount = Number.isFinite(rawReplaceCount) && rawReplaceCount > 0
-      ? Math.floor(rawReplaceCount)
-      : 0;
-
-    if (!findText) return { result: array.map((item) => String(item ?? '')) };
-
-    return {
-      result: array.map((item) => this.replaceTextWithLimit(
-        String(item ?? ''),
-        findText,
-        replaceText,
-        replaceCount,
-        replaceMode,
-      )),
-    };
-  }
-
-  private replaceTextWithLimit(
-    value: string,
-    findText: string,
-    replaceText: string,
-    replaceCount: number,
-    replaceMode: 'literal' | 'regex',
-  ): string {
-    let count = 0;
-    if (replaceMode === 'regex') {
-      const pattern = new RegExp(findText, 'g');
-      return value.replace(pattern, (match) => {
-        if (replaceCount > 0 && count >= replaceCount) return match;
-        count += 1;
-        return replaceText;
-      });
-    }
-
-    return value.replaceAll(findText, (match) => {
-      if (replaceCount > 0 && count >= replaceCount) return match;
-      count += 1;
-      return replaceText;
-    });
   }
 
   private async executeAgentRun(
@@ -1063,17 +870,6 @@ export class ExecutionManager {
    * 其 value 在 resolvedData 解析阶段（resolveContextVariables）已被绑定上游变量。
    * 取「值」数组（按声明顺序），用于绑定 SQL 的 ? 占位符。
    */
-  private getInputFieldValues(resolvedData: Record<string, any>): unknown[] {
-    const fields = Array.isArray(resolvedData?.inputFields) ? resolvedData.inputFields : [];
-    return fields.map((f: any) => f?.value ?? f?.defaultValue ?? null);
-  }
-
-  private resolveWhereParams(where: string): { clause: string | null; paramCount: number } {
-    if (!where || !where.trim()) return { clause: null, paramCount: 0 };
-    const paramCount = (where.match(/\?/g) || []).length;
-    return { clause: where, paramCount };
-  }
-
   private executeSqliteQuery(
     _session: ExecutionSession, _node: WorkflowNode,
     resolvedData: Record<string, any>,
@@ -1082,13 +878,13 @@ export class ExecutionManager {
     const table = String(resolvedData.table || '');
     validateIdentifier(table, 'table');
     const colsRaw = resolvedData.columns === '*' || !resolvedData.columns ? '*' : String(resolvedData.columns);
-    const { clause, paramCount } = this.resolveWhereParams(String(resolvedData.where || ''));
+    const { clause, paramCount } = resolveWhereParams(String(resolvedData.where || ''));
     const order = resolvedData.orderBy ? ` ORDER BY ${resolvedData.orderBy}` : '';
     const limit = Number(resolvedData.limit) > 0 ? Number(resolvedData.limit) : 1000;
     let sql = `SELECT ${colsRaw} FROM "${table}"`;
     if (clause) sql += ` WHERE ${clause}`;
     sql += `${order} LIMIT ?`;
-    const fieldValues = this.getInputFieldValues(resolvedData).slice(0, paramCount);
+    const fieldValues = getInputFieldValues(resolvedData).slice(0, paramCount);
     const result = sqliteStore.query(dbId, sql, [...fieldValues, limit]);
     return { rows: result.rows, rowCount: result.rowCount };
   }
@@ -1104,7 +900,7 @@ export class ExecutionManager {
     const columns = fields.map((f: any) => { validateIdentifier(String(f.column), 'column'); return String(f.column); });
     const placeholders = columns.map(() => '?').join(',');
     const sql = `INSERT INTO "${table}" (${columns.join(',')}) VALUES (${placeholders})`;
-    const fieldValues = this.getInputFieldValues(resolvedData);
+    const fieldValues = getInputFieldValues(resolvedData);
     const params = fields.map((f: any, i: number) => fieldValues[i] ?? f.value ?? null);
     const r = sqliteStore.exec(dbId, sql, params);
     return { insertedId: r.lastInsertRowid, changes: r.changes };
@@ -1120,10 +916,10 @@ export class ExecutionManager {
     const setFields = Array.isArray(resolvedData.setFields) ? resolvedData.setFields : [];
     const columns = setFields.map((f: any) => { validateIdentifier(String(f.column), 'column'); return String(f.column); });
     const setClause = columns.map((c) => `${c} = ?`).join(', ');
-    const { clause, paramCount } = this.resolveWhereParams(String(resolvedData.where || ''));
+    const { clause, paramCount } = resolveWhereParams(String(resolvedData.where || ''));
     let sql = `UPDATE "${table}" SET ${setClause}`;
     if (clause) sql += ` WHERE ${clause}`;
-    const fieldValues = this.getInputFieldValues(resolvedData);
+    const fieldValues = getInputFieldValues(resolvedData);
     const setParams = setFields.map((f: any, i: number) => fieldValues[i] ?? f.value ?? null);
     const whereParams = fieldValues.slice(setFields.length, setFields.length + paramCount);
     const r = sqliteStore.exec(dbId, sql, [...setParams, ...whereParams]);
@@ -1137,10 +933,10 @@ export class ExecutionManager {
     const dbId = String(resolvedData.database || '');
     const table = String(resolvedData.table || '');
     validateIdentifier(table, 'table');
-    const { clause, paramCount } = this.resolveWhereParams(String(resolvedData.where || ''));
+    const { clause, paramCount } = resolveWhereParams(String(resolvedData.where || ''));
     let sql = `DELETE FROM "${table}"`;
     if (clause) sql += ` WHERE ${clause}`;
-    const fieldValues = this.getInputFieldValues(resolvedData).slice(0, paramCount);
+    const fieldValues = getInputFieldValues(resolvedData).slice(0, paramCount);
     const r = sqliteStore.exec(dbId, sql, fieldValues);
     return { changes: r.changes };
   }
@@ -1152,7 +948,7 @@ export class ExecutionManager {
     const dbId = String(resolvedData.database || '');
     const sql = String(resolvedData.sql || '');
     const mode = String(resolvedData.mode || 'query');
-    const params = this.getInputFieldValues(resolvedData).slice(0, (sql.match(/\?/g) || []).length);
+    const params = getInputFieldValues(resolvedData).slice(0, (sql.match(/\?/g) || []).length);
     if (mode === 'exec') {
       const r = sqliteStore.exec(dbId, sql, params);
       return { rows: [], execResult: r };
@@ -1348,7 +1144,7 @@ sys.stdout.flush()
     node: WorkflowNode,
     resolvedData: Record<string, any>,
   ): Record<string, any> {
-    const explicitInput = this.buildOutputObject(resolvedData.inputFields);
+    const explicitInput = buildOutputObject(resolvedData.inputFields);
     if (explicitInput) return explicitInput;
 
     const sourceNodeId = typeof resolvedData.sourceNodeId === 'string' && resolvedData.sourceNodeId
@@ -1363,86 +1159,6 @@ sys.stdout.flush()
     return sourceOutput === undefined ? {} : { input: sourceOutput };
   }
 
-  private executeSwitch(conditions: unknown): any {
-    const conditionItems = Array.isArray(conditions) ? conditions : [];
-
-    for (let i = 0; i < conditionItems.length; i++) {
-      const cond = conditionItems[i];
-      if (!cond || typeof cond !== 'object') continue;
-
-      const item = cond as Partial<ConditionItem> & { field?: unknown };
-      const variable = item.variable ?? item.field ?? '';
-      const value = item.value ?? '';
-      const operator = typeof item.operator === 'string' ? item.operator : 'equals';
-
-      if (this.evaluateCondition(variable, value, operator)) {
-        return { __branch__: `case-${i}`, matchedIndex: i };
-      }
-    }
-    return { __branch__: 'default', matchedIndex: -1 };
-  }
-
-  private executeVariableAggregate(groups: any[]): Record<string, any> {
-    if (!Array.isArray(groups)) return {};
-    return groups.reduce<Record<string, any>>((result, group) => {
-      const key = typeof group?.key === 'string' ? group.key.trim() : '';
-      if (!key) return result;
-      const variables = Array.isArray(group.variables) ? group.variables : [];
-      result[key] = this.findFirstNonEmpty(variables);
-      return result;
-    }, {});
-  }
-
-  private executeSetVariable(
-    session: ExecutionSession,
-    variables: any[],
-    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
-  ): Record<string, any> {
-    if (!session.context.__env__ || typeof session.context.__env__ !== 'object') session.context.__env__ = {};
-    const items = Array.isArray(variables) ? variables : [];
-    let count = 0;
-    for (const item of items) {
-      const key = typeof item?.key === 'string' ? item.key.trim() : '';
-      if (!key) continue;
-      setNestedValue(session.context.__env__, key, item.value);
-      count++;
-    }
-    appendLog('info', `Set ${count} workflow variable(s)`);
-    return { env: clone(session.context.__env__) };
-  }
-
-  private executeGetVariable(session: ExecutionSession, resolvedData: Record<string, any>): Record<string, any> {
-    const key = typeof resolvedData.key === 'string' ? resolvedData.key.trim() : '';
-    if (!key) throw new Error('get_variable node missing key');
-    const value = getNestedValue(session.context.__env__ ?? {}, key);
-    return {
-      value: value === undefined ? resolvedData.defaultValue ?? '' : value,
-      exists: value !== undefined,
-    };
-  }
-
-  private executeDeleteVariable(
-    session: ExecutionSession,
-    resolvedData: Record<string, any>,
-    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
-  ): Record<string, any> {
-    const key = typeof resolvedData.key === 'string' ? resolvedData.key.trim() : '';
-    if (!key) throw new Error('delete_variable node missing key');
-    const deleted = deleteNestedValue(session.context.__env__ ?? {}, key);
-    appendLog(deleted ? 'info' : 'warning', deleted ? `Deleted workflow variable: ${key}` : `Workflow variable not found: ${key}`);
-    return { deleted, env: clone(session.context.__env__ ?? {}) };
-  }
-
-  private findFirstNonEmpty(variables: any[]): any {
-    for (const v of variables) {
-      const value = v?.value;
-      if (value !== null && value !== undefined && value !== '' &&
-          !(Array.isArray(value) && value.length === 0) &&
-          !(typeof value === 'object' && Object.keys(value).length === 0)) return value;
-    }
-    return '';
-  }
-
   // ---- Private: Loop execution ----
 
   private async executeLoopNode(
@@ -1454,9 +1170,9 @@ sys.stdout.flush()
     if (!bodyNode) throw new Error('Loop node missing body');
 
     const loopType = typeof resolvedData.loopType === 'string' ? resolvedData.loopType : 'count';
-    const iterations = this.resolveLoopIterations(loopType, resolvedData);
+    const iterations = resolveLoopIterations(loopType, resolvedData);
     const concurrency = Math.max(1, Math.floor(Number(resolvedData.concurrency) || 1));
-    const sharedVars = this.initLoopSharedVars(resolvedData.sharedVariables);
+    const sharedVars = initLoopSharedVars(resolvedData.sharedVariables);
     const items: unknown[] = [];
 
     appendLog('info', iterations.infinite
@@ -1498,7 +1214,7 @@ sys.stdout.flush()
     }
 
     appendLog('info', 'Loop completed');
-    const output = this.buildOutputObject(resolvedData.outputs) ?? {};
+    const output = buildOutputObject(resolvedData.outputs) ?? {};
     return { ...output, items };
   }
 
@@ -1522,37 +1238,6 @@ sys.stdout.flush()
       if (idx >= 0) session.loopStack.splice(idx, 1);
       this.syncLoopContext(session);
     }
-  }
-
-  private resolveLoopIterations(loopType: string, data: Record<string, any>): LoopIterations {
-    if (loopType === 'array') {
-      const items = Array.isArray(data.arrayPath) ? data.arrayPath : [];
-      return { count: items.length, items, infinite: false };
-    }
-    if (loopType === 'infinite') return { count: null, items: [], infinite: true };
-    const count = Math.max(0, Math.floor(Number(data.count) || 0));
-    return { count, items: Array.from({ length: count }, () => undefined), infinite: false };
-  }
-
-  private initLoopSharedVars(vars: unknown): Record<string, unknown> {
-    if (!Array.isArray(vars)) return {};
-    const build = (fields: Array<Record<string, any>>): Record<string, unknown> => {
-      const result: Record<string, unknown> = {};
-      for (const field of fields) {
-        if (!field?.key) continue;
-        if (field.type === 'object') {
-          result[field.key] = build(Array.isArray(field.children) ? field.children : []);
-          continue;
-        }
-        if (field.type === 'array') {
-          result[field.key] = [];
-          continue;
-        }
-        result[field.key] = field.value ?? '';
-      }
-      return result;
-    };
-    return build(vars as Array<Record<string, any>>);
   }
 
   private async executeLoopBody(session: ExecutionSession, bodyNode: WorkflowNode): Promise<unknown> {
@@ -1620,7 +1305,7 @@ sys.stdout.flush()
     appendLog('info', `Starting sub_workflow: ${target.name}`);
     const result = await this.executeEmbeddedWorkflow(session, {
       nodes: clone(target.nodes), edges: clone(target.edges),
-    }, this.buildOutputObject(resolvedData.inputFields) ?? {});
+    }, buildOutputObject(resolvedData.inputFields) ?? {});
     appendLog('info', `Completed sub_workflow: ${target.name}`);
     return result;
   }
@@ -1670,26 +1355,6 @@ sys.stdout.flush()
   }
 
   // ---- Private: Condition evaluation ----
-
-  private evaluateCondition(variable: any, value: any, operator: string): boolean {
-    switch (operator) {
-      case 'equals': return variable == value;
-      case 'not_equals': return variable != value;
-      case 'greater_than': return Number(variable) > Number(value);
-      case 'less_than': return Number(variable) < Number(value);
-      case 'greater_than_or_equal': return Number(variable) >= Number(value);
-      case 'less_than_or_equal': return Number(variable) <= Number(value);
-      case 'contains': return String(variable).includes(String(value));
-      case 'not_contains': return !String(variable).includes(String(value));
-      case 'starts_with': return String(variable).startsWith(String(value));
-      case 'ends_with': return String(variable).endsWith(String(value));
-      case 'is_empty': return variable === '' || variable === null || variable === undefined;
-      case 'is_not_empty': return variable !== '' && variable !== null && variable !== undefined;
-      case 'is_true': return variable === true || variable === 'true' || variable === 1;
-      case 'is_false': return variable === false || variable === 'false' || variable === 0;
-      default: return false;
-    }
-  }
 
   private loadPluginConfigs(session: ExecutionSession): Record<string, Record<string, string>> {
     const pluginIds = this.getReferencedPluginIds(session);
@@ -1829,31 +1494,6 @@ sys.stdout.flush()
   }
 
   // ---- Private: Build execution order ----
-
-  private buildExecutionOrder(nodes: WorkflowNode[], edges: WorkflowEdge[]): WorkflowNode[] {
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
-    const inDegree = new Map(nodes.map(n => [n.id, 0]));
-    for (const edge of edges) {
-      inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
-    }
-    const queue: string[] = [];
-    for (const [id, deg] of inDegree) {
-      if (deg === 0) queue.push(id);
-    }
-    const order: WorkflowNode[] = [];
-    while (queue.length > 0) {
-      const id = queue.shift()!;
-      const node = nodeMap.get(id);
-      if (node) order.push(node);
-      for (const edge of edges) {
-        if (edge.source !== id) continue;
-        const deg = (inDegree.get(edge.target) ?? 1) - 1;
-        inDegree.set(edge.target, deg);
-        if (deg === 0) queue.push(edge.target);
-      }
-    }
-    return order;
-  }
 
   // ---- Private: Breakpoints ----
 
@@ -2027,35 +1667,6 @@ sys.stdout.flush()
 
   // ---- Private: Output building ----
 
-  private getStepInput(node: WorkflowNode, data: Record<string, any>): Record<string, any> | undefined {
-    if (node.type === 'start' || node.type === 'end') return undefined;
-    return data;
-  }
-
-  private buildOutputObject(outputs: OutputField[] | undefined): Record<string, any> | null {
-    if (!Array.isArray(outputs) || outputs.length === 0) return null;
-    const result: Record<string, any> = {};
-    for (const field of outputs) {
-      if (!field.key) continue;
-      if (field.type === 'object') {
-        result[field.key] = this.buildOutputObject(field.children) ?? {};
-        continue;
-      }
-      if (field.type === 'array') {
-        result[field.key] = Array.isArray(field.value) ? field.value : [];
-        continue;
-      }
-      result[field.key] = field.value ?? '';
-    }
-    return result;
-  }
-
-  private getFirstObjectOutputKey(outputs: OutputField[] | undefined): string | null {
-    if (!Array.isArray(outputs)) return null;
-    const field = outputs.find(item => (item?.type === 'object' || item?.type === 'array') && typeof item.key === 'string' && item.key.trim());
-    return field?.key.trim() || null;
-  }
-
   private recordSkippedStep(session: ExecutionSession, node: WorkflowNode, reason: string): void {
     session.steps.push({
       nodeId: node.id, nodeLabel: node.label,
@@ -2187,78 +1798,8 @@ sys.stdout.flush()
 
 // ---- Utility functions ----
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-export function getNestedValue(obj: any, path: string): any {
-  const parts = normalizeVariablePath(path).split('.').filter(Boolean);
-  return getNestedPathValue(obj, parts);
-}
-
-function getNestedPathValue(current: any, parts: string[]): any {
-  if (parts.length === 0) return current;
-  if (current == null) return undefined;
-
-  const [part, ...rest] = parts;
-  if (Array.isArray(current) && !isArrayIndex(part) && part !== 'length') {
-    const values = current
-      .map(item => getNestedPathValue(item, parts))
-      .filter(value => value !== undefined);
-    if (values.length === 0) return undefined;
-    return values.flatMap(value => Array.isArray(value) ? value : [value]);
-  }
-
-  return getNestedPathValue(current[part], rest);
-}
-
-function isArrayIndex(part: string): boolean {
-  return /^(0|[1-9]\d*)$/.test(part);
-}
-
-function setNestedValue(obj: Record<string, any>, path: string, value: unknown): void {
-  const parts = normalizeVariablePath(path).split('.').filter(Boolean);
-  if (parts.length === 0) return;
-  let current: Record<string, any> = obj;
-  for (const part of parts.slice(0, -1)) {
-    const next = current[part];
-    if (!next || typeof next !== 'object' || Array.isArray(next)) current[part] = {};
-    current = current[part];
-  }
-  current[parts[parts.length - 1]] = value;
-}
-
-function deleteNestedValue(obj: Record<string, any>, path: string): boolean {
-  const parts = normalizeVariablePath(path).split('.').filter(Boolean);
-  if (parts.length === 0) return false;
-  let current: Record<string, any> = obj;
-  for (const part of parts.slice(0, -1)) {
-    const next = current[part];
-    if (!next || typeof next !== 'object') return false;
-    current = next;
-  }
-  const last = parts[parts.length - 1];
-  if (!Object.prototype.hasOwnProperty.call(current, last)) return false;
-  delete current[last];
-  return true;
-}
-
-function normalizeVariablePath(path: string): string {
-  return path
-    .trim()
-    .replace(/\]\s*\[\s*/g, '.')
-    .replace(/\[\s*(["'])([^"']+)\1\s*\]/g, '.$2')
-    .replace(/\[\s*([^\]"'\s]+)\s*\]/g, '.$1')
-    .replace(/^\[\s*/, '')
-    .replace(/\s*\]$/, '')
-    .replace(/^(["'])([^"']+)\1$/, '$2')
-    .replace(/(["'])\s*\.\s*(["'])/g, '.')
-    .replace(/["']/g, '')
-    .replace(/^\./, '');
 }
 
 function shouldInterrupt(session: ExecutionSession): boolean {

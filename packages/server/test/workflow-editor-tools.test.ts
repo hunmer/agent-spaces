@@ -326,6 +326,82 @@ test('create_edge replaces conflicting default edge inside loop_body scope', asy
   assert.equal(edgeResult.workflow.edges.some((edge) => edge.source === loopStartNode.id && edge.target === toastResult.created_node_id), true);
 });
 
+test('auto_layout arranges nodes inside loop_body scope', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const createEdge = tools.find((tool) => tool.name === 'create_edge');
+  const updateNode = tools.find((tool) => tool.name === 'update_node');
+  const autoLayout = tools.find((tool) => tool.name === 'auto_layout');
+  assert.ok(createNode);
+  assert.ok(createEdge);
+  assert.ok(updateNode);
+  assert.ok(autoLayout);
+
+  const loopResult = await createNode.execute({ type: 'loop', label: '循环5次' }) as {
+    success: boolean;
+    workflow: Workflow;
+  };
+  assert.equal(loopResult.success, true);
+  const loopBodyNode = loopResult.workflow.nodes.find((node) => node.type === 'loop_body');
+  const loopStartNode = loopResult.workflow.nodes.find((node) => node.type === 'start' && node.composite?.parentId === loopBodyNode?.id);
+  const loopEndNode = loopResult.workflow.nodes.find((node) => node.type === 'end' && node.composite?.parentId === loopBodyNode?.id);
+  assert.ok(loopBodyNode);
+  assert.ok(loopStartNode);
+  assert.ok(loopEndNode);
+
+  const toastResult = await createNode.execute({
+    type: 'toast',
+    label: '输出循环索引',
+    scopeNodeId: loopBodyNode.id,
+  }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(toastResult.success, true);
+
+  const firstEdgeResult = await createEdge.execute({
+    source: loopStartNode.id,
+    target: toastResult.created_node_id,
+  }) as { success: boolean };
+  assert.equal(firstEdgeResult.success, true);
+  const secondEdgeResult = await createEdge.execute({
+    source: toastResult.created_node_id,
+    target: loopEndNode.id,
+  }) as { success: boolean };
+  assert.equal(secondEdgeResult.success, true);
+
+  const movedToastResult = await updateNode.execute({
+    nodeId: toastResult.created_node_id,
+    data: { nodeWidth: 220, nodeHeight: 120 },
+  }) as { success: boolean };
+  assert.equal(movedToastResult.success, true);
+
+  const layoutResult = await autoLayout.execute({}) as {
+    success: boolean;
+    affected_node_count: number;
+    workflow_patch: { nodes: Workflow['nodes'] };
+  };
+
+  assert.equal(layoutResult.success, true);
+  const nodes = layoutResult.workflow_patch.nodes;
+  const laidOutLoopBodyNode = nodes.find((node) => node.id === loopBodyNode.id);
+  const laidOutStartNode = nodes.find((node) => node.id === loopStartNode.id);
+  const laidOutToastNode = nodes.find((node) => node.id === toastResult.created_node_id);
+  const laidOutEndNode = nodes.find((node) => node.id === loopEndNode.id);
+  assert.ok(laidOutLoopBodyNode);
+  assert.ok(laidOutStartNode);
+  assert.ok(laidOutToastNode);
+  assert.ok(laidOutEndNode);
+  assert.equal(laidOutStartNode.position.x < laidOutToastNode.position.x, true);
+  assert.equal(laidOutToastNode.position.x < laidOutEndNode.position.x, true);
+  assert.equal(laidOutStartNode.position.x >= laidOutLoopBodyNode.position.x + 80, true);
+  assert.equal(
+    (laidOutLoopBodyNode.data.nodeWidth as number) >= laidOutEndNode.position.x - laidOutLoopBodyNode.position.x + 220 + 100,
+    true,
+  );
+  assert.equal(layoutResult.affected_node_count > 0, true);
+});
+
 test('insert_node reuses an unconnected matching node in the same scope', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const createNode = tools.find((tool) => tool.name === 'create_node');

@@ -71,8 +71,8 @@
       "type": "run_code",
       "label": "解析JSON",
       "position": {
-        "x": 660,
-        "y": 3
+        "x": 645,
+        "y": 15
       },
       "data": {
         "code": "async function main({ params, __data__ }) {\n  // 从 agent_run 节点获取字符串结果\n  const resultStr = __data__[\"node_1781515178919_4pjyq2\"].result;\n  try {\n    const parsed = JSON.parse(resultStr);\n    return {\n      scenes: Array.isArray(parsed) ? parsed : []\n    };\n  } catch (e) {\n    // 处理 agent 输出包含 Markdown 代码块的情况\n    const match = resultStr.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n    if (match) {\n      const parsed = JSON.parse(match[1]);\n      return {\n        scenes: Array.isArray(parsed) ? parsed : []\n      };\n    }\n    throw new Error('无法解析JSON结果');\n  }\n}",
@@ -119,8 +119,8 @@
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 1064,
-        "y": 450
+        "x": 522.3428656696467,
+        "y": 259.61848035769174
       },
       "data": {
         "width": 150,
@@ -142,8 +142,8 @@
       "type": "start",
       "label": "遍历分镜开始",
       "position": {
-        "x": 1120,
-        "y": 550
+        "x": 578.3428656696467,
+        "y": 359.61848035769174
       },
       "data": {},
       "composite": {
@@ -158,8 +158,8 @@
       "type": "end",
       "label": "遍历分镜结束",
       "position": {
-        "x": 1780,
-        "y": 550
+        "x": 1238.3428656696467,
+        "y": 359.61848035769174
       },
       "data": {},
       "composite": {
@@ -174,8 +174,8 @@
       "type": "jimeng_text_to_image",
       "label": "生成分镜图片",
       "position": {
-        "x": 1450,
-        "y": 550
+        "x": 908.3428656696467,
+        "y": 359.61848035769174
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -279,7 +279,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781515421710,
+  "updatedAt": 1781516832840,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"
