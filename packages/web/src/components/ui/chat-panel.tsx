@@ -68,6 +68,8 @@ export interface ChatPanelProps {
   onDeleteMessage?: (messageId: string) => void;
   /** Optional custom serializer for copy action. Defaults to `message.content`. */
   serializeForCopy?: (message: ChatMessage) => string;
+  /** Optional handler for rerunning a timeline tool call. */
+  onRerunTool?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>) => void;
 
   /** Panel size */
   width?: number;
@@ -130,6 +132,7 @@ export function ChatPanel({
   renderMessageExtras,
   onDeleteMessage,
   serializeForCopy,
+  onRerunTool,
   width = 400,
   height = 360,
 }: ChatPanelProps) {
@@ -247,6 +250,7 @@ export function ChatPanel({
           renderMessageExtras={renderMessageExtras}
           onDeleteMessage={onDeleteMessage}
           serializeForCopy={serializeForCopy}
+          onRerunTool={onRerunTool}
         />
       </div>
 

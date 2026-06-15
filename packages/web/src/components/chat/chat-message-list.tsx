@@ -48,6 +48,7 @@ export interface ChatMessageListProps<TMessage extends DisplayChatMessage> {
   } | null | undefined;
   onRegenerateMessage?: (message: TMessage) => void;
   isStreamingMessage?: (message: TMessage) => boolean;
+  onRerunTool?: (message: TMessage, item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
 }
 
 const messageVariants: Variants = {
@@ -139,6 +140,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
   versionInfo,
   onRegenerateMessage,
   isStreamingMessage,
+  onRerunTool,
 }: ChatMessageListProps<TMessage>) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const t = useTranslations("chat.messageBubble");
@@ -205,7 +207,13 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               )}
             </div>
           ) : null}
-          {hasTimeline ? <ChatToolTimeline timeline={timeline} workspaceId={workspaceId} /> : null}
+          {hasTimeline ? (
+            <ChatToolTimeline
+              timeline={timeline}
+              workspaceId={workspaceId}
+              onRerunTool={onRerunTool ? (item) => onRerunTool(msg, item) : undefined}
+            />
+          ) : null}
           {renderMessageExtras?.(msg)}
           <div className={cn("flex items-center gap-1", msg.role === "user" && "flex-row-reverse")}>
             <span

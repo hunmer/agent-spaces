@@ -19,6 +19,10 @@ export interface WorkflowEditorToolContext {
   nodeDefinitions: NodeTypeDefinition[];
 }
 
+export type WorkflowEditorFunctionTools = AgentFunctionTool[] & {
+  getDraftWorkflow: () => Workflow;
+};
+
 type JsonRecord = Record<string, unknown>;
 
 const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助手。你的职责是帮助用户创建、修改、排查和优化当前可视化工作流。
@@ -67,7 +71,7 @@ ${JSON.stringify(summary, null, 2)}
 \`\`\``;
 }
 
-export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext): AgentFunctionTool[] {
+export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext): WorkflowEditorFunctionTools {
   const versions = new Map<string, Pick<Workflow, 'nodes' | 'edges'>>();
   let draft = cloneWorkflow(ctx.workflow);
 
@@ -78,17 +82,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       edges: clone(next.edges),
       updatedAt: Date.now(),
     };
-    return workflowResult(true, 'updated', draft, undefined, meta);
-  };
-
-  const commitCompact = (next: Workflow, meta?: JsonRecord) => {
-    draft = {
-      ...next,
-      nodes: clone(next.nodes),
-      edges: clone(next.edges),
-      updatedAt: Date.now(),
-    };
-    return workflowPatchResult(true, 'updated', draft, meta);
+    return workflowResult(true, 'updated', undefined, meta);
   };
 
   const definitionByType = new Map(ctx.nodeDefinitions.map((definition) => [definition.type, definition]));
@@ -126,7 +120,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         if (!workflowId) return { success: false, message: 'workflow_id is required' };
         const workflow = workflowService.getWorkflow(workflowId);
         if (!workflow) return { success: false, message: `Workflow not found: ${workflowId}` };
-        return { success: true, workflow: summarizeWorkflow(workflow, booleanInput(asRecord(input), 'summarize', true)) };
+        return { success: true, data: summarizeWorkflow(workflow, booleanInput(asRecord(input), 'summarize', true)) };
       },
     },
     {
@@ -532,7 +526,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           results.push(result);
           if (asRecord(result).success === false) return { success: false, results };
         }
-        return workflowResult(true, 'batch updated', draft, results);
+        return workflowResult(true, 'batch updated', results);
       },
     },
     {
@@ -543,7 +537,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         const direction = stringInput(asRecord(input), 'direction') === 'TB' ? 'TB' : 'LR';
         const nodes = layoutNodes(draft.nodes, draft.edges, ctx.nodeDefinitions, direction);
         const affectedNodeCount = countPositionChanges(draft.nodes, nodes);
-        return commitCompact({ ...draft, nodes }, { affected_node_count: affectedNodeCount });
+        return commit({ ...draft, nodes }, { affected_node_count: affectedNodeCount });
       },
     },
     {
@@ -554,7 +548,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         try {
           const saved = workflowService.updateWorkflow(draft.id, draft);
           draft = cloneWorkflow(saved);
-          return workflowResult(true, '工作流已保存，后端校验通过。', draft, undefined, {
+          return workflowResult(true, '工作流已保存，后端校验通过。', undefined, {
             backend_message: '工作流已保存，后端校验通过。',
           });
         } catch (error) {
@@ -569,36 +563,17 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
   ];
 
-  return tools;
+  return Object.assign(tools, {
+    getDraftWorkflow: () => cloneWorkflow(draft),
+  });
 }
 
-function workflowResult(success: boolean, message: string, workflow: Workflow, results?: unknown[], meta?: JsonRecord) {
+function workflowResult(success: boolean, message: string, results?: unknown[], meta?: JsonRecord) {
   return {
     success,
     message,
     ...meta,
-    workflow,
-    workflow_patch: {
-      workflow_id: workflow.id,
-      nodes: workflow.nodes,
-      edges: workflow.edges,
-      updatedAt: workflow.updatedAt,
-    },
     results,
-  };
-}
-
-function workflowPatchResult(success: boolean, message: string, workflow: Workflow, meta?: JsonRecord) {
-  return {
-    success,
-    message,
-    ...meta,
-    workflow_patch: {
-      workflow_id: workflow.id,
-      nodes: workflow.nodes,
-      edges: workflow.edges,
-      updatedAt: workflow.updatedAt,
-    },
   };
 }
 

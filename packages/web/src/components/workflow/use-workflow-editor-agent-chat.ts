@@ -347,6 +347,67 @@ export function useWorkflowEditorAgentChat({
     applyWorkflowPatch,
   ]);
 
+  const rerunWorkflowAgentTool = useCallback(async (
+    messageId: string,
+    item: Extract<WorkflowTimelineItem, { type: 'tool' }>,
+  ) => {
+    if (agentSending || !workflow) return;
+
+    const toolUseId = `rerun-${item.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    appendTimelineItem(messageId, {
+      id: toolUseId,
+      type: 'tool',
+      name: item.name,
+      input: item.input,
+      status: 'running',
+    });
+    setAgentSending(true);
+
+    try {
+      const response = await fetchWithAuth('/api/agent-sse/workflow-tool/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toolName: item.name,
+          input: item.input,
+          workflowAgent: {
+            workflow,
+            nodeDefinitions: getAllNodeDefinitions(),
+            selectedNodes,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        completeLatestToolCall(messageId, toolUseId, {
+          success: false,
+          error: text || `请求失败：${response.status}`,
+        });
+        return;
+      }
+
+      const data = await response.json().catch(() => null) as { result?: unknown } | null;
+      const result = data?.result ?? { success: false, error: 'Tool did not return a result.' };
+      completeLatestToolCall(messageId, toolUseId, result);
+      applyWorkflowPatch(result);
+    } catch (error) {
+      completeLatestToolCall(messageId, toolUseId, {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setAgentSending(false);
+    }
+  }, [
+    agentSending,
+    workflow,
+    selectedNodes,
+    appendTimelineItem,
+    completeLatestToolCall,
+    applyWorkflowPatch,
+  ]);
+
   const stopWorkflowAgentMessage = useCallback(() => {
     agentAbortControllerRef.current?.abort();
     agentAbortControllerRef.current = null;
@@ -361,6 +422,7 @@ export function useWorkflowEditorAgentChat({
     setAgentInput,
     agentSending,
     sendWorkflowAgentMessage,
+    rerunWorkflowAgentTool,
     stopWorkflowAgentMessage,
     deleteAgentMessage,
     clearWorkflowAgentMessages,

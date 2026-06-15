@@ -4,7 +4,7 @@ import { JsonViewer } from "@/components/viewers/json-viewer";
 import { Markdown } from "@/components/ui/markdown";
 import { cn } from "@/lib/utils";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
-import { AlertCircle, Check, CheckCircle2, ChevronDown, Copy, Loader2, Wrench } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Copy, Loader2, Play, Wrench } from "lucide-react";
 import { useState } from "react";
 
 export function normalizeChatTimeline(
@@ -19,9 +19,11 @@ export function normalizeChatTimeline(
 export function ChatToolTimeline({
   timeline,
   workspaceId,
+  onRerunTool,
 }: {
   timeline?: WorkflowAgentTimelineItem[];
   workspaceId?: string;
+  onRerunTool?: (item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -95,6 +97,19 @@ export function ChatToolTimeline({
                   <Copy className="size-3.5" />
                 )}
               </button>
+              {onRerunTool && item.status !== "running" ? (
+                <button
+                  type="button"
+                  title="再次运行工具"
+                  className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRerunTool(item);
+                  }}
+                >
+                  <Play className="size-3.5" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="shrink-0 p-0.5 text-muted-foreground"

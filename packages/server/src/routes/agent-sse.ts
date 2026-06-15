@@ -36,6 +36,12 @@ interface AgentSseRequestBody {
   };
 }
 
+interface WorkflowToolRunRequestBody {
+  workflowAgent?: AgentSseRequestBody['workflowAgent'];
+  toolName?: string;
+  input?: unknown;
+}
+
 router.post('/run', async (req: Request, res: Response) => {
   const body = req.body as AgentSseRequestBody;
   if (!verifyRequestKey(req, body)) {
@@ -182,6 +188,60 @@ router.post('/run', async (req: Request, res: Response) => {
     res.end();
   }
 });
+
+router.post('/workflow-tool/run', async (req: Request, res: Response) => {
+  const body = req.body as WorkflowToolRunRequestBody;
+  if (!verifyRequestKey(req, req.body as AgentSseRequestBody)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const workflowAgent = normalizeWorkflowAgent(body.workflowAgent);
+  if (!workflowAgent) {
+    res.status(400).json({ error: 'workflowAgent is required' });
+    return;
+  }
+
+  const toolName = body.toolName?.trim();
+  if (!toolName) {
+    res.status(400).json({ error: 'toolName is required' });
+    return;
+  }
+
+  const tools = createWorkflowEditorFunctionTools({
+    workflow: workflowAgent.workflow,
+    nodeDefinitions: workflowAgent.nodeDefinitions,
+  });
+  const tool = tools.find((item) => item.name === toolName);
+
+  if (!tool) {
+    res.status(404).json({ error: `Tool not found: ${toolName}` });
+    return;
+  }
+
+  try {
+    const result = await tool.execute(body.input);
+    res.json({ result: withWorkflowPatch(result, tools.getDraftWorkflow()) });
+  } catch (err) {
+    res.status(500).json({ result: { success: false, error: err instanceof Error ? err.message : String(err) } });
+  }
+});
+
+function withWorkflowPatch(result: unknown, workflow: Workflow): unknown {
+  const record = result && typeof result === 'object' && !Array.isArray(result)
+    ? result as Record<string, unknown>
+    : null;
+  if (!record || record.success === false || record.workflow_patch) return result;
+  return {
+    ...record,
+    workflow_patch: {
+      workflow_id: workflow.id,
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      updatedAt: workflow.updatedAt,
+    },
+  };
+}
 
 function verifyRequestKey(req: Request, body: AgentSseRequestBody): boolean {
   const auth = req.headers.authorization;

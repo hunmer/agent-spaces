@@ -986,6 +986,7 @@ function WorkflowEditorInner({
         onSend={chat.sendWorkflowAgentMessage}
         onStop={chat.stopWorkflowAgentMessage}
         onDeleteMessage={chat.deleteAgentMessage}
+        onRerunTool={(message, item) => chat.rerunWorkflowAgentTool(message.id, item)}
         inputPlaceholder={t('editor.inputPlaceholder')}
         inputContext={selectedWorkflowAgentNodes.length > 0 ? (
           <button

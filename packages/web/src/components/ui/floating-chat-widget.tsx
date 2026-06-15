@@ -2,6 +2,7 @@
 
 import { ChatPanel, type ChatMessage, type ChatAgentInfo } from '@/components/ui/chat-panel';
 import { cn } from '@/lib/utils';
+import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MessageSquare, X } from 'lucide-react';
 
@@ -45,6 +46,8 @@ export interface FloatingChatPanelProps {
   onDeleteMessage?: (messageId: string) => void;
   /** Optional custom serializer for copy action. Defaults to `message.content`. */
   serializeForCopy?: (message: ChatMessage) => string;
+  /** Optional handler for rerunning a timeline tool call. */
+  onRerunTool?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>) => void;
 
   /** Panel size */
   width?: number;
@@ -74,6 +77,7 @@ export function FloatingChatPanel({
   renderMessageExtras,
   onDeleteMessage,
   serializeForCopy,
+  onRerunTool,
   width,
   height,
 }: FloatingChatPanelProps) {
@@ -99,6 +103,7 @@ export function FloatingChatPanel({
             renderMessageExtras={renderMessageExtras}
             onDeleteMessage={onDeleteMessage}
             serializeForCopy={serializeForCopy}
+            onRerunTool={onRerunTool}
             width={width}
             height={height}
           />
