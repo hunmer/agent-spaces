@@ -6,10 +6,6 @@
 
 import { randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { execFile } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type {
   Workflow,
   WorkflowNode,
@@ -31,15 +27,8 @@ import type {
   WorkflowExecuteResponse,
 } from '@agent-spaces/shared';
 import { createErrorShape } from '@agent-spaces/shared';
-import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
 import * as workflowStore from '../storage/workflow-store.js';
-import * as sqliteStore from '../storage/sqlite-store.js';
-import { validateIdentifier } from '../storage/sql-safety.js';
 import * as pluginService from './plugin.js';
-import { executeCommandNode } from './workflow-command-runner.js';
-import { getThinkingRuntimeConfig } from './llm-model-config.js';
-import * as workspaceService from './workspace.js';
-import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import { getNestedValue, normalizeVariablePath } from './execution-value-access.js';
 import {
   clone,
@@ -57,8 +46,6 @@ import {
   executeSetVariable,
   executeGetVariable,
   executeDeleteVariable,
-  getInputFieldValues,
-  resolveWhereParams,
   resolveLoopIterations,
   initLoopSharedVars,
   buildExecutionOrder,
@@ -74,6 +61,24 @@ import type {
   LoopWorkerState,
   FinishedExecutionRecovery,
 } from './execution-types.js';
+import {
+  executeSqliteQuery,
+  executeSqliteInsert,
+  executeSqliteUpdate,
+  executeSqliteDelete,
+  executeSqliteRaw,
+} from './execution-sqlite-nodes.js';
+import { executeCode, executePython } from './execution-code-runners.js';
+import { executeAgentRun } from './execution-agent-runner.js';
+import {
+  shouldInterrupt,
+  getNodesForExecutionScope,
+  findCompositeChildByRole,
+  getCompositeParentId,
+  isGeneratedWorkflowNode,
+  normalizeEmbeddedWorkflow,
+  normalizeLoopResult,
+} from './execution-composite-helpers.js';
 
 // 保留公共导出（外部测试直接引用），实际定义已移至 execution-value-access.ts
 export { getNestedValue } from './execution-value-access.js';
@@ -580,20 +585,20 @@ export class ExecutionManager {
         return { items: Array.isArray(resolvedData.items) ? resolvedData.items : [] };
       case 'table_display':
         return this.executeTableDisplay(session, node, resolvedData);
-      case 'sqlite_query':  return this.executeSqliteQuery(session, node, resolvedData);
-      case 'sqlite_insert': return this.executeSqliteInsert(session, node, resolvedData);
-      case 'sqlite_update': return this.executeSqliteUpdate(session, node, resolvedData);
-      case 'sqlite_delete': return this.executeSqliteDelete(session, node, resolvedData);
-      case 'sqlite_raw':    return this.executeSqliteRaw(session, node, resolvedData);
+      case 'sqlite_query':  return executeSqliteQuery(resolvedData);
+      case 'sqlite_insert': return executeSqliteInsert(resolvedData);
+      case 'sqlite_update': return executeSqliteUpdate(resolvedData);
+      case 'sqlite_delete': return executeSqliteDelete(resolvedData);
+      case 'sqlite_raw':    return executeSqliteRaw(resolvedData);
       case 'run_code':
-        return this.executeCode(
+        return executeCode(
           this.getRuntimeContext(session),
           String(resolvedData.code || ''),
           this.buildCodeParams(session, node, resolvedData),
           appendLog,
         );
       case 'run_python':
-        return this.executePython(
+        return executePython(
           String(resolvedData.pythonPath || ''),
           String(resolvedData.code || ''),
           this.buildCodeParams(session, node, resolvedData),
@@ -632,7 +637,7 @@ export class ExecutionManager {
       case 'loop':
         return this.executeLoopNode(session, node, resolvedData, appendLog);
       case 'agent_run':
-        return this.executeAgentRun(session, node, resolvedData, appendLog);
+        return executeAgentRun(session, node, resolvedData, appendLog);
       case 'alert':
         return this.executeAlertDialog(session, node, resolvedData, appendLog);
       case 'prompt':
@@ -708,137 +713,6 @@ export class ExecutionManager {
     return { break: true };
   }
 
-  private async executeAgentRun(
-    session: ExecutionSession, node: WorkflowNode,
-    resolvedData: Record<string, any>,
-    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
-  ): Promise<any> {
-    const prompt = typeof resolvedData.prompt === 'string' ? resolvedData.prompt : '';
-    if (!prompt.trim()) throw new Error('agent_run node missing prompt');
-
-    appendLog('info', 'Executing agent_run node');
-
-    return this.executeAgentWithRuntime(session, node, resolvedData, appendLog);
-  }
-
-  private async executeAgentWithRuntime(
-    session: ExecutionSession, _node: WorkflowNode,
-    resolvedData: Record<string, any>,
-    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
-  ): Promise<any> {
-    const { createAgentRuntime } = await import('../adapters/agent-runtime.js');
-    const agentService = await import('./agent.js');
-
-    const workspaceId = resolveWorkflowAgentWorkspaceId();
-    const workspace = workspaceService.getById(workspaceId);
-    const agentConfigId = resolveAgentConfigId(resolvedData);
-    const presets = agentService.listPresets(workspaceId).filter(p => p.enabled !== false);
-    const preset = agentConfigId
-      ? presets.find(p => p.id === agentConfigId)
-      : presets[0];
-    if (!preset) {
-      throw new Error(agentConfigId ? `Agent preset not found: ${agentConfigId}` : 'No enabled agent preset available');
-    }
-
-    appendLog('info', `Using agent: ${preset.name || preset.id}`);
-
-    const permissionMode = normalizeAgentPermissionMode(resolvedData.permissionMode);
-    const runtime = createAgentRuntime({
-      kind: preset.runtimeKind as any,
-      provider: preset.modelProvider as any,
-      model: preset.modelId,
-      apiKey: preset.apiKey,
-      baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
-      adapterBaseURL: preset.apiBase,
-      permissionMode,
-      ...getThinkingRuntimeConfig(preset),
-    });
-
-    const prompt = String(resolvedData.prompt || '');
-    const systemPrompt = typeof resolvedData.systemPrompt === 'string' ? resolvedData.systemPrompt : undefined;
-    const extraInstructions = typeof resolvedData.extraInstructions === 'string' ? resolvedData.extraInstructions.trim() : '';
-    const ruleLoadingInstructions = [
-      resolvedData.loadProjectClaudeMd === false ? '不要主动加载项目 CLAUDE.md/AGENTS.md 规则文件。' : '',
-      resolvedData.loadRuleMd === false ? '不要主动加载 .claude/rules 或同类规则目录。' : '',
-    ].filter(Boolean).join('\n');
-    const workflowContext = [
-      `当前工作流: ${session.workflow.name}${session.workflow.id ? ` (${session.workflow.id})` : ''}`,
-      typeof session.workflow.description === 'string' && session.workflow.description.trim()
-        ? `工作流描述:\n${session.workflow.description.trim()}`
-        : '',
-    ].filter(Boolean).join('\n\n');
-    const fullPrompt = [systemPrompt, extraInstructions, ruleLoadingInstructions, workflowContext, prompt]
-      .map(part => typeof part === 'string' ? part.trim() : '')
-      .filter(Boolean)
-      .join('\n\n');
-    const workingDir = typeof resolvedData.cwd === 'string' && resolvedData.cwd.trim()
-      ? resolvedData.cwd.trim()
-      : agentService.resolveWorkingDir(workspaceId, preset);
-    const configDir = agentService.getAgentConfigDir(workspaceId, preset);
-    const sandboxDirs = uniqueStrings([
-      ...normalizeStringList(preset.sandboxDirs),
-      ...normalizeStringList(resolvedData.additionalDirectories),
-    ]);
-    const mcpServers = agentService.getMcpServers(preset.mcps);
-    const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
-
-    appendLog('info', `Runtime: ${preset.runtimeKind || 'open-agent-sdk'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
-    if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
-
-    const result = await runtime.execute(
-      buildAgentPrompt(workspaceId, preset.systemPrompt, fullPrompt, [], {
-        runtimeKind: preset.runtimeKind,
-        mcpServers: Object.keys(mcpServers ?? {}),
-        skills,
-        boundDirs: workspace?.boundDirs ?? [],
-        workingDir,
-        excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
-      }),
-      workingDir,
-      {
-        maxTurns: 100,
-        mcpServers,
-        skills,
-        configDir,
-        sandboxDirs,
-        systemPrompt: preset.systemPrompt,
-        outputStyle: preset.outputStyle,
-        userPrompt: prompt,
-        onEvent: (event) => {
-          if (event.type === 'output') {
-            appendLog('info', event.line);
-          } else if (event.type === 'tool_use') {
-            appendLog('info', `Tool: ${event.name}`);
-          }
-        },
-      },
-    );
-
-    if (!result.success) {
-      throw new Error(result.summary || 'Agent execution failed');
-    }
-
-    appendLog('info', `Agent completed: ${result.summary || 'done'}`);
-    const message = result.output?.join('\n').trim() || result.summary;
-    return {
-      result: message,
-      usage: result.usage,
-      runtime: {
-        cwd: workingDir,
-        additionalDirectories: sandboxDirs,
-        permissionMode,
-        extraInstructions,
-        loadProjectClaudeMd: resolvedData.loadProjectClaudeMd !== false,
-        loadRuleMd: resolvedData.loadRuleMd !== false,
-        enabledPlugins: session.workflow.enabledPlugins,
-        mcpServers: Object.keys(mcpServers ?? {}),
-        skills,
-        workspaceId,
-        agentConfigId: preset.id,
-      },
-    };
-  }
-
   private async executeTableDisplay(
     session: ExecutionSession, node: WorkflowNode,
     resolvedData: Record<string, any>,
@@ -861,100 +735,6 @@ export class ExecutionManager {
       schema: { headers, cells, selectionMode },
     });
     return { ...(result as Record<string, any>), headers, cells };
-  }
-
-  // ---- Private: SQLite node execution ----
-
-  /**
-   * inputFields 是节点声明的输入字段（OutputField[]，每项 {key, type, value?, children?}），
-   * 其 value 在 resolvedData 解析阶段（resolveContextVariables）已被绑定上游变量。
-   * 取「值」数组（按声明顺序），用于绑定 SQL 的 ? 占位符。
-   */
-  private executeSqliteQuery(
-    _session: ExecutionSession, _node: WorkflowNode,
-    resolvedData: Record<string, any>,
-  ): { rows: unknown[]; rowCount: number } {
-    const dbId = String(resolvedData.database || '');
-    const table = String(resolvedData.table || '');
-    validateIdentifier(table, 'table');
-    const colsRaw = resolvedData.columns === '*' || !resolvedData.columns ? '*' : String(resolvedData.columns);
-    const { clause, paramCount } = resolveWhereParams(String(resolvedData.where || ''));
-    const order = resolvedData.orderBy ? ` ORDER BY ${resolvedData.orderBy}` : '';
-    const limit = Number(resolvedData.limit) > 0 ? Number(resolvedData.limit) : 1000;
-    let sql = `SELECT ${colsRaw} FROM "${table}"`;
-    if (clause) sql += ` WHERE ${clause}`;
-    sql += `${order} LIMIT ?`;
-    const fieldValues = getInputFieldValues(resolvedData).slice(0, paramCount);
-    const result = sqliteStore.query(dbId, sql, [...fieldValues, limit]);
-    return { rows: result.rows, rowCount: result.rowCount };
-  }
-
-  private executeSqliteInsert(
-    _session: ExecutionSession, _node: WorkflowNode,
-    resolvedData: Record<string, any>,
-  ): { insertedId: number | null; changes: number } {
-    const dbId = String(resolvedData.database || '');
-    const table = String(resolvedData.table || '');
-    validateIdentifier(table, 'table');
-    const fields = Array.isArray(resolvedData.fields) ? resolvedData.fields : [];
-    const columns = fields.map((f: any) => { validateIdentifier(String(f.column), 'column'); return String(f.column); });
-    const placeholders = columns.map(() => '?').join(',');
-    const sql = `INSERT INTO "${table}" (${columns.join(',')}) VALUES (${placeholders})`;
-    const fieldValues = getInputFieldValues(resolvedData);
-    const params = fields.map((f: any, i: number) => fieldValues[i] ?? f.value ?? null);
-    const r = sqliteStore.exec(dbId, sql, params);
-    return { insertedId: r.lastInsertRowid, changes: r.changes };
-  }
-
-  private executeSqliteUpdate(
-    _session: ExecutionSession, _node: WorkflowNode,
-    resolvedData: Record<string, any>,
-  ): { changes: number } {
-    const dbId = String(resolvedData.database || '');
-    const table = String(resolvedData.table || '');
-    validateIdentifier(table, 'table');
-    const setFields = Array.isArray(resolvedData.setFields) ? resolvedData.setFields : [];
-    const columns = setFields.map((f: any) => { validateIdentifier(String(f.column), 'column'); return String(f.column); });
-    const setClause = columns.map((c) => `${c} = ?`).join(', ');
-    const { clause, paramCount } = resolveWhereParams(String(resolvedData.where || ''));
-    let sql = `UPDATE "${table}" SET ${setClause}`;
-    if (clause) sql += ` WHERE ${clause}`;
-    const fieldValues = getInputFieldValues(resolvedData);
-    const setParams = setFields.map((f: any, i: number) => fieldValues[i] ?? f.value ?? null);
-    const whereParams = fieldValues.slice(setFields.length, setFields.length + paramCount);
-    const r = sqliteStore.exec(dbId, sql, [...setParams, ...whereParams]);
-    return { changes: r.changes };
-  }
-
-  private executeSqliteDelete(
-    _session: ExecutionSession, _node: WorkflowNode,
-    resolvedData: Record<string, any>,
-  ): { changes: number } {
-    const dbId = String(resolvedData.database || '');
-    const table = String(resolvedData.table || '');
-    validateIdentifier(table, 'table');
-    const { clause, paramCount } = resolveWhereParams(String(resolvedData.where || ''));
-    let sql = `DELETE FROM "${table}"`;
-    if (clause) sql += ` WHERE ${clause}`;
-    const fieldValues = getInputFieldValues(resolvedData).slice(0, paramCount);
-    const r = sqliteStore.exec(dbId, sql, fieldValues);
-    return { changes: r.changes };
-  }
-
-  private executeSqliteRaw(
-    _session: ExecutionSession, _node: WorkflowNode,
-    resolvedData: Record<string, any>,
-  ): { rows: unknown[]; rowCount?: number; execResult?: { changes: number; lastInsertRowid: number | null } } {
-    const dbId = String(resolvedData.database || '');
-    const sql = String(resolvedData.sql || '');
-    const mode = String(resolvedData.mode || 'query');
-    const params = getInputFieldValues(resolvedData).slice(0, (sql.match(/\?/g) || []).length);
-    if (mode === 'exec') {
-      const r = sqliteStore.exec(dbId, sql, params);
-      return { rows: [], execResult: r };
-    }
-    const r = sqliteStore.query(dbId, sql, params);
-    return { rows: r.rows, rowCount: r.rowCount };
   }
 
   private async executeAlertDialog(
@@ -1022,121 +802,6 @@ export class ExecutionManager {
     }
     appendLog('info', 'Form completed');
     return { values: result, confirmed: result !== null };
-  }
-
-  private executeCode(
-    context: Record<string, any>,
-    code: string,
-    params: Record<string, any>,
-    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
-  ): any {
-    const normalized = code
-      .replace(/\basync\s+function\s+main\s*\(\s*\{\s*params\s*\}\s*:\s*Args\s*\)\s*:\s*Promise\s*<\s*Output\s*>/g, 'async function main({ params })')
-      .replace(/\bfunction\s+main\s*\(\s*\{\s*params\s*\}\s*:\s*Args\s*\)\s*:\s*Output/g, 'function main({ params })');
-    const formatConsoleValue = (value: unknown): string => {
-      if (typeof value === 'string') return value;
-      if (value instanceof Error) return value.stack || value.message;
-      try {
-        return JSON.stringify(value);
-      } catch {
-        return String(value);
-      }
-    };
-    const workflowConsole = {
-      ...console,
-      log: (...args: unknown[]) => {
-        console.log(...args);
-        appendLog('info', args.map(formatConsoleValue).join(' '));
-      },
-      info: (...args: unknown[]) => {
-        console.info(...args);
-        appendLog('info', args.map(formatConsoleValue).join(' '));
-      },
-      warn: (...args: unknown[]) => {
-        console.warn(...args);
-        appendLog('warning', args.map(formatConsoleValue).join(' '));
-      },
-      error: (...args: unknown[]) => {
-        console.error(...args);
-        appendLog('error', args.map(formatConsoleValue).join(' '));
-      },
-    };
-    const fn = new Function('context', 'params', 'console', `${normalized}\nif (typeof main === 'function') return main({ params, context })`);
-    return fn(context, params, workflowConsole);
-  }
-
-  private async executePython(
-    pythonPath: string,
-    code: string,
-    params: Record<string, any>,
-    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
-  ): Promise<any> {
-    const python = pythonPath.trim() || 'python';
-    if (!code.trim()) throw new Error('Python code is empty');
-
-    // User code runs at module top level, then we call main(params) if defined.
-    // Result is emitted on stdout wrapped between markers; everything else on
-    // stdout/stderr is forwarded to the workflow log.
-    const wrapper = `import os, json, sys
-
-__WF_PARAMS__ = json.loads(os.environ.get('__WF_PARAMS__', '{}'))
-
-${code}
-
-if 'main' in dir() and callable(main):
-    __wf_result = main(__WF_PARAMS__)
-else:
-    __wf_result = None
-
-sys.stdout.write('__WF_RESULT__' + json.dumps(__wf_result, default=str) + '__WF_RESULT_END__')
-sys.stdout.flush()
-`;
-
-    const dir = await mkdtemp(join(tmpdir(), 'wf-python-'));
-    const scriptPath = join(dir, 'main.py');
-    try {
-      await writeFile(scriptPath, wrapper, 'utf8');
-
-      const stdout = await new Promise<string>((resolve, reject) => {
-        execFile(python, [scriptPath], {
-          cwd: dir,
-          env: { ...process.env, __WF_PARAMS__: JSON.stringify(params ?? {}) },
-          timeout: 300_000,
-          maxBuffer: 10 * 1024 * 1024,
-        }, (error, out, stderr) => {
-          // Forward stderr (tracebacks) and any non-result stdout to the log.
-          const stderrText = String(stderr || '');
-          if (stderrText) appendLog('error', stderrText.trim());
-          if (error) {
-            reject(new Error(`Python execution failed: ${stderrText.trim() || error.message}`));
-            return;
-          }
-          resolve(String(out || ''));
-        });
-      });
-
-      const start = stdout.lastIndexOf('__WF_RESULT__');
-      const end = stdout.lastIndexOf('__WF_RESULT_END__');
-      if (start === -1 || end === -1 || end <= start) {
-        const rest = stdout.replace('__WF_RESULT__', '').replace('__WF_RESULT_END__', '').trim();
-        if (rest) appendLog('info', rest);
-        appendLog('warning', 'Python code produced no result marker');
-        return null;
-      }
-
-      const before = stdout.slice(0, start);
-      if (before.trim()) appendLog('info', before.trim());
-
-      const payload = stdout.slice(start + '__WF_RESULT__'.length, end).trim();
-      try {
-        return payload === '' ? null : JSON.parse(payload);
-      } catch {
-        appendLog('warning', `Python returned non-JSON result: ${payload}`);
-        return payload;
-      }
-    } finally {
-      await rm(dir, { recursive: true, force: true }).catch(() => {});
-    }
   }
 
   private buildCodeParams(
@@ -1800,106 +1465,4 @@ sys.stdout.flush()
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function shouldInterrupt(session: ExecutionSession): boolean {
-  return session.stopRequested || session.status === 'error';
-}
-
-function normalizeStringList(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value
-      .filter((item): item is string => typeof item === 'string')
-      .map(item => item.trim())
-      .filter(Boolean);
-  }
-
-  if (typeof value === 'string') {
-    return value
-      .split('\n')
-      .map(item => item.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-}
-
-function uniqueStrings(values: string[]): string[] {
-  const seen = new Set<string>();
-  return values.filter((value) => {
-    if (seen.has(value)) return false;
-    seen.add(value);
-    return true;
-  });
-}
-
-function normalizeAgentPermissionMode(value: unknown): AgentRuntimeConfig['permissionMode'] {
-  switch (value) {
-    case 'default':
-    case 'acceptEdits':
-    case 'bypassPermissions':
-    case 'plan':
-    case 'dontAsk':
-    case 'auto':
-      return value;
-    default:
-      return 'dontAsk';
-  }
-}
-
-function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefined {
-  if (
-    provider === 'openai-responses-to-anthropic-messages'
-    || provider === 'openai-chat-completions-to-anthropic-messages'
-  ) return undefined;
-  return apiBase;
-}
-
-function resolveWorkflowAgentWorkspaceId(): string {
-  return workspaceService.getAll()[0]?.id ?? 'default';
-}
-
-function resolveAgentConfigId(resolvedData: Record<string, any>): string {
-  if (typeof resolvedData.agentConfigId === 'string' && resolvedData.agentConfigId.trim()) {
-    return resolvedData.agentConfigId.trim();
-  }
-  const agent = resolvedData.agent;
-  if (agent && typeof agent === 'object' && !Array.isArray(agent)) {
-    const id = (agent as Record<string, unknown>).id;
-    if (typeof id === 'string' && id.trim()) return id.trim();
-  }
-  return '';
-}
-
-// Composite node helpers (from workflow-composite.ts shared types)
-function getNodesForExecutionScope(nodes: WorkflowNode[], scopeId: string | null): WorkflowNode[] {
-  // scopeId null = root nodes (no composite.parentId)
-  // scopeId non-null = nodes whose composite.parentId matches
-  if (scopeId === null) {
-    return nodes.filter(n => !n.composite?.parentId);
-  }
-  return nodes.filter(n => n.composite?.parentId === scopeId);
-}
-
-function findCompositeChildByRole(nodes: WorkflowNode[], parentId: string, role: string): WorkflowNode | undefined {
-  return nodes.find(n => n.composite?.parentId === parentId && n.composite?.role === role);
-}
-
-function getCompositeParentId(node: WorkflowNode): string | undefined {
-  return node.composite?.parentId ?? undefined;
-}
-
-function isGeneratedWorkflowNode(node: WorkflowNode): boolean {
-  return !!node.data?._generated;
-}
-
-function normalizeEmbeddedWorkflow(data: any, genId: () => string): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } {
-  // Simplified: just return as-is if already normalized
-  if (data.nodes && data.edges) return data;
-  return { nodes: [], edges: [] };
-}
-
-function normalizeLoopResult(result: unknown): Record<string, any> {
-  if (result && typeof result === 'object' && !Array.isArray(result)) return result as Record<string, any>;
-  return { result };
 }
