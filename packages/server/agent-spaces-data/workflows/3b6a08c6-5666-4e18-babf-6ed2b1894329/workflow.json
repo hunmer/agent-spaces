@@ -63,19 +63,7 @@
           }
         ],
         "prompt": "请将以下故事文本转换为分镜镜头JSON数组。每个分镜包含：- 文案文本：该镜头的文字描述- 画面提示词：用于生成图片的详细描述输出格式必须是严格的JSON数组，不要有任何其他文字说明，使用纯文本输出。故事文本：{{ __data__[\"node_1781500461235_start\"].story }}",
-        "agent": {
-          "id": "6005773f-07c1-4904-b9f7-bf85c91c8a9c",
-          "name": "Agent",
-          "role": "agent",
-          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
-          "runtimeKind": "claude-code",
-          "modelProvider": "openai-chat-completions",
-          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
-          "modelId": "GLM-4.7",
-          "avatarUrl": "",
-          "icon": "",
-          "enabled": true
-        }
+        "agent": null
       }
     },
     {
@@ -255,7 +243,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781506998388,
+  "updatedAt": 1781508397425,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"

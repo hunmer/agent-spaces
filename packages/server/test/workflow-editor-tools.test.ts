@@ -9,6 +9,62 @@ import * as workflowService from '../src/services/workflow.js';
 
 const nodeDefinitions: NodeTypeDefinition[] = [
   {
+    type: 'loop',
+    label: '循环',
+    category: '流程控制',
+    icon: 'RotateCw',
+    description: '循环执行',
+    properties: [],
+    handles: {
+      target: true,
+      source: true,
+      sourceHandles: [
+        { id: 'loop-body', label: '循环体' },
+        { id: 'loop-next', label: '继续' },
+      ],
+    },
+    compound: {
+      rootRole: 'loop',
+      children: [
+        { role: 'loop', type: 'loop' },
+        {
+          role: 'loop_body',
+          type: 'loop_body',
+          label: '循环体',
+          offset: { x: 260, y: 0 },
+          scopeBoundary: true,
+          parentRole: 'loop',
+          data: { width: 150, height: 260 },
+        },
+      ],
+      edges: [
+        {
+          sourceRole: 'loop',
+          targetRole: 'loop_body',
+          sourceHandle: 'loop-body',
+          targetHandle: 'target',
+          locked: true,
+        },
+      ],
+    },
+  },
+  {
+    type: 'loop_body',
+    label: '循环体',
+    category: '流程控制',
+    icon: 'Container',
+    description: '循环体容器',
+    properties: [],
+  },
+  {
+    type: 'toast',
+    label: 'Toast',
+    category: '流程控制',
+    icon: 'Bell',
+    description: '显示消息',
+    properties: [],
+  },
+  {
     type: 'run_code',
     label: '运行 JS 代码',
     category: '流程控制',
@@ -99,4 +155,134 @@ test('create_workflow_version persists the snapshot for the version panel', asyn
   assert.equal(versions[0].id, result.version_id);
   assert.equal(versions[0].name, '初始版本');
   assert.deepEqual(versions[0].snapshot.nodes, savedWorkflow.nodes);
+});
+
+test('create_node can infer loop_body scope from loop-body source handle', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  assert.ok(createNode);
+
+  const loopResult = await createNode.execute({ type: 'loop', label: '循环5次' }) as {
+    success: boolean;
+    created_node_id: string;
+    workflow: Workflow;
+  };
+  assert.equal(loopResult.success, true);
+  const loopBodyNode = loopResult.workflow.nodes.find((node) => node.type === 'loop_body');
+  assert.ok(loopBodyNode);
+
+  const toastResult = await createNode.execute({
+    type: 'toast',
+    label: '显示循环索引',
+    source: loopResult.created_node_id,
+    sourceHandle: 'loop-body',
+  }) as {
+    success: boolean;
+    created_node_id: string;
+    workflow: Workflow;
+  };
+
+  assert.equal(toastResult.success, true);
+  const toastNode = toastResult.workflow.nodes.find((node) => node.id === toastResult.created_node_id);
+  assert.ok(toastNode);
+  assert.equal(toastNode.composite?.parentId, loopBodyNode.id);
+  assert.equal(toastNode.composite?.rootId, loopBodyNode.composite?.rootId);
+});
+
+test('create_edge replaces conflicting default edge inside loop_body scope', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const createEdge = tools.find((tool) => tool.name === 'create_edge');
+  assert.ok(createNode);
+  assert.ok(createEdge);
+
+  const loopResult = await createNode.execute({ type: 'loop', label: '循环5次' }) as {
+    success: boolean;
+    workflow: Workflow;
+  };
+  assert.equal(loopResult.success, true);
+  const loopBodyNode = loopResult.workflow.nodes.find((node) => node.type === 'loop_body');
+  const loopStartNode = loopResult.workflow.nodes.find((node) => node.type === 'start' && node.composite?.parentId === loopBodyNode?.id);
+  const loopEndNode = loopResult.workflow.nodes.find((node) => node.type === 'end' && node.composite?.parentId === loopBodyNode?.id);
+  assert.ok(loopBodyNode);
+  assert.ok(loopStartNode);
+  assert.ok(loopEndNode);
+  const defaultEdge = loopResult.workflow.edges.find((edge) => edge.source === loopStartNode.id && edge.target === loopEndNode.id);
+  assert.ok(defaultEdge);
+
+  const toastResult = await createNode.execute({
+    type: 'toast',
+    scope_node_id: loopBodyNode.id,
+  }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(toastResult.success, true);
+
+  const edgeResult = await createEdge.execute({
+    source: loopStartNode.id,
+    target: toastResult.created_node_id,
+  }) as {
+    success: boolean;
+    removed_edge_ids?: string[];
+    workflow: Workflow;
+  };
+
+  assert.equal(edgeResult.success, true);
+  assert.deepEqual(edgeResult.removed_edge_ids, [defaultEdge.id]);
+  assert.equal(edgeResult.workflow.edges.some((edge) => edge.id === defaultEdge.id), false);
+  assert.equal(edgeResult.workflow.edges.some((edge) => edge.source === loopStartNode.id && edge.target === toastResult.created_node_id), true);
+});
+
+test('insert_node reuses an unconnected matching node in the same scope', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const insertNode = tools.find((tool) => tool.name === 'insert_node');
+  assert.ok(createNode);
+  assert.ok(insertNode);
+
+  const loopResult = await createNode.execute({ type: 'loop', label: '循环5次' }) as {
+    success: boolean;
+    workflow: Workflow;
+  };
+  assert.equal(loopResult.success, true);
+  const loopBodyNode = loopResult.workflow.nodes.find((node) => node.type === 'loop_body');
+  const loopStartNode = loopResult.workflow.nodes.find((node) => node.type === 'start' && node.composite?.parentId === loopBodyNode?.id);
+  const loopEndNode = loopResult.workflow.nodes.find((node) => node.type === 'end' && node.composite?.parentId === loopBodyNode?.id);
+  assert.ok(loopBodyNode);
+  assert.ok(loopStartNode);
+  assert.ok(loopEndNode);
+  const defaultEdge = loopResult.workflow.edges.find((edge) => edge.source === loopStartNode.id && edge.target === loopEndNode.id);
+  assert.ok(defaultEdge);
+
+  const toastResult = await createNode.execute({
+    type: 'toast',
+    label: '输出循环索引',
+    data: { type: 'info', message: '当前循环索引: {{ context.loop.index }}' },
+    scopeNodeId: loopBodyNode.id,
+  }) as {
+    success: boolean;
+    created_node_id: string;
+    workflow: Workflow;
+  };
+  assert.equal(toastResult.success, true);
+
+  const insertResult = await insertNode.execute({
+    edgeId: defaultEdge.id,
+    type: 'toast',
+    label: '输出循环索引',
+    data: { type: 'info', message: '当前循环索引: {{ context.loop.index }}' },
+  }) as {
+    success: boolean;
+    inserted_node_id?: string;
+    reused_node?: boolean;
+    workflow: Workflow;
+  };
+
+  assert.equal(insertResult.success, true);
+  assert.equal(insertResult.inserted_node_id, toastResult.created_node_id);
+  assert.equal(insertResult.reused_node, true);
+  assert.equal(insertResult.workflow.nodes.filter((node) => node.type === 'toast').length, 1);
+  assert.equal(insertResult.workflow.edges.some((edge) => edge.source === loopStartNode.id && edge.target === toastResult.created_node_id), true);
+  assert.equal(insertResult.workflow.edges.some((edge) => edge.source === toastResult.created_node_id && edge.target === loopEndNode.id), true);
 });

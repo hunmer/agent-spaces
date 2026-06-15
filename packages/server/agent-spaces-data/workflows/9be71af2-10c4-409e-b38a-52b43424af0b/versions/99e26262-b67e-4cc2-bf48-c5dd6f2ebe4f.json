@@ -1,0 +1,31 @@
+{
+  "id": "99e26262-b67e-4cc2-bf48-c5dd6f2ebe4f",
+  "workflowId": "9be71af2-10c4-409e-b38a-52b43424af0b",
+  "name": "添加loop循环前的备份",
+  "snapshot": {
+    "nodes": [
+      {
+        "id": "node_1781507395557_start",
+        "type": "start",
+        "label": "开始",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "data": {}
+      },
+      {
+        "id": "node_1781507395557_end",
+        "type": "end",
+        "label": "结束",
+        "position": {
+          "x": 0,
+          "y": 180
+        },
+        "data": {}
+      }
+    ],
+    "edges": []
+  },
+  "createdAt": 1781510303235
+}

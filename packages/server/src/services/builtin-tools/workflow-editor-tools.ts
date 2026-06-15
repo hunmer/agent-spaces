@@ -2,10 +2,14 @@ import Dagre from '@dagrejs/dagre';
 import type { NodeTypeDefinition, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import {
   createWorkflowNodesForDefinition,
+  findCompositeChildByRole,
   getCompositeParentId,
   isHiddenWorkflowEdge,
   isHiddenWorkflowNode,
   isScopeBoundaryWorkflowNode,
+  LOOP_BODY_NODE_TYPE,
+  LOOP_BODY_ROLE,
+  LOOP_BODY_SOURCE_HANDLE,
 } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import * as workflowService from '../workflow.js';
@@ -36,6 +40,7 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 8. run_code 返回结构变化后，要同步设置节点的 data.outputs，让下游变量选择器能看到字段。
 9. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
 10. 修改后通常调用 auto_layout 整理画布。
+11. 在 loop 内创建节点时，必须把节点放进 loop_body：create_node 传 scopeNodeId/scope_node_id 为 loop_body 节点 ID；如果从 loop 的 loop-body 句柄继续创建，也可以传 source 和 sourceHandle=loop-body 让工具自动推断。
 
 约束：
 - 只能使用本次 Agent Spaces runtime 暴露的工作流编辑工具。
@@ -232,11 +237,18 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'create_node',
-      description: '在工作流中创建新节点。需要指定有效节点 type，可选 label、data。',
+      description: '在工作流中创建新节点。需要指定有效节点 type，可选 label、data。要创建到 loop_body 等作用域内，传 scopeNodeId/scope_node_id，或传 source/sourceHandle 让工具从 loop-body 句柄推断。',
       inputSchema: schema({
         type: { type: 'string', description: '节点类型标识。' },
         label: { type: 'string', description: '节点显示名称。' },
         data: { type: 'object', description: '节点参数数据。', properties: {} },
+        scopeNodeId: { type: 'string', description: '可选，作用域容器节点 ID，例如 loop_body 节点 ID。' },
+        scope_node_id: { type: 'string', description: '可选，作用域容器节点 ID，兼容蛇形命名。' },
+        parentId: { type: 'string', description: '兼容参数，等同 scopeNodeId。' },
+        parent_id: { type: 'string', description: '兼容参数，等同 scope_node_id。' },
+        source: { type: 'string', description: '可选，前置节点 ID；当 sourceHandle=loop-body 时自动创建到对应 loop_body。' },
+        sourceHandle: { type: 'string', description: '可选，前置节点连接点。' },
+        source_handle: { type: 'string', description: '可选，前置节点连接点，兼容蛇形命名。' },
       }, ['type']),
       execute: async (input) => {
         const record = asRecord(input);
@@ -244,12 +256,15 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         if (!type) return { success: false, message: 'type is required' };
         const definition = definitionByType.get(type);
         if (!definition) return { success: false, message: `Unknown node type: ${type}` };
+        const scopeNodeResult = resolveScopeNode(draft.nodes, record);
+        if (!scopeNodeResult.success) return scopeNodeResult;
         const created = createWorkflowNodesForDefinition({
           definitions: ctx.nodeDefinitions,
           type,
           rootLabel: stringInput(record, 'label'),
-          position: nextNodePosition(draft.nodes),
+          position: nextNodePosition(draft.nodes, scopeNodeResult.scopeNode),
           rootData: objectInput(record, 'data'),
+          scopeNode: scopeNodeResult.scopeNode,
           createNodeId: createWorkflowNodeId,
         });
         if (!created) return { success: false, message: `Failed to create node type: ${type}` };
@@ -392,7 +407,10 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           sourceHandle: stringInputAny(record, ['sourceHandle', 'source_handle']) ?? undefined,
           targetHandle: stringInputAny(record, ['targetHandle', 'target_handle']) ?? undefined,
         };
-        return commit({ ...draft, edges: [...draft.edges, edge] });
+        const replacement = replaceConflictingScopedEdges(draft.nodes, draft.edges, edge);
+        return commit({ ...draft, edges: [...replacement.edges, edge] }, {
+          removed_edge_ids: replacement.removedEdgeIds,
+        });
       },
     },
     {
@@ -412,44 +430,78 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'insert_node',
-      description: '在已有连线中插入新节点，替换为 source -> 新节点 -> target 两条边。',
+      description: '在已有连线中插入节点，替换为 source -> 节点 -> target 两条边。可传 nodeId/node_id 复用现有节点；不传时会优先复用同作用域内未连线且类型/标签/data 匹配的节点，避免先 create_node 后再 delete_node。',
       inputSchema: schema({
         edgeId: { type: 'string', description: '要插入的边 ID。' },
         edge_id: { type: 'string', description: '要插入的边 ID，兼容蛇形命名。' },
+        nodeId: { type: 'string', description: '可选，要复用并插入的现有节点 ID。' },
+        node_id: { type: 'string', description: '可选，要复用并插入的现有节点 ID，兼容蛇形命名。' },
         type: { type: 'string', description: '新节点类型。' },
         label: { type: 'string', description: '新节点显示名称。' },
         data: { type: 'object', description: '新节点参数。', properties: {} },
-      }, ['type']),
+      }),
       execute: async (input) => {
         const record = asRecord(input);
         const edgeId = stringInputAny(record, ['edgeId', 'edge_id']);
         const type = stringInput(record, 'type');
+        const reuseNodeId = stringInputAny(record, ['nodeId', 'node_id']);
         const edge = draft.edges.find((item) => item.id === edgeId);
         if (!edge) return { success: false, message: `Edge not found: ${edgeId ?? ''}` };
-        if (!type) return { success: false, message: 'type is required' };
-        const definition = definitionByType.get(type);
-        if (!definition) return { success: false, message: `Unknown node type: ${type}` };
         const sourceNode = draft.nodes.find((node) => node.id === edge.source);
         const targetNode = draft.nodes.find((node) => node.id === edge.target);
-        const nodeId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const node: WorkflowNode = {
-          id: nodeId,
-          type,
-          label: stringInput(record, 'label') ?? definition.label,
-          position: {
-            x: ((sourceNode?.position.x ?? 0) + (targetNode?.position.x ?? 260)) / 2,
-            y: ((sourceNode?.position.y ?? 0) + (targetNode?.position.y ?? 0)) / 2,
-          },
-          data: { ...defaultData(definition), ...objectInput(record, 'data') },
+        const scopeNode = getInsertScopeNode(draft.nodes, edge.source, edge.sourceHandle);
+        const insertPosition = {
+          x: ((sourceNode?.position.x ?? 0) + (targetNode?.position.x ?? 260)) / 2,
+          y: ((sourceNode?.position.y ?? 0) + (targetNode?.position.y ?? 0)) / 2,
         };
+        const data = objectInput(record, 'data');
+        const reuseNode = reuseNodeId
+          ? draft.nodes.find((node) => node.id === reuseNodeId)
+          : findReusableInsertNode(draft.nodes, draft.edges, {
+              type,
+              label: stringInput(record, 'label'),
+              data,
+              scopeNode,
+            });
+        if (reuseNodeId && !reuseNode) return { success: false, message: `Node not found: ${reuseNodeId}` };
+        const insertType = type ?? reuseNode?.type;
+        if (!insertType) return { success: false, message: 'type is required' };
+        const definition = definitionByType.get(insertType);
+        if (!definition) return { success: false, message: `Unknown node type: ${insertType}` };
+        if (reuseNode && reuseNode.type !== insertType) {
+          return { success: false, message: `Node type mismatch: ${reuseNode.id} is ${reuseNode.type}, expected ${insertType}` };
+        }
+
+        const nodeId = reuseNode?.id ?? `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const node: WorkflowNode = {
+          ...(reuseNode ?? {}),
+          id: nodeId,
+          type: insertType,
+          label: stringInput(record, 'label') ?? reuseNode?.label ?? definition.label,
+          position: insertPosition,
+          data: { ...defaultData(definition), ...(reuseNode?.data ?? {}), ...data },
+          composite: scopeNode ? {
+            ...(reuseNode?.composite ?? {}),
+            rootId: scopeNode.composite?.rootId || scopeNode.id,
+            parentId: scopeNode.id,
+            generated: false,
+            hidden: false,
+          } : reuseNode?.composite,
+        };
+        const nodes = reuseNode
+          ? draft.nodes.map((item) => item.id === node.id ? node : item)
+          : [...draft.nodes, node];
         return commit({
           ...draft,
-          nodes: [...draft.nodes, node],
+          nodes,
           edges: [
             ...draft.edges.filter((item) => item.id !== edgeId),
             { id: `e-${edge.source}-${nodeId}`, source: edge.source, target: nodeId, sourceHandle: edge.sourceHandle },
             { id: `e-${nodeId}-${edge.target}`, source: nodeId, target: edge.target, targetHandle: edge.targetHandle },
           ],
+        }, {
+          inserted_node_id: nodeId,
+          reused_node: !!reuseNode,
         });
       },
     },
@@ -574,11 +626,135 @@ function defaultData(definition: NodeTypeDefinition): JsonRecord {
   return data;
 }
 
-function nextNodePosition(nodes: WorkflowNode[]): WorkflowNode['position'] {
-  if (!nodes.length) return { x: 120, y: 120 };
-  const maxX = Math.max(...nodes.map((node) => node.position.x));
-  const avgY = nodes.reduce((sum, node) => sum + node.position.y, 0) / nodes.length;
+function nextNodePosition(nodes: WorkflowNode[], scopeNode?: WorkflowNode | null): WorkflowNode['position'] {
+  if (!scopeNode) {
+    if (!nodes.length) return { x: 120, y: 120 };
+    const maxX = Math.max(...nodes.map((node) => node.position.x));
+    const avgY = nodes.reduce((sum, node) => sum + node.position.y, 0) / nodes.length;
+    return { x: maxX + 260, y: Math.round(avgY) };
+  }
+
+  const children = nodes.filter((node) => getCompositeParentId(node) === scopeNode.id && !isHiddenWorkflowNode(node));
+  if (!children.length) return { x: scopeNode.position.x + 80, y: scopeNode.position.y + 80 };
+  const maxX = Math.max(...children.map((node) => node.position.x));
+  const avgY = children.reduce((sum, node) => sum + node.position.y, 0) / children.length;
   return { x: maxX + 260, y: Math.round(avgY) };
+}
+
+function resolveScopeNode(
+  nodes: WorkflowNode[],
+  input: JsonRecord,
+): { success: true; scopeNode: WorkflowNode | null } | { success: false; message: string } {
+  const scopeNodeId = stringInputAny(input, ['scopeNodeId', 'scope_node_id', 'parentId', 'parent_id']);
+  if (scopeNodeId) {
+    const scopeNode = nodes.find((node) => node.id === scopeNodeId);
+    if (!scopeNode) return { success: false, message: `Scope node not found: ${scopeNodeId}` };
+    if (!isScopeBoundaryWorkflowNode(scopeNode)) return { success: false, message: `Scope node is not a scope boundary: ${scopeNodeId}` };
+    return { success: true, scopeNode };
+  }
+
+  return {
+    success: true,
+    scopeNode: getInsertScopeNode(
+      nodes,
+      stringInput(input, 'source'),
+      stringInputAny(input, ['sourceHandle', 'source_handle']),
+    ),
+  };
+}
+
+function getInsertScopeNode(
+  nodes: WorkflowNode[],
+  sourceNodeId?: string | null,
+  sourceHandle?: string | null,
+): WorkflowNode | null {
+  if (!sourceNodeId) return null;
+  const sourceNode = nodes.find((node) => node.id === sourceNodeId);
+  if (sourceNode?.type === LOOP_BODY_NODE_TYPE) return sourceNode;
+  if (sourceHandle === LOOP_BODY_SOURCE_HANDLE) {
+    return findCompositeChildByRole(nodes, sourceNodeId, LOOP_BODY_ROLE) ?? null;
+  }
+
+  let current = sourceNode;
+  while (current) {
+    const parentId = getCompositeParentId(current);
+    if (!parentId) return null;
+    const parent = nodes.find((node) => node.id === parentId);
+    if (!parent) return null;
+    if (isScopeBoundaryWorkflowNode(parent)) return parent;
+    current = parent;
+  }
+  return null;
+}
+
+function replaceConflictingScopedEdges(
+  nodes: WorkflowNode[],
+  edges: WorkflowEdge[],
+  edge: WorkflowEdge,
+): { edges: WorkflowEdge[]; removedEdgeIds: string[] } {
+  const sourceScopeId = getNodeScopeId(nodes, edge.source);
+  const targetScopeId = getNodeScopeId(nodes, edge.target);
+  if (!sourceScopeId || sourceScopeId !== targetScopeId) return { edges, removedEdgeIds: [] };
+
+  const removedEdgeIds: string[] = [];
+  const nextEdges = edges.filter((existing) => {
+    if (existing.source === edge.source && existing.target === edge.target
+      && normalizedHandle(existing.sourceHandle) === normalizedHandle(edge.sourceHandle)
+      && normalizedHandle(existing.targetHandle) === normalizedHandle(edge.targetHandle)) {
+      removedEdgeIds.push(existing.id);
+      return false;
+    }
+    if (existing.composite?.locked) return true;
+    if (getNodeScopeId(nodes, existing.source) !== sourceScopeId || getNodeScopeId(nodes, existing.target) !== sourceScopeId) {
+      return true;
+    }
+
+    const conflictsWithSource = existing.source === edge.source
+      && normalizedHandle(existing.sourceHandle) === normalizedHandle(edge.sourceHandle);
+    const conflictsWithTarget = existing.target === edge.target
+      && normalizedHandle(existing.targetHandle) === normalizedHandle(edge.targetHandle);
+    if (!conflictsWithSource && !conflictsWithTarget) return true;
+
+    removedEdgeIds.push(existing.id);
+    return false;
+  });
+
+  return { edges: nextEdges, removedEdgeIds };
+}
+
+function findReusableInsertNode(
+  nodes: WorkflowNode[],
+  edges: WorkflowEdge[],
+  options: { type?: string; label?: string; data: JsonRecord; scopeNode: WorkflowNode | null },
+): WorkflowNode | undefined {
+  if (!options.type) return undefined;
+  const scopeId = options.scopeNode?.id ?? null;
+  return nodes.find((node) => {
+    if (node.type !== options.type) return false;
+    if (getCompositeParentId(node) !== scopeId) return false;
+    if (isGeneratedWorkflowNodeLike(node)) return false;
+    if (options.label && node.label !== options.label) return false;
+    if (!objectContains(node.data ?? {}, options.data)) return false;
+    return !edges.some((edge) => edge.source === node.id || edge.target === node.id);
+  });
+}
+
+function isGeneratedWorkflowNodeLike(node: WorkflowNode): boolean {
+  return !!node.composite?.generated;
+}
+
+function objectContains(actual: JsonRecord, expected: JsonRecord): boolean {
+  return Object.entries(expected).every(([key, value]) => JSON.stringify(actual[key]) === JSON.stringify(value));
+}
+
+function getNodeScopeId(nodes: WorkflowNode[], nodeId: string): string | null {
+  const node = nodes.find((item) => item.id === nodeId);
+  if (!node) return null;
+  return getCompositeParentId(node);
+}
+
+function normalizedHandle(value: string | null | undefined): string | null {
+  return value ?? null;
 }
 
 function layoutNodes(

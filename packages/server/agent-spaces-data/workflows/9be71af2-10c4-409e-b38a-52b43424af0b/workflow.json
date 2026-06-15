@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 250,
-        "y": 50
+        "x": 0,
+        "y": 0
       },
       "data": {}
     },
@@ -18,18 +18,18 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 0,
+        "y": 180
       },
       "data": {}
     },
     {
-      "id": "node_1781507901948_7921z4",
+      "id": "node_1781510308199_gfsxoy",
       "type": "loop",
-      "label": "循环5次",
+      "label": "循环节点",
       "position": {
-        "x": 510,
-        "y": 225
+        "x": 260,
+        "y": 90
       },
       "data": {
         "loopType": "count",
@@ -48,17 +48,17 @@
         "generated": false,
         "hidden": false,
         "scopeBoundary": false,
-        "rootId": "node_1781507901948_7921z4",
+        "rootId": "node_1781510308199_gfsxoy",
         "parentId": null
       }
     },
     {
-      "id": "node_1781507901948_ymz1jf",
+      "id": "node_1781510308199_7w3rje",
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 770,
-        "y": 285
+        "x": 520,
+        "y": 150
       },
       "data": {
         "width": 740,
@@ -69,92 +69,81 @@
         "generated": true,
         "hidden": false,
         "scopeBoundary": true,
-        "rootId": "node_1781507901948_7921z4",
-        "parentId": "node_1781507901948_7921z4"
+        "rootId": "node_1781510308199_gfsxoy",
+        "parentId": "node_1781510308199_gfsxoy"
       }
     },
     {
-      "id": "node_1781507901948_3qtzgo",
+      "id": "node_1781510308199_4ncz4d",
       "type": "start",
-      "label": "循环5次开始",
+      "label": "循环节点开始",
       "position": {
-        "x": 850,
-        "y": 365
+        "x": 600,
+        "y": 230
       },
       "data": {},
       "composite": {
-        "rootId": "node_1781507901948_ymz1jf",
-        "parentId": "node_1781507901948_ymz1jf",
+        "rootId": "node_1781510308199_7w3rje",
+        "parentId": "node_1781510308199_7w3rje",
         "generated": true,
         "hidden": false
       }
     },
     {
-      "id": "node_1781507901948_lu4qej",
+      "id": "node_1781510308199_bl6p9s",
       "type": "end",
-      "label": "循环5次结束",
+      "label": "循环节点结束",
       "position": {
-        "x": 1190,
-        "y": 365
+        "x": 940,
+        "y": 230
       },
       "data": {},
       "composite": {
-        "rootId": "node_1781507901948_ymz1jf",
-        "parentId": "node_1781507901948_ymz1jf",
+        "rootId": "node_1781510308199_7w3rje",
+        "parentId": "node_1781510308199_7w3rje",
         "generated": true,
         "hidden": false
-      }
-    },
-    {
-      "id": "node_1781507911568_ya98j1",
-      "type": "toast",
-      "label": "显示循环索引",
-      "position": {
-        "x": 1450,
-        "y": 282
-      },
-      "data": {
-        "type": "info"
       }
     }
   ],
   "edges": [
     {
-      "id": "e-node_1781507901948_7921z4-loop-body-node_1781507901948_ymz1jf-target",
-      "source": "node_1781507901948_7921z4",
-      "target": "node_1781507901948_ymz1jf",
+      "id": "e-node_1781510308199_gfsxoy-loop-body-node_1781510308199_7w3rje-target",
+      "source": "node_1781510308199_gfsxoy",
+      "target": "node_1781510308199_7w3rje",
       "sourceHandle": "loop-body",
       "targetHandle": "target",
       "composite": {
-        "rootId": "node_1781507901948_7921z4",
-        "parentId": "node_1781507901948_7921z4",
+        "rootId": "node_1781510308199_gfsxoy",
+        "parentId": "node_1781510308199_gfsxoy",
         "generated": true,
         "hidden": false,
         "locked": true
       }
     },
     {
-      "id": "e-node_1781507901948_ymz1jf-source-node_1781507901948_3qtzgo-target",
-      "source": "node_1781507901948_ymz1jf",
-      "target": "node_1781507901948_3qtzgo",
+      "id": "e-node_1781510308199_7w3rje-source-node_1781510308199_4ncz4d-target",
+      "source": "node_1781510308199_7w3rje",
+      "target": "node_1781510308199_4ncz4d",
       "sourceHandle": null,
       "targetHandle": "target",
       "composite": {
-        "rootId": "node_1781507901948_ymz1jf",
-        "parentId": "node_1781507901948_ymz1jf",
+        "rootId": "node_1781510308199_7w3rje",
+        "parentId": "node_1781510308199_7w3rje",
         "generated": true,
         "hidden": true,
         "locked": true
       }
     },
     {
-      "id": "e-node_1781507901948_3qtzgo-source-node_1781507901948_lu4qej-target",
-      "source": "node_1781507901948_3qtzgo",
-      "target": "node_1781507901948_lu4qej",
+      "id": "e-node_1781510308199_4ncz4d-source-node_1781510308199_bl6p9s-target",
+      "source": "node_1781510308199_4ncz4d",
+      "target": "node_1781510308199_bl6p9s",
       "sourceHandle": null,
       "targetHandle": "target"
     }
   ],
   "createdAt": 1781507395559,
-  "updatedAt": 1781507921832
+  "updatedAt": 1781510318401,
+  "groups": []
 }
