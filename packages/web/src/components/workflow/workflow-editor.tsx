@@ -37,7 +37,7 @@ import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
 import { useWorkflowEditorAgentChat } from './use-workflow-editor-agent-chat';
 import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflow-editor-agent-utils';
 import type { WorkflowAgentChatMessage, WorkflowToolCall } from './workflow-editor-agent-utils';
-import { WORKFLOW_LAYOUT_KEY } from './workflow-editor-types';
+import { WORKFLOW_LAYOUT_KEY, WORKFLOW_LAYOUT_TEMPLATES_KEY } from './workflow-editor-types';
 import type { DebugResult } from './workflow-editor-types';
 import { registerPluginNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi } from '@/lib/workflow-plugin-api';
@@ -513,13 +513,34 @@ function WorkflowEditorInner({
   }, [isWorkflowReadOnly, markEditorDirty, state]);
 
   // ---- flexlayout-react model ----
-  const [model] = useState(() => {
+  const [model, setModel] = useState(() => {
     try {
       const saved = localStorage.getItem(WORKFLOW_LAYOUT_KEY);
       if (saved) return Model.fromJson(JSON.parse(saved));
     } catch { /* ignore */ }
     return Model.fromJson(defaultJson);
   });
+
+  // ---- Layout manager integration (save / apply / reset editor panel layout) ----
+  const getEditorLayout = useCallback((): IJsonModel | null => {
+    try {
+      return model.toJson();
+    } catch {
+      return null;
+    }
+  }, [model]);
+
+  const applyEditorLayout = useCallback((json: IJsonModel) => {
+    try {
+      localStorage.setItem(WORKFLOW_LAYOUT_KEY, JSON.stringify(json));
+      setModel(Model.fromJson(json));
+    } catch { /* ignore */ }
+  }, []);
+
+  const resetEditorLayout = useCallback(() => {
+    localStorage.removeItem(WORKFLOW_LAYOUT_KEY);
+    setModel(Model.fromJson(defaultJson));
+  }, []);
 
   // Sync rightTab when selecting a node → switch to properties tab in flexlayout.
   // From the node-list panel we want to land on Canvas instead, so a skip flag gates it.
@@ -907,6 +928,14 @@ function WorkflowEditorInner({
             if (state.isPreview) markEditorDirty();
             else saveWorkflow(updated);
           }
+        }}
+        layoutManager={{
+          title: '编辑器布局管理',
+          description: '保存、切换或管理工作流编辑器面板布局',
+          templatesStorageKey: WORKFLOW_LAYOUT_TEMPLATES_KEY,
+          getCurrentLayout: getEditorLayout,
+          onApply: applyEditorLayout,
+          onReset: resetEditorLayout,
         }}
       />
 

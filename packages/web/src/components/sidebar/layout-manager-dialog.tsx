@@ -11,50 +11,75 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  LAYOUT_STORAGE_KEY,
   loadLayoutTemplates,
   addLayoutTemplate,
   renameLayoutTemplate,
   deleteLayoutTemplate,
-  applyLayoutTemplate,
   type LayoutTemplate,
 } from "@/lib/layout-templates";
 import { LayoutTemplateIcon, Pencil, Trash2, Check, X, Plus, RotateCcw } from "lucide-react";
+import type { IJsonModel } from "flexlayout-react";
 
-interface LayoutManagerDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string | null;
+/**
+ * Caller-provided behavior that adapts the generic layout manager to a specific
+ * flexlayout surface (workspace shell, workflow editor, ...). The dialog stays
+ * UI-only and storage-agnostic.
+ */
+export interface LayoutManagerDialogConfig {
+  /** localStorage key that stores the saved layout templates list for this surface. */
+  templatesStorageKey?: string;
+  /** Read the current live layout so it can be captured into a new template. */
+  getCurrentLayout: () => IJsonModel | null;
+  /** Apply a saved template to the active layout. */
+  onApply: (json: IJsonModel) => void;
+  /** Reset the active layout to its default. */
+  onReset: () => void;
+  /** Dialog title. */
+  title?: string;
+  /** Dialog description. */
+  description?: string;
 }
 
-export function LayoutManagerDialog({ open, onOpenChange, workspaceId }: LayoutManagerDialogProps) {
+interface LayoutManagerDialogProps extends LayoutManagerDialogConfig {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function LayoutManagerDialog({
+  open,
+  onOpenChange,
+  templatesStorageKey,
+  getCurrentLayout,
+  onApply,
+  onReset,
+  title = "布局管理",
+  description = "保存、切换或管理布局",
+}: LayoutManagerDialogProps) {
   const [templates, setTemplates] = useState<LayoutTemplate[]>([]);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
-  const refresh = useCallback(() => setTemplates(loadLayoutTemplates()), []);
+  const refresh = useCallback(
+    () => setTemplates(loadLayoutTemplates(templatesStorageKey)),
+    [templatesStorageKey],
+  );
 
   useEffect(() => {
     if (open) refresh();
   }, [open, refresh]);
 
-  const handleOpenChange = (val: boolean) => {
-    onOpenChange(val);
-  };
-
   const handleSave = () => {
     if (!newName.trim()) return;
-    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
-    if (!raw) return;
-    addLayoutTemplate(newName.trim(), JSON.parse(raw));
+    const json = getCurrentLayout();
+    if (!json) return;
+    addLayoutTemplate(newName.trim(), json, templatesStorageKey);
     setNewName("");
     refresh();
   };
 
   const handleApply = (t: LayoutTemplate) => {
-    if (!workspaceId) return;
-    applyLayoutTemplate(workspaceId, t.json);
+    onApply(t.json);
     onOpenChange(false);
   };
 
@@ -65,29 +90,28 @@ export function LayoutManagerDialog({ open, onOpenChange, workspaceId }: LayoutM
 
   const handleRenameConfirm = () => {
     if (editingId && editName.trim()) {
-      renameLayoutTemplate(editingId, editName.trim());
+      renameLayoutTemplate(editingId, editName.trim(), templatesStorageKey);
       setEditingId(null);
       refresh();
     }
   };
 
   const handleDelete = (id: string) => {
-    deleteLayoutTemplate(id);
+    deleteLayoutTemplate(id, templatesStorageKey);
     refresh();
   };
 
   const handleReset = () => {
-    if (!workspaceId) return;
-    window.dispatchEvent(new CustomEvent("reset-layout"));
+    onReset();
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>布局管理</DialogTitle>
-          <DialogDescription>保存、切换或管理工作空间布局</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -98,7 +122,7 @@ export function LayoutManagerDialog({ open, onOpenChange, workspaceId }: LayoutM
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
             />
-            <Button size="sm" onClick={handleSave} disabled={!newName.trim() || !workspaceId}>
+            <Button size="sm" onClick={handleSave} disabled={!newName.trim()}>
               <Plus className="size-4" />
             </Button>
           </div>

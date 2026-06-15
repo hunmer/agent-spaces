@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft, Loader2,
-  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2,
+  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { WorkflowInfoDialog } from './workflow-info-dialog';
+import { LayoutManagerDialog, type LayoutManagerDialogConfig } from '@/components/sidebar/layout-manager-dialog';
 import type { Workflow } from '@agent-spaces/shared';
 
 interface EditorToolbarProps {
@@ -36,6 +37,8 @@ interface EditorToolbarProps {
   onOpenWorkflowLocation: () => void;
   onClearNodes: () => void;
   onWorkflowInfoChange: (updates: Partial<Workflow>) => void;
+  /** Layout manager config for the editor's flexlayout panel surface. */
+  layoutManager: LayoutManagerDialogConfig;
 }
 
 function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Button> & { tooltip: string }) {
@@ -56,11 +59,13 @@ export function WorkflowEditorToolbar({
   onBack, onExitPreview, onSave, onSavePreviewEdits,
   onExport, onImport, isExporting,
   onOpenPluginManager, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
+  layoutManager,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [clearNodesOpen, setClearNodesOpen] = useState(false);
   const [savePreviewOpen, setSavePreviewOpen] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const [versionName, setVersionName] = useState('');
   const [savingPreview, setSavingPreview] = useState<'save' | 'version' | null>(null);
   const t = useTranslations('workflows');
@@ -168,6 +173,11 @@ export function WorkflowEditorToolbar({
           <MoreVertical className="h-4 w-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setLayoutOpen(true)} disabled={!workflow}>
+            <LayoutTemplate className="h-4 w-4 mr-2" />
+            布局管理
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => onExport('png')} disabled={isExporting}>
             <FileImage className="h-4 w-4 mr-2" />
             {t('editor.exportPng')}
@@ -238,6 +248,8 @@ export function WorkflowEditorToolbar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <LayoutManagerDialog open={layoutOpen} onOpenChange={setLayoutOpen} {...layoutManager} />
     </div>
   );
 }

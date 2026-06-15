@@ -83,7 +83,16 @@
         "x": 1038.3697000767297,
         "y": -45.216203604300915
       },
-      "data": {},
+      "data": {
+        "inputFields": [
+          {
+            "key": "22",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
+      },
       "composite": {
         "rootId": "node_1781512195265_1wh1tw",
         "parentId": "node_1781512195265_1wh1tw",
@@ -227,7 +236,7 @@
     }
   ],
   "createdAt": 1781507395559,
-  "updatedAt": 1781513662412,
+  "updatedAt": 1781539742987,
   "groups": [
     {
       "id": "group_1781512549643_r9r1hl",

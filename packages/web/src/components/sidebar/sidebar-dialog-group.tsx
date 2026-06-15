@@ -12,6 +12,11 @@ import { HooksDialog } from "@/components/sidebar/hooks-dialog";
 import { AgentCommandsDialog } from "@/components/sidebar/agent-commands-dialog";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { LayoutManagerDialog } from "@/components/sidebar/layout-manager-dialog";
+import {
+  LAYOUT_STORAGE_KEY,
+  LAYOUT_RESET_EVENT,
+  applyLayoutToStorage,
+} from "@/lib/layout-templates";
 import type { useSidebarDialogs } from "./use-sidebar-dialogs";
 
 export function SidebarDialogGroup({
@@ -44,7 +49,18 @@ export function SidebarDialogGroup({
       <LayoutManagerDialog
         open={dialogs.layoutDialogOpen}
         onOpenChange={dialogs.setLayoutDialogOpen}
-        workspaceId={currentWorkspaceId}
+        title="布局管理"
+        description="保存、切换或管理工作空间布局"
+        getCurrentLayout={() => {
+          try {
+            const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            return null;
+          }
+        }}
+        onApply={(json) => applyLayoutToStorage(json)}
+        onReset={() => window.dispatchEvent(new CustomEvent(LAYOUT_RESET_EVENT))}
       />
     </>
   );
