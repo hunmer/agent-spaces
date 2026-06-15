@@ -260,11 +260,11 @@ function syncScopeBoundaryLayout(
   }
   scopeNode.data = {
     ...scopeNode.data,
-    width: Math.max(
+    nodeWidth: Math.max(
       LOOP_BODY_MIN_SCOPE_CONTAINER_SIZE.width,
       maxX - minX + SCOPE_CONTAINER_PADDING.left + SCOPE_CONTAINER_PADDING.right,
     ),
-    height: Math.max(
+    nodeHeight: Math.max(
       LOOP_BODY_MIN_SCOPE_CONTAINER_SIZE.height,
       maxY - minY + SCOPE_CONTAINER_PADDING.top + SCOPE_CONTAINER_PADDING.bottom,
     ),
@@ -286,8 +286,12 @@ function defaultCreateWorkflowEdgeId({
 
 function defaultWorkflowNodeSize(node: WorkflowNode): { width: number; height: number } {
   return {
-    width: typeof node.data?.nodeWidth === 'number' ? node.data.nodeWidth : 220,
-    height: typeof node.data?.nodeHeight === 'number' ? node.data.nodeHeight : 120,
+    width: typeof node.data?.nodeWidth === 'number'
+      ? node.data.nodeWidth
+      : typeof node.data?.width === 'number' ? node.data.width : 220,
+    height: typeof node.data?.nodeHeight === 'number'
+      ? node.data.nodeHeight
+      : typeof node.data?.height === 'number' ? node.data.height : 120,
   }
 }
 

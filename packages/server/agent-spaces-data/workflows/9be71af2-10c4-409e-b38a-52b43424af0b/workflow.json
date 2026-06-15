@@ -18,22 +18,61 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 0,
-        "y": 180
+        "x": 600,
+        "y": 0
       },
       "data": {}
     },
     {
-      "id": "node_1781510308199_gfsxoy",
-      "type": "loop",
-      "label": "循环节点",
+      "id": "node_1781511460656_mhagem",
+      "type": "set_variable",
+      "label": "nodes.set_variable.label",
       "position": {
-        "x": 260,
-        "y": 90
+        "x": 1395,
+        "y": 1080
+      },
+      "data": {
+        "variables": [],
+        "outputs": [
+          {
+            "key": "env",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781511462309_ad5jjm",
+      "type": "get_variable",
+      "label": "nodes.get_variable.label",
+      "position": {
+        "x": 1635,
+        "y": 1260
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "value",
+            "type": "any"
+          },
+          {
+            "key": "exists",
+            "type": "boolean"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781512072991_t6cndc",
+      "type": "loop",
+      "label": "nodes.loop.label",
+      "position": {
+        "x": 765,
+        "y": 315
       },
       "data": {
         "loopType": "count",
-        "count": 5,
+        "count": 1,
         "concurrency": 1,
         "sharedVariables": [],
         "outputs": [
@@ -48,59 +87,61 @@
         "generated": false,
         "hidden": false,
         "scopeBoundary": false,
-        "rootId": "node_1781510308199_gfsxoy",
+        "rootId": "node_1781512072991_t6cndc",
         "parentId": null
       }
     },
     {
-      "id": "node_1781510308199_7w3rje",
+      "id": "node_1781512072992_fr5pn6",
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 520,
-        "y": 150
+        "x": 1049,
+        "y": 355
       },
       "data": {
-        "width": 740,
-        "height": 280
+        "width": 150,
+        "height": 260,
+        "nodeWidth": 682,
+        "nodeHeight": 454
       },
       "composite": {
         "role": "loop_body",
         "generated": true,
         "hidden": false,
         "scopeBoundary": true,
-        "rootId": "node_1781510308199_gfsxoy",
-        "parentId": "node_1781510308199_gfsxoy"
+        "rootId": "node_1781512072991_t6cndc",
+        "parentId": "node_1781512072991_t6cndc"
       }
     },
     {
-      "id": "node_1781510308199_4ncz4d",
+      "id": "node_1781512072992_7g79ch",
       "type": "start",
-      "label": "循环节点开始",
+      "label": "nodes.loop.label开始",
       "position": {
-        "x": 600,
-        "y": 230
+        "x": 1105,
+        "y": 455
       },
       "data": {},
       "composite": {
-        "rootId": "node_1781510308199_7w3rje",
-        "parentId": "node_1781510308199_7w3rje",
+        "rootId": "node_1781512072992_fr5pn6",
+        "parentId": "node_1781512072992_fr5pn6",
         "generated": true,
         "hidden": false
       }
     },
     {
-      "id": "node_1781510308199_bl6p9s",
+      "id": "node_1781512072992_xhmhfg",
       "type": "end",
-      "label": "循环节点结束",
+      "label": "nodes.loop.label结束",
       "position": {
-        "x": 940,
-        "y": 230
+        "x": 1455,
+        "y": 645
       },
       "data": {},
       "composite": {
-        "rootId": "node_1781510308199_7w3rje",
-        "parentId": "node_1781510308199_7w3rje",
+        "rootId": "node_1781512072992_fr5pn6",
+        "parentId": "node_1781512072992_fr5pn6",
         "generated": true,
         "hidden": false
       }
@@ -108,42 +149,66 @@
   ],
   "edges": [
     {
-      "id": "e-node_1781510308199_gfsxoy-loop-body-node_1781510308199_7w3rje-target",
-      "source": "node_1781510308199_gfsxoy",
-      "target": "node_1781510308199_7w3rje",
+      "id": "e-node_1781511460656_mhagem-source-node_1781511462309_ad5jjm-target",
+      "source": "node_1781511460656_mhagem",
+      "target": "node_1781511462309_ad5jjm",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781512072991_t6cndc-loop-body-node_1781512072992_fr5pn6-target",
+      "source": "node_1781512072991_t6cndc",
+      "target": "node_1781512072992_fr5pn6",
       "sourceHandle": "loop-body",
       "targetHandle": "target",
       "composite": {
-        "rootId": "node_1781510308199_gfsxoy",
-        "parentId": "node_1781510308199_gfsxoy",
+        "rootId": "node_1781512072991_t6cndc",
+        "parentId": "node_1781512072991_t6cndc",
         "generated": true,
         "hidden": false,
         "locked": true
       }
     },
     {
-      "id": "e-node_1781510308199_7w3rje-source-node_1781510308199_4ncz4d-target",
-      "source": "node_1781510308199_7w3rje",
-      "target": "node_1781510308199_4ncz4d",
+      "id": "e-node_1781512072992_fr5pn6-source-node_1781512072992_7g79ch-target",
+      "source": "node_1781512072992_fr5pn6",
+      "target": "node_1781512072992_7g79ch",
       "sourceHandle": null,
       "targetHandle": "target",
       "composite": {
-        "rootId": "node_1781510308199_7w3rje",
-        "parentId": "node_1781510308199_7w3rje",
+        "rootId": "node_1781512072992_fr5pn6",
+        "parentId": "node_1781512072992_fr5pn6",
         "generated": true,
         "hidden": true,
         "locked": true
       }
     },
     {
-      "id": "e-node_1781510308199_4ncz4d-source-node_1781510308199_bl6p9s-target",
-      "source": "node_1781510308199_4ncz4d",
-      "target": "node_1781510308199_bl6p9s",
+      "id": "e-node_1781512072992_7g79ch-source-node_1781512072992_xhmhfg-target",
+      "source": "node_1781512072992_7g79ch",
+      "target": "node_1781512072992_xhmhfg",
       "sourceHandle": null,
       "targetHandle": "target"
     }
   ],
   "createdAt": 1781507395559,
-  "updatedAt": 1781510318401,
-  "groups": []
+  "updatedAt": 1781512087297,
+  "groups": [
+    {
+      "id": "group_1781511467681_osfkkn",
+      "name": "分组 1",
+      "childNodeIds": [
+        "node_1781511460656_mhagem",
+        "node_1781511462309_ad5jjm"
+      ],
+      "childGroupIds": [],
+      "locked": false,
+      "disabled": false,
+      "savedNodeStates": {},
+      "x": 1416,
+      "y": 1032,
+      "width": 643,
+      "height": 387
+    }
+  ]
 }

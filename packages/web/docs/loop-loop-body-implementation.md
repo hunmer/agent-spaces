@@ -62,7 +62,7 @@
 
 - 找到所有 `getCompositeParentId(node) === loop_body.id` 且非 hidden 的子节点。
 - 按子节点位置和尺寸计算内容 bounds。
-- 使用固定 padding 反推 `loop_body.position` 与 `data.width/data.height`。
+- 使用固定 padding 反推 `loop_body.position` 与 `data.nodeWidth/data.nodeHeight`。
 - `loop_body` 最小尺寸为 `150 x 260`。
 
 同步入口：

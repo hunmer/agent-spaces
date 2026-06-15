@@ -255,9 +255,9 @@ export function useEdgeOperations({
 
         node.position = nextPosition;
         if (dimensionNodeIds.has(node.id)) {
-          const width = typeof updatedNode.width === 'number' ? Math.round(updatedNode.width) : node.data.width;
-          const height = typeof updatedNode.height === 'number' ? Math.round(updatedNode.height) : node.data.height;
-          node.data = { ...node.data, width, height };
+          const width = typeof updatedNode.width === 'number' ? Math.round(updatedNode.width) : node.data.nodeWidth;
+          const height = typeof updatedNode.height === 'number' ? Math.round(updatedNode.height) : node.data.nodeHeight;
+          node.data = { ...node.data, nodeWidth: width, nodeHeight: height };
         }
 
         if ((dx !== 0 || dy !== 0) && isScopeBoundaryWorkflowNode(node)) {

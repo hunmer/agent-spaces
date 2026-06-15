@@ -178,8 +178,12 @@ export function cloneWorkflowNodes(nodes: Workflow['nodes']): Workflow['nodes'] 
 
 export function getLayoutNodeSize(node: Workflow['nodes'][0]): { width: number; height: number } {
   return {
-    width: typeof node.data?.width === 'number' ? node.data.width : DEFAULT_SCOPE_CHILD_SIZE.width,
-    height: typeof node.data?.height === 'number' ? node.data.height : DEFAULT_SCOPE_CHILD_SIZE.height,
+    width: typeof node.data?.nodeWidth === 'number'
+      ? node.data.nodeWidth
+      : typeof node.data?.width === 'number' ? node.data.width : DEFAULT_SCOPE_CHILD_SIZE.width,
+    height: typeof node.data?.nodeHeight === 'number'
+      ? node.data.nodeHeight
+      : typeof node.data?.height === 'number' ? node.data.height : DEFAULT_SCOPE_CHILD_SIZE.height,
   };
 }
 
@@ -378,7 +382,7 @@ export function syncScopeBoundaryLayout(nodes: Workflow['nodes'], scopeNodeId: s
   );
 
   const positionChanged = scopeNode.position.x !== nextPosition.x || scopeNode.position.y !== nextPosition.y;
-  const sizeChanged = scopeNode.data.width !== nextWidth || scopeNode.data.height !== nextHeight;
+  const sizeChanged = scopeNode.data.nodeWidth !== nextWidth || scopeNode.data.nodeHeight !== nextHeight;
   if (!positionChanged && !sizeChanged) return false;
 
   if (positionChanged) {
@@ -387,8 +391,8 @@ export function syncScopeBoundaryLayout(nodes: Workflow['nodes'], scopeNodeId: s
   if (sizeChanged) {
     scopeNode.data = {
       ...scopeNode.data,
-      width: nextWidth,
-      height: nextHeight,
+      nodeWidth: nextWidth,
+      nodeHeight: nextHeight,
     };
   }
   return true;
