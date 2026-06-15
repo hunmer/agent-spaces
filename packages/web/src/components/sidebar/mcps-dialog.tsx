@@ -767,7 +767,6 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
               language="json"
               value={editContent}
               onChange={(value) => setEditContent(value || '')}
-              theme="vs-dark"
               options={{
                 fontSize: 13,
                 minimap: { enabled: false },

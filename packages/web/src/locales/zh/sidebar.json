@@ -14,10 +14,10 @@
     "providers": "供应商",
     "workflows": "工作流",
     "workflowsUI": "工作流 UI",
-    "chat": "Chat",
+    "chat": "聊天",
     "hooks": "Hooks",
     "tools": "工具管理",
-    "commands": "Commands",
+    "commands": "命令",
     "manage": "管理"
   },
   "notifications": {

@@ -303,7 +303,6 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
                   language={language}
                   value={currentContent}
                   onChange={handleContentChange}
-                  theme="vs-dark"
                   options={{
                     fontSize: 13,
                     minimap: { enabled: false },
@@ -346,7 +345,6 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
                   language={language}
                   value={currentContent}
                   onChange={handleContentChange}
-                  theme="vs-dark"
                   options={{
                     fontSize: 13,
                     minimap: { enabled: false },

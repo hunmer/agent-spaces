@@ -559,7 +559,6 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
               language="markdown"
               value={editContent}
               onChange={(value) => setEditContent(value || '')}
-              theme="vs-dark"
               options={{
                 fontSize: 13,
                 minimap: { enabled: false },

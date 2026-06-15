@@ -582,7 +582,6 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
                             <MonacoEditor
                                 height="100%"
                                 language="typescript"
-                                theme="vs-dark"
                                 value={sourceCode}
                                 onChange={(v) => {
                                     const nextCode = v || '';

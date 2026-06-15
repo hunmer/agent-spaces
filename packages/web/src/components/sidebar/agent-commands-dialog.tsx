@@ -504,7 +504,6 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
               language="markdown"
               value={editContent}
               onChange={(value) => setEditContent(value || '')}
-              theme="vs-dark"
               options={{
                 fontSize: 13,
                 minimap: { enabled: false },

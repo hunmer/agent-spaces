@@ -214,7 +214,6 @@ export function HooksDialog({ open, onOpenChange, standalone }: HooksDialogProps
               <MonacoEditor
                 height="100%"
                 language="json"
-                theme="vs-dark"
                 value={editorContent}
                 onChange={(v) => {
                   setEditorContent(v || '');

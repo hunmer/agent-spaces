@@ -46,7 +46,6 @@ export function CodePropertyEditor({
         <MonacoEditor
           height="160px"
           language={language}
-          theme="vs-dark"
           value={value}
           options={getCodeEditorOptions(true)}
         />

@@ -576,7 +576,6 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
               language="markdown"
               value={editContent}
               onChange={(value) => setEditContent(value || '')}
-              theme="vs-dark"
               options={{
                 fontSize: 13,
                 minimap: { enabled: false },

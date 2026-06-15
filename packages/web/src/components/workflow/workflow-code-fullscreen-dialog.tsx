@@ -101,7 +101,6 @@ export function WorkflowCodeFullscreenDialog({
           <MonacoEditor
             height="100%"
             language={language}
-            theme="vs-dark"
             value={draft}
             onChange={(v) => setDraft(v ?? '')}
             options={getCodeEditorOptions(disabled)}

@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/components/layout/theme-provider";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { Plus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
@@ -290,12 +290,23 @@ export function AppearanceTab() {
           allowCustom={false}
         />
         {themeStyle === "custom" && (
-          <Textarea
-            className="mt-2 font-mono text-xs min-h-40"
-            placeholder="Paste CSS variables here..."
-            value={customCss}
-            onChange={(e) => handleCustomCssChange(e.target.value)}
-          />
+          <>
+            <Textarea
+              className="mt-2 font-mono text-xs min-h-40"
+              placeholder="Paste CSS variables here..."
+              value={customCss}
+              onChange={(e) => handleCustomCssChange(e.target.value)}
+            />
+            <Button
+              variant="link"
+              size="sm"
+              className="mt-1.5 h-auto p-0 text-xs"
+              onClick={() => window.open("https://tweakcn.com/", "_blank")}
+            >
+              <ExternalLink className="size-3 mr-1" />
+              tweakcn.com
+            </Button>
+          </>
         )}
       </div>
 
