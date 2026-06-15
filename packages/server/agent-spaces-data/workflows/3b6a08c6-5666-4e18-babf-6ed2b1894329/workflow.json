@@ -50,8 +50,8 @@
       },
       "data": {
         "permissionMode": "dontAsk",
-        "loadProjectClaudeMd": true,
-        "loadRuleMd": true,
+        "loadProjectClaudeMd": false,
+        "loadRuleMd": false,
         "outputs": [
           {
             "key": "result",
@@ -62,7 +62,7 @@
             "type": "object"
           }
         ],
-        "prompt": "请将以下故事文本转换为分镜镜头JSON数组。每个分镜包含：\n- 文案文本：该镜头的文字描述\n- 画面提示词：用于生成图片的详细描述\n\n输出格式必须是严格的JSON数组，不要有任何其他文字说明。\n\n故事文本：\n{{ __data__[\"node_1781500461235_start\"].story }}",
+        "prompt": "请将以下故事文本转换为分镜镜头JSON数组。每个分镜包含：- 文案文本：该镜头的文字描述- 画面提示词：用于生成图片的详细描述输出格式必须是严格的JSON数组，不要有任何其他文字说明，使用纯文本输出。故事文本：{{ __data__[\"node_1781500461235_start\"].story }}",
         "agent": {
           "id": "6005773f-07c1-4904-b9f7-bf85c91c8a9c",
           "name": "Agent",
@@ -255,7 +255,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781506284476,
+  "updatedAt": 1781506998388,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"

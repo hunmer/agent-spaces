@@ -129,7 +129,7 @@ export function useClipboard() {
     const newNodes = target.nodes.map(n => {
       const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       idMap.set(n.id, newId);
-      return { ...n, id: newId, position: { x: n.position.x + 20, y: n.position.y + 20 } };
+      return { ...n, id: newId, position: { ...n.position } };
     });
     const newEdges = target.edges.map(e => ({
       ...e,
@@ -152,7 +152,7 @@ export function useClipboard() {
   }, []);
 
   const hasData = records.length > 0;
-  const count = records[0]?.count ?? 0;
+  const count = records.length;
 
   return { copy, paste, getData, clear, hasData, count, records };
 }

@@ -134,6 +134,21 @@ function readBlobAsDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+// 将一组节点的几何中心对齐到指定中心点（保留节点间相对位置）
+function centerNodeGroup<T extends { position: { x: number; y: number } }>(
+  nodes: T[],
+  center: { x: number; y: number },
+): T[] {
+  if (nodes.length === 0) return nodes;
+  const xs = nodes.map(n => n.position.x);
+  const ys = nodes.map(n => n.position.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const dx = center.x - cx;
+  const dy = center.y - cy;
+  return nodes.map(n => ({ ...n, position: { x: n.position.x + dx, y: n.position.y + dy } }));
+}
+
 function readImageSize(src: string): Promise<{ width: number; height: number } | null> {
   return new Promise((resolve) => {
     const image = new Image();
@@ -275,21 +290,26 @@ function WorkflowEditorInner({
 
   const { enterPreview, exitPreview, isPreview, markPreviewDirty, saveWorkflow, setWorkflow } = state;
 
-  // 仅粘贴工作流节点剪贴板（指定 record 时粘贴该条，否则粘贴最近一次）
+  // 复用：取画布视口中心（带兜底）
+  const getViewportCenter = useCallback((): { x: number; y: number } =>
+    canvasExportRef.current?.getViewportCenter() ?? { x: 250, y: 250 }, []);
+
+  // 仅粘贴工作流节点剪贴板（指定 record 时粘贴该条，否则粘贴最近一次），居中到视口
   const pasteWorkflowNodes = useCallback((record?: ClipboardRecord) => {
     const pasted = clipboard.paste(record);
     if (!pasted || !state.workflow) return;
     state.pushUndo('paste');
+    const nodes = centerNodeGroup(pasted.nodes, getViewportCenter());
     state.setWorkflow(w => w ? {
       ...w,
-      nodes: [...w.nodes, ...pasted.nodes],
+      nodes: [...w.nodes, ...nodes],
       edges: [...w.edges, ...pasted.edges],
     } : null);
-    const pastedNodeIds = pasted.nodes.map(node => node.id);
+    const pastedNodeIds = nodes.map(node => node.id);
     state.setSelectedNodeIds(pastedNodeIds);
     state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
     markEditorDirty();
-  }, [clipboard, markEditorDirty, state]);
+  }, [clipboard, getViewportCenter, markEditorDirty, state]);
 
   const pasteClipboardNodes = useCallback(async () => {
     if (clipboardImagePasteEnabled && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
@@ -303,8 +323,7 @@ function WorkflowEditorInner({
         if (imageBlobs.length > 0) {
           const sources = (await Promise.all(imageBlobs.map(readBlobAsDataUrl))).filter(Boolean);
           const previewSize = getGalleryPreviewSize(await readImageSize(sources[0] || ''));
-          const center = canvasExportRef.current?.getViewportCenter() ?? { x: 250, y: 250 };
-          const position = getCenteredNodePosition(center, previewSize);
+          const position = getCenteredNodePosition(getViewportCenter(), previewSize);
           canvas.handleNodeAdd('gallery_preview', position, previewSize, {
             items: sources.filter(Boolean).map((src, index) => ({
               id: `clipboard_image_${Date.now()}_${index}`,
@@ -325,8 +344,7 @@ function WorkflowEditorInner({
       try {
         const text = (await navigator.clipboard.readText()).trim();
         if (text) {
-          const center = canvasExportRef.current?.getViewportCenter() ?? { x: 250, y: 250 };
-          const position = getCenteredNodePosition(center, { width: 180, height: 120 });
+          const position = getCenteredNodePosition(getViewportCenter(), { width: 180, height: 120 });
           canvas.handleNodeAdd('sticky_note', position, undefined, {
             content: text,
           });
@@ -338,7 +356,7 @@ function WorkflowEditorInner({
     }
 
     pasteWorkflowNodes();
-  }, [canvas, pasteWorkflowNodes, clipboardImagePasteEnabled, clipboardTextPasteEnabled]);
+  }, [canvas, getViewportCenter, pasteWorkflowNodes, clipboardImagePasteEnabled, clipboardTextPasteEnabled]);
 
   const moveClipboardNodesToStaging = useCallback(async (record?: ClipboardRecord) => {
     const copied = clipboard.getData(record);
