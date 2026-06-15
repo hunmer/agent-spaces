@@ -37,7 +37,7 @@ export function createEditSlice(
         type,
         label: '',
         position,
-        data: {},
+        data: { ...((def as typeof def & { data?: Record<string, unknown> })?.data || {}) },
         ...(def?.singleton ? {} : {}),
       };
       if (def?.properties) {

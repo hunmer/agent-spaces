@@ -175,7 +175,10 @@ export function WorkflowPluginsDialog({
           nodes = workflow.nodes.map(node => {
             const def = defMap.get(node.type);
             if (!def) return node;
-            const newData = { ...node.data };
+            const newData = {
+              ...((def as typeof def & { data?: Record<string, unknown> }).data || {}),
+              ...node.data,
+            };
             for (const prop of def.properties || []) {
               if (prop.default !== undefined && !(prop.key in newData)) {
                 newData[prop.key] = prop.default;
@@ -192,10 +195,10 @@ export function WorkflowPluginsDialog({
 
   async function uninstallPlugin(plugin: WorkflowPlugin) {
     try {
-      await pluginApi.uninstall(plugin.id);
+      await pluginApi.uninstall(plugin.id, plugin.type);
       toast.success(`已卸载 ${plugin.name}`);
     } catch (error: any) {
-      toast.warning(error?.message || '服务端卸载失败，已从本地列表移除');
+      toast.warning(error?.message || '插件卸载失败，已从本地列表移除');
     }
     setPlugins(items => items.filter(item => item.id !== plugin.id));
     updateWorkflowPlugins(plugin.id, false);
@@ -205,7 +208,7 @@ export function WorkflowPluginsDialog({
     if (installingId) return;
     setInstallingId(plugin.id);
     try {
-      const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`), plugin.md5);
+      const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`), plugin.md5, plugin.type);
       setPlugins(items => {
         const idx = items.findIndex(item => item.id === installed.id);
         return idx >= 0 ? items.map((item, i) => i === idx ? { ...item, ...installed } : item) : [...items, installed];
@@ -230,7 +233,7 @@ export function WorkflowPluginsDialog({
       const sp = storePluginById.get(plugin.id);
       if (!sp) continue;
       try {
-        const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${sp.path}`), sp.md5);
+        const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${sp.path}`), sp.md5, sp.type);
         setPlugins(items => items.map(item => item.id === installed.id ? { ...item, ...installed } : item));
       } catch { /* continue */ }
     }

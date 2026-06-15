@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import vm from 'node:vm'
 import type { NodeTypeDefinition, PluginInfo, PluginMeta } from '@agent-spaces/shared'
@@ -18,6 +18,17 @@ type PluginAction = {
   toolProperties?: unknown[]
   outputs?: unknown[]
   run?: (ctx: Record<string, any>, args: Record<string, any>) => Promise<unknown>
+}
+
+type ClientPluginInstallOptions = {
+  pluginId: string
+  sourceUrl: string
+  md5?: string
+}
+
+type ClientPluginState = {
+  md5?: string
+  installedAt?: number
 }
 
 const require = createRequire(import.meta.url)
@@ -42,6 +53,10 @@ function readManifestFromDir(dir: string): PluginInfo | null {
     if (manifest?.id || manifest?.name) return manifest
   }
   return null
+}
+
+function readClientPluginState(dir: string): ClientPluginState {
+  return readJsonFile<ClientPluginState>(join(dir, '.client-state.json')) || {}
 }
 
 function resolvePluginDir(pluginId: string): string | null {
@@ -82,6 +97,8 @@ function loadPluginActions(dir: string): PluginAction[] {
 
 function normalizePluginMeta(dirName: string, dir: string, info: PluginInfo): PluginMeta {
   const id = String(info.id || dirName)
+  const state = readClientPluginState(dir)
+  const iconPath = info.icon ? `local://${encodeURI(resolve(dir, info.icon))}` : ''
   return {
     id,
     name: String(info.name || id),
@@ -94,7 +111,9 @@ function normalizePluginMeta(dirName: string, dir: string, info: PluginInfo): Pl
     type: info.type,
     enabled: true,
     config: Array.isArray(info.config) ? info.config : [],
-    iconPath: info.icon || '',
+    iconPath,
+    md5: state.md5,
+    installedAt: state.installedAt,
   }
 }
 
@@ -122,6 +141,100 @@ function createPluginApi(dir: string, info: PluginInfo): Record<string, unknown>
   const apiModule = loadCommonJsModule<{ createApi?: (deps: Record<string, unknown>) => Record<string, unknown> }>(join(dir, apiEntry))
   if (typeof apiModule?.createApi !== 'function') return {}
   return apiModule.createApi({ desktopNative, windowManager })
+}
+
+async function fetchBuffer(url: string): Promise<Buffer> {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`fetch ${url} failed: ${response.status}`)
+  return Buffer.from(await response.arrayBuffer())
+}
+
+async function tryFetchText(url: string): Promise<string | null> {
+  const response = await fetch(url)
+  if (!response.ok) return null
+  return response.text()
+}
+
+function safeJoinPluginPath(root: string, relPath: string): string | null {
+  const clean = relPath.replace(/\\/g, '/').replace(/^\/+/, '')
+  if (!clean || clean.split('/').includes('..') || clean.split('/').includes('node_modules')) return null
+  const target = resolve(root, clean)
+  const rel = relative(root, target)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel)) ? target : null
+}
+
+function collectClientPluginFiles(info: PluginInfo, manifestName: string): string[] {
+  const files = new Set([
+    manifestName,
+    'main.js',
+    'workflow.js',
+    'actions.js',
+    'api.js',
+    'tools.js',
+    'shared.js',
+    'lang.json',
+  ])
+
+  if (info.icon) files.add(info.icon)
+  const entries = info.entries || {}
+  for (const entry of [entries.main, entries.client, entries.workflow, entries.api, entries.tools]) {
+    for (const file of Array.isArray(entry) ? entry : [entry]) {
+      if (file) files.add(file)
+    }
+  }
+  return [...files]
+}
+
+export async function installClientPluginFromStore(options: ClientPluginInstallOptions): Promise<PluginMeta> {
+  const base = options.sourceUrl.replace(/\/+$/, '')
+  const manifestNames = ['plugin.json', 'manifest.json', 'info.json', 'web-plugin.json', 'package.json']
+  let manifestName = ''
+  let manifest: PluginInfo | null = null
+
+  for (const name of manifestNames) {
+    const text = await tryFetchText(`${base}/${name}`)
+    if (!text) continue
+    const parsed = JSON.parse(text) as PluginInfo
+    if (parsed?.id || parsed?.name) {
+      manifestName = name
+      manifest = parsed
+      break
+    }
+  }
+
+  if (!manifest || !manifestName) throw new Error(`Client plugin manifest not found: ${options.pluginId}`)
+  if ((manifest.id || options.pluginId) !== options.pluginId) throw new Error(`Client plugin id mismatch: ${manifest.id || ''}`)
+  if (manifest.type && manifest.type !== 'client' && manifest.type !== 'both') {
+    throw new Error(`Plugin is not client executable: ${options.pluginId}`)
+  }
+
+  const targetDir = localClientPluginDir(options.pluginId)
+  rmSync(targetDir, { recursive: true, force: true })
+  mkdirSync(targetDir, { recursive: true })
+
+  for (const file of collectClientPluginFiles(manifest, manifestName)) {
+    const targetPath = safeJoinPluginPath(targetDir, file)
+    if (!targetPath) continue
+    try {
+      const buffer = await fetchBuffer(`${base}/${file}`)
+      mkdirSync(dirname(targetPath), { recursive: true })
+      writeFileSync(targetPath, buffer)
+    } catch {
+      continue
+    }
+  }
+
+  const info = readManifestFromDir(targetDir)
+  if (!info) throw new Error(`Client plugin install failed: ${options.pluginId}`)
+  writeFileSync(join(targetDir, '.client-state.json'), JSON.stringify({ md5: options.md5, installedAt: Date.now() }, null, 2), 'utf-8')
+  const meta = normalizePluginMeta(options.pluginId, targetDir, info)
+  return meta
+}
+
+export function uninstallClientPlugin(pluginId: string): void {
+  const dir = resolvePluginDir(pluginId)
+  if (!dir) throw new Error(`Client plugin not found: ${pluginId}`)
+  rmSync(dir, { recursive: true, force: true })
 }
 
 export async function executeClientPluginNode(

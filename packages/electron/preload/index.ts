@@ -32,6 +32,10 @@ const electronAPI = {
       ipcRenderer.invoke('clientPlugin:listWorkflowPlugins'),
     getWorkflowNodes: (pluginId: string): Promise<unknown> =>
       ipcRenderer.invoke('clientPlugin:getWorkflowNodes', pluginId),
+    installFromStore: (pluginId: string, sourceUrl: string, md5?: string): Promise<unknown> =>
+      ipcRenderer.invoke('clientPlugin:installFromStore', pluginId, sourceUrl, md5),
+    uninstall: (pluginId: string): Promise<unknown> =>
+      ipcRenderer.invoke('clientPlugin:uninstall', pluginId),
     executeNode: (pluginId: string, nodeType: string, args: Record<string, unknown>): Promise<unknown> =>
       ipcRenderer.invoke('clientPlugin:executeNode', pluginId, nodeType, args),
   },

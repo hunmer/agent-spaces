@@ -23,11 +23,12 @@ import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { WorkflowVariablesForm } from './workflow-variables-form';
 import { WorkflowGroupManagePanel } from './workflow-group-manage-panel';
 import { WorkflowCanvasStylePanel } from './workflow-canvas-style-panel';
+import { WorkflowNodeListPanel } from './workflow-node-list-panel';
 import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play, Palette } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play, Palette, ListTree } from 'lucide-react';
 import { useEditorShortcuts, useClipboard } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -89,6 +90,7 @@ const defaultJson: IJsonModel = {
           { type: 'tab', name: 'Variables', component: 'variables', id: 'variables' },
           { type: 'tab', name: 'Groups', component: 'groups', id: 'groups' },
           { type: 'tab', name: 'History', component: 'history', id: 'history' },
+          { type: 'tab', name: 'Node List', component: 'node-list', id: 'node-list' },
         ],
       },
     ],
@@ -105,6 +107,7 @@ const WORKFLOW_TAB_ICONS: Record<string, React.ReactNode> = {
   'variables': <Braces size={16} />,
   'groups': <Group size={16} />,
   'history': <History size={16} />,
+  'node-list': <ListTree size={16} />,
   'staging': <Package size={16} />,
   'execution-bar': <Play size={16} />,
 };
@@ -483,14 +486,31 @@ function WorkflowEditorInner({
     return Model.fromJson(defaultJson);
   });
 
-  // Sync rightTab when selecting a node → switch to properties tab in flexlayout
+  // Sync rightTab when selecting a node → switch to properties tab in flexlayout.
+  // From the node-list panel we want to land on Canvas instead, so a skip flag gates it.
+  const skipAutoSelectPropertiesRef = useRef(false);
   useEffect(() => {
     if (!state.selectedNodeId) return;
+    if (skipAutoSelectPropertiesRef.current) {
+      skipAutoSelectPropertiesRef.current = false;
+      return;
+    }
     const node = model.getNodeById('properties');
     if (node && node instanceof TabNode) {
       model.doAction(Actions.selectTab(node.getId()));
     }
   }, [state.selectedNodeId, model]);
+
+  // Click a node in the node-list panel: select it and jump to Canvas (not Properties).
+  const handleSelectNodeFromList = useCallback((nodeId: string) => {
+    skipAutoSelectPropertiesRef.current = true;
+    state.setSelectedNodeId(nodeId);
+    state.setSelectedNodeIds([nodeId]);
+    const canvasNode = model.getNodeById('canvas');
+    if (canvasNode && canvasNode instanceof TabNode) {
+      model.doAction(Actions.selectTab(canvasNode.getId()));
+    }
+  }, [model, state]);
 
   const onModelChange = useCallback((_model: Model, action: Action) => {
     try {
@@ -501,7 +521,7 @@ function WorkflowEditorInner({
       const node = _model.getNodeById(action.data.tabNode);
       if (node && node instanceof TabNode) {
         const comp = node.getComponent();
-        if (['properties', 'canvas-style', 'variables', 'groups', 'history', 'staging'].includes(comp ?? '')) {
+        if (['properties', 'canvas-style', 'variables', 'groups', 'history', 'node-list', 'staging'].includes(comp ?? '')) {
           state.setRightTab(comp!);
         }
       }
@@ -689,6 +709,15 @@ function WorkflowEditorInner({
             </ResizablePanel>
           </ResizablePanelGroup>
         );
+      case 'node-list':
+        return (
+          <WorkflowNodeListPanel
+            nodes={workflow.nodes}
+            edges={workflow.edges}
+            selectedNodeId={state.selectedNodeId}
+            onSelectNode={handleSelectNodeFromList}
+          />
+        );
       case 'staging':
         return (
           <WorkflowStagingPanel
@@ -730,6 +759,7 @@ function WorkflowEditorInner({
     isWorkflowRunning,
     isWorkflowReadOnly,
     addStagedNodeToCanvas,
+    handleSelectNodeFromList,
     clipboard.clear,
     clipboard.count,
     exitExecutionPreview,

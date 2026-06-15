@@ -29,6 +29,8 @@ type ElectronPluginApi = {
   clientPlugins?: {
     listWorkflowPlugins?: () => Promise<PluginMeta[]>;
     getWorkflowNodes?: (pluginId: string) => Promise<NodeTypeDefinition[]>;
+    installFromStore?: (pluginId: string, sourceUrl: string, md5?: string) => Promise<PluginMeta>;
+    uninstall?: (pluginId: string) => Promise<{ success: boolean }>;
   };
 };
 
@@ -51,6 +53,10 @@ function mergeWorkflowPlugins(serverPlugins: PluginMeta[], clientPlugins: Plugin
   for (const plugin of serverPlugins) merged.set(plugin.id, plugin);
   for (const plugin of clientPlugins) merged.set(plugin.id, plugin);
   return [...merged.values()];
+}
+
+function isClientPluginType(type: PluginMeta['type']): boolean {
+  return type === 'client' || type === 'both';
 }
 
 function clearPluginRequestCache() {
@@ -84,12 +90,19 @@ export const pluginApi = {
     clearPluginRequestCache();
     return sdk.workflowPlugin.disable(pluginId);
   },
-  uninstall(pluginId: string): Promise<{ success: boolean }> {
+  async uninstall(pluginId: string, runtimeType?: PluginMeta['type']): Promise<{ success: boolean }> {
     clearPluginRequestCache();
+    if (isClientPluginType(runtimeType)) {
+      return await (getElectronPluginApi()?.uninstall?.(pluginId) ?? Promise.reject(new Error('当前客户端不支持本地 client 插件卸载')));
+    }
     return sdk.workflowPlugin.uninstall(pluginId);
   },
-  installFromStore(pluginId: string, sourceUrl?: string, md5?: string): Promise<PluginMeta> {
+  async installFromStore(pluginId: string, sourceUrl?: string, md5?: string, runtimeType?: PluginMeta['type']): Promise<PluginMeta> {
     clearPluginRequestCache();
+    if (isClientPluginType(runtimeType)) {
+      if (!sourceUrl) throw new Error('缺少 client 插件安装地址');
+      return await (getElectronPluginApi()?.installFromStore?.(pluginId, sourceUrl, md5) ?? Promise.reject(new Error('当前客户端不支持本地 client 插件安装')));
+    }
     return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl, md5);
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
@@ -101,7 +114,17 @@ export const pluginApi = {
     const request = (async () => {
       const clientPlugins = await listClientWorkflowPlugins();
       if (clientPlugins.some(plugin => plugin.id === pluginId)) {
-        return await (getElectronPluginApi()?.getWorkflowNodes?.(pluginId) ?? Promise.resolve([]));
+        const plugin = clientPlugins.find(item => item.id === pluginId);
+        const nodes = await (getElectronPluginApi()?.getWorkflowNodes?.(pluginId) ?? Promise.resolve([]));
+        return nodes.map(node => ({
+          ...node,
+          pluginId,
+          data: {
+            ...(node as NodeTypeDefinition & { data?: Record<string, unknown> }).data,
+            pluginId,
+            pluginType: plugin?.type || 'client',
+          },
+        } as NodeTypeDefinition));
       }
       return sdk.workflowPlugin.getWorkflowNodes(pluginId, localeQuery);
     })().finally(() => {

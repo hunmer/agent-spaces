@@ -1,6 +1,6 @@
 import type { ExecutionLogEntry } from '@agent-spaces/shared';
 
-export const WORKFLOW_LAYOUT_KEY = 'agent-spaces:workflow-editor-layout';
+export const WORKFLOW_LAYOUT_KEY = 'agent-spaces:workflow-editor-layout-v2';
 
 export type DebugResult = {
   status?: 'completed' | 'error';

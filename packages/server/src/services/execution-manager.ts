@@ -680,6 +680,9 @@ export class ExecutionManager {
       case 'form':
         return this.executeFormDialog(session, node, resolvedData, appendLog);
       default:
+        if (this.isClientPluginNode(node)) {
+          return this.executeClientNode(session, node, resolvedData, appendLog);
+        }
         if (pluginService.canExecuteWorkflowNode(node.type)) {
           if (pluginService.requiresClientExecution(node.type)) {
             return this.executeClientNode(session, node, resolvedData, appendLog);
@@ -704,7 +707,7 @@ export class ExecutionManager {
     resolvedData: Record<string, any>,
     appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
   ): Promise<Record<string, unknown>> {
-    const pluginId = pluginService.getPluginIdByNodeType(node.type);
+    const pluginId = this.getClientPluginId(node) || pluginService.getPluginIdByNodeType(node.type);
     if (!pluginId) throw new Error(`Client plugin not found for node type: ${node.type}`);
     appendLog('info', `Requesting client execution for ${node.type}`);
     const result = await this.deps.clientNodeManager.request({
@@ -717,6 +720,16 @@ export class ExecutionManager {
       args: resolvedData,
     });
     return this.normalizeNodeResult(result);
+  }
+
+  private isClientPluginNode(node: WorkflowNode): boolean {
+    const pluginType = node.data?.pluginType;
+    return (pluginType === 'client' || pluginType === 'both') && typeof node.data?.pluginId === 'string';
+  }
+
+  private getClientPluginId(node: WorkflowNode): string | null {
+    const pluginId = node.data?.pluginId;
+    return typeof pluginId === 'string' && pluginId ? pluginId : null;
   }
 
   private normalizeNodeResult(result: unknown): Record<string, unknown> {

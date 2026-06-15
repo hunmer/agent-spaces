@@ -169,6 +169,13 @@
     "delayDescription": "执行当前节点前等待的毫秒数",
     "variables": "变量",
     "groups": "分组",
+    "nodeList": {
+      "nodes": "个节点",
+      "groups": "个分组",
+      "group": "分组",
+      "unconnected": "未连接",
+      "empty": "暂无节点"
+    },
     "exportPng": "导出 PNG",
     "exportJpeg": "导出 JPEG",
     "codeFullscreen": {

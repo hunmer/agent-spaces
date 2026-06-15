@@ -25,7 +25,7 @@ import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { formatDuration, type WorkflowLogPanelLayout } from './workflow-node-types';
 
-const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[calc(260px/3)] overscroll-contain overflow-auto';
+const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan max-h-[calc(260px/3)] overscroll-contain overflow-auto';
 const LOG_TAB_TRIGGER_CLASS = 'h-7 rounded-none border-b-2 border-transparent px-2 text-[10px] data-active:border-primary data-active:bg-primary/5 data-active:text-foreground data-active:shadow-none';
 const WORKFLOW_EXECUTION_BATCH_INDEX_EVENT = 'workflow:execution-log-batch-index';
 
@@ -60,8 +60,8 @@ function CopyButton({ data }: { data: unknown }) {
     </button>
   );
 }
-const LOG_TAB_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[110px] overscroll-contain overflow-auto';
-const LOG_TAB_PANEL_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[220px] overscroll-contain overflow-auto';
+const LOG_TAB_SECTION_SCROLL_CLASS = 'nodrag nopan max-h-[110px] overscroll-contain overflow-auto';
+const LOG_TAB_PANEL_SCROLL_CLASS = 'nodrag nopan max-h-[220px] overscroll-contain overflow-auto';
 
 interface WorkflowNodeExecutionLogProps {
   nodeId: string;
@@ -168,7 +168,8 @@ export function WorkflowNodeExecutionLog({
     event.stopPropagation();
     window.dispatchEvent(new CustomEvent('workflow:select-node', { detail: { nodeId } }));
   }, [nodeId]);
-  const stopWheel = React.useCallback((event: React.WheelEvent) => {
+  const stopContentScrollWheel = React.useCallback((event: React.WheelEvent) => {
+    if (event.ctrlKey || event.metaKey) return;
     event.stopPropagation();
   }, []);
 
@@ -244,7 +245,7 @@ export function WorkflowNodeExecutionLog({
   const renderOutputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
       className={cn(className, extraClassName)}
-      onWheelCapture={stopWheel}
+      onWheelCapture={stopContentScrollWheel}
     >
       <div className="flex items-center px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">
         <span className="flex-1">{t('execution.output')}</span>
@@ -272,7 +273,7 @@ export function WorkflowNodeExecutionLog({
   const renderInputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
       className={cn(className, extraClassName)}
-      onWheelCapture={stopWheel}
+      onWheelCapture={stopContentScrollWheel}
     >
       <div className="flex items-center px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">
         <span className="flex-1">{t('execution.input')}</span>
@@ -294,7 +295,7 @@ export function WorkflowNodeExecutionLog({
   const renderLogsSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
       className={cn(className, extraClassName)}
-      onWheelCapture={stopWheel}
+      onWheelCapture={stopContentScrollWheel}
     >
       <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.logs')}</div>
       {step.logs?.length ? (
@@ -355,7 +356,7 @@ export function WorkflowNodeExecutionLog({
 
   return (
     <div
-      className="nodrag nopan nowheel relative z-10 mt-1"
+      className="nodrag nopan relative z-10 mt-1"
       style={{ width: nodeWidth }}
       onClick={handleClick}
     >
@@ -382,7 +383,7 @@ export function WorkflowNodeExecutionLog({
       </button>
 
       {isLogExpanded && (
-        <div className="nodrag nopan nowheel rounded-b-md border border-t-0 border-border bg-background">
+        <div className="nodrag nopan rounded-b-md border border-t-0 border-border bg-background">
           {/* Error */}
           {selectedExecutionStep.error && (
             <div className="px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">

@@ -40,8 +40,9 @@ export function LocalPluginCard({
   const t = useTranslations('workflows');
   const [toolsOpen, setToolsOpen] = useState(false);
   const canShowTools = Boolean(projectId && enabledPlugins && onEnabledPluginsChange);
+  const iconPath = plugin.iconPath || '';
   const iconSrc = plugin.iconPath
-    ? { type: 'url' as const, url: resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(plugin.id)}/icon`) }
+    ? { type: 'url' as const, url: /^(?:[a-z][a-z\d+\-.]*:)?\/\//i.test(iconPath) ? iconPath : resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(plugin.id)}/icon`) }
     : { type: 'builtin' as const, variant: 'local' as const };
 
   return (

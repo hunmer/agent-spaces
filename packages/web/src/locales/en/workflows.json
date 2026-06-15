@@ -169,6 +169,13 @@
     "delayDescription": "Milliseconds to wait before executing this node",
     "variables": "Variables",
     "groups": "Groups",
+    "nodeList": {
+      "nodes": "nodes",
+      "groups": "groups",
+      "group": "Group",
+      "unconnected": "Unconnected",
+      "empty": "No nodes"
+    },
     "exportPng": "Export PNG",
     "exportJpeg": "Export JPEG",
     "codeFullscreen": {
