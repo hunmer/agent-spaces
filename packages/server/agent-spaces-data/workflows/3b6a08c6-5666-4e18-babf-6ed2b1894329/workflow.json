@@ -165,13 +165,13 @@
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 443.6696811855444,
-        "y": 272.0015607915407
+        "x": 419.6696811855444,
+        "y": 292.0015607915407
       },
       "data": {
         "width": 150,
         "height": 260,
-        "nodeWidth": 932.0000000000001,
+        "nodeWidth": 932,
         "nodeHeight": 264
       },
       "composite": {
@@ -188,8 +188,8 @@
       "type": "start",
       "label": "遍历分镜开始",
       "position": {
-        "x": 499.6696811855444,
-        "y": 372.0015607915407
+        "x": 475.6696811855444,
+        "y": 392.0015607915407
       },
       "data": {},
       "composite": {
@@ -204,8 +204,8 @@
       "type": "end",
       "label": "遍历分镜结束",
       "position": {
-        "x": 1099.6696811855445,
-        "y": 372.0015607915407
+        "x": 1075.6696811855445,
+        "y": 392.0015607915407
       },
       "data": {},
       "composite": {
@@ -220,8 +220,8 @@
       "type": "jimeng_text_to_image",
       "label": "生成分镜图片",
       "position": {
-        "x": 799.6696811855444,
-        "y": 372.0015607915407
+        "x": 775.6696811855444,
+        "y": 392.0015607915407
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -253,7 +253,7 @@
             ]
           }
         ],
-        "prompt": "{{ __loop__.item.story }}"
+        "prompt": "{{ __loop__.item.prompt }}"
       },
       "composite": {
         "rootId": "node_1781515208814_nerfw9",
@@ -325,7 +325,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781528553521,
+  "updatedAt": 1781529014083,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"
