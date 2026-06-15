@@ -36,16 +36,18 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 工作流编辑硬规则：
 1. 准备使用、创建、插入或更新某个节点类型前，必须先调用 search_node_usage 查看节点定义。
 2. 如果用户只描述用途但没给出节点类型，先用 list_node_types 找候选，再用 search_node_usage 看具体字段、句柄和使用说明。
-3. 编辑现有工作流前，优先调用 get_current_workflow；需要完整 data 时用 summarize=false。
-4. 节点参数里的字符串值支持变量引用。上游节点输出和开始节点工作流输入都使用 {{ __data__["节点ID"].字段路径 }}；普通节点自身输入字段兼容 {{ __inputs__["节点ID"].字段路径 }}；当前运行上下文使用 {{ context.some.path }}。
-5. 开始节点或支持输入字段的节点，输入字段定义来自 data.inputFields。需要新增或替换输入字段时优先调用 set_node_io_fields，field_kind=inputFields。引用开始节点的运行输入时必须使用 {{ __data__["开始节点ID"].字段 }}。
-6. 结束节点返回结果来自 data.outputs，设置时优先调用 set_node_io_fields，field_kind=outputs；变量放在每个输出项的 value 里，例如 { key, type, value }。
-7. 需要数据整形、字段映射或结构转换时，优先插入 run_code 节点；代码中不要写 {{ }}，也不要从 __data__ 读取数据，必须定义 async function main({ params, context })。
-8. run_code 的上游输入必须先写入 data.inputFields，例如 { key: "agentResult", type: "string", value: "{{ __data__[\"上游节点ID\"].result }}" }；代码里始终用 params.agentResult 读取。
-9. run_code 返回结构变化后，要同步设置节点的 data.outputs，让下游变量选择器能看到字段。
-10. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
-11. 修改后必须调用 auto_layout 整理画布，然后调用 saveworkflow 保存并读取后端返回文本；如果 saveworkflow 返回 success=false，必须根据返回文本继续修正，不能声称已完成。
-12. 在 loop 内创建节点时，必须把节点放进 loop_body：create_node 传 scopeNodeId/scope_node_id 为 loop_body 节点 ID；如果从 loop 的 loop-body 句柄继续创建，也可以传 source 和 sourceHandle=loop-body 让工具自动推断。
+3. search_node_usage 返回的 properties[].type 是属性类型名称；遇到 text/textarea/number/select/checkbox/code/conditions/array/output_fields/sqlite 之外的非常见类型，必须调用 get_node_property_type_definition 查询值结构后再写入 data。
+4. 编辑现有工作流前，优先调用 get_current_workflow；需要完整 data 时用 summarize=false。
+5. 节点参数里的字符串值支持变量引用。上游节点输出和开始节点工作流输入都使用 {{ __data__["节点ID"].字段路径 }}；普通节点自身输入字段兼容 {{ __inputs__["节点ID"].字段路径 }}；当前运行上下文使用 {{ context.some.path }}。
+6. 开始节点或支持输入字段的节点，输入字段定义来自 data.inputFields。需要新增或替换输入字段时优先调用 set_node_io_fields，field_kind=inputFields。引用开始节点的运行输入时必须使用 {{ __data__["开始节点ID"].字段 }}。
+7. 结束节点返回结果来自 data.outputs，设置时优先调用 set_node_io_fields，field_kind=outputs；变量放在每个输出项的 value 里，例如 { key, type, value }。
+8. 需要数据整形、字段映射或结构转换时，优先插入 run_code 节点；代码中不要写 {{ }}，也不要从 __data__ 读取数据，必须定义 async function main({ params, context })。
+9. run_code 的上游输入必须先写入 data.inputFields，例如 { key: "agentResult", type: "string", value: "{{ __data__[\"上游节点ID\"].result }}" }；代码里始终用 params.agentResult 读取。
+10. run_code 返回结构变化后，要同步设置节点的 data.outputs，让下游变量选择器能看到字段。
+11. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
+12. 修改后必须调用 auto_layout 整理画布，然后调用 saveworkflow 保存并读取后端返回文本；如果 saveworkflow 返回 success=false，必须根据返回文本继续修正，不能声称已完成。
+13. 在 loop 内创建节点时，必须把节点放进 loop_body：create_node 传 scopeNodeId/scope_node_id 为 loop_body 节点 ID；如果从 loop 的 loop-body 句柄继续创建，也可以传 source 和 sourceHandle=loop-body 让工具自动推断。
+14. loop_body 内节点要引用当前迭代项或循环中间变量时，必须先在父 loop 节点 data.sharedVariables 中声明对应字段；否则不要直接写 {{ context.item.xxx }} 或 {{ context.shared.xxx }} 之类的引用。array loop 常用写法是在 loop.data.sharedVariables 增加 { key: "item", type: "object", value: "{{ context.item }}" }，loop_body 内再引用 {{ context.item.xxx }}。
 
 约束：
 - 只能使用本次 Agent Spaces runtime 暴露的工作流编辑工具。
@@ -54,6 +56,57 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 const SCOPE_CONTAINER_PADDING = { top: 80, right: 100, bottom: 80, left: 80 };
 const MIN_SCOPE_CONTAINER_SIZE = { width: 220, height: 160 };
 const LOOP_BODY_MIN_SCOPE_CONTAINER_SIZE = { width: 150, height: 260 };
+const COMMON_NODE_PROPERTY_TYPES = new Set([
+  'text',
+  'textarea',
+  'number',
+  'select',
+  'checkbox',
+  'code',
+  'conditions',
+  'array',
+  'output_fields',
+  'sqlite',
+]);
+
+const NODE_PROPERTY_TYPE_DEFINITIONS = new Map<string, JsonRecord>([
+  ['agent', {
+    valueType: 'object',
+    description: '工作流节点内联保存的 Agent 配置对象。不能只传 agent id 字符串；需要传对象。',
+    required: ['id', 'name', 'role', 'enabled'],
+    fields: {
+      id: 'string',
+      name: 'string',
+      role: 'string',
+      enabled: 'boolean',
+      description: 'string?',
+      runtimeKind: 'string?',
+      modelProvider: 'string?',
+      providerId: 'string?',
+      modelId: 'string?',
+      apiBase: 'string?',
+      apiKey: 'string?',
+      workingDir: 'string?',
+      mcps: 'object?',
+      skills: 'string[]?',
+      tools: 'string[]?',
+      systemPrompt: 'string?',
+      outputStyle: 'string?',
+      temperature: 'number?',
+      maxTokens: 'number?',
+      sandboxDirs: 'string[]?',
+      avatarUrl: 'string?',
+      icon: 'string?',
+    },
+    example: {
+      id: 'agent-id',
+      name: 'Agent 名称',
+      role: 'agent',
+      enabled: true,
+      systemPrompt: '你是...',
+    },
+  }],
+]);
 
 export function buildWorkflowEditorSystemPrompt(workflow: Workflow): string {
   const summary = summarizeWorkflow(workflow, true);
@@ -232,6 +285,28 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       },
     },
     {
+      name: 'get_node_property_type_definition',
+      description: '查询节点 properties[].type 对应的 data 值结构。遇到 agent 等非常见属性类型，写入或更新 data 前必须调用。',
+      inputSchema: schema({
+        type: { type: 'string', description: '属性类型名称，例如 agent。' },
+        property_type: { type: 'string', description: '属性类型名称，兼容蛇形命名。' },
+      }),
+      annotations: { readOnly: true },
+      execute: async (input) => {
+        const type = stringInputAny(asRecord(input), ['type', 'property_type']);
+        if (!type) return { success: false, message: 'type is required' };
+        const definition = getPropertyTypeDefinition(type);
+        if (!definition) {
+          return {
+            success: false,
+            message: `Unknown property type: ${type}`,
+            known_types: Array.from(NODE_PROPERTY_TYPE_DEFINITIONS.keys()),
+          };
+        }
+        return { success: true, type, definition };
+      },
+    },
+    {
       name: 'create_node',
       description: '在工作流中创建新节点。需要指定有效节点 type，可选 label、data。要创建到 loop_body 等作用域内，传 scopeNodeId/scope_node_id，或传 source/sourceHandle 让工具从 loop-body 句柄推断。',
       inputSchema: schema({
@@ -291,6 +366,13 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         if (!nodeId) return { success: false, message: 'nodeId is required' };
         const dataResult = objectInputResult(record, 'data');
         if (!dataResult.success) return dataResult;
+        const targetNode = draft.nodes.find((node) => node.id === nodeId);
+        if (!targetNode) return { success: false, message: `Node not found: ${nodeId}` };
+        const definition = definitionByType.get(targetNode.type);
+        if (definition) {
+          const validation = validateNodeDataPatch(definition, dataResult.value);
+          if (!validation.success) return validation;
+        }
         let found = false;
         const nodes = draft.nodes.map((node) => {
           if (node.id !== nodeId) return node;
@@ -611,6 +693,11 @@ function describeNodeUsage(definition: NodeTypeDefinition) {
         runCode: 'run_code 支持 data.inputFields 作为代码输入参数。把上游变量引用配置到 inputFields[].value，例如 { key: "agentResult", type: "string", value: "{{ __data__[\\"上游节点ID\\"].result }}" }；JS 代码必须使用 async function main({ params, context })，并通过 params.agentResult 读取。不要在代码签名或代码体里使用 __data__，代码里也不要写 {{ }}。',
       }
     : {};
+  const loopUsage = definition.type === 'loop'
+    ? {
+        loop: 'loop 节点通过 data.loopType 控制循环方式：array 使用 data.arrayPath 指向数组变量，count 使用 data.count，infinite 表示无限循环。loop 有两个出口：sourceHandle="loop-body" 进入循环体，sourceHandle="loop-next" 连接循环结束后的后续节点。loop_body 内节点如需使用当前迭代项或循环中间变量，先在父 loop.data.sharedVariables 声明字段，例如 { key: "item", type: "object", value: "{{ context.item }}" }，再在 loop_body 内使用 {{ context.item.prompt }}、{{ context.item.copy }} 等字段引用；不要只在 loop_body 节点里直接引用未声明的中间变量。',
+      }
+    : {};
   return {
     ...definition,
     exampleData: defaultData(definition),
@@ -618,6 +705,7 @@ function describeNodeUsage(definition: NodeTypeDefinition) {
       variables: '字符串字段支持 {{ __data__["节点ID"].字段路径 }} 和 {{ context.some.path }}。开始节点的工作流输入也通过 {{ __data__["开始节点ID"].字段 }} 引用；{{ __inputs__["节点ID"].字段路径 }} 仅作为普通节点输入字段的兼容语法。',
       handles: definition.handles ?? {},
       ...runCodeUsage,
+      ...loopUsage,
     },
   };
 }
@@ -628,6 +716,70 @@ function defaultData(definition: NodeTypeDefinition): JsonRecord {
     if (property.default !== undefined) data[property.key] = clone(property.default);
   }
   return data;
+}
+
+function getPropertyTypeDefinition(type: string): JsonRecord | undefined {
+  return NODE_PROPERTY_TYPE_DEFINITIONS.get(type);
+}
+
+function validateNodeDataPatch(
+  definition: NodeTypeDefinition,
+  data: JsonRecord,
+): { success: true } | { success: false; message: string; property?: string; expected_type?: string; received_type?: string; type_definition?: JsonRecord } {
+  const properties = new Map((definition.properties ?? []).map((property) => [property.key, property]));
+  for (const [key, value] of Object.entries(data)) {
+    const property = properties.get(key);
+    if (!property) continue;
+    const result = validateNodePropertyValue(property.type, value);
+    if (!result.success) {
+      return {
+        success: false,
+        message: `Invalid value for ${key}: expected ${property.type}, received ${describeValueType(value)}`,
+        property: key,
+        expected_type: property.type,
+        received_type: describeValueType(value),
+        type_definition: result.typeDefinition,
+      };
+    }
+  }
+  return { success: true };
+}
+
+function validateNodePropertyValue(
+  propertyType: string,
+  value: unknown,
+): { success: true } | { success: false; typeDefinition?: JsonRecord } {
+  if (propertyType === 'number') return typeof value === 'number' && Number.isFinite(value) ? { success: true } : { success: false };
+  if (propertyType === 'checkbox') return typeof value === 'boolean' ? { success: true } : { success: false };
+  if (propertyType === 'array' || propertyType === 'output_fields' || propertyType === 'conditions') return Array.isArray(value) ? { success: true } : { success: false };
+  if (propertyType === 'text' || propertyType === 'textarea' || propertyType === 'select' || propertyType === 'code' || propertyType === 'sqlite') {
+    return typeof value === 'string' ? { success: true } : { success: false };
+  }
+
+  const typeDefinition = getPropertyTypeDefinition(propertyType);
+  if (!typeDefinition) return COMMON_NODE_PROPERTY_TYPES.has(propertyType) ? { success: true } : { success: true };
+  if (typeDefinition.valueType === 'object' && !isPlainRecord(value)) return { success: false, typeDefinition };
+
+  if (propertyType === 'agent') {
+    const record = value as JsonRecord;
+    const valid = typeof record.id === 'string'
+      && typeof record.name === 'string'
+      && typeof record.role === 'string'
+      && typeof record.enabled === 'boolean';
+    return valid ? { success: true } : { success: false, typeDefinition };
+  }
+
+  return { success: true };
+}
+
+function isPlainRecord(value: unknown): value is JsonRecord {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function describeValueType(value: unknown): string {
+  if (Array.isArray(value)) return 'array';
+  if (value === null) return 'null';
+  return typeof value;
 }
 
 function nextNodePosition(nodes: WorkflowNode[], scopeNode?: WorkflowNode | null): WorkflowNode['position'] {

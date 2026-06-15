@@ -129,6 +129,10 @@ export function WorkflowPropertiesPanel({
     if (!nodeId) return;
     onPreviewUpdateData?.(nodeId, { [key]: value });
   }, [nodeId, onPreviewUpdateData]);
+  const handleCopyNodeJson = useCallback(() => {
+    if (!node) return;
+    navigator.clipboard.writeText(JSON.stringify(node, null, 2));
+  }, [node]);
   const toVariableInputValue = useCallback((value: unknown): string | number => {
     if (typeof value === 'string' || typeof value === 'number') return value;
     if (typeof value === 'boolean') return String(value);
@@ -365,17 +369,29 @@ export function WorkflowPropertiesPanel({
         </div>
       </ScrollArea>
 
-      {canEditOutputFields && (
-        <div className="shrink-0 border-t px-3 py-2">
-          <Toggle
+      {node && (
+        <div className="flex shrink-0 items-center gap-2 border-t px-3 py-2">
+          <Button
+            variant="outline"
             size="sm"
-            pressed={data.outputPreviewEnabled !== false}
-            onPressedChange={(enabled) => handleDataChange('outputPreviewEnabled', enabled)}
-            className="h-6 min-w-6 px-1 text-muted-foreground data-[state=on]:text-primary"
-            aria-label={t('properties.outputPreview')}
+            className="h-6 gap-1 px-2 text-[11px]"
+            onClick={handleCopyNodeJson}
+            aria-label={`${t('properties.copy')} JSON`}
           >
-            <ImageIcon className="h-3.5 w-3.5" />
-          </Toggle>
+            <Copy className="h-3 w-3" />
+            JSON
+          </Button>
+          {canEditOutputFields && (
+            <Toggle
+              size="sm"
+              pressed={data.outputPreviewEnabled !== false}
+              onPressedChange={(enabled) => handleDataChange('outputPreviewEnabled', enabled)}
+              className="h-6 min-w-6 px-1 text-muted-foreground data-[state=on]:text-primary"
+              aria-label={t('properties.outputPreview')}
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+            </Toggle>
+          )}
         </div>
       )}
 

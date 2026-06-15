@@ -13,6 +13,7 @@ import {
   consumeThinkingStream,
   readSseStream,
   readWorkflowPatch,
+  stripWorkflowPatchFields,
   resolveWorkflowAgentPreset,
   resolveWorkflowAgentSettingsDraft,
   isSuccessfulToolResult,
@@ -158,7 +159,7 @@ export function useWorkflowEditorAgentChat({
       if (index === -1) return message;
       timeline[index] = {
         ...timeline[index],
-        result,
+        result: stripWorkflowPatchFields(result),
         status: isSuccessfulToolResult(result) ? 'success' : 'error',
       } as WorkflowTimelineItem;
       return { ...message, timeline };

@@ -192,6 +192,8 @@ export function hydrateWorkflowAgentChatMessage(message: PersistedWorkflowAgentC
 export function serializeWorkflowAgentChatMessage(message: WorkflowAgentChatMessage): PersistedWorkflowAgentChatMessage {
   return {
     ...message,
+    timeline: message.timeline?.map(sanitizeWorkflowAgentTimelineItem),
+    toolCalls: message.toolCalls?.map(sanitizeWorkflowAgentToolCall),
     timestamp: message.timestamp.toISOString(),
   };
 }
@@ -219,6 +221,14 @@ export function readWorkflowPatch(result: unknown): { workflow_id: string; nodes
   };
 }
 
+export function stripWorkflowPatchFields(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const rest = { ...(value as Record<string, unknown>) };
+  delete rest.workflow;
+  delete rest.workflow_patch;
+  return rest;
+}
+
 export function isSuccessfulToolResult(result: unknown): boolean {
   const record = asRecord(result);
   return record.success !== false;
@@ -233,4 +243,16 @@ export function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): n
     if (predicate(items[index])) return index;
   }
   return -1;
+}
+
+function sanitizeWorkflowAgentToolCall<T extends WorkflowToolCall>(toolCall: T): T {
+  return {
+    ...toolCall,
+    result: stripWorkflowPatchFields(toolCall.result),
+  };
+}
+
+function sanitizeWorkflowAgentTimelineItem(item: WorkflowTimelineItem): WorkflowTimelineItem {
+  if (item.type !== 'tool') return item;
+  return sanitizeWorkflowAgentToolCall(item) as WorkflowTimelineItem;
 }

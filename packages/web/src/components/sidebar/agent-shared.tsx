@@ -110,7 +110,7 @@ export const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKin
 ];
 
 export const ROLE_OPTIONS: BuiltInRole[] = ["agent", "scheduler", "task_creator", "bot"];
-export const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name);
+export const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = [];
 export const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
   "openai-chat-completions-to-anthropic-messages",

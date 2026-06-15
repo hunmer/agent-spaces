@@ -73,6 +73,17 @@ const nodeDefinitions: NodeTypeDefinition[] = [
     properties: [],
   },
   {
+    type: 'agent_run',
+    label: '运行 Agent',
+    category: 'AI',
+    icon: 'Bot',
+    description: '运行指定 Agent',
+    properties: [
+      { key: 'agent', label: 'Agent', type: 'agent' },
+      { key: 'prompt', label: '提示词', type: 'textarea', required: true },
+    ],
+  },
+  {
     type: 'cos_upload_file',
     label: 'COS上传文件',
     category: '腾讯云COS',
@@ -131,6 +142,57 @@ test('search_node_usage explains run_code input fields are exposed as params', a
   assert.match(result.nodes[0]?.usage?.runCode ?? '', /data\.inputFields/);
   assert.match(result.nodes[0]?.usage?.runCode ?? '', /params\.agentResult/);
   assert.match(result.nodes[0]?.usage?.runCode ?? '', /不要.*__data__/);
+});
+
+test('get_node_property_type_definition returns agent value shape', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const getTypeDefinition = tools.find((tool) => tool.name === 'get_node_property_type_definition');
+  assert.ok(getTypeDefinition);
+
+  const result = await getTypeDefinition.execute({ type: 'agent' }) as {
+    success: boolean;
+    definition: {
+      valueType: string;
+      fields: Record<string, string>;
+      required: string[];
+    };
+  };
+
+  assert.equal(result.success, true);
+  assert.equal(result.definition.valueType, 'object');
+  assert.equal(result.definition.fields.id, 'string');
+  assert.deepEqual(result.definition.required, ['id', 'name', 'role', 'enabled']);
+});
+
+test('update_node rejects agent property when value does not match type definition', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const updateNode = tools.find((tool) => tool.name === 'update_node');
+  assert.ok(createNode);
+  assert.ok(updateNode);
+
+  const createResult = await createNode.execute({ type: 'agent_run' }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(createResult.success, true);
+
+  const updateResult = await updateNode.execute({
+    nodeId: createResult.created_node_id,
+    data: { agent: 'agent-id' },
+  }) as {
+    success: boolean;
+    message: string;
+    property: string;
+    expected_type: string;
+    type_definition: { valueType: string };
+  };
+
+  assert.equal(updateResult.success, false);
+  assert.equal(updateResult.property, 'agent');
+  assert.equal(updateResult.expected_type, 'agent');
+  assert.equal(updateResult.type_definition.valueType, 'object');
+  assert.match(updateResult.message, /expected agent/);
 });
 
 test('create_workflow_version persists the snapshot for the version panel', async (t) => {

@@ -83,7 +83,7 @@ router.post('/run', async (req: Request, res: Response) => {
         workflow: workflowAgent.workflow,
         nodeDefinitions: workflowAgent.nodeDefinitions,
       })
-    : [];
+    : undefined;
   const runtimeKind = workflowAgent ? 'langchain' : preset.runtimeKind;
   const systemPrompt = workflowAgent
     ? buildWorkflowEditorSystemPrompt(workflowAgent.workflow)
@@ -130,7 +130,7 @@ router.post('/run', async (req: Request, res: Response) => {
           boundDirs: workspace?.boundDirs ?? [],
           workingDir,
           excludeNativeClaudeMd: runtimeKind === 'claude-code',
-          builtInTools: functionTools.map((tool) => ({ name: tool.name, description: tool.description })),
+          builtInTools: (functionTools ?? []).map((tool) => ({ name: tool.name, description: tool.description })),
         },
       ),
       workingDir,
@@ -138,14 +138,14 @@ router.post('/run', async (req: Request, res: Response) => {
         maxTurns: normalizeMaxTurns(body.maxTurns),
         mcpServers,
         skills,
-        functionTools,
+        functionTools: functionTools ?? [],
         configDir,
         sandboxDirs: preset.sandboxDirs,
         userPrompt,
         outputStyle: body.outputStyle ?? preset.outputStyle,
         onEvent: wrapOnEventWithHooks((event) => {
           if (event.type === 'output') output.push(event.line);
-          writeSse(res, event.type, serializeRuntimeEvent(event));
+          writeSse(res, event.type, serializeRuntimeEvent(event, functionTools?.getDraftWorkflow()));
         }, workspaceId, workspace?.hooksEnabled),
       },
     );
@@ -395,7 +395,7 @@ function isNodeDefinition(value: unknown): value is NodeTypeDefinition {
     && Array.isArray(record.properties);
 }
 
-function serializeRuntimeEvent(event: AgentRuntimeEvent): unknown {
+function serializeRuntimeEvent(event: AgentRuntimeEvent, workflow?: Workflow): unknown {
   if (event.type === 'tool_use') {
     return {
       type: event.type,
@@ -403,6 +403,12 @@ function serializeRuntimeEvent(event: AgentRuntimeEvent): unknown {
       name: event.name,
       input: event.input,
       line: event.line,
+    };
+  }
+  if (event.type === 'tool_result' && workflow) {
+    return {
+      ...event,
+      result: withWorkflowPatch(event.result, workflow),
     };
   }
   return event;
