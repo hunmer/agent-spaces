@@ -319,20 +319,18 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
   },
   {
     name: 'agent_run',
-    description: '运行 AI Agent 执行任务。需要指定 agent preset（通过 list_agent_presets 获取）、prompt、systemPrompt、工作目录和权限模式。',
+    description: '运行 AI Agent 执行任务。优先先明确 Agent 名称、注释/描述和任务提示词，再指定 agent preset（通过 list_agent_presets 获取）、工作目录和权限模式。',
     input_schema: {
       type: 'object',
       properties: {
         prompt: { type: 'string', description: '给 Agent 的任务描述（必填）' },
         agentConfigId: { type: 'string', description: 'Agent preset ID（必填，从 list_agent_presets 获取可选值）' },
-        systemPrompt: { type: 'string', description: '系统提示词' },
         cwd: { type: 'string', description: '工作目录' },
         permissionMode: {
           type: 'string',
           enum: ['default', 'dontAsk', 'acceptEdits', 'plan', 'auto', 'bypassPermissions'],
           description: '权限模式，默认 dontAsk',
         },
-        extraInstructions: { type: 'string', description: '额外指令' },
       },
       required: ['prompt', 'agentConfigId'],
     },
@@ -366,15 +364,11 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
 
       const runtime = createAgentRuntime(config);
 
-      const systemPrompt = typeof args.systemPrompt === 'string' ? args.systemPrompt.trim() : undefined;
-      const extraInstructions = typeof args.extraInstructions === 'string' ? args.extraInstructions.trim() : '';
-      const fullPrompt = [systemPrompt, extraInstructions, prompt].filter(Boolean).join('\n\n');
-
       const workingDir = typeof args.cwd === 'string' && args.cwd.trim()
         ? args.cwd.trim()
         : agentService.resolveWorkingDir('', preset);
 
-      const result = await runtime.execute(fullPrompt, workingDir, {
+      const result = await runtime.execute(prompt, workingDir, {
         maxTurns: 50,
         systemPrompt: preset?.systemPrompt,
         outputStyle: preset?.outputStyle,

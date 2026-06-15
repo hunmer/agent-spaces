@@ -589,11 +589,10 @@
     },
     "agent_run": {
       "label": "AI 执行",
-      "description": "调用 Agent 运行任务",
+      "description": "先初始化 Agent 名称、注释和任务提示词，再调用 Agent 运行任务",
       "props": {
         "agent": "Agent",
         "prompt": "任务",
-        "systemPrompt": "系统提示词",
         "cwd": "工作目录",
         "additionalDirectories": "额外目录",
         "additionalDirectories_tooltip": "每行一个可访问目录，会追加到 Agent runtime 的 sandboxDirs/additionalDirectories。",
@@ -605,10 +604,7 @@
           "plan": "计划模式",
           "auto": "自动",
           "bypassPermissions": "跳过权限"
-        },
-        "extraInstructions": "额外指令",
-        "loadProjectClaudeMd": "加载项目规则",
-        "loadRuleMd": "加载规则目录"
+        }
       }
     },
     "alert": {

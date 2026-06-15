@@ -10,7 +10,6 @@ export const aiNodes: NodeTypeDefinition[] = [
     properties: [
       { key: 'agent', label: 'nodes.agent_run.props.agent', type: 'agent' },
       { key: 'prompt', label: 'nodes.agent_run.props.prompt', type: 'textarea', required: true },
-      { key: 'systemPrompt', label: 'nodes.agent_run.props.systemPrompt', type: 'textarea' },
       { key: 'cwd', label: 'nodes.agent_run.props.cwd', type: 'text' },
       {
         key: 'additionalDirectories',
@@ -28,9 +27,6 @@ export const aiNodes: NodeTypeDefinition[] = [
           { label: 'nodes.agent_run.props.pmOpts.bypassPermissions', value: 'bypassPermissions' },
         ],
       },
-      { key: 'extraInstructions', label: 'nodes.agent_run.props.extraInstructions', type: 'textarea' },
-      { key: 'loadProjectClaudeMd', label: 'nodes.agent_run.props.loadProjectClaudeMd', type: 'checkbox', default: true },
-      { key: 'loadRuleMd', label: 'nodes.agent_run.props.loadRuleMd', type: 'checkbox', default: true },
     ],
     outputs: [
       { key: 'result', type: 'string' },

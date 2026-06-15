@@ -38,6 +38,17 @@ function toWorkflowAgentValue(agent: AgentConfig | AgentPreset) {
     modelProvider: agent.modelProvider,
     providerId: agent.providerId,
     modelId: agent.modelId,
+    apiBase: agent.apiBase,
+    apiKey: agent.apiKey,
+    workingDir: agent.workingDir,
+    mcps: agent.mcps,
+    skills: agent.skills,
+    tools: agent.tools,
+    systemPrompt: agent.systemPrompt,
+    outputStyle: agent.outputStyle,
+    temperature: agent.temperature,
+    maxTokens: agent.maxTokens,
+    sandboxDirs: agent.sandboxDirs,
     avatarUrl: agent.avatarUrl,
     icon: agent.icon,
     enabled: agent.enabled,
@@ -164,6 +175,18 @@ export function AgentPropertyEditor({
               onBack={() => {
                 setEditorOpen(false);
                 setCreateDraft(null);
+              }}
+              commit={async (draft) => toWorkflowAgentValue(draft) as AgentPreset}
+              hiddenFields={{
+                role: true,
+                runtimeKind: true,
+                workingDir: true,
+                systemPrompt: true,
+                outputStyle: true,
+                mcps: true,
+                tools: true,
+                skills: true,
+                background: true,
               }}
               showFooter
             />

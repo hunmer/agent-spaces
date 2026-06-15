@@ -589,11 +589,10 @@
     },
     "agent_run": {
       "label": "AI Execute",
-      "description": "Invoke an Agent to run a task",
+      "description": "Initialize the Agent name, note, and task prompt before invoking the Agent",
       "props": {
         "agent": "Agent",
         "prompt": "Task",
-        "systemPrompt": "System Prompt",
         "cwd": "Working Directory",
         "additionalDirectories": "Additional Directories",
         "additionalDirectories_tooltip": "One accessible directory per line, appended to Agent runtime's sandboxDirs/additionalDirectories.",
@@ -605,10 +604,7 @@
           "plan": "Plan Mode",
           "auto": "Auto",
           "bypassPermissions": "Bypass Permissions"
-        },
-        "extraInstructions": "Extra Instructions",
-        "loadProjectClaudeMd": "Load Project Rules",
-        "loadRuleMd": "Load Rules Directory"
+        }
       }
     },
     "alert": {

@@ -31,12 +31,10 @@ async function executeAgentWithRuntime(
 
   const workspaceId = resolveWorkflowAgentWorkspaceId();
   const workspace = workspaceService.getById(workspaceId);
-  const agentConfigId = resolveAgentConfigId(resolvedData);
   const presets = agentService.listPresets(workspaceId).filter(p => p.enabled !== false);
-  const preset = agentConfigId
-    ? presets.find(p => p.id === agentConfigId)
-    : presets[0];
+  const preset = resolveAgentPreset(resolvedData, presets);
   if (!preset) {
+    const agentConfigId = resolveAgentConfigId(resolvedData);
     throw new Error(agentConfigId ? `Agent preset not found: ${agentConfigId}` : 'No enabled agent preset available');
   }
 
@@ -55,19 +53,13 @@ async function executeAgentWithRuntime(
   });
 
   const prompt = String(resolvedData.prompt || '');
-  const systemPrompt = typeof resolvedData.systemPrompt === 'string' ? resolvedData.systemPrompt : undefined;
-  const extraInstructions = typeof resolvedData.extraInstructions === 'string' ? resolvedData.extraInstructions.trim() : '';
-  const ruleLoadingInstructions = [
-    resolvedData.loadProjectClaudeMd === false ? '不要主动加载项目 CLAUDE.md/AGENTS.md 规则文件。' : '',
-    resolvedData.loadRuleMd === false ? '不要主动加载 .claude/rules 或同类规则目录。' : '',
-  ].filter(Boolean).join('\n');
   const workflowContext = [
     `当前工作流: ${session.workflow.name}${session.workflow.id ? ` (${session.workflow.id})` : ''}`,
     typeof session.workflow.description === 'string' && session.workflow.description.trim()
       ? `工作流描述:\n${session.workflow.description.trim()}`
       : '',
   ].filter(Boolean).join('\n\n');
-  const fullPrompt = [systemPrompt, extraInstructions, ruleLoadingInstructions, workflowContext, prompt]
+  const fullPrompt = [workflowContext, prompt]
     .map(part => typeof part === 'string' ? part.trim() : '')
     .filter(Boolean)
     .join('\n\n');
@@ -127,9 +119,6 @@ async function executeAgentWithRuntime(
       cwd: workingDir,
       additionalDirectories: sandboxDirs,
       permissionMode,
-      extraInstructions,
-      loadProjectClaudeMd: resolvedData.loadProjectClaudeMd !== false,
-      loadRuleMd: resolvedData.loadRuleMd !== false,
       enabledPlugins: session.workflow.enabledPlugins,
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
@@ -202,4 +191,20 @@ function resolveAgentConfigId(resolvedData: Record<string, any>): string {
     if (typeof id === 'string' && id.trim()) return id.trim();
   }
   return '';
+}
+
+function resolveAgentPreset(resolvedData: Record<string, any>, presets: any[]): any | null {
+  const agent = resolvedData.agent;
+  if (agent && typeof agent === 'object' && !Array.isArray(agent)) {
+    const agentRecord = agent as Record<string, unknown>;
+    const id = typeof agentRecord.id === 'string' ? agentRecord.id.trim() : '';
+    const storedPreset = id ? presets.find(p => p.id === id) : null;
+    if (storedPreset) return storedPreset;
+    if (typeof agentRecord.modelId === 'string' && agentRecord.modelId.trim()) {
+      return agent;
+    }
+  }
+
+  const agentConfigId = resolveAgentConfigId(resolvedData);
+  return agentConfigId ? presets.find(p => p.id === agentConfigId) ?? null : presets[0] ?? null;
 }

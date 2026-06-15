@@ -275,6 +275,7 @@ export function AgentDetail({
         <FieldGroup label={t("detail.description")}>
           <Input value={agent.description} onChange={(e) => onChange("description", e.target.value)} />
         </FieldGroup>
+        {!hiddenFields?.runtimeKind && (
         <FieldGroup label={t("detail.agentRuntime")}>
           <SearchSelect
             value={agent.runtimeKind ?? ""}
@@ -286,6 +287,7 @@ export function AgentDetail({
             disabled={lockedFields?.runtimeKind}
           />
         </FieldGroup>
+        )}
       </Section>
 
       {!hiddenFields?.workingDir && (
