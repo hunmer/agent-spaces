@@ -117,6 +117,22 @@ test('search_node_usage filters by node_type without swapping results', async ()
   }
 });
 
+test('search_node_usage explains run_code input fields are exposed as params', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const searchNodeUsage = tools.find((tool) => tool.name === 'search_node_usage');
+  assert.ok(searchNodeUsage);
+
+  const result = await searchNodeUsage.execute({ node_type: 'run_code' }) as {
+    success: boolean;
+    nodes: Array<{ usage?: { runCode?: string } }>;
+  };
+
+  assert.equal(result.success, true);
+  assert.match(result.nodes[0]?.usage?.runCode ?? '', /data\.inputFields/);
+  assert.match(result.nodes[0]?.usage?.runCode ?? '', /params\.agentResult/);
+  assert.match(result.nodes[0]?.usage?.runCode ?? '', /不要.*__data__/);
+});
+
 test('create_workflow_version persists the snapshot for the version panel', async (t) => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-workflow-editor-tools-'));

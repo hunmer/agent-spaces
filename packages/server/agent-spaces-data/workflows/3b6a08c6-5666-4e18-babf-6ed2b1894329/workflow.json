@@ -75,11 +75,19 @@
         "y": 15
       },
       "data": {
-        "code": "async function main({ params, __data__ }) {\n  // 从 agent_run 节点获取字符串结果\n  const resultStr = __data__[\"node_1781515178919_4pjyq2\"].result;\n  try {\n    const parsed = JSON.parse(resultStr);\n    return {\n      scenes: Array.isArray(parsed) ? parsed : []\n    };\n  } catch (e) {\n    // 处理 agent 输出包含 Markdown 代码块的情况\n    const match = resultStr.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n    if (match) {\n      const parsed = JSON.parse(match[1]);\n      return {\n        scenes: Array.isArray(parsed) ? parsed : []\n      };\n    }\n    throw new Error('无法解析JSON结果');\n  }\n}",
+        "code": "async function main({ params, context }) {\n  const resultStr = String(params.agentResult || '');\n  try {\n    const parsed = JSON.parse(resultStr);\n    return {\n      scenes: Array.isArray(parsed) ? parsed : []\n    };\n  } catch (e) {\n    const match = resultStr.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n    if (match) {\n      const parsed = JSON.parse(match[1]);\n      return {\n        scenes: Array.isArray(parsed) ? parsed : []\n      };\n    }\n    throw new Error('无法解析JSON结果');\n  }\n}",
         "outputs": [
           {
             "key": "scenes",
             "type": "any[]"
+          }
+        ],
+        "inputFields": [
+          {
+            "key": "agentResult",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781515178919_4pjyq2\"].result }}",
+            "description": "文案转分镜节点输出的 JSON 字符串"
           }
         ]
       }
@@ -279,7 +287,7 @@
     }
   ],
   "createdAt": 1781500461239,
-  "updatedAt": 1781516832840,
+  "updatedAt": 1781519901594,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"

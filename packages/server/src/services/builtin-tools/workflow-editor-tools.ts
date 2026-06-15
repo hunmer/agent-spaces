@@ -36,11 +36,12 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 4. 节点参数里的字符串值支持变量引用。上游节点输出和开始节点工作流输入都使用 {{ __data__["节点ID"].字段路径 }}；普通节点自身输入字段兼容 {{ __inputs__["节点ID"].字段路径 }}；当前运行上下文使用 {{ context.some.path }}。
 5. 开始节点或支持输入字段的节点，输入字段定义来自 data.inputFields。需要新增或替换输入字段时优先调用 set_node_io_fields，field_kind=inputFields。引用开始节点的运行输入时必须使用 {{ __data__["开始节点ID"].字段 }}。
 6. 结束节点返回结果来自 data.outputs，设置时优先调用 set_node_io_fields，field_kind=outputs；变量放在每个输出项的 value 里，例如 { key, type, value }。
-7. 需要数据整形、字段映射或结构转换时，优先插入 run_code 节点；代码中不要写 {{ }}，必须定义 async function main({ params, context })。
-8. run_code 返回结构变化后，要同步设置节点的 data.outputs，让下游变量选择器能看到字段。
-9. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
-10. 修改后必须调用 auto_layout 整理画布，然后调用 saveworkflow 保存并读取后端返回文本；如果 saveworkflow 返回 success=false，必须根据返回文本继续修正，不能声称已完成。
-11. 在 loop 内创建节点时，必须把节点放进 loop_body：create_node 传 scopeNodeId/scope_node_id 为 loop_body 节点 ID；如果从 loop 的 loop-body 句柄继续创建，也可以传 source 和 sourceHandle=loop-body 让工具自动推断。
+7. 需要数据整形、字段映射或结构转换时，优先插入 run_code 节点；代码中不要写 {{ }}，也不要从 __data__ 读取数据，必须定义 async function main({ params, context })。
+8. run_code 的上游输入必须先写入 data.inputFields，例如 { key: "agentResult", type: "string", value: "{{ __data__[\"上游节点ID\"].result }}" }；代码里始终用 params.agentResult 读取。
+9. run_code 返回结构变化后，要同步设置节点的 data.outputs，让下游变量选择器能看到字段。
+10. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
+11. 修改后必须调用 auto_layout 整理画布，然后调用 saveworkflow 保存并读取后端返回文本；如果 saveworkflow 返回 success=false，必须根据返回文本继续修正，不能声称已完成。
+12. 在 loop 内创建节点时，必须把节点放进 loop_body：create_node 传 scopeNodeId/scope_node_id 为 loop_body 节点 ID；如果从 loop 的 loop-body 句柄继续创建，也可以传 source 和 sourceHandle=loop-body 让工具自动推断。
 
 约束：
 - 只能使用本次 Agent Spaces runtime 暴露的工作流编辑工具。
@@ -633,12 +634,18 @@ function summarizeNodeDefinition(definition: NodeTypeDefinition) {
 }
 
 function describeNodeUsage(definition: NodeTypeDefinition) {
+  const runCodeUsage = definition.type === 'run_code'
+    ? {
+        runCode: 'run_code 支持 data.inputFields 作为代码输入参数。把上游变量引用配置到 inputFields[].value，例如 { key: "agentResult", type: "string", value: "{{ __data__[\\"上游节点ID\\"].result }}" }；JS 代码必须使用 async function main({ params, context })，并通过 params.agentResult 读取。不要在代码签名或代码体里使用 __data__，代码里也不要写 {{ }}。',
+      }
+    : {};
   return {
     ...definition,
     exampleData: defaultData(definition),
     usage: {
       variables: '字符串字段支持 {{ __data__["节点ID"].字段路径 }} 和 {{ context.some.path }}。开始节点的工作流输入也通过 {{ __data__["开始节点ID"].字段 }} 引用；{{ __inputs__["节点ID"].字段路径 }} 仅作为普通节点输入字段的兼容语法。',
       handles: definition.handles ?? {},
+      ...runCodeUsage,
     },
   };
 }
