@@ -418,15 +418,19 @@ export function useEdgeOperations({
     markDirty();
   }, [workflow, isReadOnly, markDirty, setWorkflow]);
 
-  const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => {
+  const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => {
     if (!workflow || isReadOnly || workflow.nodes.length === 0) return;
     const parentId = options?.parentId;
+    const optionNodeIds = options?.nodeIds;
+    const explicitNodeIds = optionNodeIds && optionNodeIds.length > 0 ? new Set(optionNodeIds) : null;
 
     const layoutEngine = options?.layoutEngine || (workflow.layoutSnapshot?.layoutEngine as string) || 'dagre';
     const computeLayout = async (scopeParentId?: string) => {
       const layoutNodes = workflow.nodes.filter(node =>
         !isHiddenWorkflowNode(node)
-        && (scopeParentId ? getCompositeParentId(node) === scopeParentId : !getCompositeParentId(node))
+        && (explicitNodeIds
+          ? explicitNodeIds.has(node.id)
+          : scopeParentId ? getCompositeParentId(node) === scopeParentId : !getCompositeParentId(node))
       );
       if (layoutNodes.length === 0) return null;
 
@@ -506,6 +510,7 @@ export function useEdgeOperations({
 
       return {
         parentId: scopeParentId,
+        preserveOffset: !!scopeParentId || !!explicitNodeIds,
         nodeIds: layoutNodes.map(node => node.id),
         positions: layoutPositions,
       };
@@ -514,7 +519,7 @@ export function useEdgeOperations({
     const rootLayout = await computeLayout(parentId);
     if (!rootLayout) return;
     pushUndo('auto layout');
-    const childLayouts = parentId
+    const childLayouts = parentId || explicitNodeIds
       ? []
       : (await Promise.all(
           workflow.nodes
@@ -542,7 +547,7 @@ export function useEdgeOperations({
           .filter((node): node is Workflow['nodes'][number] => !!node);
         if (currentNodes.length === 0) continue;
 
-        const layoutOffset = layout.parentId
+        const layoutOffset = layout.preserveOffset
           ? {
               x: Math.min(...currentNodes.map(node => node.position.x)) - Math.min(...layoutPositionValues.map(position => position.x)),
               y: Math.min(...currentNodes.map(node => node.position.y)) - Math.min(...layoutPositionValues.map(position => position.y)),

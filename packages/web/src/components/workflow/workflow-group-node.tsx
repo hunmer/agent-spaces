@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronRight, Lock, Unlock, Trash2 } from 'lucide-react';
 import type { WorkflowGroup } from '@agent-spaces/shared';
+import { WorkflowAutoLayoutMenu, type WorkflowAutoLayoutOptions } from './workflow-auto-layout-menu';
 
 /**
  * GroupNode — visual container overlay for grouping nodes on the canvas.
@@ -17,6 +18,8 @@ interface GroupOverlayProps {
   onDelete: (groupId: string) => void;
   onUpdate: (groupId: string, updates: Partial<WorkflowGroup>) => void;
   onMove: (groupId: string, delta: { x: number; y: number }, options?: { pushUndo?: boolean }) => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: WorkflowAutoLayoutOptions) => void;
+  layoutEngine?: string;
   onDragPreviewChange?: (preview: {
     groupId: string;
     bounds: { x: number; y: number; width: number; height: number };
@@ -40,7 +43,7 @@ function getGroupColor(color?: string) {
 
 export function WorkflowGroupOverlay({
   group, childNodes, isSelected,
-  onSelect, onDelete, onUpdate, onMove, onDragPreviewChange, screenDeltaToFlowDelta,
+  onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
 }: GroupOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -48,6 +51,7 @@ export function WorkflowGroupOverlay({
   const [editName, setEditName] = useState(group.name);
   const isDraggingRef = useRef(false);
   const colors = getGroupColor(group.color);
+  const layoutNodeIds = useMemo(() => childNodes.map(node => node.id), [childNodes]);
 
   const bounds = useMemo(() => {
     if (childNodes.length === 0) {
@@ -234,6 +238,14 @@ export function WorkflowGroupOverlay({
               />
             ))}
             <div className="mx-0.5 h-3 w-px bg-border/50" />
+            <WorkflowAutoLayoutMenu
+              onAutoLayout={onAutoLayout}
+              layoutEngine={layoutEngine}
+              nodeIds={layoutNodeIds}
+              disabled={group.locked || layoutNodeIds.length === 0}
+              buttonClassName="h-5 w-5 p-0 hover:bg-black/10 rounded"
+              iconClassName="h-2.5 w-2.5 text-muted-foreground"
+            />
             <button className="p-0.5 hover:bg-black/10 rounded" onPointerDown={stopButtonPointerDown} onClick={handleToggleLock}>
               {group.locked
                 ? <Lock className="h-2.5 w-2.5 text-orange-500" />

@@ -1,13 +1,8 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useTranslations } from 'next-intl';
-import { LayoutGrid } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import type { WorkflowCustomViewProps } from './workflow-node-types';
+import { WorkflowAutoLayoutMenu, type WorkflowAutoLayoutOptions } from './workflow-auto-layout-menu';
 
 type LoopBodyDragEventDetail = {
   nodeId: string;
@@ -20,14 +15,12 @@ function dispatchLoopBodyDrag(detail: LoopBodyDragEventDetail) {
 }
 
 export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
-  const t = useTranslations('workflows');
   const outputLabel = typeof data.outputLabel === 'string' ? data.outputLabel : '';
   const layoutEngine = typeof data.layoutEngine === 'string' ? data.layoutEngine : undefined;
   const onAutoLayout = typeof data.onAutoLayout === 'function'
-    ? data.onAutoLayout as (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void
+    ? data.onAutoLayout as (direction: 'LR' | 'TB', options?: WorkflowAutoLayoutOptions) => void
     : undefined;
   const isLocked = data.isPreview === true || data.isCanvasLocked === true;
-  const autoLayoutOptions = { ...(layoutEngine ? { layoutEngine } : {}), parentId: nodeId };
 
   const handleHeaderPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (isLocked) return;
@@ -102,25 +95,13 @@ export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
               输出: {outputLabel}
             </span>
           ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger render={(
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 text-cyan-900/80 hover:bg-cyan-100/70 hover:text-cyan-950 dark:text-cyan-100/80 dark:hover:bg-cyan-900/35 dark:hover:text-cyan-50"
-                disabled={isLocked || !onAutoLayout}
-                title={t('canvasToolbar.autoLayout')}
-                aria-label={t('canvasToolbar.autoLayout')}
-              />
-            )}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="bottom">
-              <DropdownMenuItem onClick={() => onAutoLayout?.('LR', autoLayoutOptions)}>{t('canvasToolbar.horizontalLayout')}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onAutoLayout?.('TB', autoLayoutOptions)}>{t('canvasToolbar.verticalLayout')}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <WorkflowAutoLayoutMenu
+            onAutoLayout={onAutoLayout}
+            layoutEngine={layoutEngine}
+            parentId={nodeId}
+            disabled={isLocked}
+            buttonClassName="h-6 w-6 p-0 text-cyan-900/80 hover:bg-cyan-100/70 hover:text-cyan-950 dark:text-cyan-100/80 dark:hover:bg-cyan-900/35 dark:hover:text-cyan-50"
+          />
         </div>
       </div>
     </div>

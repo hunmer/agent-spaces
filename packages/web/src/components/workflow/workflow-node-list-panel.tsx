@@ -4,8 +4,10 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Play, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 type NodeLike = { id: string; type?: string; label?: string };
 type EdgeLike = { source: string; target: string };
@@ -93,6 +95,7 @@ export function WorkflowNodeListPanel({
     const node = nodeMap.get(id);
     if (!node) return null;
     const label = node.label || node.type || id;
+    const definition = node.type ? getNodeDefinition(node.type) : null;
     const active = selectedNodeId === id;
     return (
       <div
@@ -103,6 +106,9 @@ export function WorkflowNodeListPanel({
         )}
         onClick={() => onSelectNode(id)}
       >
+        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted-foreground">
+          <WorkflowNodeDefinitionIcon definition={definition} className="h-3.5 w-3.5" />
+        </span>
         <span className="min-w-0 flex-1 truncate text-xs">{label}</span>
         {node.type && (
           <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">

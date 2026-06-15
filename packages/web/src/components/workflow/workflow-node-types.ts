@@ -32,7 +32,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   handleColors?: Record<string, string>;
   executionStep?: import('@agent-spaces/shared').ExecutionStep;
   executionSteps?: import('@agent-spaces/shared').ExecutionStep[];
-  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
   layoutEngine?: string;
 };
 

@@ -135,7 +135,7 @@ interface UseCanvasDataParams {
   logPanelLayout?: WorkflowLogPanelLayout;
   edgePathType?: string;
   edgeLineStyle?: string;
-  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
   layoutEngine?: string;
 }
 

@@ -112,7 +112,7 @@ interface WorkflowCanvasProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onExitPreview?: () => void;
-  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
   copiedNodeCount?: number;
   copiedRecords?: WorkflowClipboardRecord[];
   onPasteRecord?: (id: string) => void;
@@ -846,6 +846,8 @@ export function WorkflowCanvas({
               onDelete={(groupId) => onGroupDelete?.(groupId)}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
               onMove={(groupId, delta, options) => onGroupMove?.(groupId, delta, options)}
+              onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
+              layoutEngine={layoutEngine}
               onDragPreviewChange={(preview) => {
                 setDragPreview(preview
                   ? {
