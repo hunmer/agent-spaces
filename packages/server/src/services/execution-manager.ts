@@ -528,7 +528,7 @@ export class ExecutionManager {
         : result;
 
       session.context[node.id] = step.output;
-      this.setNodeExecutionData(session, node.id, result);
+      this.setNodeExecutionData(session, node.id, normalizeNodeResult(result));
       if (node.type === 'start') this.setNodeExecutionInput(session, node.id, result);
 
       if (node.type === 'switch' && result?.__branch__) {

@@ -1,0 +1,346 @@
+{
+  "id": "6c6b69f7-b0bf-45d4-a005-f540cea0737d",
+  "workflowId": "3b6a08c6-5666-4e18-babf-6ed2b1894329",
+  "name": "添加风格参数前备份",
+  "snapshot": {
+    "nodes": [
+      {
+        "id": "node_1781500461235_start",
+        "type": "start",
+        "label": "开始",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "data": {
+          "inputFields": [
+            {
+              "key": "story",
+              "type": "string",
+              "description": "故事文案文本",
+              "required": true
+            }
+          ]
+        }
+      },
+      {
+        "id": "node_1781500461235_end",
+        "type": "end",
+        "label": "结束",
+        "position": {
+          "x": 1200,
+          "y": 0
+        },
+        "data": {
+          "outputs": [
+            {
+              "key": "images",
+              "type": "image[]",
+              "value": "{{ __data__[\"node_1781515208813_wjxo2a\"].items }}",
+              "description": "生成的图片列表"
+            }
+          ]
+        }
+      },
+      {
+        "id": "node_1781515178919_4pjyq2",
+        "type": "agent_run",
+        "label": "文案转分镜",
+        "position": {
+          "x": 300,
+          "y": 0
+        },
+        "data": {
+          "permissionMode": "dontAsk",
+          "loadProjectClaudeMd": true,
+          "loadRuleMd": true,
+          "outputs": [
+            {
+              "key": "result",
+              "type": "string"
+            },
+            {
+              "key": "usage",
+              "type": "object"
+            }
+          ],
+          "prompt": "将以下故事文本转换为分镜镜头JSON格式，每个分镜包含：\n- copy: 文案文本\n- prompt: 画面提示词\n\n请返回一个分镜数组，格式如下：\n```json\n[\n  {\n    \"copy\": \"文案内容\",\n    \"prompt\": \"画面描述\"\n  }\n]\n```\n\n故事文本：{{ __data__[\"node_1781500461235_start\"].story }}",
+          "agent": {
+            "id": "script-master",
+            "name": "文案生成脚本大师",
+            "role": "文案生成脚本大师",
+            "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+            "runtimeKind": "langchain",
+            "modelProvider": "openai-chat-completions",
+            "providerId": "ee63f218-910d-4ecb-82d7-a719def26867",
+            "modelId": "MiniMax-M3",
+            "apiBase": "https://api.minimaxi.com/v1",
+            "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+            "workingDir": "",
+            "mcps": {
+              "mcpServers": {}
+            },
+            "skills": [
+              {
+                "name": "coding.md",
+                "content": "# coding\n"
+              },
+              {
+                "name": "debugging.md",
+                "content": "# debugging\n"
+              },
+              {
+                "name": "testing.md",
+                "content": "# testing\n"
+              }
+            ],
+            "tools": [],
+            "systemPrompt": "你是一个专业的文案生成脚本大师，擅长创作各种类型的文案和脚本。",
+            "outputStyle": "",
+            "temperature": 0.3,
+            "maxTokens": 8192,
+            "avatarUrl": "",
+            "icon": "",
+            "enabled": true
+          }
+        }
+      },
+      {
+        "id": "node_1781515192321_x5xihr",
+        "type": "run_code",
+        "label": "解析JSON",
+        "position": {
+          "x": 600,
+          "y": 0
+        },
+        "data": {
+          "code": "async function main({ params, context }) {\n  const resultStr = String(params.agentResult || '').trim();\n\n  const parseScenes = (text) => {\n    const parsed = JSON.parse(text);\n    return { scenes: Array.isArray(parsed) ? parsed : [] };\n  };\n\n  const extractFirstJsonArray = (text) => {\n    const start = text.indexOf('[');\n    if (start === -1) return null;\n    let depth = 0;\n    let inString = false;\n    let escaped = false;\n\n    for (let i = start; i < text.length; i++) {\n      const ch = text[i];\n      if (inString) {\n        if (escaped) {\n          escaped = false;\n        } else if (ch === '\\\\') {\n          escaped = true;\n        } else if (ch === '\"') {\n          inString = false;\n        }\n        continue;\n      }\n      if (ch === '\"') {\n        inString = true;\n      } else if (ch === '[') {\n        depth++;\n      } else if (ch === ']') {\n        depth--;\n        if (depth === 0) return text.slice(start, i + 1);\n      }\n    }\n    return null;\n  };\n\n  try {\n    return parseScenes(resultStr);\n  } catch (e) {\n    const blockMatch = resultStr.match(/```(?:json)?\\s*([\\s\\S]*?)\\s*```/);\n    if (blockMatch) return parseScenes(blockMatch[1]);\n\n    const firstArray = extractFirstJsonArray(resultStr);\n    if (firstArray) return parseScenes(firstArray);\n\n    throw new Error('无法解析JSON结果');\n  }\n}",
+          "outputs": [
+            {
+              "key": "result",
+              "type": "object",
+              "children": [
+                {
+                  "key": "scenes",
+                  "type": "array",
+                  "children": [
+                    {
+                      "key": "copy",
+                      "type": "string"
+                    },
+                    {
+                      "key": "prompt",
+                      "type": "string"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "inputFields": [
+            {
+              "key": "agentResult",
+              "type": "string",
+              "value": "{{ __data__[\"node_1781515178919_4pjyq2\"].result }}",
+              "description": "文案转分镜节点输出的 JSON 字符串"
+            }
+          ]
+        }
+      },
+      {
+        "id": "node_1781515208813_wjxo2a",
+        "type": "loop",
+        "label": "遍历分镜",
+        "position": {
+          "x": 900,
+          "y": 0
+        },
+        "data": {
+          "loopType": "array",
+          "count": 1,
+          "concurrency": 1,
+          "sharedVariables": [],
+          "outputs": [
+            {
+              "key": "items",
+              "type": "any"
+            }
+          ],
+          "arrayPath": "{{ __data__[\"node_1781515192321_x5xihr\"].result.scenes }}"
+        },
+        "composite": {
+          "role": "loop",
+          "generated": false,
+          "hidden": false,
+          "scopeBoundary": false,
+          "rootId": "node_1781515208813_wjxo2a",
+          "parentId": null
+        }
+      },
+      {
+        "id": "node_1781515208814_nerfw9",
+        "type": "loop_body",
+        "label": "nodes.loop_body.label",
+        "position": {
+          "x": 419.6696811855444,
+          "y": 292.0015607915407
+        },
+        "data": {
+          "width": 150,
+          "height": 260,
+          "nodeWidth": 1000.0000000000001,
+          "nodeHeight": 280
+        },
+        "composite": {
+          "role": "loop_body",
+          "generated": true,
+          "hidden": false,
+          "scopeBoundary": true,
+          "rootId": "node_1781515208813_wjxo2a",
+          "parentId": "node_1781515208813_wjxo2a"
+        }
+      },
+      {
+        "id": "node_1781515208814_1fgn2z",
+        "type": "start",
+        "label": "遍历分镜开始",
+        "position": {
+          "x": 499.6696811855444,
+          "y": 372.0015607915407
+        },
+        "data": {},
+        "composite": {
+          "rootId": "node_1781515208814_nerfw9",
+          "parentId": "node_1781515208814_nerfw9",
+          "generated": true,
+          "hidden": false
+        }
+      },
+      {
+        "id": "node_1781515208814_mtuujj",
+        "type": "end",
+        "label": "遍历分镜结束",
+        "position": {
+          "x": 1099.6696811855445,
+          "y": 372.0015607915407
+        },
+        "data": {},
+        "composite": {
+          "rootId": "node_1781515208814_nerfw9",
+          "parentId": "node_1781515208814_nerfw9",
+          "generated": true,
+          "hidden": false
+        }
+      },
+      {
+        "id": "node_1781515235358_i0buc9",
+        "type": "jimeng_text_to_image",
+        "label": "生成分镜图片",
+        "position": {
+          "x": 799.6696811855444,
+          "y": 372.0015607915407
+        },
+        "data": {
+          "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+          "model": "jimeng-4.5",
+          "ratio": "16:9",
+          "resolution": "2k",
+          "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+          "outputs": [
+            {
+              "key": "success",
+              "type": "boolean"
+            },
+            {
+              "key": "message",
+              "type": "string"
+            },
+            {
+              "key": "data",
+              "type": "object",
+              "children": [
+                {
+                  "key": "images",
+                  "type": "image[]"
+                },
+                {
+                  "key": "created",
+                  "type": "number"
+                }
+              ]
+            }
+          ],
+          "prompt": "{{ __loop__.item.prompt }}"
+        },
+        "composite": {
+          "rootId": "node_1781515208814_nerfw9",
+          "parentId": "node_1781515208814_nerfw9",
+          "generated": false,
+          "hidden": false
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-node_1781500461235_start-node_1781515178919_4pjyq2-mqf05c01",
+        "source": "node_1781500461235_start",
+        "target": "node_1781515178919_4pjyq2"
+      },
+      {
+        "id": "e-node_1781515208813_wjxo2a-loop-body-node_1781515208814_nerfw9-target",
+        "source": "node_1781515208813_wjxo2a",
+        "target": "node_1781515208814_nerfw9",
+        "sourceHandle": "loop-body",
+        "targetHandle": "target",
+        "composite": {
+          "rootId": "node_1781515208813_wjxo2a",
+          "parentId": "node_1781515208813_wjxo2a",
+          "generated": true,
+          "hidden": false,
+          "locked": true
+        }
+      },
+      {
+        "id": "e-node_1781515208814_nerfw9-source-node_1781515208814_1fgn2z-target",
+        "source": "node_1781515208814_nerfw9",
+        "target": "node_1781515208814_1fgn2z",
+        "sourceHandle": null,
+        "targetHandle": "target",
+        "composite": {
+          "rootId": "node_1781515208814_nerfw9",
+          "parentId": "node_1781515208814_nerfw9",
+          "generated": true,
+          "hidden": true,
+          "locked": true
+        }
+      },
+      {
+        "id": "e-node_1781515192321_x5xihr-node_1781515208813_wjxo2a-mqf05u1f",
+        "source": "node_1781515192321_x5xihr",
+        "target": "node_1781515208813_wjxo2a"
+      },
+      {
+        "id": "e-node_1781515178919_4pjyq2-node_1781515192321_x5xihr-mqf05ysl",
+        "source": "node_1781515178919_4pjyq2",
+        "target": "node_1781515192321_x5xihr"
+      },
+      {
+        "id": "e-node_1781515208814_1fgn2z-node_1781515235358_i0buc9-mqf06rjf",
+        "source": "node_1781515208814_1fgn2z",
+        "target": "node_1781515235358_i0buc9"
+      },
+      {
+        "id": "e-node_1781515235358_i0buc9-node_1781515208814_mtuujj-mqf06rjg",
+        "source": "node_1781515235358_i0buc9",
+        "target": "node_1781515208814_mtuujj"
+      },
+      {
+        "id": "e-node_1781515208813_wjxo2a-node_1781500461235_end-mqf097ei",
+        "source": "node_1781515208813_wjxo2a",
+        "target": "node_1781500461235_end",
+        "sourceHandle": "loop-next"
+      }
+    ]
+  },
+  "createdAt": 1781530499326
+}
