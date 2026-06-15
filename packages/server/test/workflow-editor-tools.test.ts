@@ -157,6 +157,98 @@ test('create_workflow_version persists the snapshot for the version panel', asyn
   assert.deepEqual(versions[0].snapshot.nodes, savedWorkflow.nodes);
 });
 
+test('saveworkflow persists the current draft and returns backend validation text', async (t) => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-workflow-editor-tools-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+  t.after(() => {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const savedWorkflow = workflowService.createWorkflow({
+    name: 'test workflow',
+    nodes: [{
+      id: 'node-1',
+      type: 'run_code',
+      label: 'Run code',
+      position: { x: 0, y: 0 },
+      data: { code: 'return {};' },
+    }],
+    edges: [],
+  });
+  const tools = createWorkflowEditorFunctionTools({ workflow: savedWorkflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const saveWorkflow = tools.find((tool) => tool.name === 'saveworkflow');
+  assert.ok(createNode);
+  assert.ok(saveWorkflow);
+
+  const createResult = await createNode.execute({ type: 'toast', label: 'Saved toast' }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(createResult.success, true);
+
+  const saveResult = await saveWorkflow.execute({}) as {
+    success: boolean;
+    message: string;
+    backend_message: string;
+    workflow_patch: { nodes: Workflow['nodes'] };
+  };
+
+  assert.equal(saveResult.success, true);
+  assert.equal(saveResult.message, '工作流已保存，后端校验通过。');
+  assert.equal(saveResult.backend_message, '工作流已保存，后端校验通过。');
+  assert.equal(saveResult.workflow_patch.nodes.some((node) => node.id === createResult.created_node_id), true);
+  assert.equal(workflowService.getWorkflow(savedWorkflow.id)?.nodes.some((node) => node.id === createResult.created_node_id), true);
+});
+
+test('saveworkflow returns backend validation errors without persisting invalid drafts', async (t) => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-workflow-editor-tools-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+  t.after(() => {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const savedWorkflow = workflowService.createWorkflow({
+    name: 'test workflow',
+    nodes: [{
+      id: 'node-1',
+      type: 'run_code',
+      label: 'Run code',
+      position: { x: 0, y: 0 },
+      data: { code: 'return {};' },
+    }],
+    edges: [],
+  });
+  const tools = createWorkflowEditorFunctionTools({ workflow: savedWorkflow, nodeDefinitions });
+  const createEdge = tools.find((tool) => tool.name === 'create_edge');
+  const saveWorkflow = tools.find((tool) => tool.name === 'saveworkflow');
+  assert.ok(createEdge);
+  assert.ok(saveWorkflow);
+
+  const edgeResult = await createEdge.execute({
+    source: 'node-1',
+    target: 'node-1',
+  }) as { success: boolean };
+  assert.equal(edgeResult.success, true);
+
+  const saveResult = await saveWorkflow.execute({}) as {
+    success: boolean;
+    message: string;
+    backend_message: string;
+  };
+
+  assert.equal(saveResult.success, false);
+  assert.equal(saveResult.message, 'Self-loops are not allowed');
+  assert.equal(saveResult.backend_message, 'Self-loops are not allowed');
+  assert.equal(workflowService.getWorkflow(savedWorkflow.id)?.edges.length, 0);
+});
+
 test('create_node can infer loop_body scope from loop-body source handle', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const createNode = tools.find((tool) => tool.name === 'create_node');

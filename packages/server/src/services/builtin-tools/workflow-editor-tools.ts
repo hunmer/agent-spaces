@@ -39,7 +39,7 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 7. 需要数据整形、字段映射或结构转换时，优先插入 run_code 节点；代码中不要写 {{ }}，必须定义 async function main({ params, context })。
 8. run_code 返回结构变化后，要同步设置节点的 data.outputs，让下游变量选择器能看到字段。
 9. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
-10. 修改后通常调用 auto_layout 整理画布。
+10. 修改后必须调用 auto_layout 整理画布，然后调用 saveworkflow 保存并读取后端返回文本；如果 saveworkflow 返回 success=false，必须根据返回文本继续修正，不能声称已完成。
 11. 在 loop 内创建节点时，必须把节点放进 loop_body：create_node 传 scopeNodeId/scope_node_id 为 loop_body 节点 ID；如果从 loop 的 loop-body 句柄继续创建，也可以传 source 和 sourceHandle=loop-body 让工具自动推断。
 
 约束：
@@ -542,6 +542,27 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         const nodes = layoutNodes(draft.nodes, draft.edges, ctx.nodeDefinitions, direction);
         const affectedNodeCount = countPositionChanges(draft.nodes, nodes);
         return commitCompact({ ...draft, nodes }, { affected_node_count: affectedNodeCount });
+      },
+    },
+    {
+      name: 'saveworkflow',
+      description: '保存当前工作流草稿到后端，触发后端工作流校验，并返回后端文本。通常在 auto_layout 后调用；success=false 时根据 message 修正工作流。',
+      inputSchema: schema({}),
+      execute: async () => {
+        try {
+          const saved = workflowService.updateWorkflow(draft.id, draft);
+          draft = cloneWorkflow(saved);
+          return workflowResult(true, '工作流已保存，后端校验通过。', draft, undefined, {
+            backend_message: '工作流已保存，后端校验通过。',
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : '保存工作流失败';
+          return {
+            success: false,
+            message,
+            backend_message: message,
+          };
+        }
       },
     },
   ];
