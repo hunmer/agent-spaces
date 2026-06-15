@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 import Dagre from '@dagrejs/dagre';
 import type { NodeTypeDefinition, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import {
+  createWorkflowNodesForDefinition,
   getCompositeParentId,
   isHiddenWorkflowEdge,
   isHiddenWorkflowNode,
@@ -239,14 +240,24 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         if (!type) return { success: false, message: 'type is required' };
         const definition = definitionByType.get(type);
         if (!definition) return { success: false, message: `Unknown node type: ${type}` };
-        const node: WorkflowNode = {
-          id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        const created = createWorkflowNodesForDefinition({
+          definitions: ctx.nodeDefinitions,
           type,
-          label: stringInput(record, 'label') ?? definition.label,
+          rootLabel: stringInput(record, 'label'),
           position: nextNodePosition(draft.nodes),
-          data: { ...defaultData(definition), ...objectInput(record, 'data') },
-        };
-        return commit({ ...draft, nodes: [...draft.nodes, node] });
+          rootData: objectInput(record, 'data'),
+          createNodeId: createWorkflowNodeId,
+        });
+        if (!created) return { success: false, message: `Failed to create node type: ${type}` };
+        return commit({
+          ...draft,
+          nodes: [...draft.nodes, ...created.nodes],
+          edges: [...draft.edges, ...created.edges],
+        }, {
+          created_node_id: created.rootNode.id,
+          created_node_ids: created.nodes.map((node) => node.id),
+          created_edge_ids: created.edges.map((edge) => edge.id),
+        });
       },
     },
     {
@@ -804,6 +815,10 @@ function mergeOutputFields(existing: OutputField[], incoming: OutputField[], mod
     }
   }
   return merged;
+}
+
+function createWorkflowNodeId(): string {
+  return `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function clone<T>(value: T): T {

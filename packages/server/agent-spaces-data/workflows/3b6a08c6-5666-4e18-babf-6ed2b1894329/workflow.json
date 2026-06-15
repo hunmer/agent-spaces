@@ -11,7 +11,16 @@
         "x": 0,
         "y": 30
       },
-      "data": {}
+      "data": {
+        "inputFields": [
+          {
+            "key": "story",
+            "type": "string",
+            "description": "故事文案文本",
+            "required": true
+          }
+        ]
+      }
     },
     {
       "id": "node_1781500461235_end",
@@ -26,7 +35,7 @@
   ],
   "edges": [],
   "createdAt": 1781500461239,
-  "updatedAt": 1781501820942,
+  "updatedAt": 1781502481907,
   "groups": [],
   "enabledPlugins": [
     "workflow.jimeng"

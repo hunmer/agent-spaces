@@ -102,12 +102,16 @@ export function CanvasToolbar({
             {logsCollapsed ? <PanelBottomOpen className="h-3.5 w-3.5" /> : <PanelBottomClose className="h-3.5 w-3.5" />}
           </CanvasToolbarButton>
         )}
-        <CanvasToolbarButton tooltip={t('canvasToolbar.undo')} disabled={!canUndo} onClick={onUndo}>
-          <RotateCcw className="h-3.5 w-3.5" />
-        </CanvasToolbarButton>
-        <CanvasToolbarButton tooltip={t('canvasToolbar.redo')} disabled={!canRedo} onClick={onRedo}>
-          <RotateCw className="h-3.5 w-3.5" />
-        </CanvasToolbarButton>
+        {canUndo && (
+          <CanvasToolbarButton tooltip={t('canvasToolbar.undo')} onClick={onUndo}>
+            <RotateCcw className="h-3.5 w-3.5" />
+          </CanvasToolbarButton>
+        )}
+        {canRedo && (
+          <CanvasToolbarButton tooltip={t('canvasToolbar.redo')} onClick={onRedo}>
+            <RotateCw className="h-3.5 w-3.5" />
+          </CanvasToolbarButton>
+        )}
 
         {copiedNodeCount > 0 && (
           <DropdownMenu>

@@ -9,6 +9,7 @@ export * from './git.js';
 export * from './llm.js';
 export * from './tool.js';
 export * from './workflow.js';
+export * from './workflow-node-factory.js';
 export * from './workflow-execution.js';
 export * from './workflow-errors.js';
 export * from './workflow-plugin.js';

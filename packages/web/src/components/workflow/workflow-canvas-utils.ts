@@ -12,6 +12,7 @@ import {
   getCompositeRootId,
   isHiddenWorkflowNode,
   isScopeBoundaryWorkflowNode,
+  createWorkflowNodesForDefinition,
 } from '@agent-spaces/shared';
 
 export {
@@ -20,7 +21,7 @@ export {
   isScopeBoundaryWorkflowNode,
 };
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
-import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { getAllNodeDefinitions, getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 
 // ---- Type guards & helpers ----
@@ -160,24 +161,6 @@ export function getWorkflowNodeDeleteIds(
 
 export function createWorkflowNodeId(): string {
   return `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-// ---- Node data helpers ----
-
-export function createNodeData(type: string): Record<string, unknown> {
-  const def = getNodeDefinition(type);
-  const data: Record<string, unknown> = {};
-  if (def?.properties) {
-    for (const prop of def.properties) {
-      if (prop.default !== undefined) data[prop.key] = prop.default;
-    }
-  }
-  if (def?.outputs?.length) data.outputs = def.outputs;
-  return data;
-}
-
-export function cloneNodeData(data: Record<string, unknown>): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
 }
 
 export function cloneData<T>(value: T): T {
@@ -446,79 +429,8 @@ export function shiftScopeChildren(
   }
 }
 
-// ---- Loop body boundary nodes ----
-
 export function createLoopBoundaryLabel(loopNode: Workflow['nodes'][0], type: 'start' | 'end'): string {
   return `${loopNode.label || '循环'}${type === 'start' ? '开始' : '结束'}`;
-}
-
-export function createLoopBodyBoundaryNodes(
-  loopNode: Workflow['nodes'][0],
-  bodyNode: Workflow['nodes'][0],
-): { nodes: Workflow['nodes']; edges: Workflow['edges'] } {
-  const startNode: Workflow['nodes'][0] = {
-    id: createWorkflowNodeId(),
-    type: 'start',
-    label: createLoopBoundaryLabel(loopNode, 'start'),
-    position: { x: bodyNode.position.x + 80, y: bodyNode.position.y + 140 },
-    data: {},
-    composite: {
-      rootId: bodyNode.id,
-      parentId: bodyNode.id,
-      generated: true,
-      hidden: false,
-    },
-  };
-  const endNode: Workflow['nodes'][0] = {
-    id: createWorkflowNodeId(),
-    type: 'end',
-    label: createLoopBoundaryLabel(loopNode, 'end'),
-    position: { x: bodyNode.position.x + 420, y: bodyNode.position.y + 140 },
-    data: {},
-    composite: {
-      rootId: bodyNode.id,
-      parentId: bodyNode.id,
-      generated: true,
-      hidden: false,
-    },
-  };
-
-  return {
-    nodes: [startNode, endNode],
-    edges: [
-      {
-        id: createWorkflowEdgeId({
-          source: bodyNode.id,
-          target: startNode.id,
-          sourceHandle: null,
-          targetHandle: 'target',
-        }),
-        source: bodyNode.id,
-        target: startNode.id,
-        sourceHandle: null,
-        targetHandle: 'target',
-        composite: {
-          rootId: bodyNode.id,
-          parentId: bodyNode.id,
-          generated: true,
-          hidden: true,
-          locked: true,
-        },
-      },
-      {
-        id: createWorkflowEdgeId({
-          source: startNode.id,
-          target: endNode.id,
-          sourceHandle: null,
-          targetHandle: 'target',
-        }),
-        source: startNode.id,
-        target: endNode.id,
-        sourceHandle: null,
-        targetHandle: 'target',
-      },
-    ],
-  };
 }
 
 export function ensureLoopBodyBoundaryNodes(nodes: Workflow['nodes'], edges: Workflow['edges']): boolean {
@@ -660,128 +572,16 @@ export function createNodesForDefinition(
   rootData?: Record<string, unknown>,
   scopeNode?: Workflow['nodes'][0] | null,
 ): { rootNode: Workflow['nodes'][0]; nodes: Workflow['nodes']; edges: Workflow['edges'] } | null {
-  const def = getNodeDefinition(type);
-  const scopeComposite = scopeNode
-    ? {
-        rootId: scopeNode.composite?.rootId || scopeNode.id,
-        parentId: scopeNode.id,
-        generated: false,
-        hidden: false,
-      }
-    : undefined;
-
-  if (!def?.compound) {
-    const rootNode: Workflow['nodes'][0] = {
-      id: createWorkflowNodeId(),
-      type,
-      label: def?.label || type,
-      position,
-      data: { ...createNodeData(type), ...(rootData || {}) },
-      composite: scopeComposite,
-    };
-    return { rootNode, nodes: [rootNode], edges: [] };
-  }
-
-  const roleMap = new Map<string, Workflow['nodes'][0]>();
-  const rootRole = def.compound.rootRole || def.compound.children[0]?.role;
-  if (!rootRole) return null;
-
-  for (const childDef of def.compound.children) {
-    const isRoot = childDef.role === rootRole;
-    const nodeDefinition = getNodeDefinition(childDef.type);
-    const offset = childDef.offset || { x: 0, y: 0 };
-    const childData = {
-      ...createNodeData(childDef.type),
-      ...(childDef.data ? cloneNodeData(childDef.data) : {}),
-      ...(isRoot && rootData ? rootData : {}),
-    };
-    const node: Workflow['nodes'][0] = {
-      id: createWorkflowNodeId(),
-      type: childDef.type,
-      label: isRoot ? (def.label || childDef.label || childDef.type) : (childDef.label || nodeDefinition?.label || childDef.type),
-      position: {
-        x: position.x + offset.x,
-        y: position.y + offset.y,
-      },
-      data: childData,
-      composite: {
-        role: childDef.role,
-        generated: !isRoot,
-        hidden: !!childDef.hidden,
-        scopeBoundary: !!childDef.scopeBoundary,
-      },
-    };
-    roleMap.set(childDef.role, node);
-  }
-
-  const rootNode = roleMap.get(rootRole);
-  if (!rootNode) return null;
-
-  rootNode.composite = {
-    ...(rootNode.composite || {}),
-    rootId: rootNode.id,
-    parentId: null,
-    generated: false,
-    hidden: false,
-  };
-
-  for (const childDef of def.compound.children) {
-    const node = roleMap.get(childDef.role);
-    if (!node || node.id === rootNode.id) continue;
-    const parentRole = childDef.parentRole || rootRole;
-    const parentNode = roleMap.get(parentRole);
-    node.composite = {
-      ...(node.composite || {}),
-      rootId: rootNode.id,
-      parentId: parentNode?.id || rootNode.id,
-    };
-  }
-
-  if (scopeNode) {
-    for (const node of roleMap.values()) {
-      node.composite = {
-        ...(node.composite || {}),
-        rootId: scopeNode.composite?.rootId || scopeNode.id,
-        parentId: scopeNode.id,
-      };
-    }
-  }
-
-  const edges: Workflow['edges'] = [];
-  for (const edgeDef of def.compound.edges || []) {
-    const sourceNode = roleMap.get(edgeDef.sourceRole);
-    const targetNode = roleMap.get(edgeDef.targetRole);
-    if (!sourceNode || !targetNode) continue;
-    edges.push({
-      id: createWorkflowEdgeId({
-        source: sourceNode.id,
-        target: targetNode.id,
-        sourceHandle: edgeDef.sourceHandle,
-        targetHandle: edgeDef.targetHandle,
-      }),
-      source: sourceNode.id,
-      target: targetNode.id,
-      sourceHandle: edgeDef.sourceHandle ?? null,
-      targetHandle: edgeDef.targetHandle ?? null,
-      composite: {
-        rootId: rootNode.id,
-        parentId: sourceNode.id,
-        generated: true,
-        hidden: !!edgeDef.hidden,
-        locked: !!edgeDef.locked,
-      },
-    });
-  }
-
-  const nodes = [rootNode, ...Array.from(roleMap.values()).filter(node => node.id !== rootNode.id)];
-  const bodyNode = Array.from(roleMap.values()).find(node => node.type === LOOP_BODY_NODE_TYPE);
-  if (bodyNode) {
-    const boundaries = createLoopBodyBoundaryNodes(rootNode, bodyNode);
-    nodes.push(...boundaries.nodes);
-    edges.push(...boundaries.edges);
-    syncScopeBoundaryLayout(nodes, bodyNode.id);
-  }
-  return { rootNode, nodes, edges };
+  return createWorkflowNodesForDefinition({
+    definitions: getAllNodeDefinitions(),
+    type,
+    position,
+    rootData,
+    scopeNode,
+    createNodeId: createWorkflowNodeId,
+    createEdgeId: createWorkflowEdgeId,
+    getNodeSize: getLayoutNodeSize,
+  });
 }
 
 export function getOutgoingSourceHandle(type: string): string | undefined {

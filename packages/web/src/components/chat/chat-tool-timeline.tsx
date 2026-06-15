@@ -4,7 +4,7 @@ import { JsonViewer } from "@/components/viewers/json-viewer";
 import { Markdown } from "@/components/ui/markdown";
 import { cn } from "@/lib/utils";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
-import { AlertCircle, CheckCircle2, ChevronDown, Loader2, Wrench } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Copy, Loader2, Wrench } from "lucide-react";
 import { useState } from "react";
 
 export function normalizeChatTimeline(
@@ -24,7 +24,21 @@ export function ChatToolTimeline({
   workspaceId?: string;
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const items = normalizeChatTimeline(timeline);
+
+  const handleCopyTool = async (e: React.MouseEvent, item: WorkflowAgentTimelineItem) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(item, null, 2));
+      setCopiedId(item.id);
+      window.setTimeout(() => {
+        setCopiedId((current) => (current === item.id ? null : current));
+      }, 1200);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
   if (!items.length) return null;
 
   return (
@@ -50,22 +64,45 @@ export function ChatToolTimeline({
         const isError = item.status === "error" || missingResult;
         return (
           <div key={`${item.id}-${index}`} className="rounded-lg border bg-background/80 text-xs shadow-sm">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
-              onClick={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
-            >
-              {item.status === "running" ? (
-                <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
-              ) : isError ? (
-                <AlertCircle className="size-3.5 shrink-0 text-destructive" />
-              ) : (
-                <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
-              )}
-              <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
-              <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
-            </button>
+            <div className="group flex w-full items-center gap-1 px-2.5 py-2">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                onClick={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
+              >
+                {item.status === "running" ? (
+                  <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+                ) : isError ? (
+                  <AlertCircle className="size-3.5 shrink-0 text-destructive" />
+                ) : (
+                  <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
+                )}
+                <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+              </button>
+              <button
+                type="button"
+                title={copiedId === item.id ? "已复制" : "复制完整 JSON"}
+                className={cn(
+                  "shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground",
+                  copiedId === item.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                )}
+                onClick={(e) => handleCopyTool(e, item)}
+              >
+                {copiedId === item.id ? (
+                  <Check className="size-3.5 text-emerald-600" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </button>
+              <button
+                type="button"
+                className="shrink-0 p-0.5 text-muted-foreground"
+                onClick={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
+              >
+                <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+              </button>
+            </div>
             {open ? (
               <div className="border-t px-2.5 py-2">
                 <ToolJsonBlock label="Input" value={item.input} />

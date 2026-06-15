@@ -171,7 +171,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
 
     const content = (
       <div className={cn("flex gap-3 group/message", msg.role === "user" && "flex-row-reverse self-end", messageClassName)}>
-        <div className={cn("flex max-w-[85%] flex-col gap-1", msg.role === "user" && "items-end")}>
+        <div className={cn("flex min-w-0 max-w-[85%] flex-col gap-1", msg.role === "user" && "items-end")}>
           {hasMessageBody ? (
             <div
               className={cn(

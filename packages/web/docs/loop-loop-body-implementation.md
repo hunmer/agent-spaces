@@ -50,8 +50,9 @@
 创建与补齐逻辑在：
 
 - `src/components/workflow/use-workflow-editor-canvas.ts`
-  - `createLoopBodyBoundaryNodes`
   - `ensureLoopBodyBoundaryNodes`
+- `packages/shared/src/types/workflow-node-factory.ts`
+  - `createWorkflowNodesForDefinition`
 
 ## Scope 布局同步
 
@@ -138,4 +139,3 @@ ReactFlow 可能在删除受保护节点时同时发出关联边删除事件，�
 - `handleNodeDelete`
 - `handleNodesChange`
 - `handleEdgesChange`
-
