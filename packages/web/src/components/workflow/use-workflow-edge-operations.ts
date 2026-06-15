@@ -7,7 +7,12 @@ import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { Workflow } from '@agent-spaces/shared';
-import { isHiddenWorkflowEdge, isHiddenWorkflowNode, getCompositeParentId } from '@agent-spaces/shared';
+import {
+  isHiddenWorkflowEdge,
+  isHiddenWorkflowNode,
+  getCompositeParentId,
+  LOOP_BODY_NODE_TYPE,
+} from '@agent-spaces/shared';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
@@ -416,132 +421,165 @@ export function useEdgeOperations({
   const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => {
     if (!workflow || isReadOnly || workflow.nodes.length === 0) return;
     const parentId = options?.parentId;
-    const layoutNodes = workflow.nodes.filter(node =>
-      !isHiddenWorkflowNode(node)
-      && (parentId ? getCompositeParentId(node) === parentId : !getCompositeParentId(node))
-    );
-    if (layoutNodes.length === 0) return;
-
-    pushUndo('auto layout');
 
     const layoutEngine = options?.layoutEngine || (workflow.layoutSnapshot?.layoutEngine as string) || 'dagre';
-    const layoutNodeIds = new Set(layoutNodes.map(node => node.id));
-    const nodeSizes = new Map<string, { width: number; height: number }>();
+    const computeLayout = async (scopeParentId?: string) => {
+      const layoutNodes = workflow.nodes.filter(node =>
+        !isHiddenWorkflowNode(node)
+        && (scopeParentId ? getCompositeParentId(node) === scopeParentId : !getCompositeParentId(node))
+      );
+      if (layoutNodes.length === 0) return null;
 
-    for (const node of layoutNodes) {
-      const definition = getNodeDefinition(node.type);
-      const nodeSize = getWorkflowNodeSize(definition, node.data);
-      const size = {
-        width: typeof node.data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220),
-        height: typeof node.data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120),
-      };
-      nodeSizes.set(node.id, size);
-    }
+      const layoutNodeIds = new Set(layoutNodes.map(node => node.id));
+      const nodeSizes = new Map<string, { width: number; height: number }>();
 
-    const layoutEdges = workflow.edges.filter(edge =>
-      !isHiddenWorkflowEdge(edge)
-      && layoutNodeIds.has(edge.source)
-      && layoutNodeIds.has(edge.target)
-    );
-    const layoutPositions = new Map<string, { x: number; y: number }>();
+      for (const node of layoutNodes) {
+        const definition = getNodeDefinition(node.type);
+        const nodeSize = getWorkflowNodeSize(definition, node.data);
+        const size = {
+          width: typeof node.data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220),
+          height: typeof node.data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120),
+        };
+        nodeSizes.set(node.id, size);
+      }
 
-    if (layoutEngine === 'elk') {
-      const elk = new ELK();
-      const elkGraph: ElkNode = {
-        id: 'workflow',
-        layoutOptions: {
-          'elk.algorithm': 'layered',
-          'elk.direction': direction === 'LR' ? 'RIGHT' : 'DOWN',
-          'elk.spacing.nodeNode': '60',
-          'elk.layered.spacing.nodeNodeBetweenLayers': '90',
-        },
-        children: layoutNodes.map(node => {
+      const layoutEdges = workflow.edges.filter(edge =>
+        !isHiddenWorkflowEdge(edge)
+        && layoutNodeIds.has(edge.source)
+        && layoutNodeIds.has(edge.target)
+      );
+      const layoutPositions = new Map<string, { x: number; y: number }>();
+
+      if (layoutEngine === 'elk') {
+        const elk = new ELK();
+        const elkGraph: ElkNode = {
+          id: scopeParentId ?? 'workflow',
+          layoutOptions: {
+            'elk.algorithm': 'layered',
+            'elk.direction': direction === 'LR' ? 'RIGHT' : 'DOWN',
+            'elk.spacing.nodeNode': '60',
+            'elk.layered.spacing.nodeNodeBetweenLayers': '90',
+          },
+          children: layoutNodes.map(node => {
+            const size = nodeSizes.get(node.id);
+            return {
+              id: node.id,
+              width: size?.width ?? 220,
+              height: size?.height ?? 120,
+            };
+          }),
+          edges: layoutEdges.map(edge => ({
+            id: edge.id,
+            sources: [edge.source],
+            targets: [edge.target],
+          })),
+        };
+        const result = await elk.layout(elkGraph);
+        for (const child of result.children ?? []) {
+          if (typeof child.x === 'number' && typeof child.y === 'number') {
+            layoutPositions.set(child.id, { x: child.x, y: child.y });
+          }
+        }
+      } else {
+        const graph = new Dagre.graphlib.Graph();
+        graph.setDefaultEdgeLabel(() => ({}));
+        graph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });
+
+        for (const node of layoutNodes) {
+          graph.setNode(node.id, nodeSizes.get(node.id) ?? { width: 220, height: 120 });
+        }
+        for (const edge of layoutEdges) {
+          graph.setEdge(edge.source, edge.target);
+        }
+
+        Dagre.layout(graph);
+        for (const node of layoutNodes) {
+          const layoutPosition = graph.node(node.id);
           const size = nodeSizes.get(node.id);
-          return {
-            id: node.id,
-            width: size?.width ?? 220,
-            height: size?.height ?? 120,
-          };
-        }),
-        edges: layoutEdges.map(edge => ({
-          id: edge.id,
-          sources: [edge.source],
-          targets: [edge.target],
-        })),
-      };
-      const result = await elk.layout(elkGraph);
-      for (const child of result.children ?? []) {
-        if (typeof child.x === 'number' && typeof child.y === 'number') {
-          layoutPositions.set(child.id, { x: child.x, y: child.y });
+          if (!layoutPosition) continue;
+          layoutPositions.set(node.id, {
+            x: layoutPosition.x - (size?.width ?? 220) / 2,
+            y: layoutPosition.y - (size?.height ?? 120) / 2,
+          });
         }
       }
-    } else {
-      const graph = new Dagre.graphlib.Graph();
-      graph.setDefaultEdgeLabel(() => ({}));
-      graph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });
 
-      for (const node of layoutNodes) {
-        graph.setNode(node.id, nodeSizes.get(node.id) ?? { width: 220, height: 120 });
-      }
-      for (const edge of layoutEdges) {
-        graph.setEdge(edge.source, edge.target);
-      }
+      return {
+        parentId: scopeParentId,
+        nodeIds: layoutNodes.map(node => node.id),
+        positions: layoutPositions,
+      };
+    };
 
-      Dagre.layout(graph);
-      for (const node of layoutNodes) {
-        const layoutPosition = graph.node(node.id);
-        const size = nodeSizes.get(node.id);
-        if (!layoutPosition) continue;
-        layoutPositions.set(node.id, {
-          x: layoutPosition.x - (size?.width ?? 220) / 2,
-          y: layoutPosition.y - (size?.height ?? 120) / 2,
-        });
-      }
-    }
-
-    const layoutOffset = parentId && layoutPositions.size > 0
-      ? (() => {
-          const currentMinX = Math.min(...layoutNodes.map(node => node.position.x));
-          const currentMinY = Math.min(...layoutNodes.map(node => node.position.y));
-          const layoutPositionValues = Array.from(layoutPositions.values());
-          const layoutMinX = Math.min(...layoutPositionValues.map(position => position.x));
-          const layoutMinY = Math.min(...layoutPositionValues.map(position => position.y));
-          return { x: currentMinX - layoutMinX, y: currentMinY - layoutMinY };
-        })()
-      : { x: 0, y: 0 };
+    const rootLayout = await computeLayout(parentId);
+    if (!rootLayout) return;
+    pushUndo('auto layout');
+    const childLayouts = parentId
+      ? []
+      : (await Promise.all(
+          workflow.nodes
+            .filter(node => node.type === LOOP_BODY_NODE_TYPE && !isHiddenWorkflowNode(node))
+            .map(node => computeLayout(node.id)),
+        )).filter((layout): layout is NonNullable<typeof rootLayout> => !!layout);
+    const layouts = [rootLayout, ...childLayouts];
 
     setWorkflow(current => {
       if (!current) return null;
       const nextNodes = current.nodes.map(node => ({ ...node, position: { ...node.position } }));
+      const nextEdges = current.edges.map(edge => ({
+        ...edge,
+        composite: edge.composite ? { ...edge.composite } : undefined,
+      }));
       const nodeById = new Map(nextNodes.map(node => [node.id, node]));
       const touchedScopeNodeIds = new Set<string>();
 
-      for (const node of layoutNodes) {
-        const nextNode = nodeById.get(node.id);
-        const nextPosition = layoutPositions.get(node.id);
-        if (!nextNode || !nextPosition) continue;
-        const shiftedPosition = {
-          x: nextPosition.x + layoutOffset.x,
-          y: nextPosition.y + layoutOffset.y,
-        };
+      for (const layout of layouts) {
+        const layoutPositionValues = Array.from(layout.positions.values());
+        if (layoutPositionValues.length === 0) continue;
 
-        if (isScopeBoundaryWorkflowNode(nextNode)) {
-          const dx = shiftedPosition.x - nextNode.position.x;
-          const dy = shiftedPosition.y - nextNode.position.y;
-          shiftScopeChildren(nextNodes, nextNode.id, dx, dy, new Set([nextNode.id]));
-          touchedScopeNodeIds.add(nextNode.id);
+        const currentNodes = layout.nodeIds
+          .map(nodeId => nodeById.get(nodeId))
+          .filter((node): node is Workflow['nodes'][number] => !!node);
+        if (currentNodes.length === 0) continue;
+
+        const layoutOffset = layout.parentId
+          ? {
+              x: Math.min(...currentNodes.map(node => node.position.x)) - Math.min(...layoutPositionValues.map(position => position.x)),
+              y: Math.min(...currentNodes.map(node => node.position.y)) - Math.min(...layoutPositionValues.map(position => position.y)),
+            }
+          : { x: 0, y: 0 };
+
+        for (const nodeId of layout.nodeIds) {
+          const nextNode = nodeById.get(nodeId);
+          const nextPosition = layout.positions.get(nodeId);
+          if (!nextNode || !nextPosition) continue;
+          const shiftedPosition = {
+            x: nextPosition.x + layoutOffset.x,
+            y: nextPosition.y + layoutOffset.y,
+          };
+
+          if (isScopeBoundaryWorkflowNode(nextNode)) {
+            const dx = shiftedPosition.x - nextNode.position.x;
+            const dy = shiftedPosition.y - nextNode.position.y;
+            shiftScopeChildren(nextNodes, nextNode.id, dx, dy, new Set([nextNode.id]));
+            touchedScopeNodeIds.add(nextNode.id);
+          }
+
+          nextNode.position = shiftedPosition;
         }
+        if (layout.parentId) {
+          touchedScopeNodeIds.add(layout.parentId);
+        }
+      }
+      if (ensureLoopBodyBoundaryNodes(nextNodes, nextEdges)) {
+        syncAllScopeBoundaryLayouts(nextNodes);
+      } else {
+        for (const scopeNodeId of touchedScopeNodeIds) {
+          syncScopeBoundaryLayout(nextNodes, scopeNodeId);
+        }
+      }
 
-        nextNode.position = shiftedPosition;
-      }
-      for (const scopeNodeId of touchedScopeNodeIds) {
-        syncScopeBoundaryLayout(nextNodes, scopeNodeId);
-      }
-      if (parentId) {
-        syncScopeBoundaryLayout(nextNodes, parentId);
-      }
-
-      return { ...current, nodes: nextNodes };
+      return { ...current, nodes: nextNodes, edges: nextEdges };
     });
     markDirty();
   }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);

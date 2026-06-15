@@ -18,36 +18,121 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 600,
+        "x": 660,
         "y": 0
       },
       "data": {}
     },
     {
-      "id": "node_1781511460656_mhagem",
-      "type": "set_variable",
-      "label": "nodes.set_variable.label",
+      "id": "node_1781512195265_ioppse",
+      "type": "loop",
+      "label": "循环5次",
       "position": {
-        "x": 1395,
-        "y": 1080
+        "x": 330,
+        "y": 0
       },
       "data": {
-        "variables": [],
+        "loopType": "count",
+        "count": 5,
+        "concurrency": 1,
+        "sharedVariables": [],
         "outputs": [
           {
-            "key": "env",
-            "type": "object"
+            "key": "items",
+            "type": "any"
           }
         ]
+      },
+      "composite": {
+        "role": "loop",
+        "generated": false,
+        "hidden": false,
+        "scopeBoundary": false,
+        "rootId": "node_1781512195265_ioppse",
+        "parentId": null
       }
     },
     {
-      "id": "node_1781511462309_ad5jjm",
+      "id": "node_1781512195265_1wh1tw",
+      "type": "loop_body",
+      "label": "nodes.loop_body.label",
+      "position": {
+        "x": 1144,
+        "y": -90
+      },
+      "data": {
+        "width": 150,
+        "height": 260,
+        "nodeWidth": 672,
+        "nodeHeight": 372
+      },
+      "composite": {
+        "role": "loop_body",
+        "generated": true,
+        "hidden": false,
+        "scopeBoundary": true,
+        "rootId": "node_1781512195265_ioppse",
+        "parentId": "node_1781512195265_ioppse"
+      }
+    },
+    {
+      "id": "node_1781512195265_j6tbdt",
+      "type": "start",
+      "label": "循环5次开始",
+      "position": {
+        "x": 1200,
+        "y": 100
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781512195265_1wh1tw",
+        "parentId": "node_1781512195265_1wh1tw",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781512195265_x4ujpg",
+      "type": "end",
+      "label": "循环5次结束",
+      "position": {
+        "x": 1540,
+        "y": 117.5
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781512195265_1wh1tw",
+        "parentId": "node_1781512195265_1wh1tw",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781512206142_dpoobj",
+      "type": "toast",
+      "label": "输出循环索引",
+      "position": {
+        "x": 1425,
+        "y": 10
+      },
+      "data": {
+        "type": "info",
+        "message": "当前循环索引: {{ context.loopIndex }}"
+      },
+      "composite": {
+        "rootId": "node_1781512195265_1wh1tw",
+        "parentId": "node_1781512195265_1wh1tw",
+        "generated": false,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781512539518_vv5rdb",
       "type": "get_variable",
       "label": "nodes.get_variable.label",
       "position": {
-        "x": 1635,
-        "y": 1260
+        "x": 765,
+        "y": 540
       },
       "data": {
         "outputs": [
@@ -63,152 +148,102 @@
       }
     },
     {
-      "id": "node_1781512072991_t6cndc",
-      "type": "loop",
-      "label": "nodes.loop.label",
+      "id": "node_1781512542876_1z2ozx",
+      "type": "set_variable",
+      "label": "nodes.set_variable.label",
       "position": {
-        "x": 765,
-        "y": 315
+        "x": 945,
+        "y": 675
       },
       "data": {
-        "loopType": "count",
-        "count": 1,
-        "concurrency": 1,
-        "sharedVariables": [],
+        "variables": [],
         "outputs": [
           {
-            "key": "items",
-            "type": "any"
+            "key": "env",
+            "type": "object"
           }
         ]
-      },
-      "composite": {
-        "role": "loop",
-        "generated": false,
-        "hidden": false,
-        "scopeBoundary": false,
-        "rootId": "node_1781512072991_t6cndc",
-        "parentId": null
-      }
-    },
-    {
-      "id": "node_1781512072992_fr5pn6",
-      "type": "loop_body",
-      "label": "nodes.loop_body.label",
-      "position": {
-        "x": 1049,
-        "y": 355
-      },
-      "data": {
-        "width": 150,
-        "height": 260,
-        "nodeWidth": 682,
-        "nodeHeight": 454
-      },
-      "composite": {
-        "role": "loop_body",
-        "generated": true,
-        "hidden": false,
-        "scopeBoundary": true,
-        "rootId": "node_1781512072991_t6cndc",
-        "parentId": "node_1781512072991_t6cndc"
-      }
-    },
-    {
-      "id": "node_1781512072992_7g79ch",
-      "type": "start",
-      "label": "nodes.loop.label开始",
-      "position": {
-        "x": 1105,
-        "y": 455
-      },
-      "data": {},
-      "composite": {
-        "rootId": "node_1781512072992_fr5pn6",
-        "parentId": "node_1781512072992_fr5pn6",
-        "generated": true,
-        "hidden": false
-      }
-    },
-    {
-      "id": "node_1781512072992_xhmhfg",
-      "type": "end",
-      "label": "nodes.loop.label结束",
-      "position": {
-        "x": 1455,
-        "y": 645
-      },
-      "data": {},
-      "composite": {
-        "rootId": "node_1781512072992_fr5pn6",
-        "parentId": "node_1781512072992_fr5pn6",
-        "generated": true,
-        "hidden": false
       }
     }
   ],
   "edges": [
     {
-      "id": "e-node_1781511460656_mhagem-source-node_1781511462309_ad5jjm-target",
-      "source": "node_1781511460656_mhagem",
-      "target": "node_1781511462309_ad5jjm",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1781512072991_t6cndc-loop-body-node_1781512072992_fr5pn6-target",
-      "source": "node_1781512072991_t6cndc",
-      "target": "node_1781512072992_fr5pn6",
+      "id": "e-node_1781512195265_ioppse-loop-body-node_1781512195265_1wh1tw-target",
+      "source": "node_1781512195265_ioppse",
+      "target": "node_1781512195265_1wh1tw",
       "sourceHandle": "loop-body",
       "targetHandle": "target",
       "composite": {
-        "rootId": "node_1781512072991_t6cndc",
-        "parentId": "node_1781512072991_t6cndc",
+        "rootId": "node_1781512195265_ioppse",
+        "parentId": "node_1781512195265_ioppse",
         "generated": true,
         "hidden": false,
         "locked": true
       }
     },
     {
-      "id": "e-node_1781512072992_fr5pn6-source-node_1781512072992_7g79ch-target",
-      "source": "node_1781512072992_fr5pn6",
-      "target": "node_1781512072992_7g79ch",
+      "id": "e-node_1781512195265_1wh1tw-source-node_1781512195265_j6tbdt-target",
+      "source": "node_1781512195265_1wh1tw",
+      "target": "node_1781512195265_j6tbdt",
       "sourceHandle": null,
       "targetHandle": "target",
       "composite": {
-        "rootId": "node_1781512072992_fr5pn6",
-        "parentId": "node_1781512072992_fr5pn6",
+        "rootId": "node_1781512195265_1wh1tw",
+        "parentId": "node_1781512195265_1wh1tw",
         "generated": true,
         "hidden": true,
         "locked": true
       }
     },
     {
-      "id": "e-node_1781512072992_7g79ch-source-node_1781512072992_xhmhfg-target",
-      "source": "node_1781512072992_7g79ch",
-      "target": "node_1781512072992_xhmhfg",
-      "sourceHandle": null,
+      "id": "e-node_1781512195265_j6tbdt-node_1781512206142_dpoobj",
+      "source": "node_1781512195265_j6tbdt",
+      "target": "node_1781512206142_dpoobj",
+      "sourceHandle": null
+    },
+    {
+      "id": "e-node_1781512206142_dpoobj-node_1781512195265_x4ujpg",
+      "source": "node_1781512206142_dpoobj",
+      "target": "node_1781512195265_x4ujpg",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781507395557_start-node_1781512195265_ioppse-mqeydlyp",
+      "source": "node_1781507395557_start",
+      "target": "node_1781512195265_ioppse"
+    },
+    {
+      "id": "e-node_1781512195265_ioppse-node_1781507395557_end-mqeydpwz",
+      "source": "node_1781512195265_ioppse",
+      "target": "node_1781507395557_end",
+      "sourceHandle": "loop-next"
+    },
+    {
+      "id": "e-node_1781512539518_vv5rdb-source-node_1781512542876_1z2ozx-target",
+      "source": "node_1781512539518_vv5rdb",
+      "target": "node_1781512542876_1z2ozx",
+      "sourceHandle": "source",
       "targetHandle": "target"
     }
   ],
   "createdAt": 1781507395559,
-  "updatedAt": 1781512087297,
+  "updatedAt": 1781512582888,
   "groups": [
     {
-      "id": "group_1781511467681_osfkkn",
+      "id": "group_1781512549643_r9r1hl",
       "name": "分组 1",
       "childNodeIds": [
-        "node_1781511460656_mhagem",
-        "node_1781511462309_ad5jjm"
+        "node_1781512539518_vv5rdb",
+        "node_1781512542876_1z2ozx"
       ],
       "childGroupIds": [],
       "locked": false,
       "disabled": false,
       "savedNodeStates": {},
-      "x": 1416,
-      "y": 1032,
-      "width": 643,
-      "height": 387
+      "x": 741,
+      "y": 492,
+      "width": 688,
+      "height": 252
     }
   ]
 }
