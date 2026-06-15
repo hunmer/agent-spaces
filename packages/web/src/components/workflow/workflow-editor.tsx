@@ -21,14 +21,13 @@ import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { WorkflowVariablesForm } from './workflow-variables-form';
-import { WorkflowGroupManagePanel } from './workflow-group-manage-panel';
 import { WorkflowCanvasStylePanel } from './workflow-canvas-style-panel';
 import { WorkflowNodeListPanel } from './workflow-node-list-panel';
 import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play, Palette, ListTree } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, History, Waypoints, Workflow, Play, Palette, ListTree } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, type ClipboardRecord } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -88,7 +87,6 @@ const defaultJson: IJsonModel = {
         weight: 0.30,
         children: [
           { type: 'tab', name: 'Properties', component: 'properties', id: 'properties' },
-          { type: 'tab', name: 'Groups', component: 'groups', id: 'groups' },
           { type: 'tab', name: 'History', component: 'history', id: 'history' },
           { type: 'tab', name: 'Node List', component: 'node-list', id: 'node-list' },
         ],
@@ -105,7 +103,6 @@ const WORKFLOW_TAB_ICONS: Record<string, React.ReactNode> = {
   'properties': <Settings2 size={16} />,
   'canvas-style': <Palette size={16} />,
   'variables': <Braces size={16} />,
-  'groups': <Group size={16} />,
   'history': <History size={16} />,
   'node-list': <ListTree size={16} />,
   'staging': <Package size={16} />,
@@ -568,7 +565,7 @@ function WorkflowEditorInner({
       const node = _model.getNodeById(action.data.tabNode);
       if (node && node instanceof TabNode) {
         const comp = node.getComponent();
-        if (['properties', 'canvas-style', 'variables', 'groups', 'history', 'node-list', 'staging'].includes(comp ?? '')) {
+        if (['properties', 'canvas-style', 'variables', 'history', 'node-list', 'staging'].includes(comp ?? '')) {
           state.setRightTab(comp!);
         }
       }
@@ -718,17 +715,6 @@ function WorkflowEditorInner({
             }}
           />
         );
-      case 'groups':
-        return (
-          <WorkflowGroupManagePanel
-            groups={workflow.groups || []}
-            isReadOnly={isWorkflowReadOnly}
-            onRenameGroup={canvas.handleRenameGroup}
-            onUngroup={canvas.handleUngroup}
-            onBatchUngroup={canvas.handleBatchUngroup}
-            onFocusGroup={canvas.handleFocusGroup}
-          />
-        );
       case 'history':
         return (
           <ResizablePanelGroup orientation="vertical" className="h-full">
@@ -768,12 +754,18 @@ function WorkflowEditorInner({
           <WorkflowNodeListPanel
             nodes={workflow.nodes}
             edges={workflow.edges}
+            groups={workflow.groups || []}
             selectedNodeId={state.selectedNodeId}
+            isReadOnly={isWorkflowReadOnly}
             onSelectNode={handleSelectNodeFromList}
             onDeleteGroup={isWorkflowReadOnly ? undefined : handleDeleteGroup}
             onTestNode={handleTestNodeFromList}
             onExecuteWorkflow={handleExecuteWorkflowFromList}
             isExecuting={isWorkflowRunning}
+            onRenameGroup={canvas.handleRenameGroup}
+            onUngroup={canvas.handleUngroup}
+            onBatchUngroup={canvas.handleBatchUngroup}
+            onFocusGroup={canvas.handleFocusGroup}
           />
         );
       case 'staging':

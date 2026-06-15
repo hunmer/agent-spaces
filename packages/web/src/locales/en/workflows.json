@@ -180,7 +180,13 @@
       "deleteConfirm": "Delete {count} node(s) in {group}?",
       "cancel": "Cancel",
       "confirmDelete": "Delete",
-      "run": "Run"
+      "run": "Run",
+      "modeConnected": "Connected groups",
+      "modeNamed": "Named groups",
+      "rename": "Rename",
+      "ungroup": "Ungroup",
+      "batchUngroup": "Delete selected ({count})",
+      "noNamedGroups": "No groups"
     },
     "exportPng": "Export PNG",
     "exportJpeg": "Export JPEG",

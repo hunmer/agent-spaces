@@ -364,6 +364,10 @@ export function WorkflowCanvas({
       ? { ...edge, data: { ...(edge.data as Record<string, unknown>), isNodeDropTarget: true } }
       : edge
   )), [dropTargetEdgeId, rfEdges]);
+  const visibleNodeIds = useMemo(
+    () => isPreview ? new Set(rfNodes.map(node => node.id)) : null,
+    [isPreview, rfNodes],
+  );
 
   const [canvasNodes, setCanvasNodes] = useState<Node[]>(rfNodes);
   const isNodeDraggingRef = useRef(false);
@@ -491,7 +495,7 @@ export function WorkflowCanvas({
       const nodeIds = collectGroupNodeIds(group.id);
       const childNodes = nodeIds
         .map(nodeId => workflowNodeById.get(nodeId))
-        .filter((node): node is Workflow['nodes'][number] => !!node)
+        .filter((node): node is Workflow['nodes'][number] => !!node && (!visibleNodeIds || visibleNodeIds.has(node.id)))
         .map((node) => {
           const definition = getNodeDefinition(node.type);
           const size = getWorkflowNodeSize(definition, node.data);
@@ -503,8 +507,8 @@ export function WorkflowCanvas({
           };
         });
       return { group, childNodes };
-    });
-  }, [workflow.groups, workflow.nodes]);
+    }).filter(({ childNodes }) => !isPreview || childNodes.length > 0);
+  }, [isPreview, visibleNodeIds, workflow.groups, workflow.nodes]);
 
   const { minimapVisible, toggleMinimap, exportCanvas } = useCanvasExport(
     reactFlowWrapper,

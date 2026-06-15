@@ -1,26 +1,39 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Play, Trash2 } from 'lucide-react';
+import { Check, Lock, Pencil, Play, Trash2, Unlock, X } from 'lucide-react';
+import type { WorkflowGroup } from '@agent-spaces/shared';
 import { cn } from '@/lib/utils';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 type NodeLike = { id: string; type?: string; label?: string };
 type EdgeLike = { source: string; target: string };
 
+type GroupViewMode = 'connected' | 'named';
+
 type WorkflowNodeListPanelProps = {
   nodes: NodeLike[];
   edges: EdgeLike[];
+  groups?: WorkflowGroup[];
   selectedNodeId?: string | null;
+  isReadOnly?: boolean;
   onSelectNode: (nodeId: string) => void;
   onDeleteGroup?: (nodeIds: string[]) => void;
   onTestNode?: (nodeId: string) => void;
   onExecuteWorkflow?: () => void;
   isExecuting?: boolean;
+  // 命名分组管理（迁自 WorkflowGroupManagePanel）
+  onRenameGroup?: (groupId: string, name: string) => void;
+  onUngroup?: (groupId: string) => void;
+  onBatchUngroup?: (groupIds: string[]) => void;
+  onFocusGroup?: (groupId: string) => void;
 };
 
 // 连通分量着色板 —— bar 为色条实色，bg 为分区淡色背景。完整类名，供 Tailwind 静态扫描。
@@ -70,15 +83,27 @@ function connectedComponents(nodes: NodeLike[], edges: EdgeLike[]): string[][] {
 export function WorkflowNodeListPanel({
   nodes,
   edges,
+  groups,
   selectedNodeId,
+  isReadOnly = false,
   onSelectNode,
   onDeleteGroup,
   onTestNode,
   onExecuteWorkflow,
   isExecuting = false,
+  onRenameGroup,
+  onUngroup,
+  onBatchUngroup,
+  onFocusGroup,
 }: WorkflowNodeListPanelProps) {
   const t = useTranslations('workflows');
+  const [viewMode, setViewMode] = useState<GroupViewMode>('connected');
   const [deleteTarget, setDeleteTarget] = useState<{ nodeIds: string[]; label: string } | null>(null);
+
+  // 命名分组内联重命名 + 多选解散
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   const { connectedGroups, isolatedNodes, nodeMap } = useMemo(() => {
     const map = new Map<string, NodeLike>();
@@ -90,6 +115,55 @@ export function WorkflowNodeListPanel({
     const isolated = components.filter(group => group.length === 1).flat();
     return { connectedGroups: connected, isolatedNodes: isolated, nodeMap: map };
   }, [nodes, edges]);
+
+  const namedGroups = useMemo(() => groups || [], [groups]);
+  const removableSelectedGroupIds = useMemo(
+    () => namedGroups
+      .filter(group => selectedGroupIds.includes(group.id) && !group.locked)
+      .map(group => group.id),
+    [namedGroups, selectedGroupIds],
+  );
+
+  // 命名分组被删除/外部更新后，清理失效的选择与编辑态
+  useEffect(() => {
+    const existingIds = new Set(namedGroups.map(group => group.id));
+    setSelectedGroupIds(ids => ids.filter(id => existingIds.has(id)));
+    if (editingGroupId && !existingIds.has(editingGroupId)) {
+      setEditingGroupId(null);
+    }
+  }, [editingGroupId, namedGroups]);
+
+  const startEdit = (group: WorkflowGroup) => {
+    if (isReadOnly) return;
+    setEditingGroupId(group.id);
+    setEditName(group.name);
+  };
+
+  const commitEdit = () => {
+    if (!editingGroupId) return;
+    const trimmed = editName.trim();
+    if (trimmed) onRenameGroup?.(editingGroupId, trimmed);
+    setEditingGroupId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingGroupId(null);
+    setEditName('');
+  };
+
+  const toggleSelect = (groupId: string) => {
+    setSelectedGroupIds(ids => (
+      ids.includes(groupId)
+        ? ids.filter(id => id !== groupId)
+        : [...ids, groupId]
+    ));
+  };
+
+  const batchUngroup = () => {
+    if (removableSelectedGroupIds.length === 0) return;
+    onBatchUngroup?.(removableSelectedGroupIds);
+    setSelectedGroupIds([]);
+  };
 
   const renderNode = (id: string) => {
     const node = nodeMap.get(id);
@@ -130,6 +204,74 @@ export function WorkflowNodeListPanel({
     );
   };
 
+  const renderNamedGroup = (group: WorkflowGroup) => {
+    const isSelected = selectedGroupIds.includes(group.id);
+    const isEditing = editingGroupId === group.id;
+    return (
+      <div
+        key={group.id}
+        className="group flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/50"
+        onClick={() => onFocusGroup?.(group.id)}
+      >
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => toggleSelect(group.id)}
+          onClick={(event) => event.stopPropagation()}
+        />
+        {group.locked
+          ? <Lock className="h-3 w-3 shrink-0 opacity-50" />
+          : <Unlock className="h-3 w-3 shrink-0 opacity-30" />}
+        {isEditing ? (
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <Input
+              value={editName}
+              className="h-6 px-1 text-xs"
+              onChange={(event) => setEditName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') commitEdit();
+                if (event.key === 'Escape') cancelEdit();
+              }}
+              onClick={(event) => event.stopPropagation()}
+              autoFocus
+            />
+            <button type="button" className="p-0.5 hover:text-foreground" onClick={(event) => { event.stopPropagation(); commitEdit(); }}>
+              <Check className="h-3 w-3" />
+            </button>
+            <button type="button" className="p-0.5 hover:text-foreground" onClick={(event) => { event.stopPropagation(); cancelEdit(); }}>
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-xs">
+            {group.name}
+            <span className="text-muted-foreground"> ({group.childNodeIds.length})</span>
+          </span>
+        )}
+        {!isReadOnly && !isEditing && (
+          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              title={t('editor.nodeList.rename')}
+              onClick={(event) => { event.stopPropagation(); startEdit(group); }}
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              className="rounded p-1 text-destructive hover:bg-accent"
+              title={t('editor.nodeList.ungroup')}
+              disabled={group.locked}
+              onClick={(event) => { event.stopPropagation(); onUngroup?.(group.id); }}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const confirmDelete = () => {
     if (deleteTarget) onDeleteGroup?.(deleteTarget.nodeIds);
     setDeleteTarget(null);
@@ -137,74 +279,122 @@ export function WorkflowNodeListPanel({
 
   return (
     <div className="flex h-full flex-col p-3">
-      <div className="mb-2 border-b pb-2 text-xs text-muted-foreground">
-        {nodes.length} {t('editor.nodeList.nodes')} · {connectedGroups.length} {t('editor.nodeList.groups')}
+      <div className="mb-2 flex items-center justify-between gap-2 border-b pb-2">
+        <Select value={viewMode} onValueChange={(value) => setViewMode(value as GroupViewMode)}>
+          <SelectTrigger className="h-7 w-[150px] gap-1 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="connected">{t('editor.nodeList.modeConnected')}</SelectItem>
+            <SelectItem value="named">{t('editor.nodeList.modeNamed')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {viewMode === 'connected'
+            ? (
+              <>
+                {nodes.length} {t('editor.nodeList.nodes')} · {connectedGroups.length} {t('editor.nodeList.groups')}
+              </>
+            )
+            : <>{namedGroups.length} {t('editor.nodeList.groups')}</>
+          }
+        </span>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-auto">
-        {connectedGroups.map((group, index) => {
-          const color = GROUP_PALETTE[index % GROUP_PALETTE.length];
-          return (
-            <div key={group.join('|')} className={cn('group rounded', color.bg)}>
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <span className={cn('h-3 w-1 rounded-full', color.bar)} />
-                <span className="text-xs font-medium">
-                  {t('editor.nodeList.group')} {index + 1}
-                </span>
-                <span className="text-xs text-muted-foreground">({group.length})</span>
-                {(onExecuteWorkflow || onDeleteGroup) && (
-                  <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                    {onExecuteWorkflow && (
-                      <button
-                        type="button"
-                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-green-600 disabled:opacity-30"
-                        title={t('editor.nodeList.run')}
-                        disabled={isExecuting}
-                        onClick={() => onExecuteWorkflow()}
-                      >
-                        <Play className="h-3 w-3" />
-                      </button>
-                    )}
-                    {onDeleteGroup && (
-                      <button
-                        type="button"
-                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
-                        title={t('editor.nodeList.deleteGroup')}
-                        onClick={() =>
-                          setDeleteTarget({
-                            nodeIds: group,
-                            label: `${t('editor.nodeList.group')} ${index + 1}`,
-                          })
-                        }
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                )}
+      {viewMode === 'connected' && (
+        <div className="min-h-0 flex-1 space-y-2 overflow-auto">
+          {connectedGroups.map((group, index) => {
+            const color = GROUP_PALETTE[index % GROUP_PALETTE.length];
+            return (
+              <div key={group.join('|')} className={cn('group rounded', color.bg)}>
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <span className={cn('h-3 w-1 rounded-full', color.bar)} />
+                  <span className="text-xs font-medium">
+                    {t('editor.nodeList.group')} {index + 1}
+                  </span>
+                  <span className="text-xs text-muted-foreground">({group.length})</span>
+                  {(onExecuteWorkflow || onDeleteGroup) && (
+                    <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      {onExecuteWorkflow && (
+                        <button
+                          type="button"
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-green-600 disabled:opacity-30"
+                          title={t('editor.nodeList.run')}
+                          disabled={isExecuting}
+                          onClick={() => onExecuteWorkflow()}
+                        >
+                          <Play className="h-3 w-3" />
+                        </button>
+                      )}
+                      {onDeleteGroup && (
+                        <button
+                          type="button"
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+                          title={t('editor.nodeList.deleteGroup')}
+                          onClick={() =>
+                            setDeleteTarget({
+                              nodeIds: group,
+                              label: `${t('editor.nodeList.group')} ${index + 1}`,
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-0.5 px-1 pb-1">{group.map(renderNode)}</div>
               </div>
-              <div className="space-y-0.5 px-1 pb-1">{group.map(renderNode)}</div>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {isolatedNodes.length > 0 && (
-          <div className="rounded bg-muted/40">
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <span className="h-3 w-1 rounded-full bg-muted-foreground/40" />
-              <span className="text-xs font-medium">{t('editor.nodeList.unconnected')}</span>
-              <span className="text-xs text-muted-foreground">({isolatedNodes.length})</span>
+          {isolatedNodes.length > 0 && (
+            <div className="rounded bg-muted/40">
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <span className="h-3 w-1 rounded-full bg-muted-foreground/40" />
+                <span className="text-xs font-medium">{t('editor.nodeList.unconnected')}</span>
+                <span className="text-xs text-muted-foreground">({isolatedNodes.length})</span>
+              </div>
+              <div className="space-y-0.5 px-1 pb-1">{isolatedNodes.map(renderNode)}</div>
             </div>
-            <div className="space-y-0.5 px-1 pb-1">{isolatedNodes.map(renderNode)}</div>
-          </div>
-        )}
+          )}
 
-        {nodes.length === 0 && (
-          <div className="py-8 text-center text-xs text-muted-foreground">
-            {t('editor.nodeList.empty')}
+          {nodes.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              {t('editor.nodeList.empty')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === 'named' && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          {selectedGroupIds.length > 0 && (
+            <div className="mb-2 flex justify-end">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                disabled={isReadOnly || removableSelectedGroupIds.length === 0}
+                onClick={batchUngroup}
+              >
+                <Trash2 className="h-3 w-3" />
+                {t('editor.nodeList.batchUngroup', { count: selectedGroupIds.length })}
+              </Button>
+            </div>
+          )}
+          <div className="min-h-0 flex-1 space-y-1 overflow-auto">
+            {namedGroups.map(renderNamedGroup)}
+            {namedGroups.length === 0 && (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                {t('editor.nodeList.noNamedGroups')}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <DialogContent>

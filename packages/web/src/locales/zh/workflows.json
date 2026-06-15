@@ -180,7 +180,13 @@
       "deleteConfirm": "确定删除{group}下的 {count} 个节点？",
       "cancel": "取消",
       "confirmDelete": "删除",
-      "run": "运行"
+      "run": "运行",
+      "modeConnected": "连通分组",
+      "modeNamed": "命名分组",
+      "rename": "重命名",
+      "ungroup": "解散分组",
+      "batchUngroup": "删除选中 ({count})",
+      "noNamedGroups": "暂无分组"
     },
     "exportPng": "导出 PNG",
     "exportJpeg": "导出 JPEG",
