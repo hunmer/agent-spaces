@@ -17,14 +17,25 @@ import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { newAgentDraft, normalizeAgent, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { useAgentStore } from '@/stores/agent';
 
-function resolveAgentValue(value: unknown, agents: AgentConfig[]): AgentConfig | AgentPreset | null {
+function isNonEmptyRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0);
+}
+
+function resolveAgentValue(value: unknown, agents: AgentConfig[]): AgentPreset | null {
   if (typeof value === 'string' && value.trim()) {
-    return agents.find((agent) => agent.id === value.trim()) ?? null;
+    const agent = agents.find((agent) => agent.id === value.trim());
+    return agent ? normalizeAgent(agent) : null;
   }
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (!isNonEmptyRecord(value)) return null;
+
   const record = value as Partial<AgentConfig>;
-  if (typeof record.id !== 'string' || !record.id.trim()) return null;
-  return record as AgentConfig;
+  const base = newAgentDraft('agent');
+  return normalizeAgent({
+    ...base,
+    ...record,
+    id: typeof record.id === 'string' && record.id.trim() ? record.id : base.id,
+    enabled: record.enabled ?? base.enabled,
+  } as AgentConfig);
 }
 
 function toWorkflowAgentValue(agent: AgentConfig | AgentPreset) {
@@ -88,7 +99,7 @@ export function AgentPropertyEditor({
   };
 
   const handleEditAgent = () => {
-    setCreateDraft(selectedAgent ? normalizeAgent(selectedAgent as AgentConfig) : newAgentDraft('agent'));
+    setCreateDraft(selectedAgent ?? newAgentDraft('agent'));
     setEditorOpen(true);
   };
 

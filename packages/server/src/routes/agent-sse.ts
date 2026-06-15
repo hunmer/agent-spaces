@@ -80,8 +80,12 @@ router.post('/run', async (req: Request, res: Response) => {
     : [];
   const runtimeKind = workflowAgent ? 'langchain' : preset.runtimeKind;
   const systemPrompt = workflowAgent
-    ? buildWorkflowEditorSystemPrompt(workflowAgent.workflow, workflowAgent.selectedNodes)
+    ? buildWorkflowEditorSystemPrompt(workflowAgent.workflow)
     : body.systemPrompt ?? preset.systemPrompt;
+  const history = insertWorkflowSelectedNodesMessage(
+    normalizeMessages(body.messages),
+    workflowAgent?.selectedNodes,
+  );
   const output: string[] = [];
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   let completed = false;
@@ -112,7 +116,7 @@ router.post('/run', async (req: Request, res: Response) => {
         workspaceId,
         systemPrompt,
         userPrompt,
-        normalizeMessages(body.messages),
+        history,
         {
           runtimeKind,
           mcpServers: Object.keys(mcpServers ?? {}),
@@ -237,6 +241,36 @@ function normalizeMessages(messages: AgentSseRequestBody['messages']): Message[]
       updatedAt: new Date(0).toISOString(),
       parts: message.parts,
     })) as Message[];
+}
+
+function insertWorkflowSelectedNodesMessage(messages: Message[], selectedNodes: WorkflowNode[] | undefined): Message[] {
+  if (!selectedNodes?.length) return messages;
+
+  const contextMessage: Message = {
+    id: 'sse-workflow-selected-nodes',
+    channelId: 'sse',
+    senderId: 'workflow-context',
+    senderRole: 'Workflow context',
+    content: `当前选中节点：\n\`\`\`json\n${JSON.stringify(selectedNodes, null, 2)}\n\`\`\``,
+    type: 'text',
+    status: 'completed',
+    createdAt: new Date(0).toISOString(),
+  };
+
+  const latestUserIndex = findLastIndex(messages, (message) => message.senderId === 'user');
+  if (latestUserIndex < 0) return [...messages, contextMessage];
+  return [
+    ...messages.slice(0, latestUserIndex),
+    contextMessage,
+    ...messages.slice(latestUserIndex),
+  ];
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index])) return index;
+  }
+  return -1;
 }
 
 function normalizeSkills(input: AgentSseRequestBody['skills'] | AgentSseRequestBody['skill']): string[] | undefined {

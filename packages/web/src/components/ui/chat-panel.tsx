@@ -50,6 +50,8 @@ export interface ChatPanelProps {
   inputPlaceholder?: string;
   /** 预设消息建议：输入框左侧展示 popover，提供「编辑（填入输入框）/发送」快捷操作 */
   suggestions?: string[];
+  /** Optional content rendered above the input row. */
+  inputContext?: ReactNode;
 
   /** Whether to render agent messages as Markdown */
   markdown?: boolean;
@@ -120,6 +122,7 @@ export function ChatPanel({
   onStop,
   inputPlaceholder,
   suggestions,
+  inputContext,
   markdown = true,
   workspaceId,
   headerActions,
@@ -260,6 +263,7 @@ export function ChatPanel({
 
       {/* Input */}
       <div className="border-t border-border/40 bg-background/60 p-3 backdrop-blur-md">
+        {inputContext ? <div className="mb-2">{inputContext}</div> : null}
         <form
           className="relative flex items-center gap-2"
           onSubmit={(e) => {

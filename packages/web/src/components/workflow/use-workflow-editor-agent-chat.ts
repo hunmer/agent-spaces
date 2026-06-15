@@ -25,14 +25,14 @@ export function useWorkflowEditorAgentChat({
   setWorkflow,
   markDirty,
   pushUndo,
-  selectedNode,
+  selectedNodes,
   workspaceId,
 }: {
   workflow: Workflow | null;
   setWorkflow: React.Dispatch<React.SetStateAction<Workflow | null>>;
   markDirty: () => void;
   pushUndo: (label: string) => void;
-  selectedNode: Workflow['nodes'][number] | null;
+  selectedNodes: Workflow['nodes'];
   workspaceId: string | undefined;
 }) {
   const [agentOpen, setAgentOpen] = useState(false);
@@ -237,7 +237,6 @@ export function useWorkflowEditorAgentChat({
       }
       if (abortController.signal.aborted) return;
 
-      const selectedNodes = selectedNode ? [selectedNode] : [];
       const response = await fetchWithAuth('/api/agent-sse/run', {
         method: 'POST',
         signal: abortController.signal,
@@ -337,7 +336,7 @@ export function useWorkflowEditorAgentChat({
     setWorkflow,
     markDirty,
     pushUndo,
-    selectedNode,
+    selectedNodes,
     workspaceId,
     agentMessages,
     appendAssistantContent,

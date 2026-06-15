@@ -51,11 +51,8 @@ const SCOPE_CONTAINER_PADDING = { top: 80, right: 100, bottom: 80, left: 80 };
 const MIN_SCOPE_CONTAINER_SIZE = { width: 220, height: 160 };
 const LOOP_BODY_MIN_SCOPE_CONTAINER_SIZE = { width: 150, height: 260 };
 
-export function buildWorkflowEditorSystemPrompt(workflow: Workflow, selectedNodes?: WorkflowNode[]): string {
+export function buildWorkflowEditorSystemPrompt(workflow: Workflow): string {
   const summary = summarizeWorkflow(workflow, true);
-  const selected = selectedNodes?.length
-    ? `\n\n## 当前选中节点\n\n\`\`\`json\n${JSON.stringify(selectedNodes, null, 2)}\n\`\`\``
-    : '';
 
   return `${WORKFLOW_AGENT_SYSTEM_PROMPT}
 
@@ -67,7 +64,7 @@ export function buildWorkflowEditorSystemPrompt(workflow: Workflow, selectedNode
 
 \`\`\`json
 ${JSON.stringify(summary, null, 2)}
-\`\`\`${selected}`;
+\`\`\``;
 }
 
 export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext): AgentFunctionTool[] {

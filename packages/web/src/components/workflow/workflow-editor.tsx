@@ -265,18 +265,32 @@ function WorkflowEditorInner({
     },
   });
 
+  const selectedNodeIds = useMemo(() => (
+    state.selectedNodeIds.length > 0
+      ? state.selectedNodeIds
+      : state.selectedNodeId ? [state.selectedNodeId] : []
+  ), [state.selectedNodeId, state.selectedNodeIds]);
+  const selectedNodeIdsKey = selectedNodeIds.join('\0');
+  const selectedWorkflowAgentNodes = useMemo(() => {
+    if (!state.workflow || selectedNodeIds.length === 0) return [];
+    const selectedIdSet = new Set(selectedNodeIds);
+    return state.workflow.nodes.filter(node => selectedIdSet.has(node.id));
+  }, [state.workflow, selectedNodeIds]);
+  const [workflowAgentSelectionActive, setWorkflowAgentSelectionActive] = useState(false);
+
+  useEffect(() => {
+    setWorkflowAgentSelectionActive(selectedWorkflowAgentNodes.length > 0);
+  }, [selectedNodeIdsKey, selectedWorkflowAgentNodes.length]);
+
   const chat = useWorkflowEditorAgentChat({
     workflow: state.workflow,
     setWorkflow: state.setWorkflow,
     markDirty: markEditorDirty,
     pushUndo: state.pushUndo,
-    selectedNode: state.selectedNode,
+    selectedNodes: workflowAgentSelectionActive ? selectedWorkflowAgentNodes : [],
     workspaceId,
   });
 
-  const selectedNodeIds = state.selectedNodeIds.length > 0
-    ? state.selectedNodeIds
-    : state.selectedNodeId ? [state.selectedNodeId] : [];
   const clipboardImagePasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardImagesAsGallery !== false;
   const clipboardTextPasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardTextAsStickyNote !== false;
   const previewResult = useMemo(() => {
@@ -973,6 +987,21 @@ function WorkflowEditorInner({
         onStop={chat.stopWorkflowAgentMessage}
         onDeleteMessage={chat.deleteAgentMessage}
         inputPlaceholder={t('editor.inputPlaceholder')}
+        inputContext={selectedWorkflowAgentNodes.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setWorkflowAgentSelectionActive(active => !active)}
+            className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-xs transition-colors ${
+              workflowAgentSelectionActive
+                ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15'
+                : 'border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60'
+            }`}
+            title={workflowAgentSelectionActive ? '点击停用节点上下文' : '点击启用节点上下文'}
+          >
+            <span className="font-medium">选中了 {selectedWorkflowAgentNodes.length} 个节点</span>
+            <span>{workflowAgentSelectionActive ? '已激活' : '未激活'}</span>
+          </button>
+        ) : null}
         headerActions={
           <>
             <Button

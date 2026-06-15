@@ -199,10 +199,8 @@ function resolveAgentPreset(resolvedData: Record<string, any>, presets: any[]): 
     const agentRecord = agent as Record<string, unknown>;
     const id = typeof agentRecord.id === 'string' ? agentRecord.id.trim() : '';
     const storedPreset = id ? presets.find(p => p.id === id) : null;
-    if (storedPreset) return storedPreset;
-    if (typeof agentRecord.modelId === 'string' && agentRecord.modelId.trim()) {
-      return agent;
-    }
+    const basePreset = storedPreset ?? presets[0];
+    return basePreset ? { ...basePreset, ...agentRecord } : agent;
   }
 
   const agentConfigId = resolveAgentConfigId(resolvedData);

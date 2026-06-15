@@ -27,6 +27,8 @@ export interface FloatingChatPanelProps {
   onSend: () => void;
   onStop?: () => void;
   inputPlaceholder?: string;
+  /** Optional content rendered above the input row. */
+  inputContext?: React.ReactNode;
 
   /** Whether to render agent messages as Markdown */
   markdown?: boolean;
@@ -64,6 +66,7 @@ export function FloatingChatPanel({
   onSend,
   onStop,
   inputPlaceholder,
+  inputContext,
   markdown,
   workspaceId,
   headerActions,
@@ -88,6 +91,7 @@ export function FloatingChatPanel({
             onSend={onSend}
             onStop={onStop}
             inputPlaceholder={inputPlaceholder}
+            inputContext={inputContext}
             markdown={markdown}
             workspaceId={workspaceId}
             headerActions={headerActions}
