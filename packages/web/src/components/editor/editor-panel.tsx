@@ -222,10 +222,15 @@ export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedB
   const [draggedOverPath, setDraggedOverPath] = useState<string | null>(null);
   const draggedPathRef = useRef<string | null>(null);
   const fileSearchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const loadTreeRef = useRef(loadTree);
+  const loadDirectoryRef = useRef(loadDirectory);
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
   const [sidebarTab, setSidebarTab] = useState('files');
   const filteredTree = useMemo(() => filterTreeByName(tree, fileSearch), [tree, fileSearch]);
   const fileSizeMap = useMemo(() => buildFileSizeMap(tree), [tree]);
+
+  useEffect(() => { loadTreeRef.current = loadTree; }, [loadTree]);
+  useEffect(() => { loadDirectoryRef.current = loadDirectory; }, [loadDirectory]);
 
   // 有搜索词时走后端全局搜索，否则清空
   useEffect(() => {
@@ -290,13 +295,13 @@ export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedB
   useEffect(() => {
     const saved = loadExpandedPaths(panelKey);
     setExpandedPaths(saved);
-    loadTree().then(() => {
+    loadTreeRef.current().then(() => {
       // Reload children for previously expanded directories
       for (const dir of saved) {
-        loadDirectory(dir);
+        loadDirectoryRef.current(dir);
       }
     });
-  }, [panelKey, loadTree, loadDirectory]);
+  }, [panelKey]);
 
   const handleExpandedChange = useCallback((newExpanded: Set<string>) => {
     setExpandedPaths(newExpanded);
@@ -676,7 +681,6 @@ export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedB
                       loadingDirs={loadingDirs}
                       boundDir={boundDir}
                       fileSizeMap={fileSizeMap}
-                      refreshInterval={5000}
                       draggedOverPath={draggedOverPath}
                       onItemDragStart={handleTreeDragStart}
                       onItemDragOver={handleTreeDragOver}

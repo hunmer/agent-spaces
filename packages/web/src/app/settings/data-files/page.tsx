@@ -127,6 +127,32 @@ export default function DataFilesPage() {
     )));
   }, [activeFile?.modified, activeFilePath, mediaType]);
 
+  const filePanelApi = useMemo(() => ({
+    tree,
+    treeLoading,
+    loadingDirs,
+    openFiles,
+    loadTree,
+    loadDirectory,
+    openFile,
+    saveEmptyFile: async (path: string) => {
+      await sdk.data.save(path, "");
+      await loadTree();
+    },
+    deletePath: async (path: string) => {
+      await sdk.data.deleteFile(path);
+      await loadTree();
+    },
+    renamePath: async (oldPath: string, newPath: string) => {
+      await sdk.data.rename(oldPath, newPath);
+      await loadTree();
+    },
+    copyPath: async (srcPath: string, destPath: string) => {
+      await sdk.data.copy(srcPath, destPath);
+      await loadTree();
+    },
+  }), [loadDirectory, loadTree, loadingDirs, openFile, openFiles, tree, treeLoading]);
+
   return (
     <div className="flex h-full min-h-0 bg-background">
       <aside className="h-full w-80 shrink-0 border-r bg-background">
@@ -135,31 +161,7 @@ export default function DataFilesPage() {
           variant="project"
           showImport={false}
           showSearchPanel={false}
-          api={{
-            tree,
-            treeLoading,
-            loadingDirs,
-            openFiles,
-            loadTree,
-            loadDirectory,
-            openFile,
-            saveEmptyFile: async (path) => {
-              await sdk.data.save(path, "");
-              await loadTree();
-            },
-            deletePath: async (path) => {
-              await sdk.data.deleteFile(path);
-              await loadTree();
-            },
-            renamePath: async (oldPath, newPath) => {
-              await sdk.data.rename(oldPath, newPath);
-              await loadTree();
-            },
-            copyPath: async (srcPath, destPath) => {
-              await sdk.data.copy(srcPath, destPath);
-              await loadTree();
-            },
-          }}
+          api={filePanelApi}
         />
       </aside>
       <main className="min-w-0 flex-1">

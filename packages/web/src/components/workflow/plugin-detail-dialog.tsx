@@ -110,7 +110,7 @@ export function PluginDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!w-[80vw] !max-w-none !h-[80vh] !max-h-none !flex !flex-col !overflow-hidden !p-0">
+      <DialogContent className="!w-[80vw] !max-w-none !h-[85vh] !max-h-[85vh] !flex !flex-col !overflow-hidden !p-0">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-4 w-4" />

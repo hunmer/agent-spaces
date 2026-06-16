@@ -6,7 +6,7 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-[calc(100vh-4rem)]">
+    <div className="h-full">
       {children}
     </div>
   );
