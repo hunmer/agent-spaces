@@ -87,9 +87,10 @@ router.post('/:kbId/files', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
   try {
     const sourceRef = parsed.data.sourceType === 'path' ? safePath(parsed.data.sourceRef) : parsed.data.sourceRef;
+    // 详情对话框 fire-and-forget:立即返回 pending,后台索引,前端 2s 轮询状态流转
     const file = await kbService.addFileToKnowledgeBase(wid(req), kbId, {
       sourceType: parsed.data.sourceType, sourceRef, fileName: parsed.data.fileName,
-    });
+    }, { background: true });
     res.status(201).json(file);
   } catch (e) { res.status(400).json({ error: (e as Error).message }); }
 });
@@ -106,7 +107,8 @@ router.delete('/:kbId/files/:fileId', (req, res) => {
 });
 
 router.post('/:kbId/files/:fileId/reindex', async (req, res) => {
-  try { res.json(await kbService.reindexFile(wid(req), req.params.kbId, req.params.fileId)); }
+  // 详情对话框重试:后台 reindex,立即返回,前端轮询 indexing->indexed/failed
+  try { res.json(await kbService.reindexFile(wid(req), req.params.kbId, req.params.fileId, { background: true })); }
   catch (e) { res.status(400).json({ error: (e as Error).message }); }
 });
 

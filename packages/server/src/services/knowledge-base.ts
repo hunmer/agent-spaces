@@ -28,11 +28,14 @@ function storagePathFor(kbId: string, fileId: string, fileName: string): string 
   return join(dir, `${fileId}${ext}`);
 }
 
-/** 核心:加入文件 + 索引。失败写 failed 状态并返回(不抛),调用方据 indexStatus 判断。 */
+/** 核心:加入文件 + 索引。失败写 failed 状态并返回(不抛),调用方据 indexStatus 判断。
+ *  options.background=true 时立即返回 pending,后台索引(详情对话框 fire-and-forget,前端轮询);
+ *  默认(工作流)同步 await,返回最终状态(indexed/failed)。 */
 export async function addFileToKnowledgeBase(
   workspaceId: string,
   kbId: string,
   input: { sourceType: 'upload' | 'path' | 'url'; sourceRef: string; fileName: string; buffer?: Buffer },
+  options?: { background?: boolean },
 ): Promise<KbFile> {
   const kb = kbStore.getKb(workspaceId, kbId);
   if (!kb) throw new Error(`Knowledge base not found: ${kbId}`);
@@ -59,6 +62,12 @@ export async function addFileToKnowledgeBase(
     indexStatus: 'pending', indexError: null, indexedAt: null,
   });
 
+  if (options?.background) {
+    // 详情对话框:fire-and-forget,立即返回 pending,前端轮询状态流转(pending->indexing->indexed/failed)
+    setImmediate(() => { indexFile(kb, file).catch(() => { /* 状态已在 indexFile 内写 failed */ }); });
+    return file; // status=pending
+  }
+  // 工作流:同步等待,返回最终状态
   await indexFile(kb, file).catch(() => { /* 状态已在 indexFile 内写 failed */ });
   return kbStore.getFile(workspaceId, kbId, fileId)!;
 }
@@ -93,11 +102,18 @@ async function indexFile(kb: KnowledgeBase, file: KbFile): Promise<void> {
   }
 }
 
-export async function reindexFile(workspaceId: string, kbId: string, fileId: string): Promise<KbFile> {
+export async function reindexFile(
+  workspaceId: string, kbId: string, fileId: string, options?: { background?: boolean },
+): Promise<KbFile> {
   const kb = kbStore.getKb(workspaceId, kbId);
   if (!kb) throw new Error(`Knowledge base not found: ${kbId}`);
   const file = kbStore.getFile(workspaceId, kbId, fileId);
   if (!file) throw new Error(`File not found: ${fileId}`);
+  if (options?.background) {
+    // 详情对话框重试:fire-and-forget,立即返回当前状态,前端轮询 indexing->indexed/failed
+    setImmediate(() => { indexFile(kb, file).catch(() => {}); });
+    return file;
+  }
   await indexFile(kb, file).catch(() => {});
   return kbStore.getFile(workspaceId, kbId, fileId)!;
 }
