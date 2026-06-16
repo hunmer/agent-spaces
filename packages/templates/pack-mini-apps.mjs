@@ -119,6 +119,7 @@ function buildZip(entries) {
 const KEEP_FIELDS = [
   'name', 'description', 'version', 'type', 'tags', 'mainFile',
   'enabledPlugins', 'enableAgents', 'icon', 'avatarUrl', 'backgroundUrl',
+  'hasIntro',
 ];
 function buildManifest(id, diskManifest, meta) {
   const merged = { ...(diskManifest || {}), ...(meta || {}) };
@@ -182,6 +183,16 @@ function main() {
     if (meta.agents) droppedAgents++;
 
     const manifest = buildManifest(id, diskManifest, meta);
+
+    // README 介绍：检测到则标记 hasIntro 并复制到商店 mini-app/intro/{id}.md
+    const readmePath = join(projectDir, 'README.md');
+    if (existsSync(readmePath) && statSync(readmePath).isFile()) {
+      manifest.hasIntro = true;
+      const introDir = join(out, 'intro');
+      mkdirSync(introDir, { recursive: true });
+      writeFileSync(join(introDir, `${id}.md`), readFileSync(readmePath));
+    }
+
     const entries = [{ name: 'manifest.json', data: Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8') }];
 
     // src/** — the actual app source (mirrors server exportZip)
