@@ -53,6 +53,13 @@ export function toStaticHref(href: string) {
     return `/workflows/_.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
   }
 
+  if (path.startsWith("/mini-apps/")) {
+    const projectId = path.slice("/mini-apps/".length).split("/")[0];
+    const query = new URLSearchParams(queryString);
+    query.set("id", projectId);
+    return `/mini-apps.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
+  }
+
   const staticPath = path.endsWith(".html") ? path : `${path}.html`;
   return `${staticPath}${queryString ? `?${queryString}` : ""}${hash ? `#${hash}` : ""}`;
 }

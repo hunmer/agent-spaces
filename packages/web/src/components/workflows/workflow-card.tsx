@@ -30,7 +30,7 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete, selectionMode, s
         if (selectionMode) {
           onToggleSelect?.();
         } else {
-          nativeNavigate(router, `/workflows/share.html?workflow_id=${workflow.id}`);
+          nativeNavigate(router, `/workflows/share?workflow_id=${workflow.id}`);
         }
       }}
     >

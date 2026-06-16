@@ -11,6 +11,8 @@ import { Search, Plus, Upload, FileQuestion, Store } from 'lucide-react';
 import { WorkflowsUiCard } from './mini-apps-card';
 import { WorkflowsUiCreateDialog } from './mini-apps-create-dialog';
 import { WorkflowsUiStoreDialog } from './mini-apps-store-dialog';
+import { MiniAppEditor } from './mini-app-editor';
+import { useSearchParams } from 'next/navigation';
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -25,6 +27,17 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export function WorkflowsUiPage() {
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get('id');
+
+  if (projectId) {
+    return <MiniAppEditor projectId={projectId} />;
+  }
+
+  return <WorkflowsUiListPage />;
+}
+
+function WorkflowsUiListPage() {
   const t = useTranslations('mini-apps');
   const [projects, setProjects] = useState<MiniAppProject[]>([]);
   const [search, setSearch] = useState('');

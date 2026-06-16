@@ -84,7 +84,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
             className="size-24"
           />
         }
-        onClick={() => nativeNavigate(router, `/mini-apps/${encodeURIComponent(project.id)}`)}
+        onClick={() => nativeNavigate(router, `/mini-apps?id=${encodeURIComponent(project.id)}`)}
       >
         {/* Dropdown menu (top-right) */}
         <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
