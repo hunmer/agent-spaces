@@ -1,0 +1,63 @@
+{
+  "id": "d2ba9e93-bb83-422e-b161-2ec42c5273dc",
+  "name": "音视频提取字幕",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781611468547_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "filePath",
+            "type": "string",
+            "description": "用户上传的音视频文件本地路径",
+            "required": true
+          },
+          {
+            "key": "fileName",
+            "type": "string",
+            "description": "原始文件名（用于生成 COS Object 路径）",
+            "required": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781611468547_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781612733866_2dbeke",
+      "type": "run_code",
+      "label": "解析文件类型",
+      "position": {
+        "x": 510,
+        "y": 225
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1781611468552,
+  "updatedAt": 1781612761184,
+  "enabledPlugins": [
+    "workflow.ffmpeg",
+    "workflow.aliyun-ai",
+    "workflow.tencent-cos"
+  ],
+  "groups": []
+}

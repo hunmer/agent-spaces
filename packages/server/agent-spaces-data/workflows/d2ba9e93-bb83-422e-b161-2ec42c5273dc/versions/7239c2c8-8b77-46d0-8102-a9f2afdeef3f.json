@@ -1,0 +1,31 @@
+{
+  "id": "7239c2c8-8b77-46d0-8102-a9f2afdeef3f",
+  "workflowId": "d2ba9e93-bb83-422e-b161-2ec42c5273dc",
+  "name": "初始状态备份",
+  "snapshot": {
+    "nodes": [
+      {
+        "id": "node_1781611468547_start",
+        "type": "start",
+        "label": "开始",
+        "position": {
+          "x": 250,
+          "y": 50
+        },
+        "data": {}
+      },
+      {
+        "id": "node_1781611468547_end",
+        "type": "end",
+        "label": "结束",
+        "position": {
+          "x": 250,
+          "y": 400
+        },
+        "data": {}
+      }
+    ],
+    "edges": []
+  },
+  "createdAt": 1781612594399
+}

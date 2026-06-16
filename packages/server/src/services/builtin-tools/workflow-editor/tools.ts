@@ -50,6 +50,16 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
   const versions = new Map<string, Pick<Workflow, 'nodes' | 'edges'>>();
   let draft = cloneWorkflow(ctx.workflow);
 
+  const workflowPayload = (workflow: Workflow, summarize: boolean) => ({
+    workflow: summarizeWorkflow(workflow, summarize),
+    workflow_patch: {
+      workflow_id: workflow.id,
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      updatedAt: workflow.updatedAt,
+    },
+  });
+
   const commit = (next: Workflow, meta?: JsonRecord) => {
     draft = {
       ...next,
@@ -57,7 +67,10 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       edges: clone(next.edges),
       updatedAt: Date.now(),
     };
-    return workflowResult(true, 'updated', undefined, meta);
+    return workflowResult(true, 'updated', undefined, {
+      ...workflowPayload(draft, false),
+      ...meta,
+    });
   };
 
   const definitionByType = new Map(ctx.nodeDefinitions.map((definition) => [definition.type, definition]));
@@ -103,10 +116,14 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       description: '读取当前编辑器中的工作流草稿，包含尚未保存的编辑状态。默认返回摘要，summarize=false 返回完整 data；字符串 "false" 也按 false 处理。',
       inputSchema: schema({ summarize: { type: 'boolean', description: '是否返回摘要，默认 true。' } }),
       annotations: { readOnly: true },
-      execute: async (input) => ({
-        success: true,
-        workflow: summarizeWorkflow(draft, booleanInput(asRecord(input), 'summarize', true)),
-      }),
+      execute: async (input) => {
+        const summarize = booleanInput(asRecord(input), 'summarize', true);
+        return {
+          success: true,
+          data: summarizeWorkflow(draft, summarize),
+          ...workflowPayload(draft, summarize),
+        };
+      },
     },
     {
       name: 'create_workflow_version',
@@ -158,7 +175,19 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           ];
           return checks.every(Boolean);
         });
-        return { success: true, nodes: nodes.map((node) => ({ ...node, definition: defs.get(node.type) })) };
+        if (nodes.length > 0) {
+          return { success: true, nodes: nodes.map((node) => ({ ...node, definition: defs.get(node.type) })) };
+        }
+        return {
+          success: true,
+          nodes: searchDefinitions(record).map((definition) => ({
+            type: definition.type,
+            label: definition.label,
+            category: definition.category,
+            description: definition.description,
+            definition,
+          })),
+        };
       },
     },
     {
@@ -225,7 +254,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
             known_types: Array.from(NODE_PROPERTY_TYPE_DEFINITIONS.keys()),
           };
         }
-        return { success: true, type, definition };
+        return { success: true, type, definition, description: definition.description };
       },
     },
     {
@@ -552,6 +581,11 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         try {
           const saved = workflowService.updateWorkflow(draft.id, draft);
           draft = cloneWorkflow(saved);
+          const backendMessage = 'Workflow saved and backend validation passed.';
+          return workflowResult(true, backendMessage, undefined, {
+            ...workflowPayload(draft, false),
+            backend_message: backendMessage,
+          });
           return workflowResult(true, '工作流已保存，后端校验通过。', undefined, {
             backend_message: '工作流已保存，后端校验通过。',
           });

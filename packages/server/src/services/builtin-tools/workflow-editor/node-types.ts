@@ -16,6 +16,32 @@ export const COMMON_NODE_PROPERTY_TYPES = new Set([
 ]);
 
 export const NODE_PROPERTY_TYPE_DEFINITIONS = new Map<string, JsonRecord>([
+  ['conditions', {
+    valueType: 'array',
+    description: 'switch 节点的条件分支列表。每个数组项对应一个 case 分支，出边 sourceHandle 使用 case-0、case-1 等；未命中时走 default 分支。',
+    item: {
+      id: 'string',
+      variable: 'string',
+      field: 'string?',
+      operator: 'equals | not_equals | greater_than | less_than | greater_than_or_equal | less_than_or_equal | contains | not_contains | starts_with | ends_with | is_empty | is_not_empty | is_true | is_false',
+      value: 'string?',
+    },
+    requiredItemFields: ['id', 'variable', 'operator'],
+    noValueOperators: ['is_empty', 'is_not_empty', 'is_true', 'is_false'],
+    handles: {
+      caseHandlePattern: 'case-{index}',
+      defaultHandle: 'default',
+    },
+    example: [
+      {
+        id: 'cond_1',
+        variable: '{{ __data__["start_node_id"].fileType }}',
+        field: '{{ __data__["start_node_id"].fileType }}',
+        operator: 'equals',
+        value: 'video',
+      },
+    ],
+  }],
   ['agent', {
     valueType: 'object',
     description: '工作流节点内联保存的 Agent 配置对象。不能只传 agent id 字符串；需要传对象。',

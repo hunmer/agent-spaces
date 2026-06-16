@@ -111,6 +111,18 @@ const workflow: Workflow = {
   updatedAt: 1,
 };
 
+nodeDefinitions.push({
+  type: 'switch',
+  label: 'Switch',
+  category: 'flow',
+  icon: 'GitBranch',
+  description: 'conditional branch router',
+  properties: [
+    { key: 'conditions', label: 'Conditions', type: 'conditions' },
+  ],
+  handles: { target: true, dynamicSource: { dataKey: 'conditions', extraCount: 1 } },
+});
+
 test('search_node_usage filters by node_type without swapping results', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const searchNodeUsage = tools.find((tool) => tool.name === 'search_node_usage');
@@ -162,6 +174,71 @@ test('get_node_property_type_definition returns agent value shape', async () => 
   assert.equal(result.definition.valueType, 'object');
   assert.equal(result.definition.fields.id, 'string');
   assert.deepEqual(result.definition.required, ['id', 'name', 'role', 'enabled']);
+});
+
+test('get_node_property_type_definition returns conditions value shape', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const getTypeDefinition = tools.find((tool) => tool.name === 'get_node_property_type_definition');
+  assert.ok(getTypeDefinition);
+
+  const result = await getTypeDefinition.execute({ property_type: 'conditions' }) as {
+    success: boolean;
+    definition: {
+      valueType: string;
+      item: Record<string, string>;
+      handles: { caseHandlePattern: string; defaultHandle: string };
+    };
+  };
+
+  assert.equal(result.success, true);
+  assert.equal(result.definition.valueType, 'array');
+  assert.equal(result.definition.item.variable, 'string');
+  assert.equal(result.definition.handles.caseHandlePattern, 'case-{index}');
+  assert.equal(result.definition.handles.defaultHandle, 'default');
+});
+
+test('get_current_workflow returns workflow data and patch', async () => {
+  const currentWorkflow: Workflow = {
+    ...workflow,
+    nodes: [{
+      id: 'node-1',
+      type: 'run_code',
+      label: 'Run code',
+      position: { x: 0, y: 0 },
+      data: { code: 'return {};' },
+    }],
+  };
+  const tools = createWorkflowEditorFunctionTools({ workflow: currentWorkflow, nodeDefinitions });
+  const getCurrentWorkflow = tools.find((tool) => tool.name === 'get_current_workflow');
+  assert.ok(getCurrentWorkflow);
+
+  const result = await getCurrentWorkflow.execute({ summarize: false }) as {
+    success: boolean;
+    data: Workflow;
+    workflow: Workflow;
+    workflow_patch: { workflow_id: string; nodes: Workflow['nodes']; edges: Workflow['edges'] };
+  };
+
+  assert.equal(result.success, true);
+  assert.equal(result.data.id, currentWorkflow.id);
+  assert.deepEqual(result.workflow.nodes, currentWorkflow.nodes);
+  assert.equal(result.workflow_patch.workflow_id, currentWorkflow.id);
+  assert.deepEqual(result.workflow_patch.nodes, currentWorkflow.nodes);
+});
+
+test('search_nodes falls back to node definitions when current workflow has no matching node', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const searchNodes = tools.find((tool) => tool.name === 'search_nodes');
+  assert.ok(searchNodes);
+
+  const result = await searchNodes.execute({ keyword: 'switch' }) as {
+    success: boolean;
+    nodes: Array<{ type: string; definition?: { type: string } }>;
+  };
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.nodes.map((node) => node.type), ['switch']);
+  assert.equal(result.nodes[0]?.definition?.type, 'switch');
 });
 
 test('update_node rejects agent property when value does not match type definition', async () => {
