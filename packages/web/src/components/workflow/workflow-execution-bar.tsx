@@ -17,7 +17,7 @@ import {
   Circle, Clock, Copy, Loader2, MoreHorizontal, Pause, Play, Square, Trash2, XCircle,
 } from 'lucide-react';
 import { JsonViewer } from '@/components/viewers/json-viewer';
-import { cn } from '@/lib/utils';
+import { cn, copyToClipboard } from '@/lib/utils';
 import { executionLogApi } from '@/lib/workflow-api';
 import { ExecutionInputDialog } from './workflow-execution-input-dialog';
 import { SavePresetDialog } from './workflow-save-preset-dialog';
@@ -149,7 +149,7 @@ export function WorkflowExecutionBar({
   };
 
   const copyText = async (key: string, text: string) => {
-    await navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
   };
@@ -301,7 +301,7 @@ export function WorkflowExecutionBar({
                             if (!workflowId) return;
                             try {
                               const { path } = await executionLogApi.getLogPath(workflowId, item.id);
-                              await navigator.clipboard.writeText(path);
+                              await copyToClipboard(path);
                               setCopiedKey(`path-${item.id}`);
                               setTimeout(() => setCopiedKey(null), 1500);
                             } catch { /* ignore */ }

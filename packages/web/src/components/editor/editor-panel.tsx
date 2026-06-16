@@ -12,7 +12,7 @@ import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { FileContextMenu } from "./file-context-menu";
 import { useTranslations } from 'next-intl';
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -489,7 +489,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 <DropdownMenuItem onClick={() => {
                   const relPath = selectedPath || '';
                   const absPath = relPath ? (boundDir ? boundDir.replace(/\/+$/, '') + '/' + relPath : relPath) : boundDir;
-                  navigator.clipboard.writeText(absPath);
+                  copyToClipboard(absPath);
                   toast.success(t('copied'));
                 }}>
                   <Copy className="size-4" />
@@ -585,7 +585,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       workspaceId={workspaceId}
                       onDelete={handleDelete}
                       onImport={(targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); }}
-                      onCopyPath={(path) => { navigator.clipboard.writeText(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
+                      onCopyPath={(path) => { copyToClipboard(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
                       onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
                       onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
                       onRename={handleRename}

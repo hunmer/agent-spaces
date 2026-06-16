@@ -13,7 +13,7 @@ import {
   ClipboardCopy,
   Maximize2,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import {
   Popover,
   PopoverContent,
@@ -215,7 +215,7 @@ function JsonNode({
   const [valueCopied, setValueCopied] = React.useState(false)
 
   const handleCopyPath = React.useCallback(() => {
-    navigator.clipboard.writeText(path).then(() => {
+    copyToClipboard(path).then(() => {
       setPathCopied(true)
       setTimeout(() => setPathCopied(false), 1500)
     })
@@ -223,7 +223,7 @@ function JsonNode({
 
   const handleCopyValue = React.useCallback(() => {
     const text = typeof value === "string" ? value : JSON.stringify(value, null, 2)
-    navigator.clipboard.writeText(text).then(() => {
+    copyToClipboard(text).then(() => {
       setValueCopied(true)
       setTimeout(() => setValueCopied(false), 1500)
     })

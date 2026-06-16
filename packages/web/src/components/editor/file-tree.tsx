@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import { FileContextMenu } from "./file-context-menu"
 import { useTranslations } from 'next-intl'
 import type { FileNode } from "@agent-spaces/shared"
@@ -286,7 +286,7 @@ export const FileTreeFolder = ({
           </ContextMenuItem>
           <ContextMenuItem onClick={() => {
             const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
-            navigator.clipboard.writeText(absPath);
+            copyToClipboard(absPath);
           }}>
             <Copy className="size-4" />
             {t('copyPath')}

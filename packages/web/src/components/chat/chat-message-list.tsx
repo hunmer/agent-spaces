@@ -1,7 +1,7 @@
 "use client";
 
 import { Markdown } from "@/components/ui/markdown";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall } from "@agent-spaces/shared";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
@@ -149,7 +149,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const text = serializeForCopy
       ? serializeForCopy(message)
       : extractThinkingContent(message.content).message || message.content;
-    await navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     setCopiedMessageId(message.id);
     window.setTimeout(() => {
       setCopiedMessageId((current) => (current === message.id ? null : current));

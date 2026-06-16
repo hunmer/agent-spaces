@@ -48,3 +48,7 @@ export function textColorClass(text: string): string {
 export function textToColor(text: string): string {
   return FILL_COLORS[textHash(text) % FILL_COLORS.length]
 }
+
+export function copyToClipboard(text: string): Promise<void> {
+  return navigator.clipboard.writeText(text)
+}

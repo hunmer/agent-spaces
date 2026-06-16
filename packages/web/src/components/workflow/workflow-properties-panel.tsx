@@ -10,6 +10,7 @@ import { Copy, Image as ImageIcon, X } from 'lucide-react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Toggle } from '@/components/ui/toggle';
+import { copyToClipboard } from '@/lib/utils';
 import {
   getOutputFields,
   getJsonPresets,
@@ -130,7 +131,7 @@ export function WorkflowPropertiesPanel({
   }, [nodeId, onPreviewUpdateData]);
   const handleCopyNodeJson = useCallback(() => {
     if (!node) return;
-    navigator.clipboard.writeText(JSON.stringify(node, null, 2));
+    copyToClipboard(JSON.stringify(node, null, 2));
   }, [node]);
   const toVariableInputValue = useCallback((value: unknown): string | number => {
     if (typeof value === 'string' || typeof value === 'number') return value;
@@ -250,7 +251,7 @@ export function WorkflowPropertiesPanel({
                   </p>
                   <Copy
                     className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer text-red-400 hover:text-red-300"
-                    onClick={() => navigator.clipboard.writeText(visibleDebugResult.error ?? '')}
+                    onClick={() => copyToClipboard(visibleDebugResult.error ?? '')}
                   />
                 </div>
               )}
@@ -301,7 +302,7 @@ export function WorkflowPropertiesPanel({
                   variant="outline"
                   size="sm"
                   className="h-6 gap-1 text-[11px]"
-                  onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedJsonPreset, null, 2))}
+                  onClick={() => copyToClipboard(JSON.stringify(selectedJsonPreset, null, 2))}
                 >
                   <Copy className="h-3 w-3" />
                   {t('properties.copy')}

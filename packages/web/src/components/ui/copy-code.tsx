@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 import { Copy, Check } from 'lucide-react'
+import { copyToClipboard } from '@/lib/utils'
 
 type CopyCodeProps = {
   code: string
@@ -16,7 +17,7 @@ function CopyCode({ code = 'javascript' }: CopyCodeProps) {
     try {
       // Check if clipboard API is available
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(code)
+        await copyToClipboard(code)
         setCopied(true)
         setTimeout(() => setCopied(false), 1500)
       } else {

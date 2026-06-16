@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { copyToClipboard } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import {
   AlertCircle,
@@ -43,7 +44,7 @@ function CopyButton({ data }: { data: unknown }) {
   const [copied, setCopied] = React.useState(false);
   const handleClick = React.useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+    copyToClipboard(JSON.stringify(data, null, 2)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });

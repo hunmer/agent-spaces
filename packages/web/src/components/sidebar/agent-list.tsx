@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Bot, Copy, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import type { AgentPreset } from "./agent-shared";
 
 const AGENT_GENERATOR_PRESET_ID = "agent-generator";
@@ -66,7 +66,7 @@ export function AgentList({
               variant="ghost"
               size="icon"
               className="opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(agent.id); }}
+              onClick={(e) => { e.stopPropagation(); copyToClipboard(agent.id); }}
             >
               <Copy className="size-3" />
             </Button>

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { useTerminalStore } from "@/stores/terminal"
 import { toast } from "sonner"
 import { sdk } from '@/lib/sdk'
+import { copyToClipboard } from '@/lib/utils'
 
 interface FileContextMenuProps {
   filePath: string
@@ -22,7 +23,7 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
 
   const handleCopyPath = () => {
     const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + filePath : filePath
-    navigator.clipboard.writeText(absPath)
+    copyToClipboard(absPath)
   }
 
   const handleReveal = () => {
@@ -43,7 +44,7 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
   const handleCopyDownloadUrl = () => {
     if (!workspaceId) return
     const url = `${window.location.origin}/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(filePath)}`
-    navigator.clipboard.writeText(url)
+    copyToClipboard(url)
   }
 
   return (

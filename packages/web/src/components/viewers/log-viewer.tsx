@@ -33,7 +33,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import { useTranslations } from "next-intl"
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 
@@ -143,7 +143,7 @@ function useCopy() {
 
 	const copy = React.useCallback(async (value: string) => {
 		try {
-			await navigator.clipboard.writeText(value)
+			await copyToClipboard(value)
 			setCopied(true)
 			window.setTimeout(() => setCopied(false), 1500)
 		} catch {

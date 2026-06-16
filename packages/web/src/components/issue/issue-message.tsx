@@ -12,6 +12,7 @@ import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
 import type { Attachment as MessageAttachment, IssueComment, MessageReply } from '@agent-spaces/shared';
+import { copyToClipboard } from '@/lib/utils';
 
 interface IssueMessageProps {
   comment: IssueComment;
@@ -83,7 +84,7 @@ export function IssueMessage({
   }, [editing, draft.length]);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(comment.content);
+    await copyToClipboard(comment.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };

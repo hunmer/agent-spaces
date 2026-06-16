@@ -6,6 +6,7 @@ import { useEditorStore } from '@/stores/editor';
 import { useEditorSendStore } from '@/stores/editor-send';
 import { toast } from 'sonner';
 import { Copy, Code2, MessageSquarePlus, CirclePlus } from 'lucide-react';
+import { copyToClipboard } from '@/lib/utils';
 
 function emitFlutterInspectorJump(data: { path: string; line: number; column?: number }) {
   const bridge = (window as Window & { __flutterBridge?: { emit?: (event: string, data: unknown) => void } }).__flutterBridge;
@@ -44,7 +45,7 @@ export function InspectorActionDialog() {
       icon: <Copy size={16} />,
       label: t('copy'),
       onClick: () => {
-        navigator.clipboard.writeText(pos).then(() => {
+        copyToClipboard(pos).then(() => {
           toast.success(t('copied').replace('{pos}', pos));
         });
         setPendingJump(null);

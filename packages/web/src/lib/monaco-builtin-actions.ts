@@ -4,6 +4,7 @@ import { useEditorSendStore } from '@/stores/editor-send';
 import { toast } from 'sonner';
 import zhEditor from '@/locales/zh/editor.json';
 import enEditor from '@/locales/en/editor.json';
+import { copyToClipboard } from '@/lib/utils';
 
 const localeMap = { zh: zhEditor, en: enEditor } as const;
 
@@ -25,7 +26,7 @@ export const monacoBuiltinActions = [
     if (!model || !sel) return;
     const relPath = toRelativePath(model.uri.path, ctx);
     const pos = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.endLineNumber}`;
-    navigator.clipboard.writeText(pos).then(() => {
+    copyToClipboard(pos).then(() => {
       toast.success(t('copiedPosition').replace('{pos}', pos));
     });
   },

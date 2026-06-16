@@ -16,6 +16,7 @@ import { normalizeAgent } from '@/components/sidebar/agent-shared';
 import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/decorations/text-shimmer';
 import { MovingBorder } from '@/components/ui/border-glide';
+import { copyToClipboard } from '@/lib/utils';
 
 interface MessageItemProps {
   message: Message;
@@ -62,7 +63,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
 
   const handleCopy = useCallback(async () => {
     const text = isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content;
-    await navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);

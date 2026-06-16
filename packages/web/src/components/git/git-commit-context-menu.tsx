@@ -18,6 +18,7 @@ import { useAgentStore } from "@/stores/agent";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { errMsg } from "./git-commit-utils";
+import { copyToClipboard } from "@/lib/utils";
 
 interface CommitEntry {
   hash: string;
@@ -149,10 +150,10 @@ export function GitCommitContextMenu({ workspaceId, entry, onRefreshAll, onOpenP
           </ContextMenuSubContent>
         </ContextMenuSub>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => { navigator.clipboard.writeText(entry.hash); toast.success(t('contextMenu.commitIdCopied')); }}>
+        <ContextMenuItem onClick={() => { copyToClipboard(entry.hash); toast.success(t('contextMenu.commitIdCopied')); }}>
           {t('contextMenu.copyCommitId')}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => { navigator.clipboard.writeText(entry.message); toast.success(t('contextMenu.commitMessageCopied')); }}>
+        <ContextMenuItem onClick={() => { copyToClipboard(entry.message); toast.success(t('contextMenu.commitMessageCopied')); }}>
           {t('contextMenu.copyCommitMessage')}
         </ContextMenuItem>
         <ContextMenuSeparator />

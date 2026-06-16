@@ -9,6 +9,7 @@ import {
 } from "./code-editor-mobile";
 import type { MobileReadonlyMenuState, MobileLongPressState, MobileSelectionPreMetrics } from "./code-editor-mobile";
 import type * as Monaco from 'monaco-editor';
+import { copyToClipboard } from '@/lib/utils';
 
 interface UseMobileReadonlyOverlayParams {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
@@ -254,7 +255,7 @@ export function useMobileReadonlyOverlay({
   const copyMobileSelection = useCallback(async () => {
     const text = mobileReadonlyMenu?.selectedText || activeContent;
     if (!text) return;
-    await navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     toast.success(mobileReadonlyMenu?.selectedText ? '已复制选中文本' : '已复制代码');
     closeMobileSelectionMode();
   }, [activeContent, closeMobileSelectionMode, mobileReadonlyMenu]);

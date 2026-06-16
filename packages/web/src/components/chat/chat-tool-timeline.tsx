@@ -2,7 +2,7 @@
 
 import { JsonViewer } from "@/components/viewers/json-viewer";
 import { Markdown } from "@/components/ui/markdown";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { AlertCircle, Check, CheckCircle2, ChevronDown, Copy, Loader2, Play, Wrench } from "lucide-react";
 import { useState } from "react";
@@ -32,7 +32,7 @@ export function ChatToolTimeline({
   const handleCopyTool = async (e: React.MouseEvent, item: WorkflowAgentTimelineItem) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(JSON.stringify(item, null, 2));
+      await copyToClipboard(JSON.stringify(item, null, 2));
       setCopiedId(item.id);
       window.setTimeout(() => {
         setCopiedId((current) => (current === item.id ? null : current));

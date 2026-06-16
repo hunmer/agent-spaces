@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { FileTree, FileTreeFile, FileTreeFolder } from '@/components/editor/file-tree';
 import { FileIconImg, FolderIconImg } from '@/components/editor/file-icon';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
+import { copyToClipboard } from '@/lib/utils';
 
 const FILE_POLL_INTERVAL_MS = 2000;
 
@@ -529,7 +530,7 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="size-5 shrink-0"
-                                    onClick={() => navigator.clipboard.writeText(activeFile)}
+                                    onClick={() => copyToClipboard(activeFile)}
                                 >
                                     <Copy className="size-3" />
                                 </Button>

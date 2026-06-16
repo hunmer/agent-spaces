@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { useEditorStore } from "@/stores/editor"
 import { sdk } from '@/lib/sdk'
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import { DiffViewer } from "@/components/git/diff-viewer"
 import {
   ChainOfThoughtStep,
@@ -147,7 +147,7 @@ export function ToolStep({
     const data = detail ?? await loadDetail()
     const text = data ? formatToolCopyText(data) : chain.command ?? chain.title
     try {
-      await navigator.clipboard.writeText(text)
+      await copyToClipboard(text)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch { /* clipboard unavailable */ }

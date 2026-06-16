@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { copyToClipboard } from "@/lib/utils";
 
 interface CodeFavoritesPanelProps {
   workspaceId: string;
@@ -68,7 +69,7 @@ function FavoriteCard({
   const handleCopy = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const pos = `${favorite.path}:${favorite.line}:${favorite.endLine}`;
-    navigator.clipboard.writeText(pos).then(() => {
+    copyToClipboard(pos).then(() => {
       toast.success(t('copiedPosition', { pos }));
     });
   }, [favorite, t]);

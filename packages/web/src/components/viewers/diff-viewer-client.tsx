@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Check, Copy } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 
 interface DiffViewerCopyButtonProps extends Omit<React.ComponentProps<"button">, "value"> {
   value: string
@@ -12,7 +12,7 @@ export function DiffViewerCopyButton({ value, className, ...props }: DiffViewerC
   const [copied, setCopied] = React.useState(false)
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(value)
+    await copyToClipboard(value)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1500)
   }

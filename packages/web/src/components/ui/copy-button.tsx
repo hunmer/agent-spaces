@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 
 interface CopyButtonProps {
   value: string;
@@ -44,7 +44,7 @@ export function CopyButton({ value, label, className }: CopyButtonProps) {
   }, [copied]);
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(value);
+    await copyToClipboard(value);
     setCopied(true);
   }, [value]);
 

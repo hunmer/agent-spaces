@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { FileIconImg } from "./file-icon";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { sdk } from '@/lib/sdk';
 
 const restrictToHorizontal: Modifier = ({ transform }) => ({
@@ -164,7 +164,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
   );
 
   const handleCopy = async (text: string) => {
-    await navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     toast.success(t('copied'));
   };
 
