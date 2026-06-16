@@ -72,7 +72,9 @@
             "key": "count",
             "type": "number"
           }
-        ]
+        ],
+        "knowledgeBase": "24fd5ce5-d74c-4b03-9155-4b9d766d0ee1",
+        "query": "如何将文案转换成短视频"
       }
     },
     {
@@ -117,7 +119,7 @@
   ],
   "edges": [],
   "createdAt": 1781507395559,
-  "updatedAt": 1781598178848,
+  "updatedAt": 1781599701757,
   "groups": [],
   "enabledPlugins": [
     "workflow.qianyin"

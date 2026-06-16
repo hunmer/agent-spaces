@@ -60,11 +60,11 @@ export function registerExecutionChannels(executionManager: ExecutionManager): v
     }
   });
 
-  registerHandler('workflow:debug-node', async (ws, _workspaceId, data) => {
+  registerHandler('workflow:debug-node', async (ws, workspaceId, data) => {
     const clientId = getClientId(ws);
     if (!clientId) return;
     try {
-      const result = await executionManager.debugNode(data as any, clientId);
+      const result = await executionManager.debugNode(data as any, clientId, workspaceId);
       ws.send(JSON.stringify({ event: 'workflow:debug-node:result', data: result }));
     } catch (err: any) {
       ws.send(JSON.stringify({ event: 'workflow:debug-node:error', data: { error: err.message } }));

@@ -130,6 +130,7 @@ export class ExecutionManager {
   async debugNode(
     request: WorkflowDebugNodeRequest,
     ownerClientId: string,
+    workspaceId?: string,
   ): Promise<WorkflowDebugNodeResponse> {
     const startedAt = Date.now();
     const workflow = workflowStore.getWorkflow(request.workflowId);
@@ -156,6 +157,7 @@ export class ExecutionManager {
     const session = this.createSession(
       `debug-${randomUUID()}`, workflow, ownerClientId, request.input || {},
       { nodes, edges: snapshotEdges, groups: snapshotGroups, variables: snapshotVariables }, request.context, request.env,
+      undefined, workspaceId,
     );
 
     try {
