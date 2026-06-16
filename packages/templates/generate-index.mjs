@@ -412,6 +412,9 @@ function scanMiniAppStore() {
     let description;
     let type;
     const manifestBuf = zip.read('manifest.json');
+    let version;
+    let tags;
+    let hasIntro = false;
     if (manifestBuf) {
       try {
         const manifest = JSON.parse(manifestBuf.toString('utf-8'));
@@ -419,6 +422,9 @@ function scanMiniAppStore() {
         icon = manifest.icon;
         description = manifest.description;
         type = manifest.type;
+        version = manifest.version;
+        tags = Array.isArray(manifest.tags) ? manifest.tags : [];
+        hasIntro = manifest.hasIntro === true;
       } catch { /* ignore */ }
     }
 
@@ -436,13 +442,29 @@ function scanMiniAppStore() {
     const md5 = fileMD5(zipPath);
     const prev = existing.get(id);
     const updatedAt = (!prev || prev.md5 !== md5) ? fileMtime(zipPath) : prev.updatedAt;
-    index.push({ id, name, type, icon, iconUrl, description, zipUrl: `mini-app/${entry.name}`, md5, updatedAt });
+    index.push({
+      id, name, type, icon, iconUrl, description,
+      hasIntro, version, tags,
+      zipUrl: `mini-app/${entry.name}`, md5, updatedAt,
+    });
   }
 
   // Clean stale icons whose template zip no longer exists
   for (const f of readdirSync(iconsDir)) {
     if (!seenIds.has(f.replace(/\.[^.]+$/, ''))) unlinkSync(join(iconsDir, f));
   }
+
+  // Clean stale intro files whose template no longer ships an intro
+  const introDir = join(dir, 'intro');
+  if (existsSync(introDir)) {
+    const introIds = new Set(index.filter((i) => i.hasIntro).map((i) => i.id));
+    for (const f of readdirSync(introDir)) {
+      if (!f.endsWith('.md')) continue;
+      const id = basename(f, '.md');
+      if (!introIds.has(id)) unlinkSync(join(introDir, f));
+    }
+  }
+
   writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
   console.log(`[mini-app] ${index.length} templates`);
 }
