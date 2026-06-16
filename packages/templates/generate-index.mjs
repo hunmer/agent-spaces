@@ -391,6 +391,9 @@ function readZip(filePath) {
 }
 
 function scanMiniAppStore() {
+  // NOTE: requires pack-mini-apps.mjs to run first — it writes intro/{id}.md
+  // and sets manifest.hasIntro in each zip. Running only generate-index against
+  // stale zips would cause the intro cleanup below to wipe the intro directory.
   const dir = join(agentsDir, 'mini-app');
   if (!existsSync(dir)) return;
   const indexPath = join(dir, 'index.json');
