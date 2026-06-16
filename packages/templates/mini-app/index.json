@@ -4,18 +4,24 @@
     "name": "ai_image_video",
     "type": "react",
     "icon": "📷",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
     "zipUrl": "mini-app/ai_image_video.zip",
-    "md5": "9c82898687a2f83ffb1f6d9c461e8223",
-    "updatedAt": "2026-06-14T13:16:37.010Z"
+    "md5": "b25b2654cc445f5c5f17149282146167",
+    "updatedAt": "2026-06-16T03:57:33.689Z"
   },
   {
     "id": "ai_music",
     "name": "ai_music",
     "type": "react",
     "icon": "🎵",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
     "zipUrl": "mini-app/ai_music.zip",
-    "md5": "7d51409b29d4b3568d93341630920604",
-    "updatedAt": "2026-06-14T13:16:37.015Z"
+    "md5": "c0f257fb6003695771d16cfb41d62e8f",
+    "updatedAt": "2026-06-16T03:57:33.698Z"
   },
   {
     "id": "copywriting",
@@ -23,6 +29,9 @@
     "type": "react",
     "icon": "✍️",
     "description": "文案库",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
     "zipUrl": "mini-app/copywriting.zip",
     "md5": "ac59766d402fe6250a20ab5a90859816",
     "updatedAt": "2026-06-14T13:16:37.017Z"
@@ -32,6 +41,9 @@
     "name": "database-demo",
     "type": "react",
     "icon": "💻",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
     "zipUrl": "mini-app/database-demo.zip",
     "md5": "7d6a04c98ef7150c7bea44966bf0228a",
     "updatedAt": "2026-06-14T13:16:37.018Z"
@@ -42,9 +54,17 @@
     "type": "react",
     "icon": "🔈",
     "description": "上传 EPUB 电子书，选择章节，AI 阅读后生成双人播客对话脚本",
+    "hasIntro": true,
+    "version": "1.0.0",
+    "tags": [
+      "电子书",
+      "播客",
+      "EPUB",
+      "AI"
+    ],
     "zipUrl": "mini-app/podcast_generator.zip",
-    "md5": "07bed31b6a470d445c5d15301840bf41",
-    "updatedAt": "2026-06-14T13:16:37.020Z"
+    "md5": "c1051c4807c99467a9e407802eb2cee2",
+    "updatedAt": "2026-06-16T03:57:33.711Z"
   },
   {
     "id": "tts",
@@ -52,6 +72,9 @@
     "type": "react",
     "icon": "🗣️",
     "description": "配音界面",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
     "zipUrl": "mini-app/tts.zip",
     "md5": "5549cfe44e770dab13091bdde9365443",
     "updatedAt": "2026-06-14T13:16:37.023Z"
@@ -60,6 +83,9 @@
     "id": "ui-demo",
     "name": "ui-demo",
     "type": "react",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
     "zipUrl": "mini-app/ui-demo.zip",
     "md5": "336f8cbb73552edb11faa3c232b963d5",
     "updatedAt": "2026-06-14T13:16:37.026Z"
