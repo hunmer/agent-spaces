@@ -703,7 +703,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       )}
 
       {canShowNodeContent && canShowVariableReferences ? (
-        <div className="flex w-full min-w-0 flex-wrap gap-1 overflow-hidden border-b border-border/50 px-3 py-1.5">
+        <div className="flex w-full min-w-0 flex-wrap gap-1 overflow-hidden px-3 py-1.5">
           {variableReferences.map(reference => (
             <VariableBadgeInput
               key={reference}

@@ -28,15 +28,24 @@ export function useFlowCanvas() {
 
 // ---- useEditorShortcuts ----
 
-function isEditableKeyboardTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
+function isEditableElement(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement)) return false;
 
   return (
-    target instanceof HTMLInputElement
-    || target instanceof HTMLTextAreaElement
-    || target instanceof HTMLSelectElement
-    || target.isContentEditable
+    element instanceof HTMLInputElement
+    || element instanceof HTMLTextAreaElement
+    || element instanceof HTMLSelectElement
+    || element.isContentEditable
+    || element.closest('[contenteditable="true"], [role="textbox"]') !== null
   );
+}
+
+function isEditableKeyboardTarget(event: KeyboardEvent): boolean {
+  if (event.composedPath().some(target => target instanceof Element && isEditableElement(target))) {
+    return true;
+  }
+
+  return isEditableElement(document.activeElement);
 }
 
 export function useEditorShortcuts({
@@ -57,7 +66,7 @@ export function useEditorShortcuts({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!e.key) return;
-      const isEditableTarget = isEditableKeyboardTarget(e.target);
+      const isEditableTarget = isEditableKeyboardTarget(e);
       const key = e.key.toLowerCase();
 
       if ((e.metaKey || e.ctrlKey) && key === 's') {

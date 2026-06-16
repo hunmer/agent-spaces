@@ -31,11 +31,8 @@ export function getClientPluginId(node: WorkflowNode): string | null {
 export function normalizeNodeResult(result: unknown): Record<string, unknown> {
   if (!result || typeof result !== 'object' || Array.isArray(result)) return { result };
   const record = result as Record<string, unknown>;
-  if (record.success === true && record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
-    return record.data as Record<string, unknown>;
-  }
   if (record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
-    return record.data as Record<string, unknown>;
+    return { ...(record.data as Record<string, unknown>), ...record };
   }
   return record;
 }
