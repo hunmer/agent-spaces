@@ -389,9 +389,59 @@ export class ExecutionManager {
   }
 
   private async runFromIndex(session: ExecutionSession, startIndex: number): Promise<void> {
-    for (let i = startIndex; i < session.executionOrder.length; i++) {
+    const completedNodeIds = new Set(
+      session.steps
+        .filter(step => this.doesStepSatisfyDownstreamDependency(step))
+        .map(step => step.nodeId),
+    );
+    const runningNodeIds = new Set<string>();
+    const scheduledNodeIds = new Set<string>(completedNodeIds);
+    let paused = false;
+
+    const startReadyNodes = (): Array<Promise<void>> => {
+      const started: Array<Promise<void>> = [];
+      for (let i = startIndex; i < session.executionOrder.length; i++) {
+        const node = session.executionOrder[i];
+        if (!node || scheduledNodeIds.has(node.id) || runningNodeIds.has(node.id)) continue;
+        if (!this.areIncomingNodesCompleted(session, node.id, session.edges, completedNodeIds)) continue;
+
+        scheduledNodeIds.add(node.id);
+        runningNodeIds.add(node.id);
+        started.push((async () => {
+          try {
+            const result = await this.executeWorkflowNodeAtIndex(session, node, i);
+            if (result === 'completed' || result === 'skipped') completedNodeIds.add(node.id);
+            if (result === 'paused') paused = true;
+          } finally {
+            runningNodeIds.delete(node.id);
+          }
+        })());
+      }
+      return started;
+    };
+
+    const running = new Set<Promise<void>>();
+    const enqueueReady = () => {
+      if (session.status === 'error' || session.stopRequested || session.pauseRequested || paused) return;
+      for (const promise of startReadyNodes()) {
+        const tracked = promise.finally(() => running.delete(tracked));
+        running.add(tracked);
+      }
+    };
+
+    enqueueReady();
+    while (running.size > 0) {
+      await Promise.race(running);
+      if (session.status === 'error') {
+        await Promise.allSettled(running);
+        session.finishedAt = Date.now();
+        this.emitLog(session);
+        this.emitWorkflowError(session);
+        this.persistAndCleanup(session);
+        return;
+      }
       if (session.stopRequested) {
-        if (session.status === 'error') return;
+        await Promise.allSettled(running);
         session.status = 'error';
         session.lastErrorMessage = 'Execution stopped';
         session.finishedAt = Date.now();
@@ -400,73 +450,17 @@ export class ExecutionManager {
         this.persistAndCleanup(session);
         return;
       }
-
-      if (session.pauseRequested) {
-        session.currentIndex = i;
-        session.status = 'paused';
-        session.pauseReason = 'manual';
-        session.pauseNodeId = session.executionOrder[i]?.id;
-        this.emitLog(session);
-        this.emitEvent(session, 'workflow:paused', {
-          executionId: session.id, workflowId: session.workflow.id,
-          timestamp: Date.now(), status: 'paused',
-          currentNodeId: session.executionOrder[i]?.id, reason: 'manual',
-        });
+      if (paused || session.status === 'paused') {
+        await Promise.allSettled(running);
         return;
       }
+      enqueueReady();
+    }
 
-      session.currentIndex = i;
-      const node = session.executionOrder[i];
-      const nodeState = node.nodeState || 'normal';
-
-      if (node.type === 'loop_body' && isGeneratedWorkflowNode(node)) continue;
-      if (getCompositeParentId(node)) continue;
-
-      if (this.getActiveBranches(session).size > 0 && !this.isNodeReachable(session, node.id)) {
-        this.recordSkippedStep(session, node, 'Inactive branch');
-        continue;
-      }
-
-      if (!this.areIncomingNodesCompleted(session, node.id, session.edges)) {
-        this.recordSkippedStep(session, node, 'Waiting for upstream nodes');
-        continue;
-      }
-
-      if (nodeState === 'disabled') {
-        this.recordSkippedStep(session, node, 'Node disabled');
-        session.status = 'error';
-        session.lastErrorMessage = 'Node disabled, workflow aborted';
-        session.finishedAt = Date.now();
-        this.emitLog(session);
-        this.emitWorkflowError(session);
-        this.persistAndCleanup(session);
-        return;
-      }
-
-      if (nodeState === 'skipped') {
-        this.recordSkippedStep(session, node, 'Node skipped');
-        continue;
-      }
-
-      if (this.shouldPauseAtBreakpoint(session, node, 'start')) {
-        this.pauseAtBreakpoint(session, i, node, 'start');
-        return;
-      }
-
-      const result = await this.executeNode(session, node);
-      if (result === 'interrupted') { i -= 1; continue; }
-
-      if (session.status === 'error') {
-        session.finishedAt = Date.now();
-        this.emitLog(session);
-        this.emitWorkflowError(session);
-        this.persistAndCleanup(session);
-        return;
-      }
-
-      if (this.shouldPauseAtBreakpoint(session, node, 'end')) {
-        this.pauseAtBreakpoint(session, i + 1, node, 'end');
-        return;
+    if (session.status === 'paused') return;
+    if (scheduledNodeIds.size < session.executionOrder.length) {
+      for (const node of session.executionOrder) {
+        if (!scheduledNodeIds.has(node.id)) this.recordSkippedStep(session, node, 'Waiting for upstream nodes');
       }
     }
 
@@ -480,6 +474,72 @@ export class ExecutionManager {
       log: this.currentLog(session), context: this.currentContext(session),
     });
     this.persistAndCleanup(session);
+  }
+
+  private async executeWorkflowNodeAtIndex(
+    session: ExecutionSession,
+    node: WorkflowNode,
+    index: number,
+  ): Promise<'completed' | 'skipped' | 'paused' | 'interrupted'> {
+    if (session.stopRequested) {
+      if (session.status === 'error') return 'interrupted';
+      session.status = 'error';
+      session.lastErrorMessage = 'Execution stopped';
+      return 'interrupted';
+    }
+
+    if (session.pauseRequested) {
+      session.currentIndex = index;
+      session.status = 'paused';
+      session.pauseReason = 'manual';
+      session.pauseNodeId = node.id;
+      this.emitLog(session);
+      this.emitEvent(session, 'workflow:paused', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: Date.now(), status: 'paused',
+        currentNodeId: node.id, reason: 'manual',
+      });
+      return 'paused';
+    }
+
+    session.currentIndex = index;
+    const nodeState = node.nodeState || 'normal';
+
+    if (node.type === 'loop_body' && isGeneratedWorkflowNode(node)) return 'skipped';
+    if (getCompositeParentId(node)) return 'skipped';
+
+    if (this.getActiveBranches(session).size > 0 && !this.isNodeReachable(session, node.id)) {
+      this.recordSkippedStep(session, node, 'Inactive branch');
+      return 'skipped';
+    }
+
+    if (nodeState === 'disabled') {
+      this.recordSkippedStep(session, node, 'Node disabled');
+      session.status = 'error';
+      session.lastErrorMessage = 'Node disabled, workflow aborted';
+      return 'interrupted';
+    }
+
+    if (nodeState === 'skipped') {
+      this.recordSkippedStep(session, node, 'Node skipped');
+      return 'skipped';
+    }
+
+    if (this.shouldPauseAtBreakpoint(session, node, 'start')) {
+      this.pauseAtBreakpoint(session, index, node, 'start');
+      return 'paused';
+    }
+
+    const result = await this.executeNode(session, node);
+    if (result === 'interrupted') return 'interrupted';
+
+    if (session.status === 'error') return 'interrupted';
+
+    if (this.shouldPauseAtBreakpoint(session, node, 'end')) {
+      this.pauseAtBreakpoint(session, index + 1, node, 'end');
+      return 'paused';
+    }
+    return 'completed';
   }
 
   // ---- Private: Node execution ----
@@ -944,23 +1004,15 @@ export class ExecutionManager {
 
     const visited = new Set<string>([bodyNode.id]);
     const execFrom = async (nodeId: string): Promise<unknown> => {
-      if (shouldInterrupt(session)) return undefined;
-      let lastResult: unknown;
-      for (const edge of adjacency.get(nodeId) || []) {
-        if (shouldInterrupt(session)) return lastResult;
-        const activeHandle = this.getActiveBranches(session).get(edge.source);
-        if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
-        const nextNode = scopeNodes.find(n => n.id === edge.target);
-        if (!nextNode || visited.has(nextNode.id)) continue;
-        if (!this.areIncomingNodesCompleted(session, nextNode.id, bodyEdges, visited)) continue;
-        visited.add(nextNode.id);
-        const result = await this.executeNode(session, nextNode);
-        if (result === 'interrupted' || shouldInterrupt(session)) return lastResult;
-        lastResult = this.getNodeExecutionData(session, nextNode.id);
-        const downstream = await execFrom(nextNode.id);
-        if (downstream !== undefined) lastResult = downstream;
-      }
-      return lastResult;
+      return this.executeDownstreamBranches(
+        session,
+        nodeId,
+        adjacency.get(nodeId) || [],
+        bodyEdges,
+        visited,
+        id => scopeNodes.find(n => n.id === id),
+        execFrom,
+      );
     };
     return execFrom(bodyNode.id);
   }
@@ -1007,25 +1059,60 @@ export class ExecutionManager {
 
     const visited = new Set<string>([startNode.id]);
     const execFrom = async (nodeId: string): Promise<unknown> => {
-      if (shouldInterrupt(session)) return undefined;
-      let lastResult: unknown;
-      for (const edge of adjacency.get(nodeId) || []) {
-        if (shouldInterrupt(session)) return lastResult;
-        const activeHandle = this.getActiveBranches(session).get(edge.source);
-        if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
-        const nextNode = nodeMap.get(edge.target);
-        if (!nextNode || visited.has(nextNode.id)) continue;
-        if (!this.areIncomingNodesCompleted(session, nextNode.id, workflow.edges, visited)) continue;
-        visited.add(nextNode.id);
-        const result = await this.executeNode(session, nextNode);
-        if (result === 'interrupted' || shouldInterrupt(session)) return lastResult;
-        if (nextNode.type !== 'start') lastResult = this.getNodeExecutionData(session, nextNode.id);
-        const downstream = await execFrom(nextNode.id);
-        if (downstream !== undefined) lastResult = downstream;
-      }
-      return lastResult;
+      return this.executeDownstreamBranches(
+        session,
+        nodeId,
+        adjacency.get(nodeId) || [],
+        workflow.edges,
+        visited,
+        id => nodeMap.get(id),
+        execFrom,
+        node => node.type !== 'start',
+      );
     };
     return execFrom(startNode.id);
+  }
+
+  private async executeDownstreamBranches(
+    session: ExecutionSession,
+    sourceNodeId: string,
+    outgoingEdges: WorkflowEdge[],
+    dependencyEdges: WorkflowEdge[],
+    visited: Set<string>,
+    getNode: (nodeId: string) => WorkflowNode | undefined,
+    execFrom: (nodeId: string) => Promise<unknown>,
+    shouldUseNodeResult: (node: WorkflowNode) => boolean = () => true,
+  ): Promise<unknown> {
+    if (shouldInterrupt(session)) return undefined;
+
+    const branches: Array<Promise<unknown>> = [];
+    for (const edge of outgoingEdges) {
+      if (shouldInterrupt(session)) break;
+      if (edge.source !== sourceNodeId || !this.isActiveEdge(session, edge)) continue;
+
+      const nextNode = getNode(edge.target);
+      if (!nextNode || visited.has(nextNode.id)) continue;
+      if (!this.areIncomingNodesCompleted(session, nextNode.id, dependencyEdges, visited)) continue;
+
+      visited.add(nextNode.id);
+      branches.push((async () => {
+        const result = await this.executeNode(session, nextNode);
+        if (result === 'interrupted' || shouldInterrupt(session)) return undefined;
+
+        let lastResult = shouldUseNodeResult(nextNode)
+          ? this.getNodeExecutionData(session, nextNode.id)
+          : undefined;
+        const downstream = await execFrom(nextNode.id);
+        if (downstream !== undefined) lastResult = downstream;
+        return lastResult;
+      })());
+    }
+
+    const results = await Promise.all(branches);
+    for (let i = results.length - 1; i >= 0; i--) {
+      if (results[i] !== undefined) return results[i];
+    }
+    return undefined;
   }
 
   // ---- Private: Condition evaluation ----

@@ -44,7 +44,7 @@
         ],
         "sourceNodeId": "node_1781507395557_start",
         "sourceHandle": "source",
-        "arrayPath": "{{ __data__[\"node_1781605625005_hg6ggj\"].key1 }}"
+        "arrayPath": "{{ __data__[\"node_1781605625005_hg6ggj\"].names }}"
       },
       "composite": {
         "role": "loop",
@@ -119,10 +119,15 @@
         "y": 37.5
       },
       "data": {
-        "code": "async function main({ params }) {\n  return ['a', 'b']\n}",
+        "code": "async function main({ params }) {\n  return {names:['a', 'b']}\n}",
         "sourceNodeId": "node_1781507395557_start",
         "sourceHandle": "source",
-        "outputs": []
+        "outputs": [
+          {
+            "key": "names",
+            "type": "string[]"
+          }
+        ]
       }
     },
     {
@@ -151,7 +156,7 @@
         "sourceHandle": "source"
       },
       "composite": {
-        "rootId": "node_1781605599230_excvht",
+        "rootId": "node_1781605599230_8t3p6n",
         "parentId": "node_1781605599230_8t3p6n",
         "generated": false,
         "hidden": false
@@ -218,7 +223,7 @@
     }
   ],
   "createdAt": 1781507395559,
-  "updatedAt": 1781606303743,
+  "updatedAt": 1781606711732,
   "groups": [],
   "enabledPlugins": [
     "workflow.qianyin",
