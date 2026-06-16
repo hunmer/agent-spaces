@@ -10,6 +10,7 @@ import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PluginIcon } from './workflow-plugin-icon';
 import { PluginToolDialog } from './plugin-tool-dialog';
+import { PluginDetailDialog } from './plugin-detail-dialog';
 
 export function LocalPluginCard({
   plugin,
@@ -32,13 +33,14 @@ export function LocalPluginCard({
   onConfigAction?: () => void;
   onUninstallAction?: () => void;
   onUpdateAction?: () => void;
-  /** 传入后点击卡片主体打开插件工具对话框 */
+  /** 点击图标打开插件工具对话框（需同时传入 projectId / enabledPlugins / onEnabledPluginsChange） */
   projectId?: string;
   enabledPlugins?: string[];
   onEnabledPluginsChange?: (plugins: string[]) => void;
 }) {
   const t = useTranslations('workflows');
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const canShowTools = Boolean(projectId && enabledPlugins && onEnabledPluginsChange);
   const iconPath = plugin.iconPath || '';
   const iconSrc = plugin.iconPath
@@ -55,8 +57,11 @@ export function LocalPluginCard({
         tags={plugin.tags}
         badge={inWorkflow ? t('pluginCard.added') : t('pluginCard.notAdded')}
         badgeVariant={inWorkflow ? 'default' : 'secondary'}
-        clickable={canShowTools}
-        onClick={canShowTools ? () => setToolsOpen(true) : undefined}
+        clickable
+        onClick={() => setDetailOpen(true)}
+        iconClickable={canShowTools}
+        onIconClick={canShowTools ? () => setToolsOpen(true) : undefined}
+        iconTitle={canShowTools ? t('pluginCard.tools') : undefined}
         headerExtra={onUninstallAction ? (
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); onUninstallAction(); }}>
             <Trash2 className="h-3.5 w-3.5" />
@@ -90,6 +95,20 @@ export function LocalPluginCard({
           persistEnabledPlugins={false}
         />
       )}
+
+      <PluginDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        name={plugin.name}
+        version={plugin.version}
+        description={plugin.description}
+        tags={plugin.tags}
+        type={plugin.type}
+        author={plugin.author?.name}
+        updatedAt={plugin.installedAt ? new Date(plugin.installedAt).toISOString() : undefined}
+        iconSrc={iconSrc}
+        pluginId={plugin.id}
+      />
     </>
   );
 }
@@ -106,46 +125,67 @@ export function StorePluginCard({
   onInstallAction: () => void;
 }) {
   const t = useTranslations('workflows');
+  const [detailOpen, setDetailOpen] = useState(false);
   const iconSrc = plugin.iconUrl
     ? { type: 'url' as const, url: resolveStoreUrl(plugin.iconUrl) }
     : { type: 'builtin' as const, variant: 'store' as const };
+  // 商店插件：远程地址 + README.md
+  const readmeUrl = plugin.path ? resolveStoreUrl(`plugins/${plugin.path}/README.md`) : undefined;
 
   return (
-    <PluginCardShell
-      iconSrc={iconSrc}
-      name={plugin.name}
-      version={plugin.version}
-      description={plugin.description}
-      tags={plugin.tags}
-      badge={installed ? t('pluginCard.installed') : t('pluginCard.notInstalled')}
-      badgeVariant={installed ? 'default' : 'outline'}
-    >
-      {plugin.type ? <Badge variant="secondary" className="text-[10px]">{plugin.type}</Badge> : null}
-      <Button
-        size="sm"
-        variant={installed ? 'outline' : 'default'}
-        className="ml-auto h-7 text-xs"
-        disabled={installing}
-        onClick={onInstallAction}
+    <>
+      <PluginCardShell
+        iconSrc={iconSrc}
+        name={plugin.name}
+        version={plugin.version}
+        description={plugin.description}
+        tags={plugin.tags}
+        badge={installed ? t('pluginCard.installed') : t('pluginCard.notInstalled')}
+        badgeVariant={installed ? 'default' : 'outline'}
+        clickable
+        onClick={() => setDetailOpen(true)}
       >
-        {installed ? (
-          <>
-            <Download className="h-3.5 w-3.5" />
-            {t('pluginCard.reinstall')}
-          </>
-        ) : installing ? (
-          <>
-            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            {t('pluginCard.installing')}
-          </>
-        ) : (
-          <>
-            <Download className="h-3.5 w-3.5" />
-            {t('pluginCard.installAndAdd')}
-          </>
-        )}
-      </Button>
-    </PluginCardShell>
+        {plugin.type ? <Badge variant="secondary" className="text-[10px]">{plugin.type}</Badge> : null}
+        <Button
+          size="sm"
+          variant={installed ? 'outline' : 'default'}
+          className="ml-auto h-7 text-xs"
+          disabled={installing}
+          onClick={(e) => { e.stopPropagation(); onInstallAction(); }}
+        >
+          {installed ? (
+            <>
+              <Download className="h-3.5 w-3.5" />
+              {t('pluginCard.reinstall')}
+            </>
+          ) : installing ? (
+            <>
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              {t('pluginCard.installing')}
+            </>
+          ) : (
+            <>
+              <Download className="h-3.5 w-3.5" />
+              {t('pluginCard.installAndAdd')}
+            </>
+          )}
+        </Button>
+      </PluginCardShell>
+
+      <PluginDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        name={plugin.name}
+        version={plugin.version}
+        description={plugin.description}
+        tags={plugin.tags}
+        type={plugin.type}
+        author={plugin.author?.name}
+        updatedAt={plugin.updatedAt}
+        iconSrc={iconSrc}
+        readmeUrl={readmeUrl}
+      />
+    </>
   );
 }
 
@@ -160,6 +200,9 @@ function PluginCardShell({
   headerExtra,
   clickable,
   onClick,
+  iconClickable,
+  onIconClick,
+  iconTitle,
   children,
 }: {
   iconSrc: Parameters<typeof PluginIcon>[0]['source'];
@@ -172,6 +215,10 @@ function PluginCardShell({
   headerExtra?: React.ReactNode;
   clickable?: boolean;
   onClick?: () => void;
+  /** 图标是否作为独立入口（本地插件：点击打开工具对话框） */
+  iconClickable?: boolean;
+  onIconClick?: () => void;
+  iconTitle?: string;
   children: React.ReactNode;
 }) {
   const t = useTranslations('workflows');
@@ -182,7 +229,11 @@ function PluginCardShell({
       onClick={onClick}
     >
       <div className="flex items-start gap-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted">
+        <div
+          title={iconTitle}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted ${iconClickable ? 'cursor-pointer ring-offset-1 transition-shadow hover:ring-2 hover:ring-primary/50' : ''}`}
+          onClick={iconClickable && onIconClick ? (e) => { e.stopPropagation(); onIconClick(); } : undefined}
+        >
           <PluginIcon source={iconSrc} />
         </div>
         <div className="min-w-0 flex-1">

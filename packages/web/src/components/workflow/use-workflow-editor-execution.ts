@@ -9,6 +9,7 @@ import type { DebugResult } from './workflow-editor-types';
 interface UseWorkflowEditorExecutionParams {
   workflow: Workflow | null;
   workflowId: string | null;
+  workspaceId?: string;
 }
 
 type ElectronApi = {
@@ -29,7 +30,7 @@ async function executeClientPluginNode(request: ClientNodeRequest): Promise<unkn
 }
 
 export function useWorkflowEditorExecution({
-  workflow, workflowId,
+  workflow, workflowId, workspaceId,
 }: UseWorkflowEditorExecutionParams) {
   // ---- Execution state ----
   const [execStatus, setExecStatus] = useState('idle');
@@ -48,6 +49,7 @@ export function useWorkflowEditorExecution({
   const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
   const [pendingInteraction, setPendingInteraction] = useState<InteractionRequest | null>(null);
   const debugCleanupRef = useRef<(() => void)[]>([]);
+  const getWorkflowWS = useCallback(() => workspaceId ? getWS(workspaceId) : null, [workspaceId]);
 
   // ---- Cleanup refs on unmount ----
   useEffect(() => {
@@ -93,7 +95,8 @@ export function useWorkflowEditorExecution({
   }, []);
 
   const sendInteractionResponse = useCallback((request: InteractionRequest, data: unknown, cancelled = false) => {
-    const ws = getWS('workflows');
+    const ws = getWorkflowWS();
+    if (!ws) return;
     ws.send('workflow:interaction', {
       id: request.id,
       channel: 'workflow:interaction',
@@ -105,11 +108,12 @@ export function useWorkflowEditorExecution({
       cancelled,
     });
     setPendingInteraction(null);
-  }, []);
+  }, [getWorkflowWS]);
 
   const handleClientNodeRequest = useCallback(async (request: ClientNodeRequest) => {
     if (request.type !== 'client_node_request') return;
-    const ws = getWS('workflows');
+    const ws = getWorkflowWS();
+    if (!ws) return;
     try {
       const data = await executeClientPluginNode(request);
       ws.send('workflow:client-node', {
@@ -132,7 +136,7 @@ export function useWorkflowEditorExecution({
         error: createErrorShape('WORKFLOW_ERROR', error instanceof Error ? error.message : String(error)),
       });
     }
-  }, []);
+  }, [getWorkflowWS]);
 
   const handleResolveInteraction = useCallback((request: InteractionRequest, data: unknown) => {
     sendInteractionResponse(request, data, false);
@@ -152,6 +156,13 @@ export function useWorkflowEditorExecution({
 
   const handleDebugNode = useCallback((nodeId: string, inputs?: Record<string, unknown>, properties?: Record<string, unknown>) => {
     if (!workflow) return;
+    const ws = getWorkflowWS();
+    if (!ws) {
+      setDebugNodeId(nodeId);
+      setDebugResult({ status: 'error', error: '未加载工作区，无法调试节点' });
+      setDebugStatus('error');
+      return;
+    }
     cleanupDebugListeners();
     setDebugNodeId(nodeId);
     setDebugStatus('running');
@@ -161,7 +172,6 @@ export function useWorkflowEditorExecution({
     const embeddedNode = targetNode && properties
       ? { ...targetNode, data: { ...targetNode.data, ...properties } }
       : undefined;
-    const ws = getWS('workflows');
     const sendDebugRequest = () => {
       ws.send('workflow:debug-node', {
         workflowId: workflow.id,
@@ -214,11 +224,16 @@ export function useWorkflowEditorExecution({
       });
       debugCleanupRef.current.push(offConnected);
     }
-  }, [workflow, cleanupDebugListeners, handleClientNodeRequest]);
+  }, [workflow, cleanupDebugListeners, handleClientNodeRequest, getWorkflowWS]);
 
   // ---- Execution ----
   const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>) => {
     if (!workflow) return;
+    const ws = getWorkflowWS();
+    if (!ws) {
+      setExecStatus('error');
+      return;
+    }
     cleanupExecutionListeners();
     setExecStatus('running');
     setExecutionLog(null);
@@ -228,7 +243,6 @@ export function useWorkflowEditorExecution({
     setPausedReason(null);
     setPartialExecutionStartNodeId(startNodeId ?? null);
 
-    const ws = getWS('workflows');
     const sendExecuteRequest = () => {
       ws.send('workflow:execute', {
         workflowId: workflow.id,
@@ -336,30 +350,30 @@ export function useWorkflowEditorExecution({
       });
       executionCleanupRef.current.push(offConnected);
     }
-  }, [workflow, cleanupExecutionListeners, handleClientNodeRequest, loadExecutionLogs]);
+  }, [workflow, cleanupExecutionListeners, handleClientNodeRequest, loadExecutionLogs, getWorkflowWS]);
 
   const handlePauseExecution = useCallback(() => {
     if (!currentExecutionId) return;
-    getWS('workflows').send('workflow:pause', { executionId: currentExecutionId });
+    getWorkflowWS()?.send('workflow:pause', { executionId: currentExecutionId });
     setExecStatus('paused');
-  }, [currentExecutionId]);
+  }, [currentExecutionId, getWorkflowWS]);
 
   const handleResumeExecution = useCallback(() => {
     if (!currentExecutionId) return;
-    getWS('workflows').send('workflow:resume', { executionId: currentExecutionId });
+    getWorkflowWS()?.send('workflow:resume', { executionId: currentExecutionId });
     setPausedNodeId(null);
     setPausedReason(null);
     setExecStatus('running');
-  }, [currentExecutionId]);
+  }, [currentExecutionId, getWorkflowWS]);
 
   const handleStopExecution = useCallback(() => {
     if (!currentExecutionId) return;
-    getWS('workflows').send('workflow:stop', { executionId: currentExecutionId });
+    getWorkflowWS()?.send('workflow:stop', { executionId: currentExecutionId });
     setPausedNodeId(null);
     setPausedReason(null);
     setPartialExecutionStartNodeId(null);
     setExecStatus('stopped');
-  }, [currentExecutionId]);
+  }, [currentExecutionId, getWorkflowWS]);
 
   const handleSelectExecutionLog = useCallback((selectedLog: ExecutionLog) => {
     setExecutionLog(selectedLog);

@@ -279,6 +279,25 @@ export function getPluginIconPath(pluginId: string): string | null {
   return iconAbs;
 }
 
+const README_FILENAMES = ['README.md', 'readme.md', 'README.zh.md', 'README.cn.md', 'README.en.md', 'README.MD'];
+
+/** 读取插件目录下的 README.md（本地插件）。未找到返回 null。 */
+export function getPluginReadme(pluginId: string): string | null {
+  const dir = resolvePluginDir(pluginId);
+  if (!dir) return null;
+  for (const filename of README_FILENAMES) {
+    const file = path.join(dir, filename);
+    if (existsSync(file)) {
+      try {
+        return readFileSync(file, 'utf-8');
+      } catch {
+        /* 尝试下一个候选文件名 */
+      }
+    }
+  }
+  return null;
+}
+
 function createRequireStub(): object {
   const target = () => createRequireStub();
   return new Proxy(target, {

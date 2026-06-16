@@ -37,7 +37,19 @@
     "reinstall": "Reinstall",
     "installing": "Installing",
     "installAndAdd": "Install and add",
-    "noDescription": "No description"
+    "noDescription": "No description",
+    "tools": "Plugin tools"
+  },
+  "pluginDetail": {
+    "title": "Plugin details",
+    "type": "Type",
+    "version": "Version",
+    "author": "Author",
+    "tags": "Tags",
+    "updatedAt": "Updated",
+    "loading": "Loading...",
+    "error": "Failed to load documentation",
+    "empty": "No documentation available"
   },
   "templatesDialog": {
     "title": "Workflow Templates",

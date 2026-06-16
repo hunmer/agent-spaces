@@ -64,6 +64,17 @@ export function registerExecutionChannels(executionManager: ExecutionManager): v
     const clientId = getClientId(ws);
     if (!clientId) return;
     try {
+      const payload = data as {
+        workflowId?: string;
+        nodeId?: string;
+        embeddedNode?: { data?: { knowledgeBase?: unknown } };
+        snapshot?: { nodes?: Array<{ id?: string; data?: { knowledgeBase?: unknown } }> };
+      };
+      const snapshotNode = payload.snapshot?.nodes?.find((node) => node.id === payload.nodeId);
+      const kbId = payload.embeddedNode?.data?.knowledgeBase ?? snapshotNode?.data?.knowledgeBase ?? '';
+      console.info(
+        `[workflow:debug-node] workspaceId=${workspaceId} workflowId=${payload.workflowId ?? ''} nodeId=${payload.nodeId ?? ''} kbId=${String(kbId)}`,
+      );
       const result = await executionManager.debugNode(data as any, clientId, workspaceId);
       ws.send(JSON.stringify({ event: 'workflow:debug-node:result', data: result }));
     } catch (err: any) {

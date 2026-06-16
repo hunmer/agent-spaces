@@ -32,6 +32,17 @@ router.get('/:pluginId/icon', (req: Request<{ pluginId: string }>, res: Response
   }
 });
 
+// 本地插件 README.md（从插件目录读取）
+router.get('/:pluginId/readme', (req: Request<{ pluginId: string }>, res: Response) => {
+  try {
+    const content = pluginService.getPluginReadme(req.params.pluginId);
+    if (content === null) return res.status(404).json({ error: 'README not found' });
+    res.type('text/markdown; charset=utf-8').send(content);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 router.get('/', (req: Request, res: Response) => {
   try {
     res.json(pluginService.listPlugins(resolveLocale(req)));

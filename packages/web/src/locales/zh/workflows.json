@@ -37,7 +37,19 @@
     "reinstall": "重新安装",
     "installing": "安装中",
     "installAndAdd": "安装并添加",
-    "noDescription": "无描述"
+    "noDescription": "无描述",
+    "tools": "插件工具"
+  },
+  "pluginDetail": {
+    "title": "插件详情",
+    "type": "类型",
+    "version": "版本",
+    "author": "作者",
+    "tags": "标签",
+    "updatedAt": "更新时间",
+    "loading": "加载中...",
+    "error": "说明文档加载失败",
+    "empty": "暂无说明文档"
   },
   "templatesDialog": {
     "title": "工作流模板",

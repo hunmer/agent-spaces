@@ -220,6 +220,7 @@ function WorkflowEditorInner({
   const execution = useWorkflowEditorExecution({
     workflow: state.workflow,
     workflowId: state.workflowId,
+    workspaceId,
   });
   const { clearSelectedExecutionLog } = execution;
 
