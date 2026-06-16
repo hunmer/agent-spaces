@@ -304,7 +304,7 @@ export function createBuiltinPluginApi(): Record<string, any> {
       const filePath = path.join(uploadsDir, filename);
       fsSync.writeFileSync(filePath, buffer);
       const port = process.env.PORT || '3100';
-      const host = process.env.HOST || 'localhost';
+      const host = process.env.HTTP_HOST || 'localhost';
       const protocol = process.env.HTTPS ? 'https' : 'http';
       const origin = `${protocol}://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
       return { filePath, httpPath: `${origin}/static/uploads/${filename}` };

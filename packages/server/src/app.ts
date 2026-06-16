@@ -451,7 +451,7 @@ server.on('upgrade', (req, socket, head) => {
   socket.destroy();
 });
 
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HTTP_HOST || '0.0.0.0';
 
 server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
