@@ -66,26 +66,25 @@ function MiniAppDetail({ item, onBack }: { item: MiniAppIndexItem; onBack: () =>
   });
 
   useEffect(() => {
-    let cancelled = false;
     if (!item.hasIntro) {
       setIntro({ loading: false, content: '', error: false });
       return;
     }
+    const controller = new AbortController();
     setIntro({ loading: true, content: '', error: false });
-    fetch(resolveStoreUrl(`mini-app/intro/${item.id}.md`))
+    fetch(resolveStoreUrl(`mini-app/intro/${item.id}.md`), { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`status ${res.status}`);
         return res.text();
       })
       .then((text) => {
-        if (!cancelled) setIntro({ loading: false, content: text, error: false });
+        setIntro({ loading: false, content: text, error: false });
       })
-      .catch(() => {
-        if (!cancelled) setIntro({ loading: false, content: '', error: true });
+      .catch((err) => {
+        if (controller.signal.aborted || err?.name === 'AbortError') return;
+        setIntro({ loading: false, content: '', error: true });
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [item.id, item.hasIntro]);
 
   return (
@@ -258,8 +257,16 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
                 return (
                   <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelected(item)}
-                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors flex flex-col gap-3 cursor-pointer"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelected(item);
+                      }
+                    }}
+                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors flex flex-col gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <AgentIcon
