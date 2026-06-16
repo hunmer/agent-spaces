@@ -37,6 +37,7 @@ export { createWorkflowApi } from './modules/workflow';
 export { createWorkflowPluginApi } from './modules/workflow-plugin';
 export { createKanbanApi } from './modules/kanban';
 export { createDatabaseApi } from './modules/database';
+export { createKnowledgeBaseApi } from './modules/knowledge-base';
 export { createWorktreeApi } from './modules/worktree';
 export { createHooksApi } from './modules/hooks';
 export { createCommandApi } from './modules/command';
@@ -82,6 +83,7 @@ import { createWorkflowApi } from './modules/workflow';
 import { createWorkflowPluginApi } from './modules/workflow-plugin';
 import { createKanbanApi } from './modules/kanban';
 import { createDatabaseApi } from './modules/database';
+import { createKnowledgeBaseApi } from './modules/knowledge-base';
 import { createWorktreeApi } from './modules/worktree';
 import { createHooksApi } from './modules/hooks';
 import { createCommandApi } from './modules/command';
@@ -130,6 +132,7 @@ export interface SDK {
   readonly workflowPlugin: ReturnType<typeof createWorkflowPluginApi>;
   readonly kanban: ReturnType<typeof createKanbanApi>;
   readonly database: ReturnType<typeof createDatabaseApi>;
+  readonly knowledgeBase: ReturnType<typeof createKnowledgeBaseApi>;
   readonly worktree: ReturnType<typeof createWorktreeApi>;
   readonly hooks: ReturnType<typeof createHooksApi>;
   readonly command: ReturnType<typeof createCommandApi>;
@@ -186,6 +189,7 @@ export function createSDK(config: SDKConfig): SDK {
     workflowPlugin: createWorkflowPluginApi(http),
     kanban: createKanbanApi(http),
     database: createDatabaseApi(http),
+    knowledgeBase: createKnowledgeBaseApi(http),
     worktree: createWorktreeApi(http),
     hooks: createHooksApi(http),
     command: createCommandApi(http),
