@@ -1,0 +1,33 @@
+{
+  "id": "2292e55e-2aa9-41f9-9097-a2e9aff8f88d",
+  "workflowId": "d2ba9e93-bb83-422e-b161-2ec42c5273dc",
+  "name": "音视频提取字幕工作流初始版本",
+  "snapshot": {
+    "nodes": [
+      {
+        "id": "node_1781611468547_start",
+        "type": "start",
+        "label": "开始",
+        "position": {
+          "x": 250,
+          "y": 50
+        },
+        "data": {
+          "inputFields": []
+        }
+      },
+      {
+        "id": "node_1781611468547_end",
+        "type": "end",
+        "label": "结束",
+        "position": {
+          "x": 250,
+          "y": 400
+        },
+        "data": {}
+      }
+    ],
+    "edges": []
+  },
+  "createdAt": 1781613553507
+}

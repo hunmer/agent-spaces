@@ -14,16 +14,16 @@
       "data": {
         "inputFields": [
           {
-            "key": "filePath",
+            "key": "fileName",
             "type": "string",
-            "description": "用户上传的音视频文件本地路径",
+            "description": "上传的文件名（带扩展名），用于判断是视频还是音频",
             "required": true
           },
           {
-            "key": "fileName",
+            "key": "filePath",
             "type": "string",
-            "description": "原始文件名（用于生成 COS Object 路径）",
-            "required": false
+            "description": "本地文件绝对路径（ffmpeg_demux 和 cos_upload_file 都使用）",
+            "required": true
           }
         ]
       }
@@ -37,23 +37,11 @@
         "y": 400
       },
       "data": {}
-    },
-    {
-      "id": "node_1781612733866_2dbeke",
-      "type": "run_code",
-      "label": "解析文件类型",
-      "position": {
-        "x": 510,
-        "y": 225
-      },
-      "data": {
-        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
-      }
     }
   ],
   "edges": [],
   "createdAt": 1781611468552,
-  "updatedAt": 1781612761184,
+  "updatedAt": 1781613604752,
   "enabledPlugins": [
     "workflow.ffmpeg",
     "workflow.aliyun-ai",

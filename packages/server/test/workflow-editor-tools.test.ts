@@ -272,6 +272,56 @@ test('update_node rejects agent property when value does not match type definiti
   assert.match(updateResult.message, /expected agent/);
 });
 
+test('update_node rejects empty data updates', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const updateNode = tools.find((tool) => tool.name === 'update_node');
+  assert.ok(createNode);
+  assert.ok(updateNode);
+
+  const createResult = await createNode.execute({ type: 'run_code' }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(createResult.success, true);
+
+  const updateResult = await updateNode.execute({
+    nodeId: createResult.created_node_id,
+    data: {},
+  }) as {
+    success: boolean;
+    message: string;
+  };
+
+  assert.equal(updateResult.success, false);
+  assert.match(updateResult.message, /non-empty data object or label/);
+});
+
+test('update_node allows label-only updates', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const updateNode = tools.find((tool) => tool.name === 'update_node');
+  assert.ok(createNode);
+  assert.ok(updateNode);
+
+  const createResult = await createNode.execute({ type: 'run_code' }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(createResult.success, true);
+
+  const updateResult = await updateNode.execute({
+    nodeId: createResult.created_node_id,
+    label: 'Parse file type',
+  }) as {
+    success: boolean;
+    workflow: Workflow;
+  };
+
+  assert.equal(updateResult.success, true);
+  assert.equal(updateResult.workflow.nodes.find((node) => node.id === createResult.created_node_id)?.label, 'Parse file type');
+});
+
 test('create_workflow_version persists the snapshot for the version panel', async (t) => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-workflow-editor-tools-'));

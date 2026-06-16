@@ -317,6 +317,14 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         if (!nodeId) return { success: false, message: 'nodeId is required' };
         const dataResult = objectInputResult(record, 'data');
         if (!dataResult.success) return dataResult;
+        const label = stringInput(record, 'label');
+        const hasDataInput = Object.prototype.hasOwnProperty.call(record, 'data');
+        if (!label && (!hasDataInput || Object.keys(dataResult.value).length === 0)) {
+          return {
+            success: false,
+            message: 'update_node requires a non-empty data object or label. Put actual node changes inside data, for example { "data": { "code": "...", "outputs": [...] } }.',
+          };
+        }
         const targetNode = draft.nodes.find((node) => node.id === nodeId);
         if (!targetNode) return { success: false, message: `Node not found: ${nodeId}` };
         const definition = definitionByType.get(targetNode.type);
@@ -330,7 +338,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           found = true;
           return {
             ...node,
-            label: stringInput(record, 'label') ?? node.label,
+            label: label ?? node.label,
             data: { ...node.data, ...dataResult.value },
           };
         });
