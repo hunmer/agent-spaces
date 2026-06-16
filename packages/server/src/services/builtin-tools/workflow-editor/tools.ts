@@ -271,7 +271,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'create_node',
-      description: '在工作流中创建新节点。需要指定有效节点 type，可选 label、data。要创建到 loop_body 等作用域内，传 scopeNodeId/scope_node_id，或传 source/sourceHandle 让工具从 loop-body 句柄推断。',
+      description: '在工作流中创建新节点。需要指定有效节点 type，可选 label、data。调用前先用 search_node_usage 确认节点字段；data 只能包含该节点真实参数，输入字段必须写为 inputFields 数组，禁止写 inputs 或包成 { item: [...] }。要创建到 loop_body 等作用域内，传 scopeNodeId/scope_node_id，或传 source/sourceHandle 让工具从 loop-body 句柄推断。',
       inputSchema: schema({
         type: { type: 'string', description: '节点类型标识。' },
         label: { type: 'string', description: '节点显示名称。' },
@@ -318,7 +318,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'update_node',
-      description: '更新指定节点的 label 或 data。data 会与现有 data 浅合并；data 应传对象，兼容 JSON 字符串。',
+      description: '更新指定节点的 label 或 data。调用前先用 search_node_usage 确认节点字段；data 会与现有 data 浅合并，必须传实际要写入的节点参数，禁止用 data:{} 或空 args 试探更新；只改显示名时才只传 label。data 应传对象，兼容 JSON 字符串。',
       inputSchema: schema({
         nodeId: { type: 'string', description: '要更新的节点 ID。' },
         node_id: { type: 'string', description: '要更新的节点 ID，兼容蛇形命名。' },
@@ -362,7 +362,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'set_node_io_fields',
-      description: '新增、合并或替换节点的输入/输出字段数组。输入字段写入 data.inputFields；输出字段写入 data.outputs。开始节点运行输入变量引用使用 {{ __data__["节点ID"].字段 }}，普通节点输出变量引用也使用 {{ __data__["节点ID"].字段 }}。',
+      description: '新增、合并或替换节点的输入/输出字段数组。输入字段写入 data.inputFields；输出字段写入 data.outputs。开始节点运行输入变量引用使用 {{ __data__["节点ID"].字段 }}，普通节点输出变量引用也使用 {{ __data__["节点ID"].字段 }}。结束节点返回结果来自 outputs，每个输出项可设置 value；动态代码节点返回结构变化后要同步更新 outputs。',
       inputSchema: schema({
         nodeId: { type: 'string', description: '要更新的节点 ID。' },
         node_id: { type: 'string', description: '要更新的节点 ID，兼容蛇形命名。' },
@@ -482,7 +482,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'insert_node',
-      description: '在已有连线中插入节点，替换为 source -> 节点 -> target 两条边。可传 nodeId/node_id 复用现有节点；不传时会优先复用同作用域内未连线且类型/标签/data 匹配的节点，避免先 create_node 后再 delete_node。',
+      description: '在已有连线中插入节点，替换为 source -> 节点 -> target 两条边。调用前先用 search_node_usage 确认节点字段；data 只能包含该节点真实参数。可传 nodeId/node_id 复用现有节点；不传时会优先复用同作用域内未连线且类型/标签/data 匹配的节点，避免先 create_node 后再 delete_node。',
       inputSchema: schema({
         edgeId: { type: 'string', description: '要插入的边 ID。' },
         edge_id: { type: 'string', description: '要插入的边 ID，兼容蛇形命名。' },
@@ -608,9 +608,6 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           return workflowResult(true, backendMessage, undefined, {
             ...workflowPayload(draft, false),
             backend_message: backendMessage,
-          });
-          return workflowResult(true, '工作流已保存，后端校验通过。', undefined, {
-            backend_message: '工作流已保存，后端校验通过。',
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : '保存工作流失败';

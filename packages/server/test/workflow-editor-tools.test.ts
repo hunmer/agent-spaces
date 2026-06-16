@@ -73,6 +73,14 @@ const nodeDefinitions: NodeTypeDefinition[] = [
     properties: [],
   },
   {
+    type: 'run_python',
+    label: '运行 Python 代码',
+    category: '流程控制',
+    icon: 'FileCode',
+    description: '执行自定义 Python 代码',
+    properties: [],
+  },
+  {
     type: 'agent_run',
     label: '运行 Agent',
     category: 'AI',
@@ -185,6 +193,23 @@ test('search_node_usage explains run_code input fields are exposed as params', a
   assert.match(result.nodes[0]?.usage?.runCode ?? '', /data\.inputFields/);
   assert.match(result.nodes[0]?.usage?.runCode ?? '', /params\.agentResult/);
   assert.match(result.nodes[0]?.usage?.runCode ?? '', /不要.*__data__/);
+  assert.match(result.nodes[0]?.usage?.runCode ?? '', /必须返回 object/);
+});
+
+test('search_node_usage explains run_python output rules', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const searchNodeUsage = tools.find((tool) => tool.name === 'search_node_usage');
+  assert.ok(searchNodeUsage);
+
+  const result = await searchNodeUsage.execute({ node_type: 'run_python' }) as {
+    success: boolean;
+    nodes: Array<{ usage?: { runPython?: string } }>;
+  };
+
+  assert.equal(result.success, true);
+  assert.match(result.nodes[0]?.usage?.runPython ?? '', /data\.inputFields/);
+  assert.match(result.nodes[0]?.usage?.runPython ?? '', /params/);
+  assert.match(result.nodes[0]?.usage?.runPython ?? '', /必须返回 object\/dict/);
 });
 
 test('get_node_property_type_definition returns agent value shape', async () => {
