@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,13 +31,18 @@ export function KnowledgeBaseDetailDialog({ workspaceId, kbId, onClose }: {
   const [adding, setAdding] = useState(false);
   const [newFilePath, setNewFilePath] = useState('');
 
+  const loadingRef = useRef(false);
   const load = useCallback(async () => {
-    const [k, fs] = await Promise.all([
-      sdk.knowledgeBase.list(workspaceId).then((l) => l.find((x) => x.id === kbId) ?? null),
-      sdk.knowledgeBase.listFiles(workspaceId, kbId),
-    ]);
-    setKb(k); setFiles(fs);
-    setSelectedId((cur) => cur ?? fs[0]?.id ?? null);
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const [k, fs] = await Promise.all([
+        sdk.knowledgeBase.list(workspaceId).then((l) => l.find((x) => x.id === kbId) ?? null),
+        sdk.knowledgeBase.listFiles(workspaceId, kbId),
+      ]);
+      setKb(k); setFiles(fs);
+      setSelectedId((cur) => cur ?? fs[0]?.id ?? null);
+    } finally { loadingRef.current = false; }
   }, [workspaceId, kbId]);
 
   useEffect(() => { load(); }, [load]);

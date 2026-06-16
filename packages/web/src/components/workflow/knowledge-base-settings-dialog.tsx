@@ -22,6 +22,7 @@ export function KnowledgeBaseSettingsDialog({ workspaceId, kb, onClose }: {
   const [chunkOverlap, setChunkOverlap] = useState(kb.chunkOverlap);
   const [embeddingModelId, setEmbeddingModelId] = useState(kb.embeddingModelId);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setChunkSize(kb.chunkSize); setChunkOverlap(kb.chunkOverlap); setEmbeddingModelId(kb.embeddingModelId); }, [kb]);
 
@@ -33,10 +34,13 @@ export function KnowledgeBaseSettingsDialog({ workspaceId, kb, onClose }: {
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       await sdk.knowledgeBase.update(workspaceId, kb.id, { chunkSize, chunkOverlap });
       await sdk.knowledgeBase.bindEmbeddingModel(workspaceId, kb.id, embeddingModelId);
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally { setSaving(false); }
   };
 
@@ -62,6 +66,7 @@ export function KnowledgeBaseSettingsDialog({ workspaceId, kb, onClose }: {
               </div>
             </div>
           </div>
+          {error && <div className="text-xs text-destructive">{error}</div>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>{t('knowledgeBase.cancel')}</Button>
             <Button size="sm" onClick={save} disabled={saving}>{t('knowledgeBase.save')}</Button>
