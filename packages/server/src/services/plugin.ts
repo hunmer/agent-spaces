@@ -53,6 +53,7 @@ type PluginRuntimeState = {
   activated: boolean;
   registeredActions: RegisteredPluginActions | null;
   localizedActions: Map<string, PluginActionDefinition[]>;
+  configSnapshot?: string;
 };
 
 type RegisteredPluginActions = PluginActionDefinition[] | ((t: PluginTranslator) => PluginActionDefinition[]);
@@ -541,7 +542,7 @@ function createPluginActions(actions: PluginActionDefinition[]) {
       handler: async (name: string, args: Record<string, any>, api: Record<string, any>) => {
         const run = handlers.get(name);
         if (!run) return { success: false, message: `Unknown tool: ${name}` };
-        return run({ api, logger: api?.logger || console }, args);
+        return run({ api, config: api?.config || {}, logger: api?.logger || console }, args);
       },
     }),
   };
@@ -559,11 +560,11 @@ function createPluginRequire(entryPath: string) {
   };
 }
 
-function createPluginContext(plugin: PluginMeta, dir: string) {
+function createPluginContext(plugin: PluginMeta, dir: string, config?: Record<string, string>) {
   const t = createPluginTranslator(dir);
   return {
     plugin,
-    config: getPluginConfig(plugin.id),
+    config: config ?? getPluginConfig(plugin.id),
     t,
     logger: {
       info: (message: string) => console.info(`[plugin:${plugin.id}] ${message}`),
@@ -581,6 +582,23 @@ function createPluginContext(plugin: PluginMeta, dir: string) {
       pluginRuntimeState.set(plugin.id, state);
     },
   };
+}
+
+function runPluginServerEntry(
+  plugin: PluginMeta,
+  dir: string,
+  serverPath: string,
+  config?: Record<string, string>,
+): void {
+  const source = readFileSync(serverPath, 'utf-8');
+  const module = { exports: {} as { activate?: (context: ReturnType<typeof createPluginContext>) => unknown } };
+  const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: serverPath });
+  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout });
+  runner(createPluginRequire(serverPath), module, module.exports, serverPath, path.dirname(serverPath));
+
+  if (typeof module.exports.activate === 'function') {
+    module.exports.activate(createPluginContext(plugin, dir, config));
+  }
 }
 
 function activatePlugin(plugin: PluginMeta): void {
@@ -608,16 +626,36 @@ function activatePlugin(plugin: PluginMeta): void {
     return;
   }
 
-  const source = readFileSync(serverPath, 'utf-8');
-  const module = { exports: {} as { activate?: (context: ReturnType<typeof createPluginContext>) => unknown } };
-  const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: serverPath });
-  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout });
-  runner(createPluginRequire(serverPath), module, module.exports, serverPath, path.dirname(serverPath));
-
-  if (typeof module.exports.activate === 'function') {
-    module.exports.activate(createPluginContext(plugin, dir));
-  }
+  runPluginServerEntry(plugin, dir, serverPath);
+  nextState.configSnapshot = JSON.stringify(getPluginConfig(plugin.id));
   nextState.activated = true;
+}
+
+function refreshPluginRuntimeConfig(plugin: PluginMeta, config: Record<string, string>): void {
+  const configSnapshot = JSON.stringify(config);
+  const state = pluginRuntimeState.get(plugin.id);
+  if (state?.configSnapshot === configSnapshot) return;
+
+  const manifest = getManifest(plugin.id);
+  const dir = resolvePluginDir(plugin.id);
+  if (!manifest || !dir) {
+    if (state) state.configSnapshot = configSnapshot;
+    return;
+  }
+
+  const serverEntry = manifest.entries?.server || 'main.js';
+  const serverPath = path.join(dir, serverEntry);
+  if (!existsSync(serverPath) || (!serverPath.endsWith('.js') && !serverPath.endsWith('.cjs'))) {
+    if (state) state.configSnapshot = configSnapshot;
+    return;
+  }
+
+  runPluginServerEntry(plugin, dir, serverPath, config);
+  const nextState = pluginRuntimeState.get(plugin.id);
+  if (nextState) {
+    nextState.activated = true;
+    nextState.configSnapshot = configSnapshot;
+  }
 }
 
 function getRegisteredPluginActions(plugin: PluginMeta, locale?: string): PluginActionDefinition[] {
@@ -1061,11 +1099,14 @@ export async function executePluginTool(
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
 
+  const pluginConfig = getPluginConfig(pluginId);
+  refreshPluginRuntimeConfig(plugin, pluginConfig);
+
   const actions = getRegisteredPluginActions(plugin, locale);
   if (!actions.length) throw new Error(`Plugin has no registered tools: ${pluginId}`);
 
-  const mergedArgs = Object.assign({}, getPluginConfig(pluginId), args);
-  return createPluginActions(actions).tools().handler(name, mergedArgs, api);
+  const mergedArgs = Object.assign({}, pluginConfig, args);
+  return createPluginActions(actions).tools().handler(name, mergedArgs, { ...api, config: pluginConfig });
 }
 
 function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | null {

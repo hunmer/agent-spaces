@@ -51,3 +51,4 @@ packages/electron/build/*
 packages/electron/release/
 packages/server/agent-spaces-data/workflows/*/chat.json
 packages/server/agent-spaces-data/knowledge-bases/
+packages/server/agent-spaces-data/public/uploads/
