@@ -848,7 +848,7 @@
         "knowledgeBase": "知识库",
         "knowledgeBase_tooltip": "目标知识库",
         "filePath": "文件路径 / URL",
-        "filePath_tooltip": "工作区文件路径或 URL，支持 {{upstream}} 变量",
+        "filePath_tooltip": "工作区文件路径或 URL，支持 '{{upstream}}' 变量",
         "fileName": "文件名",
         "fileName_tooltip": "可选的自定义存储文件名",
         "query": "查询",

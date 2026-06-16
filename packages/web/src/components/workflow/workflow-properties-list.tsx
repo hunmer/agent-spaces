@@ -23,6 +23,7 @@ interface PropertiesListProps {
   onInsertVariable: (key: string, path: string) => void;
   onDataChange: (key: string, value: unknown) => void;
   onPreviewDataChange?: (key: string, value: unknown) => void;
+  workspaceId?: string;
 }
 
 export function PropertiesList({
@@ -38,6 +39,7 @@ export function PropertiesList({
   onInsertVariable,
   onDataChange,
   onPreviewDataChange,
+  workspaceId,
 }: PropertiesListProps) {
   // Cascade reset: when a dependency source (e.g. databaseId) changes, clear the
   // dependent keys (table -> '', columns -> '*') so stale values never survive a
@@ -83,6 +85,7 @@ export function PropertiesList({
             onInsertVariable={onInsertVariable}
             onDataChange={handleDataChange}
             onPreviewDataChange={onPreviewDataChange}
+            workspaceId={workspaceId}
           />
         );
       })}
@@ -105,6 +108,7 @@ const PropertyItem = memo(function PropertyItem({
   onInsertVariable,
   onDataChange,
   onPreviewDataChange,
+  workspaceId,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -120,6 +124,7 @@ const PropertyItem = memo(function PropertyItem({
   onInsertVariable: (key: string, path: string) => void;
   onDataChange: (key: string, value: unknown) => void;
   onPreviewDataChange?: (key: string, value: unknown) => void;
+  workspaceId?: string;
 }) {
   const variableValue = useMemo(() => toVariableInputValue(value), [toVariableInputValue, value]);
   const variableOnly = prop.inputMode === 'variable';
@@ -184,6 +189,7 @@ const PropertyItem = memo(function PropertyItem({
             onDataChange={onDataChange}
             onPreviewDataChange={onPreviewDataChange}
             onInsertVariable={onInsertVariable}
+            workspaceId={workspaceId}
           />
         ) : (
           <PropertyField
@@ -196,6 +202,7 @@ const PropertyItem = memo(function PropertyItem({
             variableMode={effectiveVariableMode}
             variableValue={variableValue}
             onInsertVariable={(path) => onInsertVariable(prop.key, path)}
+            workspaceId={workspaceId}
           />
         )}
       </CollapsibleContent>
@@ -221,6 +228,7 @@ function DynamicSelectField({
   onDataChange,
   onPreviewDataChange,
   onInsertVariable,
+  workspaceId,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -230,6 +238,7 @@ function DynamicSelectField({
   onDataChange: (key: string, value: unknown) => void;
   onPreviewDataChange?: (key: string, value: unknown) => void;
   onInsertVariable: (key: string, path: string) => void;
+  workspaceId?: string;
 }) {
   const { options, loading } = useDynamicOptions(prop.dynamicOptions, data);
   return (
@@ -245,6 +254,7 @@ function DynamicSelectField({
           variableMode={false}
           variableValue={String(value ?? '')}
           onInsertVariable={(path) => onInsertVariable(prop.key, path)}
+          workspaceId={workspaceId}
         />
       </div>
       {loading && (

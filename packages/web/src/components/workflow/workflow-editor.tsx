@@ -716,6 +716,7 @@ function WorkflowEditorInner({
             onDebugNode={execution.handleDebugNode}
             onCancelDebug={execution.handleCancelDebug}
             executionLog={execution.executionLog}
+            workspaceId={workspaceId}
           />
         );
       case 'canvas-style':

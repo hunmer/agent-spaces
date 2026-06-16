@@ -31,6 +31,7 @@ export function PropertyField({
   variableMode = false,
   variableValue = '',
   onInsertVariable,
+  workspaceId,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -41,6 +42,7 @@ export function PropertyField({
   variableMode?: boolean;
   variableValue?: string | number;
   onInsertVariable?: (path: string) => void;
+  workspaceId?: string;
 }) {
   const disabled = Boolean(prop.readonly);
 
@@ -153,7 +155,7 @@ export function PropertyField({
       return <SqliteDatabasePicker value={String(value ?? '')} onChange={(v) => onChange(v)} />;
 
     case 'knowledge-base':
-      return <KnowledgeBasePicker value={String(value ?? '')} onChange={(v) => onChange(v)} />;
+      return <KnowledgeBasePicker value={String(value ?? '')} workspaceId={workspaceId} onChange={(v) => onChange(v)} />;
 
     default:
       return (

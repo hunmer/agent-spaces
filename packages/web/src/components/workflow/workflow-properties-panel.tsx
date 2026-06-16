@@ -45,6 +45,7 @@ interface PropertiesPanelProps {
   onDebugNode?: (nodeId: string, inputs?: Record<string, unknown>, properties?: Record<string, unknown>) => void;
   onCancelDebug?: () => void;
   executionLog?: ExecutionLog | null;
+  workspaceId?: string;
 }
 
 export function WorkflowPropertiesPanel({
@@ -63,6 +64,7 @@ export function WorkflowPropertiesPanel({
   onDebugNode,
   onCancelDebug,
   executionLog = null,
+  workspaceId,
 }: PropertiesPanelProps) {
   const t = useTranslations('workflows');
   const [importOpen, setImportOpen] = useState(false);
@@ -345,6 +347,7 @@ export function WorkflowPropertiesPanel({
                     onInsertVariable={insertVariable}
                     onDataChange={handleDataChange}
                     onPreviewDataChange={handlePreviewDataChange}
+                    workspaceId={workspaceId}
                   />
               </CardContent>
             </Card>

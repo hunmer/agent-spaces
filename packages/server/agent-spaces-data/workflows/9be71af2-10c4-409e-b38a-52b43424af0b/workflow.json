@@ -24,235 +24,77 @@
       "data": {}
     },
     {
-      "id": "node_1781512195265_ioppse",
-      "type": "loop",
-      "label": "循环5次",
+      "id": "node_1781595222143_5fox6r",
+      "type": "kb_add",
+      "label": "nodes.kb_add.label",
       "position": {
-        "x": 330,
-        "y": 0
-      },
-      "data": {
-        "loopType": "count",
-        "count": 5,
-        "concurrency": 1,
-        "sharedVariables": [],
-        "outputs": [
-          {
-            "key": "items",
-            "type": "any"
-          }
-        ]
-      },
-      "composite": {
-        "role": "loop",
-        "generated": false,
-        "hidden": false,
-        "scopeBoundary": false,
-        "rootId": "node_1781512195265_ioppse",
-        "parentId": null
-      }
-    },
-    {
-      "id": "node_1781512195265_1wh1tw",
-      "type": "loop_body",
-      "label": "nodes.loop_body.label",
-      "position": {
-        "x": 982.3697000767297,
-        "y": -145.21620360430092
-      },
-      "data": {
-        "width": 150,
-        "height": 260,
-        "nodeWidth": 332,
-        "nodeHeight": 664
-      },
-      "composite": {
-        "role": "loop_body",
-        "generated": true,
-        "hidden": false,
-        "scopeBoundary": true,
-        "rootId": "node_1781512195265_ioppse",
-        "parentId": "node_1781512195265_ioppse"
-      }
-    },
-    {
-      "id": "node_1781512195265_j6tbdt",
-      "type": "start",
-      "label": "循环5次开始",
-      "position": {
-        "x": 1038.3697000767297,
-        "y": -45.216203604300915
-      },
-      "data": {
-        "inputFields": [
-          {
-            "key": "22",
-            "type": "string",
-            "value": "",
-            "children": []
-          }
-        ]
-      },
-      "composite": {
-        "rootId": "node_1781512195265_1wh1tw",
-        "parentId": "node_1781512195265_1wh1tw",
-        "generated": true,
-        "hidden": false
-      }
-    },
-    {
-      "id": "node_1781512195265_x4ujpg",
-      "type": "end",
-      "label": "循环5次结束",
-      "position": {
-        "x": 1038.3697000767297,
-        "y": 354.7837963956991
-      },
-      "data": {},
-      "composite": {
-        "rootId": "node_1781512195265_1wh1tw",
-        "parentId": "node_1781512195265_1wh1tw",
-        "generated": true,
-        "hidden": false
-      }
-    },
-    {
-      "id": "node_1781512206142_dpoobj",
-      "type": "toast",
-      "label": "输出循环索引",
-      "position": {
-        "x": 1038.3697000767297,
-        "y": 154.78379639569908
-      },
-      "data": {
-        "type": "info",
-        "message": "当前循环索引: {{ context.loopIndex }}"
-      },
-      "composite": {
-        "rootId": "node_1781512195265_1wh1tw",
-        "parentId": "node_1781512195265_1wh1tw",
-        "generated": false,
-        "hidden": false
-      }
-    },
-    {
-      "id": "node_1781512539518_vv5rdb",
-      "type": "get_variable",
-      "label": "nodes.get_variable.label",
-      "position": {
-        "x": -156.4836484428704,
-        "y": 365.27954196661096
+        "x": 45,
+        "y": 240
       },
       "data": {
         "outputs": [
           {
-            "key": "value",
+            "key": "fileId",
+            "type": "string"
+          },
+          {
+            "key": "fileName",
+            "type": "string"
+          },
+          {
+            "key": "chunkCount",
+            "type": "number"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          }
+        ],
+        "knowledgeBase": "24fd5ce5-d74c-4b03-9155-4b9d766d0ee1"
+      }
+    },
+    {
+      "id": "node_1781595223974_ih8sn3",
+      "type": "kb_query",
+      "label": "nodes.kb_query.label",
+      "position": {
+        "x": 555,
+        "y": 435
+      },
+      "data": {
+        "topK": 5,
+        "outputs": [
+          {
+            "key": "matches",
             "type": "any"
           },
           {
-            "key": "exists",
-            "type": "boolean"
+            "key": "count",
+            "type": "number"
           }
         ]
       }
     },
     {
-      "id": "node_1781512542876_1z2ozx",
-      "type": "set_variable",
-      "label": "nodes.set_variable.label",
+      "id": "node_1781595226110_qkrlco",
+      "type": "kb_delete",
+      "label": "nodes.kb_delete.label",
       "position": {
-        "x": -156.4836484428704,
-        "y": 565.279541966611
+        "x": 240,
+        "y": 450
       },
       "data": {
-        "variables": [],
         "outputs": [
           {
-            "key": "env",
-            "type": "object"
+            "key": "deletedCount",
+            "type": "number"
           }
         ]
       }
     }
   ],
-  "edges": [
-    {
-      "id": "e-node_1781512195265_ioppse-loop-body-node_1781512195265_1wh1tw-target",
-      "source": "node_1781512195265_ioppse",
-      "target": "node_1781512195265_1wh1tw",
-      "sourceHandle": "loop-body",
-      "targetHandle": "target",
-      "composite": {
-        "rootId": "node_1781512195265_ioppse",
-        "parentId": "node_1781512195265_ioppse",
-        "generated": true,
-        "hidden": false,
-        "locked": true
-      }
-    },
-    {
-      "id": "e-node_1781512195265_1wh1tw-source-node_1781512195265_j6tbdt-target",
-      "source": "node_1781512195265_1wh1tw",
-      "target": "node_1781512195265_j6tbdt",
-      "sourceHandle": null,
-      "targetHandle": "target",
-      "composite": {
-        "rootId": "node_1781512195265_1wh1tw",
-        "parentId": "node_1781512195265_1wh1tw",
-        "generated": true,
-        "hidden": true,
-        "locked": true
-      }
-    },
-    {
-      "id": "e-node_1781512195265_j6tbdt-node_1781512206142_dpoobj",
-      "source": "node_1781512195265_j6tbdt",
-      "target": "node_1781512206142_dpoobj",
-      "sourceHandle": null
-    },
-    {
-      "id": "e-node_1781512206142_dpoobj-node_1781512195265_x4ujpg",
-      "source": "node_1781512206142_dpoobj",
-      "target": "node_1781512195265_x4ujpg",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1781507395557_start-node_1781512195265_ioppse-mqeydlyp",
-      "source": "node_1781507395557_start",
-      "target": "node_1781512195265_ioppse"
-    },
-    {
-      "id": "e-node_1781512195265_ioppse-node_1781507395557_end-mqeydpwz",
-      "source": "node_1781512195265_ioppse",
-      "target": "node_1781507395557_end",
-      "sourceHandle": "loop-next"
-    },
-    {
-      "id": "e-node_1781512539518_vv5rdb-source-node_1781512542876_1z2ozx-target",
-      "source": "node_1781512539518_vv5rdb",
-      "target": "node_1781512542876_1z2ozx",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    }
-  ],
+  "edges": [],
   "createdAt": 1781507395559,
-  "updatedAt": 1781539742987,
-  "groups": [
-    {
-      "id": "group_1781512549643_r9r1hl",
-      "name": "分组 1",
-      "childNodeIds": [
-        "node_1781512539518_vv5rdb",
-        "node_1781512542876_1z2ozx"
-      ],
-      "childGroupIds": [],
-      "locked": false,
-      "disabled": false,
-      "savedNodeStates": {},
-      "x": 1427.7008605862045,
-      "y": 1643.8405995581074,
-      "width": 688,
-      "height": 252
-    }
-  ]
+  "updatedAt": 1781595901750,
+  "groups": []
 }

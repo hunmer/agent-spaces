@@ -25,5 +25,13 @@
   "noFiles": "No files",
   "chunks": "chunks",
   "noPreview": "No preview (unsupported format)",
-  "selectFile": "Select a file"
+  "selectFile": "Select a file",
+  "createTitle": "New Knowledge Base",
+  "editTitle": "Edit Knowledge Base",
+  "name": "Name",
+  "description": "Description",
+  "descriptionPlaceholder": "Optional, describe what this knowledge base is for",
+  "edit": "Edit",
+  "viewDetail": "View details",
+  "delete": "Delete"
 }

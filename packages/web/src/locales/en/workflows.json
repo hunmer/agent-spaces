@@ -848,7 +848,7 @@
         "knowledgeBase": "Knowledge base",
         "knowledgeBase_tooltip": "Target knowledge base",
         "filePath": "File path / URL",
-        "filePath_tooltip": "Workspace file path or URL, supports {{upstream}} variables",
+        "filePath_tooltip": "Workspace file path or URL, supports '{{upstream}}' variables",
         "fileName": "File name",
         "fileName_tooltip": "Optional custom stored file name",
         "query": "Query",

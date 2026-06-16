@@ -9,15 +9,16 @@ import { workspaceIdFromLocation } from '@/lib/routes';
 import { usePathname } from 'next/navigation';
 import { KnowledgeBaseListDialog } from './knowledge-base-list-dialog';
 
-export function KnowledgeBasePicker({ value, onChange }: {
+export function KnowledgeBasePicker({ value, workspaceId: providedWorkspaceId, onChange }: {
   value: string;
+  workspaceId?: string;
   onChange: (v: string) => void;
 }) {
   const t = useTranslations();
   const [open, setOpen] = useState(false);
   const [kbName, setKbName] = useState('');
   const pathname = usePathname();
-  const workspaceId = workspaceIdFromLocation(pathname, typeof window !== 'undefined' ? window.location.search : '');
+  const workspaceId = providedWorkspaceId?.trim() || workspaceIdFromLocation(pathname, typeof window !== 'undefined' ? window.location.search : '');
 
   useEffect(() => {
     let active = true;

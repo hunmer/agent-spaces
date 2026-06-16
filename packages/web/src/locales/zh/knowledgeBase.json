@@ -25,5 +25,13 @@
   "noFiles": "暂无文件",
   "chunks": "块",
   "noPreview": "无预览(暂不支持该格式)",
-  "selectFile": "选择一个文件"
+  "selectFile": "选择一个文件",
+  "createTitle": "新建知识库",
+  "editTitle": "编辑知识库",
+  "name": "名称",
+  "description": "描述",
+  "descriptionPlaceholder": "可选，描述该知识库的用途",
+  "edit": "编辑",
+  "viewDetail": "查看详情",
+  "delete": "删除"
 }
