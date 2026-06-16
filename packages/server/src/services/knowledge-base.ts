@@ -95,8 +95,9 @@ async function indexFile(kb: KnowledgeBase, file: KbFile): Promise<void> {
 
 export async function reindexFile(workspaceId: string, kbId: string, fileId: string): Promise<KbFile> {
   const kb = kbStore.getKb(workspaceId, kbId);
+  if (!kb) throw new Error(`Knowledge base not found: ${kbId}`);
   const file = kbStore.getFile(workspaceId, kbId, fileId);
-  if (!kb || !file) throw new Error('File not found');
+  if (!file) throw new Error(`File not found: ${fileId}`);
   await indexFile(kb, file).catch(() => {});
   return kbStore.getFile(workspaceId, kbId, fileId)!;
 }

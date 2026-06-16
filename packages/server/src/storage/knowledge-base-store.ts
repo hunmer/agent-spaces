@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync, unlinkSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { v4 as uuid } from 'uuid';
 import { getDataDir, ensureDir } from './json-store.js';
@@ -183,8 +183,12 @@ export function updateFileStatus(kbId: string, fileId: string, patch: Partial<Pi
 
 export function deleteFile(kbId: string, fileId: string): void {
   const db = openDb();
+  const row = db.prepare('SELECT storage_path FROM kb_files WHERE id = ? AND kb_id = ?').get(fileId, kbId) as { storage_path: string } | undefined;
   db.prepare('DELETE FROM kb_chunks WHERE file_id = ?').run(fileId);
   db.prepare('DELETE FROM kb_files WHERE id = ? AND kb_id = ?').run(fileId, kbId);
+  if (row?.storage_path) {
+    try { unlinkSync(row.storage_path); } catch { /* best-effort: 文件可能已不存在 */ }
+  }
 }
 
 // ---- KbChunk + Embedding ----
