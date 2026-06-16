@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Workflow } from '@agent-spaces/shared';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,14 @@ export function WorkflowPluginsDialog({
   const [sortBy, setSortBy] = useState<SortBy>('default');
   const [configPlugin, setConfigPlugin] = useState<WorkflowPlugin | null>(null);
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
+  const [pending, setPending] = useState<string[]>([]);
+  const [inFlight, setInFlight] = useState<Set<string>>(new Set());
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
+  const pendingRef = useRef<string[]>([]);
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const failedRef = useRef<Set<string>>(new Set());
+  const successCountRef = useRef(0);
+  const failCountRef = useRef(0);
   const { locale } = useLocale();
 
   const enabledPluginIds = useMemo(() => new Set(workflow?.enabledPlugins || []), [workflow?.enabledPlugins]);
@@ -226,22 +234,103 @@ export function WorkflowPluginsDialog({
     }
   }
 
-  function handleUpdatePlugin(plugin: WorkflowPlugin) {
-    const sp = storePluginById.get(plugin.id);
-    if (sp) installPlugin(sp);
+  function syncUpdateState() {
+    setPending([...pendingRef.current]);
+    setInFlight(new Set(inFlightRef.current));
+    setFailedIds(new Set(failedRef.current));
   }
 
-  async function handleUpdateAll() {
-    const toUpdate = plugins.filter(p => needsUpdateMap.has(p.id));
-    for (const plugin of toUpdate) {
-      const sp = storePluginById.get(plugin.id);
-      if (!sp) continue;
-      try {
-        const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${sp.path}`), sp.md5, sp.type, sp.files);
-        setPlugins(items => items.map(item => item.id === installed.id ? { ...item, ...installed } : item));
-      } catch { /* continue */ }
+  const UPDATE_CONCURRENCY = 4;
+
+  function pumpUpdate() {
+    while (inFlightRef.current.size < UPDATE_CONCURRENCY) {
+      const id = pendingRef.current.shift();
+      if (!id) break;
+      inFlightRef.current.add(id);
+      void runUpdateOne(id);
     }
-    toast.success(`已更新 ${toUpdate.length} 个插件`);
+    syncUpdateState();
+  }
+
+  async function runUpdateOne(id: string) {
+    const sp = storePluginById.get(id);
+    let ok = false;
+    try {
+      if (sp) {
+        const installed = await pluginApi.installFromStore(id, resolveStoreUrl(`plugins/${sp.path}`), sp.md5, sp.type, sp.files);
+        setPlugins(items => items.map(item => item.id === installed.id ? { ...item, ...installed } : item));
+        failedRef.current.delete(id);
+        ok = true;
+      }
+    } catch {
+      failedRef.current.add(id);
+    } finally {
+      if (ok) successCountRef.current += 1;
+      else failCountRef.current += 1;
+      inFlightRef.current.delete(id);
+      syncUpdateState();
+      // 队列与执行中均空 => 本批次结束，输出汇总
+      if (pendingRef.current.length === 0 && inFlightRef.current.size === 0) {
+        const s = successCountRef.current;
+        const f = failCountRef.current;
+        successCountRef.current = 0;
+        failCountRef.current = 0;
+        if (s > 0 || f > 0) {
+          if (f > 0) toast.warning(`更新完成：成功 ${s} 个，失败 ${f} 个`);
+          else toast.success(`已更新 ${s} 个插件`);
+        }
+      } else {
+        pumpUpdate();
+      }
+    }
+  }
+
+  function enqueueUpdate(ids: string[]) {
+    const existing = new Set<string>([...pendingRef.current, ...inFlightRef.current]);
+    let added = 0;
+    for (const id of ids) {
+      if (!existing.has(id)) {
+        pendingRef.current.push(id);
+        added += 1;
+      }
+      // 重新入队视为重试，先清除上次的失败标记
+      failedRef.current.delete(id);
+    }
+    if (added > 0) {
+      pumpUpdate();
+    } else {
+      syncUpdateState();
+    }
+  }
+
+  function removeFromQueue(id: string) {
+    const idx = pendingRef.current.indexOf(id);
+    if (idx < 0) return;
+    pendingRef.current.splice(idx, 1);
+    syncUpdateState();
+  }
+
+  function cancelUpdateAll() {
+    const cancelled = pendingRef.current.length;
+    if (cancelled === 0) return;
+    pendingRef.current = [];
+    syncUpdateState();
+    toast.info(`已取消 ${cancelled} 个等待更新的插件`);
+  }
+
+  function handleUpdatePlugin(plugin: WorkflowPlugin) {
+    const id = plugin.id;
+    // 已在等待队列中：从队列移除（正在执行中的无法移除）
+    if (pending.includes(id)) {
+      removeFromQueue(id);
+      return;
+    }
+    if (inFlight.has(id)) return;
+    enqueueUpdate([id]);
+  }
+
+  function handleUpdateAll() {
+    enqueueUpdate(plugins.filter(p => needsUpdateMap.has(p.id)).map(p => p.id));
   }
 
   async function handleRefresh() {
@@ -266,6 +355,7 @@ export function WorkflowPluginsDialog({
   const hasFilters = query || tag !== '__all__' || status !== 'all';
   const currentLoading = activeTab === 'store' ? storeLoading : loading;
   const filtered = activeTab === 'store' ? filteredStore : filteredLocal;
+  const updateInProgress = pending.length > 0 || inFlight.size > 0;
 
   return (
     <>
@@ -294,7 +384,12 @@ export function WorkflowPluginsDialog({
               </Button>
             </div>
             <div className="flex-1" />
-            {needsUpdateMap.size > 0 && (
+            {updateInProgress ? (
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-600 border-orange-300 hover:bg-orange-50" onClick={cancelUpdateAll} disabled={pending.length === 0}>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                取消更新({pending.length})
+              </Button>
+            ) : needsUpdateMap.size > 0 && (
               <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-600 border-orange-300 hover:bg-orange-50" disabled={installingIds.size > 0} onClick={handleUpdateAll}>
                 <RefreshCw className="h-3.5 w-3.5" />
                 一键更新({needsUpdateMap.size})
@@ -367,6 +462,9 @@ export function WorkflowPluginsDialog({
                   inWorkflow={enabledPluginIds.has(plugin.id)}
                   disabled={!workflow}
                   needsUpdate={Boolean(needsUpdateMap.get(plugin.id))}
+                  updateQueued={pending.includes(plugin.id) || inFlight.has(plugin.id)}
+                  updating={inFlight.has(plugin.id)}
+                  updateFailed={failedIds.has(plugin.id)}
                   onToggleAction={() => togglePlugin(plugin)}
                   onConfigAction={() => setConfigPlugin(plugin)}
                   onUninstallAction={() => uninstallPlugin(plugin)}

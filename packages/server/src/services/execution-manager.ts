@@ -90,10 +90,26 @@ export function __resolveWorkflowConfigValueForTest(
   return resolveWorkflowConfigString(config, template);
 }
 
+export function __normalizeExecutionSnapshotNodesForTest(nodes: WorkflowNode[]): WorkflowNode[] {
+  return normalizeExecutionSnapshotNodes(nodes);
+}
+
 const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
 const DELAY_NODE_MIN_MS = 100;
 const DELAY_NODE_MAX_MS = 30_000;
+
+function normalizeExecutionSnapshotNodes(nodes: WorkflowNode[]): WorkflowNode[] {
+  return nodes.map((node) => {
+    const { inputFields, outputs, ...data } = node.data || {};
+    return {
+      ...node,
+      ...(inputFields === undefined ? {} : { inputFields }),
+      ...(outputs === undefined ? {} : { outputs }),
+      data,
+    } as WorkflowNode;
+  });
+}
 
 export class ExecutionManager {
   private sessions = new Map<string, ExecutionSession>();
@@ -1437,7 +1453,7 @@ export class ExecutionManager {
       status: session.status === 'running' ? 'running' : session.status === 'paused' ? 'paused' : session.status === 'completed' ? 'completed' : 'error',
       steps: clone(session.steps),
       snapshot: {
-        nodes: clone(session.nodes),
+        nodes: normalizeExecutionSnapshotNodes(clone(session.nodes)),
         edges: clone(session.edges),
         groups: clone(session.groups || []),
         variables: clone(session.variables || []),

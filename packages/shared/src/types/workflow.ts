@@ -49,6 +49,8 @@ export interface WorkflowNode {
   label: string
   position: { x: number; y: number }
   data: Record<string, unknown>
+  inputFields?: OutputField[]
+  outputs?: OutputField[]
   nodeState?: NodeRunState
   breakpoint?: NodeBreakpoint
   nodeColor?: string

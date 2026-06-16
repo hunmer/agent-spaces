@@ -17,6 +17,9 @@ export function LocalPluginCard({
   inWorkflow,
   disabled,
   needsUpdate,
+  updateQueued,
+  updating,
+  updateFailed,
   onToggleAction,
   onConfigAction,
   onUninstallAction,
@@ -29,6 +32,9 @@ export function LocalPluginCard({
   inWorkflow: boolean;
   disabled: boolean;
   needsUpdate?: boolean;
+  updateQueued?: boolean;
+  updating?: boolean;
+  updateFailed?: boolean;
   onToggleAction: () => void;
   onConfigAction?: () => void;
   onUninstallAction?: () => void;
@@ -57,6 +63,7 @@ export function LocalPluginCard({
         tags={plugin.tags}
         badge={inWorkflow ? t('pluginCard.added') : t('pluginCard.notAdded')}
         badgeVariant={inWorkflow ? 'default' : 'secondary'}
+        containerClassName={updateFailed ? 'border-destructive ring-1 ring-destructive/40' : undefined}
         clickable
         onClick={() => setDetailOpen(true)}
         iconClickable={canShowTools}
@@ -73,11 +80,18 @@ export function LocalPluginCard({
             <Settings className="h-3.5 w-3.5" />
           </Button>
         ) : null}
-        {needsUpdate && onUpdateAction && (
-          <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-500 border-orange-300 hover:bg-orange-50" onClick={(e) => { e.stopPropagation(); onUpdateAction(); }}>
-            <RefreshCw className="h-3.5 w-3.5" />
-            更新
-          </Button>
+        {onUpdateAction && (needsUpdate || updateQueued) && (
+          updateQueued ? (
+            <Button variant="secondary" size="sm" className="h-7 gap-1 text-xs" disabled={updating} onClick={(e) => { e.stopPropagation(); onUpdateAction(); }}>
+              <RefreshCw className={`h-3.5 w-3.5 ${updating ? 'animate-spin' : ''}`} />
+              {updating ? '更新中' : '等待更新'}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-500 border-orange-300 hover:bg-orange-50" onClick={(e) => { e.stopPropagation(); onUpdateAction(); }}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              {updateFailed ? '重试' : '更新'}
+            </Button>
+          )
         )}
         <Button size="sm" variant={inWorkflow ? 'outline' : 'default'} className="ml-auto h-7 text-xs" disabled={disabled} onClick={(e) => { e.stopPropagation(); onToggleAction(); }}>
           {inWorkflow ? t('pluginCard.remove') : t('pluginCard.addToWorkflow')}
@@ -198,6 +212,7 @@ function PluginCardShell({
   badge,
   badgeVariant,
   headerExtra,
+  containerClassName,
   clickable,
   onClick,
   iconClickable,
@@ -213,6 +228,7 @@ function PluginCardShell({
   badge: string;
   badgeVariant: 'default' | 'secondary' | 'outline';
   headerExtra?: React.ReactNode;
+  containerClassName?: string;
   clickable?: boolean;
   onClick?: () => void;
   /** 图标是否作为独立入口（本地插件：点击打开工具对话框） */
@@ -225,7 +241,7 @@ function PluginCardShell({
 
   return (
     <div
-      className={`group flex min-h-[156px] flex-col rounded-md border bg-background p-3 ${clickable ? 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30' : ''}`}
+      className={`group flex min-h-[156px] flex-col rounded-md border bg-background p-3 ${clickable ? 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30' : ''} ${containerClassName || ''}`}
       onClick={onClick}
     >
       <div className="flex items-start gap-2">

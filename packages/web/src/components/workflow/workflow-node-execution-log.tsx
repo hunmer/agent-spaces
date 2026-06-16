@@ -70,6 +70,7 @@ interface WorkflowNodeExecutionLogProps {
   executionSteps?: ExecutionStep[];
   nodeType?: string;
   loopExecutionScopeId?: string;
+  data?: Record<string, unknown>;
   inputFields?: OutputField[];
   outputs: OutputField[];
   nodeWidth: number;
@@ -85,6 +86,7 @@ export function WorkflowNodeExecutionLog({
   executionSteps,
   nodeType,
   loopExecutionScopeId,
+  data,
   inputFields = [],
   outputs,
   nodeWidth,
@@ -265,11 +267,21 @@ export function WorkflowNodeExecutionLog({
     </div>
   );
 
-  const filterInputDisplay = React.useCallback((input: unknown): unknown => {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) return input
-    const { sourceHandle: _sourceHandle, sourceNodeId: _sourceNodeId, ...rest } = input as Record<string, unknown>
-    return rest
-  }, [])
+  const inputFieldsDisplay = React.useMemo(() => {
+    return Array.isArray(inputFields) && inputFields.length > 0 ? inputFields : null;
+  }, [inputFields]);
+
+  const dataDisplay = React.useMemo(() => {
+    if (!data) return null
+    const {
+      inputFields: _inputFields,
+      outputs: _outputs,
+      executionStep: _executionStep,
+      executionSteps: _executionSteps,
+      ...rest
+    } = data
+    return Object.keys(rest).length > 0 ? rest : null
+  }, [data])
 
   const renderInputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
@@ -278,13 +290,35 @@ export function WorkflowNodeExecutionLog({
     >
       <div className="flex items-center px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">
         <span className="flex-1">{t('execution.input')}</span>
-        {step.input != null && <CopyButton data={filterInputDisplay(step.input)} />}
+        {inputFieldsDisplay != null && <CopyButton data={inputFieldsDisplay} />}
       </div>
-      {step.input != null ? (
+      {inputFieldsDisplay != null ? (
         <JsonViewer
-          data={filterInputDisplay(step.input) as Parameters<typeof JsonViewer>[0]['data']}
+          data={inputFieldsDisplay as unknown as Parameters<typeof JsonViewer>[0]['data']}
           className="border-0 shadow-none rounded-none text-[10px]"
           defaultExpanded={2}
+          mini
+        />
+      ) : (
+        <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noInput')}</div>
+      )}
+    </div>
+  );
+
+  const renderDataSection = (className: string, extraClassName?: string) => (
+    <div
+      className={cn(className, extraClassName)}
+      onWheelCapture={stopContentScrollWheel}
+    >
+      <div className="flex items-center px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+        <span className="flex-1">DATA</span>
+        {dataDisplay != null && <CopyButton data={dataDisplay} />}
+      </div>
+      {dataDisplay != null ? (
+        <JsonViewer
+          data={dataDisplay as Parameters<typeof JsonViewer>[0]['data']}
+          className="border-0 shadow-none rounded-none text-[10px]"
+          defaultExpanded={1}
           mini
         />
       ) : (
@@ -339,6 +373,7 @@ export function WorkflowNodeExecutionLog({
         </TabsList>
         <TabsContent value="io" className="m-0">
           {renderInputSection(displayStep, LOG_TAB_SECTION_SCROLL_CLASS, 'border-b border-border')}
+          {renderDataSection(LOG_TAB_SECTION_SCROLL_CLASS, 'border-b border-border')}
           {renderOutputSection(displayStep, LOG_TAB_SECTION_SCROLL_CLASS)}
         </TabsContent>
         <TabsContent value="logs" className="m-0">
@@ -348,6 +383,7 @@ export function WorkflowNodeExecutionLog({
     ) : (
       <>
         {renderInputSection(displayStep, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+        {renderDataSection(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
         {renderOutputSection(displayStep, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
         {renderLogsSection(displayStep, LOG_SECTION_SCROLL_CLASS)}
       </>

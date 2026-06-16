@@ -9,7 +9,7 @@
       "label": "开始",
       "position": {
         "x": 0,
-        "y": 90
+        "y": 159
       },
       "data": {
         "inputFields": [
@@ -27,8 +27,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 2100,
-        "y": 90
+        "x": 2310,
+        "y": 144.5
       },
       "data": {
         "conditions": "",
@@ -65,8 +65,8 @@
       "type": "run_code",
       "label": "提取文件类型",
       "position": {
-        "x": 300,
-        "y": 90
+        "x": 330,
+        "y": 159
       },
       "data": {
         "code": "async function main({ params, context }) {\n  // 从开始节点获取文件信息\n  const file = params.file;\n  if (!file) {\n    return { fileType: 'unknown', filePath: '', fileName: '', originalName: '' };\n  }\n  const fileName = file.name || file.originalName || '';\n  const filePath = file.path || file.url || file.localPath || '';\n  const ext = (fileName.split('.').pop() || '').toLowerCase();\n\n  // 视频后缀\n  const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm', 'm4v', 'ts', 'mpg', 'mpeg', '3gp', 'rm', 'rmvb'];\n  // 音频后缀\n  const audioExts = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma', 'opus', 'amr', 'ac3'];\n\n  let fileType = 'unknown';\n  if (videoExts.includes(ext)) fileType = 'video';\n  else if (audioExts.includes(ext)) fileType = 'audio';\n\n  return {\n    fileType,\n    filePath,\n    fileName,\n    originalName: fileName,\n    ext,\n  };\n}",
@@ -112,8 +112,8 @@
       "type": "switch",
       "label": "判断文件类型",
       "position": {
-        "x": 600,
-        "y": 90
+        "x": 660,
+        "y": 144
       },
       "data": {
         "conditions": [
@@ -139,8 +139,8 @@
       "type": "ffmpeg_demux",
       "label": "提取音频",
       "position": {
-        "x": 900,
-        "y": 180
+        "x": 990,
+        "y": 283.5
       },
       "data": {
         "mode": "extract_audio",
@@ -178,8 +178,8 @@
       "type": "asr_file_recognition",
       "label": "录音文件转写",
       "position": {
-        "x": 1800,
-        "y": 90
+        "x": 1980,
+        "y": 154.5
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -226,8 +226,8 @@
       "type": "run_code",
       "label": "音频路径透传",
       "position": {
-        "x": 900,
-        "y": 0
+        "x": 990,
+        "y": 34.5
       },
       "data": {
         "code": "async function main({ params, context }) {\n  // 音频分支：透传 run_code 输出的 filePath\n  // 输出与 ffmpeg_demux 一致的结构 { data: { audioPath, videoPath } }\n  const filePath = params.filePath || '';\n  return {\n    data: {\n      audioPath: filePath,\n      videoPath: '',\n    },\n  };\n}",
@@ -265,8 +265,8 @@
       "type": "cos_upload_file",
       "label": "COS上传音频（视频）",
       "position": {
-        "x": 1200,
-        "y": 180
+        "x": 1320,
+        "y": 249
       },
       "data": {
         "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
@@ -314,7 +314,7 @@
       "type": "cos_upload_file",
       "label": "COS上传音频（音频）",
       "position": {
-        "x": 1200,
+        "x": 1320,
         "y": 0
       },
       "data": {
@@ -363,8 +363,8 @@
       "type": "run_code",
       "label": "合并URL",
       "position": {
-        "x": 1500,
-        "y": 90
+        "x": 1650,
+        "y": 159
       },
       "data": {
         "code": "async function main({ params, context }) {\n  // 从视频分支或音频分支的 cos_upload_file 中获取上传后的在线 URL\n  // 任意一个上游会发送数据（switch 只触发一个分支）\n  const url = params.videoUploadUrl || params.audioUploadUrl || '';\n  if (!url) {\n    return { fileUrls: [], fileUrl: '' };\n  }\n  return {\n    fileUrls: [url],\n    fileUrl: url,\n  };\n}",
@@ -450,7 +450,7 @@
     }
   ],
   "createdAt": 1781611468552,
-  "updatedAt": 1781627119709,
+  "updatedAt": 1781628351530,
   "enabledPlugins": [
     "workflow.ffmpeg",
     "workflow.aliyun-ai",

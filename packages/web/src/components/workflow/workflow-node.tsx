@@ -894,6 +894,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           executionSteps={Array.isArray(nodeData.executionSteps) ? nodeData.executionSteps : undefined}
           nodeType={workflowNodeType}
           loopExecutionScopeId={nodeData.loopExecutionScopeId}
+          data={nodeData.executionLogData}
           inputFields={Array.isArray(nodeData.inputFields) ? nodeData.inputFields : []}
           outputs={Array.isArray(nodeData.outputs) ? nodeData.outputs : []}
           nodeWidth={nodeWidth}

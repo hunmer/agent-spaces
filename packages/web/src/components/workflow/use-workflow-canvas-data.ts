@@ -272,6 +272,7 @@ export function useCanvasData({
         style: { minWidth, minHeight, width, height, zIndex },
         data: {
           ...n.data,
+          executionLogData: n.data,
           label: n.data?.label || n.label,
           nodeType: n.type,
           selectedNodeIds,
