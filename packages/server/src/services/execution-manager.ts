@@ -83,6 +83,12 @@ import {
 
 // 保留公共导出（外部测试直接引用），实际定义已移至 execution-value-access.ts
 export { getNestedValue } from './execution-value-access.js';
+export function __resolveWorkflowConfigValueForTest(
+  config: Record<string, Record<string, string>>,
+  template: string,
+): any {
+  return resolveWorkflowConfigString(config, template);
+}
 
 const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
@@ -1207,19 +1213,8 @@ export class ExecutionManager {
       return '';
     }
 
-    const configMatch = value.match(/^\s*\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?\s*\}\}\s*$/);
-    if (configMatch) {
-      const pluginConfig = session.context.__config__?.[configMatch[2]];
-      if (pluginConfig != null) {
-        let raw: any = pluginConfig[configMatch[4]];
-        if (configMatch[5] && typeof raw === 'string') {
-          try { raw = JSON.parse(raw); } catch { /* keep raw string */ }
-        }
-        const result = configMatch[5] ? getNestedValue(raw, configMatch[5]) : raw;
-        if (result !== undefined) return result;
-      }
-      return '';
-    }
+    const configMatch = value.match(/^\s*\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}\s*$/);
+    if (configMatch) return resolveWorkflowConfigString(session.context.__config__ ?? {}, value);
 
     const ctxMatch = value.match(/^\s*\{\{\s*context\.([^}]+?)\s*\}\}\s*$/);
     if (ctxMatch) return getNestedValue(session.context, ctxMatch[1]) ?? '';
@@ -1238,16 +1233,8 @@ export class ExecutionManager {
         return d == null ? '' : String(getNestedValue(d, normalizeVariablePath(fp)) ?? '');
       })
       .replace(
-        /\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?\s*\}\}/g,
-        (_m, _pq, pluginId, _kq, key, dotPath) => {
-          const pluginConfig = session.context.__config__?.[pluginId];
-          if (pluginConfig == null) return '';
-          let raw: any = pluginConfig[key];
-          if (dotPath && typeof raw === 'string') {
-            try { raw = JSON.parse(raw); } catch { /* keep raw string */ }
-          }
-          return String((dotPath ? getNestedValue(raw, dotPath) : raw) ?? '');
-        },
+        /\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}/g,
+        (match) => String(resolveWorkflowConfigString(session.context.__config__ ?? {}, match) ?? ''),
       )
       .replace(/\{\{\s*context\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context, p) ?? ''));
 
@@ -1558,6 +1545,23 @@ export class ExecutionManager {
 }
 
 // ---- Utility functions ----
+
+function resolveWorkflowConfigString(config: Record<string, Record<string, string>>, template: string): any {
+  const match = template.match(/^\s*\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}\s*$/);
+  if (!match) return template;
+
+  const pluginConfig = config[match[2]];
+  if (pluginConfig != null) {
+    let raw: any = pluginConfig[match[4]];
+    if (match[5] && typeof raw === 'string') {
+      try { raw = JSON.parse(raw); } catch { /* keep raw string */ }
+    }
+    const result = match[5] ? getNestedValue(raw, match[5]) : raw;
+    if (match[7] !== undefined) return result ? result : match[7];
+    if (result !== undefined) return result;
+  }
+  return match[7] ?? '';
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));

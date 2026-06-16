@@ -253,6 +253,24 @@ test('get_node_property_type_definition returns conditions value shape', async (
   assert.equal(result.definition.handles.defaultHandle, 'default');
 });
 
+test('get_node_property_type_definition returns output fields value shape', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const getTypeDefinition = tools.find((tool) => tool.name === 'get_node_property_type_definition');
+  assert.ok(getTypeDefinition);
+
+  const result = await getTypeDefinition.execute({ type: 'output_fields' }) as {
+    success: boolean;
+    definition: {
+      valueType: string;
+      requiredItemFields: string[];
+    };
+  };
+
+  assert.equal(result.success, true);
+  assert.equal(result.definition.valueType, 'array');
+  assert.deepEqual(result.definition.requiredItemFields, ['key', 'type']);
+});
+
 test('get_current_workflow returns workflow data and patch', async () => {
   const currentWorkflow: Workflow = {
     ...workflow,
@@ -433,7 +451,7 @@ test('create_node rejects tool-call markup embedded in node data', async () => {
   assert.match(result.message, /data\.inputFields array/);
 });
 
-test('node data validation rejects item-wrapped field and condition arrays', async () => {
+test('node data validation normalizes item-wrapped conditions but rejects item-wrapped field arrays', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const createNode = tools.find((tool) => tool.name === 'create_node');
   const updateNode = tools.find((tool) => tool.name === 'update_node');
@@ -449,13 +467,32 @@ test('node data validation rejects item-wrapped field and condition arrays', asy
     },
   }) as {
     success: boolean;
-    message: string;
-    property: string;
+    workflow: Workflow;
+    created_node_id: string;
   };
 
-  assert.equal(createSwitchResult.success, false);
-  assert.equal(createSwitchResult.property, 'conditions');
-  assert.match(createSwitchResult.message, /expected conditions/);
+  assert.equal(createSwitchResult.success, true);
+  const switchNode = createSwitchResult.workflow.nodes.find((node) => node.id === createSwitchResult.created_node_id);
+  assert.ok(Array.isArray(switchNode?.data.conditions));
+  assert.equal(switchNode?.data.conditions[0]?.id, 'cond_1');
+
+  const updateSwitchResult = await updateNode.execute({
+    nodeId: createSwitchResult.created_node_id,
+    data: {
+      conditions: {
+        items: {
+          item: [{ id: 'cond_2', variable: '{{ __data__["node"].fileType }}', operator: 'equals', value: 'audio' }],
+        },
+      },
+    },
+  }) as {
+    success: boolean;
+    workflow: Workflow;
+  };
+  assert.equal(updateSwitchResult.success, true);
+  const updatedSwitchNode = updateSwitchResult.workflow.nodes.find((node) => node.id === createSwitchResult.created_node_id);
+  assert.ok(Array.isArray(updatedSwitchNode?.data.conditions));
+  assert.equal(updatedSwitchNode?.data.conditions[0]?.id, 'cond_2');
 
   const createCodeResult = await createNode.execute({ type: 'run_code' }) as {
     success: boolean;

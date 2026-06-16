@@ -18,7 +18,7 @@ export const COMMON_NODE_PROPERTY_TYPES = new Set([
 export const NODE_PROPERTY_TYPE_DEFINITIONS = new Map<string, JsonRecord>([
   ['conditions', {
     valueType: 'array',
-    description: 'switch 节点的条件分支列表。每个数组项对应一个 case 分支，出边 sourceHandle 使用 case-0、case-1 等；未命中时走 default 分支。',
+    description: 'switch 节点的条件分支列表。data.conditions 必须是数组；工具会兼容常见误传的 { item: [...] } 或 { items: { item: [...] } } 并自动展开。每个数组项对应一个 case 分支，出边 sourceHandle 使用 case-0、case-1 等；未命中时走 default 分支。',
     item: {
       id: 'string',
       variable: 'string',
@@ -40,6 +40,22 @@ export const NODE_PROPERTY_TYPE_DEFINITIONS = new Map<string, JsonRecord>([
         operator: 'equals',
         value: 'video',
       },
+    ],
+  }],
+  ['output_fields', {
+    valueType: 'array',
+    description: '节点 inputFields/outputs 字段数组。优先使用 set_node_io_fields 设置；直接写 data 时必须传数组，禁止包成 { item: [...] }。',
+    item: {
+      key: 'string',
+      type: 'string',
+      value: 'any?',
+      description: 'string?',
+      required: 'boolean?',
+      children: 'OutputField[]?',
+    },
+    requiredItemFields: ['key', 'type'],
+    example: [
+      { key: 'result', type: 'string', value: '{{ __data__["node_id"].result }}' },
     ],
   }],
   ['agent', {
@@ -132,7 +148,11 @@ export function validateNodeDataPatch(
     }
     const property = properties.get(key);
     if (!property) continue;
-    const result = validateNodePropertyValue(property.type, value);
+    if (property.type === 'conditions') {
+      const normalized = normalizeConditionsValue(value);
+      if (normalized !== value) data[key] = normalized;
+    }
+    const result = validateNodePropertyValue(property.type, data[key]);
     if (!result.success) {
       return {
         success: false,
@@ -172,6 +192,14 @@ export function validateNodePropertyValue(
   }
 
   return { success: true };
+}
+
+function normalizeConditionsValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value;
+  if (!isPlainRecord(value)) return value;
+  if (Array.isArray(value.item)) return value.item;
+  if (isPlainRecord(value.items) && Array.isArray(value.items.item)) return value.items.item;
+  return value;
 }
 
 export function isPlainRecord(value: unknown): value is JsonRecord {

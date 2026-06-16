@@ -1,0 +1,36 @@
+{
+  "id": "e3817713-a1cd-49d5-83ed-c827e0fa43c3",
+  "workflowId": "d2ba9e93-bb83-422e-b161-2ec42c5273dc",
+  "name": "音视频提取字幕 - 初始备份",
+  "snapshot": {
+    "nodes": [
+      {
+        "id": "node_1781611468547_start",
+        "type": "start",
+        "label": "开始",
+        "position": {
+          "x": 250,
+          "y": 50
+        },
+        "data": {
+          "inputFields": []
+        }
+      },
+      {
+        "id": "node_1781611468547_end",
+        "type": "end",
+        "label": "结束",
+        "position": {
+          "x": 250,
+          "y": 400
+        },
+        "data": {
+          "conditions": "",
+          "outputs": []
+        }
+      }
+    ],
+    "edges": []
+  },
+  "createdAt": 1781625966305
+}

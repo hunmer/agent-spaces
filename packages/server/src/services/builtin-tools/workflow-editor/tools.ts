@@ -1,4 +1,4 @@
-import type { OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
+import type { NodeProperty, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { createWorkflowNodesForDefinition } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../../adapters/agent-runtime-types.js';
 import * as workflowService from '../../workflow.js';
@@ -43,6 +43,124 @@ function workflowResult(success: boolean, message: string, results?: unknown[], 
     message,
     ...meta,
     results,
+  };
+}
+
+interface MissingRequiredField {
+  nodeId: string;
+  nodeLabel: string;
+  nodeType: string;
+  field: string;
+  label: string;
+  type: string;
+  reason: string;
+}
+
+function isRequiredValueMissing(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length === 0;
+  return false;
+}
+
+function isPropertyVisible(property: NodeProperty, data: JsonRecord): boolean {
+  if (!property.visibleWhen) return true;
+  const actual = data[property.visibleWhen.key];
+  if ('equals' in property.visibleWhen) return actual === property.visibleWhen.equals;
+  if (property.visibleWhen.in) return property.visibleWhen.in.includes(actual);
+  return true;
+}
+
+function addMissingArrayItemFields(
+  missing: MissingRequiredField[],
+  node: WorkflowNode,
+  property: NodeProperty,
+  value: unknown,
+) {
+  if (property.type !== 'array' || !Array.isArray(value) || !property.fields?.length) return;
+  value.forEach((item, index) => {
+    const itemRecord = asRecord(item);
+    for (const field of property.fields ?? []) {
+      if (!field.required || !isRequiredValueMissing(itemRecord[field.key])) continue;
+      missing.push({
+        nodeId: node.id,
+        nodeLabel: node.label,
+        nodeType: node.type,
+        field: `${property.key}[${index}].${field.key}`,
+        label: `${property.label}.${field.label}`,
+        type: field.type,
+        reason: 'required array item field is empty',
+      });
+    }
+  });
+}
+
+function findReachableNodes(workflow: Pick<Workflow, 'nodes' | 'edges'>, startNodeId: string): WorkflowNode[] | null {
+  const nodeById = new Map(workflow.nodes.map((node) => [node.id, node]));
+  if (!nodeById.has(startNodeId)) return null;
+  const outgoing = new Map<string, WorkflowEdge[]>();
+  for (const edge of workflow.edges) {
+    const list = outgoing.get(edge.source) ?? [];
+    list.push(edge);
+    outgoing.set(edge.source, list);
+  }
+
+  const reachable: WorkflowNode[] = [];
+  const visited = new Set<string>();
+  const queue = [startNodeId];
+  while (queue.length > 0) {
+    const nodeId = queue.shift();
+    if (!nodeId || visited.has(nodeId)) continue;
+    visited.add(nodeId);
+    const node = nodeById.get(nodeId);
+    if (!node) continue;
+    reachable.push(node);
+    for (const edge of outgoing.get(nodeId) ?? []) {
+      if (!visited.has(edge.target)) queue.push(edge.target);
+    }
+  }
+  return reachable;
+}
+
+function checkRequiredFields(
+  workflow: Pick<Workflow, 'nodes' | 'edges'>,
+  startNodeId: string,
+  definitionByType: ReadonlyMap<string, { properties?: NodeProperty[] }>,
+) {
+  const reachableNodes = findReachableNodes(workflow, startNodeId);
+  if (!reachableNodes) return { success: false as const, message: `Start node not found: ${startNodeId}` };
+
+  const missing: MissingRequiredField[] = [];
+  for (const node of reachableNodes) {
+    const definition = definitionByType.get(node.type);
+    if (!definition?.properties?.length) continue;
+    const data = asRecord(node.data);
+    for (const property of definition.properties) {
+      if (!property.required || !isPropertyVisible(property, data)) continue;
+      const value = data[property.key];
+      if (isRequiredValueMissing(value)) {
+        missing.push({
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.type,
+          field: property.key,
+          label: property.label,
+          type: property.type,
+          reason: 'required field is empty',
+        });
+        continue;
+      }
+      addMissingArrayItemFields(missing, node, property, value);
+    }
+  }
+
+  return {
+    success: true as const,
+    passed: missing.length === 0,
+    checked_node_count: reachableNodes.length,
+    checked_node_ids: reachableNodes.map((node) => node.id),
+    missing_required_fields: missing,
   };
 }
 
@@ -247,6 +365,25 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           total: nodes.length,
           available_total: ctx.nodeDefinitions.length,
           nodes: nodes.map(describeNodeUsage),
+        };
+      },
+    },
+    {
+      name: 'check_workflow_chain',
+      description: '从起始节点 ID 开始，沿当前工作流草稿的出边向后检查所有可达节点，返回必填字段未填写的节点和字段。通常传开始节点 ID；工作流编辑完成后必须调用，直到 passed=true。',
+      inputSchema: schema({
+        startNodeId: { type: 'string', description: '起始节点 ID，通常是开始节点 ID。' },
+        start_node_id: { type: 'string', description: '起始节点 ID，兼容蛇形命名。' },
+      }, ['startNodeId']),
+      annotations: { readOnly: true },
+      execute: async (input) => {
+        const startNodeId = stringInputAny(asRecord(input), ['startNodeId', 'start_node_id']);
+        if (!startNodeId) return { success: false, message: 'startNodeId is required' };
+        const result = checkRequiredFields(draft, startNodeId, definitionByType);
+        if (!result.success) return result;
+        return {
+          ...result,
+          message: result.passed ? 'workflow chain required fields check passed' : 'workflow chain has missing required fields',
         };
       },
     },

@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 250,
-        "y": 50
+        "x": 0,
+        "y": 90
       },
       "data": {
         "inputFields": [
@@ -17,12 +17,6 @@
             "key": "file",
             "type": "file",
             "description": "上传的音视频文件",
-            "required": true
-          },
-          {
-            "key": "fileType",
-            "type": "string",
-            "description": "文件类型：video 或 audio",
             "required": true
           }
         ]
@@ -33,22 +27,107 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 2100,
+        "y": 90
+      },
+      "data": {
+        "conditions": "",
+        "outputs": [
+          {
+            "key": "subtitle",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781625990380_xfvx7z\"].data.text }}",
+            "description": "最终字幕文本"
+          },
+          {
+            "key": "fileType",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781625972244_2qik8q\"].fileType }}",
+            "description": "原始文件类型"
+          },
+          {
+            "key": "fileName",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781625972244_2qik8q\"].fileName }}",
+            "description": "原始文件名"
+          },
+          {
+            "key": "taskId",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781625990380_xfvx7z\"].data.taskId }}",
+            "description": "ASR任务ID"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781625972244_2qik8q",
+      "type": "run_code",
+      "label": "提取文件类型",
+      "position": {
+        "x": 300,
+        "y": 90
+      },
+      "data": {
+        "code": "async function main({ params, context }) {\n  // 从开始节点获取文件信息\n  const file = params.file;\n  if (!file) {\n    return { fileType: 'unknown', filePath: '', fileName: '', originalName: '' };\n  }\n  const fileName = file.name || file.originalName || '';\n  const filePath = file.path || file.url || file.localPath || '';\n  const ext = (fileName.split('.').pop() || '').toLowerCase();\n\n  // 视频后缀\n  const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm', 'm4v', 'ts', 'mpg', 'mpeg', '3gp', 'rm', 'rmvb'];\n  // 音频后缀\n  const audioExts = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma', 'opus', 'amr', 'ac3'];\n\n  let fileType = 'unknown';\n  if (videoExts.includes(ext)) fileType = 'video';\n  else if (audioExts.includes(ext)) fileType = 'audio';\n\n  return {\n    fileType,\n    filePath,\n    fileName,\n    originalName: fileName,\n    ext,\n  };\n}",
+        "inputFields": [
+          {
+            "key": "file",
+            "type": "file",
+            "value": "{{ __data__[\"node_1781611468547_start\"].file }}",
+            "required": true
+          }
+        ],
+        "outputs": [
+          {
+            "key": "fileType",
+            "type": "string",
+            "description": "文件类型：video / audio / unknown"
+          },
+          {
+            "key": "filePath",
+            "type": "string",
+            "description": "本地文件路径"
+          },
+          {
+            "key": "fileName",
+            "type": "string",
+            "description": "文件名"
+          },
+          {
+            "key": "originalName",
+            "type": "string",
+            "description": "原始文件名"
+          },
+          {
+            "key": "ext",
+            "type": "string",
+            "description": "文件后缀"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781625981667_furp2d",
+      "type": "switch",
+      "label": "判断文件类型",
+      "position": {
+        "x": 600,
+        "y": 90
       },
       "data": {
         "conditions": [
           {
             "id": "cond_video",
-            "variable": "{{ __data__[\"node_1781611468547_start\"].fileType }}",
-            "field": "{{ __data__[\"node_1781611468547_start\"].fileType }}",
+            "variable": "{{ __data__[\"node_1781625972244_2qik8q\"].fileType }}",
+            "field": "fileType",
             "operator": "equals",
             "value": "video"
           },
           {
             "id": "cond_audio",
-            "variable": "{{ __data__[\"node_1781611468547_start\"].fileType }}",
-            "field": "{{ __data__[\"node_1781611468547_start\"].fileType }}",
+            "variable": "{{ __data__[\"node_1781625972244_2qik8q\"].fileType }}",
+            "field": "fileType",
             "operator": "equals",
             "value": "audio"
           }
@@ -56,12 +135,12 @@
       }
     },
     {
-      "id": "node_1781624887098_hzvs87",
+      "id": "node_1781625990379_83kp8b",
       "type": "ffmpeg_demux",
       "label": "提取音频",
       "position": {
-        "x": 510,
-        "y": 225
+        "x": 900,
+        "y": 180
       },
       "data": {
         "mode": "extract_audio",
@@ -91,122 +170,24 @@
             ]
           }
         ],
-        "inputPath": "{{ __data__[\"node_1781611468547_start\"].file }}"
+        "inputPath": "{{ __data__[\"node_1781625972244_2qik8q\"].filePath }}"
       }
     },
     {
-      "id": "node_1781624887099_366vu2",
-      "type": "cos_upload_file",
-      "label": "上传音频(视频源)",
-      "position": {
-        "x": 770,
-        "y": 225
-      },
-      "data": {
-        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
-        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
-        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
-        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "Key",
-                "type": "string"
-              },
-              {
-                "key": "ETag",
-                "type": "string"
-              },
-              {
-                "key": "Location",
-                "type": "string"
-              },
-              {
-                "key": "url",
-                "type": "string"
-              }
-            ]
-          }
-        ],
-        "key": "audio/from-video-{{ __data__[\"node_extract_audio\"].data.audioPath | default:\"\" | last_segment }}.mp3",
-        "filePath": "{{ __data__[\"node_1781611468547_start\"].file }}"
-      }
-    },
-    {
-      "id": "node_1781624887099_zlp9fa",
-      "type": "cos_upload_file",
-      "label": "上传音频(音频源)",
-      "position": {
-        "x": 1030,
-        "y": 225
-      },
-      "data": {
-        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
-        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
-        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
-        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "Key",
-                "type": "string"
-              },
-              {
-                "key": "ETag",
-                "type": "string"
-              },
-              {
-                "key": "Location",
-                "type": "string"
-              },
-              {
-                "key": "url",
-                "type": "string"
-              }
-            ]
-          }
-        ],
-        "key": "audio/original-{{ context.runId | default:\"audio\" }}.mp3",
-        "filePath": "{{ __data__[\"node_1781611468547_start\"].file }}"
-      }
-    },
-    {
-      "id": "node_1781624887099_j04ewy",
+      "id": "node_1781625990380_xfvx7z",
       "type": "asr_file_recognition",
       "label": "录音文件转写",
       "position": {
-        "x": 1290,
-        "y": 225
+        "x": 1800,
+        "y": 90
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
         "baseUrl": "{{ __config__[\"workflow.aliyun-ai\"][\"baseUrl\"] || \"https://dashscope.aliyuncs.com\" }}",
         "model": "paraformer-v2",
         "language": "",
-        "diarizationEnabled": false,
-        "enableItn": false,
+        "diarizationEnabled": "false",
+        "enableItn": "false",
         "outputs": [
           {
             "key": "success",
@@ -236,13 +217,240 @@
             ]
           }
         ],
-        "languageHints": "[\"zh\", \"en\"]"
+        "inputFields": [],
+        "fileUrls": "{{ __data__[\"node_1781626091032_1o8ohj\"].fileUrls }}"
+      }
+    },
+    {
+      "id": "node_1781626078435_2tvevy",
+      "type": "run_code",
+      "label": "音频路径透传",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "data": {
+        "code": "async function main({ params, context }) {\n  // 音频分支：透传 run_code 输出的 filePath\n  // 输出与 ffmpeg_demux 一致的结构 { data: { audioPath, videoPath } }\n  const filePath = params.filePath || '';\n  return {\n    data: {\n      audioPath: filePath,\n      videoPath: '',\n    },\n  };\n}",
+        "inputFields": [
+          {
+            "key": "filePath",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781625972244_2qik8q\"].filePath }}",
+            "required": true
+          }
+        ],
+        "outputs": [
+          {
+            "key": "data",
+            "type": "object",
+            "description": "统一的音频路径信息",
+            "children": [
+              {
+                "key": "audioPath",
+                "type": "string",
+                "description": "音频本地路径"
+              },
+              {
+                "key": "videoPath",
+                "type": "string",
+                "description": "视频本地路径（空）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781626078436_ml9abk",
+      "type": "cos_upload_file",
+      "label": "COS上传音频（视频）",
+      "position": {
+        "x": 1200,
+        "y": 180
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "key": "audio/{{ __data__[\"node_1781625972244_2qik8q\"].fileName }}.mp3",
+        "filePath": "{{ __data__[\"node_1781625990379_83kp8b\"].data.audioPath }}"
+      }
+    },
+    {
+      "id": "node_1781626078436_s7c7a4",
+      "type": "cos_upload_file",
+      "label": "COS上传音频（音频）",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "key": "audio/{{ __data__[\"node_1781625972244_2qik8q\"].fileName }}",
+        "filePath": "{{ __data__[\"node_1781625972244_2qik8q\"].filePath }}"
+      }
+    },
+    {
+      "id": "node_1781626091032_1o8ohj",
+      "type": "run_code",
+      "label": "合并URL",
+      "position": {
+        "x": 1500,
+        "y": 90
+      },
+      "data": {
+        "code": "async function main({ params, context }) {\n  // 从视频分支或音频分支的 cos_upload_file 中获取上传后的在线 URL\n  // 任意一个上游会发送数据（switch 只触发一个分支）\n  const url = params.videoUploadUrl || params.audioUploadUrl || '';\n  if (!url) {\n    return { fileUrls: [], fileUrl: '' };\n  }\n  return {\n    fileUrls: [url],\n    fileUrl: url,\n  };\n}",
+        "inputFields": [
+          {
+            "key": "videoUploadUrl",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781626078436_ml9abk\"].data.url }}"
+          },
+          {
+            "key": "audioUploadUrl",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781626078436_s7c7a4\"].data.url }}"
+          }
+        ],
+        "outputs": [
+          {
+            "key": "fileUrls",
+            "type": "string[]",
+            "description": "上传后的在线URL数组（用于ASR）"
+          },
+          {
+            "key": "fileUrl",
+            "type": "string",
+            "description": "上传后的在线URL"
+          }
+        ]
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1781611468547_start-node_1781625972244_2qik8q-mqgu6ugd",
+      "source": "node_1781611468547_start",
+      "target": "node_1781625972244_2qik8q"
+    },
+    {
+      "id": "e-node_1781625972244_2qik8q-node_1781625981667_furp2d-mqgu6ugd",
+      "source": "node_1781625972244_2qik8q",
+      "target": "node_1781625981667_furp2d"
+    },
+    {
+      "id": "e-node_1781625981667_furp2d-node_1781625990379_83kp8b-mqgu6uge",
+      "source": "node_1781625981667_furp2d",
+      "target": "node_1781625990379_83kp8b",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1781625981667_furp2d-node_1781626078435_2tvevy-mqgu6uge",
+      "source": "node_1781625981667_furp2d",
+      "target": "node_1781626078435_2tvevy",
+      "sourceHandle": "case-1"
+    },
+    {
+      "id": "e-node_1781625990379_83kp8b-node_1781626078436_ml9abk-mqgu6uge",
+      "source": "node_1781625990379_83kp8b",
+      "target": "node_1781626078436_ml9abk"
+    },
+    {
+      "id": "e-node_1781626078435_2tvevy-node_1781626078436_s7c7a4-mqgu6ugf",
+      "source": "node_1781626078435_2tvevy",
+      "target": "node_1781626078436_s7c7a4"
+    },
+    {
+      "id": "e-node_1781626078436_ml9abk-node_1781626091032_1o8ohj-mqgu6ugg",
+      "source": "node_1781626078436_ml9abk",
+      "target": "node_1781626091032_1o8ohj"
+    },
+    {
+      "id": "e-node_1781626078436_s7c7a4-node_1781626091032_1o8ohj-mqgu6ugg",
+      "source": "node_1781626078436_s7c7a4",
+      "target": "node_1781626091032_1o8ohj"
+    },
+    {
+      "id": "e-node_1781626091032_1o8ohj-node_1781625990380_xfvx7z-mqgu6ugg",
+      "source": "node_1781626091032_1o8ohj",
+      "target": "node_1781625990380_xfvx7z"
+    },
+    {
+      "id": "e-node_1781625990380_xfvx7z-node_1781611468547_end-mqgu6ugh",
+      "source": "node_1781625990380_xfvx7z",
+      "target": "node_1781611468547_end"
+    }
+  ],
   "createdAt": 1781611468552,
-  "updatedAt": 1781624960199,
+  "updatedAt": 1781627119709,
   "enabledPlugins": [
     "workflow.ffmpeg",
     "workflow.aliyun-ai",
