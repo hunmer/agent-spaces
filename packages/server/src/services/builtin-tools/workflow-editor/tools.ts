@@ -175,7 +175,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         const nodes = draft.nodes.filter((node) => {
           const definition = defs.get(node.type);
           const checks = [
-            keyword ? [node.id, node.type, node.label, definition?.label, definition?.category, definition?.description].filter(Boolean).join(' ').toLowerCase().includes(keyword) : true,
+            keyword ? [node.id, node.type, node.label, definition ? searchableDefinitionText(definition) : undefined].filter(Boolean).join(' ').toLowerCase().includes(keyword) : true,
             type ? node.type.toLowerCase().includes(type) : true,
             pluginId ? getDefinitionPluginId(definition).toLowerCase() === pluginId : true,
             label ? node.label.toLowerCase().includes(label) : true,
@@ -185,17 +185,20 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           return checks.every(Boolean);
         });
         if (nodes.length > 0) {
-          return { success: true, nodes: nodes.map((node) => ({ ...node, definition: defs.get(node.type) })) };
+          return {
+            success: true,
+            nodes: nodes.map((node) => {
+              const definition = defs.get(node.type);
+              return {
+                ...node,
+                ...(definition ? { definition: summarizeNodeDefinition(definition) } : {}),
+              };
+            }),
+          };
         }
         return {
           success: true,
-          nodes: searchDefinitions(record).map((definition) => ({
-            type: definition.type,
-            label: definition.label,
-            category: definition.category,
-            description: definition.description,
-            definition,
-          })),
+          nodes: searchDefinitions(record).map((definition) => summarizeNodeDefinition(definition)),
         };
       },
     },
@@ -324,8 +327,8 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         node_id: { type: 'string', description: '要更新的节点 ID，兼容蛇形命名。' },
         id: { type: 'string', description: '要更新的节点 ID，兼容旧参数。' },
         label: { type: 'string', description: '可选，节点显示名称。' },
-        data: { type: ['object', 'string'], description: '要合并的节点参数对象；兼容 JSON 字符串。', properties: {} },
-      }),
+        data: { type: ['object', 'string'], description: '可选；要合并的非空节点参数对象，禁止传空对象 {}；兼容 JSON 字符串。只改显示名时传 label，不要传 data。', properties: {}, minProperties: 1 },
+      }, ['nodeId']),
       execute: async (input) => {
         const record = asRecord(input);
         const nodeId = stringInputAny(record, ['nodeId', 'node_id', 'id']);

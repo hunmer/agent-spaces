@@ -1,6 +1,6 @@
 import type { NodeTypeDefinition, Workflow } from '@agent-spaces/shared';
 import { summarizeOutputFields } from './output-fields.js';
-import { defaultData } from './node-types.js';
+import { defaultData, getNodeSearchAliases } from './node-types.js';
 
 export function summarizeWorkflow(workflow: Workflow, summarize: boolean): unknown {
   if (!summarize) return workflow;
@@ -27,6 +27,7 @@ export function summarizeNodeDefinition(definition: NodeTypeDefinition) {
     label: definition.label,
     category: definition.category,
     description: definition.description,
+    aliases: getNodeSearchAliases(definition.type),
     pluginId: (definition as { pluginId?: string }).pluginId,
     handles: definition.handles,
   };
@@ -50,6 +51,7 @@ export function describeNodeUsage(definition: NodeTypeDefinition) {
     : {};
   return {
     ...definition,
+    aliases: getNodeSearchAliases(definition.type),
     exampleData: defaultData(definition),
     usage: {
       variables: '字符串字段支持 {{ __data__["节点ID"].字段路径 }} 和 {{ context.some.path }}。开始节点的工作流输入也通过 {{ __data__["开始节点ID"].字段 }} 引用；{{ __inputs__["节点ID"].字段路径 }} 仅作为普通节点输入字段的兼容语法。',

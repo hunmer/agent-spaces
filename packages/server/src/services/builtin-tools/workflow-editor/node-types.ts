@@ -80,6 +80,23 @@ export const NODE_PROPERTY_TYPE_DEFINITIONS = new Map<string, JsonRecord>([
   }],
 ]);
 
+const BUILTIN_NODE_SEARCH_ALIASES = new Map<string, string[]>([
+  ['start', ['开始', '入口', '工作流入口']],
+  ['end', ['结束', '出口', '返回结果', '工作流出口']],
+  ['run_code', ['运行 JS 代码', '运行 JavaScript 代码', '代码', '数据整形', '字段映射', '结构转换']],
+  ['run_python', ['运行 Python 代码', 'Python 代码', '代码', '数据整形', '字段映射', '结构转换']],
+  ['toast', ['Toast 消息', '通知', '提示消息']],
+  ['switch', ['选择器', '选择', '条件', '条件判断', '条件分支', '分支', '路由']],
+  ['loop', ['循环', '遍历', '重复执行']],
+  ['loop_body', ['循环体']],
+  ['loop_break', ['跳出循环', '终止循环']],
+  ['variable_aggregate', ['变量聚合', '合并变量', '聚合']],
+]);
+
+export function getNodeSearchAliases(type: string): string[] {
+  return BUILTIN_NODE_SEARCH_ALIASES.get(type) ?? [];
+}
+
 export function getPropertyTypeDefinition(type: string): JsonRecord | undefined {
   return NODE_PROPERTY_TYPE_DEFINITIONS.get(type);
 }
@@ -181,6 +198,7 @@ export function searchableDefinitionText(definition: NodeTypeDefinition): string
     definition.label,
     definition.category,
     definition.description,
+    ...getNodeSearchAliases(definition.type),
     ...definition.properties.map((property) => `${property.key} ${property.label} ${property.tooltip ?? ''}`),
     ...(definition.outputs ?? []).map((output) => `${output.key} ${output.type} ${output.description ?? ''}`),
   ].join(' ').toLowerCase();

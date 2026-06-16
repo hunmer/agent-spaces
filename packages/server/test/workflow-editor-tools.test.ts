@@ -294,7 +294,24 @@ test('search_nodes falls back to node definitions when current workflow has no m
 
   assert.equal(result.success, true);
   assert.deepEqual(result.nodes.map((node) => node.type), ['switch']);
-  assert.equal(result.nodes[0]?.definition?.type, 'switch');
+  assert.equal(result.nodes[0]?.type, 'switch');
+});
+
+test('search_nodes can find built-in nodes by Chinese aliases', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const searchNodes = tools.find((tool) => tool.name === 'search_nodes');
+  assert.ok(searchNodes);
+
+  for (const keyword of ['条件判断', '选择']) {
+    const result = await searchNodes.execute({ keyword }) as {
+      success: boolean;
+      nodes: Array<{ type: string; aliases?: string[]; definition?: { type: string; aliases?: string[] } }>;
+    };
+
+    assert.equal(result.success, true);
+    assert.equal(result.nodes[0]?.type, 'switch');
+    assert.ok((result.nodes[0]?.definition?.aliases ?? result.nodes[0]?.aliases)?.includes('条件判断'));
+  }
 });
 
 test('update_node rejects agent property when value does not match type definition', async () => {
@@ -351,6 +368,17 @@ test('update_node rejects empty data updates', async () => {
 
   assert.equal(updateResult.success, false);
   assert.match(updateResult.message, /non-empty data object or label/);
+});
+
+test('update_node schema marks nodeId required and data non-empty', () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const updateNode = tools.find((tool) => tool.name === 'update_node');
+  assert.ok(updateNode);
+
+  assert.deepEqual(updateNode.inputSchema.required, ['nodeId']);
+  const dataSchema = (updateNode.inputSchema.properties as Record<string, { minProperties?: number; description?: string }>).data;
+  assert.equal(dataSchema.minProperties, 1);
+  assert.match(dataSchema.description ?? '', /非空/);
 });
 
 test('update_node allows label-only updates', async () => {
