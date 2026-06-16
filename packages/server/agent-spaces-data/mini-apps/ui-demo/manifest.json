@@ -6,6 +6,8 @@
   "tags": [],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-11T06:56:26.095Z",
-  "updatedAt": "2026-06-13T09:08:36.740Z",
-  "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4"
+  "updatedAt": "2026-06-16T03:15:10.813Z",
+  "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
+  "storeUrl": "http://localhost:3101/mini-app/ui-demo.zip",
+  "storeChecksum": "336f8cbb73552edb11faa3c232b963d5"
 }

@@ -26,8 +26,10 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-11T06:56:26.095Z",
-    "updatedAt": "2026-06-13T09:08:36.740Z",
-    "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4"
+    "updatedAt": "2026-06-16T03:15:10.813Z",
+    "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
+    "storeUrl": "http://localhost:3101/mini-app/ui-demo.zip",
+    "storeChecksum": "336f8cbb73552edb11faa3c232b963d5"
   },
   {
     "id": "ai_music",
@@ -37,7 +39,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-11T15:44:06.059Z",
-    "updatedAt": "2026-06-14T04:31:21.740Z",
+    "updatedAt": "2026-06-16T03:15:08.970Z",
     "agentConfigId": "49c45e3a-75be-4116-a1e3-b750e6466544",
     "enabledPlugins": [
       "workflow.minimax"
@@ -63,7 +65,9 @@
         }
       }
     ],
-    "icon": "🎵"
+    "icon": "🎵",
+    "storeUrl": "http://localhost:3101/mini-app/ai_music.zip",
+    "storeChecksum": "7d51409b29d4b3568d93341630920604"
   },
   {
     "id": "database-demo",
@@ -73,8 +77,10 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T09:48:13.813Z",
-    "updatedAt": "2026-06-13T22:17:38.670Z",
-    "icon": "💻"
+    "updatedAt": "2026-06-16T03:15:10.237Z",
+    "icon": "💻",
+    "storeUrl": "http://localhost:3101/mini-app/database-demo.zip",
+    "storeChecksum": "7d6a04c98ef7150c7bea44966bf0228a"
   },
   {
     "id": "copywriting",
@@ -85,8 +91,10 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T10:29:24.362Z",
-    "updatedAt": "2026-06-13T22:17:48.342Z",
-    "icon": "✍️"
+    "updatedAt": "2026-06-16T03:15:09.712Z",
+    "icon": "✍️",
+    "storeUrl": "http://localhost:3101/mini-app/copywriting.zip",
+    "storeChecksum": "ac59766d402fe6250a20ab5a90859816"
   },
   {
     "id": "ai_image_video",
@@ -104,7 +112,7 @@
     ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T20:28:17.221Z",
-    "updatedAt": "2026-06-14T07:48:10.276Z",
+    "updatedAt": "2026-06-16T03:15:08.004Z",
     "enableAgents": true,
     "agents": [
       {
@@ -126,7 +134,9 @@
         }
       }
     ],
-    "icon": "📷"
+    "icon": "📷",
+    "storeUrl": "http://localhost:3101/mini-app/ai_image_video.zip",
+    "storeChecksum": "9c82898687a2f83ffb1f6d9c461e8223"
   },
   {
     "id": "podcast_generator",
@@ -142,10 +152,12 @@
     ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T20:42:23.209Z",
-    "updatedAt": "2026-06-13T22:18:25.689Z",
+    "updatedAt": "2026-06-16T03:15:11.621Z",
     "enabledPlugins": [
       "workflow.epub-parser"
     ],
-    "icon": "🔈"
+    "icon": "🔈",
+    "storeUrl": "http://localhost:3101/mini-app/podcast_generator.zip",
+    "storeChecksum": "07bed31b6a470d445c5d15301840bf41"
   }
 ]

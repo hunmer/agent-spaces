@@ -6,6 +6,8 @@
   "tags": [],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-12T09:48:13.813Z",
-  "updatedAt": "2026-06-13T22:17:38.670Z",
-  "icon": "💻"
+  "updatedAt": "2026-06-16T03:15:10.237Z",
+  "icon": "💻",
+  "storeUrl": "http://localhost:3101/mini-app/database-demo.zip",
+  "storeChecksum": "7d6a04c98ef7150c7bea44966bf0228a"
 }
