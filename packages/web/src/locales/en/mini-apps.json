@@ -49,6 +49,16 @@
     "installed": "Installed",
     "update": "Update"
   },
+  "detail": {
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "Failed to load",
+    "empty": "No introduction",
+    "type": "Type",
+    "version": "Version",
+    "tags": "Tags",
+    "updatedAt": "Updated"
+  },
   "editor": {
     "loadingEditor": "Loading editor...",
     "notFound": "Project not found",

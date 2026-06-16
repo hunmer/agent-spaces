@@ -49,6 +49,16 @@
     "installed": "已导入",
     "update": "更新"
   },
+  "detail": {
+    "back": "返回列表",
+    "loading": "加载中…",
+    "error": "加载失败",
+    "empty": "暂无介绍",
+    "type": "类型",
+    "version": "版本",
+    "tags": "标签",
+    "updatedAt": "更新时间"
+  },
   "editor": {
     "loadingEditor": "正在加载编辑器…",
     "notFound": "项目不存在",
