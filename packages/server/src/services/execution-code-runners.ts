@@ -6,6 +6,13 @@ import type { ExecutionLogEntry } from '@agent-spaces/shared';
 
 type AppendLog = (level: ExecutionLogEntry['level'], message: string) => void;
 
+function assertObjectResult(result: unknown, runnerName: 'run_code' | 'run_python'): Record<string, any> {
+  if (result === null || typeof result !== 'object' || Array.isArray(result)) {
+    throw new Error(`${runnerName} must return an object`);
+  }
+  return result as Record<string, any>;
+}
+
 export function executeCode(
   context: Record<string, any>,
   code: string,
@@ -44,7 +51,10 @@ export function executeCode(
     },
   };
   const fn = new Function('context', 'params', 'console', `${normalized}\nif (typeof main === 'function') return main({ params, context })`);
-  return fn(context, params, workflowConsole);
+  const result = fn(context, params, workflowConsole);
+  return result instanceof Promise
+    ? result.then(value => assertObjectResult(value, 'run_code'))
+    : assertObjectResult(result, 'run_code');
 }
 
 export async function executePython(
@@ -100,19 +110,21 @@ sys.stdout.flush()
       const rest = stdout.replace('__WF_RESULT__', '').replace('__WF_RESULT_END__', '').trim();
       if (rest) appendLog('info', rest);
       appendLog('warning', 'Python code produced no result marker');
-      return null;
+      throw new Error('run_python must return an object');
     }
 
     const before = stdout.slice(0, start);
     if (before.trim()) appendLog('info', before.trim());
 
     const payload = stdout.slice(start + '__WF_RESULT__'.length, end).trim();
+    let result: unknown;
     try {
-      return payload === '' ? null : JSON.parse(payload);
+      result = payload === '' ? null : JSON.parse(payload);
     } catch {
       appendLog('warning', `Python returned non-JSON result: ${payload}`);
-      return payload;
+      throw new Error('run_python must return an object');
     }
+    return assertObjectResult(result, 'run_python');
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});
   }

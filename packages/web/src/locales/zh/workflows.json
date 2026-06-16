@@ -392,21 +392,21 @@
     },
     "run_code": {
       "label": "运行 JS 代码",
-      "description": "执行自定义 JavaScript 代码",
+      "description": "执行自定义 JavaScript 代码并返回对象",
       "props": {
         "code": {
           "label": "代码",
-          "tooltip": "JavaScript 代码。需定义 async function main(params, context)"
+          "tooltip": "JavaScript 代码。需定义 async function main(params, context) 并返回对象"
         }
       }
     },
     "run_python": {
       "label": "运行 Python 代码",
-      "description": "执行自定义 Python 代码",
+      "description": "执行自定义 Python 代码并返回对象",
       "props": {
         "code": {
           "label": "代码",
-          "tooltip": "Python 代码。需定义 main(params) 并返回 dict"
+          "tooltip": "Python 代码。需定义 main(params) 并返回 dict 对象"
         },
         "pythonPath": {
           "label": "Python 路径",

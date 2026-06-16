@@ -392,21 +392,21 @@
     },
     "run_code": {
       "label": "Run JS Code",
-      "description": "Execute custom JavaScript code",
+      "description": "Execute custom JavaScript code and return an object",
       "props": {
         "code": {
           "label": "Code",
-          "tooltip": "JavaScript code. Define async function main(params, context)"
+          "tooltip": "JavaScript code. Define async function main(params, context) and return an object"
         }
       }
     },
     "run_python": {
       "label": "Run Python Code",
-      "description": "Execute custom Python code",
+      "description": "Execute custom Python code and return an object",
       "props": {
         "code": {
           "label": "Code",
-          "tooltip": "Python code. Define main(params) and return a dict"
+          "tooltip": "Python code. Define main(params) and return a dict object"
         },
         "pythonPath": {
           "label": "Python Path",
