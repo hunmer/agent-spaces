@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { existsSync, statSync, rmSync, cpSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, statSync, rmSync, cpSync, readdirSync, createReadStream } from 'node:fs';
+import { mkdir, readFile, rename as fsRename, rm, writeFile, cp } from 'node:fs/promises';
+import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import archiver from 'archiver';
@@ -10,9 +11,69 @@ import { getDataDir } from '../storage/json-store.js';
 import * as agentStore from '../storage/agent-store.js';
 import * as databaseStore from '../storage/database-store.js';
 import * as kanbanStore from '../storage/kanban-store.js';
+import type { FileNode } from '@agent-spaces/shared';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
+
+const MIME_MAP: Record<string, string> = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
+  '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.ogg': 'video/ogg', '.mov': 'video/quicktime',
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac', '.aac': 'audio/aac',
+  '.m4a': 'audio/mp4', '.opus': 'audio/opus',
+};
+
+function resolveDataPath(relPath = ''): string | null {
+  if (isAbsolute(relPath)) return null;
+  const base = resolve(getDataDir());
+  const abs = resolve(base, relPath);
+  const rel = relative(base, abs);
+  if (rel.startsWith('..') || isAbsolute(rel)) return null;
+  return abs;
+}
+
+async function readDataTree(relPath = '', depth = Infinity): Promise<FileNode[]> {
+  const dirPath = resolveDataPath(relPath);
+  if (!dirPath) return [];
+
+  try {
+    var entries = readdirSync(dirPath, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const nodes: FileNode[] = [];
+  for (const entry of entries) {
+    const fullPath = join(dirPath, entry.name);
+    const entryRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
+    const s = statSync(fullPath);
+
+    if (entry.isDirectory()) {
+      nodes.push({
+        name: entry.name,
+        path: entryRelPath,
+        type: 'directory',
+        children: depth > 1 ? await readDataTree(entryRelPath, depth - 1) : undefined,
+      });
+    } else {
+      nodes.push({
+        name: entry.name,
+        path: entryRelPath,
+        type: 'file',
+        size: s.size,
+        modifiedAt: s.mtime.toISOString(),
+      });
+    }
+  }
+
+  nodes.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return nodes;
+}
 
 const CATEGORIES: Record<string, { path: string; label: string; group: string }> = {
   'auth':               { path: 'auth.json',               label: 'Authentication',        group: 'config' },
@@ -32,6 +93,104 @@ const CATEGORIES: Record<string, { path: string; label: string; group: string }>
   'agent-templates':    { path: 'agent-templates',         label: 'Agent Templates',       group: 'customization' },
   'workflows':          { path: 'workflows',               label: 'Workflows',             group: 'content' },
 };
+
+router.get('/files/tree', async (req, res) => {
+  const path = (req.query.path as string) || '';
+  const depth = parseInt(req.query.depth as string) || undefined;
+  const tree = await readDataTree(path, depth);
+  res.json(tree);
+});
+
+router.get('/files/content', async (req, res) => {
+  const path = req.query.path as string;
+  if (!path) { res.status(400).json({ error: 'path is required' }); return; }
+
+  const abs = resolveDataPath(path);
+  if (!abs || !existsSync(abs)) { res.status(404).json({ error: 'File not found' }); return; }
+
+  const raw = req.query.raw === 'true';
+  if (raw) {
+    const stat = statSync(abs);
+    if (stat.isDirectory()) { res.status(400).json({ error: 'Cannot read a directory' }); return; }
+    const ext = extname(path).toLowerCase();
+    res.setHeader('Content-Type', MIME_MAP[ext] || 'application/octet-stream');
+    res.setHeader('Content-Length', stat.size);
+    createReadStream(abs).pipe(res);
+    return;
+  }
+
+  try {
+    const content = await readFile(abs, 'utf-8');
+    res.json({ content, encoding: 'utf-8' });
+  } catch {
+    res.status(500).json({ error: 'Failed to read file' });
+  }
+});
+
+router.put('/files/content', async (req, res) => {
+  const { path, content } = req.body as { path?: string; content?: string };
+  if (!path || content === undefined) { res.status(400).json({ error: 'path and content are required' }); return; }
+
+  const abs = resolveDataPath(path);
+  if (!abs) { res.status(400).json({ error: 'Invalid path' }); return; }
+
+  try {
+    await mkdir(dirname(abs), { recursive: true });
+    await writeFile(abs, content, 'utf-8');
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to write file' });
+  }
+});
+
+router.delete('/files', async (req, res) => {
+  const path = req.query.path as string;
+  if (!path) { res.status(400).json({ error: 'path is required' }); return; }
+
+  const abs = resolveDataPath(path);
+  if (!abs) { res.status(400).json({ error: 'Invalid path' }); return; }
+
+  try {
+    await rm(abs, { recursive: true, force: true });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to delete' });
+  }
+});
+
+router.post('/files/rename', async (req, res) => {
+  const { oldPath, newPath } = req.body as { oldPath?: string; newPath?: string };
+  if (!oldPath || !newPath) { res.status(400).json({ error: 'oldPath and newPath are required' }); return; }
+
+  const oldAbs = resolveDataPath(oldPath);
+  const newAbs = resolveDataPath(newPath);
+  if (!oldAbs || !newAbs) { res.status(400).json({ error: 'Invalid path' }); return; }
+
+  try {
+    await mkdir(dirname(newAbs), { recursive: true });
+    await fsRename(oldAbs, newAbs);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to rename' });
+  }
+});
+
+router.post('/files/copy', async (req, res) => {
+  const { srcPath, destPath } = req.body as { srcPath?: string; destPath?: string };
+  if (!srcPath || !destPath) { res.status(400).json({ error: 'srcPath and destPath are required' }); return; }
+
+  const srcAbs = resolveDataPath(srcPath);
+  const destAbs = resolveDataPath(destPath);
+  if (!srcAbs || !destAbs) { res.status(400).json({ error: 'Invalid path' }); return; }
+
+  try {
+    await mkdir(dirname(destAbs), { recursive: true });
+    await cp(srcAbs, destAbs, { recursive: true });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to copy' });
+  }
+});
 
 // GET /api/data/export — stream zip backup
 router.get('/export', (_req, res) => {

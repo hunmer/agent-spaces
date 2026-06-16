@@ -20,6 +20,7 @@ import {
   LayoutGrid,
   MessageCircle,
   Workflow,
+  Database,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
 import { sdk } from "@/lib/sdk";
@@ -126,6 +127,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
             { title: ts("nav.skills"), link: "/settings/skills", icon: <Sparkles className="size-4" /> },
             { title: ts("nav.prompts"), link: "/settings/prompts", icon: <MessageSquare className="size-4" /> },
             { title: ts("nav.outputStyles"), link: "/settings/output-styles", icon: <Pencil className="size-4" /> },
+            { title: ts("nav.dataFiles"), link: "/settings/data-files", icon: <Database className="size-4" /> },
             { title: ts("nav.mcps"), link: "/settings/mcps", icon: <Plug className="size-4" /> },
             { title: ts("nav.tools"), link: "/settings/tools", icon: <Wrench className="size-4" /> },
             { title: ts("nav.models"), link: "/settings/models", icon: <Brain className="size-4" /> },
@@ -136,6 +138,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
             { title: ts("nav.skills"), link: "#", icon: <Sparkles className="size-4" />, onClick: () => setterMap.skills?.(true) },
             { title: ts("nav.prompts"), link: "#", icon: <MessageSquare className="size-4" />, onClick: () => setterMap.prompts?.(true) },
             { title: ts("nav.outputStyles"), link: "#", icon: <Pencil className="size-4" />, onClick: () => setterMap["output-styles"]?.(true) },
+            { title: ts("nav.dataFiles"), link: "/settings/data-files", icon: <Database className="size-4" /> },
             { title: ts("nav.mcps"), link: "#", icon: <Plug className="size-4" />, onClick: () => setterMap.mcps?.(true) },
             { title: ts("nav.tools"), link: "#", icon: <Wrench className="size-4" />, onClick: () => setterMap.tools?.(true) },
             { title: ts("nav.models"), link: "#", icon: <Brain className="size-4" />, onClick: () => { setModelsDialogProvider(undefined); setterMap.models?.(true); } },

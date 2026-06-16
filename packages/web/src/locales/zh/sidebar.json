@@ -9,6 +9,7 @@
     "skills": "技能管理",
     "prompts": "提示词管理",
     "outputStyles": "输出风格",
+    "dataFiles": "数据文件",
     "mcps": "MCP 服务器",
     "models": "模型",
     "providers": "供应商",

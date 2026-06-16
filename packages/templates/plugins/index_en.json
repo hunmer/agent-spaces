@@ -29,8 +29,24 @@
     "hasWorkflow": true,
     "path": "aliyun-ai",
     "iconUrl": "plugins/aliyun-ai/icon.svg",
-    "md5": "e1ce9ec47d00045cbef4ff851fdb487c",
-    "updatedAt": "2026-06-11T03:12:29.708Z"
+    "md5": "8feed4f888d241a23f8790b0d48c834b",
+    "updatedAt": "2026-06-16T07:30:57.424Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools-asr.js",
+      "tools-image.js",
+      "tools-upload.js",
+      "tools-video.js",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.aliyun-oss",
@@ -50,8 +66,21 @@
     "hasWorkflow": true,
     "path": "aliyun_oss",
     "iconUrl": "plugins/aliyun_oss/icon.png",
-    "md5": "27a610cd72404dff1a5aa4e3d4359b61",
-    "updatedAt": "2026-06-11T02:03:10.280Z"
+    "md5": "739282611dec99060b28aec84c800d2b",
+    "updatedAt": "2026-06-16T07:30:57.425Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.custom-view-demo",
@@ -70,8 +99,16 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "custom-view-demo",
-    "md5": "72a6ecc55a88c1ee5d204d7d5c51ed14",
-    "updatedAt": "2026-06-10T01:14:41.928Z"
+    "md5": "5601eef0c0595ec215c38fd980b9bf61",
+    "updatedAt": "2026-06-16T07:30:57.426Z",
+    "files": [
+      "actions.js",
+      "info.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.desktop-native",
@@ -91,8 +128,19 @@
     "hasWorkflow": true,
     "path": "desktop-native",
     "iconUrl": "plugins/desktop-native/icon.png",
-    "md5": "e9bbe7fd4cf6357cb023e5846c0bc357",
-    "updatedAt": "2026-06-09T02:37:20.633Z"
+    "md5": "3adcba4641f4b469bceda42366cccd3d",
+    "updatedAt": "2026-06-16T07:30:57.428Z",
+    "files": [
+      "actions.js",
+      "api.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workfox.dingtalk",
@@ -110,8 +158,17 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "dingtalk",
-    "md5": "3910985827d239455cb532f3a321629e",
-    "updatedAt": "2026-06-11T02:02:50.391Z"
+    "md5": "4e71f6bb9e76775145f7acb4c6c65568",
+    "updatedAt": "2026-06-16T07:30:57.429Z",
+    "files": [
+      "actions.js",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.epub-parser",
@@ -131,8 +188,20 @@
     "hasWorkflow": true,
     "path": "epub-parser",
     "iconUrl": "plugins/epub-parser/icon.png",
-    "md5": "42c6a2f1cd028fb4978d1444fc07ea37",
-    "updatedAt": "2026-06-12T20:46:34.597Z"
+    "md5": "394305e2fc8d88b26c2a576c3f2048d8",
+    "updatedAt": "2026-06-16T07:30:57.431Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.fetch",
@@ -153,8 +222,18 @@
     "hasWorkflow": true,
     "path": "fetch",
     "iconUrl": "plugins/fetch/icon.png",
-    "md5": "e4d1945f6d7854bfdde0c41128ddb64b",
-    "updatedAt": "2026-06-09T02:37:20.699Z"
+    "md5": "304d9126f0a5fd7df0610ef13cd48021",
+    "updatedAt": "2026-06-16T07:30:57.433Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.ffmpeg",
@@ -174,8 +253,20 @@
     "hasWorkflow": true,
     "path": "ffmpeg",
     "iconUrl": "plugins/ffmpeg/icon.svg",
-    "md5": "bd52054e2e9d66bd8ddef68f0ad3f1de",
-    "updatedAt": "2026-06-09T02:37:20.666Z"
+    "md5": "55f241b032115564e8e39590f0356638",
+    "updatedAt": "2026-06-16T07:30:57.434Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.file-system",
@@ -195,8 +286,18 @@
     "hasWorkflow": true,
     "path": "file-system",
     "iconUrl": "plugins/file-system/icon.svg",
-    "md5": "5a96efb733b6c776b396cba5a1529e76",
-    "updatedAt": "2026-06-13T14:02:53.481Z"
+    "md5": "e90788ee0055f8651962064e2c150f0b",
+    "updatedAt": "2026-06-16T07:30:57.435Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.fish-audio",
@@ -219,8 +320,19 @@
     "hasWorkflow": true,
     "path": "fish-audio",
     "iconUrl": "plugins/fish-audio/icon.png",
-    "md5": "93bc6cae2cd20ff82f715892bdd8a393",
-    "updatedAt": "2026-06-11T06:16:43.306Z"
+    "md5": "180b24480b5ece4ef306cdea194cfcad",
+    "updatedAt": "2026-06-16T07:30:57.436Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.jimeng",
@@ -241,8 +353,18 @@
     "hasWorkflow": true,
     "path": "jimeng",
     "iconUrl": "plugins/jimeng/icon.png",
-    "md5": "032cd04b6347ea8a93ec5a06569e823b",
-    "updatedAt": "2026-06-11T02:41:59.689Z"
+    "md5": "4bbc8d44420b9e50de9a0b82f90022e7",
+    "updatedAt": "2026-06-16T07:30:57.443Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.mail",
@@ -262,8 +384,20 @@
     "hasWorkflow": true,
     "path": "mail",
     "iconUrl": "plugins/mail/icon.png",
-    "md5": "399ff4476e400e77980bb957c4f73736",
-    "updatedAt": "2026-06-11T02:02:52.775Z"
+    "md5": "1b770a4d889afc760489bf6f90b589c4",
+    "updatedAt": "2026-06-16T07:30:57.444Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.minimax",
@@ -288,8 +422,18 @@
     "hasWorkflow": true,
     "path": "minimax",
     "iconUrl": "plugins/minimax/icon.svg",
-    "md5": "ae0ab5575e27ea1d4dd8392645363e6f",
-    "updatedAt": "2026-06-10T07:07:27.253Z"
+    "md5": "97adc0995113d1e4fd9839f3444d3799",
+    "updatedAt": "2026-06-16T07:30:57.446Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.mira-sdk",
@@ -308,8 +452,19 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "mira-sdk",
-    "md5": "fe3ae213285d68844d0391fdd353ff75",
-    "updatedAt": "2026-06-11T02:04:00.831Z"
+    "md5": "f4ef9492c4fc755ff78b1f2dfa1f2611",
+    "updatedAt": "2026-06-16T07:30:57.447Z",
+    "files": [
+      "actions.js",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.openai",
@@ -334,8 +489,20 @@
     "hasWorkflow": true,
     "path": "openai",
     "iconUrl": "plugins/openai/icon.svg",
-    "md5": "6143d1847ab79afb339337e8e122608a",
-    "updatedAt": "2026-06-12T02:09:10.593Z"
+    "md5": "1dce7263e93837fa57bf4f419415865e",
+    "updatedAt": "2026-06-16T07:30:57.449Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.qianyin",
@@ -356,8 +523,19 @@
     "hasWorkflow": true,
     "path": "qianyin",
     "iconUrl": "plugins/qianyin/icon.png",
-    "md5": "2842a98e03b8c560fea86b247e0e615a",
-    "updatedAt": "2026-06-11T04:19:47.840Z"
+    "md5": "0994fb3eac973a883e0d218c98f262ea",
+    "updatedAt": "2026-06-16T07:30:57.450Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.tencent-cos",
@@ -377,8 +555,21 @@
     "hasWorkflow": true,
     "path": "tencent_cos",
     "iconUrl": "plugins/tencent_cos/icon.svg",
-    "md5": "660202506eee148bab4ca4cedff78edc",
-    "updatedAt": "2026-06-11T02:02:46.264Z"
+    "md5": "dec7139df265cb1e9be8792a4124548a",
+    "updatedAt": "2026-06-16T07:30:57.451Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.test-plugin",
@@ -398,8 +589,14 @@
     "hasWorkflow": false,
     "path": "test-plugin",
     "iconUrl": "https://raw.githubusercontent.com/hunmer/work-fox/refs/heads/master/plugins/test-plugin/icon.png",
-    "md5": "5f20451bfcef41c02eed2ae63809c827",
-    "updatedAt": "2026-06-08T01:21:28.138Z"
+    "md5": "1a3cefd3eae85902db37486a437f3768",
+    "updatedAt": "2026-06-16T07:30:57.452Z",
+    "files": [
+      "README.md",
+      "view.js",
+      "web-client.js",
+      "web-plugin.json"
+    ]
   },
   {
     "id": "workflow.webview",
@@ -418,8 +615,17 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "webview",
-    "md5": "bc8a044d241bb9aa1fcc3fd1b96eae17",
-    "updatedAt": "2026-06-16T01:05:39.736Z"
+    "md5": "f0cfca465ca7f3192f96e3e685e61b61",
+    "updatedAt": "2026-06-16T07:30:57.454Z",
+    "files": [
+      "actions.js",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   },
   {
     "id": "workflow.window-manager",
@@ -439,7 +645,18 @@
     "hasWorkflow": true,
     "path": "window-manager",
     "iconUrl": "plugins/window-manager/icon.png",
-    "md5": "c5d1a0b9bf221eb0f8b4e77fccd7a860",
-    "updatedAt": "2026-06-09T02:37:20.859Z"
+    "md5": "130c51471568a63961876eefb303f00a",
+    "updatedAt": "2026-06-16T07:30:57.456Z",
+    "files": [
+      "actions.js",
+      "api.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
   }
 ]

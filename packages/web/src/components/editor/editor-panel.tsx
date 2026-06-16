@@ -24,6 +24,23 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { sdk } from '@/lib/sdk';
 
+type FilePanelApi = {
+  tree: FileNode[];
+  treeLoading: boolean;
+  loadingDirs: Set<string>;
+  openFiles: { path: string }[];
+  revealPath?: string | null;
+  loadTree: () => Promise<void>;
+  loadDirectory: (dirPath: string) => Promise<void>;
+  openFile: (path: string) => Promise<void> | void;
+  clearRevealPath?: () => void;
+  searchFiles?: (query: string) => Promise<FileSearchResult[]>;
+  saveEmptyFile: (path: string) => Promise<void>;
+  deletePath: (path: string) => Promise<void>;
+  renamePath: (oldPath: string, newPath: string) => Promise<void>;
+  copyPath: (srcPath: string, destPath: string) => Promise<void>;
+};
+
 function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
   if (!query) return nodes;
   const lower = query.toLowerCase();
@@ -124,7 +141,7 @@ function FlatFileTree({ files, selectedPath, onSelect, workspaceId, boundDir, em
   files: FileNode[];
   selectedPath?: string;
   onSelect: (path: string) => void;
-  workspaceId: string;
+  workspaceId?: string;
   boundDir: string;
   emptyText: string;
 }) {
@@ -147,18 +164,52 @@ function FlatFileTree({ files, selectedPath, onSelect, workspaceId, boundDir, em
   );
 }
 
-interface EditorPanelProps {
-  workspaceId: string;
+export interface EditorPanelProps {
+  workspaceId?: string;
+  storageKey?: string;
+  boundDir?: string;
+  variant?: 'workspace' | 'project';
+  api?: FilePanelApi;
+  showSearchPanel?: boolean;
+  showImport?: boolean;
 }
 
-export function EditorPanel({ workspaceId }: EditorPanelProps) {
-  const { tree, treeLoading, loadTree, loadDirectory, openFile, openFiles, revealPath, clearRevealPath, loadingDirs } = useEditorStore();
-  const workspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId));
-  const boundDir = workspace?.boundDirs?.[0] || '';
+export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedBoundDir, variant = 'workspace', api, showSearchPanel = true, showImport = true }: EditorPanelProps) {
+  const editorStore = useEditorStore();
+  const workspace = useWorkspaceStore((s) => workspaceId ? s.workspaces.find((w) => w.id === workspaceId) : undefined);
+  const panelKey = storageKey ?? workspaceId ?? 'default';
+  const tree = api?.tree ?? editorStore.tree;
+  const treeLoading = api?.treeLoading ?? editorStore.treeLoading;
+  const loadTree = useCallback(async () => {
+    if (api?.loadTree) {
+      await api.loadTree();
+    } else if (workspaceId) {
+      await editorStore.loadTree(workspaceId);
+    }
+  }, [api, editorStore, workspaceId]);
+  const loadDirectory = useCallback(async (dirPath: string) => {
+    if (api?.loadDirectory) {
+      await api.loadDirectory(dirPath);
+    } else if (workspaceId) {
+      await editorStore.loadDirectory(workspaceId, dirPath);
+    }
+  }, [api, editorStore, workspaceId]);
+  const openFile = useCallback(async (path: string) => {
+    if (api?.openFile) {
+      await api.openFile(path);
+    } else if (workspaceId) {
+      await editorStore.openFile(workspaceId, path);
+    }
+  }, [api, editorStore, workspaceId]);
+  const openFiles = api?.openFiles ?? editorStore.openFiles;
+  const revealPath = api?.revealPath ?? editorStore.revealPath;
+  const clearRevealPath = api?.clearRevealPath ?? editorStore.clearRevealPath;
+  const loadingDirs = api?.loadingDirs ?? editorStore.loadingDirs;
+  const boundDir = providedBoundDir ?? workspace?.boundDirs?.[0] ?? '';
   const t = useTranslations('editor');
   const tc = useTranslations('common');
   const [selectedPath, setSelectedPath] = useState<string>();
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(workspaceId));
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(panelKey));
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importTargetPath, setImportTargetPath] = useState('');
   const [nameDialog, setNameDialog] = useState<{ open: boolean; mode: 'file' | 'folder'; targetDir: string; value: string }>({ open: false, mode: 'file', targetDir: '', value: '' });
@@ -179,14 +230,18 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   // 有搜索词时走后端全局搜索，否则清空
   useEffect(() => {
     clearTimeout(fileSearchTimer.current);
-    if (!fileSearch.trim()) {
+    if (!fileSearch.trim() || (!api?.searchFiles && !workspaceId)) {
       setGlobalFileResults([]);
       return;
     }
     fileSearchTimer.current = setTimeout(async () => {
       setGlobalFileLoading(true);
       try {
-        const results = await sdk.search.files(workspaceId, fileSearch.trim());
+        const results = api?.searchFiles
+          ? await api.searchFiles(fileSearch.trim())
+          : workspaceId
+            ? await sdk.search.files(workspaceId, fileSearch.trim())
+            : [];
         setGlobalFileResults(results || []);
       } catch {
         setGlobalFileResults([]);
@@ -195,7 +250,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
       }
     }, 300);
     return () => clearTimeout(fileSearchTimer.current);
-  }, [fileSearch, workspaceId]);
+  }, [api, fileSearch, workspaceId]);
 
   const displayTree = fileSearch.trim() && globalFileResults.length > 0
     ? globalFileResults.filter(r => r.type === 'file').map(r => ({ path: r.path, name: r.name, type: 'file' as const }))
@@ -222,32 +277,39 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     const name = value.trim();
     const relPath = targetDir ? targetDir + '/' + name : name;
     const fullPath = mode === 'folder' ? relPath + '/.gitkeep' : relPath;
-    sdk.editor.save(workspaceId, fullPath, '').then(() => { loadTree(workspaceId); setNameDialog((p) => ({ ...p, open: false })); });
-  }, [nameDialog, workspaceId, loadTree]);
+    const save = api?.saveEmptyFile ?? (async (path: string) => {
+      if (workspaceId) await sdk.editor.save(workspaceId, path, '');
+    });
+    save(fullPath).then(() => { loadTree(); setNameDialog((p) => ({ ...p, open: false })); });
+  }, [api, nameDialog, loadTree, workspaceId]);
 
   const openNameDialog = useCallback((mode: 'file' | 'folder', targetDir: string) => {
     setNameDialog({ open: true, mode, targetDir, value: '' });
   }, []);
 
   useEffect(() => {
-    const saved = loadExpandedPaths(workspaceId);
+    const saved = loadExpandedPaths(panelKey);
     setExpandedPaths(saved);
-    loadTree(workspaceId).then(() => {
+    loadTree().then(() => {
       // Reload children for previously expanded directories
       for (const dir of saved) {
-        loadDirectory(workspaceId, dir);
+        loadDirectory(dir);
       }
     });
-  }, [workspaceId, loadTree, loadDirectory]);
+  }, [panelKey, loadTree, loadDirectory]);
 
   const handleExpandedChange = useCallback((newExpanded: Set<string>) => {
     setExpandedPaths(newExpanded);
-    saveExpandedPaths(workspaceId, newExpanded);
-  }, [workspaceId]);
+    saveExpandedPaths(panelKey, newExpanded);
+  }, [panelKey]);
 
   const handleDelete = async (path: string) => {
-    await sdk.editor.deleteFile(workspaceId, path);
-    loadTree(workspaceId);
+    if (api?.deletePath) {
+      await api.deletePath(path);
+    } else if (workspaceId) {
+      await sdk.editor.deleteFile(workspaceId, path);
+    }
+    loadTree();
   };
 
   const handleRename = useCallback((path: string) => {
@@ -260,9 +322,13 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     if (!value.trim() || value.trim() === oldPath.split('/').pop()) { setRenameDialog(p => ({ ...p, open: false })); return; }
     const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
     const newPath = dir ? `${dir}/${value.trim()}` : value.trim();
-    await sdk.editor.rename(workspaceId, oldPath, newPath);
-    loadTree(workspaceId); setRenameDialog(p => ({ ...p, open: false }));
-  }, [renameDialog, workspaceId, loadTree]);
+    if (api?.renamePath) {
+      await api.renamePath(oldPath, newPath);
+    } else if (workspaceId) {
+      await sdk.editor.rename(workspaceId, oldPath, newPath);
+    }
+    loadTree(); setRenameDialog(p => ({ ...p, open: false }));
+  }, [api, renameDialog, loadTree, workspaceId]);
 
   const handleMove = useCallback((path: string) => {
     const dir = path.substring(0, path.lastIndexOf('/'));
@@ -287,12 +353,20 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     const name = srcPath.split('/').pop() || '';
     const newRelPath = destRelPath ? `${destRelPath}/${name}` : name;
     if (mode === 'copy') {
-      await sdk.editor.copy(workspaceId, srcPath, newRelPath);
+      if (api?.copyPath) {
+        await api.copyPath(srcPath, newRelPath);
+      } else if (workspaceId) {
+        await sdk.editor.copy(workspaceId, srcPath, newRelPath);
+      }
     } else {
-      await sdk.editor.rename(workspaceId, srcPath, newRelPath);
+      if (api?.renamePath) {
+        await api.renamePath(srcPath, newRelPath);
+      } else if (workspaceId) {
+        await sdk.editor.rename(workspaceId, srcPath, newRelPath);
+      }
     }
-    loadTree(workspaceId); setMoveDialog(p => ({ ...p, open: false }));
-  }, [moveDialog, workspaceId, loadTree, boundDir]);
+    loadTree(); setMoveDialog(p => ({ ...p, open: false }));
+  }, [api, moveDialog, loadTree, boundDir, workspaceId]);
 
   const findTreeNode = useCallback((path: string): FileNode | undefined => {
     const walk = (nodes: FileNode[]): FileNode | undefined => {
@@ -326,11 +400,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   }, [findTreeNode, getParentDir]);
 
   const reloadExpandedTree = useCallback(async () => {
-    await loadTree(workspaceId);
+    await loadTree();
     for (const dir of expandedPaths) {
-      await loadDirectory(workspaceId, dir);
+      await loadDirectory(dir);
     }
-  }, [expandedPaths, loadDirectory, loadTree, workspaceId]);
+  }, [expandedPaths, loadDirectory, loadTree]);
 
   const movePathToDirectory = useCallback(async (srcPath: string, targetDir: string) => {
     const name = srcPath.split('/').pop() || '';
@@ -339,7 +413,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     if (targetDir === srcPath || targetDir.startsWith(`${srcPath}/`)) return;
 
     try {
-      await sdk.editor.rename(workspaceId, srcPath, newPath);
+      if (api?.renamePath) {
+        await api.renamePath(srcPath, newPath);
+      } else if (workspaceId) {
+        await sdk.editor.rename(workspaceId, srcPath, newPath);
+      }
     } catch {
       toast.error('移动失败');
       return;
@@ -347,7 +425,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
 
     if (selectedPath === srcPath) setSelectedPath(newPath);
     await reloadExpandedTree();
-  }, [getParentDir, reloadExpandedTree, selectedPath, workspaceId]);
+  }, [api, getParentDir, reloadExpandedTree, selectedPath, workspaceId]);
 
   const handleTreeDragStart = useCallback((event: React.DragEvent<HTMLDivElement>, path: string) => {
     draggedPathRef.current = path;
@@ -429,7 +507,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     setExpandedPaths((prev) => {
       const next = new Set(prev);
       for (const d of dirsToExpand) next.add(d);
-      saveExpandedPaths(workspaceId, next);
+      saveExpandedPaths(panelKey, next);
       return next;
     });
     // Load each parent directory to ensure children are available
@@ -440,12 +518,12 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
         return;
       }
       for (const d of dirsToExpand) {
-        await loadDirectory(workspaceId, d);
+        await loadDirectory(d);
       }
       setSelectedPath(revealPath);
       clearRevealPath();
     })();
-  }, [revealPath, workspaceId, loadDirectory, clearRevealPath]);
+  }, [revealPath, panelKey, loadDirectory, clearRevealPath]);
 
   return (
     <div className="relative flex flex-col h-full">
@@ -482,10 +560,12 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 <Ellipsis className="size-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => { setImportTargetPath(''); setImportDialogOpen(true); }}>
-                  <Upload className="size-4" />
-                  {t('importFile')}
-                </DropdownMenuItem>
+                {showImport && workspaceId ? (
+                  <DropdownMenuItem onClick={() => { setImportTargetPath(''); setImportDialogOpen(true); }}>
+                    <Upload className="size-4" />
+                    {t('importFile')}
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={() => {
                   const relPath = selectedPath || '';
                   const absPath = relPath ? (boundDir ? boundDir.replace(/\/+$/, '') + '/' + relPath : relPath) : boundDir;
@@ -506,7 +586,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
               </DropdownMenuContent>
             </DropdownMenu>
             <button
-              onClick={() => loadTree(workspaceId)}
+              onClick={() => loadTree()}
               className="p-0.5 hover:bg-accent rounded cursor-pointer"
               disabled={treeLoading}
             >
@@ -537,7 +617,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                         <ContextMenu key={node.path}>
                           <ContextMenuTrigger className="contents">
                             <button
-                              onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
+                              onClick={() => { setSelectedPath(node.path); openFile(node.path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
                               className={`w-full flex items-center gap-1.5 px-3 py-[3px] text-xs hover:bg-accent/50 transition-colors ${selectedPath === node.path ? 'bg-accent' : ''}`}
                             >
                               <FileIconImg name={node.name} />
@@ -549,7 +629,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                               )}
                             </button>
                           </ContextMenuTrigger>
-                          <FileContextMenu filePath={node.path} workspaceId={workspaceId} boundDir={boundDir} />
+                          {workspaceId ? <FileContextMenu filePath={node.path} workspaceId={workspaceId} boundDir={boundDir} /> : null}
                         </ContextMenu>
                       ))}
                     </>
@@ -579,19 +659,20 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       selectedPath={selectedPath}
                       onFileSelect={(path) => {
                         setSelectedPath(path);
-                        openFile(workspaceId, path);
+                        openFile(path);
                         useMobilePanelStore.getState().setActivePanel('code-editor');
                       }}
                       workspaceId={workspaceId}
+                      variant={variant}
                       onDelete={handleDelete}
-                      onImport={(targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); }}
+                      onImport={showImport && workspaceId ? (targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); } : undefined}
                       onCopyPath={(path) => { copyToClipboard(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
                       onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
                       onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
                       onRename={handleRename}
                       onMove={handleMove}
                       onCopyItem={handleCopy}
-                      onLoadDirectory={(dirPath) => loadDirectory(workspaceId, dirPath)}
+                      onLoadDirectory={loadDirectory}
                       loadingDirs={loadingDirs}
                       boundDir={boundDir}
                       fileSizeMap={fileSizeMap}
@@ -621,7 +702,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                   return fileSearch ? files.filter(f => f.name.toLowerCase().includes(lower)) : files;
                 })()}
                 selectedPath={selectedPath}
-                onSelect={(path) => { setSelectedPath(path); openFile(workspaceId, path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
+                onSelect={(path) => { setSelectedPath(path); openFile(path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
                 workspaceId={workspaceId}
                 boundDir={boundDir}
                 emptyText={t('noFiles')}
@@ -646,16 +727,20 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
         </TabsContent>
 
       </Tabs>
-      <div className={cn("absolute inset-x-0 bottom-0 top-8 z-10", sidebarTab !== 'search' && "hidden")}>
-        <SearchPanel workspaceId={workspaceId} />
-      </div>
-      <ImportFileDialog
-        open={importDialogOpen}
-        onOpenChange={setImportDialogOpen}
-        workspaceId={workspaceId}
-        targetPath={importTargetPath}
-        onImported={() => loadTree(workspaceId)}
-      />
+      {showSearchPanel && workspaceId ? (
+        <div className={cn("absolute inset-x-0 bottom-0 top-8 z-10", sidebarTab !== 'search' && "hidden")}>
+          <SearchPanel workspaceId={workspaceId} />
+        </div>
+      ) : null}
+      {showImport && workspaceId ? (
+        <ImportFileDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          workspaceId={workspaceId}
+          targetPath={importTargetPath}
+          onImported={() => loadTree()}
+        />
+      ) : null}
       <Dialog open={nameDialog.open} onOpenChange={(v) => setNameDialog((p) => ({ ...p, open: v }))}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
@@ -710,4 +795,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
       </Dialog>
     </div>
   );
+}
+
+export function EditorPanel({ workspaceId }: { workspaceId: string }) {
+  return <CommonEditorPanel workspaceId={workspaceId} />;
 }

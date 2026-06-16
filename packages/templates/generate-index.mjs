@@ -45,6 +45,24 @@ function getLatestMtime(dir) {
   return latest > 0 ? new Date(latest).toISOString() : undefined;
 }
 
+// 枚举插件目录下实际存在的文件（相对路径，POSIX 分隔符，排除 node_modules/.git）。
+// 写入 index.json 的 files 字段，供前端按清单逐个下载。
+function listDirFiles(dir) {
+  const out = [];
+  function walk(d, rel) {
+    for (const file of readdirSync(d)) {
+      if (file === 'node_modules' || file === '.git') continue;
+      const fullPath = join(d, file);
+      const relPath = rel ? `${rel}/${file}` : file;
+      const stat = statSync(fullPath);
+      if (stat.isDirectory()) walk(fullPath, relPath);
+      else out.push(relPath);
+    }
+  }
+  walk(dir, '');
+  return out;
+}
+
 function loadExistingIndex(indexPath) {
   if (!existsSync(indexPath)) return new Map();
   try {
@@ -247,11 +265,12 @@ function scanPluginStore() {
     const remoteManifest = remoteByDir.get(entry.name) || {};
     const data = { ...remoteManifest, ...localManifest };
     const md5 = folderMD5(pluginDir);
+    const files = listDirFiles(pluginDir);
     const defaultItem = buildItem(entry.name, data);
     const prev = existing.get(defaultItem.id);
     const updatedAt = (!prev || prev.md5 !== md5) ? getLatestMtime(pluginDir) : prev.updatedAt;
-    indexes.get('default').push({ ...defaultItem, md5, updatedAt });
-    for (const locale of locales) indexes.get(locale).push({ ...buildItem(entry.name, data, locale), md5, updatedAt });
+    indexes.get('default').push({ ...defaultItem, md5, updatedAt, files });
+    for (const locale of locales) indexes.get(locale).push({ ...buildItem(entry.name, data, locale), md5, updatedAt, files });
   }
   writeFileSync(join(dir, 'index.json'), JSON.stringify(indexes.get('default'), null, 2), 'utf-8');
   for (const locale of locales) {

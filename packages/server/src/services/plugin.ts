@@ -860,7 +860,7 @@ async function tryInstallGithubStoreDir(pluginId: string, sourceUrl: string): Pr
   return setPluginEnabled(pluginId, true);
 }
 
-async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string): Promise<PluginMeta | null> {
+async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string, fileList?: string[]): Promise<PluginMeta | null> {
   const base = sourceUrl.replace(/\/+$/, '');
   const targetDir = path.join(pluginsDir(), sanitizeStorePluginPath(sourceUrl));
   const manifestNames = ['plugin.json', 'manifest.json', 'info.json', 'web-plugin.json', 'package.json'];
@@ -882,26 +882,36 @@ async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string): 
 
   if ((manifest.id || pluginId) !== pluginId) throw new Error(`Store plugin id mismatch: ${manifest.id || ''}`);
 
-  const files = new Set([
-    manifestName,
-    'package.json',
-    'package-lock.json',
-    'main.js',
-    'workflow.js',
-    'tools.js',
-    'actions.js',
-    'lang.json',
-    'shared.js',
-  ]);
+  // 优先使用 index.json 提供的实际文件清单；回退到硬编码白名单（兼容旧索引/未带 files 的安装请求）
+  let files: Set<string>;
+  if (Array.isArray(fileList) && fileList.length) {
+    files = new Set(fileList);
+    if (manifestName) files.add(manifestName);
+  } else {
+    files = new Set([
+      manifestName,
+      'package.json',
+      'package-lock.json',
+      'main.js',
+      'workflow.js',
+      'tools.js',
+      'actions.js',
+      'lang.json',
+      'shared.js',
+    ]);
 
-  const iconRel = manifest.iconPath || (manifest as any)?.icon;
-  if (typeof iconRel === 'string' && iconRel) files.add(iconRel);
+    const iconRel = manifest.iconPath || (manifest as any)?.icon;
+    if (typeof iconRel === 'string' && iconRel) files.add(iconRel);
 
-  const entries = manifest.entries || {};
-  for (const entry of [entries.server, entries.workflow, entries.tools]) {
-    for (const file of Array.isArray(entry) ? entry : [entry]) {
-      if (file) files.add(file);
+    const entries = manifest.entries || {};
+    for (const entry of [entries.server, entries.workflow, entries.tools]) {
+      for (const file of Array.isArray(entry) ? entry : [entry]) {
+        if (file) files.add(file);
+      }
     }
+
+    // README 文档（插件详情对话框展示用）—— 不存在的候选项在下载时会被自动跳过
+    for (const readme of README_FILENAMES) files.add(readme);
   }
 
   ensureDir(pluginsDir());
@@ -923,7 +933,7 @@ async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string): 
   return setPluginEnabled(pluginId, true);
 }
 
-async function installStorePlugin(pluginId: string, sourceUrl: string): Promise<PluginMeta | null> {
+async function installStorePlugin(pluginId: string, sourceUrl: string, files?: string[]): Promise<PluginMeta | null> {
   const fromGithub = await tryInstallGithubStoreDir(pluginId, sourceUrl).catch((error) => {
     console.warn('[plugin] github store install skipped', {
       pluginId,
@@ -935,10 +945,10 @@ async function installStorePlugin(pluginId: string, sourceUrl: string): Promise<
   if (fromGithub) return fromGithub;
   const fromZip = await tryInstallStoreZip(pluginId, sourceUrl);
   if (fromZip) return fromZip;
-  return tryInstallStoreCommonFiles(pluginId, sourceUrl);
+  return tryInstallStoreCommonFiles(pluginId, sourceUrl, files);
 }
 
-export async function installTemplatePlugin(pluginId: string, sourceUrl?: string, md5?: string): Promise<PluginMeta> {
+export async function installTemplatePlugin(pluginId: string, sourceUrl?: string, md5?: string, files?: string[]): Promise<PluginMeta> {
   // Save md5 + installedAt before install so normalizePlugin picks it up
   {
     const state = readState();
@@ -952,7 +962,7 @@ export async function installTemplatePlugin(pluginId: string, sourceUrl?: string
   }
 
   if (sourceUrl) {
-    const plugin = await installStorePlugin(pluginId, sourceUrl);
+    const plugin = await installStorePlugin(pluginId, sourceUrl, files);
     if (plugin) return plugin;
   }
 

@@ -11,6 +11,8 @@ export type StoreWorkflowPlugin = Omit<WorkflowPlugin, 'enabled'> & {
   path: string;
   iconUrl?: string;
   updatedAt?: string;
+  /** 插件目录下实际存在的文件清单（相对路径），安装时按清单逐个下载 */
+  files?: string[];
 };
 
 const LOCALE_STORAGE_KEY = 'agent-spaces-locale';
@@ -29,7 +31,7 @@ type ElectronPluginApi = {
   clientPlugins?: {
     listWorkflowPlugins?: () => Promise<PluginMeta[]>;
     getWorkflowNodes?: (pluginId: string) => Promise<NodeTypeDefinition[]>;
-    installFromStore?: (pluginId: string, sourceUrl: string, md5?: string) => Promise<PluginMeta>;
+    installFromStore?: (pluginId: string, sourceUrl: string, md5?: string, files?: string[]) => Promise<PluginMeta>;
     uninstall?: (pluginId: string) => Promise<{ success: boolean }>;
   };
 };
@@ -97,13 +99,13 @@ export const pluginApi = {
     }
     return sdk.workflowPlugin.uninstall(pluginId);
   },
-  async installFromStore(pluginId: string, sourceUrl?: string, md5?: string, runtimeType?: PluginMeta['type']): Promise<PluginMeta> {
+  async installFromStore(pluginId: string, sourceUrl?: string, md5?: string, runtimeType?: PluginMeta['type'], files?: string[]): Promise<PluginMeta> {
     clearPluginRequestCache();
     if (isClientPluginType(runtimeType)) {
       if (!sourceUrl) throw new Error('缺少 client 插件安装地址');
-      return await (getElectronPluginApi()?.installFromStore?.(pluginId, sourceUrl, md5) ?? Promise.reject(new Error('当前客户端不支持本地 client 插件安装')));
+      return await (getElectronPluginApi()?.installFromStore?.(pluginId, sourceUrl, md5, files) ?? Promise.reject(new Error('当前客户端不支持本地 client 插件安装')));
     }
-    return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl, md5);
+    return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl, md5, files);
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
     const localeQuery = getPluginLocaleQuery();

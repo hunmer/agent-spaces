@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useEditorStore } from "@/stores/editor";
 import { useTranslations } from 'next-intl';
 import {
   DropdownMenu,
@@ -19,8 +18,9 @@ import { useTerminalStore } from "@/stores/terminal";
 
 interface EditorMenuBarProps {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
-  workspaceId: string;
+  activeFilePath: string | null;
   isReadOnly: boolean;
+  onSave: () => void;
   onToggleReadOnly: () => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
@@ -36,8 +36,7 @@ interface EditorMenuBarProps {
   onThemeChange: (theme: string | null) => void;
 }
 
-export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap, minimap, onToggleMinimap, fontSize, onZoomIn, onZoomOut, onZoomReset, monacoTheme, onThemeChange }: EditorMenuBarProps) {
-  const { saveFile, activeFilePath } = useEditorStore();
+export function EditorMenuBar({ editorRef, activeFilePath, isReadOnly, onSave, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap, minimap, onToggleMinimap, fontSize, onZoomIn, onZoomOut, onZoomReset, monacoTheme, onThemeChange }: EditorMenuBarProps) {
   const t = useTranslations('editor');
   const [themeList, setThemeList] = useState<Record<string, string>>({});
 
@@ -66,7 +65,7 @@ export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleRead
           {t('menuFile')}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" sideOffset={0}>
-          <DropdownMenuItem onClick={() => activeFilePath && saveFile(workspaceId, activeFilePath)}>
+          <DropdownMenuItem onClick={onSave}>
             {t('menuSave')}
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>
@@ -169,8 +168,7 @@ export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleRead
             <DropdownMenuSubTrigger>{t('openInTerminal')}</DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <DropdownMenuItem onClick={() => {
-                const state = useEditorStore.getState();
-                const file = state.activeFilePath;
+                const file = activeFilePath;
                 if (!file) return;
                 const dir = file.includes('/') ? file.substring(0, file.lastIndexOf('/')) : '';
                 useTerminalStore.getState().createSession(undefined, dir || undefined);

@@ -208,7 +208,7 @@ export function WorkflowPluginsDialog({
     if (installingIds.has(plugin.id)) return;
     setInstallingIds(prev => new Set(prev).add(plugin.id));
     try {
-      const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`), plugin.md5, plugin.type);
+      const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`), plugin.md5, plugin.type, plugin.files);
       setPlugins(items => {
         const idx = items.findIndex(item => item.id === installed.id);
         return idx >= 0 ? items.map((item, i) => i === idx ? { ...item, ...installed } : item) : [...items, installed];
@@ -237,7 +237,7 @@ export function WorkflowPluginsDialog({
       const sp = storePluginById.get(plugin.id);
       if (!sp) continue;
       try {
-        const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${sp.path}`), sp.md5, sp.type);
+        const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${sp.path}`), sp.md5, sp.type, sp.files);
         setPlugins(items => items.map(item => item.id === installed.id ? { ...item, ...installed } : item));
       } catch { /* continue */ }
     }

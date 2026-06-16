@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { monacoBuiltinActions } from "@/lib/monaco-builtin-actions";
 import { toast } from "sonner";
 import {
   blurEditorActiveElement,
@@ -15,8 +14,7 @@ interface UseMobileReadonlyOverlayParams {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
   monacoRef: React.RefObject<typeof Monaco | null>;
   activeContent: string;
-  workspaceId: string;
-  workspaceRoot: string | undefined;
+  onRunBuiltinAction?: (actionId: string, editor: Monaco.editor.IStandaloneCodeEditor) => void;
   isMobile: boolean;
   isReadOnly: boolean;
   isCommitDiff: boolean;
@@ -29,8 +27,7 @@ export function useMobileReadonlyOverlay({
   editorRef,
   monacoRef,
   activeContent,
-  workspaceId,
-  workspaceRoot,
+  onRunBuiltinAction,
   isMobile,
   isReadOnly,
   isCommitDiff,
@@ -262,11 +259,10 @@ export function useMobileReadonlyOverlay({
 
   const runMobileBuiltinAction = useCallback((actionId: string) => {
     const editor = editorRef.current;
-    const action = monacoBuiltinActions.find((item) => item.id === actionId);
-    if (!editor || !action) return;
-    action.run(editor, { workspaceId, workspaceRoot });
+    if (!editor) return;
+    onRunBuiltinAction?.(actionId, editor);
     closeMobileSelectionMode();
-  }, [closeMobileSelectionMode, editorRef, workspaceId, workspaceRoot]);
+  }, [closeMobileSelectionMode, editorRef, onRunBuiltinAction]);
 
   const runMobileEditorAction = useCallback((actionId: string) => {
     const editor = editorRef.current;

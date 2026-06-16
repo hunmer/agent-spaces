@@ -119,9 +119,10 @@
   ],
   "edges": [],
   "createdAt": 1781507395559,
-  "updatedAt": 1781599701757,
+  "updatedAt": 1781603215300,
   "groups": [],
   "enabledPlugins": [
-    "workflow.qianyin"
+    "workflow.qianyin",
+    "workflow.custom-view-demo"
   ]
 }

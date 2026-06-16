@@ -18,8 +18,8 @@ export function createWorkflowPluginApi(http: HttpClient) {
     uninstall: (pluginId: string): Promise<{ success: boolean }> =>
       http.deleteOf<{ success: boolean }>(`/api/plugins/${encodeURIComponent(pluginId)}`),
 
-    installFromStore: (pluginId: string, sourceUrl?: string, md5?: string): Promise<PluginMeta> =>
-      http.post(`/api/plugins/store/${encodeURIComponent(pluginId)}/install`, { sourceUrl, md5 }),
+    installFromStore: (pluginId: string, sourceUrl?: string, md5?: string, files?: string[]): Promise<PluginMeta> =>
+      http.post(`/api/plugins/store/${encodeURIComponent(pluginId)}/install`, { sourceUrl, md5, files }),
 
     getWorkflowNodes: (pluginId: string, query = ''): Promise<NodeTypeDefinition[]> =>
       http.get<PluginWorkflowNodesResult>(`/api/plugins/${encodeURIComponent(pluginId)}/workflow-nodes${query}`)
