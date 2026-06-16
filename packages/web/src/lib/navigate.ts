@@ -46,6 +46,10 @@ export function toStaticHref(href: string) {
     return `/workspace/_.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
   }
 
+  if (path === "/workflows/share") {
+    return `/workflows/share.html${queryString ? `?${queryString}` : ""}${hash ? `#${hash}` : ""}`;
+  }
+
   if (path.startsWith("/workflows/")) {
     const workflowId = path.slice("/workflows/".length).split("/")[0];
     const query = new URLSearchParams(queryString);

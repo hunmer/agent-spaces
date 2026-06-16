@@ -6,6 +6,7 @@
     "dev": "node server.mjs",
     "build": "next build",
     "start": "next start",
+    "preview": "next build && next start",
     "lint": "eslint",
     "postinstall": "node -e \"const fs=require('fs'),p=require('path');const src=p.join(__dirname,'node_modules/monaco-editor/min/vs');const dst=p.join(__dirname,'public/monaco/vs');if(fs.existsSync(src)){fs.rmSync(dst,{recursive:true,force:true});fs.cpSync(src,dst,{recursive:true})}\""
   },
