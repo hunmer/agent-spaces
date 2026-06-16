@@ -45,7 +45,9 @@
     "description": "Download Workflow UI templates from the store and import them with one click.",
     "loading": "Loading...",
     "empty": "No templates available",
-    "import": "Import"
+    "import": "Import",
+    "installed": "Installed",
+    "update": "Update"
   },
   "editor": {
     "loadingEditor": "Loading editor...",

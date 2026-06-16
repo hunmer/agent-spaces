@@ -326,10 +326,10 @@ router.get('/:id/export', async (req: Request<{ id: string }>, res: Response) =>
 // ZIP Import
 router.post('/import', async (req: Request, res: Response) => {
   try {
-    const { zip, name, type, description } = req.body;
+    const { zip, name, type, description, id, storeUrl, storeChecksum } = req.body;
     if (!zip) { res.status(400).json({ error: 'zip (base64) is required' }); return; }
     const buffer = Buffer.from(zip, 'base64');
-    const project = await svc.importZip(buffer, { name, type, description });
+    const project = await svc.importZip(buffer, { name, type, description, id, storeUrl, storeChecksum });
     res.json(project);
   } catch (error: any) {
     if (error instanceof DuplicateNameError) { res.status(409).json({ error: 'name already exists' }); return; }

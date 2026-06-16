@@ -45,7 +45,9 @@
     "description": "从商店下载 Workflow UI 模板，一键导入。",
     "loading": "加载中...",
     "empty": "暂无模板",
-    "import": "导入"
+    "import": "导入",
+    "installed": "已导入",
+    "update": "更新"
   },
   "editor": {
     "loadingEditor": "正在加载编辑器…",

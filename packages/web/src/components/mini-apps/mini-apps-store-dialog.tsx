@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, Store } from 'lucide-react';
+import { Download, Store, Check, RefreshCw } from 'lucide-react';
 import { fetchStoreIndex, resolveStoreUrl } from '@/lib/agent-store';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { sdk } from '@/lib/sdk';
@@ -30,13 +30,19 @@ interface MiniAppIndexItem {
   iconUrl?: string;
   description?: string;
   zipUrl?: string;
+  md5?: string;
+  updatedAt?: string;
 }
+
+type InstallStatus = 'not-installed' | 'updatable' | 'installed';
 
 export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: WorkflowsUiStoreDialogProps) {
   const t = useTranslations('mini-apps');
   const [templates, setTemplates] = useState<MiniAppIndexItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
+  // 已安装项目：id -> updatedAt（ISO 字符串）。用于判断「已导入 / 有更新」
+  const [installedMap, setInstalledMap] = useState<Record<string, string>>({});
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -49,9 +55,35 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
     setLoading(false);
   }, []);
 
+  // 拉取本地已安装清单，建立 id -> updatedAt 映射
+  const refreshInstalled = useCallback(async () => {
+    try {
+      const list = await sdk.miniApp.list();
+      const map: Record<string, string> = {};
+      for (const p of list) map[p.id] = p.updatedAt;
+      setInstalledMap(map);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
-    if (open) fetchTemplates();
-  }, [open, fetchTemplates]);
+    if (open) {
+      fetchTemplates();
+      refreshInstalled();
+    }
+  }, [open, fetchTemplates, refreshInstalled]);
+
+  // 三态：未安装 / 有更新（商店 updatedAt > 已安装 updatedAt）/ 已导入（已安装且无更新）
+  const getStatus = useCallback(
+    (item: MiniAppIndexItem): InstallStatus => {
+      const installedAt = installedMap[item.id];
+      if (!installedAt) return 'not-installed';
+      if (item.updatedAt && item.updatedAt > installedAt) return 'updatable';
+      return 'installed';
+    },
+    [installedMap],
+  );
 
   const handleImport = async (item: MiniAppIndexItem) => {
     setImporting(item.id);
@@ -69,15 +101,20 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
       }
       const zip = btoa(binary);
 
+      // 传 id / storeUrl / storeChecksum：服务端据此判断新建或更新，保证按 id 关联已安装项
       await sdk.miniApp.importZip({
         zip,
         name: item.name,
         type: item.type === 'html' ? 'html' : 'react',
         description: item.description,
+        id: item.id,
+        storeUrl: zipUrl,
+        storeChecksum: item.md5,
       });
 
+      // 刷新「已安装」状态与外层列表；不关闭对话框，便于连续导入 / 查看状态
+      await refreshInstalled();
       onImported();
-      onOpenChange(false);
     } finally {
       setImporting(null);
     }
@@ -100,41 +137,55 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('store.empty')}</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-2">
-              {templates.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors flex flex-col gap-3"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <AgentIcon
-                      name={item.name}
-                      avatarUrl={item.iconUrl ? resolveStoreUrl(item.iconUrl) : undefined}
-                      icon={item.icon}
-                      className="size-6 rounded shrink-0"
-                    />
-                    <span className="font-medium text-sm truncate">{item.name}</span>
-                  </div>
-                  {item.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 mt-auto w-full"
-                    disabled={importing !== null}
-                    onClick={() => handleImport(item)}
+              {templates.map((item) => {
+                const status = getStatus(item);
+                const isImporting = importing === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors flex flex-col gap-3"
                   >
-                    {importing === item.id ? (
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <>
-                        <Download className="size-3.5 mr-1" />
-                        {t('store.import')}
-                      </>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AgentIcon
+                        name={item.name}
+                        avatarUrl={item.iconUrl ? resolveStoreUrl(item.iconUrl) : undefined}
+                        icon={item.icon}
+                        className="size-6 rounded shrink-0"
+                      />
+                      <span className="font-medium text-sm truncate">{item.name}</span>
+                    </div>
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                     )}
-                  </Button>
-                </div>
-              ))}
+                    <Button
+                      variant={status === 'installed' ? 'secondary' : status === 'updatable' ? 'default' : 'outline'}
+                      size="sm"
+                      className="shrink-0 mt-auto w-full"
+                      disabled={importing !== null || status === 'installed'}
+                      onClick={() => handleImport(item)}
+                    >
+                      {isImporting ? (
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : status === 'installed' ? (
+                        <>
+                          <Check className="size-3.5 mr-1" />
+                          {t('store.installed')}
+                        </>
+                      ) : status === 'updatable' ? (
+                        <>
+                          <RefreshCw className="size-3.5 mr-1" />
+                          {t('store.update')}
+                        </>
+                      ) : (
+                        <>
+                          <Download className="size-3.5 mr-1" />
+                          {t('store.import')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </ScrollArea>

@@ -99,7 +99,7 @@ export function createMiniAppApi(http: HttpClient) {
     writeDataFile: (id: string, filePath: string, content: string, encoding?: 'base64'): Promise<{ ok: true; path: string; size: number }> =>
       http.put(`/api/mini-apps/${encodeURIComponent(id)}/data/content`, { path: filePath, content, encoding }),
 
-    importZip: (data: { zip: string; name?: string; type?: 'react' | 'html'; description?: string }): Promise<MiniAppProject> =>
+    importZip: (data: { zip: string; name?: string; type?: 'react' | 'html'; description?: string; id?: string; storeUrl?: string; storeChecksum?: string }): Promise<MiniAppProject> =>
       http.post('/api/mini-apps/import', data),
 
     exportZip: (id: string): Promise<Blob> =>

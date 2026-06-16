@@ -234,7 +234,7 @@ export async function exportZip(projectId: string): Promise<Buffer> {
 
 export async function importZip(
   zipBuffer: Buffer,
-  manifest: { name?: string; type?: 'react' | 'html'; description?: string },
+  manifest: { name?: string; type?: 'react' | 'html'; description?: string; id?: string; storeUrl?: string; storeChecksum?: string },
 ): Promise<MiniAppProject> {
   const extractDir = join(tmpdir(), `wui-import-${uuid()}`);
   mkdirSync(extractDir, { recursive: true });
@@ -277,6 +277,10 @@ export async function importZip(
       enabledPlugins: projectManifest.enabledPlugins,
       icon: projectManifest.icon,
       avatarUrl: projectManifest.avatarUrl,
+      // 商店导入：传稳定 id / storeUrl / storeChecksum，使服务端按 id 关联已安装项（新建或更新）
+      id: manifest.id,
+      storeUrl: manifest.storeUrl,
+      storeChecksum: manifest.storeChecksum,
     });
 
     // Copy icon file if present

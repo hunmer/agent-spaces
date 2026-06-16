@@ -345,9 +345,47 @@ export function writeDataFile(projectId: string, filePath: string, content: Buff
 // ---- ZIP Import ----
 
 export function importFromDir(extractDir: string, manifest: Partial<MiniAppProject> & { name: string; type: 'react' | 'html'; mainFile: string }): MiniAppProject {
+  // id：优先用调用方传入的稳定 id（商店模板 id），否则从 name 生成。创建后固定不变。
+  // 这样商店模板可按 id 判断「已安装」、按 updatedAt 判断「有更新」。
+  const id = manifest.id ? safeNameId(manifest.id) : safeNameId(manifest.name);
+  const contentRoot = resolveContentRoot(extractDir, manifest.mainFile);
+  const existing = getProject(id);
+
+  if (existing) {
+    // ---- 更新模式：覆盖源码，保留用户配置字段，刷新 updatedAt ----
+    // 仅模板内容相关字段（type/mainFile/icon/storeUrl/storeChecksum）跟随新版本；
+    // name/description/tags/enabledPlugins/agentConfigId/agents/avatarUrl/backgroundUrl/version 等用户配置保留。
+    const updated: MiniAppProject = {
+      ...existing,
+      type: manifest.type ?? existing.type,
+      mainFile: manifest.mainFile ?? existing.mainFile,
+      icon: manifest.icon ?? existing.icon,
+      storeUrl: manifest.storeUrl ?? existing.storeUrl,
+      storeChecksum: manifest.storeChecksum ?? existing.storeChecksum,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 全量覆盖 src —— 商店版本即最新全集
+    const targetSrc = srcDir(id);
+    rmSync(targetSrc, { recursive: true, force: true });
+    ensureDir(targetSrc);
+    if (existsSync(join(contentRoot, 'src'))) {
+      copyDirSync(join(contentRoot, 'src'), targetSrc);
+    } else {
+      copyDirSync(contentRoot, targetSrc);
+    }
+
+    writeJsonFile(manifestPath(id), updated);
+    const projects = listProjects();
+    const idx = projects.findIndex((p) => p.id === id);
+    if (idx !== -1) projects[idx] = updated;
+    else projects.push(updated);
+    writeJsonFile(indexPath(), projects);
+    return updated;
+  }
+
+  // ---- 新建模式 ----
   assertNameUnique(manifest.name);
-  const id = safeNameId(manifest.name);
-  if (existsSync(projectDir(id))) throw new DuplicateNameError(manifest.name);
   const now = new Date().toISOString();
   const project: MiniAppProject = {
     id,
@@ -375,7 +413,6 @@ export function importFromDir(extractDir: string, manifest: Partial<MiniAppProje
 
   const targetSrc = srcDir(id);
   ensureDir(targetSrc);
-  const contentRoot = resolveContentRoot(extractDir, manifest.mainFile);
   if (existsSync(join(contentRoot, 'src'))) {
     copyDirSync(join(contentRoot, 'src'), targetSrc);
   } else {
