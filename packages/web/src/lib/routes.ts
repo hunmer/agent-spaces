@@ -17,7 +17,8 @@ export function isWorkflowSharePath(pathname: string): boolean {
 }
 
 export function isMiniAppPreviewPath(pathname: string): boolean {
-  return normalizeAppPath(pathname).startsWith("/mini-apps-preview/");
+  const path = normalizeAppPath(pathname);
+  return path === "/mini-apps-preview" || path.startsWith("/mini-apps-preview/");
 }
 
 export function workspaceIdFromLocation(pathname: string, search: string): string | null {

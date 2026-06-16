@@ -15,8 +15,10 @@ function decodeRouteParam(value: string) {
 
 export default function MiniAppPreviewPageClient() {
   const params = useParams<{ id: string }>();
-  const projectId = decodeRouteParam(params.id);
   const searchParams = useSearchParams();
+  const queryProjectId = searchParams.get('id');
+  const routeProjectId = params.id ? decodeRouteParam(params.id) : '';
+  const projectId = queryProjectId || routeProjectId;
   const embedded = searchParams.get('embedded') === '1';
   const [project, setProject] = useState<MiniAppProject | null>(null);
   const [sourceCode, setSourceCode] = useState('');
@@ -54,8 +56,8 @@ export default function MiniAppPreviewPageClient() {
         return;
       }
       setSourceCode(files[mainFile] || '');
-    } catch (err: any) {
-      setError(err.message || 'Failed to load project');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load project');
     } finally {
       setLoading(false);
     }

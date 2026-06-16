@@ -98,9 +98,14 @@ export function Router({ children }: { children: React.ReactNode }) {
   const projectIdRef = useRef<string>('');
   const [state, setState] = useState<RouteState>(() => readInitialRouteFromLocation());
 
-  // 取 projectId：从 location pathname 的 /mini-apps-preview/<id> 段取（用于 postMessage 校验）。
+  // 取 projectId：优先从 ?id= 读取，兼容旧的 /mini-apps-preview/<id>。
   useEffect(() => {
     try {
+      const fromQuery = new URLSearchParams(window.location.search).get('id');
+      if (fromQuery) {
+        projectIdRef.current = fromQuery;
+        return;
+      }
       const m = window.location.pathname.match(/\/mini-apps-preview\/([^/]+)/);
       projectIdRef.current = m ? decodeURIComponent(m[1]) : '';
     } catch { /* noop */ }

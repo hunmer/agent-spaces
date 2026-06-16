@@ -35,7 +35,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/mini-apps-preview/${encodeURIComponent(project.id)}`
+    ? `${window.location.origin}/mini-apps-preview?id=${encodeURIComponent(project.id)}`
     : '';
 
   const handleExportZip = async () => {

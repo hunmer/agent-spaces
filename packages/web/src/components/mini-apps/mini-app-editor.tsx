@@ -136,8 +136,8 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
         if (typeof window === 'undefined') return '';
         let route = '';
         try { route = new URLSearchParams(window.location.search).get('route') || ''; } catch { /* noop */ }
-        const base = `${window.location.origin}/mini-apps-preview/${encodeURIComponent(projectId)}`;
-        return route ? `${base}?route=${encodeURIComponent(route)}` : base;
+        const base = `${window.location.origin}/mini-apps-preview?id=${encodeURIComponent(projectId)}`;
+        return route ? `${base}&route=${encodeURIComponent(route)}` : base;
     })();
     const localDirtyRef = useRef(false);
     const loadedFileContentRef = useRef('');
@@ -485,7 +485,7 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
         return <div className="p-4 text-muted-foreground">{t('editor.notFound')}</div>;
     }
 
-    const previewUrl = `/mini-apps-preview/${encodeURIComponent(project.id)}?embedded=1&refresh=${previewRefreshKey}`;
+    const previewUrl = `/mini-apps-preview?id=${encodeURIComponent(project.id)}&embedded=1&refresh=${previewRefreshKey}`;
 
     return (
         <div className="flex flex-col h-full gap-2 p-2">
