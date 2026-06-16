@@ -680,7 +680,7 @@ export function uninstallPlugin(pluginId: string): void {
   // clean state.json
   const state = readState();
   delete state.enabled[pluginId];
-  delete state.config[pluginId];
+  // delete state.config[pluginId];
   if (state.installedMd5) delete state.installedMd5[pluginId];
   if (state.installedAt) delete state.installedAt[pluginId];
   writeState(state);

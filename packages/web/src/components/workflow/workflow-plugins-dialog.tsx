@@ -43,7 +43,7 @@ export function WorkflowPluginsDialog({
   const [status, setStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [sortBy, setSortBy] = useState<SortBy>('default');
   const [configPlugin, setConfigPlugin] = useState<WorkflowPlugin | null>(null);
-  const [installingId, setInstallingId] = useState<string | null>(null);
+  const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const { locale } = useLocale();
 
   const enabledPluginIds = useMemo(() => new Set(workflow?.enabledPlugins || []), [workflow?.enabledPlugins]);
@@ -205,8 +205,8 @@ export function WorkflowPluginsDialog({
   }
 
   async function installPlugin(plugin: StoreWorkflowPlugin) {
-    if (installingId) return;
-    setInstallingId(plugin.id);
+    if (installingIds.has(plugin.id)) return;
+    setInstallingIds(prev => new Set(prev).add(plugin.id));
     try {
       const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`), plugin.md5, plugin.type);
       setPlugins(items => {
@@ -218,7 +218,11 @@ export function WorkflowPluginsDialog({
     } catch (error: any) {
       toast.error(error?.message || '插件安装失败');
     } finally {
-      setInstallingId(null);
+      setInstallingIds(prev => {
+        const next = new Set(prev);
+        next.delete(plugin.id);
+        return next;
+      });
     }
   }
 
@@ -291,7 +295,7 @@ export function WorkflowPluginsDialog({
             </div>
             <div className="flex-1" />
             {needsUpdateMap.size > 0 && (
-              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-600 border-orange-300 hover:bg-orange-50" disabled={!!installingId} onClick={handleUpdateAll}>
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-600 border-orange-300 hover:bg-orange-50" disabled={installingIds.size > 0} onClick={handleUpdateAll}>
                 <RefreshCw className="h-3.5 w-3.5" />
                 一键更新({needsUpdateMap.size})
               </Button>
@@ -380,7 +384,7 @@ export function WorkflowPluginsDialog({
                   key={plugin.id}
                   plugin={plugin}
                   installed={installedPluginIds.has(plugin.id)}
-                  installing={installingId === plugin.id}
+                  installing={installingIds.has(plugin.id)}
                   onInstallAction={() => installPlugin(plugin)}
                 />
               ))}
