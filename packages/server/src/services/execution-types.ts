@@ -26,6 +26,7 @@ export interface ExecutionSession {
   id: string
   workflow: Workflow
   ownerClientId: string
+  workspaceId?: string
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
   groups?: WorkflowGroup[]

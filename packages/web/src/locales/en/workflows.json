@@ -367,7 +367,8 @@
       "interaction": "Interaction",
       "display": "Display",
       "utilities": "Utilities",
-      "sqlite": "Database"
+      "sqlite": "Database",
+      "knowledgeBase": "Knowledge Base"
     },
     "start": {
       "label": "Start",
@@ -829,6 +830,32 @@
     "sqlite_raw": {
       "label": "Custom SQL",
       "description": "Run arbitrary SQL; ? params bind from input fields."
+    },
+    "kb_add": {
+      "label": "Add to KB",
+      "description": "Add a file to a knowledge base (parse + chunk + embed)."
+    },
+    "kb_query": {
+      "label": "Query KB",
+      "description": "Semantic search a knowledge base and return top matches."
+    },
+    "kb_delete": {
+      "label": "Delete from KB",
+      "description": "Delete files from a knowledge base."
+    },
+    "kb": {
+      "props": {
+        "knowledgeBase": "Knowledge base",
+        "knowledgeBase_tooltip": "Target knowledge base",
+        "filePath": "File path / URL",
+        "filePath_tooltip": "Workspace file path or URL, supports {{upstream}} variables",
+        "fileName": "File name",
+        "fileName_tooltip": "Optional custom stored file name",
+        "query": "Query",
+        "topK": "Top K",
+        "fileId": "File ID",
+        "fileId_tooltip": "File id from upstream; comma-separated or array for multiple"
+      }
     }
   },
   "nodeUi": {

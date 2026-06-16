@@ -68,6 +68,7 @@ import {
   executeSqliteDelete,
   executeSqliteRaw,
 } from './execution-sqlite-nodes.js';
+import { executeKbAdd, executeKbQuery, executeKbDelete } from './execution-kb-nodes.js';
 import { executeCode, executePython } from './execution-code-runners.js';
 import { executeAgentRun } from './execution-agent-runner.js';
 import {
@@ -107,6 +108,7 @@ export class ExecutionManager {
     request: WorkflowExecuteRequest,
     ownerClientId: string,
     eventSink?: (channel: string, payload: unknown) => void,
+    workspaceId?: string,
   ): Promise<WorkflowExecuteResponse> {
     const workflow = workflowStore.getWorkflow(request.workflowId);
     if (!workflow) {
@@ -116,7 +118,7 @@ export class ExecutionManager {
     const snapshot = this.resolveExecutionSnapshot(workflow, request);
     const executionId = randomUUID();
     const session = this.createSession(
-      executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, request.env, eventSink,
+      executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, request.env, eventSink, workspaceId,
     );
     session.context.__config__ = this.loadPluginConfigs(session);
 
@@ -309,10 +311,12 @@ export class ExecutionManager {
     context?: Record<string, unknown>,
     env?: Record<string, unknown>,
     eventSink?: (channel: string, payload: unknown) => void,
+    workspaceId?: string,
   ): ExecutionSession {
     const defaultEnv = buildOutputObject(snapshot?.variables ?? workflow.variables) ?? {};
     return {
       id: executionId, workflow, ownerClientId,
+      ...(workspaceId ? { workspaceId } : {}),
       nodes: snapshot?.nodes ? clone(snapshot.nodes) : clone(workflow.nodes),
       edges: snapshot?.edges ? clone(snapshot.edges) : clone(workflow.edges),
       groups: snapshot?.groups ? clone(snapshot.groups) : clone(workflow.groups || []),
@@ -590,6 +594,9 @@ export class ExecutionManager {
       case 'sqlite_update': return executeSqliteUpdate(resolvedData);
       case 'sqlite_delete': return executeSqliteDelete(resolvedData);
       case 'sqlite_raw':    return executeSqliteRaw(resolvedData);
+      case 'kb_add':        return executeKbAdd(resolvedData, session.workspaceId || '');
+      case 'kb_query':      return executeKbQuery(resolvedData, session.workspaceId || '');
+      case 'kb_delete':     return executeKbDelete(resolvedData, session.workspaceId || '');
       case 'run_code':
         return executeCode(
           this.getRuntimeContext(session),

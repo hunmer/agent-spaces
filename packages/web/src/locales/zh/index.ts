@@ -12,6 +12,7 @@ import git from './git.json';
 import home from './home.json';
 import issue from './issue.json';
 import kanban from './kanban.json';
+import knowledgeBase from './knowledgeBase.json';
 import login from './login.json';
 import mcps from './mcps.json';
 import models from './models.json';
@@ -48,6 +49,7 @@ const messages = {
   home,
   issue,
   kanban,
+  knowledgeBase,
   login,
   mcps,
   models,

@@ -12,9 +12,11 @@
   ],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-12T20:42:23.209Z",
-  "updatedAt": "2026-06-13T22:18:25.689Z",
+  "updatedAt": "2026-06-16T03:15:11.621Z",
   "enabledPlugins": [
     "workflow.epub-parser"
   ],
-  "icon": "🔈"
+  "icon": "🔈",
+  "storeUrl": "http://localhost:3101/mini-app/podcast_generator.zip",
+  "storeChecksum": "07bed31b6a470d445c5d15301840bf41"
 }

@@ -367,7 +367,8 @@
       "interaction": "交互",
       "display": "展示",
       "utilities": "辅助工具",
-      "sqlite": "数据库"
+      "sqlite": "数据库",
+      "knowledgeBase": "知识库"
     },
     "start": {
       "label": "开始",
@@ -829,6 +830,32 @@
     "sqlite_raw": {
       "label": "SQL 自定义",
       "description": "执行任意原生 SQL，? 参数从输入字段绑定。"
+    },
+    "kb_add": {
+      "label": "加入知识库",
+      "description": "将文件加入知识库（解析 + 分块 + 嵌入）。"
+    },
+    "kb_query": {
+      "label": "查询知识库",
+      "description": "对知识库进行语义搜索，返回最相关的结果。"
+    },
+    "kb_delete": {
+      "label": "从知识库删除",
+      "description": "从知识库删除文件。"
+    },
+    "kb": {
+      "props": {
+        "knowledgeBase": "知识库",
+        "knowledgeBase_tooltip": "目标知识库",
+        "filePath": "文件路径 / URL",
+        "filePath_tooltip": "工作区文件路径或 URL，支持 {{upstream}} 变量",
+        "fileName": "文件名",
+        "fileName_tooltip": "可选的自定义存储文件名",
+        "query": "查询",
+        "topK": "Top K",
+        "fileId": "文件 ID",
+        "fileId_tooltip": "来自上游的文件 ID；多个用逗号分隔或以数组形式传入"
+      }
     }
   },
   "nodeUi": {

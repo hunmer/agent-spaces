@@ -96,6 +96,7 @@ flutter:
     - assets/web/mini-apps-preview/_/
     - assets/web/mini-apps-preview/_/__next.mini-apps-preview/
     - assets/web/mini-apps-preview/_/__next.mini-apps-preview/$d$id/
+    - assets/web/mini-apps-preview/__next.mini-apps-preview/
     - assets/web/monaco/
     - assets/web/monaco/vs/
     - assets/web/monaco/vs/assets/

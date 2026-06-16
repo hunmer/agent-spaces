@@ -6,7 +6,7 @@ import type { ExecutionManager } from '../services/execution-manager.js';
 import { registerHandler } from './handler.js';
 
 export function registerExecutionChannels(executionManager: ExecutionManager): void {
-  registerHandler('workflow:execute', async (ws, _workspaceId, data) => {
+  registerHandler('workflow:execute', async (ws, workspaceId, data) => {
     const clientId = getClientId(ws);
     if (!clientId) return;
     try {
@@ -14,7 +14,7 @@ export function registerExecutionChannels(executionManager: ExecutionManager): v
         if (ws.readyState === 1) {
           ws.send(JSON.stringify({ event: channel, data: payload }));
         }
-      });
+      }, workspaceId);
       ws.send(JSON.stringify({
         event: 'workflow:execute:result',
         data: result,
