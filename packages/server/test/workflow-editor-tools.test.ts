@@ -322,6 +322,79 @@ test('update_node allows label-only updates', async () => {
   assert.equal(updateResult.workflow.nodes.find((node) => node.id === createResult.created_node_id)?.label, 'Parse file type');
 });
 
+test('create_node rejects tool-call markup embedded in node data', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  assert.ok(createNode);
+
+  const result = await createNode.execute({
+    type: 'run_code',
+    data: {
+      code: 'async function main() { return {}; }',
+      inputs: { item: [] },
+      'invoke name="create_node"': {
+        type: 'switch',
+        data: { conditions: { item: [] } },
+      },
+      $text: '\n',
+    },
+  }) as {
+    success: boolean;
+    message: string;
+    property: string;
+  };
+
+  assert.equal(result.success, false);
+  assert.equal(result.property, 'inputs');
+  assert.match(result.message, /data\.inputFields array/);
+});
+
+test('node data validation rejects item-wrapped field and condition arrays', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const updateNode = tools.find((tool) => tool.name === 'update_node');
+  assert.ok(createNode);
+  assert.ok(updateNode);
+
+  const createSwitchResult = await createNode.execute({
+    type: 'switch',
+    data: {
+      conditions: {
+        item: [{ id: 'cond_1', variable: '{{ __data__["node"].fileType }}', operator: 'equals', value: 'video' }],
+      },
+    },
+  }) as {
+    success: boolean;
+    message: string;
+    property: string;
+  };
+
+  assert.equal(createSwitchResult.success, false);
+  assert.equal(createSwitchResult.property, 'conditions');
+  assert.match(createSwitchResult.message, /expected conditions/);
+
+  const createCodeResult = await createNode.execute({ type: 'run_code' }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(createCodeResult.success, true);
+
+  const updateResult = await updateNode.execute({
+    nodeId: createCodeResult.created_node_id,
+    data: {
+      inputFields: { item: [{ key: 'fileName', type: 'string' }] },
+    },
+  }) as {
+    success: boolean;
+    message: string;
+    property: string;
+  };
+
+  assert.equal(updateResult.success, false);
+  assert.equal(updateResult.property, 'inputFields');
+  assert.match(updateResult.message, /Do not wrap fields/);
+});
+
 test('create_workflow_version persists the snapshot for the version panel', async (t) => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-workflow-editor-tools-'));

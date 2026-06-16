@@ -41,7 +41,7 @@
   ],
   "edges": [],
   "createdAt": 1781611468552,
-  "updatedAt": 1781613604752,
+  "updatedAt": 1781613957753,
   "enabledPlugins": [
     "workflow.ffmpeg",
     "workflow.aliyun-ai",

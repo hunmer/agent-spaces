@@ -90,6 +90,29 @@ export function validateNodeDataPatch(
 ): { success: true } | { success: false; message: string; property?: string; expected_type?: string; received_type?: string; type_definition?: JsonRecord } {
   const properties = new Map((definition.properties ?? []).map((property) => [property.key, property]));
   for (const [key, value] of Object.entries(data)) {
+    if (key.startsWith('$') || key.includes('invoke name=')) {
+      return {
+        success: false,
+        message: `Invalid node data key: ${key}. Tool-call markup must not be placed inside node data.`,
+        property: key,
+      };
+    }
+    if (key === 'inputs') {
+      return {
+        success: false,
+        message: 'Invalid node data key: inputs. Use data.inputFields array for node inputs, or call set_node_io_fields with field_kind=inputFields.',
+        property: key,
+      };
+    }
+    if ((key === 'inputFields' || key === 'outputs') && !Array.isArray(value)) {
+      return {
+        success: false,
+        message: `Invalid value for ${key}: expected array, received ${describeValueType(value)}. Do not wrap fields as { "item": [...] }; pass the array directly or use set_node_io_fields.`,
+        property: key,
+        expected_type: 'array',
+        received_type: describeValueType(value),
+      };
+    }
     const property = properties.get(key);
     if (!property) continue;
     const result = validateNodePropertyValue(property.type, value);

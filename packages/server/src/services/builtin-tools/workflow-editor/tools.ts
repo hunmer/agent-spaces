@@ -278,6 +278,9 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         if (!type) return { success: false, message: 'type is required' };
         const definition = definitionByType.get(type);
         if (!definition) return { success: false, message: `Unknown node type: ${type}` };
+        const rootData = objectInput(record, 'data');
+        const validation = validateNodeDataPatch(definition, rootData);
+        if (!validation.success) return validation;
         const scopeNodeResult = resolveScopeNode(draft.nodes, record);
         if (!scopeNodeResult.success) return scopeNodeResult;
         const created = createWorkflowNodesForDefinition({
@@ -285,7 +288,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           type,
           rootLabel: stringInput(record, 'label'),
           position: nextNodePosition(draft.nodes, scopeNodeResult.scopeNode),
-          rootData: objectInput(record, 'data'),
+          rootData,
           scopeNode: scopeNodeResult.scopeNode,
           createNodeId: createWorkflowNodeId,
         });
