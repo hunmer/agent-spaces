@@ -34,16 +34,17 @@ export async function executeKbQuery(
   return { matches: result.matches, count: result.count };
 }
 
-export function executeKbDelete(
+export async function executeKbDelete(
   resolvedData: Record<string, any>,
   workspaceId: string,
-): { deletedCount: number } {
+): Promise<{ deletedCount: number }> {
   const kbId = String(resolvedData.knowledgeBase || '');
   const ids = parseIds(resolvedData.fileId);
   if (!kbId) throw new Error('未选择知识库');
   let deletedCount = 0;
   for (const fileId of ids) {
-    try { kbService.deleteFileFromKb(workspaceId, kbId, fileId); deletedCount++; } catch { /* 文件不存在则跳过 */ }
+    try { kbService.deleteFileFromKb(workspaceId, kbId, fileId); deletedCount++; }
+    catch (e) { console.warn('[kb_delete] skip file', fileId, (e as Error)?.message ?? e); }
   }
   return { deletedCount };
 }
