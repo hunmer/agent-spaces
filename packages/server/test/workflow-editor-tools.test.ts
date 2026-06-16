@@ -140,6 +140,37 @@ test('search_node_usage filters by node_type without swapping results', async ()
   }
 });
 
+test('node type search can filter by plugin id', async () => {
+  const pluginNodeDefinitions = nodeDefinitions.map((definition) => {
+    if (definition.type === 'cos_upload_file') return { ...definition, pluginId: 'workflow.tencent-cos' };
+    if (definition.type === 'asr_file_recognition') return { ...definition, pluginId: 'workflow.aliyun-ai' };
+    return definition;
+  });
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions: pluginNodeDefinitions });
+  const listNodeTypes = tools.find((tool) => tool.name === 'list_node_types');
+  const searchNodeUsage = tools.find((tool) => tool.name === 'search_node_usage');
+  assert.ok(listNodeTypes);
+  assert.ok(searchNodeUsage);
+
+  const listResult = await listNodeTypes.execute({ pluginId: 'workflow.tencent-cos', pageSize: 50 }) as {
+    success: boolean;
+    nodes: Array<{ type: string; pluginId?: string }>;
+  };
+
+  assert.equal(listResult.success, true);
+  assert.deepEqual(listResult.nodes.map((node) => node.type), ['cos_upload_file']);
+  assert.equal(listResult.nodes[0]?.pluginId, 'workflow.tencent-cos');
+
+  const usageResult = await searchNodeUsage.execute({ plugin_id: 'workflow.aliyun-ai' }) as {
+    success: boolean;
+    nodes: Array<{ type: string; pluginId?: string }>;
+  };
+
+  assert.equal(usageResult.success, true);
+  assert.deepEqual(usageResult.nodes.map((node) => node.type), ['asr_file_recognition']);
+  assert.equal(usageResult.nodes[0]?.pluginId, 'workflow.aliyun-ai');
+});
+
 test('search_node_usage explains run_code input fields are exposed as params', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const searchNodeUsage = tools.find((tool) => tool.name === 'search_node_usage');

@@ -14,15 +14,15 @@
       "data": {
         "inputFields": [
           {
-            "key": "fileName",
-            "type": "string",
-            "description": "上传的文件名（带扩展名），用于判断是视频还是音频",
+            "key": "file",
+            "type": "file",
+            "description": "上传的音视频文件",
             "required": true
           },
           {
-            "key": "filePath",
+            "key": "fileType",
             "type": "string",
-            "description": "本地文件绝对路径（ffmpeg_demux 和 cos_upload_file 都使用）",
+            "description": "文件类型：video 或 audio",
             "required": true
           }
         ]
@@ -37,11 +37,264 @@
         "y": 400
       },
       "data": {}
+    },
+    {
+      "id": "node_1781614519723_9qq00e",
+      "type": "switch",
+      "label": "文件类型判断",
+      "position": {
+        "x": 510,
+        "y": 225
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781614519723_xubmf5",
+      "type": "ffmpeg_demux",
+      "label": "提取音频",
+      "position": {
+        "x": 770,
+        "y": 225
+      },
+      "data": {
+        "mode": "extract_audio",
+        "audioFormat": "mp3",
+        "ffmpegPath": "{{ __config__[\"workflow.ffmpeg\"][\"ffmpegPath\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "audioPath",
+                "type": "string"
+              },
+              {
+                "key": "videoPath",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781614519724_ve0dy8",
+      "type": "cos_upload_file",
+      "label": "COS上传-视频分支",
+      "position": {
+        "x": 1030,
+        "y": 225
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781614519724_zkdu0z",
+      "type": "asr_file_recognition",
+      "label": "录音转写-视频分支",
+      "position": {
+        "x": 1290,
+        "y": 225
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.aliyun-ai\"][\"baseUrl\"] || \"https://dashscope.aliyuncs.com\" }}",
+        "model": "paraformer-v2",
+        "language": "",
+        "diarizationEnabled": false,
+        "enableItn": false,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "text",
+                "type": "string"
+              },
+              {
+                "key": "details",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781614519725_1vzlcv",
+      "type": "cos_upload_file",
+      "label": "COS上传-音频分支",
+      "position": {
+        "x": 1550,
+        "y": 225
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781614519725_kjbrub",
+      "type": "asr_file_recognition",
+      "label": "录音转写-音频分支",
+      "position": {
+        "x": 1810,
+        "y": 225
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.aliyun-ai\"][\"baseUrl\"] || \"https://dashscope.aliyuncs.com\" }}",
+        "model": "paraformer-v2",
+        "language": "",
+        "diarizationEnabled": false,
+        "enableItn": false,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "text",
+                "type": "string"
+              },
+              {
+                "key": "details",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781614519725_do9kcc",
+      "type": "variable_aggregate",
+      "label": "合并字幕结果",
+      "position": {
+        "x": 2070,
+        "y": 225
+      },
+      "data": {
+        "strategy": "first_non_empty",
+        "groups": [],
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object"
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1781611468552,
-  "updatedAt": 1781613957753,
+  "updatedAt": 1781614529905,
   "enabledPlugins": [
     "workflow.ffmpeg",
     "workflow.aliyun-ai",

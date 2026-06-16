@@ -8,6 +8,7 @@ export function summarizeWorkflow(workflow: Workflow, summarize: boolean): unkno
     id: workflow.id,
     name: workflow.name,
     description: workflow.description,
+    enabledPlugins: workflow.enabledPlugins,
     nodes: workflow.nodes.map((node) => ({
       id: node.id,
       type: node.type,
@@ -26,6 +27,7 @@ export function summarizeNodeDefinition(definition: NodeTypeDefinition) {
     label: definition.label,
     category: definition.category,
     description: definition.description,
+    pluginId: (definition as { pluginId?: string }).pluginId,
     handles: definition.handles,
   };
 }

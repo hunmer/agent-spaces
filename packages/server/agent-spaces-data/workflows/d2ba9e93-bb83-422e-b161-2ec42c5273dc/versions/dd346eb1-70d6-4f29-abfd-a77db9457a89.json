@@ -1,0 +1,33 @@
+{
+  "id": "dd346eb1-70d6-4f29-abfd-a77db9457a89",
+  "workflowId": "d2ba9e93-bb83-422e-b161-2ec42c5273dc",
+  "name": "初始版本：仅开始和结束节点",
+  "snapshot": {
+    "nodes": [
+      {
+        "id": "node_1781611468547_start",
+        "type": "start",
+        "label": "开始",
+        "position": {
+          "x": 250,
+          "y": 50
+        },
+        "data": {
+          "inputFields": []
+        }
+      },
+      {
+        "id": "node_1781611468547_end",
+        "type": "end",
+        "label": "结束",
+        "position": {
+          "x": 250,
+          "y": 400
+        },
+        "data": {}
+      }
+    ],
+    "edges": []
+  },
+  "createdAt": 1781614502992
+}

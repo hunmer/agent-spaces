@@ -74,8 +74,14 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
   };
 
   const definitionByType = new Map(ctx.nodeDefinitions.map((definition) => [definition.type, definition]));
+  const getDefinitionPluginId = (definition: unknown): string => (
+    definition && typeof definition === 'object' && 'pluginId' in definition && typeof definition.pluginId === 'string'
+      ? definition.pluginId
+      : ''
+  );
   const searchDefinitions = (input: JsonRecord) => {
     const type = stringInputAny(input, ['type', 'nodeType', 'node_type'])?.toLowerCase();
+    const pluginId = stringInputAny(input, ['pluginId', 'plugin_id', 'plugin'])?.toLowerCase();
     const name = stringInput(input, 'name')?.toLowerCase();
     const keyword = stringInput(input, 'keyword')?.toLowerCase();
     const label = stringInput(input, 'label')?.toLowerCase();
@@ -86,6 +92,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         name ? [definition.type, definition.label].join(' ').toLowerCase().includes(name) : true,
         keyword ? searchableDefinitionText(definition).includes(keyword) : true,
         type ? definition.type.toLowerCase().includes(type) : true,
+        pluginId ? getDefinitionPluginId(definition).toLowerCase() === pluginId : true,
         label ? definition.label.toLowerCase().includes(label) : true,
         category ? definition.category.toLowerCase().includes(category) : true,
         description ? definition.description.toLowerCase().includes(description) : true,
@@ -161,6 +168,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         const defs = new Map(ctx.nodeDefinitions.map((definition) => [definition.type, definition]));
         const keyword = stringInput(record, 'keyword')?.toLowerCase();
         const type = stringInput(record, 'type')?.toLowerCase();
+        const pluginId = stringInputAny(record, ['pluginId', 'plugin_id', 'plugin'])?.toLowerCase();
         const label = stringInput(record, 'label')?.toLowerCase();
         const category = stringInput(record, 'category')?.toLowerCase();
         const description = stringInput(record, 'description')?.toLowerCase();
@@ -169,6 +177,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           const checks = [
             keyword ? [node.id, node.type, node.label, definition?.label, definition?.category, definition?.description].filter(Boolean).join(' ').toLowerCase().includes(keyword) : true,
             type ? node.type.toLowerCase().includes(type) : true,
+            pluginId ? getDefinitionPluginId(definition).toLowerCase() === pluginId : true,
             label ? node.label.toLowerCase().includes(label) : true,
             category ? (definition?.category ?? '').toLowerCase().includes(category) : true,
             description ? (definition?.description ?? '').toLowerCase().includes(description) : true,
@@ -192,9 +201,12 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'list_node_types',
-      description: '分页查询当前工作流可用的节点类型列表，返回轻量摘要；支持 keyword/type/label/category/description 筛选。需要字段、输出和示例 data 时继续调用 search_node_usage。',
+      description: '分页查询当前工作流可用的节点类型列表，返回轻量摘要；支持 pluginId/plugin_id/plugin 按插件 ID 精确筛选，也支持 keyword/type/label/category/description 筛选。需要某个插件下节点时优先传 pluginId；需要字段、输出和示例 data 时继续调用 search_node_usage。',
       inputSchema: schema({
         keyword: { type: 'string', description: '模糊搜索关键词，会同时匹配 type、label、category、description。' },
+        pluginId: { type: 'string', description: '按插件 ID 精确筛选，例如 workflow.ffmpeg、workflow.tencent-cos。' },
+        plugin_id: { type: 'string', description: '按插件 ID 精确筛选，兼容蛇形命名。' },
+        plugin: { type: 'string', description: '按插件 ID 精确筛选，pluginId 的简写。' },
         type: { type: 'string', description: '按节点类型模糊筛选。' },
         label: { type: 'string', description: '按节点标签模糊筛选。' },
         category: { type: 'string', description: '按分类筛选。' },
