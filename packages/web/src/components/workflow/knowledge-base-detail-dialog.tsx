@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Settings, Trash2, RotateCw, Plus, Loader2 } from 'lucide-react';
+import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
+import { Settings, Trash2, RotateCw } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import { cn } from '@/lib/utils';
 import type { KnowledgeBase, KbFile, KbFileIndexStatus } from '@agent-spaces/shared';
@@ -28,8 +28,8 @@ export function KnowledgeBaseDetailDialog({ workspaceId, kbId, onClose }: {
   const [files, setFiles] = useState<KbFile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [newFilePath, setNewFilePath] = useState('');
+  const [uploadFiles, setUploadFiles] = useState<FileUploadFile[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const loadingRef = useRef(false);
   const load = useCallback(async () => {
@@ -56,18 +56,18 @@ export function KnowledgeBaseDetailDialog({ workspaceId, kbId, onClose }: {
 
   const selected = files.find((f) => f.id === selectedId) ?? null;
 
-  const handleAdd = async () => {
-    const p = newFilePath.trim();
-    if (!p) return;
-    setAdding(true);
+  // 拖入即上传:FileUpload 受控 onChange 触发,只上传本次新增的文件,成功后清空并刷新列表
+  const handleFilesChange = async (next: FileUploadFile[]) => {
+    const fresh = next.filter((f) => !uploadFiles.some((u) => u.id === f.id));
+    setUploadFiles(next);
+    if (fresh.length === 0) return;
+    setUploading(true);
     try {
-      const fileName = p.split(/[\\/]/).pop() || p;
-      await sdk.knowledgeBase.addFile(workspaceId, kbId, {
-        sourceType: /^https?:\/\//i.test(p) ? 'url' : 'path', sourceRef: p, fileName,
-      });
-      setNewFilePath(''); load();
+      await Promise.all(fresh.map((f) => sdk.knowledgeBase.uploadFile(workspaceId, kbId, f.file)));
+      setUploadFiles([]);
+      load();
     } catch (e) { window.alert((e as Error).message); }
-    finally { setAdding(false); }
+    finally { setUploading(false); }
   };
 
   const handleReindex = async (f: KbFile) => { await sdk.knowledgeBase.reindexFile(workspaceId, kbId, f.id); load(); };
@@ -92,12 +92,12 @@ export function KnowledgeBaseDetailDialog({ workspaceId, kbId, onClose }: {
           </DialogHeader>
           <div className="flex min-h-0 flex-1 gap-2">
             <div className="flex w-64 flex-col gap-2">
-              <div className="flex flex-col gap-1 rounded-md border p-2">
-                <Input className="h-7 text-xs" placeholder={t('knowledgeBase.filePathPlaceholder')} value={newFilePath} onChange={(e) => setNewFilePath(e.target.value)} />
-                <Button size="sm" className="h-7 text-xs" onClick={handleAdd} disabled={adding || !newFilePath.trim()}>
-                  {adding ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}{t('knowledgeBase.addFile')}
-                </Button>
-              </div>
+              <FileUpload
+                value={uploadFiles}
+                onChange={handleFilesChange}
+                disabled={uploading}
+                placeholder={t('knowledgeBase.dropFiles')}
+              />
               <div className="min-h-0 flex-1 overflow-auto rounded-md border">
                 {files.length === 0 ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">{t('knowledgeBase.noFiles')}</div>
@@ -130,7 +130,7 @@ export function KnowledgeBaseDetailDialog({ workspaceId, kbId, onClose }: {
         </DialogContent>
       </Dialog>
       {kb && settingsOpen && (
-        <KnowledgeBaseSettingsDialog workspaceId={workspaceId} kb={kb} onClose={() => setSettingsOpen(false)} />
+        <KnowledgeBaseSettingsDialog workspaceId={workspaceId} kb={kb} onClose={() => setSettingsOpen(false)} onSaved={load} />
       )}
     </>
   );

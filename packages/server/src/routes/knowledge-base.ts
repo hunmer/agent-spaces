@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import multer from 'multer';
 import * as store from '../storage/knowledge-base-store.js';
 import * as kbService from '../services/knowledge-base.js';
 import { getDataDir } from '../storage/json-store.js';
 import { resolve } from 'node:path';
 
 const router = Router({ mergeParams: true });
+// memoryStorage:文件内容留在内存 buffer,交给 service 写入 kb 存储目录(与 app.ts/data.ts 一致)
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
 const wid = (req: Request): string => req.params.id as string;
 
 // 把 path 来源解析为绝对路径并校验落在 dataDir 之下，防越界
@@ -77,12 +80,22 @@ router.put('/:kbId/embedding-model', (req, res) => {
 // Files
 router.get('/:kbId/files', (req, res) => res.json(store.listFiles(wid(req), req.params.kbId)));
 
-router.post('/:kbId/files', async (req, res) => {
+router.post('/:kbId/files', upload.single('file'), async (req: Request<{ id: string; kbId: string }>, res: Response) => {
   const kbId = req.params.kbId;
   if (!store.getKb(wid(req), kbId)) return res.status(404).json({ error: 'Not found' });
-  if (req.is('multipart/form-data')) {
-    return res.status(415).json({ error: '请使用 JSON body { sourceType, sourceRef, fileName }' });
+
+  // multipart 上传分支:详情对话框 FileUpload 拖拽上传(buffer 来自 memoryStorage)
+  if (req.file) {
+    try {
+      const file = await kbService.addFileToKnowledgeBase(wid(req), kbId, {
+        sourceType: 'upload', sourceRef: req.file.originalname,
+        fileName: req.file.originalname, buffer: req.file.buffer,
+      }, { background: true });
+      return res.status(201).json(file);
+    } catch (e) { return res.status(400).json({ error: (e as Error).message }); }
   }
+
+  // JSON path/url 分支
   const parsed = addFileSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
   try {

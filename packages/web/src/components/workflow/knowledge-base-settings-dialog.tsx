@@ -10,10 +10,11 @@ import { sdk } from '@/lib/sdk';
 import { useLLMStore } from '@/stores/llm';
 import type { KnowledgeBase } from '@agent-spaces/shared';
 
-export function KnowledgeBaseSettingsDialog({ workspaceId, kb, onClose }: {
+export function KnowledgeBaseSettingsDialog({ workspaceId, kb, onClose, onSaved }: {
   workspaceId: string;
   kb: KnowledgeBase;
   onClose: () => void;
+  onSaved?: () => void;
 }) {
   const t = useTranslations();
   const { models } = useLLMStore();
@@ -38,6 +39,7 @@ export function KnowledgeBaseSettingsDialog({ workspaceId, kb, onClose }: {
     try {
       await sdk.knowledgeBase.update(workspaceId, kb.id, { chunkSize, chunkOverlap });
       await sdk.knowledgeBase.bindEmbeddingModel(workspaceId, kb.id, embeddingModelId);
+      onSaved?.();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

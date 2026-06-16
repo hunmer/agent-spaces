@@ -8,6 +8,7 @@
   "empty": "No knowledge bases",
   "namePlaceholder": "Knowledge base name",
   "filePathPlaceholder": "File path or URL",
+  "dropFiles": "Drop files here, or click to select",
   "confirmDelete": "Delete this knowledge base?",
   "confirmDeleteFile": "Delete this file?",
   "pickerEmpty": "No knowledge base selected",

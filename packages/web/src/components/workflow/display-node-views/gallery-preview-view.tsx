@@ -28,6 +28,9 @@ export function GalleryPreviewView({ data }: DisplayNodeViewProps) {
     >
       {visible.map((item, index) => {
         const last = index === visible.length - 1 && items.length > visible.length;
+        const imgSrc = item.thumb || item.src;
+        const isBase64 = imgSrc.startsWith('data:');
+        const alt = isBase64 ? '' : (item.caption || imgSrc);
         return (
           <button
             key={item.id || `${item.src}-${index}`}
@@ -37,7 +40,7 @@ export function GalleryPreviewView({ data }: DisplayNodeViewProps) {
               openMediaGallery(mediaItems, index);
             }}
             className="relative min-h-0 min-w-0 overflow-hidden rounded border border-border bg-muted transition-opacity hover:opacity-80"
-            title={item.caption || item.src}
+            title={item.caption || ''}
           >
             {item.type === 'video' ? (
               <span className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -45,8 +48,9 @@ export function GalleryPreviewView({ data }: DisplayNodeViewProps) {
               </span>
             ) : (
               <img
-                src={item.thumb || item.src}
-                alt={item.caption || ''}
+                src={imgSrc}
+                alt={alt}
+                draggable={false}
                 className="h-full w-full object-cover"
               />
             )}

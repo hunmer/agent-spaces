@@ -29,6 +29,13 @@ export function createKnowledgeBaseApi(http: HttpClient) {
     addFile: (workspaceId: string, kbId: string, body: KbAddFileBody): Promise<KbFile> =>
       http.post(`/api/workspaces/${workspaceId}/knowledge-bases/${kbId}/files`, body),
 
+    /** 上传浏览器 File(走 multipart/form-data,字段名 file),服务端走 sourceType='upload' 分支 */
+    uploadFile: (workspaceId: string, kbId: string, file: File): Promise<KbFile> => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return http.upload(`/api/workspaces/${workspaceId}/knowledge-bases/${kbId}/files`, fd);
+    },
+
     getFile: (workspaceId: string, kbId: string, fileId: string): Promise<KbFile> =>
       http.get(`/api/workspaces/${workspaceId}/knowledge-bases/${kbId}/files/${fileId}`),
 

@@ -8,6 +8,7 @@
   "empty": "暂无知识库",
   "namePlaceholder": "知识库名称",
   "filePathPlaceholder": "文件路径或 URL",
+  "dropFiles": "拖拽文件到此处，或点击选择",
   "confirmDelete": "确定删除该知识库？",
   "confirmDeleteFile": "确定删除该文件？",
   "pickerEmpty": "未选择知识库",
