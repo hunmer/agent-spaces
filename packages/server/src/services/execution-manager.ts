@@ -101,10 +101,39 @@ export function __normalizeExecutionSnapshotNodesWithConfigForTest(
   return normalizeExecutionSnapshotNodes(nodes, (_node, data) => resolveSnapshotDataForTest(data, config));
 }
 
+export function __isWorkflowEdgeActiveForTest(
+  edge: WorkflowEdge,
+  edges: WorkflowEdge[],
+  activeHandle: string | undefined,
+): boolean {
+  return isBranchActiveEdge(edge, edges, activeHandle);
+}
+
 const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
 const DELAY_NODE_MIN_MS = 100;
 const DELAY_NODE_MAX_MS = 30_000;
+
+function getBranchComparableSourceHandle(edge: WorkflowEdge, edges: WorkflowEdge[]): string | null | undefined {
+  if (edge.sourceHandle) return edge.sourceHandle;
+  const caseEdges = edges.filter(candidate => (
+    candidate.source === edge.source
+    && !candidate.sourceHandle
+  ));
+  const caseIndex = caseEdges.findIndex(candidate => (
+    candidate === edge || (candidate.id !== undefined && candidate.id === edge.id)
+  ));
+  return caseIndex >= 0 ? `case-${caseIndex}` : edge.sourceHandle;
+}
+
+function isBranchActiveEdge(
+  edge: WorkflowEdge,
+  edges: WorkflowEdge[],
+  activeHandle: string | undefined,
+): boolean {
+  if (activeHandle === undefined) return true;
+  return getBranchComparableSourceHandle(edge, edges) === activeHandle;
+}
 
 function normalizeExecutionSnapshotNodes(
   nodes: WorkflowNode[],
@@ -1350,7 +1379,7 @@ export class ExecutionManager {
     if (incoming.length === 0) return true;
     for (const edge of incoming) {
       const activeHandle = this.getActiveBranches(session).get(edge.source);
-      if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
+      if (!isBranchActiveEdge(edge, edges, activeHandle)) continue;
       if (this.isNodeReachable(session, edge.source, seen, edges)) return true;
     }
     return false;
@@ -1373,7 +1402,7 @@ export class ExecutionManager {
 
   private isActiveEdge(session: ExecutionSession, edge: WorkflowEdge): boolean {
     const activeHandle = this.getActiveBranches(session).get(edge.source);
-    return activeHandle === undefined || edge.sourceHandle === activeHandle;
+    return isBranchActiveEdge(edge, session.edges, activeHandle);
   }
 
   private isNodeCompleted(

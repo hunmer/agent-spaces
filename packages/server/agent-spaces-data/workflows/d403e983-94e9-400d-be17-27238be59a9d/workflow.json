@@ -11,21 +11,132 @@
         "x": 250,
         "y": 50
       },
-      "data": {}
+      "data": {
+        "inputFields": [
+          {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "required": true,
+            "children": []
+          }
+        ]
+      }
     },
     {
       "id": "node_1781689662315_end",
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 270,
-        "y": 525
+        "x": 990,
+        "y": 345
       },
       "data": {}
+    },
+    {
+      "id": "node_1781690113792_h1uuil",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 285,
+        "y": 195
+      },
+      "data": {
+        "conditions": [
+          {
+            "id": "cond_1781690134415_kb2q",
+            "variable": "{{ __data__[\"node_1781689662315_start\"].name }}",
+            "field": "{{ __data__[\"node_1781689662315_start\"].name }}",
+            "operator": "equals",
+            "value": "a"
+          },
+          {
+            "id": "cond_1781690148328_zw10",
+            "variable": "{{ __data__[\"node_1781689662315_start\"].name }}",
+            "field": "{{ __data__[\"node_1781689662315_start\"].name }}",
+            "operator": "equals",
+            "value": "b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781690143120_h89mdl",
+      "type": "toast",
+      "label": "nodes.toast.label",
+      "position": {
+        "x": 615,
+        "y": 135
+      },
+      "data": {
+        "type": "info",
+        "sourceNodeId": "node_1781690113792_h1uuil",
+        "sourceHandle": "case-0",
+        "message": "a"
+      }
+    },
+    {
+      "id": "node_1781690169183_dfwopn",
+      "type": "toast",
+      "label": "nodes.toast.label",
+      "position": {
+        "x": 645,
+        "y": 255
+      },
+      "data": {
+        "type": "info",
+        "sourceNodeId": "node_1781690113792_h1uuil",
+        "sourceHandle": "case-1",
+        "message": "b"
+      }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1781689662315_start-source-node_1781690113792_h1uuil-target",
+      "source": "node_1781689662315_start",
+      "target": "node_1781690113792_h1uuil",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781690113792_h1uuil-case-0-node_1781690143120_h89mdl-target",
+      "source": "node_1781690113792_h1uuil",
+      "target": "node_1781690143120_h89mdl",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1781690113792_h1uuil-case-1-node_1781690169183_dfwopn-target",
+      "source": "node_1781690113792_h1uuil",
+      "target": "node_1781690169183_dfwopn",
+      "sourceHandle": "case-1"
+    },
+    {
+      "id": "e-node_1781690113792_h1uuil-default-node_1781689662315_end-target",
+      "source": "node_1781690113792_h1uuil",
+      "target": "node_1781689662315_end",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781690143120_h89mdl-source-node_1781689662315_end-target",
+      "source": "node_1781690143120_h89mdl",
+      "target": "node_1781689662315_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781690169183_dfwopn-source-node_1781689662315_end-target",
+      "source": "node_1781690169183_dfwopn",
+      "target": "node_1781689662315_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1781689662320,
-  "updatedAt": 1781689677311,
-  "published": false
+  "updatedAt": 1781690489337,
+  "published": false,
+  "lastRunAt": 1781690493291,
+  "variables": [],
+  "groups": []
 }

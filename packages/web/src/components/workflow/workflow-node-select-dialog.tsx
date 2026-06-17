@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { NodeTypeDefinition, Workflow } from '@agent-spaces/shared';
 import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
+import { toPinyinSearchKey } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -46,7 +47,14 @@ export function WorkflowNodeSelectDialog({
   const filteredNodes = useMemo(() => {
     const query = searchQuery.trim();
     if (query) {
-      return getCreatableNodes(workflow, searchResults);
+      // 文本匹配（label/type）+ 拼音匹配（label 全拼/首字母），结果合并去重
+      const q = query.toLowerCase();
+      const textMatches = getCreatableNodes(workflow, searchResults);
+      const matchedTypes = new Set(textMatches.map(node => node.type));
+      const pinyinMatches = getCreatableNodes(workflow, Object.values(allCategories).flat()).filter(
+        node => !matchedTypes.has(node.type) && toPinyinSearchKey(node.label).includes(q),
+      );
+      return [...textMatches, ...pinyinMatches];
     }
 
     if (selectedCategory) {

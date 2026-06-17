@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  __isWorkflowEdgeActiveForTest,
   __normalizeExecutionSnapshotNodesForTest,
   __normalizeExecutionSnapshotNodesWithConfigForTest,
 } from '../src/services/execution-manager.js';
@@ -49,4 +50,14 @@ test('execution snapshot node data resolves workflow config templates', () => {
 
   assert.equal(node.data.apiKey, 'configured-key');
   assert.equal(node.data.baseUrl, 'https://dashscope.aliyuncs.com');
+});
+
+test('legacy switch edge without sourceHandle is active for matching case branch', () => {
+  const edges = [
+    { id: 'edge_case_0', source: 'switch_1', target: 'openai_1' },
+    { id: 'edge_default', source: 'switch_1', target: 'end_1', sourceHandle: 'default' },
+  ];
+
+  assert.equal(__isWorkflowEdgeActiveForTest(edges[0], edges, 'case-0'), true);
+  assert.equal(__isWorkflowEdgeActiveForTest(edges[1], edges, 'case-0'), false);
 });

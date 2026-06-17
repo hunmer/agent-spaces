@@ -32,7 +32,7 @@ export const flowControlNodes: NodeTypeDefinition[] = [
     icon: 'LogOut',
     description: 'nodes.end.description',
     properties: [],
-    handles: { source: false, target: true },
+    handles: { source: false, target: true, connectionCount: UNLIMITED_CONNECTION_COUNT },
     singleton: true,
   },
   {

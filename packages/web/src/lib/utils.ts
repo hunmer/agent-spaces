@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import Pinyin from "tiny-pinyin"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -47,6 +48,38 @@ export function textColorClass(text: string): string {
 
 export function textToColor(text: string): string {
   return FILL_COLORS[textHash(text) % FILL_COLORS.length]
+}
+
+/**
+ * 生成用于中文拼音搜索的匹配键。
+ *
+ * 将文本拆解为 token，把「小写原文」「中文全拼」「首字母」三类信息拼接在一起，
+ * 例如 "AI对话" → "ai对话 aiduihua aidh"。调用方用
+ * `toPinyinSearchKey(text).includes(query.toLowerCase())` 即可同时支持按原文、
+ * 全拼（duihua）和首字母（dh）搜索中文标签。
+ *
+ * 当运行环境不支持 Intl（`Pinyin.isSupported()` 为 false）时，回退为纯原文小写。
+ */
+export function toPinyinSearchKey(text: string): string {
+  if (!text) return '';
+  const lower = text.toLowerCase();
+  if (!Pinyin.isSupported()) return lower;
+
+  const tokens = Pinyin.parse(text);
+  let full = '';
+  let initials = '';
+  for (const token of tokens) {
+    // type: 1-拉丁/数字, 2-中文(已转拼音), 3-标点等其它
+    if (token.type === 2) {
+      const pinyin = token.target.toLowerCase();
+      full += pinyin;
+      initials += pinyin.charAt(0);
+    } else {
+      full += token.source.toLowerCase();
+      if (token.type === 1) initials += token.source.charAt(0).toLowerCase();
+    }
+  }
+  return `${lower} ${full} ${initials}`;
 }
 
 export async function copyToClipboard(text: string): Promise<void> {

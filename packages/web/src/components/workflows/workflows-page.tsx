@@ -16,6 +16,7 @@ import { WorkflowInfoDialog } from '@/components/workflow/workflow-info-dialog';
 import { WorkflowCard } from '@/components/workflows/workflow-card';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { sdk } from '@/lib/sdk';
+import { toPinyinSearchKey } from '@/lib/utils';
 import { workflowApi } from '@/lib/workflow-api';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { nativeNavigate } from '@/lib/navigate';
@@ -47,7 +48,8 @@ export function WorkflowsPage() {
 
   const filteredWorkflows = useMemo(() => {
     return workflows.filter(wf => {
-      const matchesSearch = !search || wf.name.toLowerCase().includes(search.toLowerCase()) || wf.description?.toLowerCase().includes(search.toLowerCase());
+      const q = search.toLowerCase();
+      const matchesSearch = !search || wf.name.toLowerCase().includes(q) || wf.description?.toLowerCase().includes(q) || toPinyinSearchKey(wf.name).includes(q) || toPinyinSearchKey(wf.description ?? '').includes(q);
       const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => wf.tags?.includes(tag));
       return matchesSearch && matchesTags;
     }).sort((a, b) => {

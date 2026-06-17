@@ -73,8 +73,8 @@
       "type": "openai_edit_image",
       "label": "OpenAI 图片编辑",
       "position": {
-        "x": 0,
-        "y": 812
+        "x": -195,
+        "y": 780
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.openai\"][\"apiKey\"] }}",
@@ -382,15 +382,22 @@
       "id": "e-node_1781686908308_6flfam-source-node_1781681597052_ts6ynb-target",
       "source": "node_1781686908308_6flfam",
       "target": "node_1781681597052_ts6ynb"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-default-node_1781681576137_end-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1781681576137_end",
+      "sourceHandle": "default",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1781681576142,
-  "updatedAt": 1781689588623,
+  "updatedAt": 1781690716281,
   "published": true,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.tencent-cos"
   ],
-  "lastRunAt": 1781689595698,
+  "lastRunAt": 1781691016249,
   "groups": []
 }
