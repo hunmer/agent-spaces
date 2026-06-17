@@ -2,15 +2,9 @@ import { useEffect, useState } from 'react';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-  Button, Input, Textarea, Label, Badge, FileUpload,
+  Button, Input, Label, Badge, FileUpload,
 } = window.AgentSpacesUI;
 const { Loader2, X } = window.AgentSpacesUI;
-
-const TYPES = [
-  { value: 'text', label: '文本' },
-  { value: 'audio', label: '音频' },
-  { value: 'video', label: '视频' },
-];
 
 const EMPTY = { title: '', type: 'text', content: '', transcription: '', tags: [] };
 
@@ -44,19 +38,21 @@ export default function CopywritingForm({ open, onOpenChange, editing, onSubmit,
     if (t && !form.tags.includes(t)) set({ tags: [...form.tags, t] });
     setTagInput('');
   };
-  const isMedia = form.type === 'audio' || form.type === 'video';
 
-  const upFile = uploadItems[0]?.file;
-  const uploading = !!upFile?.uploading;
+  const mediaFiles = uploadItems.map((item) => item.file).filter(Boolean);
+  const uploading = mediaFiles.some((file) => file.uploading);
 
   const submit = async () => {
     setErr('');
     if (!form.title.trim()) { setErr('请输入标题'); return; }
-    if (!isEdit && isMedia) {
-      if (!upFile) { setErr('请选择音视频文件'); return; }
-      if (upFile.uploading) { setErr('文件上传中，请稍候'); return; }
-      if (upFile.uploadError) { setErr('文件上传失败：' + upFile.uploadError); return; }
-      if (!upFile.uploadedPath) { setErr('文件尚未上传完成'); return; }
+    if (!isEdit) {
+      if (mediaFiles.length === 0) { setErr('请选择音视频文件'); return; }
+      const uploadingFile = mediaFiles.find((file) => file.uploading);
+      if (uploadingFile) { setErr('文件上传中，请稍候'); return; }
+      const failedFile = mediaFiles.find((file) => file.uploadError);
+      if (failedFile) { setErr('文件上传失败：' + failedFile.uploadError); return; }
+      const pendingFile = mediaFiles.find((file) => !file.uploadedPath);
+      if (pendingFile) { setErr('文件尚未上传完成'); return; }
     }
     setBusy(true);
     try {
@@ -66,9 +62,7 @@ export default function CopywritingForm({ open, onOpenChange, editing, onSubmit,
         content: form.content,
         transcription: form.transcription,
         tags: form.tags.join(','),
-        uploadedPath: !isEdit ? upFile?.uploadedPath : null,
-        uploadedHttpPath: !isEdit ? (upFile?.uploadedHttpPath || upFile?.uploadedUrl) : null,
-        mediaFile: !isEdit ? upFile : null,
+        mediaFiles: !isEdit ? mediaFiles : [],
       });
       onOpenChange(false);
     } catch (e) {
@@ -98,42 +92,7 @@ export default function CopywritingForm({ open, onOpenChange, editing, onSubmit,
             <Input value={form.title} onChange={(e) => set({ title: e.target.value })} placeholder="输入文案标题" className="mt-1" />
           </div>
 
-          <div>
-            <Label>类型</Label>
-            <div className="mt-1 flex gap-1.5">
-              {TYPES.map((t) => {
-                const active = form.type === t.value;
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    disabled={isEdit}
-                    onClick={() => { set({ type: t.value }); setUploadItems([]); }}
-                    className={`px-3 py-1 rounded-md text-sm border transition-colors disabled:opacity-50 ${
-                      active ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {!isMedia && (
-            <div>
-              <Label>内容</Label>
-              <Textarea
-                value={form.content}
-                onChange={(e) => set({ content: e.target.value })}
-                rows={6}
-                placeholder="输入文案内容"
-                className="mt-1"
-              />
-            </div>
-          )}
-
-          {isMedia && !isEdit && (
+          {!isEdit && (
             <div>
               <Label>选择文件</Label>
               <div className="mt-1">
@@ -141,25 +100,11 @@ export default function CopywritingForm({ open, onOpenChange, editing, onSubmit,
                   value={uploadItems}
                   onChange={setUploadItems}
                   autoUpload
-                  maxFiles={1}
-                  accept={form.type === 'video' ? { 'video/*': [] } : { 'audio/*': [] }}
+                  accept={{ 'audio/*': [], 'video/*': [] }}
                   placeholder="拖拽音视频文件到此处，或点击选择"
                 />
               </div>
               {uploading && <p className="mt-1 text-xs text-primary">上传中…</p>}
-            </div>
-          )}
-
-          {isMedia && isEdit && (
-            <div>
-              <Label>转写文稿</Label>
-              <Textarea
-                value={form.transcription}
-                onChange={(e) => set({ transcription: e.target.value })}
-                rows={8}
-                placeholder="转写文字（可编辑）"
-                className="mt-1"
-              />
             </div>
           )}
 

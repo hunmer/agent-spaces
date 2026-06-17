@@ -227,8 +227,9 @@ export default function App() {
       .finally(refreshAll);
   };
 
+  const getMediaType = (file) => (file?.type?.startsWith('video/') ? 'video' : 'audio');
+
   const handleSubmit = async (data) => {
-    const isMedia = data.type === 'audio' || data.type === 'video';
     if (editing) {
       await dbq.update(editing.id, {
         title: data.title,
@@ -243,35 +244,25 @@ export default function App() {
       return;
     }
 
-    if (!isMedia) {
+    const { provider } = await readUploadSettings();
+    const files = Array.isArray(data.mediaFiles) ? data.mediaFiles : [];
+    for (const file of files) {
+      const type = getMediaType(file);
+      const cloudUrl = await uploadToCloud(file.uploadedPath, provider, file.name);
+      const duration = await getMediaDuration(file);
       const id = await dbq.add({
-        title: data.title,
-        type: 'text',
-        content: data.content,
+        title: files.length > 1 ? `${data.title}-${file.name}` : data.title,
+        type,
+        media_url: file.uploadedHttpPath || file.uploadedUrl || '',
+        oss_url: cloudUrl,
+        duration,
         tags: data.tags,
-        status: 'done',
+        status: 'transcribing',
         kb_status: 'pending',
       });
-      syncToKnowledgeBase({ id, title: data.title, type: 'text', content: data.content });
-      refreshAll();
-      return;
+      runTranscribe(id, cloudUrl, files.length > 1 ? `${data.title}-${file.name}` : data.title, type);
     }
-
-    const { provider } = await readUploadSettings();
-    const cloudUrl = await uploadToCloud(data.uploadedPath, provider, data.mediaFile?.name);
-    const duration = await getMediaDuration(data.mediaFile);
-    const id = await dbq.add({
-      title: data.title,
-      type: data.type,
-      media_url: data.uploadedHttpPath || '',
-      oss_url: cloudUrl,
-      duration,
-      tags: data.tags,
-      status: 'transcribing',
-      kb_status: 'pending',
-    });
     refreshAll();
-    runTranscribe(id, cloudUrl, data.title, data.type);
   };
 
   const handleDelete = async (item) => {
@@ -412,7 +403,16 @@ export default function App() {
         />
 
         {viewMode === 'manage' ? (
-          <div className="mt-4">
+          <>
+            {/* mini-app 在宿主 document 内直接渲染，不走 Tailwind JIT 扫描，
+                任意值 / 响应式 class 不会被编译，故用内联 <style> 定义滚动容器与两列瀑布流 */}
+            <style>{`
+              .cw-scroll{max-height:calc(100vh - 125px);overflow-y:auto;padding-right:.25rem}
+              .cw-grid{column-count:1;column-gap:.75rem}
+              .cw-grid>*{break-inside:avoid}
+              @media(min-width:640px){.cw-grid{column-count:2}}
+            `}</style>
+            <div className="mt-4 cw-scroll">
             {!dbq.ready ? (
               <div className="py-16 text-center text-sm text-muted-foreground">加载中...</div>
             ) : dbq.error ? (
@@ -424,7 +424,7 @@ export default function App() {
                 <p className="text-xs text-muted-foreground">点击「新建文案」开始</p>
               </div>
             ) : (
-              <div className="columns-1 sm:columns-2 xl:columns-3 gap-3">
+              <div className="cw-grid">
                 {dbq.items.map((it) => (
                   <CopywritingCard
                     key={it.id}
@@ -440,6 +440,7 @@ export default function App() {
               </div>
             )}
           </div>
+          </>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 items-start">
             <CreationPanel
@@ -460,12 +461,12 @@ export default function App() {
               onOpenGroupDialog={() => { setReferenceDialogItemId(''); setReferenceDialogOpen(true); }}
               creationRunning={creationRunning}
             />
-            <div className="flex flex-col rounded-lg border bg-card p-3" style={{ maxHeight: 'calc(100vh - 125px)' }}>
+            <div className="flex flex-col rounded-lg border bg-card p-3" style={{ maxHeight: 'calc(100vh - 125px)', overflowY: 'scroll' }}>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-medium">结果卡片列表</div>
                 {creationRunning && <Badge variant="secondary">生成中</Badge>}
               </div>
-              <div className="mt-3 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto pr-1" style={{ minHeight: 0 }}>
+              <div className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2" style={{ minHeight: 0 }}>
                 {creationResults.length === 0 && !creationRunning ? (
                   <div className="py-10 text-center text-sm text-muted-foreground">暂无结果</div>
                 ) : (
