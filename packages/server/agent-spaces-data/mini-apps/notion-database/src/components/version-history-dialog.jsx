@@ -75,7 +75,14 @@ export function VersionHistoryDialog({ open, onClose, nodeId, onNodeChanged }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="!w-[min(760px,calc(100vw-2rem))] !max-w-[min(760px,calc(100vw-2rem))] max-h-[80vh] flex flex-col gap-0 overflow-hidden p-0">
+      <DialogContent
+        className="flex flex-col gap-0 overflow-hidden p-0"
+        style={{
+          width: 'min(760px, calc(100vw - 2rem))',
+          maxWidth: 'min(760px, calc(100vw - 2rem))',
+          maxHeight: '80vh',
+        }}
+      >
         <DialogHeader className="shrink-0 border-b border-border px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -88,7 +95,7 @@ export function VersionHistoryDialog({ open, onClose, nodeId, onNodeChanged }) {
 
         <div className="flex-1 min-h-0 flex">
           {/* 左：版本列表 */}
-          <div className="w-[220px] shrink-0 border-r border-border overflow-y-auto">
+          <div className="shrink-0 border-r border-border overflow-y-auto" style={{ width: 220 }}>
             {loading ? (
               <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
                 {Loader2 ? <Loader2 className="size-3 animate-spin" /> : null}加载中…
