@@ -164,6 +164,29 @@ function compactObject(value: JsonRecord): JsonRecord {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
 }
 
+function getOutputFieldKey(field: unknown): string | undefined {
+  if (!field || typeof field !== 'object' || Array.isArray(field)) return undefined;
+  const key = (field as Record<string, unknown>).key;
+  return typeof key === 'string' && key.trim() ? key : undefined;
+}
+
+function isOutputFieldRequired(field: unknown): boolean {
+  return Boolean(field && typeof field === 'object' && !Array.isArray(field) && (field as Record<string, unknown>).required === true);
+}
+
+function getRequiredInputKeys(node: WorkflowNode | undefined): string[] {
+  if (!node || !Array.isArray(node.data?.inputFields)) return [];
+  return node.data.inputFields
+    .filter(isOutputFieldRequired)
+    .map(getOutputFieldKey)
+    .filter((key): key is string => Boolean(key));
+}
+
+function missingRequiredKeys(keys: string[], value: unknown): string[] {
+  const record = asRecord(value);
+  return keys.filter((key) => isRequiredValueMissing(record[key]));
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -456,6 +479,11 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
 
         const record = asRecord(input);
         const startNodeId = stringInputAny(record, ['startNodeId', 'start_node_id']);
+        const startNode = startNodeId
+          ? draft.nodes.find((node) => node.id === startNodeId)
+          : draft.nodes.filter((node) => node.type === 'start').length === 1
+            ? draft.nodes.find((node) => node.type === 'start')
+            : undefined;
         const snakeNodeIds = arrayStringInput(record.node_ids);
         const nodeIds = snakeNodeIds.length > 0 ? snakeNodeIds : arrayStringInput(record.nodeIds);
         const workflowInput = objectInputAny(record, ['workflow_input', 'workflowInput', 'input']);
@@ -514,22 +542,41 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         ]));
         const skippedOverrideNodeIds = overrideNodeIds.filter((nodeId) => steps.some((step) => step.nodeId === nodeId && step.status === 'skipped'));
         const executedOrMockedNodeIds = steps.filter((step) => step.status === 'completed').map((step) => step.nodeId);
+        const endNodeIds = draft.nodes.filter((node) => node.type === 'end').map((node) => node.id);
+        const completedEndNodeIds = endNodeIds.filter((nodeId) => executedOrMockedNodeIds.includes(nodeId));
+        const missingStartInputs = missingRequiredKeys(getRequiredInputKeys(startNode), workflowInput);
+        const skippedStepCount = steps.filter((step) => step.status === 'skipped').length;
         const success = !timedOut
           && status === 'completed'
+          && missingStartInputs.length === 0
+          && (endNodeIds.length === 0 || completedEndNodeIds.length > 0)
           && skippedOverrideNodeIds.length === 0
           && (overrideNodeIds.length === 0 || overrideNodeIds.some((nodeId) => executedOrMockedNodeIds.includes(nodeId)));
+        const failureReasons = [
+          ...(timedOut ? ['dry_run timed out'] : []),
+          ...(status !== 'completed' ? [`workflow status is ${status}`] : []),
+          ...(missingStartInputs.length > 0 ? [`missing required workflow_input fields: ${missingStartInputs.join(', ')}`] : []),
+          ...(endNodeIds.length > 0 && completedEndNodeIds.length === 0 ? ['no end node completed; workflow likely took no valid branch'] : []),
+          ...(skippedOverrideNodeIds.length > 0 ? [`override nodes were skipped: ${skippedOverrideNodeIds.join(', ')}`] : []),
+          ...(overrideNodeIds.length > 0 && !overrideNodeIds.some((nodeId) => executedOrMockedNodeIds.includes(nodeId)) ? ['none of the requested override nodes were exercised'] : []),
+        ];
         return {
           success,
           message: timedOut
             ? `Dry run is still running after ${timeoutMs}ms.`
             : success
               ? `Dry run finished with status: ${status}.`
-              : `Dry run finished with status: ${status}, but requested override nodes were not exercised.`,
+              : `Dry run finished with status: ${status}, but validation failed: ${failureReasons.join('; ')}.`,
           execution_id: result.executionId,
           status,
           timed_out: timedOut,
+          failure_reasons: failureReasons,
+          missing_start_inputs: missingStartInputs,
           override_node_ids: overrideNodeIds,
           skipped_override_node_ids: skippedOverrideNodeIds,
+          end_node_ids: endNodeIds,
+          completed_end_node_ids: completedEndNodeIds,
+          skipped_step_count: skippedStepCount,
           effective_workflow_input: workflowInput,
           effective_inputs: compactObject(dryRunInputs),
           effective_outputs: compactObject(dryRunOutputs),
