@@ -27,7 +27,9 @@
     "export": "Export",
     "delete": "Delete",
     "nodes": "{count} nodes",
-    "defaultInitial": "N"
+    "defaultInitial": "N",
+    "published": "Published",
+    "unpublished": "Private"
   },
   "pluginCard": {
     "added": "Added",
@@ -324,11 +326,15 @@
     "tagPlaceholder": "Enter tag and press Enter",
     "addTag": "Add",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "publishedLabel": "Publish",
+    "publishedHint": "Once published, the workflow is accessible via its share link. When private, opening the share page shows a placeholder."
   },
   "share": {
     "missingId": "Missing workflow_id parameter",
     "notFound": "Workflow not found",
+    "unpublishedTitle": "This workflow is not yet available",
+    "unpublishedHint": "The author hasn't published this workflow yet, so it can't be accessed.",
     "nodes": "{count} nodes",
     "params": "Execution Parameters",
     "execute": "Run",

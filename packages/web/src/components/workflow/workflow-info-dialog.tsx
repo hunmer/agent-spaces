@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { TagInput } from '@/components/common/tag-input';
 import { AvatarUploader } from '@/components/common/avatar-uploader';
+import { Switch } from '@/components/ui/switch';
 import type { Workflow } from '@agent-spaces/shared';
 
 interface WorkflowInfoDialogProps {
@@ -29,6 +30,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
   const [avatarUrl, setAvatarUrl] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [published, setPublished] = useState(false);
 
   useEffect(() => {
     if (workflow) {
@@ -37,6 +39,9 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
       setAvatarUrl('');
       setDescription(workflow.description || '');
       setTags(workflow.tags || []);
+      setPublished(workflow.published ?? false);
+    } else {
+      setPublished(false);
     }
   }, [workflow, open]);
 
@@ -46,6 +51,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
       icon: icon || undefined,
       description: description.trim() || undefined,
       tags: tags.length > 0 ? tags : undefined,
+      published,
     });
     onOpenChange(false);
   };
@@ -96,6 +102,14 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
               placeholder={t('tagPlaceholder')}
               addLabel={t('addTag')}
             />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-xs font-medium">{t('publishedLabel')}</div>
+              <div className="text-[11px] text-muted-foreground">{t('publishedHint')}</div>
+            </div>
+            <Switch checked={published} onCheckedChange={setPublished} />
           </div>
         </div>
 

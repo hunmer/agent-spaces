@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Pencil, Copy, Trash2, MoreVertical, Download } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Pencil, Copy, Trash2, MoreVertical, Download, Globe, Lock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
@@ -96,6 +97,17 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
             </span>
           )}
           <CardTitle className="text-sm truncate">{workflow.name}</CardTitle>
+          {workflow.published ? (
+            <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">
+              <Globe className="h-3 w-3" />
+              {t('card.published')}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] text-muted-foreground" title={t('card.unpublished')}>
+              <Lock className="h-3 w-3" />
+              {t('card.unpublished')}
+            </Badge>
+          )}
         </div>
         {workflow.description && (
           <CardDescription className="text-xs line-clamp-2">{workflow.description}</CardDescription>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Toolbar from './components/Toolbar';
+import CreationPanel from './components/CreationPanel';
 import CopywritingCard from './components/CopywritingCard';
 import CopywritingForm from './components/CopywritingForm';
 import PlayerDialog from './components/PlayerDialog';
@@ -303,21 +304,6 @@ export default function App() {
           onClearFilter={clearFilter}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          referenceGroups={referenceGroups}
-          selectedGroupId={selectedGroupId}
-          onSelectedGroupIdChange={setSelectedGroupId}
-          creationAgentMeta={creationAgentMeta}
-          creationAgentLabel={creationAgentMeta?.name || ''}
-          onPickAgent={openAgentPicker}
-          creationInput={creationInput}
-          onCreationInputChange={setCreationInput}
-          creationOutputCount={creationOutputCount}
-          onCreationOutputCountChange={setCreationOutputCount}
-          creationGroupIds={currentGroup ? [currentGroup.id] : []}
-          onCreationGroupIdsChange={() => {}}
-          referenceItems={referenceItems}
-          onRunCreation={runCreation}
-          onOpenGroupDialog={() => setReferenceDialogOpen(true)}
         />
 
         {viewMode === 'manage' ? (
@@ -350,7 +336,23 @@ export default function App() {
             )}
           </div>
         ) : (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <CreationPanel
+              referenceGroups={referenceGroups}
+              selectedGroupId={selectedGroupId}
+              onSelectedGroupIdChange={setSelectedGroupId}
+              creationAgentMeta={creationAgentMeta}
+              creationAgentLabel={creationAgentMeta?.name || ''}
+              onPickAgent={openAgentPicker}
+              creationInput={creationInput}
+              onCreationInputChange={setCreationInput}
+              creationOutputCount={creationOutputCount}
+              onCreationOutputCountChange={setCreationOutputCount}
+              creationGroupIds={currentGroup ? [currentGroup.id] : []}
+              referenceItems={referenceItems}
+              onRunCreation={runCreation}
+              onOpenGroupDialog={() => setReferenceDialogOpen(true)}
+            />
             <div className="rounded-lg border bg-card p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-medium">结果卡片列表</div>

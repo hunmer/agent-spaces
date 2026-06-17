@@ -183,7 +183,7 @@ export function getWorkflow(workflowId: string): Workflow | null {
 }
 
 export function createWorkflow(
-  input: { name: string; description?: string; folderId?: string | null; icon?: string; tags?: string[]; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; triggers?: WorkflowTrigger[]; groups?: any[] }
+  input: { name: string; description?: string; folderId?: string | null; icon?: string; tags?: string[]; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; triggers?: WorkflowTrigger[]; groups?: any[]; published?: boolean }
 ): Workflow {
   const now = Date.now();
   const nodes = input.nodes ?? [];
@@ -208,6 +208,8 @@ export function createWorkflow(
     updatedAt: now,
     triggers: input.triggers,
     groups: input.groups,
+    // 默认不发布；仅当显式传入 true 时才标记为已发布
+    published: input.published === true,
   };
 
   const error = validateDAG(workflow);
@@ -219,7 +221,7 @@ export function createWorkflow(
 
 export function updateWorkflow(
   workflowId: string,
-  updates: Partial<Pick<Workflow, 'name' | 'description' | 'folderId' | 'icon' | 'tags' | 'nodes' | 'edges' | 'triggers' | 'groups' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentConfig' | 'layoutSnapshot'>>
+  updates: Partial<Pick<Workflow, 'name' | 'description' | 'folderId' | 'icon' | 'tags' | 'nodes' | 'edges' | 'triggers' | 'groups' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentConfig' | 'layoutSnapshot' | 'published'>>
 ): Workflow {
   const existing = store.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
@@ -271,6 +273,8 @@ export function duplicateWorkflow(workflowId: string): Workflow {
     nodes: sanitizeAgentRunNodes(existing.nodes),
     createdAt: now,
     updatedAt: now,
+    // 复制副本默认不发布，避免误开放访问
+    published: false,
   };
 
   store.createWorkflow(duplicated);

@@ -416,6 +416,7 @@ export function WorkflowsPage() {
             description: updates.description,
             icon: updates.icon,
             tags: updates.tags,
+            published: updates.published,
             nodes: [
               { id: `node_${Date.now()}_start`, type: 'start', label: t('defaultWorkflow.startLabel'), position: { x: 250, y: 50 }, data: {} },
               { id: `node_${Date.now()}_end`, type: 'end', label: t('defaultWorkflow.endLabel'), position: { x: 250, y: 400 }, data: {} },
@@ -438,6 +439,7 @@ export function WorkflowsPage() {
             icon: updates.icon,
             description: updates.description,
             tags: updates.tags,
+            published: updates.published,
           });
           upsertWorkflow(updated);
         }}

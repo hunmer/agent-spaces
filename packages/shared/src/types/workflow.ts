@@ -162,6 +162,8 @@ export interface Workflow {
   groups?: WorkflowGroup[]
   triggers?: WorkflowTrigger[]
   variables?: OutputField[]
+  /** 是否已发布（开放访问）。默认 false，未发布时 share 页面展示占位提示。 */
+  published?: boolean
 }
 
 // ---- Node Property Definition (for editor) ----

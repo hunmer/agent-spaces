@@ -27,7 +27,9 @@
     "export": "导出",
     "delete": "删除",
     "nodes": "{count} 个节点",
-    "defaultInitial": "未"
+    "defaultInitial": "未",
+    "published": "已发布",
+    "unpublished": "未发布"
   },
   "pluginCard": {
     "added": "已添加",
@@ -324,11 +326,15 @@
     "tagPlaceholder": "输入标签后回车",
     "addTag": "添加",
     "cancel": "取消",
-    "save": "保存"
+    "save": "保存",
+    "publishedLabel": "发布状态",
+    "publishedHint": "发布后可通过分享链接访问，未发布时打开分享页将提示暂未开放"
   },
   "share": {
     "missingId": "缺少 workflow_id 参数",
     "notFound": "工作流不存在",
+    "unpublishedTitle": "该工作流暂未开放",
+    "unpublishedHint": "作者尚未发布此工作流，暂时无法访问。",
     "nodes": "{count} 节点",
     "params": "执行参数",
     "execute": "执行",

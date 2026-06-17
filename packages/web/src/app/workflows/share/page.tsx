@@ -14,7 +14,7 @@ import { getWS } from '@/lib/ws';
 import { sendNativeNotification } from '@/lib/native-notification';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Loader2, Play, Square, Download } from 'lucide-react';
+import { Loader2, Play, Square, Download, Lock } from 'lucide-react';
 import JSZip from 'jszip';
 import ModernLoader from '@/components/ui/modern-loader';
 import { BackButton } from '@/components/common/back-button';
@@ -264,6 +264,19 @@ export default function WorkflowSharePage() {
   if (!workflowId) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('share.missingId')}</div>;
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!workflow) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('share.notFound')}</div>;
+  if (!workflow.published) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+          <Lock className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{t('share.unpublishedTitle')}</p>
+          <p className="text-xs text-muted-foreground max-w-xs">{t('share.unpublishedHint')}</p>
+        </div>
+      </div>
+    );
+  }
 
   const hasResult = activeEntry?.log && activeEntry.log.steps.length > 0;
 
