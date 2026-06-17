@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "id": "1781692064287-0",
+    "type": "image",
+    "url": "http://127.0.0.1:3100/static/uploads/1781692063884_tguxv5.png",
+    "prompt": "参考图1风格，给图2制作同样风格的封面，封面文字为：\"女性成长：文学与哲学的量子纠缠\"",
+    "provider": "openai",
+    "model": "gpt-image-2",
+    "workflowId": "905c9f2f-4b49-48e9-b307-24751bc03ec2",
+    "workflowName": "封面图生成工作流",
+    "createdAt": "2026/6/17 18:27:44"
+  }
+]

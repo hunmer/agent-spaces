@@ -10,6 +10,9 @@ const {
   SelectValue,
   FileUpload,
   Badge,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   ImagePlus,
   WandSparkles,
   Save,
@@ -19,6 +22,8 @@ const {
   Loader2,
   Check,
   X,
+  Pencil,
+  Plus,
   WorkflowListDialog,
 } = window.AgentSpacesUI;
 
@@ -56,11 +61,15 @@ function Style() {
       .cg-error, .cg-status { margin-top: 12px; display: flex; align-items: center; gap: 8px; border-radius: 6px; padding: 9px 10px; font-size: 13px; }
       .cg-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
       .cg-status { background: #ecfdf5; color: #065f46; border: 1px solid #bbf7d0; }
-      .cg-presets { padding-bottom: 8px; }
-      .cg-preset { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; align-items: center; border-top: 1px solid #f0f0f0; padding-top: 8px; margin-top: 8px; }
-      .cg-preset button:first-child { text-align: left; min-width: 0; border: 0; background: transparent; padding: 4px 0; cursor: pointer; }
-      .cg-preset strong, .cg-preset span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .cg-preset span { color: #71717a; font-size: 12px; margin-top: 2px; }
+      .cg-popover-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+      .cg-popover-title { font-weight: 650; font-size: 14px; }
+      .cg-popover-list { max-height: 320px; overflow: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+      .cg-popover-item { display: grid; grid-template-columns: minmax(0, 1fr) 30px 30px; gap: 4px; align-items: center; border-radius: 6px; }
+      .cg-popover-item:hover { background: #f4f4f5; }
+      .cg-popover-item > button:first-child { text-align: left; min-width: 0; border: 0; background: transparent; padding: 4px 6px; cursor: pointer; border-radius: 5px; }
+      .cg-popover-item strong, .cg-popover-item span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .cg-popover-item span { color: #71717a; font-size: 12px; margin-top: 2px; }
+      .cg-popover-item.is-editing { display: flex; padding: 6px; background: #f4f4f5; }
       .cg-history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
       .cg-history-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
       .cg-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
@@ -103,6 +112,9 @@ function App() {
   const [uploadingReferences, setUploadingReferences] = React.useState(false);
   const [status, setStatus] = React.useState('');
   const [error, setError] = React.useState('');
+  const [presetOpen, setPresetOpen] = React.useState(false);
+  const [editingId, setEditingId] = React.useState(null);
+  const [editingName, setEditingName] = React.useState('');
 
   React.useEffect(() => {
     AS.saveUserSettings?.({ [DRAFT_KEY]: { ...form, references: persistableReferences(form.references) } });
@@ -145,6 +157,28 @@ function App() {
     const next = presets.filter((item) => item.id !== id);
     setPresets(next);
     AS.saveUserSettings?.({ [PRESETS_KEY]: next });
+    if (editingId === id) setEditingId(null);
+  };
+
+  const startRenamePreset = (preset) => {
+    setEditingId(preset.id);
+    setEditingName(preset.name);
+  };
+
+  const commitRenamePreset = () => {
+    const name = String(editingName || '').trim();
+    if (editingId && name) {
+      const next = presets.map((p) => (p.id === editingId ? { ...p, name } : p));
+      setPresets(next);
+      AS.saveUserSettings?.({ [PRESETS_KEY]: next });
+    }
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const cancelRenamePreset = () => {
+    setEditingId(null);
+    setEditingName('');
   };
 
   const openWorkflowDialog = async () => {
@@ -210,7 +244,7 @@ function App() {
         },
       );
 
-      const payload = result?.result || result;
+      const payload = unwrapWorkflowPayload(result);
       if (payload?.status && payload.status !== 'completed' && payload.status !== 'success') {
         throw new Error(payload.timedOut ? '工作流仍在运行，请稍后查看历史' : `工作流状态：${payload.status}`);
       }
@@ -291,34 +325,66 @@ function App() {
             {error && <div className="cg-error"><X className="cg-icon" />{error}</div>}
             {status && <div className="cg-status"><Check className="cg-icon" />{status}</div>}
             <div className="cg-actions">
-              <Button variant="outline" onClick={savePreset}>
-                <Save className="cg-icon" />保存预设
-              </Button>
+              <Popover open={presetOpen} onOpenChange={setPresetOpen}>
+                <PopoverTrigger render={<Button variant="outline" />}>
+                  <Save className="cg-icon" />预设
+                  <Badge variant="secondary" className="ml-1">{presets.length}</Badge>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[300px] p-0 gap-0">
+                  <div className="cg-popover-head">
+                    <span className="cg-popover-title">预设</span>
+                    <Button size="sm" variant="ghost" onClick={savePreset}>
+                      <Plus className="cg-icon" />新建
+                    </Button>
+                  </div>
+                  <div className="cg-popover-list">
+                    {presets.length === 0 ? (
+                      <div className="cg-empty-small">暂无预设，点击"新建"保存当前配置</div>
+                    ) : presets.map((preset) => (
+                      <div className={`cg-popover-item${editingId === preset.id ? ' is-editing' : ''}`} key={preset.id}>
+                        {editingId === preset.id ? (
+                          <>
+                            <Input
+                              value={editingName}
+                              autoFocus
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); commitRenamePreset(); }
+                                if (e.key === 'Escape') { e.preventDefault(); cancelRenamePreset(); }
+                              }}
+                              className="h-8 text-[13px]"
+                            />
+                            <Button size="icon" variant="ghost" onClick={commitRenamePreset} title="保存">
+                              <Check className="cg-icon" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={cancelRenamePreset} title="取消">
+                              <X className="cg-icon" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => { applyPreset(preset); setPresetOpen(false); }} title="应用此预设">
+                              <strong>{preset.name}</strong>
+                              <span>{preset.form?.prompt || '无描述'}</span>
+                            </button>
+                            <Button size="icon" variant="ghost" onClick={() => startRenamePreset(preset)} title="编辑名称">
+                              <Pencil className="cg-icon" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => removePreset(preset.id)} title="删除预设">
+                              <Trash2 className="cg-icon" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button onClick={generate} disabled={running || uploadingReferences}>
                 {running || uploadingReferences ? <Loader2 className="cg-icon cg-spin" /> : <WandSparkles className="cg-icon" />}
                 {uploadingReferences ? '上传中' : '生成图片'}
               </Button>
             </div>
-          </div>
-
-          <div className="cg-panel cg-presets">
-            <div className="cg-panel-title">
-              <Save className="cg-icon" />
-              <span>预设</span>
-            </div>
-            {presets.length === 0 ? (
-              <div className="cg-empty-small">暂无预设</div>
-            ) : presets.map((preset) => (
-              <div className="cg-preset" key={preset.id}>
-                <button onClick={() => applyPreset(preset)}>
-                  <strong>{preset.name}</strong>
-                  <span>{preset.form?.prompt || '无描述'}</span>
-                </button>
-                <Button size="icon" variant="ghost" onClick={() => removePreset(preset.id)}>
-                  <Trash2 className="cg-icon" />
-                </Button>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -443,6 +509,24 @@ function normalizeWorkflow(workflow) {
   };
 }
 
+function unwrapWorkflowPayload(value) {
+  let payload = value;
+  for (let i = 0; i < 5; i += 1) {
+    if (!payload || typeof payload !== 'object') break;
+    if (Array.isArray(payload.steps) || payload.status || payload.workflow_id || payload.executionId) break;
+    if (payload.result && typeof payload.result === 'object') {
+      payload = payload.result;
+      continue;
+    }
+    if (payload.data && typeof payload.data === 'object') {
+      payload = payload.data;
+      continue;
+    }
+    break;
+  }
+  return payload;
+}
+
 function extractImages(payload) {
   const steps = Array.isArray(payload?.steps) ? payload.steps : [];
   const endStep = steps.find((step) =>
@@ -450,8 +534,12 @@ function extractImages(payload) {
     || String(step?.nodeId || '').endsWith('_end')
     || String(step?.nodeLabel || '').includes('结束')
   );
-  const result = endStep?.output?.result;
-  const images = Array.isArray(result) ? result : [];
+  const result = endStep?.output?.result
+    || payload?.result
+    || steps.find((step) => Array.isArray(step?.output?.data?.images))?.output?.data?.images
+    || steps.find((step) => Array.isArray(step?.output?.images))?.output?.images
+    || [];
+  const images = Array.isArray(result) ? result : [result];
   return images
     .map((item) => {
       if (typeof item === 'string') return { type: 'image', url: item };
