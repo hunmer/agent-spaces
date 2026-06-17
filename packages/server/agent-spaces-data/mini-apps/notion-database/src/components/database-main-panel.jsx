@@ -9,16 +9,8 @@ const {
   MarkdownEditor,
   markdownToHtml,
   Button,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   ChevronRight,
 } = (window.AgentSpacesUI || {});
-
-const hasDropdown = !!DropdownMenu;
 
 /**
  * props: { node, prefs, onModeChange, onNodeChanged }
@@ -284,7 +276,7 @@ export function DatabaseMainPanel({ node, prefs, onModeChange, onNodeChanged }) 
               {editorMode === EDITOR_MODE.NOTION ? (
                 <NotionEditor content={content} onChange={persist} theme={theme} />
               ) : (
-                <MarkdownEditor content={content} onChange={persist} />
+                <MarkdownEditor contentMarkdown={content} onChange={persist} theme={theme} />
               )}
             </div>
 
