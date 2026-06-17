@@ -167,8 +167,10 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
       showStreamingPlaceholder || msg.role === "user" || thinking !== null || message.trim().length > 0;
     const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
     const hasTimeline = timeline.length > 0;
-    const showTimeline = hasTimeline && (streaming || visibleToolTimelineMessageIds[msg.id] === true);
-    const canToggleTimeline = msg.role === "agent" && hasTimeline && !streaming;
+    const hasToolTimeline = timeline.some((item) => item.type === "tool");
+    const showTools = streaming || visibleToolTimelineMessageIds[msg.id] !== false;
+    const showTimeline = hasTimeline;
+    const canToggleTimeline = msg.role === "agent" && hasToolTimeline && !streaming;
     if (!hasMessageBody && !renderMessageExtras && !hasTimeline) return null;
 
     const versions = versionInfo?.(msg);
@@ -216,6 +218,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               timeline={timeline}
               workspaceId={workspaceId}
               onRerunTool={onRerunTool ? (item) => onRerunTool(msg, item) : undefined}
+              showTools={showTools}
             />
           ) : null}
           {renderMessageExtras?.(msg)}
@@ -272,16 +275,16 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
                 onClick={() => {
                   setVisibleToolTimelineMessageIds((current) => ({
                     ...current,
-                    [msg.id]: !current[msg.id],
+                    [msg.id]: current[msg.id] === false,
                   }));
                 }}
                 className={cn(
                   "flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                  showTimeline && "bg-muted text-foreground",
+                  showTools && "bg-muted text-foreground",
                 )}
-                title={showTimeline ? t("hideToolCalls") : t("showToolCalls")}
-                aria-label={showTimeline ? t("hideToolCalls") : t("showToolCalls")}
-                aria-pressed={showTimeline}
+                title={showTools ? t("hideToolCalls") : t("showToolCalls")}
+                aria-label={showTools ? t("hideToolCalls") : t("showToolCalls")}
+                aria-pressed={showTools}
               >
                 <Wrench className="size-3" />
               </button>

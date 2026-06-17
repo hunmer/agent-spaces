@@ -1,0 +1,85 @@
+{
+  "id": "857931f2-8529-4bff-9e66-d101e762f975",
+  "workflowId": "b4ee077d-c24e-455d-a841-f0d823d35b82",
+  "name": "分镜+图片生成 - 开始前备份",
+  "snapshot": {
+    "nodes": [
+      {
+        "id": "node_1781697071787_start",
+        "type": "start",
+        "label": "开始",
+        "position": {
+          "x": 250,
+          "y": 50
+        },
+        "data": {
+          "inputFields": [
+            {
+              "key": "text",
+              "type": "string",
+              "description": "用户输入的文案内容",
+              "required": true
+            },
+            {
+              "key": "style",
+              "type": "string",
+              "description": "画面风格描述，例如：电影感、动漫风格、水墨画风等",
+              "required": true
+            }
+          ]
+        }
+      },
+      {
+        "id": "node_1781697071787_end",
+        "type": "end",
+        "label": "结束",
+        "position": {
+          "x": 250,
+          "y": 400
+        },
+        "data": {
+          "outputs": [
+            {
+              "key": "imageList",
+              "type": "any[]",
+              "value": "{{ __data__[\\\"node_loop\\\"].items }}",
+              "description": "生成的图片列表"
+            }
+          ]
+        }
+      },
+      {
+        "id": "node_1781714576999_ignsfm",
+        "type": "agent_run",
+        "label": "分镜大师 Agent",
+        "position": {
+          "x": 510,
+          "y": 225
+        },
+        "data": {
+          "permissionMode": "dontAsk",
+          "outputs": [
+            {
+              "key": "result",
+              "type": "string"
+            },
+            {
+              "key": "usage",
+              "type": "object"
+            }
+          ],
+          "prompt": "文案内容：\n{{ __data__[\"node_1781697071787_start\"].text }}\n\n画面风格：\n{{ __data__[\"node_1781697071787_start\"].style }}\n\n请根据以上文案和风格，将文案拆分为多个分镜，并输出严格的 JSON 格式。",
+          "agent": {
+            "id": "storyboard-master",
+            "name": "分镜大师",
+            "role": "agent",
+            "systemPrompt": "你是分镜大师",
+            "enabled": true
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "createdAt": 1781714685425
+}

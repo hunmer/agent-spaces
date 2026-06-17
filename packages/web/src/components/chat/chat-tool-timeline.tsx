@@ -20,10 +20,12 @@ export function ChatToolTimeline({
   timeline,
   workspaceId,
   onRerunTool,
+  showTools = true,
 }: {
   timeline?: WorkflowAgentTimelineItem[];
   workspaceId?: string;
   onRerunTool?: (item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
+  showTools?: boolean;
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -60,6 +62,8 @@ export function ChatToolTimeline({
         if (item.type === "message") {
           return <MessageTimelineCard key={`${item.id}-${index}`} item={item} workspaceId={workspaceId} />;
         }
+
+        if (!showTools) return null;
 
         const open = expanded[item.id];
         const missingResult = item.status === "success" && item.result === undefined;
