@@ -1,0 +1,42 @@
+{
+  "id": "workflow.ai-image",
+  "name": "AI图片生成与编辑",
+  "name_zh": "AI图片生成与编辑",
+  "name_en": "AI Image Generation & Edit",
+  "version": "1.0.0",
+  "icon": "icon.svg",
+  "description": "对接 OpenAI 兼容异步图像 API，支持文生图、参考图编辑（多图融合 / 局部重绘 / 蒙版编辑）与任务查询",
+  "description_zh": "对接 OpenAI 兼容异步图像 API，支持文生图、参考图编辑（多图融合 / 局部重绘 / 蒙版编辑）与任务查询",
+  "description_en": "OpenAI-compatible async image API: text-to-image, reference-image editing (multi-image fusion / inpainting / mask), and task querying.",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "图片生成", "图片编辑", "OpenAI"],
+  "tags_zh": ["AI", "图片生成", "图片编辑", "OpenAI"],
+  "tags_en": ["AI", "Image Generation", "Image Edit", "OpenAI"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "图像服务的 Bearer Token（Authorization: Bearer <apiKey>）",
+      "type": "string",
+      "value": "",
+      "placeholder": "sk-...",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "OpenAI 兼容图像 API 基础地址",
+      "type": "string",
+      "value": "https://api.closeai.fans",
+      "placeholder": "https://api.closeai.fans"
+    }
+  ]
+}
