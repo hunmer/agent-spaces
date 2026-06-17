@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents.jsx';
+import { VersionHistoryDialog } from './version-history-dialog.jsx';
 import * as dbApi from '../utils/db.js';
 import { EDITOR_MODE, PRESET_COVERS, EMOJIS, T, htmlToMarkdown } from '../utils/constants.js';
 
@@ -10,6 +11,7 @@ const {
   markdownToHtml,
   Button,
   ChevronRight,
+  History,
 } = (window.AgentSpacesUI || {});
 
 /**
@@ -24,6 +26,7 @@ export function DatabaseMainPanel({ node, prefs, onModeChange, onNodeChanged }) 
   const [title, setTitle] = useState(node?.title || '');
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const [versionOpen, setVersionOpen] = useState(false);
   const [localNode, setLocalNode] = useState(node);
   const saveTimer = useRef(null);
 
@@ -177,21 +180,32 @@ export function DatabaseMainPanel({ node, prefs, onModeChange, onNodeChanged }) 
               {ChevronRight ? <ChevronRight className="w-3.5 h-3.5 opacity-50" /> : <span>/</span>}
               <span className="text-foreground font-semibold truncate max-w-[180px]">{localNode.title || 'Untitled'}</span>
             </div>
-            <div className="flex bg-card border border-border p-1 rounded-xl shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 size="sm"
-                variant={editorMode === EDITOR_MODE.NOTION ? 'default' : 'ghost'}
-                onClick={() => switchMode(EDITOR_MODE.NOTION)}
+                variant="ghost"
+                onClick={() => setVersionOpen(true)}
+                title="版本历史"
               >
-                Notion
+                {History ? <History className="w-4 h-4 mr-1.5" /> : null}
+                版本历史
               </Button>
-              <Button
-                size="sm"
-                variant={editorMode === EDITOR_MODE.MARKDOWN ? 'default' : 'ghost'}
-                onClick={() => switchMode(EDITOR_MODE.MARKDOWN)}
-              >
-                Markdown
-              </Button>
+              <div className="flex bg-card border border-border p-1 rounded-xl">
+                <Button
+                  size="sm"
+                  variant={editorMode === EDITOR_MODE.NOTION ? 'default' : 'ghost'}
+                  onClick={() => switchMode(EDITOR_MODE.NOTION)}
+                >
+                  Notion
+                </Button>
+                <Button
+                  size="sm"
+                  variant={editorMode === EDITOR_MODE.MARKDOWN ? 'default' : 'ghost'}
+                  onClick={() => switchMode(EDITOR_MODE.MARKDOWN)}
+                >
+                  Markdown
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -295,6 +309,14 @@ export function DatabaseMainPanel({ node, prefs, onModeChange, onNodeChanged }) 
           </div>
         ) : null}
       </div>
+
+      {/* 版本历史对话框 */}
+      <VersionHistoryDialog
+        open={versionOpen}
+        onClose={() => setVersionOpen(false)}
+        nodeId={localNode?.id}
+        onNodeChanged={onNodeChanged}
+      />
     </div>
   );
 }
