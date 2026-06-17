@@ -32,12 +32,16 @@ export function DatabaseMainPanel({ node, prefs, onModeChange, onNodeChanged }) 
 
   // 节点切换：同步本地状态
   useEffect(() => {
+    clearTimeout(saveTimer.current);  // 切换节点时取消未提交的防抖
     setContent(node?.content || '');
     setTitle(node?.title || '');
     setLocalNode(node);
     setCoverPickerOpen(false);
     setIconPickerOpen(false);
   }, [node?.id]);
+
+  // 组件卸载时清理防抖计时器
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
 
   const editorMode = prefs?.editorMode || EDITOR_MODE.NOTION;
   const theme = prefs?.theme;
