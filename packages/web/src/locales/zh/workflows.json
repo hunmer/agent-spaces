@@ -23,6 +23,7 @@
   },
   "card": {
     "edit": "编辑",
+    "preview": "预览",
     "duplicate": "复制",
     "export": "导出",
     "delete": "删除",

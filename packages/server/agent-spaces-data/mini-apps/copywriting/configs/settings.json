@@ -3,8 +3,8 @@
   "type": "",
   "tag": "",
   "durationSort": "",
-  "viewMode": "manage",
+  "viewMode": "create",
   "creationGroupId": "group-1781666133585",
-  "creationAgentConfigId": "",
-  "creationOutputCount": 3
+  "creationOutputCount": 1,
+  "creationAgentConfigId": "d53cfb12-59f5-457c-bf19-35ebb26060d2"
 }

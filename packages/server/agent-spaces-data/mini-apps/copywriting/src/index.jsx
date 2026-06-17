@@ -12,6 +12,7 @@ import { recognize, getMediaDuration, genTaskId } from './utils/transcribe';
 import { uploadToCloud, readUploadSettings } from './utils/upload';
 import { addCopywritingToKnowledgeBase, queryCopywritingKnowledgeBase, deleteCopywritingKnowledgeBaseFile } from './utils/knowledge-base';
 import { loadReferenceGroups, saveReferenceGroups, makeGroupId } from './utils/reference-list';
+import { loadAgentConfig, saveAgentConfig } from './utils/agent-config';
 
 const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge } = window.AgentSpacesUI;
 
@@ -76,6 +77,7 @@ export default function App() {
     })();
   }, []);
 
+  // 用户偏好（settings.json）：筛选词、视图模式等个人状态
   useEffect(() => {
     if (!settingsReady) return;
     setFilter({
@@ -87,12 +89,6 @@ export default function App() {
     setViewMode(settings.viewMode || 'manage');
     setSelectedGroupId(settings.creationGroupId || '');
     setCreationOutputCount(settings.creationOutputCount || 3);
-    if (settings.creationAgentConfigId) {
-      setCreationAgentMeta({
-        id: settings.creationAgentConfigId,
-        name: settings.creationAgentConfigId,
-      });
-    }
   }, [settingsReady]);
 
   useEffect(() => {
@@ -105,10 +101,25 @@ export default function App() {
       durationSort: filter.durationSort,
       viewMode,
       creationGroupId: selectedGroupId,
-      creationAgentConfigId: creationAgentMeta?.id || '',
       creationOutputCount,
     });
-  }, [dbq.ready, filter.keyword, filter.type, filter.tag, filter.durationSort, viewMode, selectedGroupId, creationAgentMeta, creationOutputCount]);
+  }, [dbq.ready, filter.keyword, filter.type, filter.tag, filter.durationSort, viewMode, selectedGroupId, creationOutputCount]);
+
+  // 创作 Agent 配置（共享 config：configs/agent.json，所有用户共用同一份）
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const cfg = await loadAgentConfig();
+        if (active && cfg.configId) {
+          setCreationAgentMeta({ id: cfg.configId, name: cfg.name || cfg.configId });
+        }
+      } catch {
+        /* 首次打开尚无配置 */
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const unsub = window.AgentSpaces.onTaskEvent((event) => {
@@ -243,8 +254,8 @@ export default function App() {
     });
     if (!saved) return;
     setCreationAgentMeta({ id: saved.id, name: saved.name || '创作 Agent', modelProvider: saved.modelProvider });
-    updateSettings({ creationAgentConfigId: saved.id });
-  }, [creationAgentMeta, updateSettings]);
+    saveAgentConfig({ configId: saved.id, name: saved.name || '创作 Agent' });
+  }, [creationAgentMeta]);
 
   const runCreation = async () => {
     const group = referenceGroups.find((item) => item.id === selectedGroupId);
@@ -351,7 +362,7 @@ export default function App() {
               creationGroupIds={currentGroup ? [currentGroup.id] : []}
               referenceItems={referenceItems}
               onRunCreation={runCreation}
-              onOpenGroupDialog={() => setReferenceDialogOpen(true)}
+              onOpenGroupDialog={() => { setReferenceDialogItemId(''); setReferenceDialogOpen(true); }}
             />
             <div className="rounded-lg border bg-card p-3">
               <div className="flex items-center justify-between gap-2">
@@ -390,7 +401,6 @@ export default function App() {
         open={referenceDialogOpen}
         onOpenChange={setReferenceDialogOpen}
         groups={referenceGroups}
-        items={dbq.items}
         currentItemId={referenceDialogItemId}
         onSaveGroups={saveGroups}
       />

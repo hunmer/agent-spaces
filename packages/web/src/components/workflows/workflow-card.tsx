@@ -5,7 +5,7 @@ import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Copy, Trash2, MoreVertical, Download, Globe, Lock } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Download, Globe, Lock, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
@@ -55,7 +55,7 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
         if (selectionMode) {
           onToggleSelect?.();
         } else {
-          nativeNavigate(router, `/workflows/share?workflow_id=${workflow.id}`);
+          onEdit(workflow);
         }
       }}
     >
@@ -143,9 +143,10 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
             variant="ghost"
             size="icon"
             className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => { e.stopPropagation(); onEdit(workflow); }}
+            title={t('card.preview')}
+            onClick={(e) => { e.stopPropagation(); nativeNavigate(router, `/workflows/share?workflow_id=${workflow.id}`); }}
           >
-            <Pencil className="h-3 w-3" />
+            <Eye className="h-3 w-3" />
           </Button>
         </div>
       </CardContent>

@@ -10,7 +10,6 @@ export const DEFAULT_SETTINGS = {
   durationSort: '', // '' | 'asc' | 'desc'
   viewMode: 'manage',
   creationGroupId: '',
-  creationAgentConfigId: '',
   creationOutputCount: 3,
 };
 

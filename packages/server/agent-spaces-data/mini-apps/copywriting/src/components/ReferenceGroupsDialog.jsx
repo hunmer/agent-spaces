@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-  Button, Input, ScrollArea, Checkbox, Separator,
+  Button, Input, ScrollArea, Checkbox,
 } = window.AgentSpacesUI;
 const { Plus, PencilLine, Trash2 } = window.AgentSpacesUI;
 
@@ -10,7 +10,6 @@ export default function ReferenceGroupsDialog({
   open,
   onOpenChange,
   groups,
-  items,
   currentItemId,
   onSaveGroups,
 }) {
@@ -24,10 +23,12 @@ export default function ReferenceGroupsDialog({
     setDraftGroups(groups);
     setName('');
     setEditingId('');
-    setSelectedIds(currentItemId ? groups.filter((group) => group.itemIds.includes(currentItemId)).map((group) => group.id) : []);
+    setSelectedIds(
+      currentItemId
+        ? groups.filter((group) => group.itemIds.some((id) => String(id) === String(currentItemId))).map((group) => group.id)
+        : [],
+    );
   }, [open, groups, currentItemId]);
-
-  const currentItem = useMemo(() => items.find((item) => item.id === currentItemId) || null, [items, currentItemId]);
 
   const saveGroups = async (nextGroups) => {
     setDraftGroups(nextGroups);
@@ -59,7 +60,7 @@ export default function ReferenceGroupsDialog({
       ...group,
       itemIds: selectedIds.includes(group.id)
         ? Array.from(new Set([...group.itemIds, currentItemId]))
-        : group.itemIds.filter((id) => id !== currentItemId),
+        : group.itemIds.filter((id) => String(id) !== String(currentItemId)),
     }));
     await saveGroups(next);
     onOpenChange(false);
@@ -72,25 +73,32 @@ export default function ReferenceGroupsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{currentItem ? '添加到参考列表' : '参考列表分组管理'}</DialogTitle>
+          <DialogTitle>{currentItemId ? '添加到参考列表' : '参考列表分组管理'}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_280px]">
-          <div className="rounded-lg border bg-background p-3">
-            <div className="flex items-center gap-2">
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="新建或编辑分组名称" className="h-8" />
-              <Button size="sm" onClick={upsertGroup}>
-                <Plus className="size-4" />保存
-              </Button>
-            </div>
-            <Separator className="my-3" />
-            <ScrollArea className="h-72 pr-3">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="新建或编辑分组名称" className="h-8" />
+            <Button size="sm" onClick={upsertGroup}>
+              <Plus className="size-4" />保存
+            </Button>
+          </div>
+          <ScrollArea className="h-72">
+            {draftGroups.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">暂无分组，请在上方新建</div>
+            ) : (
               <div className="space-y-2">
                 {draftGroups.map((group) => (
-                  <div key={group.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                    <div className="min-w-0">
+                  <div key={group.id} className="flex items-center gap-2 rounded-md border p-2">
+                    {currentItemId && (
+                      <Checkbox
+                        checked={selectedIds.includes(group.id)}
+                        onCheckedChange={() => toggleSelected(group.id)}
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium truncate">{group.name}</div>
                       <div className="text-xs text-muted-foreground">{group.itemIds.length} 条文案</div>
                     </div>
@@ -105,27 +113,13 @@ export default function ReferenceGroupsDialog({
                   </div>
                 ))}
               </div>
-            </ScrollArea>
-          </div>
-
-          <div className="rounded-lg border bg-background p-3">
-            <div className="mb-2 text-sm font-medium">选择分组</div>
-            <ScrollArea className="h-72 pr-3">
-              <div className="space-y-2">
-                {draftGroups.map((group) => (
-                  <label key={group.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                    <Checkbox checked={selectedIds.includes(group.id)} onCheckedChange={() => toggleSelected(group.id)} />
-                    <span className="truncate">{group.name}</span>
-                  </label>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
+            )}
+          </ScrollArea>
         </div>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
-          {currentItem && <Button onClick={confirmMemberShip}>确认添加</Button>}
+          {currentItemId && <Button onClick={confirmMemberShip}>确认添加</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

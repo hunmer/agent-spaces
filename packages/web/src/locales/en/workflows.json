@@ -23,6 +23,7 @@
   },
   "card": {
     "edit": "Edit",
+    "preview": "Preview",
     "duplicate": "Duplicate",
     "export": "Export",
     "delete": "Delete",

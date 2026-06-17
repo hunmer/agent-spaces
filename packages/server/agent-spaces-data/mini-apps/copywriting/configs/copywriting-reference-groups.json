@@ -3,7 +3,9 @@
     {
       "id": "group-1781666133585",
       "name": "a",
-      "itemIds": []
+      "itemIds": [
+        "2"
+      ]
     }
   ]
 }

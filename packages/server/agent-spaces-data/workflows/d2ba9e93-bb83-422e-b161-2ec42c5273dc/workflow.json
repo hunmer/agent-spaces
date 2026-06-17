@@ -450,11 +450,12 @@
     }
   ],
   "createdAt": 1781611468552,
-  "updatedAt": 1781660490963,
+  "updatedAt": 1781666259423,
   "enabledPlugins": [
     "workflow.ffmpeg",
     "workflow.aliyun-ai",
     "workflow.tencent-cos"
   ],
-  "groups": []
+  "groups": [],
+  "published": true
 }
