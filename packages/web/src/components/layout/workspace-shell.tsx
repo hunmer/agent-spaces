@@ -21,7 +21,6 @@ import { useAgentStore } from "@/stores/agent";
 import { sendAndroidOngoingTaskNotification, sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
-import { useDatabaseStore } from "@/stores/database";
 import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
 
 const panelLoader = () => <PanelLoading />;
@@ -82,14 +81,6 @@ const InspectorActionDialog = dynamic(() => import("@/components/editor/inspecto
   ssr: false,
   loading: () => null,
 });
-const DatabasePanel = dynamic(() => import("@/components/database/database-panel"), {
-  ssr: false,
-  loading: panelLoader,
-});
-const DatabaseSidebarPanel = dynamic(() => import("@/components/database/database-sidebar-panel").then((mod) => mod.DatabaseSidebarPanel), {
-  ssr: false,
-  loading: panelLoader,
-});
 const KanbanBoard = dynamic(() => import("@/components/kanban/kanban-board").then((mod) => mod.default), {
   ssr: false,
   loading: panelLoader,
@@ -149,7 +140,6 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
           { type: "tab", name: "Workfolder", component: "workfolder", id: "workfolder" },
-          { type: "tab", name: "Database", component: "database-list", id: "database-list" },
         ],
       },
       {
@@ -159,7 +149,6 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Code Editor", component: "code-editor", id: "code-editor" },
           { type: "tab", name: "Chat", component: "chat", id: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
-          { type: "tab", name: "Database", component: "database", id: "database" },
           { type: "tab", name: "Kanban", component: "kanban", id: "kanban" },
         ],
       },
@@ -349,20 +338,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
   }, [revealPath, model, isMobile, setActivePanel]);
 
-  // 选中 database node 时自动切换到 Database tab
-  const databaseActiveId = useDatabaseStore((s) => s.activeId);
-  useEffect(() => {
-    if (!databaseActiveId || !userInteractedRef.current) return;
-    if (isMobile) {
-      setActivePanel("database");
-    } else {
-      const node = model.getNodeById("database");
-      if (node && node instanceof TabNode) {
-        model.doAction(Actions.selectTab(node.getId()));
-      }
-    }
-  }, [databaseActiveId, model, isMobile, setActivePanel]);
-
   // 加载 git 状态
   useEffect(() => {
     useGitStore.getState().loadStatus(workspaceId);
@@ -522,10 +497,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <WorktreePanel workspaceId={workspaceId} />;
         case "activity-log":
           return <ActivityLogPanel workspaceId={workspaceId} />;
-        case "database":
-          return <DatabasePanel workspaceId={workspaceId} />;
-        case "database-list":
-          return <DatabaseSidebarPanel workspaceId={workspaceId} />;
         case "kanban":
           return <KanbanBoard workspaceId={workspaceId} />;
         default:
@@ -647,10 +618,6 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
     case "code-favorites":
       return <CodeFavoritesPanel workspaceId={workspaceId} />;
-    case "database":
-      return <DatabasePanel workspaceId={workspaceId} />;
-    case "database-list":
-      return <DatabaseSidebarPanel workspaceId={workspaceId} />;
     case "kanban":
       return <KanbanBoard workspaceId={workspaceId} />;
     default:

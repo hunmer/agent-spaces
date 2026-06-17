@@ -79,3 +79,8 @@ export { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 // mini-apps 内置路由能力
 export { Router, useRouter, Link, serializeRoute, parseRoute } from '@/components/mini-apps/mini-app-router';
 export type { RouteState, RouterApi } from '@/components/mini-apps/mini-app-router';
+
+// 富文本编辑器 + markdown 转换（database 组件迁移到 mini-app 用）
+export { default as NotionEditor } from '@/components/common/editors/notion-editor';
+export { default as MarkdownEditor } from '@/components/common/editors/markdown-editor';
+export { htmlToMarkdown, markdownToHtml } from '@/lib/converter';

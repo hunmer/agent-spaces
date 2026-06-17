@@ -20,6 +20,11 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 
 interface RenderErrorBoundaryProps {
@@ -146,6 +151,21 @@ function resolveExternalModule(id: string) {
   }
   if (id === '@dnd-kit/utilities') {
     return { __esModule: true, CSS };
+  }
+  if (id === '@tiptap/react') {
+    return { __esModule: true, useEditor, EditorContent };
+  }
+  if (id === '@tiptap/starter-kit') {
+    return { __esModule: true, default: StarterKit };
+  }
+  if (id === '@tiptap/extension-placeholder') {
+    return { __esModule: true, default: Placeholder };
+  }
+  if (id === '@tiptap/extension-task-list') {
+    return { __esModule: true, default: TaskList };
+  }
+  if (id === '@tiptap/extension-task-item') {
+    return { __esModule: true, default: TaskItem };
   }
   if (id === '@agent-spaces/ui') {
     return { __esModule: true, ...AgentSpacesUI };
