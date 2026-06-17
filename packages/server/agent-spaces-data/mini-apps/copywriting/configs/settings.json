@@ -2,5 +2,9 @@
   "keyword": "",
   "type": "",
   "tag": "",
-  "durationSort": ""
+  "durationSort": "",
+  "viewMode": "create",
+  "creationGroupId": "",
+  "creationAgentConfigId": "",
+  "creationOutputCount": 3
 }

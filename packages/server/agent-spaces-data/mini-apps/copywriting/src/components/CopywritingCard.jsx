@@ -1,5 +1,5 @@
-const { Badge, Button } = window.AgentSpacesUI;
-const { FileAudio, FileVideo, FileText, Play, RefreshCw, Loader2, Database } = window.AgentSpacesUI;
+const { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } = window.AgentSpacesUI;
+const { FileAudio, FileVideo, FileText, Play, RefreshCw, Loader2, Database, MoreHorizontal, Copy, Trash2, PlusCircle } = window.AgentSpacesUI;
 
 const TYPE_META = {
   audio: { label: '音频', Icon: FileAudio },
@@ -23,7 +23,15 @@ function fmtDate(ts) {
   try { return new Date(ts).toLocaleString('zh-CN'); } catch { return ''; }
 }
 
-export default function CopywritingCard({ item, onEdit, onPlay, onRetry }) {
+export default function CopywritingCard({
+  item,
+  onEdit,
+  onPlay,
+  onRetry,
+  onDelete,
+  onCopy,
+  onAddToReference,
+}) {
   const meta = TYPE_META[item.type] || TYPE_META.text;
   const kb = KB_STATUS[item.kb_status || 'pending'] || KB_STATUS.pending;
   const { Icon } = meta;
@@ -43,7 +51,27 @@ export default function CopywritingCard({ item, onEdit, onPlay, onRetry }) {
           <Icon className="size-4 shrink-0 text-muted-foreground" />
           <span className="font-medium truncate">{item.title}</span>
         </div>
-        <Badge variant="secondary" className="shrink-0">{meta.label}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="shrink-0">{meta.label}</Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => onCopy(item)}>
+                <Copy className="size-4" />复制文案
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAddToReference(item)}>
+                <PlusCircle className="size-4" />添加到参考列表
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(item)}>
+                <Trash2 className="size-4" />删除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="mt-2 text-sm text-muted-foreground line-clamp-5 whitespace-pre-wrap">

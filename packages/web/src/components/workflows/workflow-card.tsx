@@ -1,28 +1,51 @@
 'use client';
 
+import { useMemo } from 'react';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Pencil, Copy, Trash2, MoreVertical, Check, Download } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AvatarGroup } from '@/components/ui/avatar-group';
+import { resolveServerAssetUrl } from '@/lib/server';
 
 interface WorkflowCardProps {
   workflow: WorkflowTemplate;
+  onEdit: (wf: WorkflowTemplate) => void;
   onDuplicate: (wf: WorkflowTemplate) => void;
   onDelete: (wf: WorkflowTemplate) => void;
   onExport: (wf: WorkflowTemplate) => void;
   selectionMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  /** 全部插件清单（由父组件加载，用于展示已启用插件的图标） */
+  allPlugins?: { id: string; name: string; iconPath?: string }[];
 }
 
-export function WorkflowCard({ workflow, onDuplicate, onDelete, onExport, selectionMode, selected, onToggleSelect }: WorkflowCardProps) {
+export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport, selectionMode, selected, onToggleSelect, allPlugins }: WorkflowCardProps) {
   const router = useRouter();
   const t = useTranslations('workflows');
+
+  const enabledPluginAvatars = useMemo(() => {
+    const ids = workflow.enabledPlugins;
+    if (!ids?.length || !allPlugins?.length) return [];
+    const enabledSet = new Set(ids);
+    return allPlugins
+      .filter(p => enabledSet.has(p.id))
+      .map(p => ({
+        imageUrl: p.iconPath ? resolveServerAssetUrl(`/api/plugins/${p.id}/icon`) : '',
+        name: p.name,
+      }));
+  }, [workflow.enabledPlugins, allPlugins]);
+
+  const createdText = useMemo(() => {
+    if (!workflow.createdAt) return '';
+    return new Date(workflow.createdAt).toLocaleString();
+  }, [workflow.createdAt]);
 
   return (
     <Card
@@ -47,7 +70,7 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete, onExport, select
               <MoreVertical className="h-3.5 w-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
+              <DropdownMenuItem onClick={() => onEdit(workflow)}>
                 <Pencil className="h-3.5 w-3.5 mr-2" /> {t('card.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDuplicate(workflow)}>
@@ -79,27 +102,36 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete, onExport, select
         )}
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {t('card.nodes', { count: workflow.nodes.length })}
-            </span>
-            {workflow.tags && workflow.tags.length > 0 && (
-              <div className="flex gap-1">
-                {workflow.tags.slice(0, 2).map(tag => (
-                  <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
-                ))}
-                {workflow.tags.length > 2 && (
-                  <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
-                )}
-              </div>
+        {/* Tags + Plugin icons — always render row for consistent height */}
+        <div className="flex items-center gap-2 flex-wrap min-h-[22px]">
+          {workflow.tags && workflow.tags.length > 0 ? (
+            <div className="flex gap-1">
+              {workflow.tags.slice(0, 2).map(tag => (
+                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+              ))}
+              {workflow.tags.length > 2 && (
+                <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
+              )}
+            </div>
+          ) : (
+            <span className="text-[10px] text-muted-foreground/50">—</span>
+          )}
+          {enabledPluginAvatars.length > 0 && (
+            <AvatarGroup avatarUrls={enabledPluginAvatars} size="sm" />
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-muted-foreground">
+            {t('card.nodes', { count: workflow.nodes.length })}
+            {createdText && (
+              <span className="ml-2 text-[10px] text-muted-foreground/70">{createdText}</span>
             )}
-          </div>
+          </span>
           <Button
             variant="ghost"
             size="icon"
             className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => { e.stopPropagation(); nativeNavigate(router, `/workflows/${workflow.id}`); }}
+            onClick={(e) => { e.stopPropagation(); onEdit(workflow); }}
           >
             <Pencil className="h-3 w-3" />
           </Button>

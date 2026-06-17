@@ -17,6 +17,7 @@ import { WorkflowCard } from '@/components/workflows/workflow-card';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { sdk } from '@/lib/sdk';
 import { workflowApi } from '@/lib/workflow-api';
+import { pluginApi } from '@/lib/workflow-plugin-api';
 import { nativeNavigate } from '@/lib/navigate';
 import type { AgentConfig } from '@agent-spaces/shared';
 import JSZip from 'jszip';
@@ -28,6 +29,9 @@ export function WorkflowsPage() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'lastRunAt'>('createdAt');
@@ -57,6 +61,18 @@ export function WorkflowsPage() {
   useEffect(() => {
     loadWorkflows();
   }, [loadWorkflows]);
+
+  // 加载插件清单（供卡片展示已启用插件图标）—— 整页只请求一次
+  useEffect(() => {
+    pluginApi.list().then((list) => {
+      setAllPlugins(list.map(p => ({ id: p.id, name: p.name, iconPath: p.iconPath })));
+    }).catch(() => {});
+  }, []);
+
+  const handleEdit = useCallback((wf: WorkflowTemplate) => {
+    setEditingWorkflow(wf);
+    setEditDialogOpen(true);
+  }, []);
 
   const handleDelete = useCallback(async (wf: WorkflowTemplate) => {
     await deleteWorkflow(wf.id);
@@ -371,9 +387,11 @@ export function WorkflowsPage() {
             <WorkflowCard
               key={workflow.id}
               workflow={workflow}
+              onEdit={handleEdit}
               onDuplicate={handleDuplicate}
               onDelete={handleDelete}
               onExport={handleExport}
+              allPlugins={allPlugins}
               selectionMode={selectionMode}
               selected={selectedIds.has(workflow.id)}
               onToggleSelect={() => toggleSelect(workflow.id)}
@@ -406,6 +424,22 @@ export function WorkflowsPage() {
           });
           upsertWorkflow(created);
           nativeNavigate(router, `/workflows/${created.id}`);
+        }}
+      />
+
+      <WorkflowInfoDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        workflow={editingWorkflow}
+        onSave={async (updates) => {
+          if (!editingWorkflow) return;
+          const updated = await workflowApi.update(editingWorkflow.id, {
+            name: updates.name,
+            icon: updates.icon,
+            description: updates.description,
+            tags: updates.tags,
+          });
+          upsertWorkflow(updated);
         }}
       />
 

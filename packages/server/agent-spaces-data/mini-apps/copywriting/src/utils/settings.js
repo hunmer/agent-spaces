@@ -8,6 +8,10 @@ export const DEFAULT_SETTINGS = {
   type: '',
   tag: '',
   durationSort: '', // '' | 'asc' | 'desc'
+  viewMode: 'manage',
+  creationGroupId: '',
+  creationAgentConfigId: '',
+  creationOutputCount: 3,
 };
 
 export async function loadSettings() {

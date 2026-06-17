@@ -504,6 +504,35 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
       return kbService.queryKnowledgeBase(workspaceId, kbId, query, topK);
     },
   },
+  {
+    name: 'kb_delete',
+    description: 'Delete one or more files from a knowledge base.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        knowledgeBase: { type: 'string', description: 'Knowledge base ID.' },
+        fileId: { type: 'string', description: 'File ID or comma-separated file IDs.' },
+      },
+      required: ['knowledgeBase', 'fileId'],
+    },
+    outputs: [{ key: 'deletedCount', type: 'number' }],
+    execute: async (args, ctx) => {
+      const workspaceId = requireWorkspaceId(ctx, args);
+      const kbId = String(args.knowledgeBase || args.kbId || '').trim();
+      const fileIds = String(args.fileId || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!kbId) throw new Error('knowledgeBase is required');
+      let deletedCount = 0;
+      for (const fileId of fileIds) {
+        try {
+          kbService.deleteFileFromKb(workspaceId, kbId, fileId);
+          deletedCount++;
+        } catch {
+          // best-effort
+        }
+      }
+      return { deletedCount };
+    },
+  },
 ];
 
 export async function executeMiniAppBuiltinTool(

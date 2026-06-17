@@ -23,3 +23,12 @@ export async function queryCopywritingKnowledgeBase(query, topK = 5) {
   });
   return unwrap(result);
 }
+
+export async function deleteCopywritingKnowledgeBaseFile(fileId) {
+  if (!fileId) return;
+  const result = await window.AgentSpaces.callPluginTool('@agent-spaces/builtin', 'kb_delete', {
+    knowledgeBase: COPYWRITING_KB_ID,
+    fileId,
+  });
+  return unwrap(result);
+}
