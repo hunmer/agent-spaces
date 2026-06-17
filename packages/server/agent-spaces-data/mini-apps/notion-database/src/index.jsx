@@ -3,13 +3,15 @@ import { initSchema, listNodes } from './utils/db.js';
 import { DatabaseSidebar } from './components/database-sidebar.jsx';
 import { DatabaseMainPanel } from './components/database-main-panel.jsx';
 import { QuickSearchModal } from './components/quick-search-modal.jsx';
+import { DatabaseAiChat } from './components/database-ai-chat.jsx';
 
-const { Search } = (window.AgentSpacesUI || {});
+const { Search, MessageCircle } = (window.AgentSpacesUI || {});
 
 export default function App() {
   const [nodes, setNodes] = useState([]);
   const [ready, setReady] = useState(false);
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [prefs, setPrefs] = useState({ activeId: '', editorMode: 'notion', theme: 'sans', openFolders: {}, openTabs: [], recentIds: [] });
 
   useEffect(() => {
@@ -99,6 +101,36 @@ export default function App() {
           updatePrefs({ activeId: nodeId });
           setQuickSearchOpen(false);
         }}
+      />
+      {/* AI 对话悬浮按钮 */}
+      <button
+        type="button"
+        onClick={() => setAiChatOpen(true)}
+        title="AI 对话"
+        style={{
+          position: 'fixed',
+          right: 16,
+          bottom: 16,
+          zIndex: 40,
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          border: '1px solid #e5e7eb',
+          background: '#0f172a',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        }}
+      >
+        {MessageCircle ? <MessageCircle size={20} /> : <span>💬</span>}
+      </button>
+      <DatabaseAiChat
+        open={aiChatOpen}
+        onClose={() => setAiChatOpen(false)}
+        context={activeNode ? { title: activeNode.title, content: activeNode.content } : null}
       />
     </div>
   );
