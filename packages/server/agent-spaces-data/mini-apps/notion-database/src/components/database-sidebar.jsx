@@ -6,6 +6,8 @@
 import { useState, useMemo } from 'react';
 import { NestedTree } from './nested-tree.jsx';
 import { DatabaseTreeNode } from './database-tree-node.jsx';
+import { DatabaseVectorDialog } from './database-vector-dialog.jsx';
+import { TrashBinModal } from './trash-bin-modal.jsx';
 import * as dbApi from '../utils/db.js';
 import { genId, renameNode as dbRenameNode, updateIcon as dbUpdateIcon, moveNode as dbMoveNode, trashNode as dbTrashNode } from '../utils/db.js';
 import { T, NODE_TYPE } from '../utils/constants.js';
@@ -18,6 +20,8 @@ const NEW_FOLDER_TITLE = '新文件夹';
 
 export function DatabaseSidebar({ nodes, prefs, activeId, onSelect, onToggle, onNodeChanged }) {
   const [search, setSearch] = useState(prefs.sidebarSearch || '');
+  const [vectorOpen, setVectorOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
 
   const notify = (payload) => window.AgentSpaces.invokeService('node_changed', payload).then(() => onNodeChanged && onNodeChanged());
 
@@ -115,11 +119,26 @@ export function DatabaseSidebar({ nodes, prefs, activeId, onSelect, onToggle, on
         )}
       </div>
 
-      {/* 占位按钮：向量索引 / 回收站（Task 8 接入真实对话框）*/}
+      {/* 向量索引 / 回收站入口（Task 8 接入真实对话框）*/}
       <div className="p-2 border-t border-border flex gap-1">
-        <Button size="sm" variant="ghost" className="flex-1" onClick={() => alert('向量索引（Task 8）')}>{T.vector}</Button>
-        <Button size="sm" variant="ghost" className="flex-1" onClick={() => alert('回收站（Task 8）')}>{T.toTrash}</Button>
+        <Button size="sm" variant="ghost" className="flex-1" onClick={() => setVectorOpen(true)}>{T.vector}</Button>
+        <Button size="sm" variant="ghost" className="flex-1" onClick={() => setTrashOpen(true)}>{T.toTrash}</Button>
       </div>
+
+      {/* 对话框挂载（受 open 控制）*/}
+      <DatabaseVectorDialog
+        open={vectorOpen}
+        onClose={() => setVectorOpen(false)}
+        onSelect={(nodeId) => {
+          onSelect && onSelect(nodeId);
+          setVectorOpen(false);
+        }}
+      />
+      <TrashBinModal
+        open={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        onNodeChanged={onNodeChanged}
+      />
     </div>
   );
 }
