@@ -13,6 +13,7 @@
     "sortBy": "排序",
     "createdAt": "创建时间",
     "updatedAt": "最后更新",
+    "lastRunAt": "最后运行",
     "asc": "升序",
     "desc": "降序",
     "selectMode": "多选",

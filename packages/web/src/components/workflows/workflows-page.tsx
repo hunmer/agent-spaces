@@ -30,7 +30,7 @@ export function WorkflowsPage() {
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt'>('createdAt');
+  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'lastRunAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -47,8 +47,10 @@ export function WorkflowsPage() {
       const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => wf.tags?.includes(tag));
       return matchesSearch && matchesTags;
     }).sort((a, b) => {
-      const diff = a[sortField] - b[sortField];
-      return sortOrder === 'asc' ? diff : -diff;
+      // lastRunAt is undefined for workflows that have never run — treat as 0 (oldest).
+      const av = a[sortField] ?? 0;
+      const bv = b[sortField] ?? 0;
+      return sortOrder === 'asc' ? av - bv : bv - av;
     });
   }, [workflows, search, selectedTags, sortField, sortOrder]);
 
@@ -277,6 +279,13 @@ export function WorkflowsPage() {
               >
                 {sortField === 'updatedAt' && <span className="text-primary">✓</span>}
                 {t('page.updatedAt')}
+              </button>
+              <button
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'lastRunAt' ? 'font-medium' : ''}`}
+                onClick={() => setSortField('lastRunAt')}
+              >
+                {sortField === 'lastRunAt' && <span className="text-primary">✓</span>}
+                {t('page.lastRunAt')}
               </button>
               <div className="border-t my-1" />
               <button

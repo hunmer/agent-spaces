@@ -153,6 +153,8 @@ export interface Workflow {
   edges: WorkflowEdge[]
   createdAt: number
   updatedAt: number
+  /** Epoch ms of the most recent execution start; undefined if never run. Used for "last run" sorting. */
+  lastRunAt?: number
   enabledPlugins?: string[]
   agentConfig?: WorkflowAgentConfig
   pluginConfigSchemes?: Record<string, string>

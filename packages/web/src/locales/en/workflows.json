@@ -13,6 +13,7 @@
     "sortBy": "Sort by",
     "createdAt": "Created time",
     "updatedAt": "Last updated",
+    "lastRunAt": "Last run",
     "asc": "Ascending",
     "desc": "Descending",
     "selectMode": "Select",

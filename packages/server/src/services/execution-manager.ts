@@ -146,6 +146,10 @@ export class ExecutionManager {
     session.context.__config__ = this.loadPluginConfigs(session);
 
     this.sessions.set(executionId, session);
+    // Stamp last-run timestamp so the workflows page can sort by "last run".
+    try {
+      workflowStore.updateWorkflow({ ...workflow, lastRunAt: Date.now() });
+    } catch { /* non-critical: ignore write errors */ }
     void this.run(session);
     return { executionId, status: 'running' };
   }
