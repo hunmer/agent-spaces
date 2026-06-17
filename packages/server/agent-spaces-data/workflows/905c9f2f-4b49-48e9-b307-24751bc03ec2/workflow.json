@@ -1,0 +1,350 @@
+{
+  "id": "905c9f2f-4b49-48e9-b307-24751bc03ec2",
+  "name": "封面图生成工作流",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781681576137_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 2.6319364434748422
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "images",
+            "type": "file[]",
+            "value": "",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "prompt",
+            "type": "string",
+            "value": "",
+            "required": true,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781681576137_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 195,
+        "y": 615
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "result",
+            "type": "image[]",
+            "value": "{{ __data__[\"node_1781681597052_ts6ynb\"].data.images }}",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781681597052_ts6ynb",
+      "type": "openai_edit_image",
+      "label": "OpenAI 图片编辑",
+      "position": {
+        "x": 345,
+        "y": 408.170898803266
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.openai\"][\"apiKey\"] }}",
+        "model": "gpt-image-2",
+        "size": "auto",
+        "quality": "auto",
+        "n": 1,
+        "background": "auto",
+        "baseUrl": "{{ __config__[\"workflow.openai\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              },
+              {
+                "key": "usage",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "images": "{{ __data__[\"node_1781681640891_ouni81\"].result }}",
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
+      },
+      "nodeState": "normal"
+    },
+    {
+      "id": "node_1781681640891_ouni81",
+      "type": "pluck_array_key",
+      "label": "nodes.pluck_array_key.label",
+      "position": {
+        "x": 30,
+        "y": 386.74046995922254
+      },
+      "data": {
+        "array": "{{ __data__[\"node_1781681799713_z7fxry\"].items }}",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "any[]"
+          }
+        ],
+        "key": "url"
+      }
+    },
+    {
+      "id": "node_1781681799713_z7fxry",
+      "type": "loop",
+      "label": "nodes.loop.label",
+      "position": {
+        "x": 252.5,
+        "y": 92.13914231191302
+      },
+      "data": {
+        "loopType": "array",
+        "count": 1,
+        "concurrency": 1,
+        "sharedVariables": [],
+        "outputs": [
+          {
+            "key": "items",
+            "type": "any"
+          }
+        ],
+        "sourceNodeId": "node_1781681576137_start",
+        "sourceHandle": "source",
+        "arrayPath": "{{ __data__[\"node_1781681576137_start\"].images }}"
+      },
+      "composite": {
+        "role": "loop",
+        "generated": false,
+        "hidden": false,
+        "scopeBoundary": false,
+        "rootId": "node_1781681799713_z7fxry",
+        "parentId": null
+      }
+    },
+    {
+      "id": "node_1781681799713_iqhz3h",
+      "type": "loop_body",
+      "label": "nodes.loop_body.label",
+      "position": {
+        "x": 639.5646529594292,
+        "y": 85.90786189446635
+      },
+      "data": {
+        "width": 150,
+        "height": 260,
+        "nodeWidth": 772,
+        "nodeHeight": 378
+      },
+      "composite": {
+        "role": "loop_body",
+        "generated": true,
+        "hidden": false,
+        "scopeBoundary": true,
+        "rootId": "node_1781681799713_z7fxry",
+        "parentId": "node_1781681799713_z7fxry"
+      }
+    },
+    {
+      "id": "node_1781681799713_ejdlnk",
+      "type": "start",
+      "label": "nodes.loop.label开始",
+      "position": {
+        "x": 695.5646529594292,
+        "y": 185.90786189446635
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781681799713_iqhz3h",
+        "parentId": "node_1781681799713_iqhz3h",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781681799713_hcdrlh",
+      "type": "end",
+      "label": "nodes.loop.label结束",
+      "position": {
+        "x": 1135.1411632398572,
+        "y": 300
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "url",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781681833706_hpctin\"].data.url }}",
+            "children": []
+          }
+        ]
+      },
+      "composite": {
+        "rootId": "node_1781681799713_iqhz3h",
+        "parentId": "node_1781681799713_iqhz3h",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1781681833706_hpctin",
+      "type": "cos_upload_file",
+      "label": "COS上传文件",
+      "position": {
+        "x": 855.1411632398573,
+        "y": 275.90786189446635
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              },
+              {
+                "key": "url",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781681799713_ejdlnk",
+        "sourceHandle": null,
+        "key": "{{ __loop__.item.name }}",
+        "filePath": "{{ __loop__.item.path }}"
+      },
+      "composite": {
+        "rootId": "node_1781681799713_iqhz3h",
+        "parentId": "node_1781681799713_iqhz3h",
+        "generated": false,
+        "hidden": false
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781681640891_ouni81-source-node_1781681597052_ts6ynb-target",
+      "source": "node_1781681640891_ouni81",
+      "target": "node_1781681597052_ts6ynb",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781681597052_ts6ynb-source-node_1781681576137_end-target",
+      "source": "node_1781681597052_ts6ynb",
+      "target": "node_1781681576137_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1781681799713_z7fxry-target",
+      "source": "node_1781681576137_start",
+      "target": "node_1781681799713_z7fxry",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781681799713_z7fxry-loop-body-node_1781681799713_iqhz3h-target",
+      "source": "node_1781681799713_z7fxry",
+      "target": "node_1781681799713_iqhz3h",
+      "sourceHandle": "loop-body",
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781681799713_z7fxry",
+        "parentId": "node_1781681799713_z7fxry",
+        "generated": true,
+        "hidden": false,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781681799713_iqhz3h-source-node_1781681799713_ejdlnk-target",
+      "source": "node_1781681799713_iqhz3h",
+      "target": "node_1781681799713_ejdlnk",
+      "sourceHandle": null,
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781681799713_iqhz3h",
+        "parentId": "node_1781681799713_iqhz3h",
+        "generated": true,
+        "hidden": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781681799713_z7fxry-loop-next-node_1781681640891_ouni81-target",
+      "source": "node_1781681799713_z7fxry",
+      "target": "node_1781681640891_ouni81",
+      "sourceHandle": "loop-next"
+    },
+    {
+      "id": "e-node_1781681799713_ejdlnk-source-node_1781681833706_hpctin-target",
+      "source": "node_1781681799713_ejdlnk",
+      "target": "node_1781681833706_hpctin"
+    },
+    {
+      "id": "e-node_1781681833706_hpctin-source-node_1781681799713_hcdrlh-target",
+      "source": "node_1781681833706_hpctin",
+      "target": "node_1781681799713_hcdrlh"
+    }
+  ],
+  "createdAt": 1781681576142,
+  "updatedAt": 1781682837114,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.openai",
+    "workflow.tencent-cos"
+  ],
+  "lastRunAt": 1781682189812,
+  "groups": []
+}

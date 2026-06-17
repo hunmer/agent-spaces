@@ -94,19 +94,30 @@ export function __normalizeExecutionSnapshotNodesForTest(nodes: WorkflowNode[]):
   return normalizeExecutionSnapshotNodes(nodes);
 }
 
+export function __normalizeExecutionSnapshotNodesWithConfigForTest(
+  nodes: WorkflowNode[],
+  config: Record<string, Record<string, string>>,
+): WorkflowNode[] {
+  return normalizeExecutionSnapshotNodes(nodes, (_node, data) => resolveSnapshotDataForTest(data, config));
+}
+
 const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
 const DELAY_NODE_MIN_MS = 100;
 const DELAY_NODE_MAX_MS = 30_000;
 
-function normalizeExecutionSnapshotNodes(nodes: WorkflowNode[]): WorkflowNode[] {
+function normalizeExecutionSnapshotNodes(
+  nodes: WorkflowNode[],
+  resolveData?: (node: WorkflowNode, data: Record<string, any>) => Record<string, any>,
+): WorkflowNode[] {
   return nodes.map((node) => {
     const { inputFields, outputs, ...data } = node.data || {};
+    const normalizedData = resolveData ? resolveData(node, data) : data;
     return {
       ...node,
       ...(inputFields === undefined ? {} : { inputFields }),
       ...(outputs === undefined ? {} : { outputs }),
-      data,
+      data: normalizedData,
     } as WorkflowNode;
   });
 }
@@ -1497,7 +1508,7 @@ export class ExecutionManager {
       status: session.status === 'running' ? 'running' : session.status === 'paused' ? 'paused' : session.status === 'completed' ? 'completed' : 'error',
       steps: clone(session.steps),
       snapshot: {
-        nodes: normalizeExecutionSnapshotNodes(clone(session.nodes)),
+        nodes: normalizeExecutionSnapshotNodes(clone(session.nodes), (_node, data) => this.resolveContextVariables(session, data)),
         edges: clone(session.edges),
         groups: clone(session.groups || []),
         variables: clone(session.variables || []),
@@ -1621,6 +1632,17 @@ function resolveWorkflowConfigString(config: Record<string, Record<string, strin
     if (result !== undefined) return result;
   }
   return match[7] ?? '';
+}
+
+function resolveSnapshotDataForTest(value: any, config: Record<string, Record<string, string>>): any {
+  if (typeof value === 'string') return resolveWorkflowConfigString(config, value);
+  if (Array.isArray(value)) return value.map(item => resolveSnapshotDataForTest(item, config));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, resolveSnapshotDataForTest(nested, config)]),
+    );
+  }
+  return value;
 }
 
 function sleep(ms: number): Promise<void> {
