@@ -17,6 +17,7 @@ import { loadAgentConfig, saveAgentConfig } from './utils/agent-config';
 const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge } = window.AgentSpacesUI;
 
 const BUILTIN_PLUGIN = '@agent-spaces/builtin';
+const { getUserSetting, saveUserSettings } = window.AgentSpaces;
 
 const DEFAULT_FILTER = { keyword: '', type: '', tag: '', durationSort: '' };
 
@@ -34,6 +35,39 @@ function toRefItem(item, groupId) {
     title: item.title || '',
     preview: String(text || '').slice(0, 200),
   };
+}
+
+// 基于种子（结果 id）的确定性浅色：色相由 hash 推出，高亮度低饱和，每次渲染颜色稳定
+function softColorFromSeed(seed) {
+  let hash = 0;
+  const str = String(seed);
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  const hue = hash % 360;
+  return {
+    bg: `hsl(${hue} 75% 95%)`,
+    border: `hsl(${hue} 55% 82%)`,
+    dot: `hsl(${hue} 55% 55%)`,
+  };
+}
+
+// 待生成文案的骨架占位符
+function CreationSkeletonCard() {
+  return (
+    <div className="space-y-2 rounded-md border bg-background p-3">
+      <div className="flex items-center gap-2">
+        <span className="size-2 animate-pulse rounded-full bg-muted-foreground/40" />
+        <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="space-y-1.5">
+        <div className="h-3 w-full animate-pulse rounded bg-muted" />
+        <div className="h-3 w-11/12 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -57,7 +91,9 @@ export default function App() {
   const [creationInput, setCreationInput] = useState('');
   const [creationOutputCount, setCreationOutputCount] = useState(3);
   const [creationRunning, setCreationRunning] = useState(false);
-  const [creationResults, setCreationResults] = useState([]);
+  const [creationResults, setCreationResults] = useState(() => {
+    try { return getUserSetting('creationResults', []) || []; } catch { return []; }
+  });
   const cancelCreationRef = useRef(false);
 
   const refreshAll = useCallback(() => {
@@ -278,13 +314,15 @@ export default function App() {
       .filter(Boolean)
       .map((item) => `标题：${item.title}\n内容：${item.type === 'text' ? item.content : item.transcription}`)
       .join('\n\n');
+    const requirement = creationInput.trim();
     const basePrompt = [
       `参考文案分组：${group.name}`,
       '参考内容：',
       refs || '无',
       '',
-      '创作要求：',
-      creationInput.trim(),
+      requirement
+        ? `创作要求：\n${requirement}`
+        : '创作要求：无（请基于上述参考内容自由创作 1 篇风格相近的文案）',
       '',
       '请只生成 1 篇文案。直接输出文案正文，不要输出编号、标题、解释或 <think> 内容。',
     ].join('\n');
@@ -317,6 +355,11 @@ export default function App() {
       setCreationRunning(false);
     }
   };
+
+  // 生成结果持久化到用户 localStorage（per-project），下次打开自动恢复
+  useEffect(() => {
+    try { saveUserSettings({ creationResults }); } catch { /* noop */ }
+  }, [creationResults]);
 
   const clearFilter = () => setFilter({ ...DEFAULT_FILTER });
 
@@ -385,24 +428,40 @@ export default function App() {
               onOpenGroupDialog={() => { setReferenceDialogItemId(''); setReferenceDialogOpen(true); }}
               creationRunning={creationRunning}
             />
-            <div className="rounded-lg border bg-card p-3">
+            <div className="flex flex-col rounded-lg border bg-card p-3 " style={{ maxHeight: '32rem' }}>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-medium">结果卡片列表</div>
                 {creationRunning && <Badge variant="secondary">生成中</Badge>}
               </div>
-              <div className="mt-3 grid gap-2">
-                {creationResults.length === 0 ? (
+              <div className="mt-3 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto pr-1" style={{ minHeight: 0 }}>
+                {creationResults.length === 0 && !creationRunning ? (
                   <div className="py-10 text-center text-sm text-muted-foreground">暂无结果</div>
-                ) : creationResults.map((item) => (
-                  <div key={item.id} className="rounded-md border bg-background p-3">
-                    <div className="whitespace-pre-wrap text-sm">{item.text}</div>
-                    <div className="mt-2 flex justify-end">
-                      <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(item.text)}>
-                        复制文案
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                ) : (
+                  <>
+                    {creationResults.map((item) => {
+                      const color = softColorFromSeed(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-md border p-3"
+                          style={{ backgroundColor: color.bg, borderColor: color.border }}
+                        >
+                          <div className="whitespace-pre-wrap text-sm text-foreground">{item.text}</div>
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="size-2 rounded-full" style={{ backgroundColor: color.dot }} />
+                            <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(item.text)}>
+                              复制文案
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {creationRunning &&
+                      Array.from({ length: Math.max(0, creationOutputCount - creationResults.length) }).map((_, i) => (
+                        <CreationSkeletonCard key={`skeleton-${creationResults.length + i}`} />
+                      ))}
+                  </>
+                )}
               </div>
             </div>
           </div>

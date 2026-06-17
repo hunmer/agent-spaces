@@ -6,10 +6,6 @@ const {
 } = window.AgentSpacesUI;
 const { Library, Sparkles } = window.AgentSpacesUI;
 
-function normalizeText(value) {
-  return String(value || '').trim();
-}
-
 export default function CreationPanel({
   referenceGroups,
   selectedGroupId,
@@ -119,7 +115,7 @@ export default function CreationPanel({
         <Button
           onClick={creationRunning ? onCancelCreation : onRunCreation}
           variant={creationRunning ? 'outline' : 'default'}
-          disabled={!creationRunning && (!creationAgentMeta || !selectedGroup || !normalizeText(creationInput))}
+          disabled={!creationRunning && (!creationAgentMeta || !selectedGroup)}
         >
           <Sparkles className="size-4" />{creationRunning ? '取消生成' : '开始生成'}
         </Button>
