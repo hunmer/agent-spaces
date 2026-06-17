@@ -1,0 +1,10 @@
+{
+  "id": "notion-database",
+  "name": "notion-database",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-17T15:33:15.562Z",
+  "updatedAt": "2026-06-17T15:33:15.562Z"
+}
