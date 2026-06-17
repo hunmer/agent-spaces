@@ -17,6 +17,28 @@ function pick(obj, keys) {
   return result
 }
 
+async function toUploadable(file) {
+  if (typeof file !== 'string') return file
+  if (/^https?:\/\//i.test(file)) {
+    const resp = await globalThis.fetch(file)
+    if (!resp.ok) throw new Error(`Failed to download image: ${resp.status}`)
+    return resp
+  }
+  return require('fs').createReadStream(file)
+}
+
+async function normalizeUploadable(input) {
+  if (Array.isArray(input)) return Promise.all(input.map(toUploadable))
+  return toUploadable(input)
+}
+
+function inferEditModel(args) {
+  if (args.model) return args.model
+  if (args.quality && args.quality !== 'auto') return 'gpt-image-1'
+  if (args.size === '1536x1024' || args.size === '1024x1536' || args.size === 'auto') return 'gpt-image-1'
+  return 'dall-e-2'
+}
+
 // b64_json 落盘后端换 httpPath，url 直接透传
 function toHttpPaths(result, ext, ctx) {
   return (result.data || []).map(d => {
@@ -121,31 +143,34 @@ module.exports = (t) => [
     description: t('action.editImage.description', 'AI-powered image editing based on input images and descriptions.'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
-      { key: 'prompt', type: 'string', description: '编辑描述', required: true },
-      { key: 'images', type: 'array', items: { type: 'object', properties: { image_url: { type: 'string' } } }, description: '输入图片数组', required: true },
-      { key: 'model', type: 'string', description: '模型，默认 gpt-image-1' },
-      { key: 'size', type: 'string', description: '图片尺寸' },
-      { key: 'quality', type: 'string', description: '质量' },
-      { key: 'n', type: 'number', description: '生成数量' },
-      { key: 'background', type: 'string', description: '背景' },
+      { key: 'image', oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: '要编辑的图片文件或图片数组。gpt-image-1 支持 PNG/WEBP/JPG；dall-e-2 支持 1 张方形 PNG。', required: true },
+      { key: 'prompt', type: 'string', description: '编辑描述。dall-e-2 最多 1000 字符，gpt-image-1 最多 32000 字符。', required: true },
+      { key: 'mask', type: 'string', description: '可选 PNG mask 文件。透明区域 alpha=0 表示要编辑的区域，必须与首张图片同尺寸且 <4MB。' },
+      { key: 'model', type: 'string', description: '模型：dall-e-2 或 gpt-image-1。默认 dall-e-2。' },
+      { key: 'n', type: 'number', description: '生成数量，1-10，默认 1。' },
+      { key: 'quality', type: 'string', description: '仅 gpt-image-1：high/medium/low，默认 auto。' },
+      { key: 'response_format', type: 'string', description: '响应格式：url 或 b64_json。url 仅 dall-e-2 支持。' },
+      { key: 'size', type: 'string', description: 'gpt-image-1: 1024x1024/1536x1024/1024x1536/auto；dall-e-2: 256x256/512x512/1024x1024。' },
+      { key: 'images', type: 'array', items: { type: 'string' }, description: '兼容旧参数：等同于 image 数组。' },
+      { key: 'background', type: 'string', description: '背景，仅 GPT 图片模型支持。' },
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
       { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
       { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the editing effect you want.') },
-      { key: 'images', label: t('field.imagesUrl.label', 'Image URLs'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.imagesUrl.tooltip', 'Input image URL array, e.g. [{"image_url":"https://..."}]') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-image-1', options: [
-        { label: 'gpt-image-2', value: 'gpt-image-2' },
-        { label: 'gpt-image-1 (Default)', value: 'gpt-image-1' },
-        { label: 'gpt-image-1.5', value: 'gpt-image-1.5' },
-        { label: 'gpt-image-1-mini', value: 'gpt-image-1-mini' },
-        { label: 'chatgpt-image-latest', value: 'chatgpt-image-latest' },
+      { key: 'image', label: t('field.image.label', 'Image'), type: 'textarea', dataType: 'any', required: true, tooltip: t('field.image.tooltip', 'Input image file/URL or JSON array, e.g. "https://..." or ["https://..."].') },
+      { key: 'mask', label: t('field.mask.label', 'Mask'), type: 'text', tooltip: t('field.mask.tooltip', 'Optional PNG mask file/URL. Transparent areas are edited. Must match the first image size and be <4MB.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'dall-e-2', options: [
+        { label: 'dall-e-2 (Default)', value: 'dall-e-2' },
+        { label: 'gpt-image-1', value: 'gpt-image-1' },
       ] },
       { key: 'size', label: t('field.size.label', 'Size'), type: 'select', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: '1024x1024', value: '1024x1024' },
-        { label: '1536x1024', value: '1536x1024' },
-        { label: '1024x1536', value: '1024x1536' },
+        { label: '1536x1024 (gpt-image-1)', value: '1536x1024' },
+        { label: '1024x1536 (gpt-image-1)', value: '1024x1536' },
+        { label: '256x256 (dall-e-2)', value: '256x256' },
+        { label: '512x512 (dall-e-2)', value: '512x512' },
       ] },
       { key: 'quality', label: t('field.quality.label', 'Quality'), type: 'select', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
@@ -154,6 +179,11 @@ module.exports = (t) => [
         { label: t('option.low', 'Low'), value: 'low' },
       ] },
       { key: 'n', label: t('field.n.label', 'Count'), type: 'number', default: 1 },
+      { key: 'response_format', label: t('field.responseFormat.label', 'Response Format'), type: 'select', default: '', options: [
+        { label: t('option.auto', 'Auto'), value: '' },
+        { label: 'URL (dall-e-2)', value: 'url' },
+        { label: 'Base64 JSON', value: 'b64_json' },
+      ] },
       { key: 'background', label: t('field.background.label', 'Background'), type: 'select', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: t('option.transparent', 'Transparent'), value: 'transparent' },
@@ -172,14 +202,22 @@ module.exports = (t) => [
     ],
     run: async (ctx, args) => {
       const client = createClient(args)
-      const images = Array.isArray(args.images) ? args.images : JSON.parse(args.images)
-      ctx.logger.info(`图片编辑 - 模型: ${args.model || 'gpt-image-1'}, 输入图片: ${images.length} 张`)
-      const result = await client.images.edit({
-        model: args.model || 'gpt-image-1',
+      let image = args.image != null && args.image !== '' ? args.image : args.images
+      if (typeof image === 'string') {
+        try { image = JSON.parse(image) } catch {}
+      }
+      image = await normalizeUploadable(image)
+      const imageCount = Array.isArray(image) ? image.length : 1
+      const model = inferEditModel(args)
+      ctx.logger.info(`图片编辑 - 模型: ${model}, 输入图片: ${imageCount} 张`)
+      const params = {
+        model,
         prompt: args.prompt,
-        images,
-        ...pick(args, ['size', 'quality', 'n', 'background']),
-      })
+        image,
+        ...pick(args, ['size', 'quality', 'n', 'response_format', 'background']),
+      }
+      if (args.mask) params.mask = await toUploadable(args.mask)
+      const result = await client.images.edit(params)
       const outputImages = toHttpPaths(result, args.output_format || 'png', ctx)
       ctx.logger.info(`编辑完成，共 ${outputImages.length} 张图片`)
       return { success: true, message: t('message.imageEdited', 'Image editing completed, generated {count} image(s)').replace('{count}', outputImages.length), data: { images: outputImages, created: result.created, usage: result.usage } }

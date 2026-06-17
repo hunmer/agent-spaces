@@ -467,6 +467,24 @@
     ]
   },
   {
+    "id": "nano-banana",
+    "name": "nano-banana",
+    "version": "0.0.0",
+    "description": "",
+    "author": {
+      "name": "Unknown"
+    },
+    "tags": [],
+    "hasView": false,
+    "hasWorkflow": false,
+    "path": "nano-banana",
+    "md5": "28f7d808cf65e8d461c7efd42b0bbe3a",
+    "updatedAt": "2026-06-17T08:10:47.288Z",
+    "files": [
+      "Nano Banana image generation.md"
+    ]
+  },
+  {
     "id": "workflow.openai",
     "name": "OpenAI",
     "version": "2.0.0",
@@ -489,8 +507,8 @@
     "hasWorkflow": true,
     "path": "openai",
     "iconUrl": "plugins/openai/icon.svg",
-    "md5": "1dce7263e93837fa57bf4f419415865e",
-    "updatedAt": "2026-06-16T07:30:57.449Z",
+    "md5": "93bcd18c6908419b299710a3dc3003e7",
+    "updatedAt": "2026-06-17T08:08:19.729Z",
     "files": [
       "actions.js",
       "icon.svg",

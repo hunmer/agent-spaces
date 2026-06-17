@@ -1,0 +1,42 @@
+{
+  "id": "workflow.nano-banana",
+  "name": "Nano Banana",
+  "name_zh": "Nano Banana",
+  "name_en": "Nano Banana",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "description": "Google Gemini 原生图像生成（Nano Banana），支持文生图、图片编辑、多参考图融合、多轮编辑、Google 搜索 Grounding、Thinking 模式与最高 4K 分辨率",
+  "description_zh": "Google Gemini 原生图像生成（Nano Banana），支持文生图、图片编辑、多参考图融合、多轮编辑、Google 搜索 Grounding、Thinking 模式与最高 4K 分辨率",
+  "description_en": "Google Gemini native image generation (Nano Banana): text-to-image, image editing, multi-reference compositing, multi-turn editing, Google Search grounding, Thinking mode, and up to 4K resolution.",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "图片生成", "Gemini", "Nano Banana"],
+  "tags_zh": ["AI", "图片生成", "Gemini", "Nano Banana"],
+  "tags_en": ["AI", "Image Generation", "Gemini", "Nano Banana"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "Google Gemini API Key",
+      "type": "string",
+      "value": "",
+      "placeholder": "AIza...",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "Gemini API 基础地址，支持代理",
+      "type": "string",
+      "value": "https://generativelanguage.googleapis.com",
+      "placeholder": "https://generativelanguage.googleapis.com"
+    }
+  ]
+}

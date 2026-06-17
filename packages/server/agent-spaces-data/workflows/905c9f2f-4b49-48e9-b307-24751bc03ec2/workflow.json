@@ -95,7 +95,8 @@
           }
         ],
         "images": "{{ __data__[\"node_1781681640891_ouni81\"].result }}",
-        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "image": "{{ __data__[\"node_1781681640891_ouni81\"].result }}"
       },
       "nodeState": "normal"
     },
@@ -339,12 +340,12 @@
     }
   ],
   "createdAt": 1781681576142,
-  "updatedAt": 1781682837114,
+  "updatedAt": 1781684294466,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.tencent-cos"
   ],
-  "lastRunAt": 1781682189812,
+  "lastRunAt": 1781685136882,
   "groups": []
 }

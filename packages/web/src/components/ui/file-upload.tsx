@@ -161,7 +161,12 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                 </div>
                 <button
                   type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     removeFile(item.id);
                   }}
