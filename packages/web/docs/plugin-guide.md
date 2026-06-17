@@ -250,6 +250,10 @@ module.exports = {
 }
 ```
 
+## 本地测试环境
+
+本地测试 runner、`--config <json>`、`--mock-api <file>` 和 fetch demo 说明见 [插件本地测试环境](./plugin-local-testing.md)。
+
 多文件工具入口的每个文件都使用同样的导出结构：
 
 ```javascript
@@ -693,3 +697,4 @@ Web client 插件需要单独 manifest。
 - `resources/plugins/test-plugin/web-plugin.json`
 - `resources/plugins/test-plugin/web-client.js`
 - `resources/plugins/test-plugin/view.js`
+

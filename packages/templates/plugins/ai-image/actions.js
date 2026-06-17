@@ -10,7 +10,7 @@
 
 const fs = require('fs')
 
-const DEFAULT_BASE_URL = 'https://api.closeai.fans'
+const DEFAULT_BASE_URL = 'https://ai.comfly.chat'
 const GENERATIONS_PATH = '/v1/images/generations'
 const EDITS_PATH = '/v1/images/edits'
 const TASK_PATH = '/v1/images/tasks'
@@ -201,6 +201,8 @@ async function submitAndPoll(ctx, args, submitFn) {
 
 function pickTaskId(r) {
   if (!r) return ''
+  // comfly 等服务直接在顶层返回 { task_id }；closeai 风格返回 { data: taskId | { task_id } }
+  if (typeof r.task_id === 'string' && r.task_id) return r.task_id
   if (typeof r.data === 'string') return r.data
   if (r.data && typeof r.data === 'object') return r.data.task_id || ''
   return ''
@@ -243,26 +245,30 @@ module.exports = (t) => [
         key: 'model',
         label: t('field.model.label', 'Model'),
         type: 'select',
-        default: 'sora_image',
+        default: 'gpt-image-2-all',
         options: [
+          { label: 'gpt-image-2-all', value: 'gpt-image-2-all' },
+          { label: 'gpt-image-1', value: 'gpt-image-1' },
           { label: 'sora_image', value: 'sora_image' },
           { label: 'nano-banana', value: 'nano-banana' },
-          { label: 'gpt-image-1', value: 'gpt-image-1' },
           { label: 'dall-e-3', value: 'dall-e-3' },
           { label: 'flux-pro-1.1', value: 'flux-pro-1.1' },
           { label: 'flux-kontext-pro', value: 'flux-kontext-pro' },
         ],
       },
       {
-        key: 'size',
-        label: t('field.size.label', 'Size'),
+        key: 'aspectRatio',
+        label: t('field.aspectRatio.label', 'Aspect Ratio'),
         type: 'select',
-        default: '1024x1024',
+        default: '1:1',
         options: [
-          { label: '1024x1024', value: '1024x1024' },
-          { label: '1024x1792', value: '1024x1792' },
-          { label: '1792x1024', value: '1792x1024' },
-          { label: 'auto', value: 'auto' },
+          { label: '1:1', value: '1:1' },
+          { label: '16:9', value: '16:9' },
+          { label: '9:16', value: '9:16' },
+          { label: '4:3', value: '4:3' },
+          { label: '3:4', value: '3:4' },
+          { label: '3:2', value: '3:2' },
+          { label: '2:3', value: '2:3' },
         ],
       },
       {
@@ -292,11 +298,11 @@ module.exports = (t) => [
       const headers = getHeaders(args)
       const body = {
         prompt: args.prompt,
-        model: args.model || 'sora_image',
-        ...(args.size && { size: args.size }),
+        model: args.model || 'gpt-image-2-all',
+        ...(args.aspectRatio && { aspect_ratio: args.aspectRatio }),
         ...(args.n && { n: Number(args.n) }),
       }
-      ctx.logger.info(`文生图 model=${body.model} size=${body.size || 'auto'} n=${body.n || 1}`)
+      ctx.logger.info(`文生图 model=${body.model} ratio=${body.aspect_ratio || '默认'} n=${body.n || 1}`)
       ctx.logger.info(`提示词: ${body.prompt}`)
       const out = await submitAndPoll(ctx, args, async () => {
         const r = await ctx.api.postJson(`${baseUrl}${GENERATIONS_PATH}?async=true`, {
@@ -370,8 +376,9 @@ module.exports = (t) => [
         key: 'model',
         label: t('field.model.label', 'Model'),
         type: 'select',
-        default: 'gpt-image-1',
+        default: 'gpt-image-2-all',
         options: [
+          { label: 'gpt-image-2-all', value: 'gpt-image-2-all' },
           { label: 'gpt-image-1', value: 'gpt-image-1' },
           { label: 'flux-kontext-pro', value: 'flux-kontext-pro' },
           { label: 'flux-kontext-max', value: 'flux-kontext-max' },
@@ -388,15 +395,16 @@ module.exports = (t) => [
         ),
       },
       {
-        key: 'size',
-        label: t('field.size.label', 'Size'),
+        key: 'aspectRatio',
+        label: t('field.aspectRatio.label', 'Aspect Ratio'),
         type: 'select',
-        default: 'auto',
+        default: '1:1',
         options: [
-          { label: 'auto', value: 'auto' },
-          { label: '1024x1024', value: '1024x1024' },
-          { label: '1024x1536', value: '1024x1536' },
-          { label: '1536x1024', value: '1536x1024' },
+          { label: '1:1', value: '1:1' },
+          { label: '16:9', value: '16:9' },
+          { label: '9:16', value: '9:16' },
+          { label: '4:3', value: '4:3' },
+          { label: '3:4', value: '3:4' },
         ],
       },
       {
@@ -438,7 +446,7 @@ module.exports = (t) => [
 
       fields.prompt = args.prompt
       fields.model = args.model || 'gpt-image-1'
-      if (args.size) fields.size = args.size
+      if (args.aspectRatio) fields.aspect_ratio = args.aspectRatio
       if (args.n) fields.n = String(args.n)
       if (args.mask) {
         const maskFile = await resolveImage(args.mask)

@@ -1,10 +1,10 @@
 # AI 图片生成与编辑 插件
 
-> 对接 OpenAI 兼容的**异步**图像 API（如 closeai.fans 等 DALL·E 格式中转），支持文生图、参考图编辑（多图融合 / 局部重绘 / 蒙版编辑）与任务查询。
+> 对接 OpenAI 兼容的**异步**图像 API（如 comfly 等 DALL·E 格式中转），支持文生图、参考图编辑（多图融合 / 局部重绘 / 蒙版编辑）与任务查询。
 
 ## 简介
 
-本插件面向兼容 OpenAI `/v1/images/generations` + `/v1/images/edits` 协议、并采用**异步任务**模式的服务（提交即返回 `task_id`，随后轮询 `/v1/images/tasks/{task_id}` 取结果）。可对接 gpt-image-1、sora_image、nano-banana、dall-e-3、flux-kontext 等模型。
+本插件面向兼容 OpenAI `/v1/images/generations` + `/v1/images/edits` 协议、并采用**异步任务**模式的服务（提交即返回 `task_id`，随后轮询 `/v1/images/tasks/{task_id}` 取结果）。可对接 gpt-image-2-all、gpt-image-1、sora_image、nano-banana、dall-e-3、flux-kontext 等模型。
 
 插件类型：`server`。
 
@@ -12,11 +12,11 @@
 
 | 能力 | 方法 & 路径 | Body | 返回 |
 | --- | --- | --- | --- |
-| 文生图 | `POST /v1/images/generations?async=true` | `application/json` `{ prompt, model, size?, n? }` | `{ code, message, data: <task_id> }` |
-| 图片编辑 | `POST /v1/images/edits?async=true` | `multipart/form-data` `image`(文件，支持多图) `prompt` `model` | `{ code, message, data: <task_id> }` |
-| 查询任务 | `GET /v1/images/tasks/{task_id}` | — | `{ data: { status, progress, fail_reason, data: { data: [{ url, b64_json }], model, created, usage } } }` |
+| 文生图 | `POST /v1/images/generations?async=true` | `application/json` `{ prompt, model, aspect_ratio?, n? }` | `{ task_id }` |
+| 图片编辑 | `POST /v1/images/edits?async=true` | `multipart/form-data` `image`(文件，支持多图) `prompt` `model` | `{ task_id }` |
+| 查询任务 | `GET /v1/images/tasks/{task_id}` | — | `{ code, data: { status, progress, fail_reason, data: { data: [{ url, b64_json }], model, created, usage } } }` |
 
-- `status`：`IN_PROGRESS` / `SUCCESS` / `FAILURE`
+- `status`：`NOT_START` / `IN_PROGRESS` / `SUCCESS` / `FAILURE`
 - 鉴权：`Authorization: Bearer <apiKey>`
 
 ## 前置准备
@@ -30,7 +30,7 @@
 | 字段 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `apiKey` | 是 | — | Bearer Token |
-| `baseUrl` | 否 | `https://api.closeai.fans` | OpenAI 兼容图像 API 基础地址，按你的服务填写 |
+| `baseUrl` | 否 | `https://ai.comfly.chat` | OpenAI 兼容图像 API 基础地址，按你的服务填写 |
 
 ## 节点清单
 
@@ -45,8 +45,8 @@
 ### ai_image_generate
 
 - `prompt`（必填）：图片描述
-- `model`：`sora_image`（默认） / `nano-banana` / `gpt-image-1` / `dall-e-3` / `flux-pro-1.1` / `flux-kontext-pro`
-- `size`：`1024x1024`（默认） / `1024x1792` / `1792x1024` / `auto`
+- `model`：`gpt-image-2-all`（默认） / `gpt-image-1` / `sora_image` / `nano-banana` / `dall-e-3` / `flux-pro-1.1` / `flux-kontext-pro`
+- `aspectRatio`：`1:1`（默认） / `16:9` / `9:16` / `4:3` / `3:4` / `3:2` / `2:3`
 - `n`：生成数量，默认 1
 - 出参 `data.images[]`：图片 URL 列表
 
@@ -54,9 +54,9 @@
 
 - `image`（必填）：参考图，支持多张，接受 URL / data URI / 本地路径；可填 JSON 数组
 - `prompt`（必填）：编辑指令，如「戴上墨镜」「换成水彩风格」
-- `model`：`gpt-image-1`（默认） / `flux-kontext-pro` / `flux-kontext-max` / `nano-banana`
+- `model`：`gpt-image-2-all`（默认） / `gpt-image-1` / `flux-kontext-pro` / `flux-kontext-max` / `nano-banana`
 - `mask`（可选）：PNG 蒙版，透明区域（alpha=0）为要编辑的区域，需与首张图同尺寸（仅 gpt-image-1）
-- `size`：`auto`（默认） / `1024x1024` / `1024x1536` / `1536x1024`
+- `aspectRatio`：`1:1`（默认） / `16:9` / `9:16` / `4:3` / `3:4`
 - `n`：生成数量，默认 1
 - 出参 `data.images[]`：图片 URL 列表
 
@@ -72,10 +72,10 @@
 **示例 1：文生图**
 
 ```
-prompt = 一只在樱花树下散步的柴犬，吉卜力风格
-model  = sora_image
-size   = 1024x1024
-n      = 1
+prompt      = 动漫手办 比例是：1:1
+model       = gpt-image-2-all
+aspectRatio = 1:1
+n           = 1
 ```
 
 **示例 2：给人物戴上墨镜（图片编辑）**

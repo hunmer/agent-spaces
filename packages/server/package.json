@@ -18,6 +18,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/app.ts",
+    "dev:plugin": "tsx src/dev/plugin-test-runner.ts",
     "build": "tsc",
     "start": "node dist/app.js",
     "prepublishOnly": "pnpm build",

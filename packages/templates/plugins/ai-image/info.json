@@ -35,8 +35,8 @@
       "label": "API 地址",
       "desc": "OpenAI 兼容图像 API 基础地址",
       "type": "string",
-      "value": "https://api.closeai.fans",
-      "placeholder": "https://api.closeai.fans"
+      "value": "https://ai.comfly.chat",
+      "placeholder": "https://ai.comfly.chat"
     }
   ]
 }

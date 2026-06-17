@@ -1,0 +1,83 @@
+{
+  "id": "b4ee077d-c24e-455d-a841-f0d823d35b82",
+  "name": "test",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781697071787_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781697071787_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781697384118_mc1g84",
+      "type": "ai_image_generate",
+      "label": "AI文生图",
+      "position": {
+        "x": 525,
+        "y": 255
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
+        "model": "gpt-image-2-all",
+        "size": "1024x1024",
+        "n": 1,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              }
+            ]
+          }
+        ],
+        "prompt": "动漫女孩"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1781697071806,
+  "updatedAt": 1781697695460,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.ai-image"
+  ]
+}

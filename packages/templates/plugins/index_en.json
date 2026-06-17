@@ -1,5 +1,40 @@
 [
   {
+    "id": "workflow.ai-image",
+    "name": "AI Image Generation & Edit",
+    "version": "1.0.0",
+    "description": "OpenAI-compatible async image API: text-to-image, reference-image editing (multi-image fusion / inpainting / mask), and task querying.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Generation",
+      "Image Edit",
+      "OpenAI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "ai-image",
+    "iconUrl": "plugins/ai-image/icon.svg",
+    "md5": "44a257a24fd23cc529beb2b0beb458e0",
+    "updatedAt": "2026-06-17T12:06:54.386Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "refs/api-339685644.md",
+      "refs/api-356258955.md",
+      "refs/api-356258956.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.aliyun-ai",
     "name": "Aliyun Bailian AI",
     "version": "1.0.0",
