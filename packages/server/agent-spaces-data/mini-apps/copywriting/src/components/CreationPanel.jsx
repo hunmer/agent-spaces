@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 
 const {
   Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Textarea, Slider, ToggleGroup, ToggleGroupItem,
+  Textarea, Slider,
 } = window.AgentSpacesUI;
 const { Library, Sparkles, Trash2 } = window.AgentSpacesUI;
 
@@ -10,6 +10,8 @@ export default function CreationPanel({
   referenceGroups,
   selectedGroupId,
   onSelectedGroupIdChange,
+  sourceMode,
+  onSourceModeChange,
   creationAgentMeta,
   creationAgentLabel,
   onPickAgent,
@@ -26,7 +28,6 @@ export default function CreationPanel({
   onClearReferenceItems,
   creationRunning,
 }) {
-  const [sourceMode, setSourceMode] = useState('group');
   const useKnowledgeBase = sourceMode === 'knowledge';
   const selectedGroup = referenceGroups.find((group) => group.id === selectedGroupId) || null;
   const selectedReferenceItems = useMemo(
@@ -43,20 +44,31 @@ export default function CreationPanel({
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <ToggleGroup
-          type="single"
-          value={sourceMode}
-          onValueChange={(value) => value && setSourceMode(value)}
-          disabled={creationRunning}
-          className="shrink-0"
-        >
-          <ToggleGroupItem value="group" className="h-9 px-3 text-xs">使用分组</ToggleGroupItem>
-          <ToggleGroupItem value="knowledge" className="h-9 px-3 text-xs">使用知识库</ToggleGroupItem>
-        </ToggleGroup>
+        <div className="flex h-9 shrink-0 items-center overflow-hidden rounded-md border bg-background p-0.5">
+          <Button
+            type="button"
+            size="sm"
+            variant={sourceMode === 'group' ? 'default' : 'ghost'}
+            className="h-7 rounded-sm px-3 text-xs"
+            disabled={creationRunning}
+            onClick={() => onSourceModeChange('group')}
+          >
+            使用分组
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={sourceMode === 'knowledge' ? 'default' : 'ghost'}
+            className="h-7 rounded-sm px-3 text-xs"
+            disabled={creationRunning}
+            onClick={() => onSourceModeChange('knowledge')}
+          >
+            使用知识库
+          </Button>
+        </div>
         {!useKnowledgeBase && (
           <>
             <div className="min-w-48 flex-1">
-              <div className="text-xs text-muted-foreground">分组</div>
               <Select
                 value={selectedGroupId}
                 onValueChange={onSelectedGroupIdChange}
@@ -85,7 +97,7 @@ export default function CreationPanel({
       </div>
 
       {!useKnowledgeBase && (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>参考文案列表</span>
             <div className="flex items-center gap-2">
@@ -97,10 +109,13 @@ export default function CreationPanel({
               )}
             </div>
           </div>
-          <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-md border bg-background p-2">
-            {selectedReferenceItems.length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">暂无参考文案</div>
-            ) : (
+          {selectedReferenceItems.length === 0 ? (
+            <div className="rounded-md border border-dashed py-8 text-center text-xs text-muted-foreground">
+              <Library className="mx-auto mb-1 size-5 opacity-50" />
+              暂无参考文案
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-auto rounded-md border bg-background p-2">
               <div className="space-y-2">
                 {selectedReferenceItems.map((item) => (
                   <div key={`${item.groupId}-${item.id}`} className="rounded-md border p-2 text-xs">
@@ -119,9 +134,9 @@ export default function CreationPanel({
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       <div>
@@ -157,7 +172,7 @@ export default function CreationPanel({
         <Button
           onClick={creationRunning ? onCancelCreation : onRunCreation}
           variant={creationRunning ? 'outline' : 'default'}
-          disabled={!creationRunning && (!creationAgentMeta || !selectedGroup)}
+          disabled={!creationRunning && (!creationAgentMeta || (!useKnowledgeBase && !selectedGroup))}
         >
           <Sparkles className="size-4" />{creationRunning ? '取消生成' : '开始生成'}
         </Button>
