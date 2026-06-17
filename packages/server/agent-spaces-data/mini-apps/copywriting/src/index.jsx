@@ -9,6 +9,7 @@ import { useCopywritingDb } from './hooks/useCopywritingDb';
 import { useSettings } from './hooks/useSettings';
 import { recognize, getMediaDuration, genTaskId } from './utils/transcribe';
 import { uploadToCloud, readUploadSettings } from './utils/upload';
+import { addCopywritingToKnowledgeBase, queryCopywritingKnowledgeBase } from './utils/knowledge-base';
 
 const { FileText } = window.AgentSpacesUI;
 
@@ -22,8 +23,11 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [playing, setPlaying] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [kbQuery, setKbQuery] = useState('');
+  const [kbResults, setKbResults] = useState([]);
+  const [kbBusy, setKbBusy] = useState(false);
+  const [kbError, setKbError] = useState('');
 
-  // 恢复上次筛选
   useEffect(() => {
     if (!settingsReady) return;
     setFilter({
@@ -32,7 +36,6 @@ export default function App() {
       tag: settings.tag || '',
       durationSort: settings.durationSort || '',
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsReady]);
 
   const refreshAll = useCallback(() => {
@@ -41,7 +44,6 @@ export default function App() {
     dbq.count();
   }, [dbq, filter]);
 
-  // filter 变化 → 刷新列表 + 持久化偏好
   useEffect(() => {
     if (!dbq.ready) return;
     dbq.refresh(filter);
@@ -54,7 +56,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbq.ready, filter.keyword, filter.type, filter.tag, filter.durationSort]);
 
-  // 跨标签 / 刷新恢复：他方完成转写时刷新本端视图
   useEffect(() => {
     const unsub = window.AgentSpaces.onTaskEvent((event) => {
       if (event === 'miniApp.taskFinished' || event === 'miniApp.taskFailed') {
@@ -65,15 +66,46 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbq, filter]);
 
+  const syncToKnowledgeBase = useCallback((item) => {
+    dbq.update(item.id, { kb_status: 'indexing', kb_error: '' }).then(refreshAll);
+    addCopywritingToKnowledgeBase(item)
+      .then((result) => dbq.update(item.id, {
+        kb_status: result?.status || 'indexed',
+        kb_file_id: result?.fileId || '',
+        kb_error: result?.error || '',
+      }))
+      .catch((error) => dbq.update(item.id, {
+        kb_status: 'failed',
+        kb_error: error instanceof Error ? error.message : String(error),
+      }))
+      .finally(refreshAll);
+  }, [dbq, refreshAll]);
+
+  const runKbQuery = async () => {
+    const query = kbQuery.trim();
+    if (!query) return;
+    setKbBusy(true);
+    setKbError('');
+    try {
+      const result = await queryCopywritingKnowledgeBase(query, 5);
+      setKbResults(result?.matches || []);
+    } catch (error) {
+      setKbResults([]);
+      setKbError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setKbBusy(false);
+    }
+  };
+
   const openNew = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (item) => { setEditing(item); setFormOpen(true); };
 
-  // 后台转写：不阻塞调用方；完成 / 失败落库后刷新
-  const runTranscribe = (id, cloudUrl, title) => {
+  const runTranscribe = (id, cloudUrl, title, type) => {
     const taskId = genTaskId('asr');
     dbq.update(id, { status: 'transcribing' }).then(refreshAll);
     recognize(cloudUrl, { taskId, meta: { id, title } })
-      .then((text) => dbq.update(id, { transcription: text, status: 'done' }))
+      .then((text) => dbq.update(id, { transcription: text, status: 'done' })
+        .then(() => syncToKnowledgeBase({ id, title, type, transcription: text })))
       .catch(() => dbq.update(id, { status: 'failed' }))
       .finally(refreshAll);
   };
@@ -86,16 +118,28 @@ export default function App() {
         content: data.content,
         transcription: data.transcription,
         tags: data.tags,
+        kb_status: 'pending',
+        kb_error: '',
       });
+      syncToKnowledgeBase({ ...editing, ...data, id: editing.id });
       refreshAll();
       return;
     }
+
     if (!isMedia) {
-      await dbq.add({ title: data.title, type: 'text', content: data.content, tags: data.tags, status: 'done' });
+      const id = await dbq.add({
+        title: data.title,
+        type: 'text',
+        content: data.content,
+        tags: data.tags,
+        status: 'done',
+        kb_status: 'pending',
+      });
+      syncToKnowledgeBase({ id, title: data.title, type: 'text', content: data.content });
       refreshAll();
       return;
     }
-    // 音视频：FileUpload 已落盘 → 按存储设置转存云 → 落库(transcribing) → 后台 ASR
+
     const { provider } = await readUploadSettings();
     const cloudUrl = await uploadToCloud(data.uploadedPath, provider, data.mediaFile?.name);
     const duration = await getMediaDuration(data.mediaFile);
@@ -107,9 +151,10 @@ export default function App() {
       duration,
       tags: data.tags,
       status: 'transcribing',
+      kb_status: 'pending',
     });
     refreshAll();
-    runTranscribe(id, cloudUrl, data.title);
+    runTranscribe(id, cloudUrl, data.title, data.type);
   };
 
   const handleDelete = async (item) => {
@@ -119,7 +164,7 @@ export default function App() {
 
   const handleRetry = (item) => {
     if (!item.oss_url) return;
-    runTranscribe(item.id, item.oss_url, item.title);
+    runTranscribe(item.id, item.oss_url, item.title, item.type);
   };
 
   const clearFilter = () => setFilter({ ...DEFAULT_FILTER });
@@ -135,8 +180,42 @@ export default function App() {
 
         <div className="mt-4 flex flex-col lg:flex-row gap-4 items-start">
           <div className="flex-1 min-w-0">
+            <section className="mb-4 rounded-lg border bg-card p-3">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={kbQuery}
+                  onChange={(e) => setKbQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') runKbQuery(); }}
+                  placeholder="输入文本查询知识库"
+                  className="h-9 flex-1 rounded-md border bg-background px-3 text-sm outline-none focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={runKbQuery}
+                  disabled={kbBusy || !kbQuery.trim()}
+                  className="h-9 rounded-md bg-primary px-3 text-sm text-primary-foreground disabled:opacity-50"
+                >
+                  {kbBusy ? '查询中...' : '查询知识库'}
+                </button>
+              </div>
+              {kbError && <p className="mt-2 text-xs text-destructive">{kbError}</p>}
+              {kbResults.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {kbResults.map((match, index) => (
+                    <div key={`${match.fileId}-${match.chunkIndex}-${index}`} className="rounded-md border bg-background p-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium truncate">{match.fileName}</span>
+                        <span className="text-muted-foreground">score {Number(match.score || 0).toFixed(3)}</span>
+                      </div>
+                      <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">{match.chunkText}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
             {!dbq.ready ? (
-              <div className="py-16 text-center text-sm text-muted-foreground">加载中…</div>
+              <div className="py-16 text-center text-sm text-muted-foreground">加载中...</div>
             ) : dbq.error ? (
               <div className="py-16 text-center text-sm text-destructive">数据库初始化失败：{dbq.error}</div>
             ) : dbq.items.length === 0 ? (

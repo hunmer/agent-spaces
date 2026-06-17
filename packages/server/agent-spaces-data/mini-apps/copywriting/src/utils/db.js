@@ -24,12 +24,19 @@ export async function initSchema() {
       oss_url       TEXT DEFAULT '',
       duration      INTEGER DEFAULT 0,
       status        TEXT DEFAULT 'done',
+      kb_status     TEXT DEFAULT 'pending',
+      kb_file_id    TEXT DEFAULT '',
+      kb_error      TEXT DEFAULT '',
       created_at    INTEGER,
       updated_at    INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_cw_type   ON copywriting(type);
     CREATE INDEX IF NOT EXISTS idx_cw_status ON copywriting(status);
   `);
+
+  await getDb().run("ALTER TABLE copywriting ADD COLUMN kb_status TEXT DEFAULT 'pending'").catch(() => {});
+  await getDb().run("ALTER TABLE copywriting ADD COLUMN kb_file_id TEXT DEFAULT ''").catch(() => {});
+  await getDb().run("ALTER TABLE copywriting ADD COLUMN kb_error TEXT DEFAULT ''").catch(() => {});
 }
 
 export const TYPE_TEXT = 'text';

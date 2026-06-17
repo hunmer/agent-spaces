@@ -162,7 +162,7 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
 
     try {
       const result = pluginId === BUILTIN_PLUGIN_ID
-        ? await executeMiniAppBuiltinTool(name, args ?? {})
+        ? await executeMiniAppBuiltinTool(name, args ?? {}, typeof workspaceId === 'string' ? workspaceId : undefined)
         : await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
       if (track) {
         finishTask(workspaceId, effectiveTaskId!, result);

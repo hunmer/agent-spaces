@@ -68,8 +68,8 @@ export function useCopywritingDb() {
     const db = getDb();
     const now = Date.now();
     const r = await db.run(
-      `INSERT INTO copywriting(title,type,content,transcription,tags,media_url,oss_url,duration,status,created_at,updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO copywriting(title,type,content,transcription,tags,media_url,oss_url,duration,status,kb_status,kb_file_id,kb_error,created_at,updated_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         data.title.trim(),
         data.type || 'text',
@@ -80,6 +80,9 @@ export function useCopywritingDb() {
         data.oss_url || '',
         data.duration || 0,
         data.status || 'done',
+        data.kb_status || 'pending',
+        data.kb_file_id || '',
+        data.kb_error || '',
         now, now,
       ],
     );
@@ -90,7 +93,7 @@ export function useCopywritingDb() {
     const db = getDb();
     const fields = [];
     const params = [];
-    for (const k of ['title', 'content', 'transcription', 'tags', 'media_url', 'oss_url', 'duration', 'status']) {
+    for (const k of ['title', 'content', 'transcription', 'tags', 'media_url', 'oss_url', 'duration', 'status', 'kb_status', 'kb_file_id', 'kb_error']) {
       if (data[k] !== undefined) { fields.push(`${k} = ?`); params.push(data[k]); }
     }
     if (!fields.length) return;

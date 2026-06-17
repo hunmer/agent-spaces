@@ -6,6 +6,9 @@ import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import { getThinkingRuntimeConfig } from '../llm-model-config.js';
 import { getPluginTools, executePluginTool } from '../plugin.js';
 import { createBuiltinPluginApi } from '../plugin-runtime-api.js';
+import * as kbStore from '../../storage/knowledge-base-store.js';
+import * as llmStore from '../../storage/llm-store.js';
+import * as kbService from '../knowledge-base.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -271,7 +274,7 @@ interface BuiltinToolDefinition {
   description: string;
   input_schema: Record<string, unknown>;
   outputs: unknown[];
-  execute: (args: Record<string, any>) => Promise<any>;
+  execute: (args: Record<string, any>, ctx?: { workspaceId?: string }) => Promise<any>;
 }
 
 function normalizeAgentPermissionMode(value: unknown): AgentRuntimeConfig['permissionMode'] {
@@ -294,6 +297,77 @@ function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefi
     || provider === 'openai-chat-completions-to-anthropic-messages'
   ) return undefined;
   return apiBase;
+}
+
+function requireWorkspaceId(ctx: { workspaceId?: string } | undefined, args?: Record<string, any>): string {
+  const workspaceId = typeof ctx?.workspaceId === 'string' && ctx.workspaceId.trim()
+    ? ctx.workspaceId.trim()
+    : typeof args?.workspaceId === 'string'
+      ? args.workspaceId.trim()
+      : '';
+  if (!workspaceId) throw new Error('workspaceId is required');
+  return workspaceId;
+}
+
+function pickEmbeddingModelId(): string | null {
+  const providers = llmStore.listProviders();
+  const providerNames = new Set(
+    providers
+      .filter((provider) => provider.apiBase && provider.apiKey)
+      .map((provider) => provider.name),
+  );
+  const model = llmStore
+    .listModels()
+    .find((item) => item.embedding && item.modelId && providerNames.has(item.provider));
+  return model?.id ?? null;
+}
+
+function ensureKnowledgeBase(workspaceId: string, kbId: string): void {
+  const existing = kbStore.getKb(workspaceId, kbId);
+  if (existing) {
+    if (!existing.embeddingModelId) {
+      const embeddingModelId = pickEmbeddingModelId();
+      if (embeddingModelId) kbStore.updateKb(workspaceId, kbId, { embeddingModelId });
+    }
+    return;
+  }
+
+  const kb = kbStore.createKb(workspaceId, {
+    id: kbId,
+    name: 'Copywriting Knowledge Base',
+    description: 'Auto-created for copywriting mini-app.',
+  });
+  const embeddingModelId = pickEmbeddingModelId();
+  kbStore.updateKb(workspaceId, kb.id, {
+    name: 'Copywriting Knowledge Base',
+    description: 'Auto-created for copywriting mini-app.',
+    embeddingModelId,
+  });
+}
+
+async function addTextToKnowledgeBase(workspaceId: string, args: Record<string, any>) {
+  const kbId = String(args.knowledgeBase || args.kbId || '').trim();
+  const title = String(args.title || args.fileName || 'copywriting').trim();
+  const text = String(args.text || args.content || '').trim();
+  if (!kbId) throw new Error('knowledgeBase is required');
+  if (!text) throw new Error('text is required');
+
+  ensureKnowledgeBase(workspaceId, kbId);
+  const fileName = `${title || 'copywriting'}.md`;
+  const buffer = Buffer.from(`# ${title || 'copywriting'}\n\n${text}\n`, 'utf-8');
+  const file = await kbService.addFileToKnowledgeBase(workspaceId, kbId, {
+    sourceType: 'upload',
+    sourceRef: fileName,
+    fileName,
+    buffer,
+  });
+  return {
+    fileId: file.id,
+    fileName: file.fileName,
+    chunkCount: file.chunkCount,
+    status: file.indexStatus,
+    error: file.indexError,
+  };
 }
 
 const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
@@ -384,15 +458,62 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
       };
     },
   },
+  {
+    name: 'kb_add_text',
+    description: 'Add plain text content to a fixed knowledge base for mini-apps.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        knowledgeBase: { type: 'string', description: 'Knowledge base ID.' },
+        title: { type: 'string', description: 'Document title.' },
+        text: { type: 'string', description: 'Document text content.' },
+      },
+      required: ['knowledgeBase', 'text'],
+    },
+    outputs: [
+      { key: 'fileId', type: 'string' },
+      { key: 'fileName', type: 'string' },
+      { key: 'chunkCount', type: 'number' },
+      { key: 'status', type: 'string' },
+    ],
+    execute: async (args, ctx) => addTextToKnowledgeBase(requireWorkspaceId(ctx, args), args),
+  },
+  {
+    name: 'kb_query',
+    description: 'Query a knowledge base and return high-score semantic matches.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        knowledgeBase: { type: 'string', description: 'Knowledge base ID.' },
+        query: { type: 'string', description: 'Query text.' },
+        topK: { type: 'number', description: 'Maximum matches to return.' },
+      },
+      required: ['knowledgeBase', 'query'],
+    },
+    outputs: [
+      { key: 'matches', type: 'array' },
+      { key: 'count', type: 'number' },
+    ],
+    execute: async (args, ctx) => {
+      const workspaceId = requireWorkspaceId(ctx, args);
+      const kbId = String(args.knowledgeBase || args.kbId || '').trim();
+      const query = String(args.query || '').trim();
+      const topK = Number(args.topK) > 0 ? Number(args.topK) : 5;
+      if (!kbId) throw new Error('knowledgeBase is required');
+      ensureKnowledgeBase(workspaceId, kbId);
+      return kbService.queryKnowledgeBase(workspaceId, kbId, query, topK);
+    },
+  },
 ];
 
 export async function executeMiniAppBuiltinTool(
   toolName: string,
   args: Record<string, any> = {},
+  workspaceId?: string,
 ): Promise<any> {
   const tool = BUILTIN_TOOLS.find(t => t.name === toolName);
   if (!tool) throw new Error(`Tool "${toolName}" not found in builtin tools`);
-  return tool.execute(args);
+  return tool.execute(args, { workspaceId });
 }
 
 // ---- Workflow UI function tools ----

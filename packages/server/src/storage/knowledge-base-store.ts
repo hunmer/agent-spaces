@@ -106,11 +106,11 @@ function mapFile(r: Record<string, unknown>): KbFile {
 }
 
 // ---- KB CRUD ----
-export function createKb(workspaceId: string, data: { name: string; description?: string; chunkSize?: number; chunkOverlap?: number }): KnowledgeBase {
+export function createKb(workspaceId: string, data: { id?: string; name: string; description?: string; chunkSize?: number; chunkOverlap?: number }): KnowledgeBase {
   const db = openDb();
   const ts = now();
   const kb: KnowledgeBase = {
-    id: uuid(), workspaceId, name: data.name, description: data.description ?? '',
+    id: data.id || uuid(), workspaceId, name: data.name, description: data.description ?? '',
     embeddingModelId: null, chunkSize: data.chunkSize ?? 1000, chunkOverlap: data.chunkOverlap ?? 200,
     createdAt: ts, updatedAt: ts,
   };

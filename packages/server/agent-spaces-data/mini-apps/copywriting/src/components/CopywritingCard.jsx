@@ -1,10 +1,17 @@
 const { Badge, Button } = window.AgentSpacesUI;
-const { FileAudio, FileVideo, FileText, Play, RefreshCw, Loader2 } = window.AgentSpacesUI;
+const { FileAudio, FileVideo, FileText, Play, RefreshCw, Loader2, Database } = window.AgentSpacesUI;
 
 const TYPE_META = {
   audio: { label: '音频', Icon: FileAudio },
   video: { label: '视频', Icon: FileVideo },
   text: { label: '文本', Icon: FileText },
+};
+
+const KB_STATUS = {
+  indexed: { label: '已入库', className: 'border-emerald-500/40 text-emerald-600' },
+  indexing: { label: '入库中', className: 'border-blue-500/40 text-blue-600' },
+  pending: { label: '待入库', className: 'border-muted-foreground/30 text-muted-foreground' },
+  failed: { label: '入库失败', className: 'border-destructive/40 text-destructive' },
 };
 
 function previewText(item) {
@@ -18,6 +25,7 @@ function fmtDate(ts) {
 
 export default function CopywritingCard({ item, onEdit, onPlay, onRetry }) {
   const meta = TYPE_META[item.type] || TYPE_META.text;
+  const kb = KB_STATUS[item.kb_status || 'pending'] || KB_STATUS.pending;
   const { Icon } = meta;
   const isMedia = item.type === 'audio' || item.type === 'video';
   const transcribing = item.status === 'transcribing';
@@ -41,18 +49,19 @@ export default function CopywritingCard({ item, onEdit, onPlay, onRetry }) {
       <div className="mt-2 text-sm text-muted-foreground line-clamp-5 whitespace-pre-wrap">
         {transcribing ? (
           <span className="flex items-center gap-1.5 text-primary">
-            <Loader2 className="size-3.5 animate-spin" /> 转写中…
+            <Loader2 className="size-3.5 animate-spin" /> 转写中...
           </span>
         ) : failed ? (
           <span className="text-destructive">转写失败，可重试</span>
         ) : preview ? preview : <span className="opacity-60">（无内容）</span>}
       </div>
 
-      {tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {tags.map((t) => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}
-        </div>
-      )}
+      <div className="mt-2 flex flex-wrap gap-1">
+        <Badge variant="outline" className={`text-xs gap-1 ${kb.className}`} title={item.kb_error || ''}>
+          <Database className="size-3" />{kb.label}
+        </Badge>
+        {tags.map((t) => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}
+      </div>
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{fmtDate(item.created_at)}</span>
