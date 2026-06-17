@@ -79,6 +79,7 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [playing, setPlaying] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [unindexedCount, setUnindexedCount] = useState(0);
   const [viewMode, setViewMode] = useState('manage');
 
   const [referenceGroups, setReferenceGroups] = useState([]);
@@ -213,6 +214,45 @@ export default function App() {
       }))
       .finally(refreshAll);
   }, [dbq, refreshAll]);
+
+  // 存储设置弹窗打开时刷新「未入库」计数（供批量扫描按钮展示）
+  useEffect(() => {
+    if (!settingsOpen) return;
+    dbq.countUnindexed().then(setUnindexedCount).catch(() => {});
+  }, [settingsOpen, dbq]);
+
+  // 批量扫描：把未入库（kb_status !== 'indexed'）的文案逐条同步到知识库。
+  // 状态机与 syncToKnowledgeBase 一致：indexing → 入库 → indexed / failed，空内容跳过。
+  const handleScanUnindexed = async () => {
+    const pending = await dbq.listUnindexed();
+    let success = 0;
+    let failed = 0;
+    let skipped = 0;
+    for (const item of pending) {
+      const text = item.type === 'text' ? (item.content || '') : (item.transcription || '');
+      if (!String(text).trim()) { skipped++; continue; }
+      await dbq.update(item.id, { kb_status: 'indexing', kb_error: '' });
+      try {
+        const result = await addCopywritingToKnowledgeBase(item);
+        const isFailed = result?.status === 'failed' || !!result?.error;
+        await dbq.update(item.id, {
+          kb_status: isFailed ? 'failed' : (result?.status || 'indexed'),
+          kb_file_id: result?.fileId || item.kb_file_id || '',
+          kb_error: result?.error || '',
+        });
+        if (isFailed) failed++; else success++;
+      } catch (error) {
+        await dbq.update(item.id, {
+          kb_status: 'failed',
+          kb_error: error instanceof Error ? error.message : String(error),
+        });
+        failed++;
+      }
+    }
+    refreshAll();
+    setUnindexedCount(await dbq.countUnindexed().catch(() => 0));
+    return { total: pending.length, success, failed, skipped };
+  };
 
   const openNew = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (item) => { setEditing(item); setFormOpen(true); };
@@ -442,7 +482,7 @@ export default function App() {
           </div>
           </>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-3 items-start">
+          <div className="mt-4 grid grid-cols-2 gap-3">
             <CreationPanel
               referenceGroups={referenceGroups}
               selectedGroupId={selectedGroupId}
@@ -509,7 +549,12 @@ export default function App() {
         onDelete={handleDelete}
       />
       <PlayerDialog item={playing} onClose={() => setPlaying(null)} />
-      <UploadSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <UploadSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        unindexedCount={unindexedCount}
+        onScanUnindexed={handleScanUnindexed}
+      />
       <ReferenceGroupsDialog
         open={referenceDialogOpen}
         onOpenChange={setReferenceDialogOpen}

@@ -37,7 +37,7 @@ export default function CreationPanel({
   }, [referenceGroups, selectedGroupId, onSelectedGroupIdChange]);
 
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-3">
+    <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-48 flex-1">
           <div className="text-xs text-muted-foreground">分组</div>
@@ -66,12 +66,12 @@ export default function CreationPanel({
         </Button>
       </div>
 
-      <div>
+      <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>参考文案列表</span>
           <span>{selectedReferenceItems.length} 条</span>
         </div>
-        <div className="mt-2 max-h-40 overflow-auto rounded-md border bg-background p-2">
+        <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-md border bg-background p-2">
           {selectedReferenceItems.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground">暂无参考文案</div>
           ) : (

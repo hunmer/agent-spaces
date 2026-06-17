@@ -49,6 +49,16 @@ export function useCopywritingDb() {
     return n;
   }, []);
 
+  // 未入库：kb_status 非 'indexed'（含 NULL / 待入库 / 入库中 / 入库失败）
+  const countUnindexed = useCallback(async () => {
+    const row = await getDb().get("SELECT COUNT(*) AS n FROM copywriting WHERE COALESCE(kb_status, '') != 'indexed'");
+    return row ? row.n : 0;
+  }, []);
+
+  const listUnindexed = useCallback(async () => {
+    return getDb().all("SELECT * FROM copywriting WHERE COALESCE(kb_status, '') != 'indexed' ORDER BY id ASC");
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -106,5 +116,5 @@ export function useCopywritingDb() {
     await getDb().run('DELETE FROM copywriting WHERE id = ?', [id]);
   }, []);
 
-  return { items, tags, total, ready, error, refresh, refreshTags, count, add, update, remove };
+  return { items, tags, total, ready, error, refresh, refreshTags, count, countUnindexed, listUnindexed, add, update, remove };
 }

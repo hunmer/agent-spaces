@@ -3,7 +3,7 @@ import { readUploadSettings, writeUploadSettings } from '../utils/upload';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-  Button, Label,
+  Button, Label, Loader2, Database,
 } = window.AgentSpacesUI;
 
 const PROVIDER_OPTIONS = [
@@ -12,12 +12,16 @@ const PROVIDER_OPTIONS = [
 ];
 
 // 存储方案设置：切换音视频转存用的对象存储。
-export default function UploadSettingsDialog({ open, onOpenChange }) {
+// 附「扫描未入库的文档」入口：把 kb_status 非 indexed 的文案批量同步到知识库。
+export default function UploadSettingsDialog({ open, onOpenChange, unindexedCount = 0, onScanUnindexed }) {
   const [provider, setProvider] = useState('aliyun');
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
 
   useEffect(() => {
     if (!open) return;
+    setScanResult(null);
     readUploadSettings().then((s) => setProvider(s.provider || 'aliyun'));
   }, [open]);
 
@@ -30,6 +34,28 @@ export default function UploadSettingsDialog({ open, onOpenChange }) {
       setSaving(false);
     }
   };
+
+  const handleScan = async () => {
+    if (scanning || !onScanUnindexed) return;
+    setScanning(true);
+    setScanResult(null);
+    try {
+      setScanResult(await onScanUnindexed());
+    } catch (e) {
+      setScanResult({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const scanSummary = (() => {
+    if (!scanResult) return null;
+    if (scanResult.error) return `扫描失败:${scanResult.error}`;
+    const parts = [`完成:共 ${scanResult.total} 篇,成功 ${scanResult.success} 篇`];
+    if (scanResult.failed) parts.push(`失败 ${scanResult.failed} 篇`);
+    if (scanResult.skipped) parts.push(`跳过 ${scanResult.skipped} 篇(内容为空)`);
+    return `${parts.join(',')}。`;
+  })();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,6 +87,28 @@ export default function UploadSettingsDialog({ open, onOpenChange }) {
               );
             })}
           </div>
+        </div>
+
+        <div className="py-2 space-y-2 border-t pt-4 mt-2">
+          <Label>知识库</Label>
+          <p className="text-xs text-muted-foreground">
+            把文案内容扫描入库以支持语义检索。当前有{' '}
+            <span className="font-medium text-foreground">{unindexedCount}</span> 篇未入库。
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleScan}
+            disabled={scanning || saving || !unindexedCount || !onScanUnindexed}
+          >
+            {scanning ? <Loader2 className="size-4 animate-spin" /> : <Database className="size-4" />}
+            {scanning ? '扫描中…' : '扫描未入库的文档'}
+          </Button>
+          {scanSummary && (
+            <p className={`text-xs ${scanResult?.error ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {scanSummary}
+            </p>
+          )}
         </div>
 
         <DialogFooter>
