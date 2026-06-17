@@ -7,7 +7,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-08T05:18:45.999Z",
-    "updatedAt": "2026-06-16T10:59:05.710Z",
+    "updatedAt": "2026-06-17T03:45:33.789Z",
     "enabledPlugins": [
       "workflow.minimax",
       "workflow.fish-audio",
@@ -91,7 +91,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T10:29:24.362Z",
-    "updatedAt": "2026-06-17T03:34:00.080Z",
+    "updatedAt": "2026-06-17T03:45:33.888Z",
     "icon": "✍️",
     "storeUrl": "http://localhost:3101/mini-app/copywriting.zip",
     "storeChecksum": "ac59766d402fe6250a20ab5a90859816"

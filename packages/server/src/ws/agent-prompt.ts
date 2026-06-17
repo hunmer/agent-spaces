@@ -287,6 +287,7 @@ function formatMiniAppPromptContext(context: MiniAppPromptContext): string[] {
     '- If a window.AgentSpacesUI component usage, props, composition pattern, or import source is unclear, inspect its implementation at https://github.com/hunmer/agent-spaces/tree/main/packages/web/src/components/ui before using it.',
     '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Lucide React icons are also exposed there by their standard names. Example: `const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;`.',
     '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
+    '- window.AgentSpacesUI components are built on base-ui (@base-ui/react), NOT Radix. Do not apply Radix controlled-API patterns from memory. For example: Slider takes a single numeric `value`, not an array (`value={[n]}`); `SelectValue` renders the raw selected value by default, so map value→label via a `SelectValue` render function or the `items` prop on Select. Inspect the component source before writing controlled props when unsure.',
     '',
     'Styling rules:',
     '- Prefer Tailwind CSS utility classes via `className` for layout, spacing, color, typography, borders, shadows, and responsive states.',

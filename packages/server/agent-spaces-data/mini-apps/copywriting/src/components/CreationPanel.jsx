@@ -45,7 +45,9 @@ export default function CreationPanel({
           <div className="text-xs text-muted-foreground">分组</div>
           <Select value={selectedGroupId} onValueChange={onSelectedGroupIdChange}>
             <SelectTrigger className="mt-1 h-9">
-              <SelectValue placeholder="选择分组" />
+              <SelectValue placeholder="选择分组">
+                {(value) => referenceGroups.find((group) => group.id === value)?.name || '选择分组'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {referenceGroups.map((group) => (
@@ -100,11 +102,14 @@ export default function CreationPanel({
           <span>{creationOutputCount}</span>
         </div>
         <Slider
-          value={[creationOutputCount]}
+          value={creationOutputCount}
           min={1}
           max={5}
           step={1}
-          onValueChange={(value) => onCreationOutputCountChange(value[0] || 1)}
+          onValueChange={(value) => {
+            const next = Array.isArray(value) ? value[0] : value;
+            onCreationOutputCountChange(next);
+          }}
         />
       </div>
 

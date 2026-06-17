@@ -55,7 +55,7 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
         if (selectionMode) {
           onToggleSelect?.();
         } else {
-          onEdit(workflow);
+          nativeNavigate(router, `/workflows/${workflow.id}`);
         }
       }}
     >

@@ -347,7 +347,7 @@ export default function App() {
             )}
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+          <div className="mt-4 grid grid-cols-2 gap-3 items-start">
             <CreationPanel
               referenceGroups={referenceGroups}
               selectedGroupId={selectedGroupId}

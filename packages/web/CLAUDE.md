@@ -10,7 +10,7 @@ Next.js 16 前端应用，提供多 Agent 协同编程平台的用户界面。29
 
 - Next.js App Router，`"use client"` 指令
 - Zustand `create` 函数式写法管理状态
-- CSS 使用 TailwindCSS，UI 组件基于 shadcn/ui（base-nova 风格）
+- CSS 使用 TailwindCSS，UI 组件基于 shadcn/ui@base-ui（base-nova 风格）
 - API 调用统一通过 @agent-spaces/sdk（`src/lib/sdk.ts` 单例）
 - i18n 使用 next-intl，翻译文件按命名空间拆分（`src/locales/{en,zh}/*.json`，34 命名空间）
 - 组件按功能域分组（`components/chat/`、`components/git/` 等）
