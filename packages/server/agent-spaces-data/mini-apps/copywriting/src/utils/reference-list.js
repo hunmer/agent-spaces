@@ -1,4 +1,6 @@
-const KEY = 'copywriting-reference-groups.json';
+// 参考文案分组：持久化到用户 settings（localStorage，per-project，不跨端），
+// 走 window.AgentSpaces.getUserSetting / saveUserSettings，不再写入共享 config。
+const KEY = 'referenceGroups';
 
 function normalizeGroup(group) {
   return {
@@ -8,14 +10,24 @@ function normalizeGroup(group) {
   };
 }
 
-export async function loadReferenceGroups() {
-  const value = await window.AgentSpacesUI.readConfigJson(KEY);
-  if (!value || typeof value !== 'object' || !Array.isArray(value.groups)) return [];
-  return value.groups.map(normalizeGroup).filter((group) => group.id && group.name);
+export function loadReferenceGroups() {
+  let raw;
+  try {
+    raw = window.AgentSpaces.getUserSetting(KEY, []);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(raw)) return [];
+  return raw.map(normalizeGroup).filter((group) => group.id && group.name);
 }
 
-export async function saveReferenceGroups(groups) {
-  await window.AgentSpacesUI.writeConfigJson(KEY, { groups: groups.map(normalizeGroup) });
+export function saveReferenceGroups(groups) {
+  const normalized = groups.map(normalizeGroup).filter((group) => group.id && group.name);
+  try {
+    window.AgentSpaces.saveUserSettings({ [KEY]: normalized });
+  } catch {
+    /* noop */
+  }
 }
 
 export function makeGroupId() {

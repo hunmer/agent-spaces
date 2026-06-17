@@ -91,10 +91,11 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T10:29:24.362Z",
-    "updatedAt": "2026-06-17T05:44:45.259Z",
+    "updatedAt": "2026-06-17T05:58:55.240Z",
     "icon": "✍️",
     "storeUrl": "http://localhost:3101/mini-app/copywriting.zip",
-    "storeChecksum": "ac59766d402fe6250a20ab5a90859816"
+    "storeChecksum": "ac59766d402fe6250a20ab5a90859816",
+    "enableAgents": true
   },
   {
     "id": "ai_image_video",

@@ -41,7 +41,12 @@ export default function CreationPanel({
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-48 flex-1">
           <div className="text-xs text-muted-foreground">分组</div>
-          <Select value={selectedGroupId} onValueChange={onSelectedGroupIdChange} disabled={creationRunning}>
+          <Select
+            value={selectedGroupId}
+            onValueChange={onSelectedGroupIdChange}
+            disabled={creationRunning}
+            items={referenceGroups.map((group) => ({ value: group.id, label: group.name }))}
+          >
             <SelectTrigger className="mt-1 h-9">
               <SelectValue placeholder="选择分组" />
             </SelectTrigger>

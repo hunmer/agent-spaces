@@ -428,7 +428,7 @@ export default function App() {
               onOpenGroupDialog={() => { setReferenceDialogItemId(''); setReferenceDialogOpen(true); }}
               creationRunning={creationRunning}
             />
-            <div className="flex flex-col rounded-lg border bg-card p-3 " style={{ maxHeight: '32rem' }}>
+            <div className="flex flex-col rounded-lg border bg-card p-3" style={{ maxHeight: 'calc(100vh - 125px)' }}>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-medium">结果卡片列表</div>
                 {creationRunning && <Badge variant="secondary">生成中</Badge>}
