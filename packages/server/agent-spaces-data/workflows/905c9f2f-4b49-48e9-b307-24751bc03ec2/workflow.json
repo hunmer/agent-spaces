@@ -385,12 +385,12 @@
     }
   ],
   "createdAt": 1781681576142,
-  "updatedAt": 1781687404071,
+  "updatedAt": 1781689588623,
   "published": true,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.tencent-cos"
   ],
-  "lastRunAt": 1781685409006,
+  "lastRunAt": 1781689595698,
   "groups": []
 }

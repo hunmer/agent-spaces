@@ -39,9 +39,6 @@ function Style() {
   return (
     <style>{`
       .cg-app { height: 100vh; display: flex; flex-direction: column; background: #f7f7f4; color: #18181b; }
-      .cg-header { height: 72px; padding: 12px 20px; border-bottom: 1px solid #e4e4e7; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #ffffff; }
-      .cg-header h1 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 700; letter-spacing: 0; }
-      .cg-header p { margin: 4px 0 0; color: #71717a; font-size: 13px; }
       .cg-workflow-btn { max-width: 360px; justify-content: flex-start; }
       .cg-workflow-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .cg-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 380px minmax(0, 1fr); }
@@ -65,6 +62,7 @@ function Style() {
       .cg-preset strong, .cg-preset span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .cg-preset span { color: #71717a; font-size: 12px; margin-top: 2px; }
       .cg-history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+      .cg-history-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
       .cg-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
       .cg-card { background: #ffffff; border: 1px solid #e4e4e7; border-radius: 8px; overflow: hidden; }
       .cg-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #e5e7eb; }
@@ -81,7 +79,6 @@ function Style() {
       .cg-workflow-list span { color: #71717a; font-size: 12px; margin-top: 4px; }
       .cg-floating-status { position: fixed; right: 18px; bottom: 18px; z-index: 80; background: #18181b; color: #ffffff; border-radius: 7px; padding: 8px 12px; font-size: 13px; }
       @media (max-width: 900px) {
-        .cg-header { height: auto; align-items: flex-start; flex-direction: column; }
         .cg-main { grid-template-columns: 1fr; }
         .cg-left { border-right: 0; border-bottom: 1px solid #e4e4e7; max-height: none; }
         .cg-workflow-btn { max-width: 100%; width: 100%; }
@@ -103,11 +100,12 @@ function App() {
   const [workflows, setWorkflows] = React.useState([]);
   const [workflowLoading, setWorkflowLoading] = React.useState(false);
   const [running, setRunning] = React.useState(false);
+  const [uploadingReferences, setUploadingReferences] = React.useState(false);
   const [status, setStatus] = React.useState('');
   const [error, setError] = React.useState('');
 
   React.useEffect(() => {
-    AS.saveUserSettings?.({ [DRAFT_KEY]: form });
+    AS.saveUserSettings?.({ [DRAFT_KEY]: { ...form, references: persistableReferences(form.references) } });
   }, [form]);
 
   React.useEffect(() => {
@@ -240,17 +238,6 @@ function App() {
   return (
     <div className="cg-app">
       <Style />
-      <header className="cg-header">
-        <div>
-          <h1>封面制作工具</h1>
-          <p>上传参考图，输入封面方向，使用工作流生成成品图。</p>
-        </div>
-        <Button variant="outline" onClick={openWorkflowDialog} className="cg-workflow-btn">
-          <Workflow className="cg-icon" />
-          <span>{sharedConfig.workflowName || sharedConfig.workflowId || '选择工作流'}</span>
-        </Button>
-      </header>
-
       <main className="cg-main">
         <section className="cg-left">
           <div className="cg-panel">
@@ -261,7 +248,15 @@ function App() {
             <Field label="参考图">
               <FileUpload
                 value={form.references}
-                onChange={(files) => updateForm({ references: files })}
+                onChange={(files) => {
+                  updateForm({ references: files });
+                  Promise.all((files || []).map(resolveUploadItem))
+                    .then(() => {
+                      setForm((prev) => ({ ...prev, references: persistableReferences(prev.references) }));
+                    })
+                    .catch(() => {});
+                }}
+                onUploadStatusChange={(uploadStatus) => setUploadingReferences(!!uploadStatus?.uploading)}
                 accept="image/*"
                 multiple
                 autoUpload
@@ -299,9 +294,9 @@ function App() {
               <Button variant="outline" onClick={savePreset}>
                 <Save className="cg-icon" />保存预设
               </Button>
-              <Button onClick={generate} disabled={running}>
-                {running ? <Loader2 className="cg-icon cg-spin" /> : <WandSparkles className="cg-icon" />}
-                生成图片
+              <Button onClick={generate} disabled={running || uploadingReferences}>
+                {running || uploadingReferences ? <Loader2 className="cg-icon cg-spin" /> : <WandSparkles className="cg-icon" />}
+                {uploadingReferences ? '上传中' : '生成图片'}
               </Button>
             </div>
           </div>
@@ -334,9 +329,15 @@ function App() {
               <span>历史输出</span>
               <Badge variant="secondary">{history.length}</Badge>
             </div>
-            <Button variant="outline" size="sm" onClick={() => AS.invokeService('clear_results')}>
-              <Trash2 className="cg-icon" />清空
-            </Button>
+            <div className="cg-history-actions">
+              <Button variant="outline" size="sm" onClick={openWorkflowDialog} className="cg-workflow-btn">
+                <Workflow className="cg-icon" />
+                <span>{sharedConfig.workflowName || sharedConfig.workflowId || '选择工作流'}</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => AS.invokeService('clear_results')}>
+                <Trash2 className="cg-icon" />清空
+              </Button>
+            </div>
           </div>
           {history.length === 0 ? (
             <div className="cg-empty">生成结果会显示在这里</div>
@@ -389,12 +390,47 @@ function Field({ label, children }) {
 async function resolveUploadItem(item) {
   const file = item?.file || item;
   if (!file) throw new Error('参考图无效');
-  if (file.uploadPromise) await file.uploadPromise;
+  if (file.uploadError) throw new Error(file.uploadError);
+  if (file.uploadPromise) {
+    const uploaded = await file.uploadPromise;
+    Object.assign(file, {
+      uploadedPath: uploaded.path,
+      uploadedUrl: uploaded.url,
+      uploadedHttpPath: uploaded.httpPath,
+      uploading: false,
+      uploadError: undefined,
+      uploadPromise: Promise.resolve(uploaded),
+    });
+  }
+  const url = file.uploadedHttpPath || file.uploadedUrl || file.httpPath || file.url || '';
   return {
     name: file.name || file.uploadedPath || 'reference.png',
-    path: file.uploadedPath || file.path || file.uploadedHttpPath || file.uploadedUrl || file.url || '',
-    url: file.uploadedUrl || file.uploadedHttpPath || file.url || '',
+    path: file.uploadedPath || file.path || url,
+    url,
   };
+}
+
+function persistableReferences(references) {
+  return (Array.isArray(references) ? references : [])
+    .map((item) => {
+      const file = item?.file || item;
+      const url = file?.uploadedHttpPath || file?.uploadedUrl || file?.httpPath || file?.url || '';
+      if (!url) return null;
+      return {
+        id: item?.id || `ref-${Math.random().toString(36).slice(2)}`,
+        file: {
+          name: file.name || 'reference.png',
+          size: file.size || 0,
+          type: file.type || 'image/png',
+          url,
+          httpPath: url,
+          uploadedUrl: file.uploadedUrl || url,
+          uploadedHttpPath: file.uploadedHttpPath || url,
+          uploadedPath: file.uploadedPath || file.path || '',
+        },
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeWorkflow(workflow) {
@@ -408,25 +444,23 @@ function normalizeWorkflow(workflow) {
 }
 
 function extractImages(payload) {
-  const out = [];
-  const push = (value) => {
-    if (!value) return;
-    if (typeof value === 'string') out.push({ url: value });
-    else if (value.url) out.push({ url: value.url });
-    else if (value.imageUrl) out.push({ url: value.imageUrl });
-  };
   const steps = Array.isArray(payload?.steps) ? payload.steps : [];
-  for (const step of steps) {
-    const output = step?.output;
-    const result = output?.result || output?.data?.result;
-    const images = result || output?.images || output?.data?.images || output?.data?.data?.images || output?.data?.result?.result;
-    if (Array.isArray(images)) images.forEach(push);
-  }
-  const direct = payload?.result || payload?.data?.result || payload?.data?.images;
-  if (Array.isArray(direct)) direct.forEach(push);
-  return out
+  const endStep = steps.find((step) =>
+    step?.nodeId === 'node_1781681576137_end'
+    || String(step?.nodeId || '').endsWith('_end')
+    || String(step?.nodeLabel || '').includes('结束')
+  );
+  const result = endStep?.output?.result;
+  const images = Array.isArray(result) ? result : [];
+  return images
+    .map((item) => {
+      if (typeof item === 'string') return { type: 'image', url: item };
+      if (item?.url) return { type: 'image', url: item.url };
+      if (item?.imageUrl) return { type: 'image', url: item.imageUrl };
+      return null;
+    })
     .filter((item) => item.url)
-    .map((item) => ({ type: 'image', url: item.url }));
+    .filter(Boolean);
 }
 
 export default App;

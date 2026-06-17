@@ -11,6 +11,9 @@ export interface FileUploadFileLike {
   type: string;
   url?: string;
   httpPath?: string;
+  uploading?: boolean;
+  uploadProgress?: number;
+  uploadError?: string;
 }
 
 export interface FileUploadFile<TFile extends FileUploadFileLike = File> {
@@ -22,6 +25,7 @@ export interface FileUploadFile<TFile extends FileUploadFileLike = File> {
 interface FileUploadProps<TFile extends FileUploadFileLike = File> {
   value?: FileUploadFile<TFile>[];
   onChange?: (files: FileUploadFile<TFile | File>[]) => void;
+  onUploadStatusChange?: (status: { uploading: boolean; files: FileUploadFile<TFile | File>[] }) => void;
   autoUpload?: boolean;
   accept?: Accept;
   fileNameFilter?: string;
@@ -37,6 +41,7 @@ let _fileId = 0;
 export function FileUpload<TFile extends FileUploadFileLike = File>({
   value = [],
   onChange,
+  onUploadStatusChange: _onUploadStatusChange,
   autoUpload: _autoUpload,
   accept,
   fileNameFilter,
@@ -156,8 +161,25 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                   </div>
                 )}
                 <div className="w-0 flex-1">
-                  <p className="truncate text-sm">{item.file.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatSize(item.file.size)}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm">{item.file.name}</p>
+                    {item.file.uploading && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {formatProgress(item.file.uploadProgress)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {item.file.uploadError || (item.file.uploading ? "上传中" : formatSize(item.file.size))}
+                  </p>
+                  {item.file.uploading && (
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${formatProgressNumber(item.file.uploadProgress)}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -193,6 +215,15 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatProgress(value?: number): string {
+  return `${formatProgressNumber(value)}%`;
+}
+
+function formatProgressNumber(value?: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, Math.round(value)));
 }
 
 function matchesFileNameFilter(fileName: string, filter: string): boolean {

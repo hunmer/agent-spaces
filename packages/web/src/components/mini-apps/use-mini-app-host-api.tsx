@@ -1,5 +1,6 @@
 import { createElement, useEffect, useRef, useState } from 'react';
-import { fetchWithAuth } from '@/lib/auth';
+import { authHeaders, fetchWithAuth } from '@/lib/auth';
+import { getActiveServerUrl } from '@/lib/server';
 import { sdk } from '@/lib/sdk';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -31,6 +32,7 @@ type WorkflowFileUploadItem = {
     uploadedUrl?: string;
     uploadedHttpPath?: string;
     uploading?: boolean;
+    uploadProgress?: number;
     uploadError?: string;
     uploadPromise?: Promise<UploadedWorkflowFile>;
   };
@@ -64,24 +66,52 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-async function uploadWorkflowFile(file: File): Promise<UploadedWorkflowFile> {
+async function uploadWorkflowFile(
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<UploadedWorkflowFile> {
   const formData = new FormData();
   formData.append('file', file);
+  onProgress?.(0);
 
-  const resp = await fetchWithAuth('/api/upload', {
-    method: 'POST',
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const baseUrl = getActiveServerUrl();
+    xhr.open('POST', `${baseUrl || ''}/api/upload`);
+    xhr.withCredentials = true;
+    for (const [key, value] of Object.entries(authHeaders() as Record<string, string>)) {
+      xhr.setRequestHeader(key, value);
+    }
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || event.total <= 0) return;
+      onProgress?.((event.loaded / event.total) * 100);
+    };
+    xhr.onerror = () => reject(new Error('Upload failed'));
+    xhr.onload = () => {
+      const payload = parseUploadResponse(xhr.responseText);
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(payload?.error || `Failed to upload file: ${xhr.status} ${xhr.statusText}`));
+        return;
+      }
+      onProgress?.(100);
+      resolve(payload as UploadedWorkflowFile);
+    };
+    xhr.send(formData);
   });
-  const payload = await resp.json().catch(() => null);
-  if (!resp.ok) {
-    throw new Error(payload?.error || `Failed to upload file: ${resp.status} ${resp.statusText}`);
+}
+
+function parseUploadResponse(text: string): any {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
-  return payload;
 }
 
 function createWorkflowUploadFile(file: File, uploadPromise: Promise<UploadedWorkflowFile>) {
   return Object.assign(file, {
     uploading: true,
+    uploadProgress: 0,
     uploadPromise,
   });
 }
@@ -92,6 +122,7 @@ function mergeUploadedFile(file: WorkflowFileUploadItem['file'], uploaded: Uploa
     uploadedUrl: uploaded.url,
     uploadedHttpPath: uploaded.httpPath,
     uploading: false,
+    uploadProgress: 100,
     uploadError: undefined,
     uploadPromise: Promise.resolve(uploaded),
   });
@@ -100,6 +131,7 @@ function mergeUploadedFile(file: WorkflowFileUploadItem['file'], uploaded: Uploa
 function markUploadFailed(file: WorkflowFileUploadItem['file'], error: unknown) {
   return Object.assign(file, {
     uploading: false,
+    uploadProgress: 0,
     uploadError: error instanceof Error ? error.message : String(error || 'Upload failed'),
   });
 }
@@ -119,14 +151,35 @@ function WrappedFileUpload(props: any) {
   const latestValueRef = useRef<WorkflowFileUploadItem[]>(props.value || []);
   const autoUpload = props.autoUpload === true;
 
+  const emitUploadStatus = (files = latestValueRef.current) => {
+    props.onUploadStatusChange?.({
+      uploading: files.some((item: WorkflowFileUploadItem) => item.file?.uploading),
+      files,
+    });
+  };
+
+  const setUploadProgress = (itemId: string, progress: number) => {
+    const current = latestValueRef.current;
+    const updated = current.map((currentItem) => (
+      currentItem.id === itemId
+        ? { ...currentItem, file: Object.assign(currentItem.file, { uploading: progress < 100, uploadProgress: progress }) }
+        : currentItem
+    ));
+    latestValueRef.current = updated;
+    props.onChange?.(updated);
+    emitUploadStatus(updated);
+  };
+
   useEffect(() => {
     latestValueRef.current = props.value || [];
+    emitUploadStatus(latestValueRef.current);
   }, [props.value]);
 
   const handleChange = (files: WorkflowFileUploadItem[]) => {
     if (!autoUpload) {
       latestValueRef.current = files;
       props.onChange?.(files);
+      emitUploadStatus(files);
       return;
     }
 
@@ -136,7 +189,7 @@ function WrappedFileUpload(props: any) {
         return item;
       }
 
-      const uploadPromise = uploadWorkflowFile(file);
+      const uploadPromise = uploadWorkflowFile(file, (progress) => setUploadProgress(item.id, progress));
       return {
         ...item,
         file: createWorkflowUploadFile(file, uploadPromise),
@@ -145,6 +198,7 @@ function WrappedFileUpload(props: any) {
 
     latestValueRef.current = next;
     props.onChange?.(next);
+    emitUploadStatus(next);
 
     for (const item of next) {
       const promise = item.file?.uploadPromise;
@@ -160,6 +214,7 @@ function WrappedFileUpload(props: any) {
           ));
           latestValueRef.current = updated;
           props.onChange?.(updated);
+          emitUploadStatus(updated);
         })
         .catch((error) => {
           const current = latestValueRef.current;
@@ -170,6 +225,7 @@ function WrappedFileUpload(props: any) {
           ));
           latestValueRef.current = updated;
           props.onChange?.(updated);
+          emitUploadStatus(updated);
         });
     }
   };

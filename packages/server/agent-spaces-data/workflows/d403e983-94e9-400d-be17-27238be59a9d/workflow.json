@@ -1,0 +1,31 @@
+{
+  "id": "d403e983-94e9-400d-be17-27238be59a9d",
+  "name": "分支测试",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781689662315_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781689662315_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 270,
+        "y": 525
+      },
+      "data": {}
+    }
+  ],
+  "edges": [],
+  "createdAt": 1781689662320,
+  "updatedAt": 1781689677311,
+  "published": false
+}
