@@ -4,7 +4,7 @@ const {
   Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Textarea, Slider,
 } = window.AgentSpacesUI;
-const { Library, PlusCircle, Sparkles } = window.AgentSpacesUI;
+const { Library, Sparkles } = window.AgentSpacesUI;
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -24,7 +24,9 @@ export default function CreationPanel({
   creationGroupIds,
   referenceItems,
   onRunCreation,
+  onCancelCreation,
   onOpenGroupDialog,
+  creationRunning,
 }) {
   const selectedGroup = referenceGroups.find((group) => group.id === selectedGroupId) || null;
   const selectedReferenceItems = useMemo(
@@ -43,11 +45,9 @@ export default function CreationPanel({
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-48 flex-1">
           <div className="text-xs text-muted-foreground">分组</div>
-          <Select value={selectedGroupId} onValueChange={onSelectedGroupIdChange}>
+          <Select value={selectedGroupId} onValueChange={onSelectedGroupIdChange} disabled={creationRunning}>
             <SelectTrigger className="mt-1 h-9">
-              <SelectValue placeholder="选择分组">
-                {(value) => referenceGroups.find((group) => group.id === value)?.name || '选择分组'}
-              </SelectValue>
+              <SelectValue placeholder="选择分组" />
             </SelectTrigger>
             <SelectContent>
               {referenceGroups.map((group) => (
@@ -56,10 +56,10 @@ export default function CreationPanel({
             </SelectContent>
           </Select>
         </div>
-        <Button variant="outline" size="sm" onClick={onOpenGroupDialog}>
+        <Button variant="outline" size="sm" onClick={onOpenGroupDialog} disabled={creationRunning}>
           <Library className="size-4" />管理分组
         </Button>
-        <Button variant="outline" size="sm" onClick={onPickAgent}>
+        <Button variant="outline" size="sm" onClick={onPickAgent} disabled={creationRunning}>
           <Sparkles className="size-4" />
           {creationAgentLabel || creationAgentMeta?.name || '选择 agent'}
         </Button>
@@ -89,10 +89,11 @@ export default function CreationPanel({
       <div>
         <div className="text-xs text-muted-foreground">要求输入</div>
         <Textarea
-          value={normalizeText(creationInput)}
+          value={creationInput}
           onChange={(e) => onCreationInputChange(e.target.value)}
           placeholder="输入创作要求"
           className="mt-1 min-h-28"
+          disabled={creationRunning}
         />
       </div>
 
@@ -106,6 +107,7 @@ export default function CreationPanel({
           min={1}
           max={5}
           step={1}
+          disabled={creationRunning}
           onValueChange={(value) => {
             const next = Array.isArray(value) ? value[0] : value;
             onCreationOutputCountChange(next);
@@ -113,12 +115,13 @@ export default function CreationPanel({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <Button variant="outline" size="sm" onClick={onOpenGroupDialog}>
-          <PlusCircle className="size-4" />新建/编辑分组
-        </Button>
-        <Button onClick={onRunCreation} disabled={!creationAgentMeta || !selectedGroup || !normalizeText(creationInput)}>
-          <Sparkles className="size-4" />开始生成
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          onClick={creationRunning ? onCancelCreation : onRunCreation}
+          variant={creationRunning ? 'outline' : 'default'}
+          disabled={!creationRunning && (!creationAgentMeta || !selectedGroup || !normalizeText(creationInput))}
+        >
+          <Sparkles className="size-4" />{creationRunning ? '取消生成' : '开始生成'}
         </Button>
       </div>
     </div>

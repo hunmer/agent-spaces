@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from './components/Toolbar';
 import CreationPanel from './components/CreationPanel';
 import CopywritingCard from './components/CopywritingCard';
@@ -58,6 +58,7 @@ export default function App() {
   const [creationOutputCount, setCreationOutputCount] = useState(3);
   const [creationRunning, setCreationRunning] = useState(false);
   const [creationResults, setCreationResults] = useState([]);
+  const cancelCreationRef = useRef(false);
 
   const refreshAll = useCallback(() => {
     dbq.refresh(filter);
@@ -257,6 +258,18 @@ export default function App() {
     saveAgentConfig({ configId: saved.id, name: saved.name || '创作 Agent' });
   }, [creationAgentMeta]);
 
+  function stripThink(text) {
+    return String(text || '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<think>[\s\S]*$/gi, '')
+      .trim();
+  }
+
+  const cancelCreation = () => {
+    cancelCreationRef.current = true;
+    setCreationRunning(false);
+  };
+
   const runCreation = async () => {
     const group = referenceGroups.find((item) => item.id === selectedGroupId);
     if (!group || !creationAgentMeta?.id) return;
@@ -265,7 +278,7 @@ export default function App() {
       .filter(Boolean)
       .map((item) => `标题：${item.title}\n内容：${item.type === 'text' ? item.content : item.transcription}`)
       .join('\n\n');
-    const prompt = [
+    const basePrompt = [
       `参考文案分组：${group.name}`,
       '参考内容：',
       refs || '无',
@@ -273,27 +286,33 @@ export default function App() {
       '创作要求：',
       creationInput.trim(),
       '',
-      `输出数量：${creationOutputCount}`,
-      '请直接输出多条文案，每条独立成段。',
+      '请只生成 1 篇文案。直接输出文案正文，不要输出编号、标题、解释或 <think> 内容。',
     ].join('\n');
 
+    cancelCreationRef.current = false;
     setCreationRunning(true);
     setCreationResults([]);
     try {
-      const taskId = `copywriting-${Date.now()}`;
-      const resp = await window.AgentSpaces.callPluginTool(
-        BUILTIN_PLUGIN,
-        'agent_run',
-        {
-          agentConfigId: creationAgentMeta.id,
-          prompt,
-          permissionMode: 'bypassPermissions',
-        },
-        { taskId, meta: { mode: 'copywriting-create', groupId: group.id } },
-      );
-      const text = resp?.result?.result || resp?.result || '';
-      const lines = String(text).split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, creationOutputCount);
-      setCreationResults(lines.map((line, index) => ({ id: `${taskId}-${index}`, text: line })));
+      for (let index = 0; index < creationOutputCount; index++) {
+        if (cancelCreationRef.current) break;
+        const taskId = `copywriting-${Date.now()}-${index}`;
+        const prompt = `${basePrompt}\n\n本次生成第 ${index + 1} 篇，请和前面批次保持差异。`;
+        const resp = await window.AgentSpaces.callPluginTool(
+          BUILTIN_PLUGIN,
+          'agent_run',
+          {
+            agentConfigId: creationAgentMeta.id,
+            prompt,
+            permissionMode: 'bypassPermissions',
+          },
+          { taskId, meta: { mode: 'copywriting-create', groupId: group.id, batch: index + 1 } },
+        );
+        if (cancelCreationRef.current) break;
+        const text = stripThink(resp?.result?.result || resp?.result || '');
+        if (text) {
+          setCreationResults((prev) => [...prev, { id: taskId, text }]);
+        }
+      }
     } finally {
       setCreationRunning(false);
     }
@@ -362,7 +381,9 @@ export default function App() {
               creationGroupIds={currentGroup ? [currentGroup.id] : []}
               referenceItems={referenceItems}
               onRunCreation={runCreation}
+              onCancelCreation={cancelCreation}
               onOpenGroupDialog={() => { setReferenceDialogItemId(''); setReferenceDialogOpen(true); }}
+              creationRunning={creationRunning}
             />
             <div className="rounded-lg border bg-card p-3">
               <div className="flex items-center justify-between gap-2">
