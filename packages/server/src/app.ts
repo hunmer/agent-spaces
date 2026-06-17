@@ -36,7 +36,6 @@ import subscriptionRouter from './routes/subscription.js';
 import agentSseRouter from './routes/agent-sse.js';
 import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
-import databaseRouter from './routes/database.js';
 import knowledgeBaseRouter from './routes/knowledge-base.js';
 import kanbanRouter from './routes/kanban.js';
 import { worktreeRouter } from './routes/worktree.js';
@@ -298,7 +297,6 @@ app.post('/api/git-config', async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 app.use('/api/workspaces/:id/search', searchRouter);
-app.use('/api/workspaces/:id/database', databaseRouter);
 app.use('/api/workspaces/:id/knowledge-bases', knowledgeBaseRouter);
 app.use('/api/workspaces/:id/kanban', kanbanRouter);
 app.use('/api/workspaces/:id/worktrees', worktreeRouter);

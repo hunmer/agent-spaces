@@ -8,7 +8,6 @@ import { useIssueStore } from '@/stores/issue';
 import { useTaskStore } from '@/stores/task';
 import { useAgentStore } from '@/stores/agent';
 import { useNotificationStore } from '@/stores/notification';
-import { useDatabaseStore } from '@/stores/database';
 import { useCommandStore } from '@/stores/command';
 import { getActivityLogStore } from '@/stores/activity-log';
 import { useInspectorHistoryStore } from '@/stores/inspector-history';
@@ -41,8 +40,6 @@ export interface ContentUsageSnapshot {
     channelMessages: number;
     channelMessageBytes: number;
     notifications: number;
-    databases: number;
-    databaseNodes: number;
     commands: number;
     runningCommands: number;
     terminalSessions: number;
@@ -147,7 +144,6 @@ export function captureContentUsageSnapshot(): ContentUsageSnapshot {
   const task = useTaskStore.getState();
   const agent = useAgentStore.getState();
   const notification = useNotificationStore.getState();
-  const database = useDatabaseStore.getState();
   const command = useCommandStore.getState();
   const inspector = useInspectorHistoryStore.getState();
   const git = useGitStore.getState();
@@ -176,8 +172,6 @@ export function captureContentUsageSnapshot(): ContentUsageSnapshot {
       channelMessages: channelUsage.count,
       channelMessageBytes: channelUsage.bytes,
       notifications: notification.notifications.length,
-      databases: database.databases.length,
-      databaseNodes: database.nodes.length,
       commands: command.commands.length,
       runningCommands: Object.keys(command.runningMap).length,
       terminalSessions: terminal.sessions.length,
@@ -216,7 +210,6 @@ export function formatContentUsageSnapshot(report: ContentUsageSnapshot): string
     `Terminal sessions: ${report.terminalDetails.length > 0 ? report.terminalDetails.map((session) => `${session.sessionId.slice(0, 8)} ${bytesToString(session.outputBytes)} ${session.bufferLines} lines ${session.cols}x${session.rows}`).join('; ') : 'none'}`,
     `Chat: ${report.counts.channels} channels, ${report.counts.channelMessages} messages, ${bytesToString(report.counts.channelMessageBytes)} text`,
     `Work items: ${report.counts.issues} issues, ${report.counts.tasks} tasks`,
-    `Knowledge base: ${report.counts.databases} databases, ${report.counts.databaseNodes} nodes`,
     `Automation: ${report.counts.commands} commands, ${report.counts.runningCommands} running`,
     `Events: ${report.counts.notifications} notifications, ${report.counts.activityLogEntries} activity log entries, ${bytesToString(report.counts.activityLogBytes)} log text`,
     `History: ${report.counts.inspectorHistoryEntries} inspector jumps, ${report.counts.gitLogEntries} git log entries, ${report.counts.gitBranchEntries} git branches, ${report.counts.gitDiffEntries} open diffs`,
