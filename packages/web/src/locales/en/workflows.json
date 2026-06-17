@@ -24,6 +24,7 @@
   "card": {
     "edit": "Edit",
     "duplicate": "Duplicate",
+    "export": "Export",
     "delete": "Delete",
     "nodes": "{count} nodes",
     "defaultInitial": "N"

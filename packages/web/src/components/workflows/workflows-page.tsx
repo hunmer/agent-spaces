@@ -184,18 +184,21 @@ export function WorkflowsPage() {
     });
   }, []);
 
+  const handleExport = useCallback((wf: WorkflowTemplate) => {
+    const blob = new Blob([JSON.stringify(wf, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${wf.name || 'workflow'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
   const handleExportSelected = useCallback(async () => {
     const selected = workflows.filter(wf => selectedIds.has(wf.id));
     if (selected.length === 0) return;
     if (selected.length === 1) {
-      const wf = selected[0];
-      const blob = new Blob([JSON.stringify(wf, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${wf.name || 'workflow'}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      handleExport(selected[0]);
       return;
     }
     const zip = new JSZip();
@@ -209,7 +212,7 @@ export function WorkflowsPage() {
     a.download = 'workflows.zip';
     a.click();
     URL.revokeObjectURL(url);
-  }, [workflows, selectedIds]);
+  }, [workflows, selectedIds, handleExport]);
 
   const handleDeleteSelected = useCallback(async () => {
     const ids = Array.from(selectedIds);
@@ -370,6 +373,7 @@ export function WorkflowsPage() {
               workflow={workflow}
               onDuplicate={handleDuplicate}
               onDelete={handleDelete}
+              onExport={handleExport}
               selectionMode={selectionMode}
               selected={selectedIds.has(workflow.id)}
               onToggleSelect={() => toggleSelect(workflow.id)}

@@ -3,7 +3,7 @@
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Pencil, Copy, Trash2, MoreVertical, Check } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Check, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
@@ -14,12 +14,13 @@ interface WorkflowCardProps {
   workflow: WorkflowTemplate;
   onDuplicate: (wf: WorkflowTemplate) => void;
   onDelete: (wf: WorkflowTemplate) => void;
+  onExport: (wf: WorkflowTemplate) => void;
   selectionMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
 }
 
-export function WorkflowCard({ workflow, onDuplicate, onDelete, selectionMode, selected, onToggleSelect }: WorkflowCardProps) {
+export function WorkflowCard({ workflow, onDuplicate, onDelete, onExport, selectionMode, selected, onToggleSelect }: WorkflowCardProps) {
   const router = useRouter();
   const t = useTranslations('workflows');
 
@@ -51,6 +52,9 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete, selectionMode, s
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDuplicate(workflow)}>
                 <Copy className="h-3.5 w-3.5 mr-2" /> {t('card.duplicate')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport(workflow)}>
+                <Download className="h-3.5 w-3.5 mr-2" /> {t('card.export')}
               </DropdownMenuItem>
               <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(workflow)}>
                 <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('card.delete')}
