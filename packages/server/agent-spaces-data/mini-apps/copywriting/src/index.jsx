@@ -14,7 +14,7 @@ import { addCopywritingToKnowledgeBase, queryCopywritingKnowledgeBase, deleteCop
 import { loadReferenceGroups, saveReferenceGroups, makeGroupId } from './utils/reference-list';
 import { loadAgentConfig, saveAgentConfig } from './utils/agent-config';
 
-const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge } = window.AgentSpacesUI;
+const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge, Trash2 } = window.AgentSpacesUI;
 
 const BUILTIN_PLUGIN = '@agent-spaces/builtin';
 const { getUserSetting, saveUserSettings } = window.AgentSpaces;
@@ -333,6 +333,22 @@ export default function App() {
     if (!selectedGroupId && groups[0]) setSelectedGroupId(groups[0].id);
   }, [selectedGroupId]);
 
+  const removeReferenceItem = useCallback((itemId) => {
+    if (!selectedGroupId) return;
+    saveGroups(referenceGroups.map((group) =>
+      group.id === selectedGroupId
+        ? { ...group, itemIds: group.itemIds.filter((id) => String(id) !== String(itemId)) }
+        : group,
+    ));
+  }, [referenceGroups, selectedGroupId, saveGroups]);
+
+  const clearReferenceItems = useCallback(() => {
+    if (!selectedGroupId) return;
+    saveGroups(referenceGroups.map((group) =>
+      group.id === selectedGroupId ? { ...group, itemIds: [] } : group,
+    ));
+  }, [referenceGroups, selectedGroupId, saveGroups]);
+
   useEffect(() => {
     const selectedGroup = referenceGroups.find((group) => group.id === selectedGroupId);
     if (!selectedGroup) {
@@ -496,6 +512,8 @@ export default function App() {
               onCreationOutputCountChange={setCreationOutputCount}
               creationGroupIds={currentGroup ? [currentGroup.id] : []}
               referenceItems={referenceItems}
+              onRemoveReferenceItem={removeReferenceItem}
+              onClearReferenceItems={clearReferenceItems}
               onRunCreation={runCreation}
               onCancelCreation={cancelCreation}
               onOpenGroupDialog={() => { setReferenceDialogItemId(''); setReferenceDialogOpen(true); }}
@@ -504,9 +522,21 @@ export default function App() {
             <div className="flex flex-col rounded-lg border bg-card p-3" style={{ maxHeight: 'calc(100vh - 125px)', overflowY: 'scroll' }}>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-medium">结果卡片列表</div>
-                {creationRunning && <Badge variant="secondary">生成中</Badge>}
+                <div className="flex items-center gap-2">
+                  {creationRunning && <Badge variant="secondary">生成中</Badge>}
+                  {!creationRunning && creationResults.length > 0 && (
+                    <Button size="sm" variant="outline" onClick={() => setCreationResults([])}>
+                      <Trash2 className="size-4" />清空
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2" style={{ minHeight: 0 }}>
+              <style>{`
+                .cw-result{column-count:1;column-gap:.5rem}
+                .cw-result>*{break-inside:avoid;margin-bottom:.5rem}
+                @media(min-width:640px){.cw-result{column-count:2}}
+              `}</style>
+              <div className="cw-result mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
                 {creationResults.length === 0 && !creationRunning ? (
                   <div className="py-10 text-center text-sm text-muted-foreground">暂无结果</div>
                 ) : (
@@ -522,9 +552,18 @@ export default function App() {
                           <div className="whitespace-pre-wrap text-sm text-foreground">{item.text}</div>
                           <div className="mt-2 flex items-center justify-between">
                             <span className="size-2 rounded-full" style={{ backgroundColor: color.dot }} />
-                            <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(item.text)}>
-                              复制文案
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(item.text)}>
+                                复制文案
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setCreationResults((prev) => prev.filter((r) => r.id !== item.id))}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       );
