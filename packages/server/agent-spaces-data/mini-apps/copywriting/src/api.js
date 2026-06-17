@@ -1,11 +1,5 @@
-const COPYWRITING_KB_ID = 'copywriting-fixed-knowledge-base';
-
-function unwrap(result) {
-  return result?.result || result;
-}
-
 function normalizeMatches(result) {
-  const data = unwrap(result);
+  const data = result?.result || result;
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.matches)) return data.matches;
   if (Array.isArray(data?.results)) return data.results;
@@ -24,19 +18,17 @@ export default {
     }
 
     try {
-      const result = await ctx.callPluginTool('@agent-spaces/builtin', 'kb_query', {
-        knowledgeBase: COPYWRITING_KB_ID,
+      const result = await ctx.requestClient('copywritingKnowledgeBase', {
         query,
         topK: Math.max(1, Math.min(10, topK)),
-      });
-      const unwrapped = unwrap(result);
+      }, 15000);
       const matches = normalizeMatches(result);
       return {
         ok: true,
         query,
         count: matches.length,
         matches,
-        raw: unwrapped,
+        raw: result,
         message: matches.length ? '已查询文案知识库' : '文案知识库未找到相关结果',
       };
     } catch (err) {

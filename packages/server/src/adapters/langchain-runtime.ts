@@ -440,7 +440,7 @@ function buildLangChainTools(
       const line = `Tool: ${runtimeTool.name} input=${JSON.stringify(input)}`;
       progress.recordToolUse();
       log(`tool use | source=function id=${toolUseId} name=${runtimeTool.name} descriptionChars=${runtimeTool.description.length} input=${summarizeForLog(input, 800)}`);
-      output.push(line);
+      // output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: toolUseId, name: runtimeTool.name, input, line });
       try {
         const result = await runtimeTool.execute(input);
@@ -565,7 +565,7 @@ function createLangChainMcpClient(
       const line = `Tool: ${name} input=${JSON.stringify(request.args ?? {})}`;
       progress.recordToolUse();
       log(`tool use | source=mcp server=${request.serverName} name=${name} input=${summarizeForLog(request.args ?? {}, 800)}`);
-      output.push(line);
+      // output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: name, name, input: request.args ?? {}, line });
     },
     afterToolCall: (result) => {

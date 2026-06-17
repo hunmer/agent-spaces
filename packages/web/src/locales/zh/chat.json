@@ -207,7 +207,9 @@
     "copied": "已复制",
     "copy": "复制",
     "delete": "删除",
-    "regenerate": "重新生成"
+    "regenerate": "重新生成",
+    "showToolCalls": "显示工具调用",
+    "hideToolCalls": "隐藏工具调用"
   },
   "addAgent": {
     "editTitle": "编辑 Agent",

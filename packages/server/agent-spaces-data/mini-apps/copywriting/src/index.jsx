@@ -159,9 +159,41 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const unsub = window.AgentSpaces.onTaskEvent((event) => {
+    const unsub = window.AgentSpaces.onTaskEvent((event, data) => {
       if (event === 'miniApp.taskFinished' || event === 'miniApp.taskFailed') {
         dbq.refresh(filter);
+      } else if (event === 'miniApp.clientRequest' && data?.type === 'copywritingKnowledgeBase') {
+        const query = String(data.payload?.query || '').trim();
+        const topK = Number.isFinite(Number(data.payload?.topK)) ? Number(data.payload.topK) : 5;
+
+        queryCopywritingKnowledgeBase(query, topK)
+          .then((result) => {
+            const matches = Array.isArray(result)
+              ? result
+              : Array.isArray(result?.matches)
+                ? result.matches
+                : Array.isArray(result?.results)
+                  ? result.results
+                  : Array.isArray(result?.items)
+                    ? result.items
+                    : Array.isArray(result?.documents)
+                      ? result.documents
+                      : [];
+            window.AgentSpaces.respondClientRequest(data.requestId, {
+              query,
+              count: matches.length,
+              matches,
+              raw: result,
+            });
+          })
+          .catch((error) => {
+            window.AgentSpaces.respondClientRequest(
+              data.requestId,
+              null,
+              false,
+              error instanceof Error ? error.message : String(error),
+            );
+          });
       }
     });
     return unsub;

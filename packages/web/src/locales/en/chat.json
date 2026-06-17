@@ -207,7 +207,9 @@
     "copied": "Copied",
     "copy": "Copy",
     "delete": "Delete",
-    "regenerate": "Regenerate"
+    "regenerate": "Regenerate",
+    "showToolCalls": "Show tool calls",
+    "hideToolCalls": "Hide tool calls"
   },
   "addAgent": {
     "editTitle": "Edit Agent",

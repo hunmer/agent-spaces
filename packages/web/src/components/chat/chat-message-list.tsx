@@ -13,6 +13,7 @@ import {
   Copy,
   RefreshCw,
   Trash2,
+  Wrench,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -143,6 +144,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
   onRerunTool,
 }: ChatMessageListProps<TMessage>) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [visibleToolTimelineMessageIds, setVisibleToolTimelineMessageIds] = useState<Record<string, boolean>>({});
   const t = useTranslations("chat.messageBubble");
 
   const handleCopyMessage = async (message: TMessage) => {
@@ -165,6 +167,8 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
       showStreamingPlaceholder || msg.role === "user" || thinking !== null || message.trim().length > 0;
     const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
     const hasTimeline = timeline.length > 0;
+    const showTimeline = hasTimeline && (streaming || visibleToolTimelineMessageIds[msg.id] === true);
+    const canToggleTimeline = msg.role === "agent" && hasTimeline && !streaming;
     if (!hasMessageBody && !renderMessageExtras && !hasTimeline) return null;
 
     const versions = versionInfo?.(msg);
@@ -207,7 +211,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               )}
             </div>
           ) : null}
-          {hasTimeline ? (
+          {showTimeline ? (
             <ChatToolTimeline
               timeline={timeline}
               workspaceId={workspaceId}
@@ -260,6 +264,26 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
                 aria-label={t("regenerate")}
               >
                 <RefreshCw className="size-3" />
+              </button>
+            ) : null}
+            {canToggleTimeline ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setVisibleToolTimelineMessageIds((current) => ({
+                    ...current,
+                    [msg.id]: !current[msg.id],
+                  }));
+                }}
+                className={cn(
+                  "flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  showTimeline && "bg-muted text-foreground",
+                )}
+                title={showTimeline ? t("hideToolCalls") : t("showToolCalls")}
+                aria-label={showTimeline ? t("hideToolCalls") : t("showToolCalls")}
+                aria-pressed={showTimeline}
+              >
+                <Wrench className="size-3" />
               </button>
             ) : null}
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100">
