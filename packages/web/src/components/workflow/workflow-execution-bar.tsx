@@ -33,6 +33,7 @@ interface ExecutionBarProps {
   variables?: OutputField[];
   validationError?: string | null;
   workflowId: string | null;
+  isPreview?: boolean;
   onExecute: (input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>) => void;
   onPause: () => void;
   onResume: () => void;
@@ -58,6 +59,7 @@ function formatDuration(start: number, end?: number): string {
 
 export function WorkflowExecutionBar({
   status, log, logs, selectedLogId, startNodes, variables = [], validationError, workflowId,
+  isPreview = false,
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs,
   onUpdateNodeData,
 }: ExecutionBarProps) {
@@ -83,7 +85,7 @@ export function WorkflowExecutionBar({
   };
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
-  const canStart = !isRunning && !isPaused && !validationError;
+  const canStart = !isPreview && !isRunning && !isPaused && !validationError;
   const canPause = isRunning;
   const canResume = isPaused;
   const canStop = isRunning || isPaused;

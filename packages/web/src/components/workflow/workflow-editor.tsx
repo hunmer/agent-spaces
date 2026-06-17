@@ -592,6 +592,22 @@ function WorkflowEditorInner({
     execution.handleExecute();
   }, [execution, isWorkflowRunning]);
 
+  const canRunWorkflowTest = !state.isPreview
+    && execution.execStatus !== 'running'
+    && execution.execStatus !== 'paused'
+    && !execution.executionValidationError;
+
+  const handleRunWorkflowTest = useCallback(() => {
+    if (!canRunWorkflowTest) return;
+    const executionBarNode = model.getNodeById('execution-bar');
+    if (executionBarNode) {
+      model.doAction(Actions.selectTab(executionBarNode.getId()));
+    }
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('workflow:open-execution-input'));
+    }, 0);
+  }, [canRunWorkflowTest, model]);
+
   const onModelChange = useCallback((_model: Model, action: Action) => {
     try {
       localStorage.setItem(WORKFLOW_LAYOUT_KEY, JSON.stringify(_model.toJson()));
@@ -823,6 +839,7 @@ function WorkflowEditorInner({
             variables={workflow.variables || []}
             validationError={execution.executionValidationError}
             workflowId={state.workflowId}
+            isPreview={state.isPreview}
             onExecute={execution.handleExecute}
             onPause={execution.handlePauseExecution}
             onResume={execution.handleResumeExecution}
@@ -903,6 +920,8 @@ function WorkflowEditorInner({
         onBack={onBack}
         onExitPreview={exitExecutionPreview}
         onSave={isWorkflowReadOnly || state.isPreview ? () => {} : state.saveWorkflow}
+        canRunTest={canRunWorkflowTest}
+        onRunTest={handleRunWorkflowTest}
         onSavePreviewEdits={state.savePreviewEdits}
         onExport={(format) => canvasExportRef.current?.exportCanvas(format)}
         isExporting={false}

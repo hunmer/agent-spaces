@@ -1,0 +1,164 @@
+{
+  "id": "a539819e-e720-4472-b8f5-f4035996e22c",
+  "name": "nano banana 测试",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781685716936_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781685716936_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1781685855248_7f1hj1",
+      "type": "nano_banana_models",
+      "label": "Nano Banana 模型列表",
+      "position": {
+        "x": 540,
+        "y": 195
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.nano-banana\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "models",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781685909746_pulssd",
+      "type": "nano_banana_create_image",
+      "label": "Nano Banana 文生图",
+      "position": {
+        "x": 690,
+        "y": 450
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
+        "model": "gemini-2.5-flash-image",
+        "responseModalities": "auto",
+        "aspectRatio": "auto",
+        "imageSize": "default",
+        "thinkingLevel": "auto",
+        "baseUrl": "{{ __config__[\"workflow.nano-banana\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "thinking",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "text",
+                "type": "string"
+              },
+              {
+                "key": "thoughts",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              },
+              {
+                "key": "groundingMetadata",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "prompt": "动漫女孩"
+      }
+    },
+    {
+      "id": "node_1781685997492_5jgg2v",
+      "type": "nano_banana_models",
+      "label": "Nano Banana 模型列表",
+      "position": {
+        "x": 465,
+        "y": 600
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.nano-banana\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "models",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1781685716941,
+  "updatedAt": 1781686523108,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.nano-banana",
+    "workflow.openai"
+  ],
+  "groups": []
+}

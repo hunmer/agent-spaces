@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft, Loader2,
-  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate,
+  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,8 @@ interface EditorToolbarProps {
   onBack: () => void;
   onExitPreview: () => void;
   onSave: () => void;
+  canRunTest: boolean;
+  onRunTest: () => void;
   onSavePreviewEdits: (options?: { createVersion?: boolean; versionName?: string }) => Promise<void>;
   onExport: (format: 'png' | 'jpeg') => void;
   isExporting?: boolean;
@@ -56,7 +58,7 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 
 export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview, isPreviewDirty,
-  onBack, onExitPreview, onSave, onSavePreviewEdits,
+  onBack, onExitPreview, onSave, canRunTest, onRunTest, onSavePreviewEdits,
   onExport, onImport, isExporting,
   onOpenPluginManager, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
   layoutManager,
@@ -126,6 +128,11 @@ export function WorkflowEditorToolbar({
       </Button>
 
       <div className="w-px h-5 bg-border mx-1" />
+
+      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!canRunTest} onClick={onRunTest}>
+        <Play className="h-3.5 w-3.5" />
+        运行测试
+      </Button>
 
       {isPreview && (
         <>

@@ -467,21 +467,36 @@
     ]
   },
   {
-    "id": "nano-banana",
-    "name": "nano-banana",
-    "version": "0.0.0",
-    "description": "",
+    "id": "workflow.nano-banana",
+    "name": "Nano Banana",
+    "version": "1.0.0",
+    "description": "Google Gemini native image generation (Nano Banana): text-to-image, image editing, multi-reference compositing, multi-turn editing, Google Search grounding, Thinking mode, and up to 4K resolution.",
     "author": {
-      "name": "Unknown"
+      "name": "workflow"
     },
-    "tags": [],
+    "tags": [
+      "AI",
+      "Image Generation",
+      "Gemini",
+      "Nano Banana"
+    ],
+    "type": "server",
     "hasView": false,
-    "hasWorkflow": false,
+    "hasWorkflow": true,
     "path": "nano-banana",
-    "md5": "28f7d808cf65e8d461c7efd42b0bbe3a",
-    "updatedAt": "2026-06-17T08:10:47.288Z",
+    "iconUrl": "plugins/nano-banana/icon.svg",
+    "md5": "b3dcd5966fbccc408b992745cba87cac",
+    "updatedAt": "2026-06-17T08:26:34.102Z",
     "files": [
-      "Nano Banana image generation.md"
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "Nano Banana image generation.md",
+      "README.md",
+      "tools.js",
+      "workflow.js"
     ]
   },
   {

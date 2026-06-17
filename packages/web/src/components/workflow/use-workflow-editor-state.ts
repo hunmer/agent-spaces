@@ -79,6 +79,13 @@ function normalizeLegacySourceHandle(snapshot: WorkflowSnapshot): WorkflowSnapsh
   return { ...snapshot, edges };
 }
 
+function findLastEndNodeId(nodes: Workflow['nodes']): string | null {
+  for (let index = nodes.length - 1; index >= 0; index -= 1) {
+    if (nodes[index]?.type === 'end') return nodes[index].id;
+  }
+  return null;
+}
+
 export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const store = useWorkflowStore();
 
@@ -139,6 +146,13 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const enterPreview = useCallback((log: ExecutionLog) => {
     if (!log.snapshot) return;
 
+    const previewNodes = JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes'];
+    const previewEdges = JSON.parse(JSON.stringify(log.snapshot.edges)) as Workflow['edges'];
+    const previewGroups = log.snapshot.groups
+      ? JSON.parse(JSON.stringify(log.snapshot.groups)) as Workflow['groups']
+      : [];
+    const lastEndNodeId = findLastEndNodeId(previewNodes);
+
     setWorkflow((current) => {
       if (!current) return current;
       if (!prePreviewWorkflowRef.current) {
@@ -147,15 +161,13 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
       return {
         ...current,
-        nodes: JSON.parse(JSON.stringify(log.snapshot!.nodes)) as Workflow['nodes'],
-        edges: JSON.parse(JSON.stringify(log.snapshot!.edges)) as Workflow['edges'],
-        groups: log.snapshot!.groups
-          ? JSON.parse(JSON.stringify(log.snapshot!.groups)) as Workflow['groups']
-          : [],
+        nodes: previewNodes,
+        edges: previewEdges,
+        groups: previewGroups,
       };
     });
-    setSelectedNodeId(null);
-    setSelectedNodeIds([]);
+    setSelectedNodeId(lastEndNodeId);
+    setSelectedNodeIds(lastEndNodeId ? [lastEndNodeId] : []);
     setIsPreviewDirty(false);
     setIsPreview(true);
   }, [cloneWorkflow]);

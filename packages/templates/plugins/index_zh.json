@@ -467,21 +467,36 @@
     ]
   },
   {
-    "id": "nano-banana",
-    "name": "nano-banana",
-    "version": "0.0.0",
-    "description": "",
+    "id": "workflow.nano-banana",
+    "name": "Nano Banana",
+    "version": "1.0.0",
+    "description": "Google Gemini 原生图像生成（Nano Banana），支持文生图、图片编辑、多参考图融合、多轮编辑、Google 搜索 Grounding、Thinking 模式与最高 4K 分辨率",
     "author": {
-      "name": "Unknown"
+      "name": "workflow"
     },
-    "tags": [],
+    "tags": [
+      "AI",
+      "图片生成",
+      "Gemini",
+      "Nano Banana"
+    ],
+    "type": "server",
     "hasView": false,
-    "hasWorkflow": false,
+    "hasWorkflow": true,
     "path": "nano-banana",
-    "md5": "28f7d808cf65e8d461c7efd42b0bbe3a",
-    "updatedAt": "2026-06-17T08:10:47.288Z",
+    "iconUrl": "plugins/nano-banana/icon.svg",
+    "md5": "b3dcd5966fbccc408b992745cba87cac",
+    "updatedAt": "2026-06-17T08:26:34.102Z",
     "files": [
-      "Nano Banana image generation.md"
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "Nano Banana image generation.md",
+      "README.md",
+      "tools.js",
+      "workflow.js"
     ]
   },
   {
