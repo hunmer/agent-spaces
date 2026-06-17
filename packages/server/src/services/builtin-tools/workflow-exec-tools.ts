@@ -290,6 +290,10 @@ function requireWorkflowExecutionManager() {
   return workflowExecutionManager;
 }
 
+export function getWorkflowExecutionManager(): ExecutionManager | null {
+  return workflowExecutionManager;
+}
+
 function getAllowedWorkflowToolNames(allowedTools?: BuiltInAgentToolName[]): Set<BuiltInAgentToolName> {
   const names = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const hasWorkflowTools = Array.from(names).some((name) => isWorkflowExecutionToolName(name));

@@ -12,6 +12,7 @@ import type {
   OutputField,
   ExecutionBacklogEvent,
   ExecutionRecoveryResponse,
+  WorkflowDryRunOptions,
 } from '@agent-spaces/shared';
 import type { InteractionManager } from './interaction-manager.js';
 import type { ClientNodeManager } from './client-node-manager.js';
@@ -51,6 +52,7 @@ export interface ExecutionSession {
   recentEvents: ExecutionBacklogEvent[]
   loopStack: LoopExecutionFrame[]
   breakpointBypassKeys: Set<string>
+  dryRun?: WorkflowDryRunOptions
   eventSink?: (channel: string, payload: unknown) => void
 }
 

@@ -2,6 +2,7 @@ import type { NodeProperty, OutputField, Workflow, WorkflowEdge, WorkflowNode } 
 import { createWorkflowNodesForDefinition } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../../adapters/agent-runtime-types.js';
 import * as workflowService from '../../workflow.js';
+import { getWorkflowExecutionManager } from '../workflow-exec-tools.js';
 import {
   asRecord,
   booleanInput,
@@ -45,6 +46,10 @@ function workflowResult(success: boolean, message: string, results?: unknown[], 
     results,
   };
 }
+
+const DEFAULT_DRY_RUN_TIMEOUT_MS = 120_000;
+const MAX_DRY_RUN_TIMEOUT_MS = 600_000;
+const DRY_RUN_POLL_INTERVAL_MS = 500;
 
 interface MissingRequiredField {
   nodeId: string;
@@ -121,6 +126,46 @@ function findReachableNodes(workflow: Pick<Workflow, 'nodes' | 'edges'>, startNo
     }
   }
   return reachable;
+}
+
+function arrayStringInput(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? arrayStringInput(parsed) : [];
+    } catch {
+      return value.trim() ? [value.trim()] : [];
+    }
+  }
+  return [];
+}
+
+function objectInputAny(input: JsonRecord, keys: string[]): JsonRecord {
+  for (const key of keys) {
+    const value = objectInput(input, key);
+    if (Object.keys(value).length > 0) return value;
+  }
+  return {};
+}
+
+function stringInputObject(input: JsonRecord, key: string): JsonRecord {
+  const value = input[key];
+  if (typeof value !== 'string' || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as JsonRecord : {};
+  } catch {
+    return {};
+  }
+}
+
+function compactObject(value: JsonRecord): JsonRecord {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function checkRequiredFields(
@@ -384,6 +429,112 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         return {
           ...result,
           message: result.passed ? 'workflow chain required fields check passed' : 'workflow chain has missing required fields',
+        };
+      },
+    },
+    {
+      name: 'dry_run',
+      description: '使用当前未保存的工作流草稿执行一次 dry run。可传 node_ids 限定哪些节点使用自定义输入/输出；不传 node_ids 时，所有提供了自定义 inputs/outputs 的节点都会生效。outputs 用于跳过需要密钥或会产生实际消耗的节点。',
+      inputSchema: schema({
+        startNodeId: { type: 'string', description: '可选，起始节点 ID。多开始节点时必须提供。' },
+        start_node_id: { type: 'string', description: '起始节点 ID，兼容蛇形命名。' },
+        workflow_input: { type: 'object', description: '可选，工作流整体输入，会传给 start 节点。', properties: {} },
+        input: { type: 'object', description: 'workflow_input alias.', properties: {} },
+        workflowInput: { type: 'object', description: 'workflow_input alias.', properties: {} },
+        node_ids: { type: 'array', description: '可选，只对这些节点启用自定义 inputs/outputs。', items: { type: 'string' } },
+        nodeIds: { type: 'array', description: 'node_ids alias.', items: { type: 'string' } },
+        inputs: { type: ['object', 'string'], description: '可选，按节点 ID 设置运行时输入，例如 { "node_id": { "field": "value" } }。也兼容 JSON 字符串。', properties: {} },
+        custom_inputs: { type: ['object', 'string'], description: 'inputs alias.', properties: {} },
+        outputs: { type: ['object', 'string'], description: '可选，按节点 ID 设置模拟输出；提供后该节点不执行真实逻辑，直接返回此输出。也兼容 JSON 字符串。', properties: {} },
+        custom_outputs: { type: ['object', 'string'], description: 'outputs alias.', properties: {} },
+        max_wait_ms: { type: 'number', description: `等待 dry run 完成的最长时间，默认 ${DEFAULT_DRY_RUN_TIMEOUT_MS}，最大 ${MAX_DRY_RUN_TIMEOUT_MS}。` },
+      }),
+      annotations: { readOnly: true },
+      execute: async (input) => {
+        const manager = getWorkflowExecutionManager();
+        if (!manager) return { success: false, message: 'Workflow execution manager is not initialized' };
+
+        const record = asRecord(input);
+        const startNodeId = stringInputAny(record, ['startNodeId', 'start_node_id']);
+        const snakeNodeIds = arrayStringInput(record.node_ids);
+        const nodeIds = snakeNodeIds.length > 0 ? snakeNodeIds : arrayStringInput(record.nodeIds);
+        const workflowInput = objectInputAny(record, ['workflow_input', 'workflowInput', 'input']);
+        const dryRunInputs = {
+          ...stringInputObject(record, 'inputs'),
+          ...objectInputAny(record, ['inputs', 'custom_inputs']),
+        };
+        const dryRunOutputs = {
+          ...stringInputObject(record, 'outputs'),
+          ...objectInputAny(record, ['outputs', 'custom_outputs']),
+        };
+        const result = await manager.execute({
+          workflowId: draft.id,
+          input: workflowInput,
+          startNodeId,
+          snapshot: {
+            nodes: clone(draft.nodes),
+            edges: clone(draft.edges),
+            groups: clone(draft.groups || []),
+            variables: clone(draft.variables || []),
+          },
+          dryRun: {
+            ...(nodeIds.length > 0 ? { nodeIds } : {}),
+            inputs: dryRunInputs,
+            outputs: dryRunOutputs,
+          },
+        }, 'workflow-editor-dry-run');
+
+        const timeoutMs = Math.min(MAX_DRY_RUN_TIMEOUT_MS, Math.max(DRY_RUN_POLL_INTERVAL_MS, numberInput(record, 'max_wait_ms', DEFAULT_DRY_RUN_TIMEOUT_MS)));
+        const startedAt = Date.now();
+        let status = result.status;
+        let log = manager.getExecutionRecovery({ workflowId: draft.id, executionId: result.executionId }, 'workflow-editor-dry-run').execution?.log;
+        while (Date.now() - startedAt < timeoutMs) {
+          const recovery = manager.getExecutionRecovery({ workflowId: draft.id, executionId: result.executionId }, 'workflow-editor-dry-run');
+          log = recovery.execution?.log ?? workflowService.getExecutionLog(draft.id, result.executionId) ?? log;
+          status = log?.status ?? recovery.execution?.status ?? status;
+          if (status !== 'running') break;
+          await sleep(DRY_RUN_POLL_INTERVAL_MS);
+        }
+
+        log = log ?? workflowService.getExecutionLog(draft.id, result.executionId) ?? undefined;
+        const recovery = manager.getExecutionRecovery({ workflowId: draft.id, executionId: result.executionId }, 'workflow-editor-dry-run');
+        const timedOut = status === 'running';
+        const steps = log?.steps.map((step) => ({
+          nodeId: step.nodeId,
+          nodeLabel: step.nodeLabel,
+          status: step.status,
+          input: step.input,
+          output: step.output,
+          error: step.error,
+          logs: step.logs,
+        })) ?? [];
+        const overrideNodeIds = Array.from(new Set([
+          ...Object.keys(dryRunInputs),
+          ...Object.keys(dryRunOutputs),
+        ]));
+        const skippedOverrideNodeIds = overrideNodeIds.filter((nodeId) => steps.some((step) => step.nodeId === nodeId && step.status === 'skipped'));
+        const executedOrMockedNodeIds = steps.filter((step) => step.status === 'completed').map((step) => step.nodeId);
+        const success = !timedOut
+          && status === 'completed'
+          && skippedOverrideNodeIds.length === 0
+          && (overrideNodeIds.length === 0 || overrideNodeIds.some((nodeId) => executedOrMockedNodeIds.includes(nodeId)));
+        return {
+          success,
+          message: timedOut
+            ? `Dry run is still running after ${timeoutMs}ms.`
+            : success
+              ? `Dry run finished with status: ${status}.`
+              : `Dry run finished with status: ${status}, but requested override nodes were not exercised.`,
+          execution_id: result.executionId,
+          status,
+          timed_out: timedOut,
+          override_node_ids: overrideNodeIds,
+          skipped_override_node_ids: skippedOverrideNodeIds,
+          effective_workflow_input: workflowInput,
+          effective_inputs: compactObject(dryRunInputs),
+          effective_outputs: compactObject(dryRunOutputs),
+          steps,
+          context: recovery.execution?.context,
         };
       },
     },

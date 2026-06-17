@@ -141,6 +141,7 @@ export class ExecutionManager {
     const executionId = randomUUID();
     const session = this.createSession(
       executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, request.env, eventSink, workspaceId,
+      request.dryRun,
     );
     session.context.__config__ = this.loadPluginConfigs(session);
 
@@ -336,6 +337,7 @@ export class ExecutionManager {
     env?: Record<string, unknown>,
     eventSink?: (channel: string, payload: unknown) => void,
     workspaceId?: string,
+    dryRun?: WorkflowExecuteRequest['dryRun'],
   ): ExecutionSession {
     const defaultEnv = buildOutputObject(snapshot?.variables ?? workflow.variables) ?? {};
     return {
@@ -360,7 +362,7 @@ export class ExecutionManager {
       activeBranches: new Map(), persisted: false,
       lastUpdatedAt: Date.now(), eventSequence: 0,
       recentEvents: [], loopStack: [],
-      breakpointBypassKeys: new Set(), eventSink,
+      breakpointBypassKeys: new Set(), dryRun, eventSink,
     };
   }
 
@@ -577,9 +579,13 @@ export class ExecutionManager {
       if (session.stopRequested || session.pauseRequested) return 'interrupted';
     }
 
-    const resolvedData = this.resolveContextVariables(session, { ...node.data });
-    const stepInput = getStepInput(node, resolvedData);
-    this.setNodeExecutionInput(session, node.id, node.type === 'end' ? {} : buildOutputObject(resolvedData.inputFields) ?? {});
+    const dryRunInput = this.getDryRunNodeValue(session, 'inputs', node.id);
+    const resolvedData = this.applyDryRunInput(
+      this.resolveContextVariables(session, { ...node.data }),
+      dryRunInput,
+    );
+    const stepInput = dryRunInput ?? getStepInput(node, resolvedData);
+    this.setNodeExecutionInput(session, node.id, dryRunInput ?? (node.type === 'end' ? {} : buildOutputObject(resolvedData.inputFields) ?? {}));
 
     const step: ExecutionStep = {
       nodeId: node.id, nodeLabel: node.label, startedAt: Date.now(), status: 'running',
@@ -606,7 +612,9 @@ export class ExecutionManager {
     };
 
     try {
-      const result = await this.dispatchNode(session, node, resolvedData, appendLog);
+      const dryRunOutput = this.getDryRunNodeValue(session, 'outputs', node.id);
+      if (dryRunOutput !== undefined) appendLog('info', 'Dry run output override used');
+      const result = dryRunOutput ?? await this.dispatchNode(session, node, resolvedData, appendLog);
       if (session.stopRequested) return 'interrupted';
 
       step.finishedAt = Date.now();
@@ -753,6 +761,38 @@ export class ExecutionManager {
         }
         throw new Error(`Unsupported node type: ${node.type}`);
     }
+  }
+
+  private getDryRunNodeValue(
+    session: ExecutionSession,
+    kind: 'inputs' | 'outputs',
+    nodeId: string,
+  ): unknown {
+    const dryRun = session.dryRun;
+    if (!dryRun) return undefined;
+    if (Array.isArray(dryRun.nodeIds) && dryRun.nodeIds.length > 0 && !dryRun.nodeIds.includes(nodeId)) {
+      return undefined;
+    }
+    const values = dryRun[kind];
+    if (!values || typeof values !== 'object' || Array.isArray(values)) return undefined;
+    return Object.prototype.hasOwnProperty.call(values, nodeId)
+      ? (values as Record<string, unknown>)[nodeId]
+      : undefined;
+  }
+
+  private applyDryRunInput(resolvedData: Record<string, any>, input: unknown): Record<string, any> {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return resolvedData;
+    const inputRecord = input as Record<string, unknown>;
+    const next: Record<string, any> = { ...resolvedData, ...inputRecord };
+    if (Array.isArray(resolvedData.inputFields)) {
+      next.inputFields = resolvedData.inputFields.map((field: unknown) => {
+        if (!field || typeof field !== 'object' || Array.isArray(field)) return field;
+        const key = (field as Record<string, unknown>).key;
+        if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(inputRecord, key)) return field;
+        return { ...(field as Record<string, unknown>), value: inputRecord[key] };
+      });
+    }
+    return next;
   }
 
   // ---- Private: Node type implementations ----

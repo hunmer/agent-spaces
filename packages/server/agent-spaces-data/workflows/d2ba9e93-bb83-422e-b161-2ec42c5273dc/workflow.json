@@ -364,7 +364,7 @@
       "label": "合并URL",
       "position": {
         "x": 1650,
-        "y": 159
+        "y": 165
       },
       "data": {
         "code": "async function main({ params, context }) {\n  // 从视频分支或音频分支的 cos_upload_file 中获取上传后的在线 URL\n  // 任意一个上游会发送数据（switch 只触发一个分支）\n  const url = params.videoUploadUrl || params.audioUploadUrl || '';\n  if (!url) {\n    return { fileUrls: [], fileUrl: '' };\n  }\n  return {\n    fileUrls: [url],\n    fileUrl: url,\n  };\n}",
@@ -450,7 +450,7 @@
     }
   ],
   "createdAt": 1781611468552,
-  "updatedAt": 1781628351530,
+  "updatedAt": 1781660270557,
   "enabledPlugins": [
     "workflow.ffmpeg",
     "workflow.aliyun-ai",

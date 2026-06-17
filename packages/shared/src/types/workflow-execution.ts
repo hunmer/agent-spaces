@@ -154,6 +154,13 @@ export interface WorkflowExecuteRequest {
   env?: Record<string, unknown>
   snapshot?: ExecutionSnapshot
   startNodeId?: string
+  dryRun?: WorkflowDryRunOptions
+}
+
+export interface WorkflowDryRunOptions {
+  nodeIds?: string[]
+  inputs?: Record<string, unknown>
+  outputs?: Record<string, unknown>
 }
 
 export interface WorkflowExecuteResponse {
