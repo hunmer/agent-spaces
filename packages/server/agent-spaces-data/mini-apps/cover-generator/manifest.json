@@ -1,11 +1,19 @@
 {
   "id": "cover-generator",
-  "name": "cover-generator",
-  "description": "封面制作工具",
+  "name": "封面制作工具",
+  "description": "上传参考图并通过工作流生成封面图",
   "version": "1.0.0",
   "type": "react",
-  "tags": [],
+  "tags": [
+    "封面",
+    "图片生成",
+    "工作流"
+  ],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-17T09:11:51.582Z",
-  "updatedAt": "2026-06-17T09:11:51.582Z"
+  "updatedAt": "2026-06-17T09:11:51.582Z",
+  "enabledPlugins": [
+    "@agent-spaces/builtin"
+  ],
+  "icon": "🖼️"
 }

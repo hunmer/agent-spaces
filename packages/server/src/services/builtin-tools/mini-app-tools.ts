@@ -9,6 +9,7 @@ import { createBuiltinPluginApi } from '../plugin-runtime-api.js';
 import * as kbStore from '../../storage/knowledge-base-store.js';
 import * as llmStore from '../../storage/llm-store.js';
 import * as kbService from '../knowledge-base.js';
+import { getWorkflowExecutionManager } from './workflow-exec-tools.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -216,6 +217,10 @@ const FALLBACK_AGENT_SPACES_UI_COMPONENTS = [
   'TooltipTrigger',
 ];
 
+const DEFAULT_WORKFLOW_SYNC_TIMEOUT_MS = 120_000;
+const MAX_WORKFLOW_SYNC_TIMEOUT_MS = 600_000;
+const WORKFLOW_POLL_INTERVAL_MS = 500;
+
 function listAgentSpacesUiComponents(): string[] {
   const exportsPath = [
     resolve(process.cwd(), 'packages/web/src/lib/ui-exports.ts'),
@@ -370,7 +375,133 @@ async function addTextToKnowledgeBase(workspaceId: string, args: Record<string, 
   };
 }
 
+function workflowStringInput(args: Record<string, any>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = args[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function workflowObjectInput(args: Record<string, any>, key: string): JsonRecord {
+  const value = args[key];
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {};
+}
+
+function workflowNumberInput(args: Record<string, any>, key: string, fallback: number): number {
+  const value = args[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function formatWorkflowSteps(log: any, nodeId?: string) {
+  const steps = Array.isArray(log?.steps) ? log.steps : [];
+  return steps
+    .filter((step: any) => !nodeId || step.nodeId === nodeId)
+    .map((step: any) => ({
+      nodeId: step.nodeId,
+      nodeLabel: step.nodeLabel,
+      status: step.status,
+      startedAt: step.startedAt,
+      finishedAt: step.finishedAt,
+      duration: step.finishedAt ? step.finishedAt - step.startedAt : undefined,
+      input: step.input,
+      output: step.output,
+      error: step.error,
+      logs: step.logs,
+    }));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function executeWorkflowSyncForMiniApp(args: Record<string, any>) {
+  const manager = getWorkflowExecutionManager();
+  if (!manager) throw new Error('Workflow execution manager is not initialized');
+
+  const workflowId = workflowStringInput(args, 'workflow_id', 'workflowId');
+  if (!workflowId) throw new Error('workflow_id is required');
+
+  const workflowService = await import('../workflow.js');
+  if (!workflowService.getWorkflow(workflowId)) throw new Error(`Workflow not found: ${workflowId}`);
+
+  const result = await manager.execute({
+    workflowId,
+    input: workflowObjectInput(args, 'input'),
+    startNodeId: workflowStringInput(args, 'start_node_id', 'startNodeId') || undefined,
+  }, 'mini-app');
+
+  const timeoutMs = Math.min(
+    MAX_WORKFLOW_SYNC_TIMEOUT_MS,
+    Math.max(WORKFLOW_POLL_INTERVAL_MS, workflowNumberInput(args, 'max_wait_ms', DEFAULT_WORKFLOW_SYNC_TIMEOUT_MS)),
+  );
+  const startedAt = Date.now();
+  let log: any = null;
+  let status = result.status;
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const recovery = manager.getExecutionRecovery({ workflowId, executionId: result.executionId }, 'mini-app');
+    log = recovery.execution?.log ?? workflowService.getExecutionLog(workflowId, result.executionId);
+    status = log?.status ?? recovery.execution?.status ?? status;
+    if (status !== 'running') break;
+    await sleep(WORKFLOW_POLL_INTERVAL_MS);
+  }
+
+  log = log ?? workflowService.getExecutionLog(workflowId, result.executionId);
+  status = log?.status ?? status;
+  const timedOut = status === 'running';
+
+  return {
+    workflow_id: workflowId,
+    executionId: result.executionId,
+    status,
+    timedOut,
+    steps: log ? formatWorkflowSteps(log, workflowStringInput(args, 'node_id', 'nodeId') || undefined) : [],
+  };
+}
+
+async function listWorkflowsForMiniApp(args: Record<string, any>) {
+  const workflowService = await import('../workflow.js');
+  const page = Math.max(1, Math.floor(workflowNumberInput(args, 'page', 1)));
+  const pageSize = Math.min(50, Math.max(1, Math.floor(workflowNumberInput(args, 'page_size', 20))));
+  const workflows = workflowService.listWorkflows().sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  const total = workflows.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  return {
+    page: currentPage,
+    page_size: pageSize,
+    total,
+    total_pages: totalPages,
+    workflows: workflows
+      .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+      .map((workflow: any) => ({
+        workflow_id: workflow.id,
+        title: workflow.name,
+        description: workflow.description ?? '',
+        updatedAt: workflow.updatedAt,
+        nodes: Array.isArray(workflow.nodes) ? workflow.nodes : [],
+      })),
+  };
+}
+
 const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
+  {
+    name: 'list_workflows',
+    description: 'List saved workflows for mini-app workflow selection.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        page: { type: 'number', description: 'Page number, starting from 1. Defaults to 1.' },
+        page_size: { type: 'number', description: 'Page size. Defaults to 20, max 50.' },
+      },
+    },
+    outputs: [
+      { key: 'workflows', type: 'array' },
+      { key: 'total', type: 'number' },
+    ],
+    execute: async (args) => listWorkflowsForMiniApp(args),
+  },
   {
     name: 'list_agent_presets',
     description: '列出可用的 Agent preset（模型配置），返回 id/name/runtimeKind/modelId 供 agent_run 使用。',
@@ -532,6 +663,30 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
       }
       return { deletedCount };
     },
+  },
+  {
+    name: 'execute_workflow_sync',
+    description: 'Execute a saved workflow for a mini-app and wait for completion. Use this instead of plugin tools when a mini-app is workflow-driven.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        workflow_id: { type: 'string', description: 'Workflow ID. workflowId is also accepted.' },
+        workflowId: { type: 'string', description: 'Workflow ID alias.' },
+        input: { type: 'object', description: 'Workflow input object.' },
+        start_node_id: { type: 'string', description: 'Optional start node ID.' },
+        startNodeId: { type: 'string', description: 'Start node ID alias.' },
+        max_wait_ms: { type: 'number', description: `Sync wait timeout. Defaults to ${DEFAULT_WORKFLOW_SYNC_TIMEOUT_MS}, max ${MAX_WORKFLOW_SYNC_TIMEOUT_MS}.` },
+      },
+      required: ['workflow_id', 'input'],
+    },
+    outputs: [
+      { key: 'workflow_id', type: 'string' },
+      { key: 'executionId', type: 'string' },
+      { key: 'status', type: 'string' },
+      { key: 'timedOut', type: 'boolean' },
+      { key: 'steps', type: 'array' },
+    ],
+    execute: async (args) => executeWorkflowSyncForMiniApp(args),
   },
 ];
 

@@ -74,6 +74,7 @@ export { SidebarProvider as SidebarContextProvider, useSidebar as useSidebarCont
 export { MediaGallery, openMediaGallery, NodeMediaPreview } from '@/components/ui/media-gallery';
 export type { MediaItem } from '@/components/ui/media-gallery';
 export * from 'lucide-react';
+export { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 
 // mini-apps 内置路由能力
 export { Router, useRouter, Link, serializeRoute, parseRoute } from '@/components/mini-apps/mini-app-router';
