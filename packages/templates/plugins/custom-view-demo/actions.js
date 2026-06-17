@@ -88,13 +88,13 @@ module.exports = (t) => [
     },
     customViewMinSize: { width: 260, height: 190 },
     properties: [
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', default: 'Custom View Demo' },
-      { key: 'count', label: t('field.count.label', 'Count'), type: 'number', default: 3 },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', default: 'Custom View Demo' },
+      { key: 'count', label: t('field.count.label', 'Count'), type: 'number', dataType: 'number', default: 3 },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object' },
+      { key: 'data', type: 'object', dataType: 'object' },
     ],
     run: async (_ctx, args) => {
       return {
@@ -119,11 +119,11 @@ module.exports = (t) => [
     },
     customViewMinSize: { width: 240, height: 160 },
     properties: [
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', default: 'HTML Custom View' },
-      { key: 'count', label: t('field.count.label', 'Count'), type: 'number', default: 5 },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', default: 'HTML Custom View' },
+      { key: 'count', label: t('field.count.label', 'Count'), type: 'number', dataType: 'number', default: 5 },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
     ],
     run: async (_ctx, args) => ({

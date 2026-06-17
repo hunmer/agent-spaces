@@ -25,18 +25,18 @@ module.exports = (t) => [
     icon: 'AudioWaveform',
     description: t('action.tts.description', 'Convert text to speech using Qianyin TTS with various speakers'),
     properties: [
-      { key: 'appkey', label: t('field.appkey.label', 'App Key'), type: 'text', required: true, tooltip: t('field.appkey.tooltip', 'Qianyin AppKey (read from plugin config by default)'), default: `${CONFIG_PREFIX}["appkey"]}}` },
-      { key: 'secret', label: t('field.secret.label', 'Secret'), type: 'text', required: true, tooltip: t('field.secret.tooltip', 'Qianyin Secret (read from plugin config by default)'), default: `${CONFIG_PREFIX}["secret"]}}` },
-      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', required: true, tooltip: t('field.text.tooltip', 'Text to convert to speech') },
-      { key: 'speakerId', label: t('field.speakerId.label', 'Speaker ID'), type: 'text', tooltip: t('field.speakerId.tooltip', 'Speaker ID, e.g. 521 (default female)'), default: '521' },
-      { key: 'format', label: t('field.format.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
+      { key: 'appkey', label: t('field.appkey.label', 'App Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.appkey.tooltip', 'Qianyin AppKey (read from plugin config by default)'), default: `${CONFIG_PREFIX}["appkey"]}}` },
+      { key: 'secret', label: t('field.secret.label', 'Secret'), type: 'text', dataType: 'string', required: true, tooltip: t('field.secret.tooltip', 'Qianyin Secret (read from plugin config by default)'), default: `${CONFIG_PREFIX}["secret"]}}` },
+      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.text.tooltip', 'Text to convert to speech') },
+      { key: 'speakerId', label: t('field.speakerId.label', 'Speaker ID'), type: 'text', dataType: 'string', tooltip: t('field.speakerId.tooltip', 'Speaker ID, e.g. 521 (default female)'), default: '521' },
+      { key: 'format', label: t('field.format.label', 'Audio Format'), type: 'select', dataType: 'string', default: 'mp3', options: [
         { label: 'MP3（默认）', value: 'mp3' },
         { label: 'WAV', value: 'wav' },
       ] },
-      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', default: 1.0, tooltip: t('field.speed.tooltip', 'Speech speed, 1.0 for normal') },
-      { key: 'volume', label: t('field.volume.label', 'Volume (0-100)'), type: 'number', default: 100, tooltip: t('field.volume.tooltip', 'Volume 0-100, default 100') },
-      { key: 'pitch', label: t('field.pitch.label', 'Pitch'), type: 'number', default: 0, tooltip: t('field.pitch.tooltip', 'Pitch adjustment, 0 for default') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'Qianyin API base URL') },
+      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', dataType: 'number', default: 1.0, tooltip: t('field.speed.tooltip', 'Speech speed, 1.0 for normal') },
+      { key: 'volume', label: t('field.volume.label', 'Volume (0-100)'), type: 'number', dataType: 'number', default: 100, tooltip: t('field.volume.tooltip', 'Volume 0-100, default 100') },
+      { key: 'pitch', label: t('field.pitch.label', 'Pitch'), type: 'number', dataType: 'number', default: 0, tooltip: t('field.pitch.tooltip', 'Pitch adjustment, 0 for default') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'Qianyin API base URL') },
     ],
     toolProperties: {
       type: 'object',
@@ -54,12 +54,12 @@ module.exports = (t) => [
       required: ['text'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'filePath', type: 'string' },
         { key: 'format', type: 'string' },
-        { key: 'size', type: 'number' },
+        { key: 'size', type: 'number', dataType: 'number' },
         { key: 'fileUrl', type: 'string' },
       ] },
     ],
@@ -133,14 +133,14 @@ module.exports = (t) => [
     description: t('action.speakers.description', 'Fetch available speaker list from Qianyin'),
     tool: false,
     properties: [
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'Qianyin API base URL') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'Qianyin API base URL') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'speakers', type: 'object', children: [] },
-        { key: 'total', type: 'number' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'speakers', type: 'object', dataType: 'object', children: [] },
+        { key: 'total', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {

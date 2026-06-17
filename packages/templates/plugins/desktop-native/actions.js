@@ -21,7 +21,7 @@ module.exports = (t) => [
     icon: 'ClipboardCopy',
     description: t('action.write_clipboard.description', 'Write text to system clipboard'),
     properties: [
-      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'text', required: true, tooltip: t('field.text.tooltip', 'Text to write to clipboard') },
+      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'text', dataType: 'string', required: true, tooltip: t('field.text.tooltip', 'Text to write to clipboard') },
     ],
     outputs: [],
     run: async (ctx, args) => {
@@ -51,7 +51,7 @@ module.exports = (t) => [
     icon: 'ImagePlus',
     description: t('action.write_clipboard_image.description', 'Write image to system clipboard'),
     properties: [
-      { key: 'dataUrl', label: t('field.dataUrl.label', 'Image Data'), type: 'text', required: true, tooltip: t('field.dataUrl.tooltip', 'Image in base64 data URL format') },
+      { key: 'dataUrl', label: t('field.dataUrl.label', 'Image Data'), type: 'text', dataType: 'string', required: true, tooltip: t('field.dataUrl.tooltip', 'Image in base64 data URL format') },
     ],
     outputs: [],
     run: async (ctx, args) => {
@@ -79,9 +79,9 @@ module.exports = (t) => [
     icon: 'Bell',
     description: t('action.show_notification.description', 'Send a system desktop notification'),
     properties: [
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', required: true, tooltip: t('field.title.tooltip', 'Notification title') },
-      { key: 'body', label: t('field.body.label', 'Content'), type: 'text', tooltip: t('field.body.tooltip', 'Notification body text') },
-      { key: 'silent', label: t('field.silent.label', 'Silent'), type: 'checkbox', default: false, tooltip: t('field.silent.tooltip', 'Send silently (no sound)') },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', required: true, tooltip: t('field.title.tooltip', 'Notification title') },
+      { key: 'body', label: t('field.body.label', 'Content'), type: 'text', dataType: 'string', tooltip: t('field.body.tooltip', 'Notification body text') },
+      { key: 'silent', label: t('field.silent.label', 'Silent'), type: 'checkbox', dataType: 'boolean', default: false, tooltip: t('field.silent.tooltip', 'Send silently (no sound)') },
     ],
     outputs: [],
     run: async (ctx, args) => {
@@ -96,7 +96,7 @@ module.exports = (t) => [
     icon: 'FolderSearch',
     description: t('action.show_item_in_folder.description', 'Show a file in the file manager'),
     properties: [
-      { key: 'fullPath', label: t('field.fullPath.label', 'File Path'), type: 'text', required: true, tooltip: t('field.fullPath.tooltip', 'Full path of the file') },
+      { key: 'fullPath', label: t('field.fullPath.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.fullPath.tooltip', 'Full path of the file') },
     ],
     outputs: [],
     run: async (ctx, args) => {
@@ -111,7 +111,7 @@ module.exports = (t) => [
     icon: 'FolderOpen',
     description: t('action.open_path.description', 'Open a file or folder with the system default application'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'File or folder path') },
+      { key: 'path', label: t('field.path.label', 'Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'File or folder path') },
     ],
     outputs: [],
     run: async (ctx, args) => {
@@ -126,7 +126,7 @@ module.exports = (t) => [
     icon: 'ExternalLink',
     description: t('action.open_external.description', 'Open a URL with the system default browser'),
     properties: [
-      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, tooltip: t('field.url.tooltip', 'URL to open') },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.url.tooltip', 'URL to open') },
     ],
     outputs: [],
     run: async (ctx, args) => {
@@ -154,12 +154,12 @@ module.exports = (t) => [
     icon: 'FileSearch',
     description: t('action.show_open_dialog.description', 'Show system file selection dialog, returns selected file paths'),
     properties: [
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', tooltip: t('field.title.tooltip', 'Notification title') },
-      { key: 'filters', label: t('field.filters.label', 'File Filters'), type: 'text', tooltip: t('field.filters.tooltip', 'JSON array, e.g. [{"name":"Images","extensions":["png","jpg"]}]') },
-      { key: 'properties', label: t('field.properties.label', 'Options'), type: 'text', tooltip: t('field.properties.tooltip', 'JSON array, e.g. ["openFile","multiSelections"]') },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', tooltip: t('field.title.tooltip', 'Notification title') },
+      { key: 'filters', label: t('field.filters.label', 'File Filters'), type: 'text', dataType: 'string', tooltip: t('field.filters.tooltip', 'JSON array, e.g. [{"name":"Images","extensions":["png","jpg"]}]') },
+      { key: 'properties', label: t('field.properties.label', 'Options'), type: 'text', dataType: 'string', tooltip: t('field.properties.tooltip', 'JSON array, e.g. ["openFile","multiSelections"]') },
     ],
     outputs: [
-      { key: 'filePaths', type: 'object' },
+      { key: 'filePaths', type: 'object', dataType: 'object' },
     ],
     run: async (ctx, args) => {
       const opts = {}
@@ -177,9 +177,9 @@ module.exports = (t) => [
     icon: 'FileDown',
     description: t('action.show_save_dialog.description', 'Show system save file dialog, returns save path'),
     properties: [
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', tooltip: t('field.title.tooltip', 'Notification title') },
-      { key: 'defaultPath', label: t('field.defaultPath.label', 'Default Path'), type: 'text', tooltip: t('field.defaultPath.tooltip', 'Default file name or path') },
-      { key: 'filters', label: t('field.filters.label', 'File Filters'), type: 'text', tooltip: t('field.filters.tooltip', 'JSON array, e.g. [{"name":"Images","extensions":["png","jpg"]}]') },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', tooltip: t('field.title.tooltip', 'Notification title') },
+      { key: 'defaultPath', label: t('field.defaultPath.label', 'Default Path'), type: 'text', dataType: 'string', tooltip: t('field.defaultPath.tooltip', 'Default file name or path') },
+      { key: 'filters', label: t('field.filters.label', 'File Filters'), type: 'text', dataType: 'string', tooltip: t('field.filters.tooltip', 'JSON array, e.g. [{"name":"Images","extensions":["png","jpg"]}]') },
     ],
     outputs: [
       { key: 'filePath', type: 'string' },
@@ -200,13 +200,13 @@ module.exports = (t) => [
     icon: 'MessageSquare',
     description: t('action.show_message_box.description', 'Show a system message dialog'),
     properties: [
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', required: true, tooltip: t('field.title.tooltip', 'Notification title') },
-      { key: 'message', label: t('field.message.label', 'Message'), type: 'text', required: true, tooltip: t('field.message.tooltip', 'Message content') },
-      { key: 'type', label: t('field.type.label', 'Type'), type: 'select', default: 'none', tooltip: t('field.type.tooltip', 'Dialog icon type'), options: ['none', 'info', 'warning', 'error', 'question'] },
-      { key: 'buttons', label: t('field.buttons.label', 'Buttons'), type: 'text', tooltip: t('field.buttons.tooltip', 'JSON array, e.g. ["OK","Cancel"]') },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', required: true, tooltip: t('field.title.tooltip', 'Notification title') },
+      { key: 'message', label: t('field.message.label', 'Message'), type: 'text', dataType: 'string', required: true, tooltip: t('field.message.tooltip', 'Message content') },
+      { key: 'type', label: t('field.type.label', 'Type'), type: 'select', dataType: 'string', default: 'none', tooltip: t('field.type.tooltip', 'Dialog icon type'), options: ['none', 'info', 'warning', 'error', 'question'] },
+      { key: 'buttons', label: t('field.buttons.label', 'Buttons'), type: 'text', dataType: 'string', tooltip: t('field.buttons.tooltip', 'JSON array, e.g. ["OK","Cancel"]') },
     ],
     outputs: [
-      { key: 'response', type: 'number' },
+      { key: 'response', type: 'number', dataType: 'number' },
     ],
     run: async (ctx, args) => {
       const opts = { title: args.title, message: args.message, type: args.type || 'none' }
@@ -222,8 +222,8 @@ module.exports = (t) => [
     icon: 'AlertTriangle',
     description: t('action.show_error_box.description', 'Show a system error dialog'),
     properties: [
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', required: true, tooltip: t('field.title.tooltip', 'Notification title') },
-      { key: 'content', label: t('field.content.label', 'Content'), type: 'text', required: true, tooltip: t('field.content.tooltip', 'Error content') },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', required: true, tooltip: t('field.title.tooltip', 'Notification title') },
+      { key: 'content', label: t('field.content.label', 'Content'), type: 'text', dataType: 'string', required: true, tooltip: t('field.content.tooltip', 'Error content') },
     ],
     outputs: [],
     run: async (ctx, args) => {

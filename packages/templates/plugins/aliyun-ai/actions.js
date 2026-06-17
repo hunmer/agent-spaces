@@ -231,25 +231,25 @@ async function executeAsyncTaskCtx(ctx, apiKey, endpoint, body, extractResult, t
 
 module.exports = (t) => {
   // ── Common property helpers (need t) ───────────────────────
-  const API_KEY_PROP = { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('config.apiKey.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` }
-  const PROMPT_PROP = (label, tip) => ({ key: 'prompt', label, type: 'textarea', required: true, tooltip: tip })
-  const NEGATIVE_PROMPT_PROP = { key: 'negativePrompt', label: t('field.negativePrompt.label', 'Negative Prompt'), type: 'textarea', tooltip: t('field.negativePrompt.tooltip', 'Content to exclude from generation') }
-  const SEED_PROP = { key: 'seed', label: t('field.seed.label', 'Random Seed'), type: 'number', tooltip: t('field.seed.tooltip', 'Fixed seed for reproducible results, 0~2147483647') }
-  const WATERMARK_PROP = { key: 'watermark', label: t('field.watermark.label', 'Watermark'), type: 'select', default: 'false', options: [{ label: t('field.watermark.option_no', 'No watermark (default)'), value: 'false' }, { label: t('field.watermark.option_yes', 'Add watermark'), value: 'true' }] }
+  const API_KEY_PROP = { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('config.apiKey.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` }
+  const PROMPT_PROP = (label, tip) => ({ key: 'prompt', label, type: 'textarea', dataType: 'string', required: true, tooltip: tip })
+  const NEGATIVE_PROMPT_PROP = { key: 'negativePrompt', label: t('field.negativePrompt.label', 'Negative Prompt'), type: 'textarea', dataType: 'string', tooltip: t('field.negativePrompt.tooltip', 'Content to exclude from generation') }
+  const SEED_PROP = { key: 'seed', label: t('field.seed.label', 'Random Seed'), type: 'number', dataType: 'number', tooltip: t('field.seed.tooltip', 'Fixed seed for reproducible results, 0~2147483647') }
+  const WATERMARK_PROP = { key: 'watermark', label: t('field.watermark.label', 'Watermark'), type: 'select', dataType: 'string', default: 'false', options: [{ label: t('field.watermark.option_no', 'No watermark (default)'), value: 'false' }, { label: t('field.watermark.option_yes', 'Add watermark'), value: 'true' }] }
 
   const IMAGE_OUTPUTS = [
-    { key: 'success', type: 'boolean' },
+    { key: 'success', type: 'boolean', dataType: 'boolean' },
     { key: 'message', type: 'string' },
-    { key: 'data', type: 'object', children: [
-      { key: 'images', type: 'object', children: [] },
+    { key: 'data', type: 'object', dataType: 'object', children: [
+      { key: 'images', type: 'object', dataType: 'object', children: [] },
       { key: 'requestId', type: 'string' },
     ] },
   ]
 
   const VIDEO_OUTPUTS = [
-    { key: 'success', type: 'boolean' },
+    { key: 'success', type: 'boolean', dataType: 'boolean' },
     { key: 'message', type: 'string' },
-    { key: 'data', type: 'object', children: [
+    { key: 'data', type: 'object', dataType: 'object', children: [
       { key: 'videoUrl', type: 'string' },
       { key: 'taskId', type: 'string' },
       { key: 'requestId', type: 'string' },
@@ -267,11 +267,11 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_image', 'Image Description'), t('field.prompt.tooltip_image', 'Describe the image you want to generate')),
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'qwen-image-2.0-pro', options: QWEN_IMAGE_MODELS },
-      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', default: '2048*2048', options: RESOLUTION_IMAGE },
-      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip_image_count', 'Number of images to generate (1-6)') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'qwen-image-2.0-pro', options: QWEN_IMAGE_MODELS },
+      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', dataType: 'string', default: '2048*2048', options: RESOLUTION_IMAGE },
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.n.tooltip_image_count', 'Number of images to generate (1-6)') },
       NEGATIVE_PROMPT_PROP,
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       SEED_PROP,
     ],
     toolProperties: {
@@ -323,14 +323,14 @@ module.exports = (t) => {
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_edit', 'Edit Instruction'), t('field.prompt.tooltip_edit', 'Describe the edit direction, e.g. "change background to seaside"')),
       { key: 'images', label: t('field.images.label_url', 'Image URL'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.images.tooltip_url', 'Input image URL array, e.g. ["https://..."]') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'qwen-image-2.0-pro', options: QWEN_EDIT_MODELS },
-      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', default: '2048*2048', options: [
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'qwen-image-2.0-pro', options: QWEN_EDIT_MODELS },
+      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', dataType: 'string', default: '2048*2048', options: [
         { label: '2048*2048 (默认)', value: '2048*2048' },
         { label: '1024*1024', value: '1024*1024' },
       ] },
-      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1 },
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', dataType: 'number', default: 1 },
       NEGATIVE_PROMPT_PROP,
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
     ],
     toolProperties: {
       type: 'object',
@@ -383,11 +383,11 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_image', 'Image Description'), t('field.prompt.tooltip_image', 'Describe the image you want to generate')),
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'wan2.5-t2i-preview', options: WAN_T2I_MODELS },
-      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', default: '1280*1280', options: RESOLUTION_WAN_T2I },
-      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip_wan', '1-4 images') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'wan2.5-t2i-preview', options: WAN_T2I_MODELS },
+      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', dataType: 'string', default: '1280*1280', options: RESOLUTION_WAN_T2I },
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.n.tooltip_wan', '1-4 images') },
       NEGATIVE_PROMPT_PROP,
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       SEED_PROP,
     ],
     toolProperties: {
@@ -436,13 +436,13 @@ module.exports = (t) => {
     description: t('action.imageOutPainting.description', 'Image outpainting: expand by ratio, direction, or aspect ratio. Supports rotation.'),
     properties: [
       API_KEY_PROP,
-      { key: 'imageUrl', label: t('field.imageUrl.label', 'Image URL'), type: 'text', required: true, tooltip: t('field.imageUrl.tooltip', 'Input image URL') },
-      { key: 'expandMode', label: t('field.expandMode.label', 'Expand Mode'), type: 'select', default: 'ratio', options: [
+      { key: 'imageUrl', label: t('field.imageUrl.label', 'Image URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.imageUrl.tooltip', 'Input image URL') },
+      { key: 'expandMode', label: t('field.expandMode.label', 'Expand Mode'), type: 'select', dataType: 'string', default: 'ratio', options: [
         { label: t('field.expandMode.option_ratio', 'By Aspect Ratio'), value: 'ratio' },
         { label: t('field.expandMode.option_scale', 'By Scale'), value: 'scale' },
         { label: t('field.expandMode.option_offset', 'By Direction Pixels'), value: 'offset' },
       ] },
-      { key: 'outputRatio', label: t('field.outputRatio.label', 'Aspect Ratio'), type: 'select', tooltip: t('field.outputRatio.tooltip', 'Only effective in "By Aspect Ratio" mode'), options: [
+      { key: 'outputRatio', label: t('field.outputRatio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', tooltip: t('field.outputRatio.tooltip', 'Only effective in "By Aspect Ratio" mode'), options: [
         { label: t('field.outputRatio.option_none', 'Not set'), value: '' },
         { label: '1:1', value: '1:1' },
         { label: '3:4', value: '3:4' },
@@ -450,13 +450,13 @@ module.exports = (t) => {
         { label: '9:16', value: '9:16' },
         { label: '16:9', value: '16:9' },
       ] },
-      { key: 'xScale', label: t('field.xScale.label', 'Horizontal Scale'), type: 'number', tooltip: t('field.xScale.tooltip', '1.0~3.0, default 1.0') },
-      { key: 'yScale', label: t('field.yScale.label', 'Vertical Scale'), type: 'number', tooltip: t('field.yScale.tooltip', '1.0~3.0, default 1.0') },
-      { key: 'leftOffset', label: t('field.leftOffset.label', 'Left Expand (px)'), type: 'number', tooltip: t('field.leftOffset.tooltip', 'Pixels to add') },
-      { key: 'rightOffset', label: t('field.rightOffset.label', 'Right Expand (px)'), type: 'number', tooltip: t('field.rightOffset.tooltip', 'Pixels to add') },
-      { key: 'topOffset', label: t('field.topOffset.label', 'Top Expand (px)'), type: 'number', tooltip: t('field.topOffset.tooltip', 'Pixels to add') },
-      { key: 'bottomOffset', label: t('field.bottomOffset.label', 'Bottom Expand (px)'), type: 'number', tooltip: t('field.bottomOffset.tooltip', 'Pixels to add') },
-      { key: 'angle', label: t('field.angle.label', 'Rotation Angle'), type: 'number', tooltip: t('field.angle.tooltip', 'Counter-clockwise 0~359 degrees') },
+      { key: 'xScale', label: t('field.xScale.label', 'Horizontal Scale'), type: 'number', dataType: 'number', tooltip: t('field.xScale.tooltip', '1.0~3.0, default 1.0') },
+      { key: 'yScale', label: t('field.yScale.label', 'Vertical Scale'), type: 'number', dataType: 'number', tooltip: t('field.yScale.tooltip', '1.0~3.0, default 1.0') },
+      { key: 'leftOffset', label: t('field.leftOffset.label', 'Left Expand (px)'), type: 'number', dataType: 'number', tooltip: t('field.leftOffset.tooltip', 'Pixels to add') },
+      { key: 'rightOffset', label: t('field.rightOffset.label', 'Right Expand (px)'), type: 'number', dataType: 'number', tooltip: t('field.rightOffset.tooltip', 'Pixels to add') },
+      { key: 'topOffset', label: t('field.topOffset.label', 'Top Expand (px)'), type: 'number', dataType: 'number', tooltip: t('field.topOffset.tooltip', 'Pixels to add') },
+      { key: 'bottomOffset', label: t('field.bottomOffset.label', 'Bottom Expand (px)'), type: 'number', dataType: 'number', tooltip: t('field.bottomOffset.tooltip', 'Pixels to add') },
+      { key: 'angle', label: t('field.angle.label', 'Rotation Angle'), type: 'number', dataType: 'number', tooltip: t('field.angle.tooltip', 'Counter-clockwise 0~359 degrees') },
     ],
     toolProperties: {
       type: 'object',
@@ -475,9 +475,9 @@ module.exports = (t) => {
       required: ['apiKey', 'imageUrl'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'imageUrl', type: 'string' },
         { key: 'requestId', type: 'string' },
       ] },
@@ -521,19 +521,19 @@ module.exports = (t) => {
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_image', 'Image Description'), t('field.prompt.tooltip_image', 'Describe the image you want to generate')),
       { key: 'images', label: t('field.images.label_reference', 'Reference Image URL'), type: 'textarea', dataType: 'string[]', tooltip: t('field.images.tooltip_reference', 'Reference image URL array (optional), e.g. ["https://..."]') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'kling/kling-v3-image-generation', options: KLING_IMAGE_MODELS },
-      { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', default: '1:1', options: ASPECT_RATIO },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '1k', options: [
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'kling/kling-v3-image-generation', options: KLING_IMAGE_MODELS },
+      { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: '1:1', options: ASPECT_RATIO },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '1k', options: [
         { label: '1K (默认)', value: '1k' },
         { label: '2K', value: '2k' },
         { label: '4K (仅omni)', value: '4k' },
       ] },
-      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip_kling', '1-9 images') },
-      { key: 'resultType', label: t('field.resultType.label', 'Generation Type'), type: 'select', default: 'single', tooltip: t('field.resultType.tooltip', 'Only omni model supports series mode'), options: [
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.n.tooltip_kling', '1-9 images') },
+      { key: 'resultType', label: t('field.resultType.label', 'Generation Type'), type: 'select', dataType: 'string', default: 'single', tooltip: t('field.resultType.tooltip', 'Only omni model supports series mode'), options: [
         { label: t('field.resultType.option_single', 'Single (default)'), value: 'single' },
         { label: t('field.resultType.option_series', 'Series'), value: 'series' },
       ] },
-      { key: 'seriesAmount', label: t('field.seriesAmount.label', 'Series Count'), type: 'number', tooltip: t('field.seriesAmount.tooltip', '2-9 images, series mode only') },
+      { key: 'seriesAmount', label: t('field.seriesAmount.label', 'Series Count'), type: 'number', dataType: 'number', tooltip: t('field.seriesAmount.tooltip', '2-9 images, series mode only') },
     ],
     toolProperties: {
       type: 'object',
@@ -586,12 +586,12 @@ module.exports = (t) => {
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_video', 'Video Description'), t('field.prompt.tooltip_video_optional', 'Describe the video content (optional)')),
       { key: 'media', label: t('field.media.label_v27', 'Media Assets'), type: 'textarea', dataType: 'object[]', required: true, tooltip: t('field.media.tooltip_v27', 'JSON array, e.g. [{"type":"first_frame","url":"https://..."}]. Supports: first_frame, last_frame, driving_audio, first_clip') },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', dataType: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -648,12 +648,12 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_video', 'Video Description'), t('field.prompt.tooltip_video', 'Describe the video content')),
-      { key: 'imageUrl', label: t('field.imageUrl.label_first_frame', 'First Frame Image URL'), type: 'text', required: true, tooltip: t('field.imageUrl.tooltip_first_frame', 'First frame image URL or Base64') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'wan2.6-i2v-flash', options: I2V_LEGACY_MODELS },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: RESOLUTION_VIDEO },
-      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_legacy', 'Varies by model') },
-      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', tooltip: t('field.audioUrl.tooltip', 'Background music/dubbing (wan2.6/2.5)') },
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'imageUrl', label: t('field.imageUrl.label_first_frame', 'First Frame Image URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.imageUrl.tooltip_first_frame', 'First frame image URL or Base64') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'wan2.6-i2v-flash', options: I2V_LEGACY_MODELS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '720P', options: RESOLUTION_VIDEO },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', dataType: 'number', default: 5, tooltip: t('field.duration.tooltip_legacy', 'Varies by model') },
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', dataType: 'string', tooltip: t('field.audioUrl.tooltip', 'Background music/dubbing (wan2.6/2.5)') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -711,11 +711,11 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_video_transition', 'Video Description'), t('field.prompt.tooltip_video_transition', 'Describe the transition effect')),
-      { key: 'firstFrameUrl', label: t('field.firstFrameUrl.label', 'First Frame Image URL'), type: 'text', required: true, tooltip: t('field.firstFrameUrl.tooltip', 'First frame image URL') },
-      { key: 'lastFrameUrl', label: t('field.lastFrameUrl.label', 'Last Frame Image URL'), type: 'text', required: true, tooltip: t('field.lastFrameUrl.tooltip', 'Last frame image URL') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'wan2.2-kf2v-flash', options: KF2V_MODELS },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: RESOLUTION_VIDEO },
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'firstFrameUrl', label: t('field.firstFrameUrl.label', 'First Frame Image URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.firstFrameUrl.tooltip', 'First frame image URL') },
+      { key: 'lastFrameUrl', label: t('field.lastFrameUrl.label', 'Last Frame Image URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.lastFrameUrl.tooltip', 'Last frame image URL') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'wan2.2-kf2v-flash', options: KF2V_MODELS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '720P', options: RESOLUTION_VIDEO },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -773,13 +773,13 @@ module.exports = (t) => {
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_reference_video', 'Video Description'), t('field.prompt.tooltip_reference_video', 'Use "image 1" "video 1" to refer to reference materials, describe the video content')),
       { key: 'media', label: t('field.media.label_reference', 'Reference Assets'), type: 'textarea', dataType: 'object[]', required: true, tooltip: t('field.media.tooltip_reference', 'JSON array, e.g. [{"type":"reference_image","url":"https://...","reference_voice":"https://...mp3"}]') },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', default: '16:9', options: ASPECT_RATIO },
-      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: '16:9', options: ASPECT_RATIO },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', dataType: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -836,14 +836,14 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_video_gen', 'Video Description'), t('field.prompt.tooltip_video_gen', 'Describe the video scene, shots, characters, etc. in detail')),
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', default: '16:9', options: ASPECT_RATIO },
-      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
-      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', tooltip: t('field.audioUrl.tooltip_optional', 'Background music/dubbing audio URL (optional)') },
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: '16:9', options: ASPECT_RATIO },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', dataType: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', dataType: 'string', tooltip: t('field.audioUrl.tooltip_optional', 'Background music/dubbing audio URL (optional)') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -899,18 +899,18 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_edit_video', 'Edit Instruction'), t('field.prompt.tooltip_edit_video', 'E.g. "convert to clay style" or "replace clothes with the reference image"')),
-      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', required: true, tooltip: t('field.videoUrl.tooltip', 'Video URL to edit (mp4/mov, 2-10 seconds)') },
+      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.videoUrl.tooltip', 'Video URL to edit (mp4/mov, 2-10 seconds)') },
       { key: 'referenceImages', label: t('field.referenceImages.label', 'Reference Image URL'), type: 'textarea', dataType: 'string[]', tooltip: t('field.referenceImages.tooltip', 'Reference image URL array (optional), e.g. ["https://..."], max 4') },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'duration', label: t('field.duration.label_output', 'Output Duration (seconds)'), type: 'number', tooltip: t('field.duration.tooltip_output', '0=use original duration, 2-10 seconds to truncate') },
-      { key: 'audioSetting', label: t('field.audioSetting.label', 'Audio Setting'), type: 'select', default: 'auto', options: [
+      { key: 'duration', label: t('field.duration.label_output', 'Output Duration (seconds)'), type: 'number', dataType: 'number', tooltip: t('field.duration.tooltip_output', '0=use original duration, 2-10 seconds to truncate') },
+      { key: 'audioSetting', label: t('field.audioSetting.label', 'Audio Setting'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('field.audioSetting.option_auto', 'Auto (default)'), value: 'auto' },
         { label: t('field.audioSetting.option_origin', 'Keep Original'), value: 'origin' },
       ] },
-      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', dataType: 'string', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -971,9 +971,9 @@ module.exports = (t) => {
     description: t('action.animateMove.description', 'Wan animate move: transfer actions and expressions from a reference video to a person image'),
     properties: [
       API_KEY_PROP,
-      { key: 'imageUrl', label: t('field.imageUrl.label', 'Image URL'), type: 'text', required: true, tooltip: t('field.imageUrl.tooltip_person', 'Person image URL (front-facing, single person, clear)') },
-      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', required: true, tooltip: t('field.videoUrl.tooltip_reference', 'Reference action video URL (2-30 seconds)') },
-      { key: 'mode', label: t('field.model.label', 'Model'), type: 'select', default: 'wan-std', options: ANIMATE_MOVE_MODELS },
+      { key: 'imageUrl', label: t('field.imageUrl.label', 'Image URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.imageUrl.tooltip_person', 'Person image URL (front-facing, single person, clear)') },
+      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.videoUrl.tooltip_reference', 'Reference action video URL (2-30 seconds)') },
+      { key: 'mode', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'wan-std', options: ANIMATE_MOVE_MODELS },
       WATERMARK_PROP,
     ],
     toolProperties: {
@@ -1016,8 +1016,8 @@ module.exports = (t) => {
     description: t('action.videoretalk.description', 'VideoRetalk: generate lip-synced video from a person video and voice audio'),
     properties: [
       API_KEY_PROP,
-      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', required: true, tooltip: t('field.videoUrl.tooltip_person', 'Person video URL (front-facing)') },
-      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', required: true, tooltip: t('field.audioUrl.tooltip_voice', 'Clear voice audio file URL (wav/mp3)') },
+      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.videoUrl.tooltip_person', 'Person video URL (front-facing)') },
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.audioUrl.tooltip_voice', 'Clear voice audio file URL (wav/mp3)') },
     ],
     toolProperties: {
       type: 'object',
@@ -1065,13 +1065,13 @@ module.exports = (t) => {
     },
     properties: [
       API_KEY_PROP,
-      { key: 'filePath', label: t('field.filePath.label', 'Local File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Full local file path') },
-      { key: 'model', label: t('field.model.label_target', 'Target Model'), type: 'text', required: true, tooltip: t('field.model.tooltip_target', 'Target model name, e.g. qwen-vl-plus, wan2.7-i2v') },
+      { key: 'filePath', label: t('field.filePath.label', 'Local File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.filePath.tooltip', 'Full local file path') },
+      { key: 'model', label: t('field.model.label_target', 'Target Model'), type: 'text', dataType: 'string', required: true, tooltip: t('field.model.tooltip_target', 'Target model name, e.g. qwen-vl-plus, wan2.7-i2v') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'url', type: 'string' },
         { key: 'fileName', type: 'string' },
         { key: 'key', type: 'string' },
@@ -1141,9 +1141,9 @@ module.exports = (t) => {
     icon: 'FileAudio',
     description: t('action.asrFileRecognition.description', 'Submit audio/video file URL for async speech recognition, supports FunASR/Paraformer/Qwen models, auto-polls for results'),
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('config.apiKey.asr.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: t('config.baseUrl.tooltip', 'DashScope API base URL') },
-      { key: 'model', label: t('field.model.label_asr', 'Recognition Model'), type: 'select', default: 'paraformer-v2', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('config.apiKey.asr.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: t('config.baseUrl.tooltip', 'DashScope API base URL') },
+      { key: 'model', label: t('field.model.label_asr', 'Recognition Model'), type: 'select', dataType: 'string', default: 'paraformer-v2', options: [
         { label: 'paraformer-v2 (推荐多语种)', value: 'paraformer-v2' },
         { label: 'paraformer-8k-v2 (8kHz电话)', value: 'paraformer-8k-v2' },
         { label: 'paraformer-v1 (中英文)', value: 'paraformer-v1' },
@@ -1153,9 +1153,9 @@ module.exports = (t) => {
         { label: 'qwen3-asr-flash-filetrans (千问长音频)', value: 'qwen3-asr-flash-filetrans' },
       ], tooltip: t('field.model.tooltip_asr', 'Supported languages and sample rates vary by model') },
       { key: 'fileUrls', label: t('field.fileUrls.label', 'Audio File URL'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.fileUrls.tooltip', 'FunASR/Paraformer: URL array, e.g. ["https://...mp3"], max 100') },
-      { key: 'fileUrl', label: t('field.fileUrl.label_qwen', 'Audio File URL (Qwen)'), type: 'text', tooltip: t('field.fileUrl.tooltip_qwen', 'Qwen-Filetrans only: single audio file URL') },
-      { key: 'languageHints', label: t('field.languageHints.label', 'Language Hints'), type: 'text', tooltip: t('field.languageHints.tooltip', 'Paraformer-v2 language code array, e.g. ["zh","en"]') },
-      { key: 'language', label: t('field.language.label_qwen', 'Language (Qwen)'), type: 'select', default: '', options: [
+      { key: 'fileUrl', label: t('field.fileUrl.label_qwen', 'Audio File URL (Qwen)'), type: 'text', dataType: 'string', tooltip: t('field.fileUrl.tooltip_qwen', 'Qwen-Filetrans only: single audio file URL') },
+      { key: 'languageHints', label: t('field.languageHints.label', 'Language Hints'), type: 'text', dataType: 'string', tooltip: t('field.languageHints.tooltip', 'Paraformer-v2 language code array, e.g. ["zh","en"]') },
+      { key: 'language', label: t('field.language.label_qwen', 'Language (Qwen)'), type: 'select', dataType: 'string', default: '', options: [
         { label: t('field.language.option_auto', 'Auto Detect'), value: '' },
         { label: 'zh 中文', value: 'zh' },
         { label: 'en 英文', value: 'en' },
@@ -1166,10 +1166,10 @@ module.exports = (t) => {
         { label: 'fr 法语', value: 'fr' },
         { label: 'ru 俄语', value: 'ru' },
       ], tooltip: t('field.language.tooltip_qwen', 'Qwen-Filetrans specified language') },
-      { key: 'diarizationEnabled', label: t('field.diarizationEnabled.label', 'Speaker Diarization'), type: 'boolean', default: false, tooltip: t('field.diarizationEnabled.tooltip', 'When enabled, different speakers will be distinguished in results') },
-      { key: 'speakerCount', label: t('field.speakerCount.label', 'Speaker Count'), type: 'number', tooltip: t('field.speakerCount.tooltip', 'Estimated speaker count (2-100), requires speaker diarization enabled first') },
-      { key: 'channelId', label: t('field.channelId.label', 'Channel Index'), type: 'text', tooltip: t('field.channelId.tooltip', 'Specify channel, e.g. [0] or [0,1]') },
-      { key: 'enableItn', label: t('field.enableItn.label', 'Inverse Text Normalization'), type: 'boolean', default: false, tooltip: t('field.enableItn.tooltip_qwen', 'Qwen-Filetrans: enable ITN') },
+      { key: 'diarizationEnabled', label: t('field.diarizationEnabled.label', 'Speaker Diarization'), type: 'boolean', dataType: 'boolean', default: false, tooltip: t('field.diarizationEnabled.tooltip', 'When enabled, different speakers will be distinguished in results') },
+      { key: 'speakerCount', label: t('field.speakerCount.label', 'Speaker Count'), type: 'number', dataType: 'number', tooltip: t('field.speakerCount.tooltip', 'Estimated speaker count (2-100), requires speaker diarization enabled first') },
+      { key: 'channelId', label: t('field.channelId.label', 'Channel Index'), type: 'text', dataType: 'string', tooltip: t('field.channelId.tooltip', 'Specify channel, e.g. [0] or [0,1]') },
+      { key: 'enableItn', label: t('field.enableItn.label', 'Inverse Text Normalization'), type: 'boolean', dataType: 'boolean', default: false, tooltip: t('field.enableItn.tooltip_qwen', 'Qwen-Filetrans: enable ITN') },
     ],
     toolProperties: {
       type: 'object',
@@ -1187,11 +1187,11 @@ module.exports = (t) => {
       required: ['apiKey'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'text', type: 'string' },
-        { key: 'details', type: 'object', children: [] },
+        { key: 'details', type: 'object', dataType: 'object', children: [] },
         { key: 'taskId', type: 'string' },
       ] },
     ],
@@ -1280,10 +1280,10 @@ module.exports = (t) => {
     icon: 'AudioLines',
     description: t('action.asrQwenFlash.description', 'Qwen-ASR real-time speech recognition (synchronous), for short audio transcription with language detection and emotion analysis'),
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('config.apiKey.asr.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: t('config.baseUrl.tooltip', 'DashScope API base URL') },
-      { key: 'audio', label: t('field.audio.label', 'Audio Content'), type: 'textarea', required: true, tooltip: t('field.audio.tooltip', 'Public audio URL or Base64 Data URI (data:audio/wav;base64,...)') },
-      { key: 'language', label: t('field.language.label_asr_flash', 'Language'), type: 'select', default: '', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('config.apiKey.asr.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: t('config.baseUrl.tooltip', 'DashScope API base URL') },
+      { key: 'audio', label: t('field.audio.label', 'Audio Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.audio.tooltip', 'Public audio URL or Base64 Data URI (data:audio/wav;base64,...)') },
+      { key: 'language', label: t('field.language.label_asr_flash', 'Language'), type: 'select', dataType: 'string', default: '', options: [
         { label: t('field.language.option_auto', 'Auto Detect'), value: '' },
         { label: 'zh 中文', value: 'zh' },
         { label: 'en 英文', value: 'en' },
@@ -1293,7 +1293,7 @@ module.exports = (t) => {
         { label: 'fr 法语', value: 'fr' },
         { label: 'ru 俄语', value: 'ru' },
       ], tooltip: t('field.language.tooltip_asr_flash', 'Specifying language improves accuracy. Auto-detected if not specified.') },
-      { key: 'enableItn', label: t('field.enableItn.label', 'Inverse Text Normalization'), type: 'boolean', default: false, tooltip: t('field.enableItn.tooltip', 'Only supports Chinese and English') },
+      { key: 'enableItn', label: t('field.enableItn.label', 'Inverse Text Normalization'), type: 'boolean', dataType: 'boolean', default: false, tooltip: t('field.enableItn.tooltip', 'Only supports Chinese and English') },
     ],
     toolProperties: {
       type: 'object',
@@ -1307,13 +1307,13 @@ module.exports = (t) => {
       required: ['apiKey', 'audio'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
         { key: 'text', type: 'string' },
         { key: 'language', type: 'string' },
         { key: 'emotion', type: 'string' },
-        { key: 'duration', type: 'number' },
+        { key: 'duration', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {

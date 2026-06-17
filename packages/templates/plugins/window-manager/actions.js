@@ -12,17 +12,17 @@ module.exports = (t) => [
       { key: 'height', type: 'number', description: '窗口高度，默认 800' },
     ],
     properties: [
-      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, tooltip: t('field.url.tooltip', 'The URL to open') },
-      { key: 'title', label: t('field.title.label', 'Window Title'), type: 'text', tooltip: t('field.title.tooltip', 'Window title') },
-      { key: 'width', label: t('field.width.label', 'Width'), type: 'number', default: 1280, tooltip: t('field.width.tooltip', 'Window width') },
-      { key: 'height', label: t('field.height.label', 'Height'), type: 'number', default: 800, tooltip: t('field.height.tooltip', 'Window height') },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.url.tooltip', 'The URL to open') },
+      { key: 'title', label: t('field.title.label', 'Window Title'), type: 'text', dataType: 'string', tooltip: t('field.title.tooltip', 'Window title') },
+      { key: 'width', label: t('field.width.label', 'Width'), type: 'number', dataType: 'number', default: 1280, tooltip: t('field.width.tooltip', 'Window width') },
+      { key: 'height', label: t('field.height.label', 'Height'), type: 'number', dataType: 'number', default: 800, tooltip: t('field.height.tooltip', 'Window height') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'id', type: 'number' },
-        { key: 'webContentsId', type: 'number' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'id', type: 'number', dataType: 'number' },
+        { key: 'webContentsId', type: 'number', dataType: 'number' },
         { key: 'url', type: 'string' },
         { key: 'title', type: 'string' },
       ] },
@@ -43,13 +43,13 @@ module.exports = (t) => [
       { key: 'code', type: 'string', description: '要注入的 JavaScript 代码', required: true },
     ],
     properties: [
-      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
-      { key: 'code', label: t('field.code.label', 'JS Code'), type: 'code', required: true, tooltip: t('field.code.tooltip', 'JavaScript code to inject') },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', dataType: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
+      { key: 'code', label: t('field.code.label', 'JS Code'), type: 'code', dataType: 'string', required: true, tooltip: t('field.code.tooltip', 'JavaScript code to inject') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'result', type: 'string' },
       ] },
     ],
@@ -69,14 +69,14 @@ module.exports = (t) => [
       { key: 'url', type: 'string', description: '目标 URL', required: true },
     ],
     properties: [
-      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
-      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, tooltip: t('field.targetUrl.tooltip', 'The target URL') },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', dataType: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.targetUrl.tooltip', 'The target URL') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'windowId', type: 'number' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'windowId', type: 'number', dataType: 'number' },
         { key: 'url', type: 'string' },
       ] },
     ],
@@ -95,10 +95,10 @@ module.exports = (t) => [
       { key: 'windowId', type: 'number', description: '要关闭的窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowIdToClose.tooltip', 'Window ID to close') },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', dataType: 'number', required: true, tooltip: t('field.windowIdToClose.tooltip', 'Window ID to close') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
     ],
     run: async (ctx, args) => {
@@ -114,15 +114,15 @@ module.exports = (t) => [
     description: t('action.list_windows.description', 'List all open browser windows'),
     properties: [],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'windows', type: 'object', children: [
-          { key: 'id', type: 'number' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'windows', type: 'object', dataType: 'object', children: [
+          { key: 'id', type: 'number', dataType: 'number' },
           { key: 'title', type: 'string' },
           { key: 'url', type: 'string' },
         ] },
-        { key: 'count', type: 'number' },
+        { key: 'count', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx) => {
@@ -140,10 +140,10 @@ module.exports = (t) => [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', dataType: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
     ],
     run: async (ctx, args) => {
@@ -161,12 +161,12 @@ module.exports = (t) => [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', dataType: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'screenshot', type: 'string' },
       ] },
     ],
@@ -185,17 +185,17 @@ module.exports = (t) => [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', dataType: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'id', type: 'number' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'id', type: 'number', dataType: 'number' },
         { key: 'title', type: 'string' },
         { key: 'url', type: 'string' },
-        { key: 'width', type: 'number' },
-        { key: 'height', type: 'number' },
+        { key: 'width', type: 'number', dataType: 'number' },
+        { key: 'height', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {

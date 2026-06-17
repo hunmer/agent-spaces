@@ -72,9 +72,9 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
-      { key: 'prompt', label: t('field.prompt.label', 'Image Description'), type: 'textarea', required: true, tooltip: t('field.prompt.tooltip', 'Describe the image you want to generate.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-image-1', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'prompt', label: t('field.prompt.label', 'Image Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.prompt.tooltip', 'Describe the image you want to generate.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'gpt-image-1', options: [
         { label: 'gpt-image-2', value: 'gpt-image-2' },
         { label: 'gpt-image-1 (Default)', value: 'gpt-image-1' },
         { label: 'gpt-image-1.5', value: 'gpt-image-1.5' },
@@ -82,7 +82,7 @@ module.exports = (t) => [
         { label: 'dall-e-3', value: 'dall-e-3' },
         { label: 'dall-e-2', value: 'dall-e-2' },
       ] },
-      { key: 'size', label: t('field.size.label', 'Size'), type: 'select', default: 'auto', options: [
+      { key: 'size', label: t('field.size.label', 'Size'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: '1024x1024', value: '1024x1024' },
         { label: '1536x1024 (Landscape)', value: '1536x1024' },
@@ -92,7 +92,7 @@ module.exports = (t) => [
         { label: '1792x1024 (dall-e-3)', value: '1792x1024' },
         { label: '1024x1792 (dall-e-3)', value: '1024x1792' },
       ] },
-      { key: 'quality', label: t('field.quality.label', 'Quality'), type: 'select', default: 'auto', options: [
+      { key: 'quality', label: t('field.quality.label', 'Quality'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: t('option.high', 'High'), value: 'high' },
         { label: t('option.medium', 'Medium'), value: 'medium' },
@@ -100,26 +100,26 @@ module.exports = (t) => [
         { label: 'HD (dall-e-3)', value: 'hd' },
         { label: 'Standard (dall-e-3)', value: 'standard' },
       ] },
-      { key: 'n', label: t('field.n.label', 'Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip', '1-10. dall-e-3 only supports 1.') },
-      { key: 'output_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'png', options: [
+      { key: 'n', label: t('field.n.label', 'Count'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.n.tooltip', '1-10. dall-e-3 only supports 1.') },
+      { key: 'output_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', dataType: 'string', default: 'png', options: [
         { label: 'PNG (Default)', value: 'png' },
         { label: 'JPEG', value: 'jpeg' },
         { label: 'WebP', value: 'webp' },
       ] },
-      { key: 'background', label: t('field.background.label', 'Background'), type: 'select', default: 'auto', options: [
+      { key: 'background', label: t('field.background.label', 'Background'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: t('option.transparent', 'Transparent'), value: 'transparent' },
         { label: t('option.opaque', 'Opaque'), value: 'opaque' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'images', type: 'image[]' },
-        { key: 'created', type: 'number' },
-        { key: 'usage', type: 'object', children: [] },
+        { key: 'created', type: 'number', dataType: 'number' },
+        { key: 'usage', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -156,15 +156,15 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
-      { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the editing effect you want.') },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the editing effect you want.') },
       { key: 'image', label: t('field.image.label', 'Image'), type: 'textarea', dataType: 'any', required: true, tooltip: t('field.image.tooltip', 'Input image file/URL or JSON array, e.g. "https://..." or ["https://..."].') },
-      { key: 'mask', label: t('field.mask.label', 'Mask'), type: 'text', tooltip: t('field.mask.tooltip', 'Optional PNG mask file/URL. Transparent areas are edited. Must match the first image size and be <4MB.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'dall-e-2', options: [
+      { key: 'mask', label: t('field.mask.label', 'Mask'), type: 'text', dataType: 'string', tooltip: t('field.mask.tooltip', 'Optional PNG mask file/URL. Transparent areas are edited. Must match the first image size and be <4MB.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'dall-e-2', options: [
         { label: 'dall-e-2 (Default)', value: 'dall-e-2' },
         { label: 'gpt-image-1', value: 'gpt-image-1' },
       ] },
-      { key: 'size', label: t('field.size.label', 'Size'), type: 'select', default: 'auto', options: [
+      { key: 'size', label: t('field.size.label', 'Size'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: '1024x1024', value: '1024x1024' },
         { label: '1536x1024 (gpt-image-1)', value: '1536x1024' },
@@ -172,32 +172,32 @@ module.exports = (t) => [
         { label: '256x256 (dall-e-2)', value: '256x256' },
         { label: '512x512 (dall-e-2)', value: '512x512' },
       ] },
-      { key: 'quality', label: t('field.quality.label', 'Quality'), type: 'select', default: 'auto', options: [
+      { key: 'quality', label: t('field.quality.label', 'Quality'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: t('option.high', 'High'), value: 'high' },
         { label: t('option.medium', 'Medium'), value: 'medium' },
         { label: t('option.low', 'Low'), value: 'low' },
       ] },
-      { key: 'n', label: t('field.n.label', 'Count'), type: 'number', default: 1 },
-      { key: 'response_format', label: t('field.responseFormat.label', 'Response Format'), type: 'select', default: '', options: [
+      { key: 'n', label: t('field.n.label', 'Count'), type: 'number', dataType: 'number', default: 1 },
+      { key: 'response_format', label: t('field.responseFormat.label', 'Response Format'), type: 'select', dataType: 'string', default: '', options: [
         { label: t('option.auto', 'Auto'), value: '' },
         { label: 'URL (dall-e-2)', value: 'url' },
         { label: 'Base64 JSON', value: 'b64_json' },
       ] },
-      { key: 'background', label: t('field.background.label', 'Background'), type: 'select', default: 'auto', options: [
+      { key: 'background', label: t('field.background.label', 'Background'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: t('option.transparent', 'Transparent'), value: 'transparent' },
         { label: t('option.opaque', 'Opaque'), value: 'opaque' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'images', type: 'image[]' },
-        { key: 'created', type: 'number' },
-        { key: 'usage', type: 'object', children: [] },
+        { key: 'created', type: 'number', dataType: 'number' },
+        { key: 'usage', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -239,18 +239,18 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
-      { key: 'messages', label: t('field.messages.label', 'Message List'), type: 'array', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list.'), fields: [
-        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'messages', label: t('field.messages.label', 'Message List'), type: 'array', dataType: 'any', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list.'), fields: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', dataType: 'string', options: [
           { label: t('option.user', 'User'), value: 'user' },
           { label: t('option.assistant', 'Assistant'), value: 'assistant' },
           { label: t('option.system', 'System'), value: 'system' },
           { label: t('option.developer', 'Developer'), value: 'developer' },
         ], default: 'user' },
-        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: '消息内容' },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', dataType: 'string', placeholder: '消息内容' },
       ] },
-      { key: 'system', label: t('field.system.label', 'System Prompt'), type: 'textarea', rows: 3, tooltip: t('field.system.tooltip', 'System prompt (inserted as the first system message).') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-4o', options: [
+      { key: 'system', label: t('field.system.label', 'System Prompt'), type: 'textarea', dataType: 'string', rows: 3, tooltip: t('field.system.tooltip', 'System prompt (inserted as the first system message).') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'gpt-4o', options: [
         { label: 'gpt-4o (Default)', value: 'gpt-4o' },
         { label: 'gpt-4o-mini', value: 'gpt-4o-mini' },
         { label: 'gpt-4.1', value: 'gpt-4.1' },
@@ -270,25 +270,25 @@ module.exports = (t) => [
         { label: 'gpt-5.4-pro', value: 'gpt-5.4-pro' },
         { label: 'gpt-5.5', value: 'gpt-5.5' },
       ] },
-      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'range', default: 1, min: 0, max: 2, step: 0.1, tooltip: t('field.temperature.tooltip', '0-2, higher is more random.') },
-      { key: 'max_tokens', label: t('field.maxTokens.label', 'Max Tokens'), type: 'number', tooltip: t('field.maxTokens.tooltip', 'Maximum output token count.') },
-      { key: 'response_format', label: t('field.responseFormat.label', 'Output Format'), type: 'select', default: 'text', options: [
+      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'range', dataType: 'number', default: 1, min: 0, max: 2, step: 0.1, tooltip: t('field.temperature.tooltip', '0-2, higher is more random.') },
+      { key: 'max_tokens', label: t('field.maxTokens.label', 'Max Tokens'), type: 'number', dataType: 'number', tooltip: t('field.maxTokens.tooltip', 'Maximum output token count.') },
+      { key: 'response_format', label: t('field.responseFormat.label', 'Output Format'), type: 'select', dataType: 'string', default: 'text', options: [
         { label: t('option.text', 'Text'), value: 'text' },
         { label: 'JSON', value: 'json_object' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'thinking', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'content', type: 'string' },
         { key: 'thinking', type: 'string' },
         { key: 'role', type: 'string' },
         { key: 'finish_reason', type: 'string' },
         { key: 'model', type: 'string' },
-        { key: 'usage', type: 'object', children: [] },
+        { key: 'usage', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -360,23 +360,23 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
       { key: 'input', label: t('field.input.label', 'Input Text'), type: 'textarea', dataType: 'any', required: true, tooltip: t('field.input.tooltip', 'Text or JSON array of texts.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'text-embedding-3-small', options: [
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'text-embedding-3-small', options: [
         { label: 'text-embedding-3-small (Default)', value: 'text-embedding-3-small' },
         { label: 'text-embedding-3-large', value: 'text-embedding-3-large' },
         { label: 'text-embedding-ada-002', value: 'text-embedding-ada-002' },
       ] },
-      { key: 'dimensions', label: t('field.dimensions.label', 'Dimensions'), type: 'number', tooltip: t('field.dimensions.tooltip', 'Output vector dimensions.') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
+      { key: 'dimensions', label: t('field.dimensions.label', 'Dimensions'), type: 'number', dataType: 'number', tooltip: t('field.dimensions.tooltip', 'Output vector dimensions.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'embeddings', type: 'object', children: [] },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'embeddings', type: 'object', dataType: 'object', children: [] },
         { key: 'model', type: 'string' },
-        { key: 'usage', type: 'object', children: [] },
+        { key: 'usage', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -416,14 +416,14 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
-      { key: 'input', label: t('field.text.label', 'Text'), type: 'textarea', required: true, tooltip: t('field.text.tooltip', 'Text to convert.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'tts-1', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'input', label: t('field.text.label', 'Text'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.text.tooltip', 'Text to convert.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'tts-1', options: [
         { label: 'tts-1 (Default)', value: 'tts-1' },
         { label: 'tts-1-hd', value: 'tts-1-hd' },
         { label: 'gpt-4o-mini-tts', value: 'gpt-4o-mini-tts' },
       ] },
-      { key: 'voice', label: t('field.voice.label', 'Voice'), type: 'select', default: 'alloy', options: [
+      { key: 'voice', label: t('field.voice.label', 'Voice'), type: 'select', dataType: 'string', default: 'alloy', options: [
         { label: 'Alloy', value: 'alloy' },
         { label: 'Ash', value: 'ash' },
         { label: 'Coral', value: 'coral' },
@@ -434,24 +434,24 @@ module.exports = (t) => [
         { label: 'Sage', value: 'sage' },
         { label: 'Shimmer', value: 'shimmer' },
       ] },
-      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', default: 1, tooltip: t('field.speed.tooltip', '0.25-4.0') },
-      { key: 'response_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'mp3', options: [
+      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.speed.tooltip', '0.25-4.0') },
+      { key: 'response_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', dataType: 'string', default: 'mp3', options: [
         { label: 'MP3', value: 'mp3' },
         { label: 'WAV', value: 'wav' },
         { label: 'Opus', value: 'opus' },
         { label: 'AAC', value: 'aac' },
         { label: 'FLAC', value: 'flac' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'audio_base64', type: 'string' },
         { key: 'mime_type', type: 'string' },
         { key: 'format', type: 'string' },
-        { key: 'size', type: 'number' },
+        { key: 'size', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -491,31 +491,31 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
-      { key: 'file_url', label: t('field.fileUrl.label', 'Audio URL'), type: 'text', required: true, tooltip: t('field.fileUrl.tooltip', 'Audio file URL.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'whisper-1', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'file_url', label: t('field.fileUrl.label', 'Audio URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.fileUrl.tooltip', 'Audio file URL.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'whisper-1', options: [
         { label: 'whisper-1 (Default)', value: 'whisper-1' },
       ] },
-      { key: 'language', label: t('field.language.label', 'Language'), type: 'select', default: '', options: [
+      { key: 'language', label: t('field.language.label', 'Language'), type: 'select', dataType: 'string', default: '', options: [
         { label: t('option.autoDetect', 'Auto Detect'), value: '' },
         { label: t('option.chinese', 'Chinese'), value: 'zh' },
         { label: t('option.english', 'English'), value: 'en' },
         { label: t('option.japanese', 'Japanese'), value: 'ja' },
         { label: t('option.korean', 'Korean'), value: 'ko' },
       ] },
-      { key: 'response_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'json', options: [
+      { key: 'response_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', dataType: 'string', default: 'json', options: [
         { label: 'JSON', value: 'json' },
         { label: t('option.plainText', 'Plain Text'), value: 'text' },
         { label: 'SRT', value: 'srt' },
         { label: 'VTT', value: 'vtt' },
         { label: t('option.verboseJson', 'Verbose JSON'), value: 'verbose_json' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'text', type: 'string' },
       ] },
     ],
@@ -553,14 +553,14 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'models', type: 'object', children: [] },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'models', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {

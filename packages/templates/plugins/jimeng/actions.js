@@ -21,9 +21,9 @@ module.exports = (t) => [
     icon: 'Image',
     description: t('action.textToImage.description', 'Generate images from text descriptions using Jimeng AI.'),
     properties: [
-      { key: 'sessionId', label: t('field.sessionId.label', 'Session Token'), type: 'text', required: true, tooltip: t('field.sessionId.tooltip', 'Jimeng session ID (add prefix us-/hk-/jp-/sg- for international sites)'), default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
-      { key: 'prompt', label: t('field.prompt.label', 'Image Description'), type: 'textarea', required: true, tooltip: t('field.prompt.tooltip', 'Describe the image you want to generate.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'jimeng-4.5', options: [
+      { key: 'sessionId', label: t('field.sessionId.label', 'Session Token'), type: 'text', dataType: 'string', required: true, tooltip: t('field.sessionId.tooltip', 'Jimeng session ID (add prefix us-/hk-/jp-/sg- for international sites)'), default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
+      { key: 'prompt', label: t('field.prompt.label', 'Image Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.prompt.tooltip', 'Describe the image you want to generate.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'jimeng-4.5', options: [
         { label: 'jimeng-4.5 (默认)', value: 'jimeng-4.5' },
         { label: 'jimeng-5.0', value: 'jimeng-5.0' },
         { label: 'jimeng-4.6', value: 'jimeng-4.6' },
@@ -32,7 +32,7 @@ module.exports = (t) => [
         { label: 'jimeng-3.1 (仅中国站)', value: 'jimeng-3.1' },
         { label: 'jimeng-3.0', value: 'jimeng-3.0' },
       ] },
-      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', default: '1:1', options: [
+      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: '1:1', options: [
         { label: '1:1', value: '1:1' },
         { label: '4:3', value: '4:3' },
         { label: '3:4', value: '3:4' },
@@ -42,20 +42,20 @@ module.exports = (t) => [
         { label: '2:3', value: '2:3' },
         { label: '21:9', value: '21:9' },
       ] },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '2k', options: [
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '2k', options: [
         { label: '1K', value: '1k' },
         { label: '2K (默认)', value: '2k' },
         { label: '4K', value: '4k' },
       ] },
-      { key: 'negativePrompt', label: t('field.negativePrompt.label', 'Negative Prompt'), type: 'textarea', tooltip: t('field.negativePrompt.tooltip', 'Content to exclude from generation.') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API Address'), type: 'text', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: t('field.baseUrl.tooltip', 'Jimeng API service address.') },
+      { key: 'negativePrompt', label: t('field.negativePrompt.label', 'Negative Prompt'), type: 'textarea', dataType: 'string', tooltip: t('field.negativePrompt.tooltip', 'Content to exclude from generation.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API Address'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: t('field.baseUrl.tooltip', 'Jimeng API service address.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'images', type: 'image[]' },
-        { key: 'created', type: 'number' },
+        { key: 'created', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -84,37 +84,37 @@ module.exports = (t) => [
     icon: 'Wand2',
     description: t('action.imageToImage.description', 'Generate new images from input images and text (style transfer, image fusion, etc.).'),
     properties: [
-      { key: 'sessionId', label: t('field.sessionId.label', 'Session Token'), type: 'text', required: true, tooltip: t('field.sessionId.tooltip', 'Jimeng session ID (add prefix us-/hk-/jp-/sg- for international sites)'), default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
-      { key: 'prompt', label: t('field.promptDirection.label', 'Image Description'), type: 'textarea', required: true, tooltip: t('field.promptDirection.tooltip', 'Describe the generation direction.') },
-      { key: 'images', label: t('field.images.label', 'Image URLs'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.images.tooltip', 'Array of input image URLs, e.g. ["https://..."]') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'jimeng-4.5', options: [
+      { key: 'sessionId', label: t('field.sessionId.label', 'Session Token'), type: 'text', dataType: 'string', required: true, tooltip: t('field.sessionId.tooltip', 'Jimeng session ID (add prefix us-/hk-/jp-/sg- for international sites)'), default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
+      { key: 'prompt', label: t('field.promptDirection.label', 'Image Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.promptDirection.tooltip', 'Describe the generation direction.') },
+      { key: 'images', label: t('field.images.label', 'Image URLs'), type: 'textarea', dataType: 'string', dataType: 'string[]', required: true, tooltip: t('field.images.tooltip', 'Array of input image URLs, e.g. ["https://..."]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'jimeng-4.5', options: [
         { label: 'jimeng-4.5 (默认)', value: 'jimeng-4.5' },
         { label: 'jimeng-5.0', value: 'jimeng-5.0' },
         { label: 'jimeng-4.6', value: 'jimeng-4.6' },
         { label: 'jimeng-4.1', value: 'jimeng-4.1' },
         { label: 'jimeng-4.0', value: 'jimeng-4.0' },
       ] },
-      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', default: '1:1', options: [
+      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: '1:1', options: [
         { label: '1:1', value: '1:1' },
         { label: '4:3', value: '4:3' },
         { label: '3:4', value: '3:4' },
         { label: '16:9', value: '16:9' },
         { label: '9:16', value: '9:16' },
       ] },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '2k', options: [
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '2k', options: [
         { label: '1K', value: '1k' },
         { label: '2K', value: '2k' },
         { label: '4K', value: '4k' },
       ] },
-      { key: 'sampleStrength', label: t('field.sampleStrength.label', 'Sample Strength'), type: 'number', default: 0.7, tooltip: t('field.sampleStrength.tooltip', '0.0-1.0') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API Address'), type: 'text', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: t('field.baseUrl.tooltip', 'Jimeng API service address.') },
+      { key: 'sampleStrength', label: t('field.sampleStrength.label', 'Sample Strength'), type: 'number', dataType: 'number', default: 0.7, tooltip: t('field.sampleStrength.tooltip', '0.0-1.0') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API Address'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: t('field.baseUrl.tooltip', 'Jimeng API service address.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'images', type: 'image[]' },
-        { key: 'created', type: 'number' },
+        { key: 'created', type: 'number', dataType: 'number' },
         { key: 'inputImages', type: 'image[]' },
       ] },
     ],
@@ -147,9 +147,9 @@ module.exports = (t) => [
     icon: 'Video',
     description: t('action.textToVideo.description', 'Generate videos from text or images (text-to-video / image-to-video / first-last frame).'),
     properties: [
-      { key: 'sessionId', label: t('field.sessionId.label', 'Session Token'), type: 'text', required: true, tooltip: t('field.sessionId.tooltip', 'Jimeng session ID (add prefix us-/hk-/jp-/sg- for international sites)'), default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
-      { key: 'prompt', label: t('field.promptVideo.label', 'Video Description'), type: 'textarea', required: true, tooltip: t('field.promptVideo.tooltip', 'Describe the video content.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'jimeng-video-3.5-pro', options: [
+      { key: 'sessionId', label: t('field.sessionId.label', 'Session Token'), type: 'text', dataType: 'string', required: true, tooltip: t('field.sessionId.tooltip', 'Jimeng session ID (add prefix us-/hk-/jp-/sg- for international sites)'), default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
+      { key: 'prompt', label: t('field.promptVideo.label', 'Video Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.promptVideo.tooltip', 'Describe the video content.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'jimeng-video-3.5-pro', options: [
         { label: 'jimeng-video-3.5-pro (默认)', value: 'jimeng-video-3.5-pro' },
         { label: 'jimeng-video-3.0', value: 'jimeng-video-3.0' },
         { label: 'jimeng-video-3.0-pro', value: 'jimeng-video-3.0-pro' },
@@ -157,7 +157,7 @@ module.exports = (t) => [
         { label: 'jimeng-video-2.0', value: 'jimeng-video-2.0' },
         { label: 'jimeng-video-2.0-pro', value: 'jimeng-video-2.0-pro' },
       ] },
-      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', default: '1:1', options: [
+      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: '1:1', options: [
         { label: '1:1', value: '1:1' },
         { label: '4:3', value: '4:3' },
         { label: '3:4', value: '3:4' },
@@ -165,16 +165,16 @@ module.exports = (t) => [
         { label: '9:16', value: '9:16' },
         { label: '21:9', value: '21:9' },
       ] },
-      { key: 'duration', label: t('field.duration.label', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip', '5 or 10 seconds') },
-      { key: 'filePaths', label: t('field.filePaths.label', 'Image URLs'), type: 'textarea', dataType: 'string[]', tooltip: t('field.filePaths.tooltip', 'Array of image URLs. 1 image = image-to-video, 2 images = first-last frame.') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API Address'), type: 'text', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: t('field.baseUrl.tooltip', 'Jimeng API service address.') },
+      { key: 'duration', label: t('field.duration.label', 'Duration (seconds)'), type: 'number', dataType: 'number', default: 5, tooltip: t('field.duration.tooltip', '5 or 10 seconds') },
+      { key: 'filePaths', label: t('field.filePaths.label', 'Image URLs'), type: 'textarea', dataType: 'string', dataType: 'string[]', tooltip: t('field.filePaths.tooltip', 'Array of image URLs. 1 image = image-to-video, 2 images = first-last frame.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API Address'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: t('field.baseUrl.tooltip', 'Jimeng API service address.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'videos', type: 'video[]' },
-        { key: 'created', type: 'number' },
+        { key: 'created', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {

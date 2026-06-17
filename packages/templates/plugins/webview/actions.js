@@ -86,16 +86,16 @@ module.exports = (t) => [
     customViewMinSize: { width: 420, height: 300 },
     tool: false,
     properties: [
-      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, default: 'https://example.com', tooltip: t('field.url.tooltip', 'The URL to show in the webview') },
-      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', default: 'Webview', tooltip: t('field.title.tooltip', 'Webview title') },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', dataType: 'string', required: true, default: 'https://example.com', tooltip: t('field.url.tooltip', 'The URL to show in the webview') },
+      { key: 'title', label: t('field.title.label', 'Title'), type: 'text', dataType: 'string', default: 'Webview', tooltip: t('field.title.tooltip', 'Webview title') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'url', type: 'string' },
         { key: 'title', type: 'string' },
-        { key: 'fallback', type: 'boolean' },
+        { key: 'fallback', type: 'boolean', dataType: 'boolean' },
       ] },
     ],
     run: async (ctx, args) => {

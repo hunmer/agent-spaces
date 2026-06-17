@@ -12,17 +12,17 @@ module.exports = (t) => [
     icon: 'BookOpen',
     description: t('action.epub_info.description', 'Parse an EPUB file to extract book metadata (title, author, language, publisher, etc.) and table of contents'),
     properties: [
-      { key: 'filePath', label: t('field.filePath.label', 'EPUB File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Absolute path to the EPUB file') },
+      { key: 'filePath', label: t('field.filePath.label', 'EPUB File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.filePath.tooltip', 'Absolute path to the EPUB file') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'fileInfo', type: 'object', children: [] },
-        { key: 'metadata', type: 'object', children: [] },
-        { key: 'toc', type: 'object', children: [] },
-        { key: 'spineCount', type: 'number' },
-        { key: 'guide', type: 'object', children: [] },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'fileInfo', type: 'object', dataType: 'object', children: [] },
+        { key: 'metadata', type: 'object', dataType: 'object', children: [] },
+        { key: 'toc', type: 'object', dataType: 'object', children: [] },
+        { key: 'spineCount', type: 'number', dataType: 'number' },
+        { key: 'guide', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -82,16 +82,16 @@ module.exports = (t) => [
     icon: 'FileText',
     description: t('action.epub_chapters.description', 'Parse an EPUB file and return chapter content (HTML text and CSS) for a specified range'),
     properties: [
-      { key: 'filePath', label: t('field.filePath.label', 'EPUB File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Absolute path to the EPUB file') },
-      { key: 'start', label: t('field.start.label', 'Start Chapter'), type: 'number', default: 0, tooltip: t('field.start.tooltip', 'Chapter index starting from 0') },
-      { key: 'count', label: t('field.count.label', 'Chapter Count'), type: 'number', default: 1, tooltip: t('field.count.tooltip', 'Number of chapters to load, 0 for all') },
+      { key: 'filePath', label: t('field.filePath.label', 'EPUB File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.filePath.tooltip', 'Absolute path to the EPUB file') },
+      { key: 'start', label: t('field.start.label', 'Start Chapter'), type: 'number', dataType: 'number', default: 0, tooltip: t('field.start.tooltip', 'Chapter index starting from 0') },
+      { key: 'count', label: t('field.count.label', 'Chapter Count'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.count.tooltip', 'Number of chapters to load, 0 for all') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'total', type: 'number' },
-        { key: 'chapters', type: 'object', children: [] },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'total', type: 'number', dataType: 'number' },
+        { key: 'chapters', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {

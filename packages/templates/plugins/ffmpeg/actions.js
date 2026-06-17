@@ -29,8 +29,8 @@ module.exports = (t) => [
     description: t('action.formatConvert.description', 'Convert audio/video formats. Supports common format conversions.'),
     tool: false,
     properties: [
-      { key: 'inputPath', label: t('field.inputPath.label', 'Input File Path'), type: 'text', required: true, tooltip: t('field.inputPath.tooltip', 'Absolute path of the input file.') },
-      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', required: true, default: 'mp4', options: [
+      { key: 'inputPath', label: t('field.inputPath.label', 'Input File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.inputPath.tooltip', 'Absolute path of the input file.') },
+      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', dataType: 'string', required: true, default: 'mp4', options: [
         { label: 'MP4', value: 'mp4' },
         { label: 'AVI', value: 'avi' },
         { label: 'MKV', value: 'mkv' },
@@ -44,7 +44,7 @@ module.exports = (t) => [
         { label: 'FLAC', value: 'flac' },
         { label: 'OGG', value: 'ogg' },
       ] },
-      { key: 'videoCodec', label: t('field.videoCodec.label', 'Video Codec'), type: 'select', options: [
+      { key: 'videoCodec', label: t('field.videoCodec.label', 'Video Codec'), type: 'select', dataType: 'string', options: [
         { label: t('field.codecAuto', 'Auto'), value: '' },
         { label: 'H.264', value: 'libx264' },
         { label: 'H.265', value: 'libx265' },
@@ -52,7 +52,7 @@ module.exports = (t) => [
         { label: 'AV1', value: 'libaom-av1' },
         { label: 'MPEG-4', value: 'mpeg4' },
       ] },
-      { key: 'audioCodec', label: t('field.audioCodec.label', 'Audio Codec'), type: 'select', options: [
+      { key: 'audioCodec', label: t('field.audioCodec.label', 'Audio Codec'), type: 'select', dataType: 'string', options: [
         { label: t('field.codecAuto', 'Auto'), value: '' },
         { label: 'AAC', value: 'aac' },
         { label: 'MP3', value: 'libmp3lame' },
@@ -60,8 +60,8 @@ module.exports = (t) => [
         { label: 'Vorbis', value: 'libvorbis' },
         { label: 'Opus', value: 'libopus' },
       ] },
-      { key: 'outputPath', label: t('field.outputPath.label', 'Output File Path'), type: 'text', tooltip: t('field.outputPathAuto.tooltip', 'Leave empty to auto-generate (same directory, new extension).') },
-      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
+      { key: 'outputPath', label: t('field.outputPath.label', 'Output File Path'), type: 'text', dataType: 'string', tooltip: t('field.outputPathAuto.tooltip', 'Leave empty to auto-generate (same directory, new extension).') },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -104,27 +104,27 @@ module.exports = (t) => [
     description: t('action.merge.description', 'Merge separate audio and video files into one.'),
     tool: false,
     properties: [
-      { key: 'videoPath', label: t('field.videoPath.label', 'Video File Path'), type: 'text', required: true, tooltip: t('field.videoPath.tooltip', 'Absolute path of the video file.') },
-      { key: 'audioPath', label: t('field.audioPath.label', 'Audio File Path'), type: 'text', required: true, tooltip: t('field.audioPath.tooltip', 'Absolute path of the audio file.') },
-      { key: 'outputPath', label: t('field.outputPath.label', 'Output File Path'), type: 'text', required: true, tooltip: t('field.outputPathRequired.tooltip', 'Output path for the merged file.') },
-      { key: 'reEncode', label: t('field.reEncode.label', 'Re-encode'), type: 'boolean', default: false, tooltip: t('field.reEncode.tooltip', 'Disable to copy streams directly (faster, but formats must be compatible).') },
-      { key: 'videoCodec', label: t('field.videoCodec.label', 'Video Codec'), type: 'select', options: [
+      { key: 'videoPath', label: t('field.videoPath.label', 'Video File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.videoPath.tooltip', 'Absolute path of the video file.') },
+      { key: 'audioPath', label: t('field.audioPath.label', 'Audio File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.audioPath.tooltip', 'Absolute path of the audio file.') },
+      { key: 'outputPath', label: t('field.outputPath.label', 'Output File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.outputPathRequired.tooltip', 'Output path for the merged file.') },
+      { key: 'reEncode', label: t('field.reEncode.label', 'Re-encode'), type: 'boolean', dataType: 'boolean', default: false, tooltip: t('field.reEncode.tooltip', 'Disable to copy streams directly (faster, but formats must be compatible).') },
+      { key: 'videoCodec', label: t('field.videoCodec.label', 'Video Codec'), type: 'select', dataType: 'string', options: [
         { label: 'H.264', value: 'libx264' },
         { label: 'H.265', value: 'libx265' },
         { label: 'VP9', value: 'libvpx-vp9' },
       ] },
-      { key: 'audioCodec', label: t('field.audioCodec.label', 'Audio Codec'), type: 'select', options: [
+      { key: 'audioCodec', label: t('field.audioCodec.label', 'Audio Codec'), type: 'select', dataType: 'string', options: [
         { label: 'AAC', value: 'aac' },
         { label: 'MP3', value: 'libmp3lame' },
         { label: 'Opus', value: 'libopus' },
       ] },
-      { key: 'shortest', label: t('field.shortest.label', 'Use Shortest Stream'), type: 'boolean', default: true, tooltip: t('field.shortest.tooltip', 'When audio/video lengths differ, truncate to the shorter one.') },
-      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
+      { key: 'shortest', label: t('field.shortest.label', 'Use Shortest Stream'), type: 'boolean', dataType: 'boolean', default: true, tooltip: t('field.shortest.tooltip', 'When audio/video lengths differ, truncate to the shorter one.') },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'outputPath', type: 'string' },
       ] },
     ],
@@ -170,27 +170,27 @@ module.exports = (t) => [
     description: t('action.demux.description', 'Extract audio track from video or remove audio track.'),
     tool: false,
     properties: [
-      { key: 'inputPath', label: t('field.inputPath.label', 'Input File Path'), type: 'text', required: true, tooltip: t('field.inputPath.tooltip', 'Absolute path of the input file.') },
-      { key: 'mode', label: t('field.mode.label', 'Demux Mode'), type: 'select', required: true, default: 'extract_audio', options: [
+      { key: 'inputPath', label: t('field.inputPath.label', 'Input File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.inputPath.tooltip', 'Absolute path of the input file.') },
+      { key: 'mode', label: t('field.mode.label', 'Demux Mode'), type: 'select', dataType: 'string', required: true, default: 'extract_audio', options: [
         { label: t('field.modeOption.extractAudio', 'Extract Audio'), value: 'extract_audio' },
         { label: t('field.modeOption.extractVideo', 'Remove Audio (Video Only)'), value: 'extract_video' },
         { label: t('field.modeOption.extractBoth', 'Extract Both Audio and Video'), value: 'extract_both' },
       ] },
-      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
+      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', dataType: 'string', default: 'mp3', options: [
         { label: 'MP3', value: 'mp3' },
         { label: 'WAV', value: 'wav' },
         { label: 'AAC', value: 'aac' },
         { label: 'FLAC', value: 'flac' },
         { label: 'OGG', value: 'ogg' },
       ] },
-      { key: 'audioOutputPath', label: t('field.audioOutputPath.label', 'Audio Output Path'), type: 'text', tooltip: t('field.audioOutputPath.tooltip', 'Leave empty to auto-generate.') },
-      { key: 'videoOutputPath', label: t('field.videoOutputPath.label', 'Video Output Path'), type: 'text', tooltip: t('field.videoOutputPath.tooltip', 'Leave empty to auto-generate.') },
-      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
+      { key: 'audioOutputPath', label: t('field.audioOutputPath.label', 'Audio Output Path'), type: 'text', dataType: 'string', tooltip: t('field.audioOutputPath.tooltip', 'Leave empty to auto-generate.') },
+      { key: 'videoOutputPath', label: t('field.videoOutputPath.label', 'Video Output Path'), type: 'text', dataType: 'string', tooltip: t('field.videoOutputPath.tooltip', 'Leave empty to auto-generate.') },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'audioPath', type: 'string' },
         { key: 'videoPath', type: 'string' },
       ] },

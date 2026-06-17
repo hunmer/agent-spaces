@@ -9,10 +9,10 @@ const CONFIG_PREFIX = '{{ __config__["workflow.tencent-cos"]'
 
 function createConfigProperties(t) {
   return [
-    { key: 'secretId', label: 'SecretId', type: 'text', required: true, default: `${CONFIG_PREFIX}["secretId"]}}` },
-    { key: 'secretKey', label: 'SecretKey', type: 'text', required: true, default: `${CONFIG_PREFIX}["secretKey"]}}` },
-    { key: 'bucket', label: 'Bucket', type: 'text', required: true, tooltip: t('config.bucket.tooltip', 'Format: bucket-appid'), default: `${CONFIG_PREFIX}["bucket"]}}` },
-    { key: 'region', label: 'Region', type: 'text', required: true, tooltip: t('config.region.tooltip', 'Example: ap-guangzhou'), default: `${CONFIG_PREFIX}["region"]}}` },
+    { key: 'secretId', label: 'SecretId', type: 'text', dataType: 'string', required: true, default: `${CONFIG_PREFIX}["secretId"]}}` },
+    { key: 'secretKey', label: 'SecretKey', type: 'text', dataType: 'string', required: true, default: `${CONFIG_PREFIX}["secretKey"]}}` },
+    { key: 'bucket', label: 'Bucket', type: 'text', dataType: 'string', required: true, tooltip: t('config.bucket.tooltip', 'Format: bucket-appid'), default: `${CONFIG_PREFIX}["bucket"]}}` },
+    { key: 'region', label: 'Region', type: 'text', dataType: 'string', required: true, tooltip: t('config.region.tooltip', 'Example: ap-guangzhou'), default: `${CONFIG_PREFIX}["region"]}}` },
   ]
 }
 
@@ -29,14 +29,14 @@ module.exports = (t) => {
     description: t('action.uploadFile.description', 'Upload a local file to COS'),
     tool: false,
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
-      { key: 'filePath', label: t('field.filePath.label', 'Local File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Full local file path') },
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'filePath', label: t('field.filePath.label', 'Local File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.filePath.tooltip', 'Full local file path') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'Key', type: 'string' },
         { key: 'ETag', type: 'string' },
         { key: 'Location', type: 'string' },
@@ -71,15 +71,15 @@ module.exports = (t) => {
     description: t('action.uploadContent.description', 'Upload string content to COS'),
     tool: false,
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
-      { key: 'content', label: t('field.content.label', 'Content'), type: 'textarea', required: true, tooltip: t('field.content.tooltip', 'Text content to upload') },
-      { key: 'contentType', label: t('field.contentType.label', 'Content-Type'), type: 'text', tooltip: t('field.contentType.tooltip', 'Example: text/plain, application/json') },
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'content', label: t('field.content.label', 'Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.content.tooltip', 'Text content to upload') },
+      { key: 'contentType', label: t('field.contentType.label', 'Content-Type'), type: 'text', dataType: 'string', tooltip: t('field.contentType.tooltip', 'Example: text/plain, application/json') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'Key', type: 'string' },
         { key: 'ETag', type: 'string' },
         { key: 'Location', type: 'string' },
@@ -113,15 +113,15 @@ module.exports = (t) => {
     description: t('action.uploadBuffer.description', 'Upload Base64-encoded binary data to COS'),
     tool: false,
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
-      { key: 'base64Data', label: t('field.base64Data.label', 'Base64 Data'), type: 'textarea', required: true, tooltip: t('field.base64Data.tooltip', 'Base64-encoded binary data') },
-      { key: 'contentType', label: t('field.contentType.label', 'Content-Type'), type: 'text', tooltip: t('field.contentTypeImage.tooltip', 'Example: image/jpeg, application/pdf') },
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'base64Data', label: t('field.base64Data.label', 'Base64 Data'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.base64Data.tooltip', 'Base64-encoded binary data') },
+      { key: 'contentType', label: t('field.contentType.label', 'Content-Type'), type: 'text', dataType: 'string', tooltip: t('field.contentTypeImage.tooltip', 'Example: image/jpeg, application/pdf') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'Key', type: 'string' },
         { key: 'ETag', type: 'string' },
         { key: 'Location', type: 'string' },
@@ -172,9 +172,9 @@ module.exports = (t) => {
       required: ['secretId', 'secretKey', 'bucket', 'region', 'key'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'Key', type: 'string' },
         { key: 'ETag', type: 'string' },
         { key: 'Location', type: 'string' },
@@ -213,16 +213,16 @@ module.exports = (t) => {
     description: t('action.download.description', 'Download a file from COS to local'),
     tool: false,
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
-      { key: 'filePath', label: t('field.localSavePath.label', 'Local Save Path'), type: 'text', required: true, tooltip: t('field.localSavePath.tooltip', 'Full local path to save the downloaded file') },
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'filePath', label: t('field.localSavePath.label', 'Local Save Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.localSavePath.tooltip', 'Full local path to save the downloaded file') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'filePath', type: 'string' },
-        { key: 'contentLength', type: 'number' },
+        { key: 'contentLength', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -253,7 +253,7 @@ module.exports = (t) => {
     icon: 'FileText',
     description: t('action.getContent.description', 'Get file text content from COS'),
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
       ...configProperties,
     ],
     toolProperties: {
@@ -269,9 +269,9 @@ module.exports = (t) => {
       required: ['secretId', 'secretKey', 'bucket', 'region', 'key'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'content', type: 'string' },
         { key: 'contentType', type: 'string' },
       ] },
@@ -304,11 +304,11 @@ module.exports = (t) => {
     description: t('action.delete.description', 'Delete a file from COS'),
     tool: false,
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
     ],
     run: async (ctx, args) => {
@@ -341,7 +341,7 @@ module.exports = (t) => {
       required: ['secretId', 'secretKey', 'bucket', 'region'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
     ],
     run: async (ctx, args) => {
@@ -375,11 +375,11 @@ module.exports = (t) => {
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'deleted', type: 'object', children: [] },
-        { key: 'errors', type: 'object', children: [] },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'deleted', type: 'object', dataType: 'object', children: [] },
+        { key: 'errors', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -410,20 +410,20 @@ module.exports = (t) => {
     icon: 'FolderSearch',
     description: t('action.list.description', 'List files with a specified prefix in the bucket'),
     properties: [
-      { key: 'prefix', label: t('field.prefix.label', 'Prefix'), type: 'text', tooltip: t('field.prefix.tooltip', 'Only list files starting with this prefix') },
-      { key: 'delimiter', label: t('field.delimiter.label', 'Delimiter'), type: 'text', tooltip: t('field.delimiter.tooltip', 'Used for grouping (commonly /)') },
-      { key: 'maxKeys', label: t('field.maxKeys.label', 'Max Count'), type: 'number', default: 100, tooltip: t('field.maxKeys.tooltip', 'Maximum number of results per request') },
-      { key: 'marker', label: t('field.marker.label', 'Marker'), type: 'text', tooltip: t('field.marker.tooltip', 'Pagination marker') },
+      { key: 'prefix', label: t('field.prefix.label', 'Prefix'), type: 'text', dataType: 'string', tooltip: t('field.prefix.tooltip', 'Only list files starting with this prefix') },
+      { key: 'delimiter', label: t('field.delimiter.label', 'Delimiter'), type: 'text', dataType: 'string', tooltip: t('field.delimiter.tooltip', 'Used for grouping (commonly /)') },
+      { key: 'maxKeys', label: t('field.maxKeys.label', 'Max Count'), type: 'number', dataType: 'number', default: 100, tooltip: t('field.maxKeys.tooltip', 'Maximum number of results per request') },
+      { key: 'marker', label: t('field.marker.label', 'Marker'), type: 'text', dataType: 'string', tooltip: t('field.marker.tooltip', 'Pagination marker') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'objects', type: 'object', children: [] },
-        { key: 'commonPrefixes', type: 'object', children: [] },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'objects', type: 'object', dataType: 'object', children: [] },
+        { key: 'commonPrefixes', type: 'object', dataType: 'object', children: [] },
         { key: 'nextMarker', type: 'string' },
-        { key: 'isTruncated', type: 'boolean' },
+        { key: 'isTruncated', type: 'boolean', dataType: 'boolean' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -465,20 +465,20 @@ module.exports = (t) => {
     icon: 'Link',
     description: t('action.signUrl.description', 'Generate a temporary signed access URL'),
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
-      { key: 'expires', label: t('field.expires.label', 'Expires (seconds)'), type: 'number', default: 3600, tooltip: t('field.expires.tooltip', 'URL validity period, default 1 hour') },
-      { key: 'method', label: t('field.method.label', 'HTTP Method'), type: 'select', default: 'GET', options: [
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'expires', label: t('field.expires.label', 'Expires (seconds)'), type: 'number', dataType: 'number', default: 3600, tooltip: t('field.expires.tooltip', 'URL validity period, default 1 hour') },
+      { key: 'method', label: t('field.method.label', 'HTTP Method'), type: 'select', dataType: 'string', default: 'GET', options: [
         { label: 'GET', value: 'GET' },
         { label: 'PUT', value: 'PUT' },
       ] },
-      { key: 'responseContentType', label: t('field.responseContentType.label', 'Response Content-Type'), type: 'text', tooltip: t('field.responseContentType.tooltip', 'Content-Type for forced download') },
-      { key: 'responseContentDisposition', label: t('field.responseContentDisposition.label', 'Response Content-Disposition'), type: 'text', tooltip: t('field.responseContentDisposition.tooltip', 'Example: attachment; filename="file.txt"') },
+      { key: 'responseContentType', label: t('field.responseContentType.label', 'Response Content-Type'), type: 'text', dataType: 'string', tooltip: t('field.responseContentType.tooltip', 'Content-Type for forced download') },
+      { key: 'responseContentDisposition', label: t('field.responseContentDisposition.label', 'Response Content-Disposition'), type: 'text', dataType: 'string', tooltip: t('field.responseContentDisposition.tooltip', 'Example: attachment; filename="file.txt"') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'url', type: 'string' },
       ] },
     ],
@@ -513,16 +513,16 @@ module.exports = (t) => {
     icon: 'Copy',
     description: t('action.copy.description', 'Copy a file within COS (supports cross-bucket)'),
     properties: [
-      { key: 'key', label: t('field.targetKey.label', 'Target Object Path'), type: 'text', required: true, tooltip: t('field.targetKey.tooltip', 'COS path after copy') },
-      { key: 'sourceKey', label: t('field.sourceKey.label', 'Source Object Path'), type: 'text', required: true, tooltip: t('field.sourceKey.tooltip', 'Source file COS path') },
-      { key: 'sourceBucket', label: t('field.sourceBucket.label', 'Source Bucket'), type: 'text', tooltip: t('field.sourceBucket.tooltip', 'Source bucket name (defaults to same bucket)') },
-      { key: 'sourceRegion', label: t('field.sourceRegion.label', 'Source Region'), type: 'text', tooltip: t('field.sourceRegion.tooltip', 'Source bucket region (defaults to same region)') },
+      { key: 'key', label: t('field.targetKey.label', 'Target Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.targetKey.tooltip', 'COS path after copy') },
+      { key: 'sourceKey', label: t('field.sourceKey.label', 'Source Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.sourceKey.tooltip', 'Source file COS path') },
+      { key: 'sourceBucket', label: t('field.sourceBucket.label', 'Source Bucket'), type: 'text', dataType: 'string', tooltip: t('field.sourceBucket.tooltip', 'Source bucket name (defaults to same bucket)') },
+      { key: 'sourceRegion', label: t('field.sourceRegion.label', 'Source Region'), type: 'text', dataType: 'string', tooltip: t('field.sourceRegion.tooltip', 'Source bucket region (defaults to same region)') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'Key', type: 'string' },
         { key: 'ETag', type: 'string' },
       ] },
@@ -557,15 +557,15 @@ module.exports = (t) => {
     icon: 'Info',
     description: t('action.head.description', 'Get COS file metadata (size, type, last modified, etc.)'),
     properties: [
-      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
       ...configProperties,
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'exists', type: 'boolean' },
-        { key: 'size', type: 'number' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'exists', type: 'boolean', dataType: 'boolean' },
+        { key: 'size', type: 'number', dataType: 'number' },
         { key: 'contentType', type: 'string' },
         { key: 'lastModified', type: 'string' },
         { key: 'etag', type: 'string' },

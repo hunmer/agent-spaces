@@ -379,6 +379,28 @@ module.exports = { tools: [] }
 | JSON 对象输入 | `textarea` | `object` | 用户输入 JSON 对象 |
 | 单行文本数组 | `text` | `string[]` | 逗号分隔或 JSON 数组 |
 
+完整 `type` → `dataType` 映射规则：
+
+| `type`（控件） | 推荐 `dataType` | 说明 |
+|----------------|-----------------|------|
+| `text` | `string` | 单行文本输入 |
+| `textarea` | `string` | 多行文本输入（纯文本） |
+| `textarea` | `string[]` | 多行 JSON 数组输入 |
+| `textarea` | `object[]` | 多行 JSON 对象数组输入 |
+| `textarea` | `object` | 多行 JSON 对象输入 |
+| `select` | `string` | 下拉单选（值为字符串） |
+| `code` | `string` | 代码编辑器（值为代码字符串） |
+| `number` | `number` | 数字输入框 |
+| `boolean` | `boolean` | 布尔开关 |
+| `checkbox` | `boolean` | 复选框 |
+| `object` | `object` | 对象配置项 |
+| `array` | `any` / `string[]` / `object[]` | 数组配置项，按实际元素类型选择 |
+| `range` | `number` | 范围滑块 |
+| `buffer` | `string` | 二进制数据（JSON 字符串） |
+| `json` | `object` | JSON 数据 |
+| `conditions` | `string` | 条件表达式 |
+| `output_fields` | `string` / `object` | 输出字段配置 |
+
 设置 `dataType` 后：
 - **Agent tool JSON Schema** 会根据 `dataType` 生成正确的类型（而非从 `type` 推断为 `string`）
 - **节点测试对话框** 会自动对输入值做 JSON.parse 解析

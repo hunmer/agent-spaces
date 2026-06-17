@@ -6,14 +6,14 @@ module.exports = (t) => [
     icon: 'FilePen',
     description: t('action.write_text_file.description', 'Write text content to a file (creates if not exists)'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
-      { key: 'content', label: t('field.content.label', 'File Content'), type: 'textarea', required: true, tooltip: t('field.content.tooltip', 'Text content to write') },
-      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', default: 'utf-8', tooltip: t('field.encoding.tooltip', 'File encoding, default utf-8') },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'content', label: t('field.content.label', 'File Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.content.tooltip', 'Text content to write') },
+      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', dataType: 'string', default: 'utf-8', tooltip: t('field.encoding.tooltip', 'File encoding, default utf-8') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'path', type: 'string' },
       ] },
     ],
@@ -29,13 +29,13 @@ module.exports = (t) => [
     icon: 'Binary',
     description: t('action.write_binary_file.description', 'Write binary data to a file, suitable for images, audio, and other non-text files'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
-      { key: 'data', label: t('field.data.label', 'Binary Data'), type: 'buffer', required: true, tooltip: t('field.data.tooltip', 'Binary data to write') },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'data', label: t('field.data.label', 'Binary Data'), type: 'buffer', dataType: 'string', required: true, tooltip: t('field.data.tooltip', 'Binary data to write') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'path', type: 'string' },
       ] },
     ],
@@ -51,13 +51,13 @@ module.exports = (t) => [
     icon: 'FileText',
     description: t('action.read_file.description', 'Read file content'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
-      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', default: 'utf-8', tooltip: t('field.encoding_read.tooltip', 'File encoding') },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', dataType: 'string', default: 'utf-8', tooltip: t('field.encoding_read.tooltip', 'File encoding') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'content', type: 'string' },
         { key: 'path', type: 'string' },
       ] },
@@ -74,13 +74,13 @@ module.exports = (t) => [
     icon: 'Braces',
     description: t('action.read_json.description', 'Read and parse a JSON file into an object'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target JSON file path') },
-      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', default: 'utf-8', tooltip: t('field.encoding_read.tooltip', 'File encoding') },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'Target JSON file path') },
+      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', dataType: 'string', default: 'utf-8', tooltip: t('field.encoding_read.tooltip', 'File encoding') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'json', type: 'any' },
         { key: 'path', type: 'string' },
       ] },
@@ -98,15 +98,15 @@ module.exports = (t) => [
     icon: 'FileJson',
     description: t('action.write_json.description', 'Serialize an object to JSON and write it to a file (creates if not exists)'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target JSON file path') },
-      { key: 'json', label: t('field.json.label', 'JSON Data'), type: 'json', required: true, tooltip: t('field.json.tooltip', 'Object to serialize to JSON') },
-      { key: 'indent', label: t('field.indent.label', 'Indent'), type: 'number', default: 2, tooltip: t('field.indent.tooltip', 'Number of spaces for pretty-printing, 0 for compact') },
-      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', default: 'utf-8', tooltip: t('field.encoding.tooltip', 'File encoding, default utf-8') },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'Target JSON file path') },
+      { key: 'json', label: t('field.json.label', 'JSON Data'), type: 'json', dataType: 'object', required: true, tooltip: t('field.json.tooltip', 'Object to serialize to JSON') },
+      { key: 'indent', label: t('field.indent.label', 'Indent'), type: 'number', dataType: 'number', default: 2, tooltip: t('field.indent.tooltip', 'Number of spaces for pretty-printing, 0 for compact') },
+      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', dataType: 'string', default: 'utf-8', tooltip: t('field.encoding.tooltip', 'File encoding, default utf-8') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'path', type: 'string' },
       ] },
     ],
@@ -124,14 +124,14 @@ module.exports = (t) => [
     icon: 'FileEdit',
     description: t('action.edit_file.description', 'Replace specified content in a file'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
-      { key: 'oldContent', label: t('field.oldContent.label', 'Old Content'), type: 'textarea', required: true, tooltip: t('field.oldContent.tooltip', 'Content to be replaced') },
-      { key: 'newContent', label: t('field.newContent.label', 'New Content'), type: 'textarea', required: true, tooltip: t('field.newContent.tooltip', 'New content after replacement') },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'oldContent', label: t('field.oldContent.label', 'Old Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.oldContent.tooltip', 'Content to be replaced') },
+      { key: 'newContent', label: t('field.newContent.label', 'New Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.newContent.tooltip', 'New content after replacement') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'path', type: 'string' },
       ] },
     ],
@@ -147,12 +147,12 @@ module.exports = (t) => [
     icon: 'Trash2',
     description: t('action.delete_file.description', 'Delete a specified file'),
     properties: [
-      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.file_path_delete.tooltip', 'File path to delete') },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.file_path_delete.tooltip', 'File path to delete') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'path', type: 'string' },
       ] },
     ],
@@ -168,15 +168,15 @@ module.exports = (t) => [
     icon: 'FolderSearch',
     description: t('action.list_files.description', 'List files and subdirectories in a directory'),
     properties: [
-      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', required: true, tooltip: t('field.dir_path.tooltip', 'Target directory path') },
-      { key: 'recursive', label: t('field.recursive.label', 'Recursive'), type: 'boolean', default: false, tooltip: t('field.recursive.tooltip', 'Whether to recursively list subdirectories') },
-      { key: 'pattern', label: t('field.pattern.label', 'Pattern'), type: 'text', tooltip: t('field.pattern.tooltip', 'File name pattern, e.g. *.txt') },
+      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.dir_path.tooltip', 'Target directory path') },
+      { key: 'recursive', label: t('field.recursive.label', 'Recursive'), type: 'boolean', dataType: 'boolean', default: false, tooltip: t('field.recursive.tooltip', 'Whether to recursively list subdirectories') },
+      { key: 'pattern', label: t('field.pattern.label', 'Pattern'), type: 'text', dataType: 'string', tooltip: t('field.pattern.tooltip', 'File name pattern, e.g. *.txt') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'files', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'files', type: 'object', dataType: 'object', children: [
           { key: 'name', type: 'string' },
           { key: 'path', type: 'string' },
           { key: 'type', type: 'string' },
@@ -195,13 +195,13 @@ module.exports = (t) => [
     icon: 'FolderPlus',
     description: t('action.create_dir.description', 'Create a directory (supports recursive creation)'),
     properties: [
-      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', required: true, tooltip: t('field.dir_path_create.tooltip', 'Directory path to create') },
-      { key: 'recursive', label: t('field.recursive_create.label', 'Recursive Create'), type: 'boolean', default: true, tooltip: t('field.recursive_create.tooltip', 'Whether to recursively create parent directories') },
+      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.dir_path_create.tooltip', 'Directory path to create') },
+      { key: 'recursive', label: t('field.recursive_create.label', 'Recursive Create'), type: 'boolean', dataType: 'boolean', default: true, tooltip: t('field.recursive_create.tooltip', 'Whether to recursively create parent directories') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'path', type: 'string' },
       ] },
     ],
@@ -217,14 +217,14 @@ module.exports = (t) => [
     icon: 'FolderX',
     description: t('action.remove_dir.description', 'Remove a directory'),
     properties: [
-      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', required: true, tooltip: t('field.dir_path_delete.tooltip', 'Directory path to remove') },
-      { key: 'recursive', label: t('field.recursive_delete.label', 'Recursive Delete'), type: 'boolean', default: false, tooltip: t('field.recursive_delete.tooltip', 'Whether to recursively delete all contents') },
-      { key: 'force', label: t('field.force.label', 'Force Delete'), type: 'boolean', default: false, tooltip: t('field.force.tooltip', 'Do not error if directory does not exist') },
+      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.dir_path_delete.tooltip', 'Directory path to remove') },
+      { key: 'recursive', label: t('field.recursive_delete.label', 'Recursive Delete'), type: 'boolean', dataType: 'boolean', default: false, tooltip: t('field.recursive_delete.tooltip', 'Whether to recursively delete all contents') },
+      { key: 'force', label: t('field.force.label', 'Force Delete'), type: 'boolean', dataType: 'boolean', default: false, tooltip: t('field.force.tooltip', 'Do not error if directory does not exist') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'path', type: 'string' },
       ] },
     ],
@@ -240,15 +240,15 @@ module.exports = (t) => [
     icon: 'Info',
     description: t('action.file_stat.description', 'Get detailed information about a file or directory'),
     properties: [
-      { key: 'path', label: t('field.stat_path.label', 'Path'), type: 'text', required: true, tooltip: t('field.stat_path.tooltip', 'File or directory path') },
+      { key: 'path', label: t('field.stat_path.label', 'Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.stat_path.tooltip', 'File or directory path') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'isFile', type: 'boolean' },
-        { key: 'isDirectory', type: 'boolean' },
-        { key: 'size', type: 'number' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'isFile', type: 'boolean', dataType: 'boolean' },
+        { key: 'isDirectory', type: 'boolean', dataType: 'boolean' },
+        { key: 'size', type: 'number', dataType: 'number' },
         { key: 'createdAt', type: 'string' },
         { key: 'modifiedAt', type: 'string' },
       ] },
@@ -265,13 +265,13 @@ module.exports = (t) => [
     icon: 'PenLine',
     description: t('action.rename_file.description', 'Rename or move a file/directory'),
     properties: [
-      { key: 'oldPath', label: t('field.oldPath.label', 'Old Path'), type: 'text', required: true, tooltip: t('field.oldPath.tooltip', 'Original file/directory path') },
-      { key: 'newPath', label: t('field.newPath.label', 'New Path'), type: 'text', required: true, tooltip: t('field.newPath.tooltip', 'New file/directory path') },
+      { key: 'oldPath', label: t('field.oldPath.label', 'Old Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.oldPath.tooltip', 'Original file/directory path') },
+      { key: 'newPath', label: t('field.newPath.label', 'New Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.newPath.tooltip', 'New file/directory path') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'oldPath', type: 'string' },
         { key: 'newPath', type: 'string' },
       ] },
@@ -288,13 +288,13 @@ module.exports = (t) => [
     icon: 'Copy',
     description: t('action.copy_file.description', 'Copy a file to a new path'),
     properties: [
-      { key: 'src', label: t('field.src.label', 'Source Path'), type: 'text', required: true, tooltip: t('field.src.tooltip', 'Source file path') },
-      { key: 'dest', label: t('field.dest.label', 'Destination Path'), type: 'text', required: true, tooltip: t('field.dest.tooltip', 'Destination file path') },
+      { key: 'src', label: t('field.src.label', 'Source Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.src.tooltip', 'Source file path') },
+      { key: 'dest', label: t('field.dest.label', 'Destination Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.dest.tooltip', 'Destination file path') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'src', type: 'string' },
         { key: 'dest', type: 'string' },
       ] },

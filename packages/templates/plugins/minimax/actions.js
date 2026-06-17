@@ -147,31 +147,31 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'MiniMax-M2.7', options: CHAT_MODELS },
-      { key: 'systemPrompt', label: t('field.systemPrompt.label', 'System Prompt'), type: 'textarea', tooltip: t('field.systemPrompt.tooltip', 'System behavior instructions, defining the AI role and constraints') },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'MiniMax-M2.7', options: CHAT_MODELS },
+      { key: 'systemPrompt', label: t('field.systemPrompt.label', 'System Prompt'), type: 'textarea', dataType: 'string', tooltip: t('field.systemPrompt.tooltip', 'System behavior instructions, defining the AI role and constraints') },
       { key: 'messages', label: t('field.messages.label', 'Messages'), type: 'array', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list'), fields: [
-        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', dataType: 'string', options: [
           { label: t('field.role.user.label', 'User'), value: 'user' },
           { label: t('field.role.assistant.label', 'Assistant'), value: 'assistant' },
           { label: t('field.role.system.label', 'System'), value: 'system' },
           { label: t('field.role.developer.label', 'Developer'), value: 'developer' },
         ], default: 'user' },
-        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: t('field.content.placeholder', 'Message content') },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', dataType: 'string', placeholder: t('field.content.placeholder', 'Message content') },
       ] },
-      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'number', default: 0.7, tooltip: t('field.temperature.chat.tooltip', '0-1, controls randomness. Higher is more random. Recommended: 0.7-1.0') },
-      { key: 'topP', label: t('field.topP.label', 'Top P'), type: 'number', default: 0.95, tooltip: t('field.topP.tooltip', '0-1, nucleus sampling parameter') },
-      { key: 'maxCompletionTokens', label: t('field.maxCompletionTokens.label', 'Max Output Tokens'), type: 'number', tooltip: t('field.maxCompletionTokens.chat.tooltip', 'Maximum number of tokens to generate') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'number', dataType: 'number', default: 0.7, tooltip: t('field.temperature.chat.tooltip', '0-1, controls randomness. Higher is more random. Recommended: 0.7-1.0') },
+      { key: 'topP', label: t('field.topP.label', 'Top P'), type: 'number', dataType: 'number', default: 0.95, tooltip: t('field.topP.tooltip', '0-1, nucleus sampling parameter') },
+      { key: 'maxCompletionTokens', label: t('field.maxCompletionTokens.label', 'Max Output Tokens'), type: 'number', dataType: 'number', tooltip: t('field.maxCompletionTokens.chat.tooltip', 'Maximum number of tokens to generate') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'content', type: 'string' },
         { key: 'reasoningContent', type: 'string' },
         { key: 'toolCalls', type: 'string' },
-        { key: 'totalTokens', type: 'number' },
+        { key: 'totalTokens', type: 'number', dataType: 'number' },
         { key: 'id', type: 'string' },
       ] },
     ],
@@ -249,36 +249,36 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'systemPrompt', label: t('field.herSystemPrompt.label', 'Character Persona'), type: 'textarea', tooltip: t('field.herSystemPrompt.tooltip', 'Character system settings, defining AI personality, background, and speaking style') },
-      { key: 'userSystem', label: t('field.userSystem.label', 'User Settings'), type: 'textarea', tooltip: t('field.userSystem.tooltip', 'User role system settings (user_system role)') },
-      { key: 'group', label: t('field.group.label', 'Group Settings'), type: 'textarea', tooltip: t('field.group.tooltip', 'Worldview/scene settings (group role)') },
-      { key: 'sampleMessages', label: t('field.sampleMessages.label', 'Sample Dialogue'), type: 'array', tooltip: t('field.sampleMessages.tooltip', 'Provide dialogue examples using sample_message_user / sample_message_ai roles'), fields: [
-        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'systemPrompt', label: t('field.herSystemPrompt.label', 'Character Persona'), type: 'textarea', dataType: 'string', tooltip: t('field.herSystemPrompt.tooltip', 'Character system settings, defining AI personality, background, and speaking style') },
+      { key: 'userSystem', label: t('field.userSystem.label', 'User Settings'), type: 'textarea', dataType: 'string', tooltip: t('field.userSystem.tooltip', 'User role system settings (user_system role)') },
+      { key: 'group', label: t('field.group.label', 'Group Settings'), type: 'textarea', dataType: 'string', tooltip: t('field.group.tooltip', 'Worldview/scene settings (group role)') },
+      { key: 'sampleMessages', label: t('field.sampleMessages.label', 'Sample Dialogue'), type: 'array', dataType: 'any', tooltip: t('field.sampleMessages.tooltip', 'Provide dialogue examples using sample_message_user / sample_message_ai roles'), fields: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', dataType: 'string', options: [
           { label: t('field.role.sampleUser.label', 'Sample User'), value: 'sample_message_user' },
           { label: t('field.role.sampleAi.label', 'Sample AI'), value: 'sample_message_ai' },
         ], default: 'sample_message_user' },
-        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: t('field.sampleContent.placeholder', 'Sample message content') },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', dataType: 'string', placeholder: t('field.sampleContent.placeholder', 'Sample message content') },
       ] },
-      { key: 'messages', label: t('field.messages.label', 'Messages'), type: 'array', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list'), fields: [
-        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+      { key: 'messages', label: t('field.messages.label', 'Messages'), type: 'array', dataType: 'any', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list'), fields: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', dataType: 'string', options: [
           { label: t('field.role.user.label', 'User'), value: 'user' },
           { label: t('field.role.assistant.label', 'Assistant'), value: 'assistant' },
           { label: t('field.role.system.label', 'System'), value: 'system' },
         ], default: 'user' },
-        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: t('field.content.placeholder', 'Message content') },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', dataType: 'string', placeholder: t('field.content.placeholder', 'Message content') },
       ] },
-      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'number', default: 1.0, tooltip: t('field.temperature.her.tooltip', '0-1, controls randomness. Default: 1.0') },
-      { key: 'topP', label: t('field.topP.label', 'Top P'), type: 'number', default: 0.95, tooltip: t('field.topP.tooltip', '0-1, nucleus sampling parameter') },
-      { key: 'maxCompletionTokens', label: t('field.maxCompletionTokens.label', 'Max Output Tokens'), type: 'number', tooltip: t('field.maxCompletionTokens.her.tooltip', 'Maximum 2048') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'number', dataType: 'number', default: 1.0, tooltip: t('field.temperature.her.tooltip', '0-1, controls randomness. Default: 1.0') },
+      { key: 'topP', label: t('field.topP.label', 'Top P'), type: 'number', dataType: 'number', default: 0.95, tooltip: t('field.topP.tooltip', '0-1, nucleus sampling parameter') },
+      { key: 'maxCompletionTokens', label: t('field.maxCompletionTokens.label', 'Max Output Tokens'), type: 'number', dataType: 'number', tooltip: t('field.maxCompletionTokens.her.tooltip', 'Maximum 2048') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'content', type: 'string' },
-        { key: 'totalTokens', type: 'number' },
+        { key: 'totalTokens', type: 'number', dataType: 'number' },
         { key: 'id', type: 'string' },
       ] },
     ],
@@ -366,33 +366,33 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'MiniMax API Key'), default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', required: true, tooltip: t('field.text.tooltip', 'Text to synthesize (<10000 characters)') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'speech-2.8-hd', options: TTS_MODELS },
-      { key: 'voiceId', label: t('field.voiceId.label', 'Voice ID'), type: 'text', default: 'Chinese (Mandarin)_Lyrical_Voice', tooltip: t('field.voiceId.tooltip', 'System voice ID, e.g. male-qn-qingse, English_Graceful_Lady') },
-      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', default: 1, tooltip: t('field.speed.tooltip', '0.5-2.0, default 1.0') },
-      { key: 'vol', label: t('field.vol.label', 'Volume'), type: 'number', default: 1, tooltip: t('field.vol.tooltip', '0-10, default 1.0') },
-      { key: 'pitch', label: t('field.pitch.label', 'Pitch'), type: 'number', default: 0, tooltip: t('field.pitch.tooltip', '-12 to 12, default 0') },
-      { key: 'emotion', label: t('field.emotion.label', 'Emotion'), type: 'select', default: '', options: EMOTIONS },
-      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', default: 'mp3', options: AUDIO_FORMATS },
-      { key: 'sampleRate', label: t('field.sampleRate.label', 'Sample Rate'), type: 'select', default: 32000, options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'MiniMax API Key'), default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.text.tooltip', 'Text to synthesize (<10000 characters)') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'speech-2.8-hd', options: TTS_MODELS },
+      { key: 'voiceId', label: t('field.voiceId.label', 'Voice ID'), type: 'text', dataType: 'string', default: 'Chinese (Mandarin)_Lyrical_Voice', tooltip: t('field.voiceId.tooltip', 'System voice ID, e.g. male-qn-qingse, English_Graceful_Lady') },
+      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.speed.tooltip', '0.5-2.0, default 1.0') },
+      { key: 'vol', label: t('field.vol.label', 'Volume'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.vol.tooltip', '0-10, default 1.0') },
+      { key: 'pitch', label: t('field.pitch.label', 'Pitch'), type: 'number', dataType: 'number', default: 0, tooltip: t('field.pitch.tooltip', '-12 to 12, default 0') },
+      { key: 'emotion', label: t('field.emotion.label', 'Emotion'), type: 'select', dataType: 'string', default: '', options: EMOTIONS },
+      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', dataType: 'string', default: 'mp3', options: AUDIO_FORMATS },
+      { key: 'sampleRate', label: t('field.sampleRate.label', 'Sample Rate'), type: 'select', dataType: 'string', default: 32000, options: [
         { label: '8000', value: 8000 }, { label: '16000', value: 16000 },
         { label: '22050', value: 22050 }, { label: '24000', value: 24000 },
         { label: t('option.sampleRate.32k', '32000 (default)'), value: 32000 }, { label: '44100', value: 44100 },
       ] },
-      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'url', options: [
+      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', dataType: 'string', default: 'url', options: [
         { label: t('field.urlRecommended.label', 'URL (recommended)'), value: 'url' },
         { label: t('field.hex.label', 'HEX'), value: 'hex' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'audioUrl', type: 'audio' },
         { key: 'audioHex', type: 'string' },
-        { key: 'audioLength', type: 'number' },
+        { key: 'audioLength', type: 'number', dataType: 'number' },
         { key: 'audioFormat', type: 'string' },
         { key: 'traceId', type: 'string' },
       ] },
@@ -470,31 +470,31 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'prompt', label: t('field.prompt.music.label', 'Music Description'), type: 'textarea', required: true, tooltip: t('field.prompt.music.tooltip', 'Describe style, mood, scene, e.g. "pop music, sad, for a rainy night"') },
-      { key: 'lyrics', label: t('field.lyrics.label', 'Lyrics'), type: 'textarea', tooltip: t('field.lyrics.music.tooltip', 'Separate lines with \\n, supports structure tags like [Verse] [Chorus]') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'music-2.6', options: MUSIC_MODELS },
-      { key: 'isInstrumental', label: t('field.isInstrumental.label', 'Instrumental'), type: 'select', default: 'false', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'prompt', label: t('field.prompt.music.label', 'Music Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.prompt.music.tooltip', 'Describe style, mood, scene, e.g. "pop music, sad, for a rainy night"') },
+      { key: 'lyrics', label: t('field.lyrics.label', 'Lyrics'), type: 'textarea', dataType: 'string', tooltip: t('field.lyrics.music.tooltip', 'Separate lines with \\n, supports structure tags like [Verse] [Chorus]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'music-2.6', options: MUSIC_MODELS },
+      { key: 'isInstrumental', label: t('field.isInstrumental.label', 'Instrumental'), type: 'select', dataType: 'string', default: 'false', options: [
         { label: t('field.no.label', 'No'), value: 'false' }, { label: t('field.yes.label', 'Yes'), value: 'true' },
       ] },
-      { key: 'lyricsOptimizer', label: t('field.lyricsOptimizer.label', 'Auto-generate Lyrics'), type: 'select', default: 'false', options: [
+      { key: 'lyricsOptimizer', label: t('field.lyricsOptimizer.label', 'Auto-generate Lyrics'), type: 'select', dataType: 'string', default: 'false', options: [
         { label: t('field.no.label', 'No'), value: 'false' }, { label: t('field.yesAutoGenerate.label', 'Yes (auto-generate from description)'), value: 'true' },
       ] },
-      { key: 'audioUrl', label: t('field.audioUrl.label', 'Reference Audio URL'), type: 'text', tooltip: t('field.audioUrl.tooltip', 'Cover mode only: reference audio URL (6s-6min, max 50MB)') },
-      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'url', options: MUSIC_FORMATS },
-      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Reference Audio URL'), type: 'text', dataType: 'string', tooltip: t('field.audioUrl.tooltip', 'Cover mode only: reference audio URL (6s-6min, max 50MB)') },
+      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', dataType: 'string', default: 'url', options: MUSIC_FORMATS },
+      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', dataType: 'string', default: 'mp3', options: [
         { label: t('option.audio.mp3.default', 'mp3 (default)'), value: 'mp3' }, { label: 'wav', value: 'wav' }, { label: 'pcm', value: 'pcm' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'audioUrl', type: 'audio' },
         { key: 'audioHex', type: 'string' },
-        { key: 'duration', type: 'number' },
-        { key: 'sampleRate', type: 'number' },
+        { key: 'duration', type: 'number', dataType: 'number' },
+        { key: 'sampleRate', type: 'number', dataType: 'number' },
         { key: 'traceId', type: 'string' },
       ] },
     ],
@@ -563,20 +563,20 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'prompt', label: t('field.prompt.lyrics.label', 'Description'), type: 'textarea', required: true, tooltip: t('field.prompt.lyrics.tooltip', 'Song theme/style description, e.g. "a breezy love song about a summer beach"') },
-      { key: 'mode', label: t('field.mode.label', 'Mode'), type: 'select', default: 'write_full_song', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'prompt', label: t('field.prompt.lyrics.label', 'Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.prompt.lyrics.tooltip', 'Song theme/style description, e.g. "a breezy love song about a summer beach"') },
+      { key: 'mode', label: t('field.mode.label', 'Mode'), type: 'select', dataType: 'string', default: 'write_full_song', options: [
         { label: t('field.mode.writeFullSong.label', 'Write Full Song'), value: 'write_full_song' },
         { label: t('field.mode.edit.label', 'Edit/Continue'), value: 'edit' },
       ] },
-      { key: 'lyrics', label: t('field.lyricsEdit.label', 'Existing Lyrics'), type: 'textarea', tooltip: t('field.lyricsEdit.tooltip', 'Provide existing lyrics for continuation/editing in edit mode') },
-      { key: 'title', label: t('field.title.label', 'Song Title'), type: 'text', tooltip: t('field.title.tooltip', 'The output will keep this title unchanged') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'lyrics', label: t('field.lyricsEdit.label', 'Existing Lyrics'), type: 'textarea', dataType: 'string', tooltip: t('field.lyricsEdit.tooltip', 'Provide existing lyrics for continuation/editing in edit mode') },
+      { key: 'title', label: t('field.title.label', 'Song Title'), type: 'text', dataType: 'string', tooltip: t('field.title.tooltip', 'The output will keep this title unchanged') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'songTitle', type: 'string' },
         { key: 'styleTags', type: 'string' },
         { key: 'lyrics', type: 'string' },
@@ -633,20 +633,20 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', required: true, tooltip: t('field.prompt.t2v.tooltip', 'Video text description (max 2000 chars), supports camera commands like [Pan Left] [Push In] [Fixed]') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'MiniMax-Hailuo-2.3', options: T2V_MODELS },
-      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', default: 6, options: VIDEO_DURATIONS },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '768P', options: VIDEO_RESOLUTIONS },
-      { key: 'promptOptimizer', label: t('field.promptOptimizer.label', 'Auto-optimize Prompt'), type: 'select', default: 'true', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.prompt.t2v.tooltip', 'Video text description (max 2000 chars), supports camera commands like [Pan Left] [Push In] [Fixed]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'MiniMax-Hailuo-2.3', options: T2V_MODELS },
+      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', dataType: 'string', default: 6, options: VIDEO_DURATIONS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '768P', options: VIDEO_RESOLUTIONS },
+      { key: 'promptOptimizer', label: t('field.promptOptimizer.label', 'Auto-optimize Prompt'), type: 'select', dataType: 'string', default: 'true', options: [
         { label: t('field.yesDefault.label', 'Yes (default)'), value: 'true' }, { label: t('field.no.label', 'No'), value: 'false' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'taskId', type: 'string' },
       ] },
     ],
@@ -698,21 +698,21 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'firstFrameImage', label: t('field.firstFrameImage.label', 'First Frame Image'), type: 'textarea', required: true, tooltip: t('field.firstFrameImage.tooltip', 'First frame image URL or Base64 Data URL (JPG/PNG/WebP, <20MB)') },
-      { key: 'prompt', label: t('field.prompt.i2v.label', 'Video Description'), type: 'textarea', tooltip: t('field.prompt.i2v.tooltip', 'Video text description (max 2000 chars), supports camera commands') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'MiniMax-Hailuo-2.3', options: I2V_MODELS },
-      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', default: 6, options: VIDEO_DURATIONS },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '768P', options: VIDEO_RESOLUTIONS },
-      { key: 'promptOptimizer', label: t('field.promptOptimizer.label', 'Auto-optimize Prompt'), type: 'select', default: 'true', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'firstFrameImage', label: t('field.firstFrameImage.label', 'First Frame Image'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.firstFrameImage.tooltip', 'First frame image URL or Base64 Data URL (JPG/PNG/WebP, <20MB)') },
+      { key: 'prompt', label: t('field.prompt.i2v.label', 'Video Description'), type: 'textarea', dataType: 'string', tooltip: t('field.prompt.i2v.tooltip', 'Video text description (max 2000 chars), supports camera commands') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: 'MiniMax-Hailuo-2.3', options: I2V_MODELS },
+      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', dataType: 'string', default: 6, options: VIDEO_DURATIONS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '768P', options: VIDEO_RESOLUTIONS },
+      { key: 'promptOptimizer', label: t('field.promptOptimizer.label', 'Auto-optimize Prompt'), type: 'select', dataType: 'string', default: 'true', options: [
         { label: t('field.yesDefault.label', 'Yes (default)'), value: 'true' }, { label: t('field.no.label', 'No'), value: 'false' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'taskId', type: 'string' },
       ] },
     ],
@@ -765,20 +765,20 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'firstFrameImage', label: t('field.firstFrameImage.label', 'First Frame Image'), type: 'textarea', required: true, tooltip: t('field.firstFrameImage.sev.tooltip', 'Start frame image URL or Base64 Data URL') },
-      { key: 'lastFrameImage', label: t('field.lastFrameImage.label', 'Last Frame Image'), type: 'textarea', required: true, tooltip: t('field.lastFrameImage.tooltip', 'End frame image URL or Base64 Data URL') },
-      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', tooltip: t('field.prompt.sev.tooltip', 'Video text description, supports camera commands') },
-      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', default: 6, options: VIDEO_DURATIONS },
-      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '768P', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'firstFrameImage', label: t('field.firstFrameImage.label', 'First Frame Image'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.firstFrameImage.sev.tooltip', 'Start frame image URL or Base64 Data URL') },
+      { key: 'lastFrameImage', label: t('field.lastFrameImage.label', 'Last Frame Image'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.lastFrameImage.tooltip', 'End frame image URL or Base64 Data URL') },
+      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', dataType: 'string', tooltip: t('field.prompt.sev.tooltip', 'Video text description, supports camera commands') },
+      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', dataType: 'string', default: 6, options: VIDEO_DURATIONS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', dataType: 'string', default: '768P', options: [
         { label: t('option.resolution.768p.default', '768P (default)'), value: '768P' }, { label: '1080P', value: '1080P' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'taskId', type: 'string' },
       ] },
     ],
@@ -828,15 +828,15 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'subjectImage', label: t('field.subjectImage.label', 'Character Image'), type: 'textarea', required: true, tooltip: t('field.subjectImage.tooltip', 'Character face reference image URL (JPG/PNG/WebP, <20MB)') },
-      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', tooltip: t('field.prompt.sv.tooltip', 'Video text description') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'subjectImage', label: t('field.subjectImage.label', 'Character Image'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.subjectImage.tooltip', 'Character face reference image URL (JPG/PNG/WebP, <20MB)') },
+      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', dataType: 'string', tooltip: t('field.prompt.sv.tooltip', 'Video text description') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'taskId', type: 'string' },
       ] },
     ],
@@ -887,19 +887,19 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'taskId', label: t('field.taskId.label', 'Task ID'), type: 'text', required: true, tooltip: t('field.taskId.tooltip', 'Task ID returned by video generation') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'taskId', label: t('field.taskId.label', 'Task ID'), type: 'text', dataType: 'string', required: true, tooltip: t('field.taskId.tooltip', 'Task ID returned by video generation') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'status', type: 'string' },
         { key: 'taskId', type: 'string' },
         { key: 'fileId', type: 'string' },
-        { key: 'videoWidth', type: 'number' },
-        { key: 'videoHeight', type: 'number' },
+        { key: 'videoWidth', type: 'number', dataType: 'number' },
+        { key: 'videoHeight', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -945,17 +945,17 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'fileId', label: t('field.fileId.label', 'File ID'), type: 'text', required: true, tooltip: t('field.fileId.tooltip', 'File ID returned by video task query') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'fileId', label: t('field.fileId.label', 'File ID'), type: 'text', dataType: 'string', required: true, tooltip: t('field.fileId.tooltip', 'File ID returned by video task query') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'downloadUrl', type: 'video' },
         { key: 'fileName', type: 'string' },
-        { key: 'fileSize', type: 'number' },
+        { key: 'fileSize', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -1001,24 +1001,24 @@ module.exports = (t) => {
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'taskId', label: t('field.taskId.label', 'Task ID'), type: 'text', required: true, tooltip: t('field.taskId.tooltip', 'Task ID returned by video generation') },
-      { key: 'timeout', label: t('field.timeout.label', 'Timeout (sec)'), type: 'number', default: 600, tooltip: t('field.timeout.tooltip', 'Max wait time in seconds, default 600 (10 min)') },
-      { key: 'pollInterval', label: t('field.pollInterval.label', 'Poll Interval (sec)'), type: 'number', default: 10, tooltip: t('field.pollInterval.tooltip', 'Query interval in seconds, default 10') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'taskId', label: t('field.taskId.label', 'Task ID'), type: 'text', dataType: 'string', required: true, tooltip: t('field.taskId.tooltip', 'Task ID returned by video generation') },
+      { key: 'timeout', label: t('field.timeout.label', 'Timeout (sec)'), type: 'number', dataType: 'number', default: 600, tooltip: t('field.timeout.tooltip', 'Max wait time in seconds, default 600 (10 min)') },
+      { key: 'pollInterval', label: t('field.pollInterval.label', 'Poll Interval (sec)'), type: 'number', dataType: 'number', default: 10, tooltip: t('field.pollInterval.tooltip', 'Query interval in seconds, default 10') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'status', type: 'string' },
         { key: 'taskId', type: 'string' },
         { key: 'fileId', type: 'string' },
         { key: 'downloadUrl', type: 'video' },
         { key: 'fileName', type: 'string' },
-        { key: 'fileSize', type: 'number' },
-        { key: 'videoWidth', type: 'number' },
-        { key: 'videoHeight', type: 'number' },
+        { key: 'fileSize', type: 'number', dataType: 'number' },
+        { key: 'videoWidth', type: 'number', dataType: 'number' },
+        { key: 'videoHeight', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {

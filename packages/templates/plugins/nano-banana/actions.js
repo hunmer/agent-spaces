@@ -194,18 +194,18 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'Google Gemini API Key'), default: CONFIG_APIKEY },
-      { key: 'prompt', label: t('field.prompt.label', 'Image Description'), type: 'textarea', required: true, tooltip: t('field.prompt.tooltip', 'Describe the scene; narrative descriptions beat keyword lists.') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: DEFAULT_MODEL, options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'Google Gemini API Key'), default: CONFIG_APIKEY },
+      { key: 'prompt', label: t('field.prompt.label', 'Image Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.prompt.tooltip', 'Describe the scene; narrative descriptions beat keyword lists.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: DEFAULT_MODEL, options: [
         { label: 'gemini-3.1-flash-image · Nano Banana 2 (默认)', value: 'gemini-3.1-flash-image' },
         { label: 'gemini-3-pro-image · Nano Banana Pro', value: 'gemini-3-pro-image' },
         { label: 'gemini-2.5-flash-image · Nano Banana', value: 'gemini-2.5-flash-image' },
       ] },
-      { key: 'responseModalities', label: t('field.responseModalities.label', 'Output Type'), type: 'select', default: 'auto', tooltip: t('field.responseModalities.tooltip', 'Text + Image by default; choose Image Only to suppress text.'), options: [
+      { key: 'responseModalities', label: t('field.responseModalities.label', 'Output Type'), type: 'select', dataType: 'string', default: 'auto', tooltip: t('field.responseModalities.tooltip', 'Text + Image by default; choose Image Only to suppress text.'), options: [
         { label: t('option.textImage', 'Text + Image (Default)'), value: 'auto' },
         { label: t('option.imageOnly', 'Image Only'), value: 'image' },
       ] },
-      { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', default: 'auto', options: [
+      { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: '1:1', value: '1:1' },
         { label: '16:9', value: '16:9' },
@@ -222,33 +222,33 @@ module.exports = (t) => [
         { label: '1:8 (3.1 Flash)', value: '1:8' },
         { label: '8:1 (3.1 Flash)', value: '8:1' },
       ] },
-      { key: 'imageSize', label: t('field.imageSize.label', 'Resolution'), type: 'select', default: 'default', tooltip: t('field.imageSize.tooltip', 'Default 1K; 512 only for 3.1 Flash. Use uppercase K (no K for 512).'), options: [
+      { key: 'imageSize', label: t('field.imageSize.label', 'Resolution'), type: 'select', dataType: 'string', default: 'default', tooltip: t('field.imageSize.tooltip', 'Default 1K; 512 only for 3.1 Flash. Use uppercase K (no K for 512).'), options: [
         { label: t('option.default', 'Default (1K)'), value: 'default' },
         { label: '512 (3.1 Flash)', value: '512' },
         { label: '1K', value: '1K' },
         { label: '2K', value: '2K' },
         { label: '4K', value: '4K' },
       ] },
-      { key: 'googleSearch', label: t('field.googleSearch.label', 'Google Search Grounding'), type: 'checkbox', tooltip: t('field.googleSearch.tooltip', 'Ground generation with real-time Google Search results (weather, news, stocks).') },
-      { key: 'imageSearch', label: t('field.imageSearch.label', 'Image Search'), type: 'checkbox', tooltip: t('field.imageSearch.tooltip', 'Only gemini-3.1-flash-image. Use web images as visual context; cannot search for people.') },
-      { key: 'thinkingLevel', label: t('field.thinkingLevel.label', 'Thinking Level'), type: 'select', default: 'auto', tooltip: t('field.thinkingLevel.tooltip', 'Only flash-image models. minimal = lowest latency, high = better quality.'), options: [
+      { key: 'googleSearch', label: t('field.googleSearch.label', 'Google Search Grounding'), type: 'checkbox', dataType: 'boolean', tooltip: t('field.googleSearch.tooltip', 'Ground generation with real-time Google Search results (weather, news, stocks).') },
+      { key: 'imageSearch', label: t('field.imageSearch.label', 'Image Search'), type: 'checkbox', dataType: 'boolean', tooltip: t('field.imageSearch.tooltip', 'Only gemini-3.1-flash-image. Use web images as visual context; cannot search for people.') },
+      { key: 'thinkingLevel', label: t('field.thinkingLevel.label', 'Thinking Level'), type: 'select', dataType: 'string', default: 'auto', tooltip: t('field.thinkingLevel.tooltip', 'Only flash-image models. minimal = lowest latency, high = better quality.'), options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: 'Minimal', value: 'minimal' },
         { label: 'High', value: 'high' },
       ] },
-      { key: 'includeThoughts', label: t('field.includeThoughts.label', 'Include Thoughts'), type: 'checkbox', tooltip: t('field.includeThoughts.tooltip', 'Return the model thinking process in the response.') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'Gemini API base URL.') },
+      { key: 'includeThoughts', label: t('field.includeThoughts.label', 'Include Thoughts'), type: 'checkbox', dataType: 'boolean', tooltip: t('field.includeThoughts.tooltip', 'Return the model thinking process in the response.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'Gemini API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'thinking', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'images', type: 'image[]' },
         { key: 'text', type: 'string' },
         { key: 'thoughts', type: 'string' },
         { key: 'model', type: 'string' },
-        { key: 'groundingMetadata', type: 'object', children: [] },
+        { key: 'groundingMetadata', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -299,21 +299,21 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'Google Gemini API Key'), default: CONFIG_APIKEY },
-      { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the edit intent, e.g. add/remove elements, style transfer, inpainting.') },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'Google Gemini API Key'), default: CONFIG_APIKEY },
+      { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the edit intent, e.g. add/remove elements, style transfer, inpainting.') },
       { key: 'image', label: t('field.image.label', 'Reference Images'), type: 'textarea', dataType: 'any', tooltip: t('field.image.tooltip', 'URL / local path / data URI, or JSON array. Up to 14 images (Gemini 3).') },
-      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', tooltip: t('field.videoUrl.tooltip', 'Only gemini-3.1-flash-image. YouTube URL or Files API URI for video-to-image.') },
+      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', dataType: 'string', tooltip: t('field.videoUrl.tooltip', 'Only gemini-3.1-flash-image. YouTube URL or Files API URI for video-to-image.') },
       { key: 'history', label: t('field.history.label', 'Conversation History'), type: 'textarea', dataType: 'object[]', tooltip: t('field.history.tooltip', 'JSON array of Gemini contents for multi-turn editing, e.g. [{"role":"user","parts":[{"text":"..."}]}].') },
-      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: DEFAULT_MODEL, options: [
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', dataType: 'string', default: DEFAULT_MODEL, options: [
         { label: 'gemini-3.1-flash-image · Nano Banana 2 (默认)', value: 'gemini-3.1-flash-image' },
         { label: 'gemini-3-pro-image · Nano Banana Pro', value: 'gemini-3-pro-image' },
         { label: 'gemini-2.5-flash-image · Nano Banana', value: 'gemini-2.5-flash-image' },
       ] },
-      { key: 'responseModalities', label: t('field.responseModalities.label', 'Output Type'), type: 'select', default: 'auto', tooltip: t('field.responseModalities.tooltip', 'Text + Image by default; choose Image Only to suppress text.'), options: [
+      { key: 'responseModalities', label: t('field.responseModalities.label', 'Output Type'), type: 'select', dataType: 'string', default: 'auto', tooltip: t('field.responseModalities.tooltip', 'Text + Image by default; choose Image Only to suppress text.'), options: [
         { label: t('option.textImage', 'Text + Image (Default)'), value: 'auto' },
         { label: t('option.imageOnly', 'Image Only'), value: 'image' },
       ] },
-      { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', default: 'auto', options: [
+      { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: '1:1', value: '1:1' },
         { label: '16:9', value: '16:9' },
@@ -330,33 +330,33 @@ module.exports = (t) => [
         { label: '1:8 (3.1 Flash)', value: '1:8' },
         { label: '8:1 (3.1 Flash)', value: '8:1' },
       ] },
-      { key: 'imageSize', label: t('field.imageSize.label', 'Resolution'), type: 'select', default: 'default', tooltip: t('field.imageSize.tooltip', 'Default 1K; 512 only for 3.1 Flash. Use uppercase K (no K for 512).'), options: [
+      { key: 'imageSize', label: t('field.imageSize.label', 'Resolution'), type: 'select', dataType: 'string', default: 'default', tooltip: t('field.imageSize.tooltip', 'Default 1K; 512 only for 3.1 Flash. Use uppercase K (no K for 512).'), options: [
         { label: t('option.default', 'Default (1K)'), value: 'default' },
         { label: '512 (3.1 Flash)', value: '512' },
         { label: '1K', value: '1K' },
         { label: '2K', value: '2K' },
         { label: '4K', value: '4K' },
       ] },
-      { key: 'googleSearch', label: t('field.googleSearch.label', 'Google Search Grounding'), type: 'checkbox', tooltip: t('field.googleSearch.tooltip', 'Ground generation with real-time Google Search results (weather, news, stocks).') },
-      { key: 'imageSearch', label: t('field.imageSearch.label', 'Image Search'), type: 'checkbox', tooltip: t('field.imageSearch.tooltip', 'Only gemini-3.1-flash-image. Use web images as visual context; cannot search for people.') },
-      { key: 'thinkingLevel', label: t('field.thinkingLevel.label', 'Thinking Level'), type: 'select', default: 'auto', tooltip: t('field.thinkingLevel.tooltip', 'Only flash-image models. minimal = lowest latency, high = better quality.'), options: [
+      { key: 'googleSearch', label: t('field.googleSearch.label', 'Google Search Grounding'), type: 'checkbox', dataType: 'boolean', tooltip: t('field.googleSearch.tooltip', 'Ground generation with real-time Google Search results (weather, news, stocks).') },
+      { key: 'imageSearch', label: t('field.imageSearch.label', 'Image Search'), type: 'checkbox', dataType: 'boolean', tooltip: t('field.imageSearch.tooltip', 'Only gemini-3.1-flash-image. Use web images as visual context; cannot search for people.') },
+      { key: 'thinkingLevel', label: t('field.thinkingLevel.label', 'Thinking Level'), type: 'select', dataType: 'string', default: 'auto', tooltip: t('field.thinkingLevel.tooltip', 'Only flash-image models. minimal = lowest latency, high = better quality.'), options: [
         { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: 'Minimal', value: 'minimal' },
         { label: 'High', value: 'high' },
       ] },
-      { key: 'includeThoughts', label: t('field.includeThoughts.label', 'Include Thoughts'), type: 'checkbox', tooltip: t('field.includeThoughts.tooltip', 'Return the model thinking process in the response.') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'Gemini API base URL.') },
+      { key: 'includeThoughts', label: t('field.includeThoughts.label', 'Include Thoughts'), type: 'checkbox', dataType: 'boolean', tooltip: t('field.includeThoughts.tooltip', 'Return the model thinking process in the response.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'Gemini API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'thinking', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'images', type: 'image[]' },
         { key: 'text', type: 'string' },
         { key: 'thoughts', type: 'string' },
         { key: 'model', type: 'string' },
-        { key: 'groundingMetadata', type: 'object', children: [] },
+        { key: 'groundingMetadata', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {
@@ -426,14 +426,14 @@ module.exports = (t) => [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'Google Gemini API Key'), default: CONFIG_APIKEY },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'Gemini API base URL.') },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'Google Gemini API Key'), default: CONFIG_APIKEY },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'Gemini API base URL.') },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
-        { key: 'models', type: 'object', children: [] },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'models', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {

@@ -3,17 +3,17 @@ const { getClient, resetClient } = require('./shared')
 const CONFIG_PREFIX = '{{ __config__["workflow.mira-sdk"]'
 
 const commonOutputs = [
-  { key: 'success', type: 'boolean' },
+  { key: 'success', type: 'boolean', dataType: 'boolean' },
   { key: 'message', type: 'string' },
 ]
 
 function createConfigProperties(t) {
   return [
-    { key: 'baseUrl', label: 'Server URL', type: 'text', required: true, default: `${CONFIG_PREFIX}["baseUrl"]}}` },
-    { key: 'username', label: 'Username', type: 'text', default: `${CONFIG_PREFIX}["username"]}}` },
-    { key: 'password', label: 'Password', type: 'text', default: `${CONFIG_PREFIX}["password"]}}` },
-    { key: 'token', label: 'Token', type: 'text', default: `${CONFIG_PREFIX}["token"]}}` },
-    { key: 'timeout', label: 'Timeout (ms)', type: 'number', default: `${CONFIG_PREFIX}["timeout"]}}` },
+    { key: 'baseUrl', label: 'Server URL', type: 'text', dataType: 'string', required: true, default: `${CONFIG_PREFIX}["baseUrl"]}}` },
+    { key: 'username', label: 'Username', type: 'text', dataType: 'string', default: `${CONFIG_PREFIX}["username"]}}` },
+    { key: 'password', label: 'Password', type: 'text', dataType: 'string', default: `${CONFIG_PREFIX}["password"]}}` },
+    { key: 'token', label: 'Token', type: 'text', dataType: 'string', default: `${CONFIG_PREFIX}["token"]}}` },
+    { key: 'timeout', label: 'Timeout (ms)', type: 'number', dataType: 'number', default: `${CONFIG_PREFIX}["timeout"]}}` },
   ]
 }
 
@@ -32,9 +32,9 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
+        { key: 'data', type: 'object', dataType: 'object', children: [
           { key: 'status', type: 'string' },
-          { key: 'uptime', type: 'number' },
+          { key: 'uptime', type: 'number', dataType: 'number' },
         ] },
       ],
       run: async (ctx, args) => {
@@ -53,8 +53,8 @@ module.exports = (t) => {
       icon: 'Loader',
       description: t('action.waitReady.description', 'Wait until Mira server is ready.'),
       properties: [
-        { key: 'timeout', label: 'Timeout (ms)', type: 'number', default: 30000, tooltip: t('field.timeout.tooltip', 'Max wait time in milliseconds.') },
-        { key: 'interval', label: 'Check Interval (ms)', type: 'number', default: 1000, tooltip: t('field.interval.tooltip', 'Check interval in milliseconds.') },
+        { key: 'timeout', label: 'Timeout (ms)', type: 'number', dataType: 'number', default: 30000, tooltip: t('field.timeout.tooltip', 'Max wait time in milliseconds.') },
+        { key: 'interval', label: 'Check Interval (ms)', type: 'number', dataType: 'number', default: 1000, tooltip: t('field.interval.tooltip', 'Check interval in milliseconds.') },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -79,7 +79,7 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [] },
       ],
       run: async (ctx, args) => {
         const client = await getClient(args)
@@ -97,8 +97,8 @@ module.exports = (t) => {
       icon: 'LogIn',
       description: t('action.login.description', 'Login to Mira server with username and password.'),
       properties: [
-        { key: 'username', label: 'Username', type: 'text', required: true },
-        { key: 'password', label: 'Password', type: 'text', required: true },
+        { key: 'username', label: 'Username', type: 'text', dataType: 'string', required: true },
+        { key: 'password', label: 'Password', type: 'text', dataType: 'string', required: true },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -125,8 +125,8 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'id', type: 'number' },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'id', type: 'number', dataType: 'number' },
           { key: 'username', type: 'string' },
         ] },
       ],
@@ -149,8 +149,8 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'libraries', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'libraries', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -169,9 +169,9 @@ module.exports = (t) => {
       icon: 'FolderPlus',
       description: t('action.createLocalLib.description', 'Create a local material library.'),
       properties: [
-        { key: 'name', label: 'Name', type: 'text', required: true, tooltip: t('field.libName.tooltip', 'Library name.') },
-        { key: 'path', label: 'Path', type: 'text', required: true, tooltip: t('field.libPath.tooltip', 'Local directory path.') },
-        { key: 'description', label: 'Description', type: 'text', tooltip: t('field.libDesc.tooltip', 'Library description.') },
+        { key: 'name', label: 'Name', type: 'text', dataType: 'string', required: true, tooltip: t('field.libName.tooltip', 'Library name.') },
+        { key: 'path', label: 'Path', type: 'text', dataType: 'string', required: true, tooltip: t('field.libPath.tooltip', 'Local directory path.') },
+        { key: 'description', label: 'Description', type: 'text', dataType: 'string', tooltip: t('field.libDesc.tooltip', 'Library description.') },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -194,11 +194,11 @@ module.exports = (t) => {
       icon: 'Globe',
       description: t('action.createRemoteLib.description', 'Create a remote material library.'),
       properties: [
-        { key: 'name', label: 'Name', type: 'text', required: true },
-        { key: 'path', label: 'Path', type: 'text', required: true, tooltip: t('field.libPath.tooltip', 'Remote path.') },
-        { key: 'host', label: 'Host', type: 'text', required: true, tooltip: t('field.libHost.tooltip', 'Remote server host.') },
-        { key: 'port', label: 'Port', type: 'number', default: 8080 },
-        { key: 'description', label: 'Description', type: 'text' },
+        { key: 'name', label: 'Name', type: 'text', dataType: 'string', required: true },
+        { key: 'path', label: 'Path', type: 'text', dataType: 'string', required: true, tooltip: t('field.libPath.tooltip', 'Remote path.') },
+        { key: 'host', label: 'Host', type: 'text', dataType: 'string', required: true, tooltip: t('field.libHost.tooltip', 'Remote server host.') },
+        { key: 'port', label: 'Port', type: 'number', dataType: 'number', default: 8080 },
+        { key: 'description', label: 'Description', type: 'text', dataType: 'string' },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -221,7 +221,7 @@ module.exports = (t) => {
       icon: 'Play',
       description: t('action.libStart.description', 'Start a material library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -240,7 +240,7 @@ module.exports = (t) => {
       icon: 'Square',
       description: t('action.libStop.description', 'Stop a material library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -260,7 +260,7 @@ module.exports = (t) => {
       icon: 'RotateCcw',
       description: t('action.libRestart.description', 'Restart a material library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -281,10 +281,10 @@ module.exports = (t) => {
       icon: 'Upload',
       description: t('action.fileUpload.description', 'Upload a file to a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
-        { key: 'filePath', label: 'File Path', type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Local file path to upload.') },
-        { key: 'tags', label: 'Tags', type: 'text', tooltip: t('field.tags.tooltip', 'Comma-separated tags.') },
-        { key: 'folderId', label: 'Folder ID', type: 'text', tooltip: t('field.folderId.tooltip', 'Target folder ID.') },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
+        { key: 'filePath', label: 'File Path', type: 'text', dataType: 'string', required: true, tooltip: t('field.filePath.tooltip', 'Local file path to upload.') },
+        { key: 'tags', label: 'Tags', type: 'text', dataType: 'string', tooltip: t('field.tags.tooltip', 'Comma-separated tags.') },
+        { key: 'folderId', label: 'Folder ID', type: 'text', dataType: 'string', tooltip: t('field.folderId.tooltip', 'Target folder ID.') },
       ],
       toolProperties: [
         { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
@@ -295,7 +295,7 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
+        { key: 'data', type: 'object', dataType: 'object', children: [
           { key: 'fileId', type: 'string' },
           { key: 'fileName', type: 'string' },
         ] },
@@ -334,16 +334,16 @@ module.exports = (t) => {
       icon: 'Download',
       description: t('action.fileDownload.description', 'Download a file from a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
-        { key: 'fileId', label: 'File ID', type: 'text', required: true },
-        { key: 'savePath', label: 'Save Path', type: 'text', tooltip: t('field.savePath.tooltip', 'Local path to save. Leave empty to return content.') },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
+        { key: 'fileId', label: 'File ID', type: 'text', dataType: 'string', required: true },
+        { key: 'savePath', label: 'Save Path', type: 'text', dataType: 'string', tooltip: t('field.savePath.tooltip', 'Local path to save. Leave empty to return content.') },
       ],
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
+        { key: 'data', type: 'object', dataType: 'object', children: [
           { key: 'filePath', type: 'string' },
-          { key: 'contentLength', type: 'number' },
+          { key: 'contentLength', type: 'number', dataType: 'number' },
         ] },
       ],
       run: async (ctx, args) => {
@@ -372,8 +372,8 @@ module.exports = (t) => {
       icon: 'Trash2',
       description: t('action.fileDelete.description', 'Delete a file from a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
-        { key: 'fileId', label: 'File ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
+        { key: 'fileId', label: 'File ID', type: 'text', dataType: 'string', required: true },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -396,14 +396,14 @@ module.exports = (t) => {
       icon: 'Search',
       description: t('action.fileSearch.description', 'Search files by title in a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
-        { key: 'keyword', label: 'Keyword', type: 'text', required: true, tooltip: t('field.keyword.tooltip', 'Search keyword.') },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
+        { key: 'keyword', label: 'Keyword', type: 'text', dataType: 'string', required: true, tooltip: t('field.keyword.tooltip', 'Search keyword.') },
       ],
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'files', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'files', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -428,8 +428,8 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'plugins', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'plugins', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -448,11 +448,11 @@ module.exports = (t) => {
       icon: 'ToggleRight',
       description: t('action.pluginToggle.description', 'Enable or disable a plugin.'),
       properties: [
-        { key: 'pluginId', label: 'Plugin ID', type: 'text', required: true },
+        { key: 'pluginId', label: 'Plugin ID', type: 'text', dataType: 'string', required: true },
         {
           key: 'action',
           label: 'Action',
-          type: 'select',
+          type: 'select', dataType: 'string',
           required: true,
           default: 'enable',
           options: [{ label: 'Enable', value: 'enable' }, { label: 'Disable', value: 'disable' }],
@@ -483,8 +483,8 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'tables', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'tables', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -503,13 +503,13 @@ module.exports = (t) => {
       icon: 'Table',
       description: t('action.dbQuery.description', 'Get data from a database table.'),
       properties: [
-        { key: 'tableName', label: 'Table Name', type: 'text', required: true, tooltip: t('field.tableName.tooltip', 'Database table name.') },
+        { key: 'tableName', label: 'Table Name', type: 'text', dataType: 'string', required: true, tooltip: t('field.tableName.tooltip', 'Database table name.') },
       ],
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'rows', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'rows', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -534,8 +534,8 @@ module.exports = (t) => {
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'devices', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'devices', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -554,8 +554,8 @@ module.exports = (t) => {
       icon: 'Send',
       description: t('action.deviceSend.description', 'Send a message to a connected device.'),
       properties: [
-        { key: 'clientId', label: 'Client ID', type: 'text', required: true },
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'clientId', label: 'Client ID', type: 'text', dataType: 'string', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
         { key: 'message', label: 'Message', type: 'textarea', dataType: 'object', required: true, tooltip: t('field.message.tooltip', 'Message to send. Can be JSON string.') },
       ],
       configProperties,
@@ -581,7 +581,7 @@ module.exports = (t) => {
       icon: 'Radio',
       description: t('action.broadcast.description', 'Broadcast a message to all devices in a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
         { key: 'message', label: 'Message', type: 'textarea', dataType: 'object', required: true },
       ],
       configProperties,
@@ -607,13 +607,13 @@ module.exports = (t) => {
       icon: 'Tag',
       description: t('action.tagsList.description', 'Get all tags in a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
       ],
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'tags', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'tags', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -633,13 +633,13 @@ module.exports = (t) => {
       icon: 'FolderTree',
       description: t('action.foldersList.description', 'Get all folders in a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
       ],
       configProperties,
       outputs: [
         ...commonOutputs,
-        { key: 'data', type: 'object', children: [
-          { key: 'folders', type: 'object', children: [] },
+        { key: 'data', type: 'object', dataType: 'object', children: [
+          { key: 'folders', type: 'object', dataType: 'object', children: [] },
         ] },
       ],
       run: async (ctx, args) => {
@@ -659,9 +659,9 @@ module.exports = (t) => {
       icon: 'FolderPlus',
       description: t('action.folderCreate.description', 'Create a folder in a library.'),
       properties: [
-        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
-        { key: 'name', label: 'Folder Name', type: 'text', required: true },
-        { key: 'parentId', label: 'Parent Folder ID', type: 'text', tooltip: t('field.parentId.tooltip', 'Leave empty for root folder.') },
+        { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
+        { key: 'name', label: 'Folder Name', type: 'text', dataType: 'string', required: true },
+        { key: 'parentId', label: 'Parent Folder ID', type: 'text', dataType: 'string', tooltip: t('field.parentId.tooltip', 'Leave empty for root folder.') },
       ],
       configProperties,
       outputs: commonOutputs,

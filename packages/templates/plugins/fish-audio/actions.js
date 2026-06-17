@@ -28,36 +28,36 @@ module.exports = (t) => [
     icon: 'AudioWaveform',
     description: t('action.tts.description', 'Convert text to natural speech using FishAudio (TTS)'),
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'FishAudio API Key (read from plugin config by default)'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', required: true, tooltip: t('field.text.tooltip', 'Text to convert to speech') },
-      { key: 'referenceId', label: t('field.referenceId.label', 'Voice Model ID'), type: 'text', tooltip: t('field.referenceId.tooltip', 'Voice model ID (read from plugin config by default)'), default: `${CONFIG_PREFIX}["referenceId"]}}` },
-      { key: 'model', label: t('field.model.label', 'TTS Model'), type: 'select', default: 's2-pro', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'FishAudio API Key (read from plugin config by default)'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', dataType: 'string', required: true, tooltip: t('field.text.tooltip', 'Text to convert to speech') },
+      { key: 'referenceId', label: t('field.referenceId.label', 'Voice Model ID'), type: 'text', dataType: 'string', tooltip: t('field.referenceId.tooltip', 'Voice model ID (read from plugin config by default)'), default: `${CONFIG_PREFIX}["referenceId"]}}` },
+      { key: 'model', label: t('field.model.label', 'TTS Model'), type: 'select', dataType: 'string', default: 's2-pro', options: [
         { label: 'S2-Pro（推荐）', value: 's2-pro' },
         { label: 'S1', value: 's1' },
       ] },
-      { key: 'format', label: t('field.format.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
+      { key: 'format', label: t('field.format.label', 'Audio Format'), type: 'select', dataType: 'string', default: 'mp3', options: [
         { label: 'MP3（默认）', value: 'mp3' },
         { label: 'WAV', value: 'wav' },
         { label: 'PCM', value: 'pcm' },
         { label: 'Opus', value: 'opus' },
       ] },
-      { key: 'sampleRate', label: t('field.sampleRate.label', 'Sample Rate (Hz)'), type: 'select', default: '44100', options: [
+      { key: 'sampleRate', label: t('field.sampleRate.label', 'Sample Rate (Hz)'), type: 'select', dataType: 'string', default: '44100', options: [
         { label: '44100 Hz（默认）', value: '44100' },
         { label: '16000 Hz', value: '16000' },
         { label: '24000 Hz', value: '24000' },
         { label: '32000 Hz', value: '32000' },
         { label: '48000 Hz（Opus 推荐）', value: '48000' },
       ] },
-      { key: 'speed', label: t('field.speed.label', 'Speed (0.5-2.0)'), type: 'number', default: 1, tooltip: t('field.speed.tooltip', '1.0 for normal speed') },
-      { key: 'volume', label: t('field.volume.label', 'Volume (dB)'), type: 'number', default: 0, tooltip: t('field.volume.tooltip', '0 for no change, positive to amplify, negative to reduce') },
-      { key: 'temperature', label: t('field.temperature.label', 'Expression (0-1)'), type: 'number', default: 0.7, tooltip: t('field.temperature.tooltip', 'Higher values produce more varied output') },
-      { key: 'latency', label: t('field.latency.label', 'Latency Mode'), type: 'select', default: 'normal', options: [
+      { key: 'speed', label: t('field.speed.label', 'Speed (0.5-2.0)'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.speed.tooltip', '1.0 for normal speed') },
+      { key: 'volume', label: t('field.volume.label', 'Volume (dB)'), type: 'number', dataType: 'number', default: 0, tooltip: t('field.volume.tooltip', '0 for no change, positive to amplify, negative to reduce') },
+      { key: 'temperature', label: t('field.temperature.label', 'Expression (0-1)'), type: 'number', dataType: 'number', default: 0.7, tooltip: t('field.temperature.tooltip', 'Higher values produce more varied output') },
+      { key: 'latency', label: t('field.latency.label', 'Latency Mode'), type: 'select', dataType: 'string', default: 'normal', options: [
         { label: 'Normal（最佳质量）', value: 'normal' },
         { label: 'Balanced（较低延迟）', value: 'balanced' },
         { label: 'Low（最低延迟）', value: 'low' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'FishAudio API base URL') },
-      { key: 'proxy', label: t('field.proxy.label', 'HTTP Proxy'), type: 'text', tooltip: t('field.proxy.tooltip', 'HTTP proxy address, read from plugin config by default'), default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'FishAudio API base URL') },
+      { key: 'proxy', label: t('field.proxy.label', 'HTTP Proxy'), type: 'text', dataType: 'string', tooltip: t('field.proxy.tooltip', 'HTTP proxy address, read from plugin config by default'), default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
     ],
     toolProperties: {
       type: 'object',
@@ -80,13 +80,13 @@ module.exports = (t) => [
       required: ['text'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'filePath', type: 'string' },
         { key: 'httpPath', type: 'string' },
         { key: 'format', type: 'string' },
-        { key: 'size', type: 'number' },
+        { key: 'size', type: 'number', dataType: 'number' },
         { key: 'mimeType', type: 'string' },
       ] },
     ],
@@ -147,9 +147,9 @@ module.exports = (t) => [
     icon: 'Mic',
     description: t('action.stt.description', 'Transcribe audio files to text using FishAudio (STT)'),
     properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'FishAudio API Key (read from plugin config by default)'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'filePath', label: t('field.filePath.label', 'Audio File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Local audio file path (supports WAV/MP3/FLAC)') },
-      { key: 'language', label: t('field.language.label', 'Language'), type: 'select', default: 'auto', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, tooltip: t('field.apiKey.tooltip', 'FishAudio API Key (read from plugin config by default)'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'filePath', label: t('field.filePath.label', 'Audio File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.filePath.tooltip', 'Local audio file path (supports WAV/MP3/FLAC)') },
+      { key: 'language', label: t('field.language.label', 'Language'), type: 'select', dataType: 'string', default: 'auto', options: [
         { label: '自动检测', value: 'auto' },
         { label: '中文', value: 'zh' },
         { label: '英文', value: 'en' },
@@ -159,8 +159,8 @@ module.exports = (t) => [
         { label: '德文', value: 'de' },
         { label: '西班牙文', value: 'es' },
       ] },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'FishAudio API base URL') },
-      { key: 'proxy', label: t('field.proxy.label', 'HTTP Proxy'), type: 'text', tooltip: t('field.proxy.tooltip', 'HTTP proxy address, read from plugin config by default'), default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'FishAudio API base URL') },
+      { key: 'proxy', label: t('field.proxy.label', 'HTTP Proxy'), type: 'text', dataType: 'string', tooltip: t('field.proxy.tooltip', 'HTTP proxy address, read from plugin config by default'), default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
     ],
     toolProperties: {
       type: 'object',
@@ -175,12 +175,12 @@ module.exports = (t) => [
       required: ['filePath'],
     },
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', children: [
+      { key: 'data', type: 'object', dataType: 'object', children: [
         { key: 'text', type: 'string' },
-        { key: 'duration', type: 'number' },
-        { key: 'segments', type: 'object', children: [] },
+        { key: 'duration', type: 'number', dataType: 'number' },
+        { key: 'segments', type: 'object', dataType: 'object', children: [] },
       ] },
     ],
     run: async (ctx, args) => {

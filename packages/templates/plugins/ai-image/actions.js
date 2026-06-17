@@ -286,16 +286,16 @@ module.exports = (t) => [
       },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       {
         key: 'data',
-        type: 'object',
+        type: 'object', dataType: 'object',
         children: [
           { key: 'images', type: 'image[]' },
           { key: 'taskId', type: 'string' },
           { key: 'model', type: 'string' },
-          { key: 'created', type: 'number' },
+          { key: 'created', type: 'number', dataType: 'number' },
         ],
       },
     ],
@@ -429,11 +429,11 @@ module.exports = (t) => [
       },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       {
         key: 'data',
-        type: 'object',
+        type: 'object', dataType: 'object',
         children: [
           { key: 'images', type: 'image[]' },
           { key: 'taskId', type: 'string' },
@@ -534,11 +534,11 @@ module.exports = (t) => [
       },
     ],
     outputs: [
-      { key: 'success', type: 'boolean' },
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       {
         key: 'data',
-        type: 'object',
+        type: 'object', dataType: 'object',
         children: [
           { key: 'status', type: 'string' },
           { key: 'progress', type: 'string' },
