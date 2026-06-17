@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @agent-spaces/server dev\" \"pnpm --filter @agent-spaces/web dev\"",
     "test:plugin:fetch": "pnpm --filter @agent-spaces/server dev:plugin -- --plugin ../../packages/templates/plugins/fetch --test src/dev/plugin-tests/fetch-text.test.ts",
+    "test:plugin:ai-image": "pnpm --filter @agent-spaces/server dev:plugin -- --plugin ../../packages/templates/plugins/ai-image --test src/dev/plugin-tests/ai-image.test.ts --config @src/dev/plugin-tests/ai-image-config.json --mock-api src/dev/plugin-tests/ai-image-mock-api.ts",
     "build": "pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/sdk build && pnpm --filter @agent-spaces/server build && cross-env NEXT_STATIC_EXPORT=1 pnpm --filter @agent-spaces/web build && node scripts/copy-web.mjs && node scripts/copy-package.mjs",
     "build:docker": "docker build -f Dockerfile.server -t agent-spaces-server:latest .",
     "up": "docker compose up -d --build",

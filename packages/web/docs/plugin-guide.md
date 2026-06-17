@@ -192,7 +192,7 @@ module.exports = {
       icon: 'Image',
       description: '示例节点',
       properties: [
-        { key: 'prompt', label: 'Prompt', type: 'textarea', required: true },
+        { key: 'prompt', label: 'Prompt', type: 'textarea', dataType: 'string', required: true },
         { key: 'images', label: 'Images', type: 'textarea', dataType: 'string[]', tooltip: 'JSON array of image URLs' },
       ],
       outputs: [
@@ -319,7 +319,7 @@ module.exports = [
     icon: 'Box',
     description: '同一份定义同时用于 workflow 和 tool',
     properties: [
-      { key: 'prompt', label: 'Prompt', type: 'textarea', required: true },
+      { key: 'prompt', label: 'Prompt', type: 'textarea', dataType: 'string', required: true },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -368,9 +368,9 @@ module.exports = { tools: [] }
 每个 property 有两个类型相关字段：
 
 - **`type`**（必填）：表单控件类型，决定 UI 怎么渲染。可选值：`text`、`textarea`、`number`、`select`、`checkbox`、`code`、`conditions`、`array`、`output_fields`
-- **`dataType`**（可选）：实际数据类型，当 `type` 无法准确表达数据类型时使用。可选值：`string`、`number`、`boolean`、`string[]`、`number[]`、`object[]`、`object`、`any`
+- **`dataType`**（必填）：字段的实际数据类型，所有 property 都必须显式设置。可选值：`string`、`number`、`boolean`、`string[]`、`number[]`、`object[]`、`object`、`any`
 
-大多数情况下 `dataType` 不需要写——`type: 'number'` 自动推断为数字，`type: 'select'` 自动推断为字符串。需要显式设置的场景：
+`type` 只表示表单控件，不能作为数据类型来源。即使 `type: 'number'`、`type: 'select'`、`type: 'checkbox'` 等控件类型看起来能推断，也必须写明 `dataType`。常见写法：
 
 | 场景 | `type` | `dataType` | 说明 |
 |------|--------|------------|------|
@@ -379,7 +379,7 @@ module.exports = { tools: [] }
 | JSON 对象输入 | `textarea` | `object` | 用户输入 JSON 对象 |
 | 单行文本数组 | `text` | `string[]` | 逗号分隔或 JSON 数组 |
 
-设置了 `dataType` 后：
+设置 `dataType` 后：
 - **Agent tool JSON Schema** 会根据 `dataType` 生成正确的类型（而非从 `type` 推断为 `string`）
 - **节点测试对话框** 会自动对输入值做 JSON.parse 解析
 - **`run()` 函数** 仍需自行处理 `Array.isArray(args.x) ? args.x : JSON.parse(args.x)` 防御式解析，或使用服务端导出的 `coerceByDataType(args.x, 'string[]')` 工具函数

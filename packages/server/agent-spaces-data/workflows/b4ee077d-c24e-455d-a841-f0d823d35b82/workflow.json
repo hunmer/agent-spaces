@@ -34,7 +34,7 @@
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
         "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
-        "model": "gpt-image-2-all",
+        "model": "flux-kontext-pro",
         "size": "1024x1024",
         "n": 1,
         "outputs": [
@@ -71,11 +71,55 @@
         ],
         "prompt": "动漫女孩"
       }
+    },
+    {
+      "id": "node_1781700118518_zt6u45",
+      "type": "ai_image_edit",
+      "label": "AI图片编辑",
+      "position": {
+        "x": 75,
+        "y": 165
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
+        "model": "flux-kontext-pro",
+        "aspectRatio": "1:1",
+        "n": 1,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1781697071806,
-  "updatedAt": 1781697695460,
+  "updatedAt": 1781700766136,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image"

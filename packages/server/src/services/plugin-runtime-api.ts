@@ -132,6 +132,54 @@ function collectBuffer(res: http.IncomingMessage): Promise<Buffer> {
   });
 }
 
+// 插件网络请求调试日志，默认开启；如需关闭设环境变量 AGENT_SPACES_PLUGIN_HTTP_DEBUG=0
+const httpDebugEnabled = process.env.AGENT_SPACES_PLUGIN_HTTP_DEBUG !== '0';
+
+function httpDebug(
+  tag: string,
+  method: string,
+  url: string,
+  fields?: Record<string, unknown>,
+) {
+  if (!httpDebugEnabled) return;
+  let msg = `[plugin-http] ${tag} ${method} ${url}`;
+  if (fields) {
+    for (const [k, v] of Object.entries(fields)) {
+      const text = v == null ? '' : typeof v === 'string' && !/\s/.test(v) ? v : JSON.stringify(v);
+      msg += ` ${k}=${text}`;
+    }
+  }
+  console.debug(msg);
+}
+
+// 包装全局 fetch，使插件里 globalThis.fetch（如 ai-image 图像编辑/下载）也输出调试日志。
+// 插件 actions.js 在主进程被 createRequire 加载，其 globalThis.fetch 解析的就是
+// 主进程 globalThis.fetch，因此包装全局即可覆盖，无需改 sandbox 注入。
+export function wrapFetchWithDebug(next: typeof fetch): typeof fetch {
+  const wrapped = async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    let url = '';
+    if (typeof input === 'string') url = input;
+    else if (input instanceof URL) url = input.toString();
+    else if (input && typeof input === 'object' && 'url' in input) url = String((input as Request).url);
+    else url = String(input);
+    const method = (((init && init.method) as string) || 'GET').toUpperCase();
+    const startedAt = Date.now();
+    httpDebug('REQ', method, url, { via: 'fetch' });
+    try {
+      const res = await next(input as any, init);
+      httpDebug('RES', method, url, { status: res.status, ms: Date.now() - startedAt });
+      return res;
+    } catch (err) {
+      httpDebug('ERR', method, url, {
+        error: err instanceof Error ? err.message : String(err),
+        ms: Date.now() - startedAt,
+      });
+      throw err;
+    }
+  };
+  return wrapped as typeof fetch;
+}
+
 async function httpGet(url: string, options: FetchOptions & { timeout: number }): Promise<http.IncomingMessage> {
   const headers: http.OutgoingHttpHeaders = {
     'User-Agent': options.userAgent || 'AgentSpaces/1.0',
@@ -140,19 +188,35 @@ async function httpGet(url: string, options: FetchOptions & { timeout: number })
   const req = await createRequest(url, 'GET', headers, options.timeout, options.proxy);
 
   return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    httpDebug('REQ', 'GET', url, { proxy: options.proxy, timeout: options.timeout });
     req.on('response', (res) => {
+      const elapsed = Date.now() - startedAt;
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        httpGet(new URL(res.headers.location, url).toString(), options).then(resolve, reject);
+        const redirectUrl = new URL(res.headers.location, url).toString();
+        httpDebug('REDIRECT', 'GET', url, { status: res.statusCode, location: redirectUrl, ms: elapsed });
+        httpGet(redirectUrl, options).then(resolve, reject);
         return;
       }
       if (res.statusCode && res.statusCode >= 400) {
-        collectBody(res).then((text) => reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`)), reject);
+        collectBody(res).then(
+          (text) => {
+            httpDebug('ERR', 'GET', url, { status: res.statusCode, ms: elapsed, body: text.slice(0, 200) });
+            reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`));
+          },
+          reject,
+        );
         return;
       }
+      httpDebug('RES', 'GET', url, { status: res.statusCode, ms: elapsed });
       resolve(res);
     });
-    req.on('error', reject);
+    req.on('error', (err) => {
+      httpDebug('ERR', 'GET', url, { error: err.message, ms: Date.now() - startedAt });
+      reject(err);
+    });
     req.on('timeout', () => {
+      httpDebug('ERR', 'GET', url, { error: 'timeout', ms: Date.now() - startedAt });
       req.destroy();
       reject(new Error('Request timed out'));
     });
@@ -171,19 +235,39 @@ async function httpPost(url: string, options: PostOptions & { timeout: number })
   const req = await createRequest(url, 'POST', headers, options.timeout, options.proxy);
 
   return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    httpDebug('REQ', 'POST', url, {
+      proxy: options.proxy,
+      timeout: options.timeout,
+      bodyBytes: Buffer.byteLength(body),
+    });
     req.on('response', (res) => {
+      const elapsed = Date.now() - startedAt;
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        httpGet(new URL(res.headers.location, url).toString(), options).then(resolve, reject);
+        const redirectUrl = new URL(res.headers.location, url).toString();
+        httpDebug('REDIRECT', 'POST', url, { status: res.statusCode, location: redirectUrl, ms: elapsed });
+        httpGet(redirectUrl, options).then(resolve, reject);
         return;
       }
       if (res.statusCode && res.statusCode >= 400) {
-        collectBody(res).then((text) => reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`)), reject);
+        collectBody(res).then(
+          (text) => {
+            httpDebug('ERR', 'POST', url, { status: res.statusCode, ms: elapsed, body: text.slice(0, 200) });
+            reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`));
+          },
+          reject,
+        );
         return;
       }
+      httpDebug('RES', 'POST', url, { status: res.statusCode, ms: elapsed });
       resolve(res);
     });
-    req.on('error', reject);
+    req.on('error', (err) => {
+      httpDebug('ERR', 'POST', url, { error: err.message, ms: Date.now() - startedAt });
+      reject(err);
+    });
     req.on('timeout', () => {
+      httpDebug('ERR', 'POST', url, { error: 'timeout', ms: Date.now() - startedAt });
       req.destroy();
       reject(new Error('Request timed out'));
     });
@@ -315,4 +399,14 @@ export function createBuiltinPluginApi(): Record<string, any> {
     ...api,
     getJson: api.fetchJson,
   };
+}
+
+// 调试开启时，在模块加载阶段包装全局 fetch。包成幂等（防热重载重复包装）。
+if (httpDebugEnabled && typeof globalThis.fetch === 'function') {
+  const originalFetch = globalThis.fetch as typeof fetch;
+  if (!(originalFetch as any).__pluginHttpDebugWrapped) {
+    const wrapped = wrapFetchWithDebug(originalFetch);
+    (wrapped as any).__pluginHttpDebugWrapped = true;
+    globalThis.fetch = wrapped;
+  }
 }

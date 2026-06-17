@@ -240,9 +240,7 @@ export class ExecutionManager {
     } catch (error) {
       return {
         status: 'error',
-        error: typeof error === 'string' ? error
-          : error instanceof Error ? error.message
-          : JSON.stringify(error),
+        error: formatErrorWithStack(error),
         duration: Date.now() - startedAt,
       };
     }
@@ -685,9 +683,7 @@ export class ExecutionManager {
       if (session.stopRequested) return 'interrupted';
       step.finishedAt = Date.now();
       step.status = 'error';
-      step.error = typeof error === 'string' ? error
-        : error instanceof Error ? error.message
-        : JSON.stringify(error);
+      step.error = formatErrorWithStack(error);
       step.logs = stepLogs.length ? [...stepLogs] : undefined;
       session.status = 'error';
       session.lastErrorMessage = step.error;
@@ -1676,4 +1672,25 @@ function resolveSnapshotDataForTest(value: any, config: Record<string, Record<st
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function formatErrorWithStack(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.stack || `${error.name}: ${error.message}`;
+  if (error && typeof error === 'object') {
+    const maybeError = error as { message?: unknown; stack?: unknown; name?: unknown };
+    const message = typeof maybeError.message === 'string' ? maybeError.message : '';
+    const stack = typeof maybeError.stack === 'string' ? maybeError.stack : '';
+    if (stack) return stack;
+    if (message) {
+      const name = typeof maybeError.name === 'string' ? maybeError.name : 'Error';
+      return `${name}: ${message}`;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error);
 }
