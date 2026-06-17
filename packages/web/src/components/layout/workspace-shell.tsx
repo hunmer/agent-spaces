@@ -140,7 +140,6 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
           { type: "tab", name: "Workfolder", component: "workfolder", id: "workfolder" },
-          { type: "tab", name: "Database", component: "database-list", id: "database-list" },
         ],
       },
       {
@@ -150,7 +149,6 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Code Editor", component: "code-editor", id: "code-editor" },
           { type: "tab", name: "Chat", component: "chat", id: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
-          { type: "tab", name: "Database", component: "database", id: "database" },
           { type: "tab", name: "Kanban", component: "kanban", id: "kanban" },
         ],
       },

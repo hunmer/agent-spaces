@@ -11,7 +11,7 @@ import {
   type EmbeddingDebug,
 } from './embedding-util.js';
 
-// 向后兼容别名：routes/database.ts 仍在 import { DatabaseVectorError, DatabaseVectorDebug }
+// 向后兼容别名：DatabaseVectorError, DatabaseVectorDebug
 export const DatabaseVectorError = EmbeddingError;
 export type DatabaseVectorDebug = EmbeddingDebug;
 
