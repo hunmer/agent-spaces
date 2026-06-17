@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 250,
-        "y": 2.6319364434748422
+        "x": 0,
+        "y": 0
       },
       "data": {
         "inputFields": [
@@ -17,6 +17,7 @@
             "key": "images",
             "type": "file[]",
             "value": "",
+            "description": "图片列表",
             "required": true,
             "children": []
           },
@@ -24,6 +25,23 @@
             "key": "prompt",
             "type": "string",
             "value": "",
+            "description": "提示词",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "provider",
+            "type": "string",
+            "value": "",
+            "description": "提供商",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "model",
+            "type": "string",
+            "value": "",
+            "description": "模型名称",
             "required": true,
             "children": []
           }
@@ -35,8 +53,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 195,
-        "y": 615
+        "x": 0,
+        "y": 1041
       },
       "data": {
         "outputs": [
@@ -46,7 +64,8 @@
             "value": "{{ __data__[\"node_1781681597052_ts6ynb\"].data.images }}",
             "children": []
           }
-        ]
+        ],
+        "outputPreviewEnabled": true
       }
     },
     {
@@ -54,8 +73,8 @@
       "type": "openai_edit_image",
       "label": "OpenAI 图片编辑",
       "position": {
-        "x": 345,
-        "y": 408.170898803266
+        "x": 0,
+        "y": 812
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.openai\"][\"apiKey\"] }}",
@@ -105,8 +124,8 @@
       "type": "pluck_array_key",
       "label": "nodes.pluck_array_key.label",
       "position": {
-        "x": 30,
-        "y": 386.74046995922254
+        "x": 0,
+        "y": 406
       },
       "data": {
         "array": "{{ __data__[\"node_1781681799713_z7fxry\"].items }}",
@@ -124,8 +143,8 @@
       "type": "loop",
       "label": "nodes.loop.label",
       "position": {
-        "x": 252.5,
-        "y": 92.13914231191302
+        "x": 0,
+        "y": 200
       },
       "data": {
         "loopType": "array",
@@ -157,13 +176,13 @@
       "label": "nodes.loop_body.label",
       "position": {
         "x": 639.5646529594292,
-        "y": 85.90786189446635
+        "y": 79.2183275262228
       },
       "data": {
         "width": 150,
         "height": 260,
-        "nodeWidth": 772,
-        "nodeHeight": 378
+        "nodeWidth": 332,
+        "nodeHeight": 733
       },
       "composite": {
         "role": "loop_body",
@@ -180,7 +199,7 @@
       "label": "nodes.loop.label开始",
       "position": {
         "x": 695.5646529594292,
-        "y": 185.90786189446635
+        "y": 179.2183275262228
       },
       "data": {},
       "composite": {
@@ -195,8 +214,8 @@
       "type": "end",
       "label": "nodes.loop.label结束",
       "position": {
-        "x": 1135.1411632398572,
-        "y": 300
+        "x": 695.5646529594292,
+        "y": 648.2183275262228
       },
       "data": {
         "outputs": [
@@ -220,8 +239,8 @@
       "type": "cos_upload_file",
       "label": "COS上传文件",
       "position": {
-        "x": 855.1411632398573,
-        "y": 275.90786189446635
+        "x": 695.5646529594292,
+        "y": 379.21832752622277
       },
       "data": {
         "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
@@ -271,16 +290,31 @@
         "generated": false,
         "hidden": false
       }
+    },
+    {
+      "id": "node_1781686908308_6flfam",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 0,
+        "y": 606
+      },
+      "data": {
+        "sourceNodeId": "node_1781681640891_ouni81",
+        "sourceHandle": "source",
+        "conditions": [
+          {
+            "id": "cond_1781686912427_7hb8",
+            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "operator": "equals",
+            "value": "openai"
+          }
+        ]
+      }
     }
   ],
   "edges": [
-    {
-      "id": "e-node_1781681640891_ouni81-source-node_1781681597052_ts6ynb-target",
-      "source": "node_1781681640891_ouni81",
-      "target": "node_1781681597052_ts6ynb",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
     {
       "id": "e-node_1781681597052_ts6ynb-source-node_1781681576137_end-target",
       "source": "node_1781681597052_ts6ynb",
@@ -337,11 +371,22 @@
       "id": "e-node_1781681833706_hpctin-source-node_1781681799713_hcdrlh-target",
       "source": "node_1781681833706_hpctin",
       "target": "node_1781681799713_hcdrlh"
+    },
+    {
+      "id": "e-node_1781681640891_ouni81-source-node_1781686908308_6flfam-target",
+      "source": "node_1781681640891_ouni81",
+      "target": "node_1781686908308_6flfam",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-source-node_1781681597052_ts6ynb-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1781681597052_ts6ynb"
     }
   ],
   "createdAt": 1781681576142,
-  "updatedAt": 1781684294466,
-  "published": false,
+  "updatedAt": 1781687404071,
+  "published": true,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.tencent-cos"

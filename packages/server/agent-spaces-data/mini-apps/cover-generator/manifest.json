@@ -1,0 +1,11 @@
+{
+  "id": "cover-generator",
+  "name": "cover-generator",
+  "description": "封面制作工具",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-17T09:11:51.582Z",
+  "updatedAt": "2026-06-17T09:11:51.582Z"
+}
