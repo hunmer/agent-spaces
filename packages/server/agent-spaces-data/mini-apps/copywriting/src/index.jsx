@@ -15,12 +15,22 @@ import { addCopywritingToKnowledgeBase, queryCopywritingKnowledgeBase, deleteCop
 import { loadReferenceGroups, saveReferenceGroups, makeGroupId } from './utils/reference-list';
 import { loadAgentConfig, saveAgentConfig } from './utils/agent-config';
 
-const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge, Trash2 } = window.AgentSpacesUI;
+const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge, Trash2, ChevronLeft, ChevronRight } = window.AgentSpacesUI;
 
 const BUILTIN_PLUGIN = '@agent-spaces/builtin';
 const { getUserSetting, saveUserSettings } = window.AgentSpaces;
 
 const DEFAULT_FILTER = { keyword: '', type: '', tag: '', durationSort: '' };
+const PAGE_SIZE = 50;
+
+// 分页器：当前页附近的数字窗口（页数多时只显示一段，避免按钮过多）
+function pageWindow(current, total, size = 5) {
+  if (total <= size) return Array.from({ length: total }, (_, i) => i + 1);
+  let start = Math.max(1, current - Math.floor(size / 2));
+  let end = start + size - 1;
+  if (end > total) { end = total; start = end - size + 1; }
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
 
 function uniqById(items) {
   const map = new Map();
@@ -84,6 +94,8 @@ export default function App() {
   const [unindexedCount, setUnindexedCount] = useState(0);
   const [viewMode, setViewMode] = useState('manage');
   const [creationSourceMode, setCreationSourceMode] = useState('group');
+  const [page, setPage] = useState(1);
+  const listRef = useRef(null);
 
   const [referenceGroups, setReferenceGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
@@ -475,6 +487,19 @@ export default function App() {
     try { saveUserSettings({ creationResults }); } catch { /* noop */ }
   }, [creationResults]);
 
+  // 分页：每页 PAGE_SIZE 条，列表在前端切片；筛选条件变化时回到第 1 页
+  useEffect(() => { setPage(1); }, [filter.keyword, filter.type, filter.tag, filter.durationSort]);
+  const totalPages = Math.max(1, Math.ceil(dbq.items.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedItems = useMemo(
+    () => dbq.items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [dbq.items, currentPage],
+  );
+  const gotoPage = useCallback((next) => {
+    setPage(next);
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, []);
+
   const clearFilter = () => setFilter({ ...DEFAULT_FILTER });
 
   const currentGroup = referenceGroups.find((group) => group.id === selectedGroupId) || null;
@@ -504,7 +529,7 @@ export default function App() {
               .cw-grid>*{break-inside:avoid}
               @media(min-width:640px){.cw-grid{column-count:2}}
             `}</style>
-            <div className="mt-4 cw-scroll">
+            <div className="mt-4 cw-scroll" ref={listRef} style={totalPages > 1 ? { maxHeight: 'calc(100vh - 185px)' } : undefined}>
             {!dbq.ready ? (
               <div className="py-16 text-center text-sm text-muted-foreground">加载中...</div>
             ) : dbq.error ? (
@@ -517,7 +542,7 @@ export default function App() {
               </div>
             ) : (
               <div className="cw-grid">
-                {dbq.items.map((it) => (
+                {pagedItems.map((it) => (
                   <CopywritingCard
                     key={it.id}
                     item={it}
@@ -532,6 +557,29 @@ export default function App() {
               </div>
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-1 text-sm">
+              <Button size="sm" variant="outline" disabled={currentPage <= 1} onClick={() => gotoPage(currentPage - 1)}>
+                <ChevronLeft className="size-4" />上一页
+              </Button>
+              {pageWindow(currentPage, totalPages).map((p) => (
+                <Button
+                  key={p}
+                  size="sm"
+                  variant={p === currentPage ? 'default' : 'outline'}
+                  onClick={() => gotoPage(p)}
+                >
+                  {p}
+                </Button>
+              ))}
+              <Button size="sm" variant="outline" disabled={currentPage >= totalPages} onClick={() => gotoPage(currentPage + 1)}>
+                下一页<ChevronRight className="size-4" />
+              </Button>
+              <span className="ml-2 text-xs text-muted-foreground">
+                第 {currentPage}/{totalPages} 页 · 共 {dbq.items.length} 条
+              </span>
+            </div>
+          )}
           </>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3">
