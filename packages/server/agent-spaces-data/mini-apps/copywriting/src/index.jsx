@@ -9,77 +9,19 @@ import ImportJsonDialog from './components/ImportJsonDialog';
 import ReferenceGroupsDialog from './components/ReferenceGroupsDialog';
 import { useCopywritingDb } from './hooks/useCopywritingDb';
 import { useSettings } from './hooks/useSettings';
-import { recognize, getMediaDuration, genTaskId } from './utils/transcribe';
+import { recognize, getMediaDuration, genTaskId, getMediaType } from './utils/transcribe';
 import { uploadToCloud, readUploadSettings } from './utils/upload';
 import { addCopywritingToKnowledgeBase, queryCopywritingKnowledgeBase, deleteCopywritingKnowledgeBaseFile } from './utils/knowledge-base';
-import { loadReferenceGroups, saveReferenceGroups, makeGroupId } from './utils/reference-list';
+import { loadReferenceGroups, saveReferenceGroups, makeGroupId, toRefItem } from './utils/reference-list';
 import { loadAgentConfig, saveAgentConfig } from './utils/agent-config';
+import { DEFAULT_FILTER, PAGE_SIZE, pageWindow, uniqById } from './utils/list';
+import { softColorFromSeed } from './utils/colors';
+import { BUILTIN_PLUGIN, stripThink, normalizeKnowledgeBaseMatches, knowledgeMatchToPromptText } from './utils/creation';
+import CreationSkeletonCard from './components/CreationSkeletonCard';
 
 const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge, Trash2, ChevronLeft, ChevronRight } = window.AgentSpacesUI;
 
-const BUILTIN_PLUGIN = '@agent-spaces/builtin';
 const { getUserSetting, saveUserSettings } = window.AgentSpaces;
-
-const DEFAULT_FILTER = { keyword: '', type: '', tag: '', durationSort: '' };
-const PAGE_SIZE = 50;
-
-// 分页器：当前页附近的数字窗口（页数多时只显示一段，避免按钮过多）
-function pageWindow(current, total, size = 5) {
-  if (total <= size) return Array.from({ length: total }, (_, i) => i + 1);
-  let start = Math.max(1, current - Math.floor(size / 2));
-  let end = start + size - 1;
-  if (end > total) { end = total; start = end - size + 1; }
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-}
-
-function uniqById(items) {
-  const map = new Map();
-  for (const item of items) map.set(item.id, item);
-  return [...map.values()];
-}
-
-function toRefItem(item, groupId) {
-  const text = item.type === 'text' ? (item.content || '') : (item.transcription || '');
-  return {
-    id: item.id,
-    groupId,
-    title: item.title || '',
-    preview: String(text || '').slice(0, 200),
-  };
-}
-
-// 基于种子（结果 id）的确定性浅色：色相由 hash 推出，高亮度低饱和，每次渲染颜色稳定
-function softColorFromSeed(seed) {
-  let hash = 0;
-  const str = String(seed);
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
-  }
-  const hue = hash % 360;
-  return {
-    bg: `hsl(${hue} 75% 95%)`,
-    border: `hsl(${hue} 55% 82%)`,
-    dot: `hsl(${hue} 55% 55%)`,
-  };
-}
-
-// 待生成文案的骨架占位符
-function CreationSkeletonCard() {
-  return (
-    <div className="space-y-2 rounded-md border bg-background p-3">
-      <div className="flex items-center gap-2">
-        <span className="size-2 animate-pulse rounded-full bg-muted-foreground/40" />
-        <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-      </div>
-      <div className="space-y-1.5">
-        <div className="h-3 w-full animate-pulse rounded bg-muted" />
-        <div className="h-3 w-11/12 animate-pulse rounded bg-muted" />
-        <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
-        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const dbq = useCopywritingDb();
@@ -284,8 +226,6 @@ export default function App() {
       .finally(refreshAll);
   };
 
-  const getMediaType = (file) => (file?.type?.startsWith('video/') ? 'video' : 'audio');
-
   const handleSubmit = async (data) => {
     if (editing) {
       await dbq.update(editing.id, {
@@ -393,29 +333,6 @@ export default function App() {
     setCreationAgentMeta({ id: saved.id, name: saved.name || '创作 Agent', modelProvider: saved.modelProvider });
     saveAgentConfig({ configId: saved.id, name: saved.name || '创作 Agent' });
   }, [creationAgentMeta]);
-
-  function stripThink(text) {
-    return String(text || '')
-      .replace(/<think>[\s\S]*?<\/think>/gi, '')
-      .replace(/<think>[\s\S]*$/gi, '')
-      .trim();
-  }
-
-  function normalizeKnowledgeBaseMatches(result) {
-    if (Array.isArray(result)) return result;
-    if (Array.isArray(result?.matches)) return result.matches;
-    if (Array.isArray(result?.results)) return result.results;
-    if (Array.isArray(result?.items)) return result.items;
-    if (Array.isArray(result?.documents)) return result.documents;
-    return [];
-  }
-
-  function knowledgeMatchToPromptText(match, index) {
-    const title = match?.title || match?.fileName || match?.name || `知识库片段 ${index + 1}`;
-    const text = match?.chunkText || match?.text || match?.content || match?.pageContent || match?.document || '';
-    const score = typeof match?.score === 'number' ? `\n相关度：${match.score.toFixed(4)}` : '';
-    return `标题：${title}${score}\n内容：${String(text || '').trim()}`;
-  }
 
   const cancelCreation = () => {
     cancelCreationRef.current = true;

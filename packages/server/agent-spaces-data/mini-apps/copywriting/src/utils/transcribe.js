@@ -38,6 +38,11 @@ export function getMediaDuration(file) {
   });
 }
 
+// 文件 MIME → 'video' | 'audio'
+export function getMediaType(file) {
+  return file?.type?.startsWith('video/') ? 'video' : 'audio';
+}
+
 // 前端预生成短 taskId，对齐平台任务事件（taskId 由发起方与后端 cache 共用）
 export function genTaskId(prefix = 'asr') {
   const c = (globalThis.crypto)?.randomUUID?.();

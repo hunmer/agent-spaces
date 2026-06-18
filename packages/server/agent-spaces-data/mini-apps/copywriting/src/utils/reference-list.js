@@ -34,3 +34,14 @@ export function makeGroupId() {
   const g = globalThis.crypto;
   return g?.randomUUID?.() || `group-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
+
+// 文案条目 → 参考项（用于创作面板参考列表预览）
+export function toRefItem(item, groupId) {
+  const text = item.type === 'text' ? (item.content || '') : (item.transcription || '');
+  return {
+    id: item.id,
+    groupId,
+    title: item.title || '',
+    preview: String(text || '').slice(0, 200),
+  };
+}
