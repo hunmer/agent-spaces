@@ -35,6 +35,8 @@ export { Command, CommandDialog, CommandInput, CommandList, CommandEmpty, Comman
 export { NavigationMenu, NavigationMenuContent, NavigationMenuIndicator, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle, NavigationMenuPositioner } from '@/components/ui/navigation-menu';
 export { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 export { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, useCarousel } from '@/components/ui/carousel';
+export { Masonry } from '@/components/ui/masonry';
+export type { MasonryProps, MasonryItemMeta, MasonrySortOption, MasonryColumns } from '@/components/ui/masonry';
 export { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 export { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 export { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from '@/components/ui/empty';
