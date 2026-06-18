@@ -9,7 +9,7 @@
     "tags": [],
     "zipUrl": "mini-app/ai_image_video.zip",
     "md5": "3c663e9170aa181ec9f07700d3887b6a",
-    "updatedAt": "2026-06-18T06:22:34.562Z"
+    "updatedAt": "2026-06-18T09:07:54.670Z"
   },
   {
     "id": "ai_music",
@@ -21,7 +21,7 @@
     "tags": [],
     "zipUrl": "mini-app/ai_music.zip",
     "md5": "d3da2f753602e206240bef14652955fc",
-    "updatedAt": "2026-06-18T06:22:34.575Z"
+    "updatedAt": "2026-06-18T09:07:54.679Z"
   },
   {
     "id": "copywriting",
@@ -34,7 +34,7 @@
     "tags": [],
     "zipUrl": "mini-app/copywriting.zip",
     "md5": "cde5b7b52258000804c2717fc1beb13d",
-    "updatedAt": "2026-06-18T09:04:17.059Z"
+    "updatedAt": "2026-06-18T09:07:54.685Z"
   },
   {
     "id": "cover-generator",
@@ -51,7 +51,7 @@
     ],
     "zipUrl": "mini-app/cover-generator.zip",
     "md5": "3a8bbe9393b309a9c865b19af4c9b43f",
-    "updatedAt": "2026-06-18T06:22:34.593Z"
+    "updatedAt": "2026-06-18T09:07:54.688Z"
   },
   {
     "id": "database-demo",
@@ -63,7 +63,7 @@
     "tags": [],
     "zipUrl": "mini-app/database-demo.zip",
     "md5": "db5ec124304050a92d1371c6bfd3846a",
-    "updatedAt": "2026-06-18T06:22:34.601Z"
+    "updatedAt": "2026-06-18T09:07:54.693Z"
   },
   {
     "id": "kanban",
@@ -78,7 +78,7 @@
     ],
     "zipUrl": "mini-app/kanban.zip",
     "md5": "b7cf7625611ade1df61171396a210a0f",
-    "updatedAt": "2026-06-18T06:22:34.608Z"
+    "updatedAt": "2026-06-18T09:07:54.698Z"
   },
   {
     "id": "notion-database",
@@ -89,7 +89,7 @@
     "tags": [],
     "zipUrl": "mini-app/notion-database.zip",
     "md5": "5fe9ef75e059e35461437f2c3ead3d7a",
-    "updatedAt": "2026-06-18T06:22:34.619Z"
+    "updatedAt": "2026-06-18T09:07:54.704Z"
   },
   {
     "id": "podcast_generator",
@@ -107,7 +107,7 @@
     ],
     "zipUrl": "mini-app/podcast_generator.zip",
     "md5": "c1051c4807c99467a9e407802eb2cee2",
-    "updatedAt": "2026-06-16T03:57:33.711Z"
+    "updatedAt": "2026-06-18T09:07:54.707Z"
   },
   {
     "id": "tts",
@@ -120,7 +120,7 @@
     "tags": [],
     "zipUrl": "mini-app/tts.zip",
     "md5": "30aa2c056ac17fd3b3054d1d6268d4e6",
-    "updatedAt": "2026-06-18T06:22:34.641Z"
+    "updatedAt": "2026-06-18T09:07:54.712Z"
   },
   {
     "id": "ui-demo",
@@ -131,6 +131,6 @@
     "tags": [],
     "zipUrl": "mini-app/ui-demo.zip",
     "md5": "14a1fa27ab3ade03e228ed58cf1ba50b",
-    "updatedAt": "2026-06-18T06:22:34.652Z"
+    "updatedAt": "2026-06-18T09:07:54.717Z"
   }
 ]
