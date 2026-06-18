@@ -5,7 +5,6 @@ const TYPES = [
   { value: '', label: '全部' },
   { value: 'audio', label: '音频' },
   { value: 'video', label: '视频' },
-  { value: 'text', label: '文本' },
 ];
 const SORTS = [
   { value: '', label: '默认' },

@@ -39,7 +39,7 @@ export function isAuthenticated(): boolean {
 export function authHeaders(): HeadersInit {
   const token = getToken();
   const headers: Record<string, string> = {};
-  if (token !== null) headers.Authorization = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   if (typeof window !== 'undefined') {
     const locale = localStorage.getItem(LOCALE_KEY);
     if (locale === 'en' || locale === 'zh') headers['Accept-Language'] = locale;

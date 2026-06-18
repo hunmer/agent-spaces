@@ -28,6 +28,7 @@ export default function App() {
   const { settings, ready: settingsReady, update: updateSettings } = useSettings();
 
   const [filter, setFilter] = useState(DEFAULT_FILTER);
+  const filterRef = useRef(DEFAULT_FILTER);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [playing, setPlaying] = useState(null);
@@ -38,6 +39,7 @@ export default function App() {
   const [creationSourceMode, setCreationSourceMode] = useState('group');
   const [page, setPage] = useState(1);
   const listRef = useRef(null);
+  const [colCount, setColCount] = useState(4);
 
   const [referenceGroups, setReferenceGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
@@ -65,11 +67,17 @@ export default function App() {
   });
   const cancelCreationRef = useRef(false);
 
+  const handleFilterChange = useCallback((nextFilter) => {
+    const normalized = { ...DEFAULT_FILTER, ...(nextFilter || {}) };
+    filterRef.current = normalized;
+    setFilter(normalized);
+  }, []);
+
   const refreshAll = useCallback(() => {
-    dbq.refresh(filter);
+    dbq.refresh(filterRef.current);
     dbq.refreshTags();
     dbq.count();
-  }, [dbq, filter]);
+  }, [dbq]);
 
   useEffect(() => {
     (async () => {
@@ -86,7 +94,7 @@ export default function App() {
   // 用户偏好（settings.json）：筛选词、视图模式等个人状态
   useEffect(() => {
     if (!settingsReady) return;
-    setFilter({
+    handleFilterChange({
       keyword: settings.keyword || '',
       type: settings.type || '',
       tag: settings.tag || '',
@@ -95,10 +103,11 @@ export default function App() {
     setViewMode(settings.viewMode || 'manage');
     setSelectedGroupId(settings.creationGroupId || '');
     setCreationOutputCount(settings.creationOutputCount || 3);
-  }, [settingsReady]);
+  }, [settingsReady, handleFilterChange]);
 
   useEffect(() => {
     if (!dbq.ready) return;
+    filterRef.current = filter;
     dbq.refresh(filter);
     updateSettings({
       keyword: filter.keyword,
@@ -130,7 +139,7 @@ export default function App() {
   useEffect(() => {
     const unsub = window.AgentSpaces.onTaskEvent((event, data) => {
       if (event === 'miniApp.taskFinished' || event === 'miniApp.taskFailed') {
-        dbq.refresh(filter);
+        dbq.refresh(filterRef.current);
       } else if (event === 'miniApp.clientRequest' && data?.type === 'copywritingKnowledgeBase') {
         const query = String(data.payload?.query || '').trim();
         const topK = Number.isFinite(Number(data.payload?.topK)) ? Number(data.payload.topK) : 5;
@@ -166,7 +175,7 @@ export default function App() {
       }
     });
     return unsub;
-  }, [dbq, filter]);
+  }, [dbq]);
 
   const syncToKnowledgeBase = useCallback((item) => {
     dbq.update(item.id, { kb_status: 'indexing', kb_error: '' }).then(refreshAll);
@@ -428,12 +437,27 @@ export default function App() {
     if (listRef.current) listRef.current.scrollTop = 0;
   }, []);
 
-  // 瀑布流布局元信息：折叠 1×1，展开 2×2（跨 2 列 + 2 行单元）；列数由 Masonry 响应式断点决定
-  const getMeta = useCallback((item) => (
-    expandedIds.has(String(item.id))
-      ? { colSpan: 2, rowSpan: 2 }
-      : { colSpan: 1, rowSpan: 1 }
-  ), [expandedIds]);
+  // 容器宽度 → 列数（与 Masonry 断点一致），用于判断「最后一列」
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const resolve = (w) => (w >= 1024 ? 4 : w >= 768 ? 3 : w >= 640 ? 2 : 1);
+    const update = () => {
+      const n = resolve(el.clientWidth);
+      setColCount((prev) => (prev === n ? prev : n));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // 瀑布流布局元信息：折叠 1×1；展开 2×2，但最后一列展开降级为 2×1（纵向 2 行不跨列，避免换行）
+  const getMeta = useCallback((item, index) => {
+    if (!expandedIds.has(String(item.id))) return { colSpan: 1, rowSpan: 1 };
+    if (colCount > 1 && index % colCount === colCount - 1) return { colSpan: 1, rowSpan: 2 };
+    return { colSpan: 2, rowSpan: 2 };
+  }, [expandedIds, colCount]);
 
   const renderCard = (item) => (
     <CopywritingCard
@@ -449,7 +473,55 @@ export default function App() {
     />
   );
 
-  const clearFilter = () => setFilter({ ...DEFAULT_FILTER });
+  // 创作结果瀑布流：结果卡 + 生成中骨架合并为统一 data
+  const resultList = useMemo(() => {
+    const skeletons = creationRunning
+      ? Array.from({ length: Math.max(0, creationOutputCount - creationResults.length) }, (_, i) => ({
+          id: `__skeleton_${creationResults.length + i}`,
+          __skeleton: true,
+        }))
+      : [];
+    return [...creationResults, ...skeletons];
+  }, [creationResults, creationRunning, creationOutputCount]);
+
+  const renderResult = (item) => {
+    if (item.__skeleton) return <CreationSkeletonCard />;
+    const color = softColorFromSeed(item.id);
+    return (
+      <div className="flex h-full w-full flex-col rounded-md border p-3" style={{ backgroundColor: color.bg, borderColor: color.border }}>
+        <div className="flex-1 min-h-0 whitespace-pre-wrap text-sm text-foreground" style={{ overflowY: 'auto', paddingRight: '0.25rem' }}>
+          {item.text}
+        </div>
+        <div className="mt-2 flex items-center justify-between shrink-0">
+          <span className="size-2 rounded-full" style={{ backgroundColor: color.dot }} />
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(item.text)}>
+              复制文案
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCreationResults((prev) => prev.filter((r) => r.id !== item.id))}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 结果卡高度按文本长度估算（每行约 24 字），长文案更高，超出格子可滚动
+  const getResultMeta = useCallback((item) => {
+    if (item.__skeleton) return { height: 200 };
+    const lines = Math.ceil((item.text || '').length / 24);
+    return { height: Math.max(180, Math.min(560, lines * 22 + 96)) };
+  }, []);
+
+  const clearFilter = () => {
+    handleFilterChange(DEFAULT_FILTER);
+    dbq.refresh(DEFAULT_FILTER);
+  };
 
   const currentGroup = referenceGroups.find((group) => group.id === selectedGroupId) || null;
 
@@ -462,7 +534,7 @@ export default function App() {
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenImport={() => setImportOpen(true)}
           filter={filter}
-          onFilterChange={setFilter}
+          onFilterChange={handleFilterChange}
           onClearFilter={clearFilter}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -475,7 +547,7 @@ export default function App() {
             <style>{`
               .cw-scroll{max-height:calc(100vh - 125px);overflow-y:auto;padding-right:.25rem}
             `}</style>
-            <div className="mt-4 cw-scroll" ref={listRef} style={totalPages > 1 ? { maxHeight: 'calc(100vh - 185px)' } : undefined}>
+            <div className="mt-4 cw-scroll" ref={listRef} style={totalPages > 1 ? { maxHeight: 'calc(100vh - 160px)' } : undefined}>
             {!dbq.ready ? (
               <div className="py-16 text-center text-sm text-muted-foreground">加载中...</div>
             ) : dbq.error ? (
@@ -526,7 +598,7 @@ export default function App() {
           )}
           </>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 3fr)', gap: '0.75rem',  height: 'calc(100vh - 125px)', overflowY: 'auto' }}>
             <CreationPanel
               referenceGroups={referenceGroups}
               selectedGroupId={selectedGroupId}
@@ -549,8 +621,8 @@ export default function App() {
               onOpenGroupDialog={() => { setReferenceDialogItemId(''); setReferenceDialogOpen(true); }}
               creationRunning={creationRunning}
             />
-            <div className="flex flex-col rounded-lg border bg-card p-3" style={{ maxHeight: 'calc(100vh - 125px)', overflowY: 'scroll' }}>
-              <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col rounded-lg border bg-card p-3" style={{ maxHeight: 'calc(100vh - 125px)', overflowY: 'auto' }}>
+              <div className="flex items-center justify-between gap-2 shrink-0">
                 <div className="text-sm font-medium">结果卡片列表</div>
                 <div className="flex items-center gap-2">
                   {creationRunning && <Badge variant="secondary">生成中</Badge>}
@@ -561,48 +633,22 @@ export default function App() {
                   )}
                 </div>
               </div>
-              <style>{`
-                .cw-result{column-count:1;column-gap:.5rem}
-                .cw-result>*{break-inside:avoid;margin-bottom:.5rem}
-                @media(min-width:640px){.cw-result{column-count:2}}
-              `}</style>
-              {creationResults.length === 0 && !creationRunning ? (
+              {resultList.length === 0 ? (
                 <div className="mt-3 rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
                   暂无结果
                 </div>
               ) : (
-                <div className="cw-result mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
-                  {creationResults.map((item) => {
-                    const color = softColorFromSeed(item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        className="rounded-md border p-3"
-                        style={{ backgroundColor: color.bg, borderColor: color.border }}
-                      >
-                        <div className="whitespace-pre-wrap text-sm text-foreground">{item.text}</div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="size-2 rounded-full" style={{ backgroundColor: color.dot }} />
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(item.text)}>
-                              复制文案
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setCreationResults((prev) => prev.filter((r) => r.id !== item.id))}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {creationRunning &&
-                    Array.from({ length: Math.max(0, creationOutputCount - creationResults.length) }).map((_, i) => (
-                      <CreationSkeletonCard key={`skeleton-${creationResults.length + i}`} />
-                    ))}
+                <div className="mt-3 min-h-0 flex-1">
+                  <Masonry
+                    data={resultList}
+                    renderItem={renderResult}
+                    getKey={(it) => it.id}
+                    getMeta={getResultMeta}
+                    columns={{ base: 1, sm: 2, xl: 3 }}
+                    gap={8}
+                    enterAnimation={false}
+                    exitAnimation={false}
+                  />
                 </div>
               )}
             </div>

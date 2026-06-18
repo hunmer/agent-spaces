@@ -78,7 +78,6 @@ async function uploadWorkflowFile(
     const xhr = new XMLHttpRequest();
     const baseUrl = getActiveServerUrl();
     xhr.open('POST', `${baseUrl || ''}/api/upload`);
-    xhr.withCredentials = true;
     for (const [key, value] of Object.entries(authHeaders() as Record<string, string>)) {
       xhr.setRequestHeader(key, value);
     }
