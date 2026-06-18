@@ -5,6 +5,7 @@ import CopywritingCard from './components/CopywritingCard';
 import CopywritingForm from './components/CopywritingForm';
 import PlayerDialog from './components/PlayerDialog';
 import UploadSettingsDialog from './components/UploadSettingsDialog';
+import ImportJsonDialog from './components/ImportJsonDialog';
 import ReferenceGroupsDialog from './components/ReferenceGroupsDialog';
 import { useCopywritingDb } from './hooks/useCopywritingDb';
 import { useSettings } from './hooks/useSettings';
@@ -79,6 +80,7 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [playing, setPlaying] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [unindexedCount, setUnindexedCount] = useState(0);
   const [viewMode, setViewMode] = useState('manage');
   const [creationSourceMode, setCreationSourceMode] = useState('group');
@@ -306,6 +308,10 @@ export default function App() {
     refreshAll();
   };
 
+  const handleImport = useCallback(async (data) => {
+    await dbq.add(data);
+  }, [dbq]);
+
   const handleDelete = async (item) => {
     try {
       if (item.kb_file_id) {
@@ -480,6 +486,7 @@ export default function App() {
           total={dbq.total}
           onNew={openNew}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenImport={() => setImportOpen(true)}
           filter={filter}
           onFilterChange={setFilter}
           onClearFilter={clearFilter}
@@ -624,6 +631,12 @@ export default function App() {
         onOpenChange={setSettingsOpen}
         unindexedCount={unindexedCount}
         onScanUnindexed={handleScanUnindexed}
+      />
+      <ImportJsonDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImport={handleImport}
+        onImported={refreshAll}
       />
       <ReferenceGroupsDialog
         open={referenceDialogOpen}

@@ -1,5 +1,5 @@
 const {
-  Button, Plus, Settings, Tabs, TabsList, TabsTrigger, Input, Badge,
+  Button, Plus, Settings, Upload, Tabs, TabsList, TabsTrigger, Input, Badge,
   Popover, PopoverContent, PopoverTrigger,
 } = window.AgentSpacesUI;
 const { Search, Filter, X } = window.AgentSpacesUI;
@@ -8,6 +8,7 @@ export default function Toolbar({
   total,
   onNew,
   onOpenSettings,
+  onOpenImport,
   filter,
   onFilterChange,
   onClearFilter,
@@ -84,6 +85,9 @@ export default function Toolbar({
             </PopoverContent>
           </Popover>
         )}
+        <Button variant="outline" size="icon" onClick={onOpenImport} title="从 JSON 导入">
+          <Upload className="size-4" />
+        </Button>
         <Button variant="outline" size="icon" onClick={onOpenSettings} title="存储设置">
           <Settings className="size-4" />
         </Button>
