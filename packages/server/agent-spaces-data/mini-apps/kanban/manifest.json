@@ -1,0 +1,13 @@
+{
+  "id": "kanban",
+  "name": "kanban",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": ["productivity"],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-06-18T00:00:00.000Z",
+  "updatedAt": "2026-06-18T00:00:00.000Z",
+  "description": "看板",
+  "icon": "📋",
+  "avatarUrl": ""
+}
