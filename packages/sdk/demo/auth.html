@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth 鉴权 · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Auth · 鉴权</h1>
+    <span id="badge" class="badge">未检测</span>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>登录（获取 token）</h2>
+      <p class="desc">
+        <code>sdk.auth.login(secretKey)</code> —— noAuth 调用，返回 <code>{ token }</code>。
+        成功后 token 自动写入 localStorage，后续所有需鉴权的调用会自动带上 <code>Authorization: Bearer</code>。
+      </p>
+      <div class="field">
+        <label>Secret Key</label>
+        <input id="in-secret" type="password" placeholder="服务器启动密钥" />
+      </div>
+      <div class="actions">
+        <button id="btn-login" class="btn">登录</button>
+        <button id="btn-check" class="btn secondary">校验当前 token（auth.check）</button>
+      </div>
+      <pre id="out-login" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>修改 Secret</h2>
+      <p class="desc">
+        <code>sdk.auth.changeSecret(newSecret)</code> —— 需要当前 token 有效（鉴权后调用）。
+      </p>
+      <div class="field">
+        <label>New Secret</label>
+        <input id="in-newsecret" type="password" placeholder="新的 secret key" />
+      </div>
+      <div class="actions">
+        <button id="btn-change" class="btn danger">修改 Secret</button>
+      </div>
+      <pre id="out-change" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/auth.js"></script>
+</body>
+</html>

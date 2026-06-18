@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Git · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Git · 仓库操作</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>选择工作区</h2>
+      <p class="desc">Git 接口依赖 <code>workspaceId</code>，先选择一个已绑定 Git 仓库的工作区。</p>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>状态（status）</h2>
+      <p class="desc"><code>sdk.git.status(workspaceId)</code> —— 当前分支 / 暂存 / 改动文件。</p>
+      <div class="actions">
+        <button id="btn-status" class="btn">查询状态</button>
+      </div>
+      <pre id="out-status" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>提交历史（log）</h2>
+      <p class="desc"><code>sdk.git.log(workspaceId)</code></p>
+      <div class="actions">
+        <button id="btn-log" class="btn">查询 log</button>
+      </div>
+      <pre id="out-log" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>分支（branches）</h2>
+      <p class="desc"><code>sdk.git.branches(workspaceId)</code></p>
+      <div class="actions">
+        <button id="btn-branches" class="btn">查询分支</button>
+      </div>
+      <pre id="out-branches" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>提交（commit）</h2>
+      <p class="desc"><code>sdk.git.commit(workspaceId, message)</code> —— 提交所有暂存改动。</p>
+      <div class="field">
+        <label>commit message</label>
+        <input id="in-msg" type="text" placeholder="例如: update demo" />
+      </div>
+      <div class="actions">
+        <button id="btn-commit" class="btn">提交</button>
+        <button id="btn-push" class="btn secondary">push</button>
+        <button id="btn-pull" class="btn secondary">pull</button>
+      </div>
+      <pre id="out-commit" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/git.js"></script>
+</body>
+</html>

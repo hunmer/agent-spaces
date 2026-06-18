@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Version / 连通性 · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Version · 连通性检测</h1>
+    <span id="badge" class="badge">未检测</span>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>当前版本</h2>
+      <p class="desc">
+        <code>sdk.version.current()</code> —— 使用 <code>{ noAuth: true }</code>，<b>无需 token</b>，
+        最适合作为「服务器是否可达」的健康探针。
+      </p>
+      <div class="actions">
+        <button id="btn-current" class="btn">获取版本</button>
+        <button id="btn-check" class="btn secondary">检查更新（version.check）</button>
+      </div>
+      <pre id="out" class="output">点击按钮查看结果</pre>
+    </div>
+
+    <div class="card">
+      <h2>触发自更新</h2>
+      <p class="desc">
+        <code>sdk.version.triggerUpdate()</code> —— 触发服务器自更新流程（需要鉴权）。
+      </p>
+      <div class="actions">
+        <button id="btn-update" class="btn danger">触发更新</button>
+      </div>
+    </div>
+
+    <div class="hint">
+      💡 若「获取版本」失败，请回到首页确认 baseUrl 正确、且本页通过 HTTP 服务（非 file://）打开。
+    </div>
+  </div>
+
+  <script type="module" src="./js/version.js"></script>
+</body>
+</html>

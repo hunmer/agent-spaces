@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Issue · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Issue · 问题追踪</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>选择工作区</h2>
+      <p class="desc">Issue 接口依赖 <code>workspaceId</code>，先选择一个工作区。</p>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Issue 列表</h2>
+      <p class="desc"><code>sdk.issue.list(workspaceId)</code></p>
+      <div class="actions">
+        <button id="btn-list" class="btn">刷新列表</button>
+      </div>
+      <div id="issue-table" style="margin-bottom:12px;"></div>
+      <pre id="out-list" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>创建 Issue</h2>
+      <p class="desc"><code>sdk.issue.create(workspaceId, { title, description })</code></p>
+      <div class="field">
+        <label>title</label>
+        <input id="in-title" type="text" placeholder="问题标题" />
+      </div>
+      <div class="field">
+        <label>description</label>
+        <textarea id="in-desc" rows="3" placeholder="详细描述"></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-create" class="btn">创建</button>
+      </div>
+      <pre id="out-create" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>启动 / 继续运行</h2>
+      <p class="desc"><code>sdk.issue.start(id)</code> · <code>sdk.issue.resume(id)</code> · <code>sdk.issue.interrupt(id)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>issue id</label>
+          <input id="in-id" type="text" placeholder="从列表复制 issue id" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-start" class="btn">start</button>
+        <button id="btn-resume" class="btn secondary">resume</button>
+        <button id="btn-interrupt" class="btn secondary">interrupt</button>
+      </div>
+      <pre id="out-run" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/issue.js"></script>
+</body>
+</html>

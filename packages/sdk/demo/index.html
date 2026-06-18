@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDK Demo · 首页</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>@agent-spaces/sdk 演示站</h1>
+      <p>纯 HTML + 原生 ESM，直接引用 <code>dist/index.js</code>，零构建。</p>
+      <span class="tag">createSDK() · 39 个 API 模块</span>
+    </div>
+
+    <div class="hint">
+      ⚠️ 请通过 HTTP 静态服务打开本页面（见 README）。先在下方完成「服务器配置 + 登录」，
+      再进入各功能页。版本/鉴权页可无需 token 直接测试连通性。
+    </div>
+
+    <!-- 配置区 -->
+    <div class="card">
+      <h2>① 服务器配置</h2>
+      <p class="desc">baseUrl 与 token 持久化到 localStorage，所有 demo 页共享。</p>
+      <div class="row">
+        <div class="field">
+          <label>baseUrl（Agent Spaces Server）</label>
+          <input id="cfg-base" type="text" placeholder="http://localhost:3100" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="cfg-save" class="btn">保存 baseUrl</button>
+        <button id="cfg-test" class="btn secondary">测试连通（version.current）</button>
+      </div>
+      <div class="row" style="align-items:center; gap:10px;">
+        <span id="cfg-status" class="badge">未检测</span>
+        <span style="font-size:12px; color:var(--muted)">token 状态：<b id="cfg-token-status">未登录</b></span>
+      </div>
+    </div>
+
+    <!-- 登录区 -->
+    <div class="card">
+      <h2>② 登录获取 Token</h2>
+      <p class="desc">调用 <code>sdk.auth.login(secretKey)</code>（noAuth），返回的 token 自动写入 localStorage。</p>
+      <div class="row">
+        <div class="field">
+          <label>Secret Key（服务器启动密钥）</label>
+          <input id="login-secret" type="password" placeholder="输入服务器配置的 secret key" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="login-btn" class="btn">登录</button>
+        <button id="login-check" class="btn secondary">校验 token（auth.check）</button>
+        <button id="login-clear" class="btn secondary">清除 token</button>
+      </div>
+      <pre id="login-out" class="output">登录结果将显示于此</pre>
+    </div>
+
+    <!-- 功能导航 -->
+    <div class="card">
+      <h2>③ 功能演示</h2>
+      <p class="desc">每个页面聚焦一组 SDK API，方法名与真实 SDK 完全一致。</p>
+      <div class="grid">
+        <a class="tile" href="./version.html">
+          <div class="ico">🔌</div>
+          <div class="t">Version / 连通</div>
+          <div class="s">version.current · check · 无需鉴权</div>
+        </a>
+        <a class="tile" href="./auth.html">
+          <div class="ico">🔐</div>
+          <div class="t">Auth 鉴权</div>
+          <div class="s">auth.login · check · changeSecret</div>
+        </a>
+        <a class="tile" href="./workspace.html">
+          <div class="ico">📦</div>
+          <div class="t">Workspace</div>
+          <div class="s">workspace.list · get · browseFolder</div>
+        </a>
+        <a class="tile" href="./agent.html">
+          <div class="ico">🤖</div>
+          <div class="t">Agent 预设</div>
+          <div class="s">agent.listPresets · usageDashboard</div>
+        </a>
+        <a class="tile" href="./issue.html">
+          <div class="ico">📋</div>
+          <div class="t">Issue</div>
+          <div class="s">issue.list · create · start</div>
+        </a>
+        <a class="tile" href="./git.html">
+          <div class="ico">🌿</div>
+          <div class="t">Git</div>
+          <div class="s">git.status · log · branches</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/home.js"></script>
+</body>
+</html>
