@@ -37,6 +37,19 @@
     "updatedAt": "2026-06-14T13:16:37.017Z"
   },
   {
+    "id": "kanban",
+    "name": "看板",
+    "type": "react",
+    "icon": "📋",
+    "description": "看板（分区+卡片+拖拽，多端同步）",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
+    "zipUrl": "mini-app/kanban.zip",
+    "md5": "860fddb15bcc9dce908c77c27a0cb70e",
+    "updatedAt": "2026-06-18T10:16:14.000Z"
+  },
+  {
     "id": "database-demo",
     "name": "database-demo",
     "type": "react",
