@@ -14,7 +14,6 @@
     "channel": "频道管理",
     "terminal": "终端/命令",
     "database": "知识库",
-    "kanban": "看板",
     "files": "文件",
     "workflow": "工作流"
   }
