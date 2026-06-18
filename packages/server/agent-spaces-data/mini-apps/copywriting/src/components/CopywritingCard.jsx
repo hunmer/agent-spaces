@@ -1,5 +1,6 @@
+import { useState } from 'react';
 const { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } = window.AgentSpacesUI;
-const { FileAudio, FileVideo, FileText, Play, RefreshCw, Loader2, Database, MoreHorizontal, Copy, Trash2, PlusCircle } = window.AgentSpacesUI;
+const { FileAudio, FileVideo, FileText, Play, RefreshCw, Loader2, Database, MoreHorizontal, Copy, Trash2, PlusCircle, Pencil } = window.AgentSpacesUI;
 
 const TYPE_META = {
   audio: { label: '音频', Icon: FileAudio },
@@ -32,6 +33,7 @@ export default function CopywritingCard({
   onCopy,
   onAddToReference,
 }) {
+  const [expanded, setExpanded] = useState(false);
   const meta = TYPE_META[item.type] || TYPE_META.text;
   const kb = KB_STATUS[item.kb_status || 'pending'] || KB_STATUS.pending;
   const { Icon } = meta;
@@ -43,8 +45,8 @@ export default function CopywritingCard({
 
   return (
     <div
-      className="break-inside-avoid mb-3 rounded-lg border bg-card text-card-foreground p-3 cursor-pointer hover:border-primary/50 transition-colors"
-      onClick={() => onEdit(item)}
+      className={`break-inside-avoid mb-3 rounded-lg border bg-card text-card-foreground p-3 cursor-pointer hover:border-primary/50 transition-colors ${expanded ? 'border-primary ring-1 ring-primary/30' : ''}`}
+      onClick={() => setExpanded((v) => !v)}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -60,6 +62,9 @@ export default function CopywritingCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => onEdit(item)}>
+                <Pencil className="size-4" />编辑
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onCopy(item)}>
                 <Copy className="size-4" />复制文案
               </DropdownMenuItem>
@@ -74,7 +79,14 @@ export default function CopywritingCard({
         </div>
       </div>
 
-      <div className="mt-2 text-sm text-muted-foreground line-clamp-5 whitespace-pre-wrap">
+      <div
+        className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap"
+        style={
+          expanded
+            ? undefined
+            : { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 10, overflow: 'hidden' }
+        }
+      >
         {transcribing ? (
           <span className="flex items-center gap-1.5 text-primary">
             <Loader2 className="size-3.5 animate-spin" /> 转写中...

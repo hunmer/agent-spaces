@@ -96,6 +96,8 @@ export default function App() {
   const [creationSourceMode, setCreationSourceMode] = useState('group');
   const [page, setPage] = useState(1);
   const listRef = useRef(null);
+  const gridRef = useRef(null);
+  const [gridColumns, setGridColumns] = useState(1);
 
   const [referenceGroups, setReferenceGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
@@ -500,6 +502,21 @@ export default function App() {
     if (listRef.current) listRef.current.scrollTop = 0;
   }, []);
 
+  // 瀑布流列数 = 容器宽度 / 250 向下取整（响应式），至少 1 列
+  useEffect(() => {
+    if (!dbq.ready) return;
+    const el = gridRef.current;
+    if (!el) return;
+    const update = () => {
+      const n = Math.max(1, Math.floor(el.clientWidth / 250));
+      setGridColumns((prev) => (prev === n ? prev : n));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [dbq.ready]);
+
   const clearFilter = () => setFilter({ ...DEFAULT_FILTER });
 
   const currentGroup = referenceGroups.find((group) => group.id === selectedGroupId) || null;
@@ -525,9 +542,8 @@ export default function App() {
                 任意值 / 响应式 class 不会被编译，故用内联 <style> 定义滚动容器与两列瀑布流 */}
             <style>{`
               .cw-scroll{max-height:calc(100vh - 125px);overflow-y:auto;padding-right:.25rem}
-              .cw-grid{column-count:1;column-gap:.75rem}
+              .cw-grid{column-gap:.75rem}
               .cw-grid>*{break-inside:avoid}
-              @media(min-width:640px){.cw-grid{column-count:2}}
             `}</style>
             <div className="mt-4 cw-scroll" ref={listRef} style={totalPages > 1 ? { maxHeight: 'calc(100vh - 185px)' } : undefined}>
             {!dbq.ready ? (
@@ -541,7 +557,7 @@ export default function App() {
                 <p className="text-xs text-muted-foreground">点击「新建文案」开始</p>
               </div>
             ) : (
-              <div className="cw-grid">
+              <div className="cw-grid" ref={gridRef} style={{ columnCount: gridColumns }}>
                 {pagedItems.map((it) => (
                   <CopywritingCard
                     key={it.id}
