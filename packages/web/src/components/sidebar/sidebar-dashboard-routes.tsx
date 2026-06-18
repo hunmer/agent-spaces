@@ -106,7 +106,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
     },
     {
       id: "mini-apps",
-      title: ts("nav.workflowsUI"),
+      title: ts("nav.miniApp"),
       icon: <Workflow className="size-4" />,
       link: "/mini-apps",
     },

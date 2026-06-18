@@ -17,7 +17,7 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { sdk } from '@/lib/sdk';
 import { MiniAppDetail } from './mini-apps-store-detail';
 
-interface WorkflowsUiStoreDialogProps {
+interface MiniAppStoreDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported: () => void;
@@ -40,7 +40,7 @@ export interface MiniAppIndexItem {
 
 type InstallStatus = 'not-installed' | 'updatable' | 'installed';
 
-export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: WorkflowsUiStoreDialogProps) {
+export function MiniAppStoreDialog({ open, onOpenChange, onImported }: MiniAppStoreDialogProps) {
   const t = useTranslations('mini-apps');
   const [templates, setTemplates] = useState<MiniAppIndexItem[]>([]);
   const [loading, setLoading] = useState(false);

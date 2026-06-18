@@ -14,14 +14,14 @@ import { AvatarUploader } from '@/components/common/avatar-uploader';
 import { ImagePickerDialog } from '@/components/ui/image-picker-dialog';
 import { Camera, X, Loader2 } from 'lucide-react';
 
-interface WorkflowsUiEditDialogProps {
+interface MiniAppEditDialogProps {
   project: MiniAppProject | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdated?: (project: MiniAppProject) => void;
 }
 
-export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }: WorkflowsUiEditDialogProps) {
+export function MiniAppEditDialog({ project, open, onOpenChange, onUpdated }: MiniAppEditDialogProps) {
   const t = useTranslations('mini-apps');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');

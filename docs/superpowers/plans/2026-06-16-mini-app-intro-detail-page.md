@@ -290,7 +290,7 @@ import { Download, Store, Check, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Markdown } from '@/components/ui/markdown';
 ```
 
-- [ ] **Step 3: 在 `WorkflowsUiStoreDialog` 组件内加 `selected` 状态 + 关闭时重置**
+- [ ] **Step 3: 在 `miniAppStoreDialog` 组件内加 `selected` 状态 + 关闭时重置**
 
 在 `const [installedMap, setInstalledMap] = useState<Record<string, string>>({});`（约 45 行）之后新增：
 
@@ -383,7 +383,7 @@ git commit -m "feat(web): make mini-app store card clickable & extend item type"
 
 - [ ] **Step 1: 在文件顶层新增 `Meta` 与 `MiniAppDetail` 子组件**
 
-在 `export function WorkflowsUiStoreDialog(...)` 之前新增两个组件：
+在 `export function miniAppStoreDialog(...)` 之前新增两个组件：
 
 ```tsx
 function Meta({ label, value }: { label: string; value: string }) {

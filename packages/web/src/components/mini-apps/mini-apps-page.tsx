@@ -8,9 +8,9 @@ import { pluginApi } from '@/lib/workflow-plugin-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Upload, FileQuestion, Store } from 'lucide-react';
-import { WorkflowsUiCard } from './mini-apps-card';
-import { WorkflowsUiCreateDialog } from './mini-apps-create-dialog';
-import { WorkflowsUiStoreDialog } from './mini-apps-store-dialog';
+import { MiniAppCard } from './mini-apps-card';
+import { MiniAppCreateDialog } from './mini-apps-create-dialog';
+import { MiniAppStoreDialog } from './mini-apps-store-dialog';
 import { MiniAppEditor } from './mini-app-editor';
 import { useSearchParams } from 'next/navigation';
 
@@ -26,7 +26,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function WorkflowsUiPage() {
+export function MiniAppPage() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get('id');
 
@@ -34,10 +34,10 @@ export function WorkflowsUiPage() {
     return <MiniAppEditor projectId={projectId} />;
   }
 
-  return <WorkflowsUiListPage />;
+  return <MiniAppListPage />;
 }
 
-function WorkflowsUiListPage() {
+function MiniAppListPage() {
   const t = useTranslations('mini-apps');
   const [projects, setProjects] = useState<MiniAppProject[]>([]);
   const [search, setSearch] = useState('');
@@ -187,7 +187,7 @@ function WorkflowsUiListPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 flex-1 content-start">
           {filtered.map((project) => (
-            <WorkflowsUiCard
+            <MiniAppCard
               key={project.id}
               project={project}
               onDelete={handleDelete}
@@ -198,8 +198,8 @@ function WorkflowsUiListPage() {
         </div>
       )}
 
-      <WorkflowsUiCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
-      <WorkflowsUiStoreDialog open={storeOpen} onOpenChange={setStoreOpen} onImported={loadProjects} />
+      <MiniAppCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <MiniAppStoreDialog open={storeOpen} onOpenChange={setStoreOpen} onImported={loadProjects} />
     </div>
   );
 }

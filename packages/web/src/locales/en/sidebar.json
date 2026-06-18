@@ -14,7 +14,7 @@
     "models": "Models",
     "providers": "Providers",
     "workflows": "Workflows",
-    "workflowsUI": "Workflows UI",
+    "miniApp": "Workflows UI",
     "chat": "Chat",
     "hooks": "Hooks",
     "tools": "Tools",

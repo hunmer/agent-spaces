@@ -1,7 +1,7 @@
 "use client";
 
-import { WorkflowsUiPage } from "@/components/mini-apps/mini-apps-page";
+import { MiniAppPage } from "@/components/mini-apps/mini-apps-page";
 
-export default function WorkflowsUiRoute() {
-  return <WorkflowsUiPage />;
+export default function miniAppRoute() {
+  return <MiniAppPage />;
 }

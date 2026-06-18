@@ -14,12 +14,12 @@ import { Loader2 } from 'lucide-react';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 
-interface WorkflowsUiCreateDialogProps {
+interface MiniAppCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreateDialogProps) {
+export function MiniAppCreateDialog({ open, onOpenChange }: MiniAppCreateDialogProps) {
   const t = useTranslations('mini-apps');
   const router = useRouter();
   const [name, setName] = useState('');

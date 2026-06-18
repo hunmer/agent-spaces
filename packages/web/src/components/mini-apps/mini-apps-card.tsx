@@ -9,7 +9,7 @@ import { Pencil, Copy, Trash2, MoreVertical, Download, Share2, FolderOpen } from
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ShareDialog } from '@/components/common/share-dialog';
-import { WorkflowsUiEditDialog } from './mini-apps-edit-dialog';
+import { MiniAppEditDialog } from './mini-apps-edit-dialog';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { FeatureCard } from '@/components/ui/feature-card';
 import { nativeNavigate } from '@/lib/navigate';
@@ -18,7 +18,7 @@ import { sdk } from '@/lib/sdk';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 
-interface WorkflowsUiCardProps {
+interface MiniAppCardProps {
   project: MiniAppProject;
   onDelete: (id: string) => void;
   onDuplicate?: (id: string) => void;
@@ -27,7 +27,7 @@ interface WorkflowsUiCardProps {
   allPlugins?: { id: string; name: string; iconPath?: string }[];
 }
 
-export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, allPlugins }: WorkflowsUiCardProps) {
+export function MiniAppCard({ project, onDelete, onDuplicate, onUpdated, allPlugins }: MiniAppCardProps) {
   const t = useTranslations('mini-apps');
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
@@ -183,7 +183,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated, all
 
       {/* Dialogs */}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={project.name} url={shareUrl} />
-      <WorkflowsUiEditDialog project={project} open={editOpen} onOpenChange={setEditOpen} onUpdated={onUpdated} />
+      <MiniAppEditDialog project={project} open={editOpen} onOpenChange={setEditOpen} onUpdated={onUpdated} />
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

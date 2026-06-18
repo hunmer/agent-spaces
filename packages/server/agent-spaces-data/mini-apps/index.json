@@ -189,5 +189,15 @@
     "mainFile": "index.jsx",
     "createdAt": "2026-06-17T15:33:15.562Z",
     "updatedAt": "2026-06-17T17:34:27.007Z"
+  },
+  {
+    "id": "kanban",
+    "name": "kanban",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-06-18T01:19:54.727Z",
+    "updatedAt": "2026-06-18T01:19:54.727Z"
   }
 ]
