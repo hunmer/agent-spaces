@@ -25,6 +25,5 @@ export * from './code-favorites.js';
 export * from './hooks.js';
 export * from './database.js';
 export * from './sqlite.js';
-export * from './kanban.js';
 export * from './worktree.js';
 export * from './knowledge-base.js';

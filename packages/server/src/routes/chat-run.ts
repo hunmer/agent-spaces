@@ -7,7 +7,6 @@ import type { AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-ru
 import {
   createCommandFunctionTools,
   createDatabaseFunctionTools,
-  createKanbanFunctionTools,
   createWorkspaceFileFunctionTools,
   createWorkflowExecutionFunctionTools,
 } from '../services/builtin-tools/index.js';
@@ -104,7 +103,6 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     const functionTools = [
       ...createCommandFunctionTools(workspaceId, tools),
       ...createDatabaseFunctionTools(workspaceId, tools),
-      ...createKanbanFunctionTools(workspaceId, tools),
       ...createWorkspaceFileFunctionTools(workspaceId, tools, () => chatService.getAgentWorkspace(agentId)),
       ...createWorkflowExecutionFunctionTools(tools),
     ];
@@ -243,7 +241,6 @@ router.post('/agents/:id/run', async (req, res) => {
     const functionTools = [
       ...createCommandFunctionTools(id, tools),
       ...createDatabaseFunctionTools(id, tools),
-      ...createKanbanFunctionTools(id, tools),
       ...createWorkflowExecutionFunctionTools(tools),
     ];
     const result = await runtime.execute(prompt, workingDir, {

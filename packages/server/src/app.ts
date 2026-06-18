@@ -37,7 +37,6 @@ import agentSseRouter from './routes/agent-sse.js';
 import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
 import knowledgeBaseRouter from './routes/knowledge-base.js';
-import kanbanRouter from './routes/kanban.js';
 import { worktreeRouter } from './routes/worktree.js';
 import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-recognition.js';
 import agentCommandsRouter from './routes/agent-commands.js';
@@ -298,7 +297,6 @@ app.post('/api/git-config', async (req, res) => {
 });
 app.use('/api/workspaces/:id/search', searchRouter);
 app.use('/api/workspaces/:id/knowledge-bases', knowledgeBaseRouter);
-app.use('/api/workspaces/:id/kanban', kanbanRouter);
 app.use('/api/workspaces/:id/worktrees', worktreeRouter);
 app.use('/api/workspaces/:id/notifications', notificationRouter);
 app.use('/api/agents', agentRouter);

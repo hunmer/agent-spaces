@@ -244,19 +244,6 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
     );
   }
 
-  if (tools.some((tool) => isKanbanToolName(tool.name))) {
-    lines.push(
-      'Kanban tool rules:',
-      '- Kanban boards are Agent Spaces workspace data, not workspace filesystem files.',
-      '- Call Agent Spaces Kanban tools with their MCP names, for example mcp__agent-spaces__ListKanbanBoards.',
-      '- Agent Spaces currently uses one Kanban board per workspace.',
-      '- To inspect board state, call mcp__agent-spaces__ListKanbanBoards or mcp__agent-spaces__ViewKanbanBoard first.',
-      '- To create a board, call mcp__agent-spaces__CreateKanbanBoard only when no board exists.',
-      '- To modify columns or tasks, call mcp__agent-spaces__UpdateKanbanBoard with complete replacement arrays for columns and tasks.',
-      '- Do not invent column ids. If the target column id is unknown, inspect the board first.',
-    );
-  }
-
   for (const tool of tools) {
     lines.push(`- ${formatCallableToolName(tool.name)}: ${tool.description}`);
   }
@@ -388,12 +375,4 @@ function isDatabaseToolName(name: string): boolean {
     || name === 'DeleteDatabaseNode'
     || name === 'MoveDatabaseNode'
     || name === 'UpdateDatabaseNodeMeta';
-}
-
-function isKanbanToolName(name: string): boolean {
-  return name === 'ListKanbanBoards'
-    || name === 'ViewKanbanBoard'
-    || name === 'CreateKanbanBoard'
-    || name === 'UpdateKanbanBoard'
-    || name === 'DeleteKanbanBoard';
 }

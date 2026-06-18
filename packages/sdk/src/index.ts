@@ -35,7 +35,6 @@ export { createEditorApi } from './modules/editor';
 export { createLlmApi } from './modules/llm';
 export { createWorkflowApi } from './modules/workflow';
 export { createWorkflowPluginApi } from './modules/workflow-plugin';
-export { createKanbanApi } from './modules/kanban';
 export { createKnowledgeBaseApi } from './modules/knowledge-base';
 export { createWorktreeApi } from './modules/worktree';
 export { createHooksApi } from './modules/hooks';
@@ -80,7 +79,6 @@ import { createEditorApi } from './modules/editor';
 import { createLlmApi } from './modules/llm';
 import { createWorkflowApi } from './modules/workflow';
 import { createWorkflowPluginApi } from './modules/workflow-plugin';
-import { createKanbanApi } from './modules/kanban';
 import { createKnowledgeBaseApi } from './modules/knowledge-base';
 import { createWorktreeApi } from './modules/worktree';
 import { createHooksApi } from './modules/hooks';
@@ -128,7 +126,6 @@ export interface SDK {
   readonly llm: ReturnType<typeof createLlmApi>;
   readonly workflow: ReturnType<typeof createWorkflowApi>;
   readonly workflowPlugin: ReturnType<typeof createWorkflowPluginApi>;
-  readonly kanban: ReturnType<typeof createKanbanApi>;
   readonly knowledgeBase: ReturnType<typeof createKnowledgeBaseApi>;
   readonly worktree: ReturnType<typeof createWorktreeApi>;
   readonly hooks: ReturnType<typeof createHooksApi>;
@@ -184,7 +181,6 @@ export function createSDK(config: SDKConfig): SDK {
     llm: createLlmApi(http),
     workflow: createWorkflowApi(http),
     workflowPlugin: createWorkflowPluginApi(http),
-    kanban: createKanbanApi(http),
     knowledgeBase: createKnowledgeBaseApi(http),
     worktree: createWorktreeApi(http),
     hooks: createHooksApi(http),

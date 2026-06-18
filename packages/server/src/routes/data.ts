@@ -10,7 +10,6 @@ import multer from 'multer';
 import { getDataDir } from '../storage/json-store.js';
 import * as agentStore from '../storage/agent-store.js';
 import * as databaseStore from '../storage/database-store.js';
-import * as kanbanStore from '../storage/kanban-store.js';
 import type { FileNode } from '@agent-spaces/shared';
 
 const router = Router();
@@ -84,7 +83,6 @@ const CATEGORIES: Record<string, { path: string; label: string; group: string }>
   'llm':                { path: 'llm',                     label: 'LLM Models & Providers', group: 'ai' },
   'agents':             { path: 'agents',                  label: 'Agent Usage',           group: 'content' },
   'database':           { path: 'database',                label: 'Document Database',     group: 'content' },
-  'kanban':             { path: 'kanban',                  label: 'Kanban Boards',         group: 'content' },
   'output-styles':      { path: 'output-styles',           label: 'Output Styles',         group: 'customization' },
   'prompt-templates':   { path: 'prompt-templates',        label: 'Prompt Templates',      group: 'customization' },
   'subscriptions':      { path: 'subscriptions',           label: 'Subscriptions',         group: 'billing' },
@@ -307,7 +305,6 @@ router.post('/import/execute', (req, res) => {
       // Close SQLite connections before overwriting
       if (categoryKey === 'agents') agentStore.closeDb();
       else if (categoryKey === 'database') databaseStore.closeDb();
-      else if (categoryKey === 'kanban') kanbanStore.closeDb();
 
       if (statSync(srcPath).isDirectory()) {
         if (existsSync(destPath)) rmSync(destPath, { recursive: true, force: true });
