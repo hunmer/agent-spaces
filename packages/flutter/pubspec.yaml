@@ -113,6 +113,9 @@ flutter:
     - assets/web/settings/agents/
     - assets/web/settings/agents/__next.settings/
     - assets/web/settings/agents/__next.settings/agents/
+    - assets/web/settings/data-files/
+    - assets/web/settings/data-files/__next.settings/
+    - assets/web/settings/data-files/__next.settings/data-files/
     - assets/web/settings/mcps/
     - assets/web/settings/mcps/__next.settings/
     - assets/web/settings/mcps/__next.settings/mcps/

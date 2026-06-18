@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -13,6 +13,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { setToken } from "@/lib/auth"
+import { loginRedirectUrl } from "@/lib/routes"
 import { sdk } from "@/lib/sdk"
 import { tauriNavigate } from "@/lib/navigate"
 import {
@@ -30,6 +31,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"form">) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations("login")
   const [secret, setSecret] = useState("")
   const [error, setError] = useState("")
@@ -44,7 +46,7 @@ export function LoginForm({
     try {
       const data = await sdk.auth.login(secret)
       setToken(data.token)
-      tauriNavigate(router, "/")
+      tauriNavigate(router, loginRedirectUrl(searchParams.toString()))
     } catch (err) {
       console.error("[login] network error", err)
       setError(err instanceof Error ? err.message : t("networkError"))

@@ -8,6 +8,33 @@ export function isLoginPath(pathname: string): boolean {
   return normalizeAppPath(pathname) === "/login";
 }
 
+function isSafeInternalHref(href: string): boolean {
+  return href.startsWith("/") && !href.startsWith("//");
+}
+
+export function currentRefUrl(): string {
+  if (typeof window === "undefined") return "/";
+
+  const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (!isSafeInternalHref(href) || isLoginPath(window.location.pathname)) return "/";
+  return href;
+}
+
+export function loginHrefWithRef(refUrl = currentRefUrl()): string {
+  const query = new URLSearchParams();
+  if (isSafeInternalHref(refUrl) && !isLoginPath(refUrl.split(/[?#]/, 1)[0])) {
+    query.set("ref_url", refUrl);
+  }
+  return `/login${query.toString() ? `?${query.toString()}` : ""}`;
+}
+
+export function loginRedirectUrl(search: string): string {
+  const refUrl = new URLSearchParams(search).get("ref_url");
+  if (!refUrl || !isSafeInternalHref(refUrl)) return "/";
+  if (isLoginPath(refUrl.split(/[?#]/, 1)[0])) return "/";
+  return refUrl;
+}
+
 export function isWorkspacePath(pathname: string): boolean {
   return normalizeAppPath(pathname).startsWith("/workspace/");
 }

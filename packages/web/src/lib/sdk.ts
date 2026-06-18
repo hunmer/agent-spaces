@@ -10,7 +10,7 @@ import { createSDK } from '@agent-spaces/sdk';
 import type { SDK } from '@agent-spaces/sdk';
 import { getToken, removeToken } from './auth';
 import { getActiveServerUrl } from './server';
-import { isLoginPath } from './routes';
+import { isLoginPath, loginHrefWithRef } from './routes';
 import { toStaticHref } from './navigate';
 
 let _sdk: SDK | null = null;
@@ -22,7 +22,7 @@ function createWebSDK(): SDK {
     onUnauthorized: () => {
       removeToken();
       if (typeof window !== 'undefined' && !isLoginPath(window.location.pathname)) {
-        window.location.replace(toStaticHref('/login'));
+        window.location.replace(toStaticHref(loginHrefWithRef()));
       }
     },
     debug: typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug'),

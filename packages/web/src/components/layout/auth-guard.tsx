@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { isAuthenticated, removeToken } from "@/lib/auth";
 import { tauriNavigate } from "@/lib/navigate";
-import { isLoginPath } from "@/lib/routes";
+import { isLoginPath, loginHrefWithRef } from "@/lib/routes";
 import { getActiveServer } from "@/lib/server";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw, Settings } from "lucide-react";
@@ -27,7 +27,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     if (!isAuthenticated()) {
-      tauriNavigate(router, "/login", true);
+      tauriNavigate(router, loginHrefWithRef(), true);
       return;
     }
 
@@ -38,7 +38,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           setState("ok");
         } else {
           removeToken();
-          tauriNavigate(router, "/login", true);
+          tauriNavigate(router, loginHrefWithRef(), true);
         }
       })
       .catch(() => {
@@ -79,7 +79,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
               size="sm"
               onClick={() => {
                 removeToken();
-                tauriNavigate(router, "/login", true);
+                tauriNavigate(router, loginHrefWithRef(), true);
               }}
             >
               <Settings className="size-4 mr-1" />
