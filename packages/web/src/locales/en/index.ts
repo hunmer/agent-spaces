@@ -11,7 +11,6 @@ import folderPicker from './folderPicker.json';
 import git from './git.json';
 import home from './home.json';
 import issue from './issue.json';
-import kanban from './kanban.json';
 import knowledgeBase from './knowledgeBase.json';
 import login from './login.json';
 import mcps from './mcps.json';
@@ -32,7 +31,7 @@ import workspace from './workspace.json';
 import workspaces from './workspaces.json';
 import worktree from './worktree.json';
 import workflows from './workflows.json';
-import workflowsUi from './mini-apps.json';
+import miniApp from './mini-apps.json';
 
 const messages = {
   agent,
@@ -48,7 +47,6 @@ const messages = {
   git,
   home,
   issue,
-  kanban,
   knowledgeBase,
   login,
   mcps,
@@ -69,7 +67,7 @@ const messages = {
   workspaces,
   worktree,
   workflows,
-  'mini-apps': workflowsUi,
+  'mini-apps': miniApp,
 };
 
 export default messages;

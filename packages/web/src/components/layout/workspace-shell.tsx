@@ -81,10 +81,6 @@ const InspectorActionDialog = dynamic(() => import("@/components/editor/inspecto
   ssr: false,
   loading: () => null,
 });
-const KanbanBoard = dynamic(() => import("@/components/kanban/kanban-board").then((mod) => mod.default), {
-  ssr: false,
-  loading: panelLoader,
-});
 const WorktreePanel = dynamic(() => import("@/components/worktree/worktree-panel").then((mod) => mod.WorktreePanel), {
   ssr: false,
   loading: panelLoader,
@@ -149,7 +145,6 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Code Editor", component: "code-editor", id: "code-editor" },
           { type: "tab", name: "Chat", component: "chat", id: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
-          { type: "tab", name: "Kanban", component: "kanban", id: "kanban" },
         ],
       },
     ],
@@ -497,8 +492,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <WorktreePanel workspaceId={workspaceId} />;
         case "activity-log":
           return <ActivityLogPanel workspaceId={workspaceId} />;
-        case "kanban":
-          return <KanbanBoard workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }
@@ -618,8 +611,6 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
     case "code-favorites":
       return <CodeFavoritesPanel workspaceId={workspaceId} />;
-    case "kanban":
-      return <KanbanBoard workspaceId={workspaceId} />;
     default:
       return <ChannelList workspaceId={workspaceId} />;
   }

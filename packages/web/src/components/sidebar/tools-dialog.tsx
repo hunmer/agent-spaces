@@ -21,7 +21,6 @@ import {
   Hash,
   Terminal,
   Database,
-  LayoutGrid,
   Workflow,
   Files,
   Search,
@@ -51,10 +50,6 @@ const TOOL_CATEGORIES: Record<string, { keys: string[]; icon: typeof Hash }> = {
   database: {
     keys: ['ListDatabases', 'ListDatabaseNodes', 'SearchDatabaseNodes', 'QueryDatabaseVectors', 'ReadDatabaseNode', 'ListDatabaseNodeVersions', 'CreateDatabaseNode', 'WriteDatabaseNode', 'DeleteDatabaseNode', 'MoveDatabaseNode', 'UpdateDatabaseNodeMeta'],
     icon: Database,
-  },
-  kanban: {
-    keys: ['ListKanbanBoards', 'ViewKanbanBoard', 'CreateKanbanBoard', 'UpdateKanbanBoard', 'DeleteKanbanBoard'],
-    icon: LayoutGrid,
   },
   files: {
     keys: ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'WriteWorkspaceFile', 'DeleteWorkspacePath', 'MoveWorkspacePath'],
