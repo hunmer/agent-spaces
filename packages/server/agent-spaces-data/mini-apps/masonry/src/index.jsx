@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 /**
  * Masonry 瀑布流组件 Demo
@@ -36,6 +36,7 @@ function makeItem() {
     aspect: ASPECTS[counter % ASPECTS.length],
     colSpan: counter % 7 === 0 ? 2 : 1, // 每第 7 个跨两列
     lazy: true, // 进入视窗才渲染（演示懒加载）
+    resizable: counter % 2 === 0, // 一半卡片可点击随机切换大小
     hue: (counter * 47) % 360,
   };
 }
@@ -49,6 +50,7 @@ function App() {
   const [sortMode, setSortMode] = useState('none');
   const [animate, setAnimate] = useState(true);
   const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
 
   const hasMore = items.length < 60;
 
@@ -80,16 +82,35 @@ function App() {
   const removeFirst = () => setItems((prev) => prev.slice(1)); // 演示出场动画
   const reset = () => { counter = 0; setItems(initialItems(12)); };
 
+  // 点击切换大小：随机换 aspect + 偶尔跨2列 + 换色，触发 layout 过渡动画
+  const toggleSize = (id) => {
+    setItems((prev) => prev.map((it) => {
+      if (it.id !== id) return it;
+      const others = ASPECTS.filter((a) => a !== it.aspect);
+      return {
+        ...it,
+        aspect: others[Math.floor(Math.random() * others.length)],
+        colSpan: Math.random() < 0.3 ? 2 : 1,
+        hue: (it.hue + 60) % 360,
+      };
+    }));
+  };
+
   // 1. 自定义 item 内容（零外网依赖的渐变卡片）
   const renderItem = (item) => (
     <div
+      onClick={item.resizable ? () => toggleSize(item.id) : undefined}
       className="group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-xl border border-white/20 p-3 text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-      style={{ background: `linear-gradient(140deg, hsl(${item.hue} 70% 62%), hsl(${(item.hue + 45) % 360} 68% 45%))` }}
+      style={{
+        background: `linear-gradient(140deg, hsl(${item.hue} 70% 62%), hsl(${(item.hue + 45) % 360} 68% 45%))`,
+        cursor: item.resizable ? 'pointer' : 'default',
+      }}
     >
       <div className="flex flex-wrap gap-1">
         {item.colSpan === 2 && <Badge variant="secondary" className="bg-white/85">跨2列</Badge>}
         <Badge variant="secondary" className="bg-white/70">{item.aspect}</Badge>
         {item.lazy && <Badge variant="secondary" className="bg-black/30 text-white">lazy</Badge>}
+        {item.resizable && <Badge variant="secondary" className="bg-white/95 text-black">↕ 换大小</Badge>}
       </div>
 
       <div className="flex flex-1 items-center justify-center py-2">
@@ -110,9 +131,9 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen bg-muted/30 p-4">
-      {/* 控制面板 */}
-      <div className="sticky top-0 z-20 mb-4 rounded-xl border bg-background/90 p-3 shadow-sm backdrop-blur">
+    <div className="flex flex-col bg-muted/30 p-4" style={{ height: '100vh' }}>
+      {/* 控制面板（固定，不滚动） */}
+      <div className="mb-4 shrink-0 rounded-xl border bg-background p-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex items-center gap-2">
             <span className="w-16 text-sm font-medium">列数 {columns}</span>
@@ -165,27 +186,30 @@ function App() {
           </div>
         </div>
         <div className="mt-2 text-xs text-muted-foreground">
-          共 {items.length} 项 · 滚动到底部自动加载 · 跨2列/比例按规则分配 · 排序与列数变化平滑过渡 · 删除触发出场动画
+          共 {items.length} 项 · 滚动到底部自动加载 · 点击「↕ 换大小」卡片随机切换尺寸 · 排序/列数变化平滑过渡 · 删除触发出场动画
         </div>
       </div>
 
-      {/* 瀑布流 */}
-      <Masonry
-        data={items}
-        renderItem={renderItem}
-        getKey={getKey}
-        getMeta={getMeta}
-        columns={columns}
-        gap={gap}
-        sortBy={sortBy}
-        enterAnimation={animate}
-        exitAnimation={animate}
-        hasMore={hasMore}
-        loading={loading}
-        onLoadMore={loadMore}
-        loadMoreThreshold={300}
-        lazyRootMargin="200px"
-      />
+      {/* 瀑布流：滚动容器用内联 style（overflow / 任意值 class 在 mini-app 不一定被编译，见 mini-app-faq.md） */}
+      <div ref={scrollRef} className="flex-1" style={{ overflowY: 'auto', minHeight: 0 }}>
+        <Masonry
+          data={items}
+          renderItem={renderItem}
+          getKey={getKey}
+          getMeta={getMeta}
+          columns={columns}
+          gap={gap}
+          sortBy={sortBy}
+          enterAnimation={animate}
+          exitAnimation={animate}
+          hasMore={hasMore}
+          loading={loading}
+          onLoadMore={loadMore}
+          scrollContainerRef={scrollRef}
+          loadMoreThreshold={300}
+          lazyRootMargin="200px"
+        />
+      </div>
     </div>
   );
 }

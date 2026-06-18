@@ -285,9 +285,9 @@ export function Masonry<T>(props: MasonryProps<T>) {
 
   const { ref: containerRef, width } = useResizeWidth<HTMLDivElement>()
 
-  const keyExtractor = React.useCallback<MasonryProps<T>["getKey"]>(
-    (item, index) =>
-      getKey ? getKey(item, index) : (item as any)?.id ?? index,
+  const keyExtractor = React.useCallback(
+    (item: T, index: number): string | number =>
+      getKey ? getKey(item, index) : ((item as any)?.id ?? index),
     [getKey]
   )
 
@@ -392,9 +392,11 @@ export function Masonry<T>(props: MasonryProps<T>) {
                 : { opacity: 0 }
             }
             transition={
-              i < colCount
-                ? { ...enterTransition, delay: i * staggerDelay }
-                : enterTransition
+              enterEnabled
+                ? i < colCount
+                  ? { ...enterTransition, delay: i * staggerDelay }
+                  : enterTransition
+                : { duration: 0 }
             }
             style={{
               position: "absolute",
