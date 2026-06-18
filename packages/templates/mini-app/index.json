@@ -4,24 +4,24 @@
     "name": "ai_image_video",
     "type": "react",
     "icon": "📷",
-    "hasIntro": false,
+    "hasIntro": true,
     "version": "1.0.0",
     "tags": [],
     "zipUrl": "mini-app/ai_image_video.zip",
-    "md5": "b25b2654cc445f5c5f17149282146167",
-    "updatedAt": "2026-06-16T03:57:33.689Z"
+    "md5": "3c663e9170aa181ec9f07700d3887b6a",
+    "updatedAt": "2026-06-18T06:22:34.562Z"
   },
   {
     "id": "ai_music",
     "name": "ai_music",
     "type": "react",
     "icon": "🎵",
-    "hasIntro": false,
+    "hasIntro": true,
     "version": "1.0.0",
     "tags": [],
     "zipUrl": "mini-app/ai_music.zip",
-    "md5": "c0f257fb6003695771d16cfb41d62e8f",
-    "updatedAt": "2026-06-16T03:57:33.698Z"
+    "md5": "d3da2f753602e206240bef14652955fc",
+    "updatedAt": "2026-06-18T06:22:34.575Z"
   },
   {
     "id": "copywriting",
@@ -29,37 +29,67 @@
     "type": "react",
     "icon": "✍️",
     "description": "文案库",
-    "hasIntro": false,
+    "hasIntro": true,
     "version": "1.0.0",
     "tags": [],
     "zipUrl": "mini-app/copywriting.zip",
-    "md5": "ac59766d402fe6250a20ab5a90859816",
-    "updatedAt": "2026-06-14T13:16:37.017Z"
+    "md5": "cde5b7b52258000804c2717fc1beb13d",
+    "updatedAt": "2026-06-18T09:04:17.059Z"
   },
   {
-    "id": "kanban",
-    "name": "看板",
+    "id": "cover-generator",
+    "name": "封面制作工具",
     "type": "react",
-    "icon": "📋",
-    "description": "看板（分区+卡片+拖拽，多端同步）",
+    "icon": "🖼️",
+    "description": "上传参考图并通过工作流生成封面图",
     "hasIntro": false,
     "version": "1.0.0",
-    "tags": [],
-    "zipUrl": "mini-app/kanban.zip",
-    "md5": "860fddb15bcc9dce908c77c27a0cb70e",
-    "updatedAt": "2026-06-18T10:16:14.000Z"
+    "tags": [
+      "封面",
+      "图片生成",
+      "工作流"
+    ],
+    "zipUrl": "mini-app/cover-generator.zip",
+    "md5": "3a8bbe9393b309a9c865b19af4c9b43f",
+    "updatedAt": "2026-06-18T06:22:34.593Z"
   },
   {
     "id": "database-demo",
     "name": "database-demo",
     "type": "react",
     "icon": "💻",
-    "hasIntro": false,
+    "hasIntro": true,
     "version": "1.0.0",
     "tags": [],
     "zipUrl": "mini-app/database-demo.zip",
-    "md5": "7d6a04c98ef7150c7bea44966bf0228a",
-    "updatedAt": "2026-06-14T13:16:37.018Z"
+    "md5": "db5ec124304050a92d1371c6bfd3846a",
+    "updatedAt": "2026-06-18T06:22:34.601Z"
+  },
+  {
+    "id": "kanban",
+    "name": "kanban",
+    "type": "react",
+    "icon": "📋",
+    "description": "看板",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [
+      "productivity"
+    ],
+    "zipUrl": "mini-app/kanban.zip",
+    "md5": "b7cf7625611ade1df61171396a210a0f",
+    "updatedAt": "2026-06-18T06:22:34.608Z"
+  },
+  {
+    "id": "notion-database",
+    "name": "notion-database",
+    "type": "react",
+    "hasIntro": false,
+    "version": "1.0.0",
+    "tags": [],
+    "zipUrl": "mini-app/notion-database.zip",
+    "md5": "5fe9ef75e059e35461437f2c3ead3d7a",
+    "updatedAt": "2026-06-18T06:22:34.619Z"
   },
   {
     "id": "podcast_generator",
@@ -85,22 +115,22 @@
     "type": "react",
     "icon": "🗣️",
     "description": "配音界面",
-    "hasIntro": false,
+    "hasIntro": true,
     "version": "1.0.0",
     "tags": [],
     "zipUrl": "mini-app/tts.zip",
-    "md5": "5549cfe44e770dab13091bdde9365443",
-    "updatedAt": "2026-06-14T13:16:37.023Z"
+    "md5": "30aa2c056ac17fd3b3054d1d6268d4e6",
+    "updatedAt": "2026-06-18T06:22:34.641Z"
   },
   {
     "id": "ui-demo",
     "name": "ui-demo",
     "type": "react",
-    "hasIntro": false,
+    "hasIntro": true,
     "version": "1.0.0",
     "tags": [],
     "zipUrl": "mini-app/ui-demo.zip",
-    "md5": "336f8cbb73552edb11faa3c232b963d5",
-    "updatedAt": "2026-06-14T13:16:37.026Z"
+    "md5": "14a1fa27ab3ade03e228ed58cf1ba50b",
+    "updatedAt": "2026-06-18T06:22:34.652Z"
   }
 ]

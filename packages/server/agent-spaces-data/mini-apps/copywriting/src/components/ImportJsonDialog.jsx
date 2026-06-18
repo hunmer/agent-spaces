@@ -130,11 +130,20 @@ export default function ImportJsonDialog({ open, onOpenChange, onImport, onImpor
                 <span className="shrink-0">{current}/{total}（{percent}%）</span>
               </div>
               {phase === 'done' && (
-                <p className="text-xs text-muted-foreground">
-                  成功 {total - failed.length} 条
-                  {failed.length ? `，失败 ${failed.length} 条：${failed.map((f) => f.title).join('、')}` : '。'}
-                  {!failed.length && ' 可在「存储设置」中扫描入库。'}
-                </p>
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    成功 {total - failed.length} 条
+                    {failed.length ? `，失败 ${failed.length} 条：` : '。'}
+                    {!failed.length && ' 可在「存储设置」中扫描入库。'}
+                  </p>
+                  {failed.length > 0 && (
+                    <ul className="space-y-1 text-xs text-destructive">
+                      {failed.map((f, i) => (
+                        <li key={i} className="break-all">{f.title}：{f.error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </div>
           )}
