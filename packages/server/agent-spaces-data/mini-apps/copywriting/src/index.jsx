@@ -19,7 +19,7 @@ import { softColorFromSeed } from './utils/colors';
 import { BUILTIN_PLUGIN, stripThink, normalizeKnowledgeBaseMatches, knowledgeMatchToPromptText } from './utils/creation';
 import CreationSkeletonCard from './components/CreationSkeletonCard';
 
-const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge, Trash2, ChevronLeft, ChevronRight } = window.AgentSpacesUI;
+const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge, Trash2, ChevronLeft, ChevronRight, Masonry } = window.AgentSpacesUI;
 
 const { getUserSetting, saveUserSettings } = window.AgentSpaces;
 
@@ -38,14 +38,23 @@ export default function App() {
   const [creationSourceMode, setCreationSourceMode] = useState('group');
   const [page, setPage] = useState(1);
   const listRef = useRef(null);
-  const gridRef = useRef(null);
-  const [gridColumns, setGridColumns] = useState(1);
 
   const [referenceGroups, setReferenceGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
   const [referenceDialogItemId, setReferenceDialogItemId] = useState('');
   const [referenceItems, setReferenceItems] = useState([]);
+
+  // 瀑布流卡片展开/折叠（受控）：展开态占更大格子高度，点击卡片在两档尺寸间切换
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const toggleExpand = useCallback((id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      const key = String(id);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   const [creationAgentMeta, setCreationAgentMeta] = useState(null);
   const [creationInput, setCreationInput] = useState('');
@@ -419,20 +428,26 @@ export default function App() {
     if (listRef.current) listRef.current.scrollTop = 0;
   }, []);
 
-  // 瀑布流列数 = 容器宽度 / 250 向下取整（响应式），至少 1 列
-  useEffect(() => {
-    if (!dbq.ready) return;
-    const el = gridRef.current;
-    if (!el) return;
-    const update = () => {
-      const n = Math.max(1, Math.floor(el.clientWidth / 250));
-      setGridColumns((prev) => (prev === n ? prev : n));
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [dbq.ready]);
+  // 瀑布流布局元信息：折叠 1×1，展开 2×2（跨 2 列 + 2 行单元）；列数由 Masonry 响应式断点决定
+  const getMeta = useCallback((item) => (
+    expandedIds.has(String(item.id))
+      ? { colSpan: 2, rowSpan: 2 }
+      : { colSpan: 1, rowSpan: 1 }
+  ), [expandedIds]);
+
+  const renderCard = (item) => (
+    <CopywritingCard
+      item={item}
+      expanded={expandedIds.has(String(item.id))}
+      onToggleExpand={toggleExpand}
+      onEdit={openEdit}
+      onPlay={setPlaying}
+      onRetry={(it) => it.oss_url && runTranscribe(it.id, it.oss_url, it.title, it.type)}
+      onDelete={handleDelete}
+      onCopy={handleCopy}
+      onAddToReference={handleAddToReference}
+    />
+  );
 
   const clearFilter = () => setFilter({ ...DEFAULT_FILTER });
 
@@ -456,11 +471,9 @@ export default function App() {
         {viewMode === 'manage' ? (
           <>
             {/* mini-app 在宿主 document 内直接渲染，不走 Tailwind JIT 扫描，
-                任意值 / 响应式 class 不会被编译，故用内联 <style> 定义滚动容器与两列瀑布流 */}
+                任意值 / 响应式 class 不会被编译，故用内联 <style> 定义滚动容器样式 */}
             <style>{`
               .cw-scroll{max-height:calc(100vh - 125px);overflow-y:auto;padding-right:.25rem}
-              .cw-grid{column-gap:.75rem}
-              .cw-grid>*{break-inside:avoid}
             `}</style>
             <div className="mt-4 cw-scroll" ref={listRef} style={totalPages > 1 ? { maxHeight: 'calc(100vh - 185px)' } : undefined}>
             {!dbq.ready ? (
@@ -474,20 +487,18 @@ export default function App() {
                 <p className="text-xs text-muted-foreground">点击「新建文案」开始</p>
               </div>
             ) : (
-              <div className="cw-grid" ref={gridRef} style={{ columnCount: gridColumns }}>
-                {pagedItems.map((it) => (
-                  <CopywritingCard
-                    key={it.id}
-                    item={it}
-                    onEdit={openEdit}
-                    onPlay={setPlaying}
-                    onRetry={(item) => item.oss_url && runTranscribe(item.id, item.oss_url, item.title, item.type)}
-                    onDelete={handleDelete}
-                    onCopy={handleCopy}
-                    onAddToReference={handleAddToReference}
-                  />
-                ))}
-              </div>
+              <Masonry
+                data={pagedItems}
+                renderItem={renderCard}
+                getKey={(it) => it.id}
+                getMeta={getMeta}
+                columns={{ base: 1, sm: 2, md: 3, lg: 4 }}
+                gap={12}
+                rowHeight={240}
+                enterAnimation={false}
+                exitAnimation={false}
+                scrollContainerRef={listRef}
+              />
             )}
           </div>
           {totalPages > 1 && (

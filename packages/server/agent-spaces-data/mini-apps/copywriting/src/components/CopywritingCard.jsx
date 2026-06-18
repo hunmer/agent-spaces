@@ -1,4 +1,3 @@
-import { useState } from 'react';
 const { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } = window.AgentSpacesUI;
 const { FileAudio, FileVideo, FileText, Play, RefreshCw, Loader2, Database, MoreHorizontal, Copy, Trash2, PlusCircle, Pencil } = window.AgentSpacesUI;
 
@@ -24,8 +23,12 @@ function fmtDate(ts) {
   try { return new Date(ts).toLocaleString('zh-CN'); } catch { return ''; }
 }
 
+// 卡片高度由父级 Masonry 的 getMeta 决定（折叠/展开两档），expanded 受控：
+// 点击卡片在两档尺寸间切换，折叠态 line-clamp 截断，展开态内容区可滚动看全文。
 export default function CopywritingCard({
   item,
+  expanded,
+  onToggleExpand,
   onEdit,
   onPlay,
   onRetry,
@@ -33,7 +36,6 @@ export default function CopywritingCard({
   onCopy,
   onAddToReference,
 }) {
-  const [expanded, setExpanded] = useState(false);
   const meta = TYPE_META[item.type] || TYPE_META.text;
   const kb = KB_STATUS[item.kb_status || 'pending'] || KB_STATUS.pending;
   const { Icon } = meta;
@@ -45,10 +47,10 @@ export default function CopywritingCard({
 
   return (
     <div
-      className={`break-inside-avoid mb-3 rounded-lg border bg-card text-card-foreground p-3 cursor-pointer hover:border-primary/50 transition-colors ${expanded ? 'border-primary ring-1 ring-primary/30' : ''}`}
-      onClick={() => setExpanded((v) => !v)}
+      className={`flex h-full w-full flex-col rounded-lg border bg-card text-card-foreground p-3 cursor-pointer hover:border-primary/50 transition-colors ${expanded ? 'border-primary ring-1 ring-primary/30' : ''}`}
+      onClick={() => onToggleExpand(item.id)}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="size-4 shrink-0 text-muted-foreground" />
           <span className="font-medium truncate">{item.title}</span>
@@ -80,11 +82,10 @@ export default function CopywritingCard({
       </div>
 
       <div
-        className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap"
-        style={
-          expanded
-            ? undefined
-            : { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 10, overflow: 'hidden' }
+        className="mt-2 flex-1 min-h-0 text-sm text-muted-foreground whitespace-pre-wrap"
+        style={expanded
+          ? { overflowY: 'auto', paddingRight: '0.25rem' }
+          : { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 8, overflow: 'hidden' }
         }
       >
         {transcribing ? (
@@ -96,14 +97,14 @@ export default function CopywritingCard({
         ) : preview ? preview : <span className="opacity-60">（无内容）</span>}
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="mt-2 flex flex-wrap gap-1 shrink-0">
         <Badge variant="outline" className={`text-xs gap-1 ${kb.className}`} title={item.kb_error || ''}>
           <Database className="size-3" />{kb.label}
         </Badge>
         {tags.map((t) => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-2">
+      <div className="mt-2 flex items-center justify-between gap-2 shrink-0">
         <span className="text-xs text-muted-foreground">{fmtDate(item.created_at)}</span>
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {isMedia && item.media_url && !transcribing && (
