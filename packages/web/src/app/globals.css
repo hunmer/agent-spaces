@@ -804,6 +804,33 @@
   width: 380px;
 }
 
+.workflow-variable-suggestion-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  background: var(--popover);
+}
+
+.workflow-variable-suggestion-tab {
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 3px);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+.workflow-variable-suggestion-tab:hover,
+.workflow-variable-suggestion-tab[data-active='true'] {
+  border-color: var(--border);
+  color: var(--foreground);
+  background: var(--accent);
+}
+
 .workflow-variable-suggestion-list {
   max-height: 320px;
 }

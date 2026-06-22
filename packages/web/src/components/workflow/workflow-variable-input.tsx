@@ -28,11 +28,13 @@ import { WorkflowNodeDefinitionIcon, type WorkflowNodeIconDefinition } from './w
 import { PluginIcon } from './workflow-plugin-icon';
 
 type EditorRange = { from: number; to: number };
+type VariableSuggestionCategory = 'workflow-input' | 'workflow-variable' | 'node-input' | 'node-output' | 'loop' | 'plugin-config';
 type VariableSuggestionItem = {
   id: string;
   title: string;
   description: string;
   path: string;
+  category: VariableSuggestionCategory;
   type?: OutputField['type'] | PluginConfigField['type'];
   groupIcon?: 'workflow' | 'variable' | 'loop' | 'plugin';
   nodeIconDefinition?: WorkflowNodeIconDefinition;
@@ -284,6 +286,7 @@ function pushFieldItems(
   fields: VariableField[],
   buildPath: (fieldPath: string) => string,
   group: string,
+  category: VariableSuggestionCategory,
   typeFilter: OutputField['type'][],
   groupMeta: Pick<VariableSuggestionItem, 'groupIcon' | 'nodeIconDefinition' | 'pluginIconSource'> = {},
   parentPath?: string,
@@ -297,6 +300,7 @@ function pushFieldItems(
         title: fieldPath,
         description: group,
         path,
+        category,
         type: field.type,
         ...groupMeta,
       });
@@ -313,6 +317,7 @@ function pushFieldItems(
           title: childPath,
           description: group,
           path: childVariablePath,
+          category,
           type: childType,
           ...groupMeta,
         });
@@ -320,7 +325,7 @@ function pushFieldItems(
     }
 
     if (field.children?.length) {
-      pushFieldItems(items, field.children, buildPath, group, typeFilter, groupMeta, fieldPath);
+      pushFieldItems(items, field.children, buildPath, group, category, typeFilter, groupMeta, fieldPath);
     }
   }
 }
@@ -361,18 +366,19 @@ function buildVariableSuggestionItems({
       getNodeInputFields(workflowInputNode),
       (fieldPath) => buildVariablePath(workflowInputNode.id, fieldPath),
       'workflow input',
+      'workflow-input',
       normalizedTypeFilter,
       { nodeIconDefinition: getNodeDefinition(workflowInputNode.type) },
     );
   }
 
-  pushFieldItems(items, variables, buildEnvPath, 'workflow variable', normalizedTypeFilter, { groupIcon: 'variable' });
+  pushFieldItems(items, variables, buildEnvPath, 'workflow variable', 'workflow-variable', normalizedTypeFilter, { groupIcon: 'variable' });
 
   for (const node of otherNodes.filter((item) => item.type !== 'start' && item.type !== 'end')) {
     const nodeLabel = getNodeLabel(node);
     const nodeIconDefinition = getNodeDefinition(node.type);
-    pushFieldItems(items, getNodeInputFields(node), (fieldPath) => buildInputFieldPath(node.id, fieldPath), `${nodeLabel} input`, normalizedTypeFilter, { nodeIconDefinition });
-    pushFieldItems(items, getNodeOutputs(node), (fieldPath) => buildVariablePath(node.id, fieldPath), `${nodeLabel} output`, normalizedTypeFilter, { nodeIconDefinition });
+    pushFieldItems(items, getNodeInputFields(node), (fieldPath) => buildInputFieldPath(node.id, fieldPath), `${nodeLabel} input`, 'node-input', normalizedTypeFilter, { nodeIconDefinition });
+    pushFieldItems(items, getNodeOutputs(node), (fieldPath) => buildVariablePath(node.id, fieldPath), `${nodeLabel} output`, 'node-output', normalizedTypeFilter, { nodeIconDefinition });
   }
 
   if (isInLoopBody && loopParentNode) {
@@ -384,7 +390,7 @@ function buildVariableSuggestionItems({
       ? loopParentNode.data.sharedVariables as OutputField[]
       : [];
     loopFields.push(...mapLoopSharedVariables(sharedVariables));
-    pushFieldItems(items, loopFields, buildLoopVariablePath, 'loop', normalizedTypeFilter, { nodeIconDefinition: getNodeDefinition(loopParentNode.type) });
+    pushFieldItems(items, loopFields, buildLoopVariablePath, 'loop', 'loop', normalizedTypeFilter, { nodeIconDefinition: getNodeDefinition(loopParentNode.type) });
   }
 
   for (const plugin of plugins) {
@@ -396,6 +402,7 @@ function buildVariableSuggestionItems({
         title: `${plugin.name}.${field.label || field.key}`,
         description: 'plugin config',
         path,
+        category: 'plugin-config',
         type: field.type,
         groupIcon: 'plugin',
         pluginIconSource: plugin.iconPath
@@ -446,6 +453,15 @@ type WorkflowVariableSuggestionListProps = {
   items: VariableSuggestionItem[];
   command: (item: VariableSuggestionItem) => void;
 };
+
+const VARIABLE_SUGGESTION_CATEGORIES: Array<{ value: VariableSuggestionCategory; label: string }> = [
+  { value: 'workflow-input', label: '工作流输入' },
+  { value: 'workflow-variable', label: '工作流变量' },
+  { value: 'node-input', label: '节点输入' },
+  { value: 'node-output', label: '节点输出' },
+  { value: 'plugin-config', label: '配置属性' },
+  { value: 'loop', label: '循环变量' },
+];
 
 function groupVariableSuggestionItems(items: VariableSuggestionItem[]) {
   const groups: Array<{
@@ -504,13 +520,28 @@ const WorkflowVariableSuggestionList = forwardRef<
   WorkflowVariableSuggestionListRef,
   WorkflowVariableSuggestionListProps
 >(function WorkflowVariableSuggestionList({ items, command }, ref) {
+  const availableCategories = useMemo(() => {
+    const itemCategories = new Set(items.map((item) => item.category));
+    return VARIABLE_SUGGESTION_CATEGORIES.filter((category) => itemCategories.has(category.value));
+  }, [items]);
+  const [activeCategory, setActiveCategory] = useState<VariableSuggestionCategory | 'all'>('all');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
-  const groupedItems = useMemo(() => groupVariableSuggestionItems(items), [items]);
+  const visibleItems = useMemo(() => (
+    activeCategory === 'all' ? items : items.filter((item) => item.category === activeCategory)
+  ), [activeCategory, items]);
+  const groupedItems = useMemo(() => groupVariableSuggestionItems(visibleItems), [visibleItems]);
+
+  useEffect(() => {
+    setActiveCategory((current) => {
+      if (current === 'all') return current;
+      return availableCategories.some((category) => category.value === current) ? current : 'all';
+    });
+  }, [availableCategories]);
 
   useEffect(() => {
     setSelectedIndex(0);
-  }, [items]);
+  }, [activeCategory, items]);
 
   useEffect(() => {
     listRef.current
@@ -519,23 +550,23 @@ const WorkflowVariableSuggestionList = forwardRef<
   }, [selectedIndex]);
 
   const selectItem = useCallback((index: number) => {
-    const item = items[index];
+    const item = visibleItems[index];
     if (item) command(item);
-  }, [items, command]);
+  }, [visibleItems, command]);
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }) => {
-      if (!items.length) return false;
+      if (!visibleItems.length) return false;
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        setSelectedIndex((prev) => (prev + items.length - 1) % items.length);
+        setSelectedIndex((prev) => (prev + visibleItems.length - 1) % visibleItems.length);
         return true;
       }
 
       if (event.key === 'ArrowDown' || event.key === 'Tab') {
         event.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % items.length);
+        setSelectedIndex((prev) => (prev + 1) % visibleItems.length);
         return true;
       }
 
@@ -547,7 +578,7 @@ const WorkflowVariableSuggestionList = forwardRef<
 
       return false;
     },
-  }), [items, selectItem, selectedIndex]);
+  }), [selectItem, selectedIndex, visibleItems]);
 
   if (!items.length) {
     return (
@@ -559,7 +590,33 @@ const WorkflowVariableSuggestionList = forwardRef<
 
   return (
     <div className="suggestion-menu workflow-variable-suggestion-menu">
-      <div className="suggestion-header">Select variable</div>
+      <div className="workflow-variable-suggestion-tabs">
+        <button
+          type="button"
+          className="workflow-variable-suggestion-tab"
+          data-active={activeCategory === 'all' ? 'true' : 'false'}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setActiveCategory('all');
+          }}
+        >
+          全部
+        </button>
+        {availableCategories.map((category) => (
+          <button
+            key={category.value}
+            type="button"
+            className="workflow-variable-suggestion-tab"
+            data-active={activeCategory === category.value ? 'true' : 'false'}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setActiveCategory(category.value);
+            }}
+          >
+            {category.label}
+          </button>
+        ))}
+      </div>
       <div className="suggestion-list workflow-variable-suggestion-list" ref={listRef}>
         {groupedItems.map((group) => (
             <div key={group.title} className="workflow-variable-suggestion-group">

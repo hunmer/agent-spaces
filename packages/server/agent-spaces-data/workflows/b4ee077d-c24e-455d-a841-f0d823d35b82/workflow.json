@@ -95,7 +95,7 @@
       },
       "data": {
         "permissionMode": "dontAsk",
-        "prompt": "文案内容：{{ __data__[\"node_1781697071787_start\"].text }}\n\n画面风格：{{ __data__[\"node_1781697071787_start\"].style }}\n\n请根据以上文案和风格，将文案拆分为多个分镜。\n\n【输出格式严格要求】\n1. 必须且只能输出一个 JSON 数组，不要输出任何额外文字、解释、注释、Markdown 代码块（不要使用 ``` 包裹）。\n2. 数组中每个元素必须且只能包含以下两个字段：\n   - text: 对应的原句（直接从原文中截取该分镜对应的文字）\n   - prompt: 该分镜的画面提示词（中文，需结合整体画面风格描述）\n3. 不要输出 index、scene、shot 等其他字段。\n\n【输出示例（仅格式参考，不要照抄内容）】\n[\n  {\"text\": \"今天阳光明媚，小明走进公园。\", \"prompt\": \"阳光明媚的公园入口，一个年轻人正缓步走进来，整体电影感色调。\"},\n  {\"text\": \"他看到湖面上有一只白天鹅。\", \"prompt\": \"公园湖面波光粼粼，一只优雅的白天鹅浮在水面上，电影感构图。\"}\n]\n\n请直接输出 JSON 数组，不要加任何前后缀文字。",
+        "prompt": "文案内容：{{ __data__[\"node_1781697071787_start\"].text }}\n\n画面风格：{{ __data__[\"node_1781697071787_start\"].style }}\n\n请根据以上文案和风格，将文案拆分为多个分镜。\n\n【输出格式严格要求】\n1. 必须且只能输出一个 JSON 数组，不要输出任何额外文字、解释、注释、Markdown 代码块（不要使用 ``` 包裹）。\n2. 数组中每个元素必须且只能包含以下两个字段：\n   - text: 对应的原句（直接从原文中截取该分镜对应的文字）\n   - prompt: 该分镜的画面提示词（中文，需结合整体画面风格描述）\n3. 不要输出 index、scene、shot 等其他字段。\n\n【输出示例（仅格式参考，不要照抄内容）】\n{\"result\": [\n  {\"text\": \"今天阳光明媚，小明走进公园。\", \"prompt\": \"阳光明媚的公园入口，一个年轻人正缓步走进来，整体电影感色调。\"},\n  {\"text\": \"他看到湖面上有一只白天鹅。\", \"prompt\": \"公园湖面波光粼粼，一只优雅的白天鹅浮在水面上，电影感构图。\"}\n]}\n\n请直接输出 JSON 数组，不要加任何前后缀文字。",
         "agent": {
           "id": "storyboard-master",
           "name": "分镜大师",
@@ -134,7 +134,17 @@
           "icon": "",
           "enabled": true
         },
-        "cwd": ""
+        "cwd": "",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ]
       },
       "outputs": [
         {
@@ -595,7 +605,8 @@
           }
         ],
         "sourceNodeId": "node_1781714719692_ilnqxh",
-        "sourceHandle": "source"
+        "sourceHandle": "source",
+        "text": "{{ loop.item.text }} "
       },
       "composite": {
         "rootId": "node_1781714719692_030b8s",
@@ -716,7 +727,7 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782113052285,
+  "updatedAt": 1782113516543,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",
