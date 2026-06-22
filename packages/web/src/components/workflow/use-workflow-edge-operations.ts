@@ -73,6 +73,32 @@ export function useEdgeOperations({
     return definition?.handles?.connectionCount ?? 1;
   }, []);
 
+  const isDefaultSourceHandle = useCallback((node: Workflow['nodes'][number], sourceHandle: string | null | undefined) => {
+    const definition = getNodeDefinition(node.type);
+    if (definition?.handles?.source === false) return false;
+    if (definition?.handles?.sourceHandles?.length) return false;
+    if (definition?.handles?.dynamicSource) return false;
+    return !sourceHandle || sourceHandle === 'source';
+  }, []);
+
+  const createUniqueEdgeId = useCallback((params: {
+    source: string;
+    target: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+  }) => {
+    const baseId = createWorkflowEdgeId(params);
+    if (!workflow?.edges.some(edge => edge.id === baseId)) return baseId;
+
+    let index = 2;
+    let nextId = `${baseId}-${index}`;
+    while (workflow.edges.some(edge => edge.id === nextId)) {
+      index += 1;
+      nextId = `${baseId}-${index}`;
+    }
+    return nextId;
+  }, [workflow]);
+
   const wouldCreateCycle = useCallback((source: string, target: string) => {
     const visited = new Set<string>();
     const visit = (nodeId: string): boolean => {
@@ -116,7 +142,14 @@ export function useEdgeOperations({
       .filter(node => canUseSourceHandle(node, connection.sourceHandle))
       .filter(node => !wouldCreateCycle(node.id, connection.target!))
       .map((node): Workflow['edges'][number] => ({
-        id: createWorkflowEdgeId({
+        id: isDefaultSourceHandle(node, connection.sourceHandle)
+          ? createUniqueEdgeId({
+            source: node.id,
+            target: connection.target,
+            sourceHandle: connection.sourceHandle,
+            targetHandle: connection.targetHandle,
+          })
+          : createWorkflowEdgeId({
           source: node.id,
           target: connection.target,
           sourceHandle: connection.sourceHandle,
@@ -139,7 +172,7 @@ export function useEdgeOperations({
     pushUndo('connect');
     setWorkflow(w => w ? { ...w, edges: [...w.edges, ...nextEdges] } : null);
     markDirty();
-  }, [canUseSourceHandle, getTargetConnectionCount, isReadOnly, markDirty, pushUndo, selectedNodeId, selectedNodeIds, setWorkflow, workflow, wouldCreateCycle]);
+  }, [canUseSourceHandle, createUniqueEdgeId, getTargetConnectionCount, isDefaultSourceHandle, isReadOnly, markDirty, pushUndo, selectedNodeId, selectedNodeIds, setWorkflow, workflow, wouldCreateCycle]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow || isReadOnly) return;

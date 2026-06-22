@@ -723,7 +723,7 @@ export function WorkflowCanvas({
         clientPosition = { x: touch.clientX, y: touch.clientY };
       }
 
-      if (clientPosition && isConnectionEndOnCanvasNode(clientPosition)) {
+      if (clientPosition && isConnectionEndOnCanvasNode(clientPosition, { ignoredNodeIds: scopeBoundaryNodeIds })) {
         connectSourceRef.current = null;
         connectSucceededRef.current = false;
         return;
@@ -739,7 +739,7 @@ export function WorkflowCanvas({
 
     connectSourceRef.current = null;
     connectSucceededRef.current = false;
-  }, [isCanvasLocked, onConnectionDrop, screenToFlowPosition]);
+  }, [isCanvasLocked, onConnectionDrop, scopeBoundaryNodeIds, screenToFlowPosition]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
     isNodeDraggingRef.current = true;

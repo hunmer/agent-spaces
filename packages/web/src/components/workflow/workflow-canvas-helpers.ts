@@ -15,10 +15,20 @@ export function isPositionNodeChange(
   return change.type === 'position' && !!change.position;
 }
 
-export function isConnectionEndOnCanvasNode(position: { x: number; y: number }) {
-  return document.elementsFromPoint(position.x, position.y).some(element =>
-    element.closest('.react-flow__node, .react-flow__handle')
-  );
+export function isConnectionEndOnCanvasNode(
+  position: { x: number; y: number },
+  options?: { ignoredNodeIds?: Set<string> },
+) {
+  const ignoredNodeIds = options?.ignoredNodeIds ?? new Set<string>();
+  return document.elementsFromPoint(position.x, position.y).some((element) => {
+    if (element.closest('.react-flow__handle')) return true;
+
+    const nodeElement = element.closest<HTMLElement>('.react-flow__node');
+    if (!nodeElement) return false;
+
+    const nodeId = nodeElement.dataset.id;
+    return !nodeId || !ignoredNodeIds.has(nodeId);
+  });
 }
 
 export function isPointInPolygon(point: LocalPoint, polygon: LocalPoint[]) {

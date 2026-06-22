@@ -222,14 +222,14 @@
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 1314,
-        "y": 263
+        "x": 1279,
+        "y": 275
       },
       "data": {
         "width": 150,
         "height": 260,
-        "nodeWidth": 402,
-        "nodeHeight": 591
+        "nodeWidth": 677,
+        "nodeHeight": 579
       },
       "composite": {
         "role": "loop_body",
@@ -245,8 +245,8 @@
       "type": "start",
       "label": "循环生成分镜图片开始",
       "position": {
-        "x": 1370,
-        "y": 363
+        "x": 1335,
+        "y": 375
       },
       "data": {
         "inputFields": [
@@ -288,7 +288,7 @@
       "label": "分镜生图",
       "position": {
         "x": 1380,
-        "y": 525
+        "y": 539.5
       },
       "data": {
         "sessionId": "8b018a5b73bad9bf57f303eba77b723f",
@@ -543,6 +543,77 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1782111026973_jqd8tn",
+      "type": "qianyin_tts",
+      "label": "AI文字转语音",
+      "position": {
+        "x": 1680,
+        "y": 465
+      },
+      "data": {
+        "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"]}}",
+        "secret": "{{ __config__[\"workflow.qianyin\"][\"secret\"]}}",
+        "speakerId": "521",
+        "format": "mp3",
+        "speed": 1,
+        "volume": 100,
+        "pitch": 0,
+        "baseUrl": "{{ __config__[\"workflow.qianyin\"][\"baseUrl\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "filePath",
+                "type": "string"
+              },
+              {
+                "key": "format",
+                "type": "string"
+              },
+              {
+                "key": "size",
+                "type": "number"
+              },
+              {
+                "key": "fileUrl",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781714719692_ilnqxh",
+        "sourceHandle": "source"
+      },
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": false,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1782111116357_msfyt1",
+      "type": "sticky_note",
+      "label": "nodes.sticky_note.label",
+      "position": {
+        "x": 1500,
+        "y": 450
+      },
+      "data": {
+        "content": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}"
+      }
     }
   ],
   "edges": [
@@ -647,16 +718,23 @@
       "target": "node_1781697071787_end",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781714719692_ilnqxh-source-node_1782111026973_jqd8tn-target",
+      "source": "node_1781714719692_ilnqxh",
+      "target": "node_1782111026973_jqd8tn",
+      "sourceHandle": "source"
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782109990404,
+  "updatedAt": 1782111126768,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",
     "workflow.jimeng",
     "workflow.jianying-draft",
-    "workflow.fetch"
+    "workflow.fetch",
+    "workflow.qianyin"
   ],
   "groups": [],
   "lastRunAt": 1781714754508,
