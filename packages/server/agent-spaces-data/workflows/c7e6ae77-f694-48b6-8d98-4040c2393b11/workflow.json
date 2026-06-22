@@ -190,55 +190,6 @@
       }
     },
     {
-      "id": "node_1782094340018_07a6f0",
-      "type": "suno_upload_cover",
-      "label": "上传并翻唱",
-      "position": {
-        "x": 975,
-        "y": 180
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
-        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
-        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
-        "customMode": true,
-        "model": "{{ __config__[\"workflow.suno\"][\"defaultModel\"]}}",
-        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
-        "wait": true,
-        "pollInterval": 15,
-        "maxWait": 600,
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "taskId",
-            "type": "string"
-          },
-          {
-            "key": "status",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "dataType": "object",
-            "children": []
-          }
-        ],
-        "uploadUrl": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/test.wav",
-        "prompt": "全体人员起立，记住眼前这个白发老头，没有他，你连手机都玩不了。他叫孙嘉栋，中国卫星之父，是钱学森钦点的航天事业接班人。是他让东方红响彻宇宙，是他让北斗照亮山河。没有他，你的手机导航将迷失方向，天气预报将失去准信，万里之外的亲人音讯全无，你可以划走，但此刻，哪怕手机只有1%的电，也请为孙老留下一束电子鲜花吧。他以一声孤光点亮14亿人的星河征途。从导弹专家到奔赴星海的木星人，他将一生隐于星辰之下。继14亿中国人默默扛起了风风雨雨。导弹改卫星，一年放四星。七巡探月宫，八巡驻北斗。短短20字，道不尽他的丰功伟绩。20岁学成归国，他投身导弹事业，扎根国防。40岁，临危受命，国家一生召唤，他毅然转行，扛起中国第一颗人造卫星东方红一号的千钧重担当。东方红的旋律响彻太空，中华民族正式叩响宇宙之门，自此踏上波澜壮阔的航天征程。1974年，中国第一颗返回式遥感卫星发射点火升空成功，一切顺利。但仅仅30秒后，突然爆炸了，几年来的心血瞬间化为灰烬，孙家栋失声痛哭，而他说，中国的航天，我现在却是真生不般的一件事情。但是我要在航天四月里取得什么回报？确实冲出来的小天岁。此后的三天三夜，他带领团队趴在零下二三十度的戈壁滩上，1寸1寸翻找的残骸，手指冻僵，泪水在脸上凝成了冰，最终，一根仅值几分钱的断裂导线被找出。正是这份执着与担当，为中国航天抢回了宝贵的未来。失败没有击溃他，反而铸就了更硬的脊梁。75岁，他再次挂帅出征，担任探月工程总设计师。让嫦娥翩然奔月，千年神话照进现实。年近九旬，他仍心系苍穹，主导构建北斗全球组，让中国有了自己的太空灯塔。从此，银河号货轮因gps信号被掐断而漂泊，公海的屈辱被彻底扫进了太平洋。他亲手洗刷的是民族的尊严。七年学造飞机，九年铸造导弹，50年放卫星。面对人生的每一次转向，他只有一句滚烫的誓言，国家需要我，我就去做。这是孙家洞院士践行一生的誓言。他说，航天是万人一杆枪，我只是一名配角。这朴素的谦逊映照出最伟岸的胸怀。他用毕生心血在浩瀚星海刻下永不磨灭的中国坐标。他默默扛起的是整个民族的星辰梦想。全体起立，转发这条视频，让更多人知道这位隐于星辰背后的国士。向孙家栋院士致以最崇高的敬礼。",
-        "style": "国之脊梁",
-        "title": "国之脊梁"
-      }
-    },
-    {
       "id": "node_1782094458372_f14fs7",
       "type": "cos_upload_file",
       "label": "COS上传文件",
@@ -287,15 +238,61 @@
         ],
         "key": "test.wav"
       }
+    },
+    {
+      "id": "node_1782096152294_kpv7b6",
+      "type": "suno_upload_cover",
+      "label": "上传并翻唱",
+      "position": {
+        "x": 1185,
+        "y": 300
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "customMode": true,
+        "model": "{{ __config__[\"workflow.suno\"][\"defaultModel\"]}}",
+        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
+        "wait": false,
+        "pollInterval": 15,
+        "maxWait": 600,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "taskId",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1782092150508,
-  "updatedAt": 1782095297078,
+  "updatedAt": 1782096173973,
   "published": false,
   "enabledPlugins": [
-    "workflow.suno",
-    "workflow.tencent-cos"
+    "workflow.tencent-cos",
+    "workflow.suno"
   ],
-  "groups": []
+  "groups": [],
+  "variables": []
 }

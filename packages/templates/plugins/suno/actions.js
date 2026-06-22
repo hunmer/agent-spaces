@@ -449,6 +449,63 @@ module.exports = (t) => [
           { label: 'V5_5', value: 'V5_5' },
         ],
       },
+      {
+        key: 'negativeTags',
+        label: t('field.negativeTags.label', 'Negative Tags'),
+        type: 'text',
+        dataType: 'string',
+        tooltip: t('field.negativeTags.tooltip', 'Styles to avoid, e.g. "heavy metal, strong beats"'),
+      },
+      {
+        key: 'vocalGender',
+        label: t('field.vocalGender.label', 'Vocal Gender'),
+        type: 'select',
+        dataType: 'string',
+        options: [
+          { label: t('field.vocalGender.default', 'Default'), value: '' },
+          { label: t('field.vocalGender.male', 'Male'), value: 'm' },
+          { label: t('field.vocalGender.female', 'Female'), value: 'f' },
+        ],
+      },
+      {
+        key: 'styleWeight',
+        label: t('field.styleWeight.label', 'Style Weight (0-1)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t('field.styleWeight.tooltip', 'Style guidance weight, 0.00-1.00'),
+      },
+      {
+        key: 'audioWeight',
+        label: t('field.audioWeight.label', 'Audio Weight (0-1)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t('field.audioWeight.tooltip', 'Input audio influence weight, 0.00-1.00'),
+      },
+      {
+        key: 'weirdnessConstraint',
+        label: t('field.weirdnessConstraint.label', 'Weirdness (0-1)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t('field.weirdnessConstraint.tooltip', 'Creative divergence constraint, 0.00-1.00'),
+      },
+      {
+        key: 'personaId',
+        label: t('field.personaId.label', 'Persona ID'),
+        type: 'text',
+        dataType: 'string',
+        tooltip: t('field.personaId.tooltip', 'Optional Persona ID / Suno Voice voiceId (custom mode only)'),
+      },
+      {
+        key: 'personaModel',
+        label: t('field.personaModel.label', 'Persona Model'),
+        type: 'select',
+        dataType: 'string',
+        default: 'style_persona',
+        options: [
+          { label: 'style_persona（默认）', value: 'style_persona' },
+          { label: 'voice_persona（Suno Voice ID）', value: 'voice_persona' },
+        ],
+      },
       ...waitProperties(t),
     ],
     toolProperties: {
@@ -461,6 +518,13 @@ module.exports = (t) => [
         title: { type: 'string', description: '翻唱标题' },
         prompt: { type: 'string', description: '变换描述；自定义模式 instrumental=false 时作为歌词' },
         model: { type: 'string', description: '模型，默认 V4_5' },
+        negativeTags: { type: 'string', description: '需要排除的风格，如 "重金属, 强节奏鼓点"' },
+        vocalGender: { type: 'string', description: '人声性别：m(男) / f(女)，可选' },
+        styleWeight: { type: 'number', description: '风格指引权重 0.00-1.00' },
+        audioWeight: { type: 'number', description: '输入音频影响力权重 0.00-1.00' },
+        weirdnessConstraint: { type: 'number', description: '创意发散度 0.00-1.00' },
+        personaId: { type: 'string', description: 'Persona ID 或 Suno Voice 的 voiceId（仅自定义模式）' },
+        personaModel: { type: 'string', description: 'Persona 类型：style_persona(默认) / voice_persona(Voice ID)' },
         callBackUrl: { type: 'string', description: '回调地址，留空则使用轮询' },
         wait: { type: 'boolean', description: '是否等待生成完成，默认 false' },
         pollInterval: { type: 'number', description: '轮询间隔秒数，默认 15' },
@@ -495,6 +559,15 @@ module.exports = (t) => [
       if (args.style) body.style = args.style
       if (args.title) body.title = args.title
       if (args.prompt) body.prompt = args.prompt
+      if (args.negativeTags) body.negativeTags = args.negativeTags
+      if (args.vocalGender) body.vocalGender = args.vocalGender
+      if (args.styleWeight !== undefined && args.styleWeight !== '') body.styleWeight = Number(args.styleWeight)
+      if (args.audioWeight !== undefined && args.audioWeight !== '') body.audioWeight = Number(args.audioWeight)
+      if (args.weirdnessConstraint !== undefined && args.weirdnessConstraint !== '') body.weirdnessConstraint = Number(args.weirdnessConstraint)
+      if (args.personaId) {
+        body.personaId = args.personaId
+        body.personaModel = args.personaModel || 'style_persona'
+      }
 
       ctx.logger.info(`Upload & cover: ${args.uploadUrl} customMode=${customMode} instrumental=${instrumental}`)
       const resp = await postJson(`${baseUrl}/api/v1/generate/upload-cover`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
