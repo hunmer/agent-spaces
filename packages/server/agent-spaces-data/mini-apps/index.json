@@ -220,11 +220,20 @@
   {
     "id": "国之脊梁音乐生成",
     "name": "国之脊梁音乐生成",
+    "description": "选择或上传参考音频，一键调用工作流生成致敬主题音乐",
     "version": "1.0.0",
     "type": "react",
-    "tags": [],
+    "tags": [
+      "音乐生成",
+      "工作流",
+      "Suno"
+    ],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-22T03:13:40.632Z",
-    "updatedAt": "2026-06-22T03:13:40.632Z"
+    "updatedAt": "2026-06-22T03:34:26.172Z",
+    "enabledPlugins": [
+      "@agent-spaces/builtin"
+    ],
+    "icon": "🎵"
   }
 ]

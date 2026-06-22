@@ -20,6 +20,8 @@ const {
   History,
   Workflow,
   Download,
+  Play,
+  Pause,
   WorkflowListDialog,
 } = window.AgentSpacesUI;
 
@@ -77,7 +79,12 @@ function Style() {
       .mg-preset-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
       .mg-preset-item { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #e4e4e7; border-radius: 7px; cursor: pointer; background: #ffffff; text-align: left; width: 100%; }
       .mg-preset-item.is-active { border-color: #111827; background: #fafafa; box-shadow: 0 0 0 1px #111827 inset; }
-      .mg-preset-icon { width: 36px; height: 36px; border-radius: 6px; background: linear-gradient(135deg, #fb7185, #f59e0b); display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
+      .mg-preview-btn { width: 36px; height: 36px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #fb7185, #f59e0b); color: #fff; display: grid; place-items: center; cursor: pointer; flex: 0 0 auto; transition: transform .15s, background .2s; }
+      .mg-preview-btn:hover { transform: scale(1.06); }
+      .mg-preview-btn .mg-icon { transform: translateX(1px); }
+      .mg-preview-btn.is-playing { background: linear-gradient(135deg, #22c55e, #10b981); animation: mg-pulse 1.2s ease-in-out infinite; }
+      .mg-preview-btn.is-playing .mg-icon { transform: none; }
+      @keyframes mg-pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(34,197,94,.45);} 50%{ box-shadow: 0 0 0 7px rgba(34,197,94,0);} }
       .mg-preset-meta { min-width: 0; flex: 1; }
       .mg-preset-title { font-weight: 600; font-size: 13px; }
       .mg-preset-sub { color: #71717a; font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -141,6 +148,34 @@ function App() {
       }
     });
     return () => off?.();
+  }, []);
+
+  const audioRef = React.useRef(null);
+  const [previewingUrl, setPreviewingUrl] = React.useState('');
+
+  // 预览试听：复用单个 Audio 实例，切换曲目自动停旧的，保证全局只有一个预览在播
+  const togglePreview = (url) => {
+    if (!url) return;
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = new Audio();
+      audio.addEventListener('ended', () => setPreviewingUrl(''));
+      audioRef.current = audio;
+    }
+    if (previewingUrl === url && !audio.paused) {
+      audio.pause();
+      setPreviewingUrl('');
+      return;
+    }
+    audio.pause();
+    audio.src = url;
+    audio.play().catch(() => {});
+    setPreviewingUrl(url);
+  };
+
+  React.useEffect(() => () => {
+    const audio = audioRef.current;
+    if (audio) { audio.pause(); audio.src = ''; }
   }, []);
 
   const updateForm = (patch) => setForm((prev) => ({ ...prev, ...patch }));
@@ -301,21 +336,33 @@ function App() {
 
             {form.mode === 'preset' ? (
               <div className="mg-preset-list">
-                {PRESET_AUDIOS.map((preset, index) => (
-                  <button
-                    type="button"
-                    key={preset.audioUrl}
-                    className={`mg-preset-item${form.presetIndex === index ? ' is-active' : ''}`}
-                    onClick={() => selectPreset(index)}
-                  >
-                    <div className="mg-preset-icon"><Music className="mg-icon" /></div>
-                    <div className="mg-preset-meta">
-                      <div className="mg-preset-title">{preset.title}</div>
-                      <div className="mg-preset-sub">{genderLabel(preset.gender)} · {preset.style}</div>
+                {PRESET_AUDIOS.map((preset, index) => {
+                  const isPlaying = previewingUrl === preset.audioUrl;
+                  return (
+                    <div
+                      key={preset.audioUrl}
+                      role="button"
+                      tabIndex={0}
+                      className={`mg-preset-item${form.presetIndex === index ? ' is-active' : ''}`}
+                      onClick={() => selectPreset(index)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPreset(index); } }}
+                    >
+                      <button
+                        type="button"
+                        className={`mg-preview-btn${isPlaying ? ' is-playing' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); togglePreview(preset.audioUrl); }}
+                        title={isPlaying ? '暂停预览' : '试听'}
+                      >
+                        {isPlaying ? <Pause className="mg-icon" /> : <Play className="mg-icon" />}
+                      </button>
+                      <div className="mg-preset-meta">
+                        <div className="mg-preset-title">{preset.title}</div>
+                        <div className="mg-preset-sub">{genderLabel(preset.gender)} · {preset.style}</div>
+                      </div>
+                      {form.presetIndex === index && <Check className="mg-icon" />}
                     </div>
-                    {form.presetIndex === index && <Check className="mg-icon" />}
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="mg-field">
