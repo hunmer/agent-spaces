@@ -78,7 +78,7 @@ import {
   getCompositeParentId,
   isGeneratedWorkflowNode,
   normalizeEmbeddedWorkflow,
-  normalizeLoopResult,
+  mergeLoopItemResult,
 } from './execution-composite-helpers.js';
 
 // 保留公共导出（外部测试直接引用），实际定义已移至 execution-value-access.ts
@@ -1035,7 +1035,7 @@ export class ExecutionManager {
       const frame = createFrame(index);
       const promise = this.executeLoopIteration(session, bodyNode, frame, iterations, appendLog)
         .then(result => {
-          items[index] = normalizeLoopResult(result);
+          items[index] = mergeLoopItemResult(iterations.items[index], result);
           if (session.status === 'error' || frame.breakRequested) stopScheduling = true;
         }).finally(() => running.delete(promise));
       running.add(promise);
@@ -1116,7 +1116,9 @@ export class ExecutionManager {
         execFrom,
       );
     };
-    return execFrom(bodyNode.id);
+    const result = await execFrom(bodyNode.id);
+    const endNode = scopeNodes.find(n => n.type === 'end' && this.getNodeExecutionData(session, n.id) !== undefined);
+    return endNode ? this.getNodeExecutionData(session, endNode.id) : result;
   }
 
   private async executeSubWorkflow(

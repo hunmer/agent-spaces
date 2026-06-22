@@ -32,3 +32,11 @@ export function normalizeLoopResult(result: unknown): Record<string, any> {
   if (result && typeof result === 'object' && !Array.isArray(result)) return result as Record<string, any>;
   return { result };
 }
+
+export function mergeLoopItemResult(item: unknown, result: unknown): Record<string, any> {
+  const normalized = normalizeLoopResult(result);
+  if (item && typeof item === 'object' && !Array.isArray(item)) {
+    return { ...(item as Record<string, any>), ...normalized };
+  }
+  return normalized;
+}
