@@ -614,6 +614,67 @@
         "generated": false,
         "hidden": false
       }
+    },
+    {
+      "id": "node_1782115054622_x6hnj4",
+      "type": "ffmpeg_probe",
+      "label": "Probe Media Info",
+      "position": {
+        "x": 810,
+        "y": 495
+      },
+      "data": {
+        "ffprobePath": "{{ __config__[\"workflow.ffmpeg\"][\"ffprobePath\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "format",
+                "type": "object",
+                "dataType": "object"
+              },
+              {
+                "key": "video",
+                "type": "object",
+                "dataType": "object"
+              },
+              {
+                "key": "audio",
+                "type": "object",
+                "dataType": "object"
+              },
+              {
+                "key": "streams",
+                "type": "array",
+                "dataType": "array"
+              },
+              {
+                "key": "duration",
+                "type": "number",
+                "dataType": "number"
+              },
+              {
+                "key": "raw",
+                "type": "object",
+                "dataType": "object"
+              }
+            ]
+          }
+        ],
+        "inputPath": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/test.wav"
+      }
     }
   ],
   "edges": [
@@ -727,14 +788,15 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782113516543,
+  "updatedAt": 1782115086777,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",
     "workflow.jimeng",
     "workflow.jianying-draft",
     "workflow.fetch",
-    "workflow.qianyin"
+    "workflow.qianyin",
+    "workflow.ffmpeg"
   ],
   "groups": [],
   "lastRunAt": 1781714754508,
