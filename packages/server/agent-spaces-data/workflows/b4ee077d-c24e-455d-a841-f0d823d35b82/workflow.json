@@ -133,7 +133,8 @@
           "avatarUrl": "",
           "icon": "",
           "enabled": true
-        }
+        },
+        "cwd": ""
       },
       "outputs": [
         {
@@ -715,7 +716,7 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782112871483,
+  "updatedAt": 1782113052285,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",

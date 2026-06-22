@@ -19,11 +19,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { resolveServerAssetUrl } from '@/lib/server';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { FIELD_TYPES } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowNodeDefinitionIcon, type WorkflowNodeIconDefinition } from './workflow-node-icon';
+import { PluginIcon } from './workflow-plugin-icon';
 
 type EditorRange = { from: number; to: number };
 type VariableSuggestionItem = {
@@ -34,6 +36,7 @@ type VariableSuggestionItem = {
   type?: OutputField['type'] | PluginConfigField['type'];
   groupIcon?: 'workflow' | 'variable' | 'loop' | 'plugin';
   nodeIconDefinition?: WorkflowNodeIconDefinition;
+  pluginIconSource?: Parameters<typeof PluginIcon>[0]['source'];
   [key: string]: unknown;
 };
 
@@ -282,7 +285,7 @@ function pushFieldItems(
   buildPath: (fieldPath: string) => string,
   group: string,
   typeFilter: OutputField['type'][],
-  groupMeta: Pick<VariableSuggestionItem, 'groupIcon' | 'nodeIconDefinition'> = {},
+  groupMeta: Pick<VariableSuggestionItem, 'groupIcon' | 'nodeIconDefinition' | 'pluginIconSource'> = {},
   parentPath?: string,
 ) {
   for (const field of fields) {
@@ -395,6 +398,9 @@ function buildVariableSuggestionItems({
         path,
         type: field.type,
         groupIcon: 'plugin',
+        pluginIconSource: plugin.iconPath
+          ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) }
+          : { type: 'builtin', variant: 'local' },
       });
     }
   }
@@ -446,6 +452,7 @@ function groupVariableSuggestionItems(items: VariableSuggestionItem[]) {
     title: string;
     groupIcon?: VariableSuggestionItem['groupIcon'];
     nodeIconDefinition?: WorkflowNodeIconDefinition;
+    pluginIconSource?: VariableSuggestionItem['pluginIconSource'];
     items: Array<VariableSuggestionItem & { flatIndex: number }>;
   }> = [];
   const groupMap = new Map<string, Array<VariableSuggestionItem & { flatIndex: number }>>();
@@ -462,6 +469,7 @@ function groupVariableSuggestionItems(items: VariableSuggestionItem[]) {
       title,
       groupIcon: item.groupIcon,
       nodeIconDefinition: item.nodeIconDefinition,
+      pluginIconSource: item.pluginIconSource,
       items: nextGroup,
     });
   });
@@ -471,10 +479,16 @@ function groupVariableSuggestionItems(items: VariableSuggestionItem[]) {
 function WorkflowVariableSuggestionGroupIcon({
   groupIcon,
   nodeIconDefinition,
+  pluginIconSource,
 }: {
   groupIcon?: VariableSuggestionItem['groupIcon'];
   nodeIconDefinition?: WorkflowNodeIconDefinition;
+  pluginIconSource?: VariableSuggestionItem['pluginIconSource'];
 }) {
+  if (pluginIconSource) {
+    return <PluginIcon source={pluginIconSource} className="h-3.5 w-3.5 shrink-0" />;
+  }
+
   if (nodeIconDefinition) {
     return <WorkflowNodeDefinitionIcon definition={nodeIconDefinition} className="h-3.5 w-3.5 shrink-0" />;
   }
@@ -553,6 +567,7 @@ const WorkflowVariableSuggestionList = forwardRef<
                 <WorkflowVariableSuggestionGroupIcon
                   groupIcon={group.groupIcon}
                   nodeIconDefinition={group.nodeIconDefinition}
+                  pluginIconSource={group.pluginIconSource}
                 />
                 <span className="truncate">{group.title}</span>
               </div>
