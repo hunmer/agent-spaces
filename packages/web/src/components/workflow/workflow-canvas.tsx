@@ -68,6 +68,8 @@ type CanvasViewportRef = {
   exportCanvas: (format: 'png' | 'jpeg') => void;
   getViewportCenter: () => { x: number; y: number };
   focusNode: (nodeId: string) => void;
+  selectAll: () => void;
+  invertSelection: () => void;
 };
 
 interface WorkflowCanvasProps {
@@ -528,15 +530,27 @@ export function WorkflowCanvas({
     fitView({ nodes: [{ id: nodeId }], duration: 500, maxZoom: 1, padding: 0.3 });
   }, [fitView]);
 
+  const selectAll = useCallback(() => {
+    if (isCanvasLocked) return;
+    onNodesSelect?.(workflow.nodes.map(n => n.id), { primaryNodeId: null });
+  }, [isCanvasLocked, workflow.nodes, onNodesSelect]);
+
+  const invertSelection = useCallback(() => {
+    if (isCanvasLocked) return;
+    const selectedSet = new Set(selectedNodeIds);
+    const nextIds = workflow.nodes.map(n => n.id).filter(id => !selectedSet.has(id));
+    onNodesSelect?.(nextIds, { primaryNodeId: null });
+  }, [isCanvasLocked, workflow.nodes, selectedNodeIds, onNodesSelect]);
+
   useEffect(() => {
     if (!canvasExportRef) return;
-    canvasExportRef.current = { exportCanvas, getViewportCenter, focusNode };
+    canvasExportRef.current = { exportCanvas, getViewportCenter, focusNode, selectAll, invertSelection };
     return () => {
       if (canvasExportRef.current?.exportCanvas === exportCanvas) {
         canvasExportRef.current = null;
       }
     };
-  }, [canvasExportRef, exportCanvas, getViewportCenter, focusNode]);
+  }, [canvasExportRef, exportCanvas, getViewportCenter, focusNode, selectAll, invertSelection]);
 
   // --- Interaction handlers ---
 

@@ -201,6 +201,8 @@ type WorkflowCanvasViewportRef = {
   exportCanvas: (format: 'png' | 'jpeg') => void;
   getViewportCenter: () => { x: number; y: number };
   focusNode: (nodeId: string) => void;
+  selectAll: () => void;
+  invertSelection: () => void;
 };
 
 function WorkflowEditorInner({
@@ -293,7 +295,6 @@ function WorkflowEditorInner({
   });
 
   const clipboardImagePasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardImagesAsGallery !== false;
-  const clipboardTextPasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardTextAsStickyNote !== false;
   const previewResult = useMemo(() => {
     if (!state.isPreview || !state.selectedNodeId) return null;
     const step = execution.executionLog?.steps.find(item => item.nodeId === state.selectedNodeId);
@@ -352,23 +353,8 @@ function WorkflowEditorInner({
       }
     }
 
-    if (clipboardTextPasteEnabled && typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
-      try {
-        const text = (await navigator.clipboard.readText()).trim();
-        if (text) {
-          const position = getCenteredNodePosition(getViewportCenter(), { width: 180, height: 120 });
-          canvas.handleNodeAdd('sticky_note', position, undefined, {
-            content: text,
-          });
-          return;
-        }
-      } catch {
-        // Fall back to workflow node clipboard.
-      }
-    }
-
     pasteWorkflowNodes();
-  }, [canvas, getViewportCenter, pasteWorkflowNodes, clipboardImagePasteEnabled, clipboardTextPasteEnabled]);
+  }, [canvas, getViewportCenter, pasteWorkflowNodes, clipboardImagePasteEnabled]);
 
   const moveClipboardNodesToStaging = useCallback(async (record?: ClipboardRecord) => {
     const copied = clipboard.getData(record);

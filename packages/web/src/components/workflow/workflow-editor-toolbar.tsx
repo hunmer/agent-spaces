@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft, Loader2,
   Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play, Download,
+  RotateCcw, RotateCw, CheckSquare, FlipHorizontal2, ArrowRightLeft, ArrowDownUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,9 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger,
+} from '@/components/ui/menubar';
 import { WorkflowInfoDialog } from './workflow-info-dialog';
 import { LayoutManagerDialog, type LayoutManagerDialogConfig } from '@/components/sidebar/layout-manager-dialog';
 import type { Workflow } from '@agent-spaces/shared';
@@ -34,6 +38,13 @@ interface EditorToolbarProps {
   onSavePreviewEdits: (options?: { createVersion?: boolean; versionName?: string }) => Promise<void>;
   onExport: (format: 'png' | 'jpeg') => void;
   isExporting?: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onAutoLayout?: (direction: 'LR' | 'TB') => void;
+  onSelectAll?: () => void;
+  onInvertSelection?: () => void;
   onExportWorkflow: () => void;
   onImport: () => void;
   onOpenPluginManager: () => void;
@@ -60,7 +71,9 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview, isPreviewDirty,
   onBack, onExitPreview, onSave, canRunTest, onRunTest, onSavePreviewEdits,
-  onExport, onExportWorkflow, isExporting, onImport,
+  onExport, isExporting,
+  canUndo, canRedo, onUndo, onRedo, onAutoLayout, onSelectAll, onInvertSelection,
+  onExportWorkflow, onImport,
   onOpenPluginManager, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
   layoutManager,
 }: EditorToolbarProps) {

@@ -18,8 +18,8 @@
       "type": "end",
       "label": "End",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 405,
+        "y": 75
       },
       "data": {
         "outputs": [
@@ -38,19 +38,145 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1782170379911_j20pc9",
+      "type": "loop",
+      "label": "nodes.loop.label",
+      "position": {
+        "x": 57.5,
+        "y": 162.5
+      },
+      "data": {
+        "loopType": "count",
+        "count": 1,
+        "concurrency": 1,
+        "sharedVariables": [],
+        "outputs": [
+          {
+            "key": "items",
+            "type": "any"
+          }
+        ],
+        "sourceNodeId": "node_1782170126868_start",
+        "sourceHandle": "source"
+      },
+      "composite": {
+        "role": "loop",
+        "generated": false,
+        "hidden": false,
+        "scopeBoundary": false,
+        "rootId": "node_1782170379911_j20pc9",
+        "parentId": null
+      }
+    },
+    {
+      "id": "node_1782170379911_wowes4",
+      "type": "loop_body",
+      "label": "nodes.loop_body.label",
+      "position": {
+        "x": 317.5,
+        "y": 222.5
+      },
+      "data": {
+        "width": 150,
+        "height": 260,
+        "nodeWidth": 740,
+        "nodeHeight": 280
+      },
+      "composite": {
+        "role": "loop_body",
+        "generated": true,
+        "hidden": false,
+        "scopeBoundary": true,
+        "rootId": "node_1782170379911_j20pc9",
+        "parentId": "node_1782170379911_j20pc9"
+      }
+    },
+    {
+      "id": "node_1782170379911_3t46tf",
+      "type": "start",
+      "label": "nodes.loop.label开始",
+      "position": {
+        "x": 397.5,
+        "y": 302.5
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1782170379911_wowes4",
+        "parentId": "node_1782170379911_wowes4",
+        "generated": true,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1782170379911_bibh8u",
+      "type": "end",
+      "label": "nodes.loop.label结束",
+      "position": {
+        "x": 737.5,
+        "y": 302.5
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1782170379911_wowes4",
+        "parentId": "node_1782170379911_wowes4",
+        "generated": true,
+        "hidden": false
+      }
     }
   ],
   "edges": [
     {
-      "id": "e-node_1782170126868_start-source-node_1782170126868_end-target",
+      "id": "e-node_1782170126868_start-source-node_1782170379911_j20pc9-target",
       "source": "node_1782170126868_start",
-      "target": "node_1782170126868_end",
-      "sourceHandle": "source",
+      "target": "node_1782170379911_j20pc9",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782170379911_j20pc9-loop-body-node_1782170379911_wowes4-target",
+      "source": "node_1782170379911_j20pc9",
+      "target": "node_1782170379911_wowes4",
+      "sourceHandle": "loop-body",
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1782170379911_j20pc9",
+        "parentId": "node_1782170379911_j20pc9",
+        "generated": true,
+        "hidden": false,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1782170379911_wowes4-source-node_1782170379911_3t46tf-target",
+      "source": "node_1782170379911_wowes4",
+      "target": "node_1782170379911_3t46tf",
+      "sourceHandle": null,
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1782170379911_wowes4",
+        "parentId": "node_1782170379911_wowes4",
+        "generated": true,
+        "hidden": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1782170379911_3t46tf-source-node_1782170379911_bibh8u-target",
+      "source": "node_1782170379911_3t46tf",
+      "target": "node_1782170379911_bibh8u",
+      "sourceHandle": null,
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782170379911_j20pc9-loop-next-node_1782170126868_end-target",
+      "source": "node_1782170379911_j20pc9",
+      "target": "node_1782170126868_end",
+      "sourceHandle": "loop-next"
     }
   ],
   "createdAt": 1782170126873,
-  "updatedAt": 1782170378795,
+  "updatedAt": 1782170404669,
   "published": false,
   "lastRunAt": 1782170304586,
   "groups": [],

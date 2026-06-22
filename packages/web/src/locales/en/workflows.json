@@ -1001,7 +1001,6 @@
     "deleteReconnectDesc": "Auto-connect after node deletion",
     "clipboardPaste": "Clipboard Paste",
     "clipboardPasteImageDesc": "Paste images as gallery preview nodes",
-    "clipboardPasteTextDesc": "Paste text as sticky note nodes",
     "autoPreviewLastRun": "Auto-preview Last Run",
     "autoPreviewLastRunDesc": "Automatically preview the last execution result when opening a workflow",
     "background": {
