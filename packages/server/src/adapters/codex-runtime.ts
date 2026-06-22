@@ -323,9 +323,10 @@ function ensureCodexSkillFrontmatter(skillName: string, sourceFile: string): str
   ].join('\n');
 }
 
-function normalizeSkillNames(skills?: string[], codexHome?: string): string[] {
+function normalizeSkillNames(skills?: unknown, codexHome?: string): string[] {
   if (!Array.isArray(skills)) return [];
   return skills
+    .filter((skill): skill is string => typeof skill === 'string')
     .map(sanitizeSkillName)
     .filter((skill) => Boolean(skill) && hasSkillContent(skill, codexHome));
 }

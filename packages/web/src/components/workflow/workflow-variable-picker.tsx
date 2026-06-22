@@ -19,6 +19,7 @@ import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { isStructuredOutputFieldType } from './workflow-properties-utils';
 import { PluginIcon } from './workflow-plugin-icon';
+import { getUpstreamNodeIds } from './workflow-variable-scope';
 
 type VariableField = OutputField & {
   expressionPath?: string;
@@ -38,29 +39,6 @@ interface VariablePickerProps extends WorkflowVariableContext {
   typeFilter?: OutputField['type'] | OutputField['type'][];
   onSelect: (path: string) => void;
   children?: React.ReactNode;
-}
-
-function getUpstreamNodeIds(edges: WorkflowEdge[], nodeId: string): Set<string> {
-  const incomingByTarget = new Map<string, string[]>();
-
-  for (const edge of edges) {
-    const sources = incomingByTarget.get(edge.target) ?? [];
-    sources.push(edge.source);
-    incomingByTarget.set(edge.target, sources);
-  }
-
-  const upstream = new Set<string>();
-  const pending = [...(incomingByTarget.get(nodeId) ?? [])];
-
-  while (pending.length > 0) {
-    const sourceId = pending.pop();
-    if (!sourceId || upstream.has(sourceId)) continue;
-
-    upstream.add(sourceId);
-    pending.push(...(incomingByTarget.get(sourceId) ?? []));
-  }
-
-  return upstream;
 }
 
 function getNodeLabel(node: WorkflowNode, t: (key: string) => string): string {
@@ -436,8 +414,8 @@ export function WorkflowVariablePicker({
 
   const isInLoopBody = Boolean(loopParentNode && currentNode);
   const upstreamNodeIds = useMemo(
-    () => activeNodeId ? getUpstreamNodeIds(edges, activeNodeId) : new Set<string>(),
-    [activeNodeId, edges],
+    () => activeNodeId ? getUpstreamNodeIds(nodes, edges, activeNodeId) : new Set<string>(),
+    [activeNodeId, nodes, edges],
   );
 
   const otherNodes = useMemo(() => {

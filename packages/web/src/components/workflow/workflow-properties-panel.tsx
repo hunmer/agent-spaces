@@ -361,9 +361,9 @@ export function WorkflowPropertiesPanel({
                     data={data}
                     variableContext={variableContext}
                     selectedJsonPreset={selectedJsonPreset}
-                    debugResult={debugResult}
+                    debugResult={visibleDebugResult}
                     hasDebugOutput={hasDebugOutput}
-                    onDataChange={handleDataChange}
+                    onDataChange={isPreview ? handlePreviewDataChange : handleDataChange}
                     onOpenImport={() => setImportOpen(true)}
                   />
               </CardContent>

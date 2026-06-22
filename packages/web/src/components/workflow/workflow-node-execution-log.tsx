@@ -26,7 +26,7 @@ import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { formatDuration, type WorkflowLogPanelLayout } from './workflow-node-types';
 
-const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan max-h-[calc(260px/3)] overscroll-contain overflow-auto';
+const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan max-h-[calc(500px/3)] overscroll-contain overflow-auto';
 const LOG_TAB_TRIGGER_CLASS = 'h-7 rounded-none border-b-2 border-transparent px-2 text-[10px] data-active:border-primary data-active:bg-primary/5 data-active:text-foreground data-active:shadow-none';
 const WORKFLOW_EXECUTION_BATCH_INDEX_EVENT = 'workflow:execution-log-batch-index';
 

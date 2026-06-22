@@ -24,6 +24,18 @@ interface SkillMeta {
 
 const SKILL_FILE = 'SKILL.md';
 
+function normalizeSkillNames(skills: unknown): string[] {
+  if (!Array.isArray(skills)) return [];
+  return skills
+    .map((skill) => {
+      if (typeof skill === 'string') return skill;
+      if (skill && typeof skill === 'object' && 'name' in skill && typeof skill.name === 'string') return skill.name;
+      return '';
+    })
+    .map((skill) => skill.trim().replace(/\.md$/i, ''))
+    .filter(Boolean);
+}
+
 function getSkillsDir(): string {
   return join(getDataDir(), 'skills');
 }
@@ -94,10 +106,7 @@ export function listSkills(): SkillInfo[] {
     const fm = parseFrontmatter(content);
     const boundAgents = agents
       .filter((a: AgentConfig) =>
-        (a.skills || []).some((s: string) => {
-          const skillName = s.replace(/\.md$/i, '');
-          return skillName === folderName;
-        }),
+        normalizeSkillNames(a.skills).some((skillName) => skillName === folderName),
       )
       .map((a: AgentConfig) => ({
         id: a.id,
@@ -296,7 +305,7 @@ export function checkSkillSync(): SkillSyncItem[] {
   const result: SkillSyncItem[] = [];
 
   for (const agent of agents) {
-    const skillNames = (agent.skills || []).map((s: string) => s.replace(/\.md$/i, ''));
+    const skillNames = normalizeSkillNames(agent.skills);
     if (skillNames.length === 0) continue;
 
     const agentSkillsDir = join(getDataDir(), 'agent-templates', agent.id, 'skills');

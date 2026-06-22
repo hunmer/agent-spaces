@@ -600,9 +600,10 @@ function extractSessionId(line: string): string | undefined {
   return match?.[1];
 }
 
-function normalizeSkillNames(skills?: string[]): string[] {
+function normalizeSkillNames(skills?: unknown): string[] {
   if (!Array.isArray(skills)) return [];
   return skills
+    .filter((skill): skill is string => typeof skill === 'string')
     .map((skill) => basename(skill).replace(/\.md$/i, '').trim())
     .filter(Boolean);
 }

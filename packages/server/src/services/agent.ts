@@ -460,10 +460,10 @@ export function syncTemplatesToAllWorkspaces(): { workspaces: number; agents: nu
   return { workspaces: workspaces.length, agents };
 }
 
-export function getAvailableSkillNames(agentDir: string | undefined, skills?: string[]): string[] {
+export function getAvailableSkillNames(agentDir: string | undefined, skills?: unknown): string[] {
   if (!agentDir || !Array.isArray(skills)) return [];
-  return skills
-    .map((skill) => skill.trim().replace(/\.md$/i, ''))
+  return normalizeSkillNames(skills)
+    .map((skill) => skill.replace(/\.md$/i, ''))
     .filter((skill) => {
       if (!skill) return false;
       const skillsBase = join(agentDir, 'skills');
@@ -564,10 +564,14 @@ function isAnthropicBridgeProvider(provider: AgentConfig['modelProvider']): bool
   return Boolean(provider && ANTHROPIC_BRIDGE_PROVIDERS.includes(provider));
 }
 
-function normalizeSkillNames(skills?: AgentConfig['skills'] | SkillInput[]): string[] {
+function normalizeSkillNames(skills?: unknown): string[] {
   if (!Array.isArray(skills)) return [];
   return skills
-    .map((skill) => typeof skill === 'string' ? skill : skill.name)
+    .map((skill) => {
+      if (typeof skill === 'string') return skill;
+      if (skill && typeof skill === 'object' && 'name' in skill && typeof skill.name === 'string') return skill.name;
+      return '';
+    })
     .filter((name): name is string => Boolean(name?.trim()))
     .map((name) => name.trim());
 }
@@ -655,9 +659,10 @@ function writeAgentTemplate(preset: AgentConfig, skillInputs?: SkillInput[]): vo
       writeFileSync(join(skillsDir, filename), skill.content ?? '', 'utf-8');
     }
   } else if (preset.skills?.length) {
+    const skillNames = normalizeSkillNames(preset.skills);
     const globalSkillsDir = join(getDataDir(), 'skills');
-    const keepFiles = new Set(preset.skills.map((s) => s.endsWith('.md') ? s : `${s}.md`));
-    const keepNames = new Set(preset.skills.map((s) => s.replace(/\.md$/i, '')));
+    const keepFiles = new Set(skillNames.map((s) => s.endsWith('.md') ? s : `${s}.md`));
+    const keepNames = new Set(skillNames.map((s) => s.replace(/\.md$/i, '')));
     // Remove skill entries no longer in the list (flat .md files and folders)
     if (existsSync(skillsDir)) {
       for (const existing of readdirSync(skillsDir)) {
@@ -753,7 +758,7 @@ function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): v
       && statSync(sourceBuiltInDir).isDirectory()
       && countFiles(sourceBuiltInDir) > countFiles(targetBuiltInDir);
   });
-  const missingSkill = (preset.skills ?? []).some((skill) => {
+  const missingSkill = normalizeSkillNames(preset.skills).some((skill) => {
     const skillName = skill.replace(/\.md$/i, '');
     const targetSkillsDir = join(workspaceAgentDir, 'skills');
     return !hasReadableSkillSource(targetSkillsDir, skillName);

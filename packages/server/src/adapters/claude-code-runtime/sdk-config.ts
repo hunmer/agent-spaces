@@ -143,9 +143,10 @@ function isMuslRuntime(): boolean {
   return !report?.header?.glibcVersionRuntime;
 }
 
-export function normalizeSkillNames(skills?: string[], configDir?: string): string[] {
+export function normalizeSkillNames(skills?: unknown, configDir?: string): string[] {
   if (!Array.isArray(skills)) return [];
   return skills
+    .filter((skill): skill is string => typeof skill === 'string')
     .map(sanitizeSkillName)
     .filter((skill) => Boolean(skill) && hasSkillContent(skill, configDir));
 }

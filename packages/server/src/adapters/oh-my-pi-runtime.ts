@@ -548,9 +548,10 @@ function normalizeThinkingLevel(config: AgentRuntimeConfig): string | undefined 
   return config.thinkingEffort ?? 'medium';
 }
 
-function normalizeSkillNames(skills?: string[]): string[] {
+function normalizeSkillNames(skills?: unknown): string[] {
   if (!Array.isArray(skills)) return [];
   return skills
+    .filter((skill): skill is string => typeof skill === 'string')
     .map((skill) => skill.trim())
     .filter(Boolean);
 }

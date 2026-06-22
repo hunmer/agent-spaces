@@ -26,6 +26,7 @@ import { FIELD_TYPES } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowNodeDefinitionIcon, type WorkflowNodeIconDefinition } from './workflow-node-icon';
 import { PluginIcon } from './workflow-plugin-icon';
+import { getUpstreamNodeIds } from './workflow-variable-scope';
 
 type EditorRange = { from: number; to: number };
 type VariableSuggestionCategory = 'workflow-input' | 'workflow-variable' | 'node-input' | 'node-output' | 'loop' | 'plugin-config';
@@ -108,29 +109,6 @@ function getEditorText(editor: Editor): string {
 
 function normalizeSuggestionQuery(value: string) {
   return value.toLowerCase().replace(/[{}\s]/g, '');
-}
-
-function getUpstreamNodeIds(edges: WorkflowVariableContext['edges'], nodeId: string): Set<string> {
-  const incomingByTarget = new Map<string, string[]>();
-
-  for (const edge of edges) {
-    const sources = incomingByTarget.get(edge.target) ?? [];
-    sources.push(edge.source);
-    incomingByTarget.set(edge.target, sources);
-  }
-
-  const upstream = new Set<string>();
-  const pending = [...(incomingByTarget.get(nodeId) ?? [])];
-
-  while (pending.length > 0) {
-    const sourceId = pending.pop();
-    if (!sourceId || upstream.has(sourceId)) continue;
-
-    upstream.add(sourceId);
-    pending.push(...(incomingByTarget.get(sourceId) ?? []));
-  }
-
-  return upstream;
 }
 
 function getNodeLabel(node: WorkflowNode): string {
@@ -346,7 +324,7 @@ function buildVariableSuggestionItems({
   const currentNode = nodes.find((node) => node.id === currentNodeId) ?? null;
   const loopParentNode = findLoopParentNode(currentNode, nodes);
   const isInLoopBody = Boolean(loopParentNode && currentNode);
-  const upstreamNodeIds = getUpstreamNodeIds(edges, currentNodeId);
+  const upstreamNodeIds = getUpstreamNodeIds(nodes, edges, currentNodeId);
   const hidden = new Set([currentNodeId]);
 
   if (isInLoopBody && loopParentNode) {
