@@ -23,6 +23,26 @@ import { useLocale } from '@/components/layout/locale-provider';
 type PluginTab = 'local' | 'store';
 type SortBy = 'default' | 'name' | 'status' | 'time';
 
+function compareVersion(left: string | undefined, right: string | undefined): number {
+  const parse = (value: string | undefined) => String(value || '0')
+    .trim()
+    .replace(/^[vV]/, '')
+    .split(/[.+-]/)
+    .map(part => {
+      const match = part.match(/^\d+/);
+      return match ? Number(match[0]) : 0;
+    });
+
+  const a = parse(left);
+  const b = parse(right);
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (a[i] || 0) - (b[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 export function WorkflowPluginsDialog({
   open,
   onOpenChange,
@@ -65,7 +85,7 @@ export function WorkflowPluginsDialog({
     const map = new Map<string, boolean>();
     for (const plugin of plugins) {
       const sp = storePluginById.get(plugin.id);
-      if (sp?.md5 && (!plugin.md5 || sp.md5 !== plugin.md5)) map.set(plugin.id, true);
+      if (sp?.version && compareVersion(sp.version, plugin.version) > 0) map.set(plugin.id, true);
     }
     return map;
   }, [plugins, storePluginById]);

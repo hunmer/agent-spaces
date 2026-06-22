@@ -98,6 +98,51 @@ export type PluginToolDefinition = {
 const STATE_FILE = () => path.join(pluginsDir(), 'state.json');
 const pluginRuntimeState = new Map<string, PluginRuntimeState>();
 
+function clearPluginModuleCache(entryPath: string, visited = new Set<string>()): void {
+  let resolved: string;
+  try {
+    resolved = require.resolve(entryPath);
+  } catch {
+    return;
+  }
+  if (visited.has(resolved)) return;
+  visited.add(resolved);
+
+  const cached = require.cache[resolved];
+  if (!cached) return;
+  for (const child of cached.children || []) {
+    clearPluginModuleCache(child.id, visited);
+  }
+  delete require.cache[resolved];
+}
+
+function resetPluginRuntime(pluginId: string): void {
+  pluginRuntimeState.delete(pluginId);
+
+  const manifest = getManifest(pluginId);
+  const dir = resolvePluginDir(pluginId);
+  if (!manifest || !dir) return;
+
+  const serverEntry = manifest.entries?.server || 'main.js';
+  const workflowEntry = manifest.entries?.workflow;
+  const toolEntries = manifest.entries?.tools;
+  const candidates = [
+    serverEntry,
+    workflowEntry,
+    ...(Array.isArray(toolEntries) ? toolEntries : toolEntries ? [toolEntries] : []),
+    'actions.js',
+    'shared.js',
+    'workflow.js',
+    'tools.js',
+    'main.js',
+  ];
+
+  for (const entry of candidates) {
+    if (!entry || typeof entry !== 'string') continue;
+    clearPluginModuleCache(path.join(dir, entry));
+  }
+}
+
 function templatesPluginsDir(): string {
   const candidates = [
     path.resolve(process.cwd(), 'packages/templates/plugins'),
@@ -731,6 +776,8 @@ export function uninstallPlugin(pluginId: string): void {
   const dir = resolvePluginDir(pluginId);
   if (!dir) throw new Error('Plugin not found');
 
+  resetPluginRuntime(pluginId);
+
   // remove plugin directory from disk
   rmSync(dir, { recursive: true, force: true });
 
@@ -972,6 +1019,7 @@ async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string, f
 }
 
 async function installStorePlugin(pluginId: string, sourceUrl: string, files?: string[]): Promise<PluginMeta | null> {
+  resetPluginRuntime(pluginId);
   const fromGithub = await tryInstallGithubStoreDir(pluginId, sourceUrl).catch((error) => {
     console.warn('[plugin] github store install skipped', {
       pluginId,
@@ -987,6 +1035,7 @@ async function installStorePlugin(pluginId: string, sourceUrl: string, files?: s
 }
 
 export async function installTemplatePlugin(pluginId: string, sourceUrl?: string, md5?: string, files?: string[]): Promise<PluginMeta> {
+  resetPluginRuntime(pluginId);
   // Save md5 + installedAt before install so normalizePlugin picks it up
   {
     const state = readState();

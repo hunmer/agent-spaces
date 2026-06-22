@@ -212,6 +212,77 @@ function findLoopParentNode(currentNode: WorkflowNode | null, nodes: WorkflowNod
   return null;
 }
 
+function findLoopBodyScopeNode(
+  currentNode: WorkflowNode | null,
+  nodes: WorkflowNode[],
+  loopParentId: string | null,
+): WorkflowNode | null {
+  if (!currentNode || !loopParentId) return null;
+
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  let current: WorkflowNode | undefined = currentNode;
+
+  while (current) {
+    if (current.type === 'loop_body' && getCompositeParentId(current) === loopParentId) {
+      return current;
+    }
+
+    const parentId = getCompositeParentId(current);
+    if (!parentId) return null;
+    current = nodeById.get(parentId);
+  }
+
+  return null;
+}
+
+function isNodeInScope(node: WorkflowNode, nodes: WorkflowNode[], scopeNodeId: string): boolean {
+  const nodeById = new Map(nodes.map((item) => [item.id, item]));
+  let current: WorkflowNode | undefined = node;
+
+  while (current) {
+    const parentId = getCompositeParentId(current);
+    if (!parentId) return false;
+    if (parentId === scopeNodeId) return true;
+    current = nodeById.get(parentId);
+  }
+
+  return false;
+}
+
+export function getLoopBodyVariableNodes(params: {
+  nodes: WorkflowNode[];
+  currentNode: WorkflowNode | null;
+  upstreamNodeIds: Set<string>;
+  activeNodeId: string | null;
+}): WorkflowNode[] {
+  const {
+    nodes,
+    currentNode,
+    upstreamNodeIds,
+    activeNodeId,
+  } = params;
+
+  const loopParentNode = findLoopParentNode(currentNode, nodes);
+  if (!currentNode || !activeNodeId || !loopParentNode) return [];
+
+  const loopBodyScopeNode = findLoopBodyScopeNode(currentNode, nodes, loopParentNode.id);
+  if (!loopBodyScopeNode) return [];
+
+  const hidden = new Set([activeNodeId, loopParentNode.id]);
+  for (const node of nodes) {
+    if (node.type === 'loop_body' && getCompositeParentId(node) === loopParentNode.id) {
+      hidden.add(node.id);
+    }
+  }
+
+  return nodes.filter((node) => (
+    upstreamNodeIds.has(node.id)
+    && !hidden.has(node.id)
+    && node.type !== 'start'
+    && isNodeInScope(node, nodes, loopBodyScopeNode.id)
+  ));
+}
+
 const FILE_CHILDREN: VariableField[] = [
   { key: 'path', type: 'string' },
   { key: 'relativePath', type: 'string' },
@@ -388,9 +459,15 @@ export function WorkflowVariablePicker({
   const workflowInputFields = workflowInputNode ? getNodeInputFields(workflowInputNode) : [];
   const inputMenuNodes = otherNodes.filter((node) => node.type !== 'start' && node.type !== 'end');
   const outputMenuNodes = inputMenuNodes;
-  const loopBodyNodes = isInLoopBody
-    ? otherNodes.filter((node) => node.id !== activeNodeId && node.type !== 'start')
-    : [];
+  const loopBodyNodes = useMemo(
+    () => getLoopBodyVariableNodes({
+      nodes,
+      currentNode,
+      upstreamNodeIds,
+      activeNodeId,
+    }),
+    [nodes, currentNode, upstreamNodeIds, activeNodeId],
+  );
   const loopVariableFields = useMemo<VariableField[]>(() => {
     if (!isInLoopBody || !loopParentNode) return [];
     const fields: VariableField[] = [{ key: 'index', type: 'number', expressionPath: 'index' }];

@@ -239,7 +239,7 @@
       "data": {
         "width": 150,
         "height": 260,
-        "nodeWidth": 677,
+        "nodeWidth": 767,
         "nodeHeight": 579
       },
       "composite": {
@@ -616,12 +616,12 @@
       }
     },
     {
-      "id": "node_1782115202718_lx5cjt",
+      "id": "node_1782117266399_u8n1qg",
       "type": "ffmpeg_probe",
       "label": "Probe Media Info",
       "position": {
-        "x": 795,
-        "y": 435
+        "x": 1770,
+        "y": 645
       },
       "data": {
         "ffprobePath": "{{ __config__[\"workflow.ffmpeg\"][\"ffprobePath\"] }}",
@@ -673,7 +673,15 @@
             ]
           }
         ],
-        "inputPath": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/test.wav"
+        "sourceNodeId": "node_1782111026973_jqd8tn",
+        "sourceHandle": "source",
+        "inputPath": ""
+      },
+      "composite": {
+        "rootId": "node_1781714719692_v7bbmd",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": false,
+        "hidden": false
       }
     }
   ],
@@ -785,10 +793,16 @@
       "source": "node_1781714719692_ilnqxh",
       "target": "node_1782111026973_jqd8tn",
       "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782111026973_jqd8tn-source-node_1782117266399_u8n1qg-target",
+      "source": "node_1782111026973_jqd8tn",
+      "target": "node_1782117266399_u8n1qg",
+      "sourceHandle": "source"
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782115218564,
+  "updatedAt": 1782117328773,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",
