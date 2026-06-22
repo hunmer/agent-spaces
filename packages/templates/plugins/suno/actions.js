@@ -385,7 +385,7 @@ module.exports = (t) => [
     label: t('action.uploadCover.label', 'Upload & Cover'),
     category: t('category', 'Suno'),
     icon: 'Upload',
-    description: t('action.uploadCover.description', 'Upload audio URL and transform into a new style (Suno /generate with uploadUrl)'),
+    description: t('action.uploadCover.description', 'Upload audio URL and transform into a new style (Suno /generate/upload-cover)'),
     properties: [
       ...baseProperties(t),
       {
@@ -403,6 +403,14 @@ module.exports = (t) => [
         dataType: 'boolean',
         default: true,
         tooltip: t('field.customMode.tooltip', 'When on, requires style and title'),
+      },
+      {
+        key: 'instrumental',
+        label: t('field.instrumental.label', 'Instrumental'),
+        type: 'checkbox',
+        dataType: 'boolean',
+        default: false,
+        tooltip: t('field.instrumental.tooltip', 'Instrumental-only (no vocals). When off in custom mode, prompt is required as lyrics'),
       },
       {
         key: 'style',
@@ -447,9 +455,10 @@ module.exports = (t) => [
       properties: {
         uploadUrl: { type: 'string', description: '原始音频的公开 URL' },
         customMode: { type: 'boolean', description: '自定义模式，启用后需提供 style 和 title' },
+        instrumental: { type: 'boolean', description: '是否纯音乐（无人声）；自定义模式下为 false 时 prompt 作为歌词必填' },
         style: { type: 'string', description: '目标翻唱风格' },
         title: { type: 'string', description: '翻唱标题' },
-        prompt: { type: 'string', description: '可选的变换描述' },
+        prompt: { type: 'string', description: '变换描述；自定义模式 instrumental=false 时作为歌词' },
         model: { type: 'string', description: '模型，默认 V4_5' },
         callBackUrl: { type: 'string', description: '回调地址，留空则使用轮询' },
         wait: { type: 'boolean', description: '是否等待生成完成，默认 false' },
@@ -471,19 +480,23 @@ module.exports = (t) => [
       const proxy = resolveProxy(args)
       const headers = buildAuthHeader(args.apiKey)
 
+      const customMode = args.customMode !== false
+      const instrumental = args.instrumental === true || args.instrumental === 'true'
+
       const body = {
         uploadUrl: args.uploadUrl,
-        customMode: args.customMode !== false,
+        customMode,
+        instrumental,
         model: resolveDefaultModel(args),
+        // callBackUrl 是该接口必填字段；未配置时传空串走轮询
+        callBackUrl: resolveCallBackUrl(args) || '',
       }
       if (args.style) body.style = args.style
       if (args.title) body.title = args.title
       if (args.prompt) body.prompt = args.prompt
-      const cb = resolveCallBackUrl(args)
-      if (cb) body.callBackUrl = cb
 
-      ctx.logger.info(`Upload & cover: ${args.uploadUrl}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate`, { headers, body, proxy, timeout: 60000 })
+      ctx.logger.info(`Upload & cover: ${args.uploadUrl} customMode=${customMode} instrumental=${instrumental}`)
+      const resp = await postJson(`${baseUrl}/api/v1/generate/upload-cover`, { headers, body, proxy, timeout: 60000 })
       if (resp.code !== 200) {
         return { success: false, message: `翻唱失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
