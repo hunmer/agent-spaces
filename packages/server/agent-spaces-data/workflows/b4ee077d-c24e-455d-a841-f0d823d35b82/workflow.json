@@ -602,18 +602,6 @@
         "generated": false,
         "hidden": false
       }
-    },
-    {
-      "id": "node_1782111116357_msfyt1",
-      "type": "sticky_note",
-      "label": "nodes.sticky_note.label",
-      "position": {
-        "x": 1500,
-        "y": 450
-      },
-      "data": {
-        "content": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}"
-      }
     }
   ],
   "edges": [
@@ -727,7 +715,7 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782111126768,
+  "updatedAt": 1782112296178,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",

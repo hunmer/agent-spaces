@@ -155,7 +155,7 @@ export function ArrayItemField({
         placeholder={field.placeholder || field.label}
         variableContext={variableContext}
         showTypeFilter
-        groupClassName="h-6 rounded-md"
+        groupClassName="min-h-6 h-auto rounded-md"
         inputClassName="text-[11px]"
         onChange={(nextValue) => onChange(nextValue)}
         onSelectVariable={onInsertVariable}

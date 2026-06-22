@@ -42,8 +42,8 @@ export function ConditionsEditor({
                 value={variable}
                 placeholder="变量"
                 variableContext={variableContext}
-                groupClassName="h-6 min-w-0 flex-1 rounded-md"
-                inputClassName="h-6 text-[11px]"
+                groupClassName="min-h-6 h-auto min-w-0 flex-1 rounded-md"
+                inputClassName="text-[11px]"
                 onChange={(nextValue) => updateCondition(index, { variable: nextValue, field: nextValue })}
                 onSelectVariable={(path) => updateCondition(index, { variable: path, field: path })}
               />
@@ -68,8 +68,8 @@ export function ConditionsEditor({
                 value={String(condition.value ?? '')}
                 placeholder="比较值"
                 variableContext={variableContext}
-                groupClassName="h-6 rounded-md"
-                inputClassName="h-6 text-[11px]"
+                groupClassName="min-h-6 h-auto rounded-md"
+                inputClassName="text-[11px]"
                 onChange={(nextValue) => updateCondition(index, { value: nextValue })}
                 onSelectVariable={(path) => updateCondition(index, { value: path })}
               />

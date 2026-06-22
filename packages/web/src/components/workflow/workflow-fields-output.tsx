@@ -221,8 +221,8 @@ export function OutputFieldsEditor({
 								placeholder={t('defaultValuePlaceholder')}
 								variableContext={variableContext}
 								typeFilter={field.type}
-								groupClassName="h-6 min-h-0 rounded-md"
-								inputClassName="h-6 text-[11px]"
+								groupClassName="min-h-6 h-auto rounded-md"
+								inputClassName="text-[11px]"
 								onChange={(nextValue) => updateField(index, { value: parseArrayOutputFieldValue(field.type, nextValue) })}
 								onSelectVariable={(path) => insertVariable(index, path)}
 							/>
