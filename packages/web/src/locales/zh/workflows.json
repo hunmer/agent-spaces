@@ -247,6 +247,22 @@
     "noMatch": "没有匹配的插件",
     "noAvailable": "没有可用的工作流插件"
   },
+  "menubar": {
+    "edit": "编辑",
+    "save": "保存",
+    "undo": "撤销",
+    "redo": "重做",
+    "selectAll": "全选",
+    "invertSelection": "反选",
+    "canvas": "画布",
+    "horizontalLayout": "自动布局（横向）",
+    "verticalLayout": "自动布局（纵向）",
+    "exportPng": "导出图片 PNG",
+    "exportJpeg": "导出图片 JPEG",
+    "run": "运行",
+    "runWorkflow": "运行工作流",
+    "preview": "预览"
+  },
   "canvasToolbar": {
     "exitPreview": "退出预览",
     "exitPreviewTooltip": "退出执行记录预览",

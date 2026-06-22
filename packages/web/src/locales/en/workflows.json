@@ -247,6 +247,22 @@
     "noMatch": "No matching plugins",
     "noAvailable": "No workflow plugins available"
   },
+  "menubar": {
+    "edit": "Edit",
+    "save": "Save",
+    "undo": "Undo",
+    "redo": "Redo",
+    "selectAll": "Select All",
+    "invertSelection": "Invert Selection",
+    "canvas": "Canvas",
+    "horizontalLayout": "Auto Layout (Horizontal)",
+    "verticalLayout": "Auto Layout (Vertical)",
+    "exportPng": "Export Image PNG",
+    "exportJpeg": "Export Image JPEG",
+    "run": "Run",
+    "runWorkflow": "Run Workflow",
+    "preview": "Preview"
+  },
   "canvasToolbar": {
     "exitPreview": "Exit Preview",
     "exitPreviewTooltip": "Exit execution record preview",

@@ -916,6 +916,13 @@ function WorkflowEditorInner({
         onSavePreviewEdits={state.savePreviewEdits}
         onExport={(format) => canvasExportRef.current?.exportCanvas(format)}
         isExporting={false}
+        canUndo={state.undoStack.length > 0}
+        canRedo={state.redoStack.length > 0}
+        onUndo={isWorkflowReadOnly ? undefined : state.handleUndo}
+        onRedo={isWorkflowReadOnly ? undefined : state.handleRedo}
+        onAutoLayout={isWorkflowReadOnly ? undefined : (direction) => canvas.handleAutoLayout(direction)}
+        onSelectAll={() => canvasExportRef.current?.selectAll()}
+        onInvertSelection={() => canvasExportRef.current?.invertSelection()}
         onExportWorkflow={state.handleExport}
         onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}

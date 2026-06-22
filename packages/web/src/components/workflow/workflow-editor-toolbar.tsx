@@ -111,6 +111,84 @@ export function WorkflowEditorToolbar({
 
       <div className="w-px h-5 bg-border mx-1" />
 
+      <Menubar className="h-7 border-none bg-transparent p-0">
+        <MenubarMenu>
+          <MenubarTrigger className="h-7 px-2 text-sm">{t('menubar.edit')}</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={onSave} disabled={!isDirty}>
+              <Save className="h-4 w-4" />
+              {t('menubar.save')}
+            </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem onClick={onUndo} disabled={!canUndo}>
+              <RotateCcw className="h-4 w-4" />
+              {t('menubar.undo')}
+            </MenubarItem>
+            <MenubarItem onClick={onRedo} disabled={!canRedo}>
+              <RotateCw className="h-4 w-4" />
+              {t('menubar.redo')}
+            </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem onClick={onSelectAll} disabled={!onSelectAll}>
+              <CheckSquare className="h-4 w-4" />
+              {t('menubar.selectAll')}
+            </MenubarItem>
+            <MenubarItem onClick={onInvertSelection} disabled={!onInvertSelection}>
+              <FlipHorizontal2 className="h-4 w-4" />
+              {t('menubar.invertSelection')}
+            </MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+
+        <MenubarMenu>
+          <MenubarTrigger className="h-7 px-2 text-sm">{t('menubar.canvas')}</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={() => onAutoLayout?.('LR')} disabled={!onAutoLayout}>
+              <ArrowRightLeft className="h-4 w-4" />
+              {t('menubar.horizontalLayout')}
+            </MenubarItem>
+            <MenubarItem onClick={() => onAutoLayout?.('TB')} disabled={!onAutoLayout}>
+              <ArrowDownUp className="h-4 w-4" />
+              {t('menubar.verticalLayout')}
+            </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem onClick={() => onExport('png')} disabled={isExporting}>
+              <FileImage className="h-4 w-4" />
+              {t('menubar.exportPng')}
+            </MenubarItem>
+            <MenubarItem onClick={() => onExport('jpeg')} disabled={isExporting}>
+              <ImageIcon className="h-4 w-4" />
+              {t('menubar.exportJpeg')}
+            </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem onClick={onExportWorkflow} disabled={!workflow}>
+              <Download className="h-4 w-4" />
+              {t('card.export')}
+            </MenubarItem>
+            <MenubarItem onClick={onImport}>
+              <Upload className="h-4 w-4" />
+              {t('editor.import')}
+            </MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+
+        <MenubarMenu>
+          <MenubarTrigger className="h-7 px-2 text-sm">{t('menubar.run')}</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={onRunTest} disabled={!canRunTest}>
+              <Play className="h-4 w-4" />
+              {t('menubar.runWorkflow')}
+            </MenubarItem>
+            <MenubarItem disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
+              <LayoutTemplate className="h-4 w-4" />
+              {t('menubar.preview')}
+            </MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+      </Menubar>
+
+      <div className="w-px h-5 bg-border mx-1" />
+
       {workflow && (
         <button
           className="h-7 px-2 text-sm font-medium hover:bg-muted/50 rounded cursor-pointer flex items-center gap-1.5"
@@ -197,23 +275,6 @@ export function WorkflowEditorToolbar({
           <DropdownMenuItem onClick={() => setLayoutOpen(true)} disabled={!workflow}>
             <LayoutTemplate className="h-4 w-4 mr-2" />
             布局管理
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onExport('png')} disabled={isExporting}>
-            <FileImage className="h-4 w-4 mr-2" />
-            {t('editor.exportPng')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onExport('jpeg')} disabled={isExporting}>
-            <ImageIcon className="h-4 w-4 mr-2" />
-            {t('editor.exportJpeg')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onExportWorkflow} disabled={!workflow}>
-            <Download className="h-4 w-4 mr-2" />
-            {t('card.export')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onImport}>
-            <Upload className="h-4 w-4 mr-2" />
-            {t('editor.import')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onOpenWorkflowLocation} disabled={!workflow}>
             <FolderOpen className="h-4 w-4 mr-2" />
