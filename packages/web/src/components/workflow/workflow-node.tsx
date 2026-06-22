@@ -49,6 +49,10 @@ import {
   type HandleContext,
 } from './workflow-node-handles';
 import { WorkflowNodeExecutionLog } from './workflow-node-execution-log';
+import {
+  EXECUTION_INPUT_FIELDS_KEY,
+  EXECUTION_OUTPUTS_KEY,
+} from './workflow-execution-snapshot-fields';
 import { VariableBadgeInput } from './workflow-variable-input';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
@@ -895,10 +899,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           nodeType={workflowNodeType}
           loopExecutionScopeId={nodeData.loopExecutionScopeId}
           data={nodeData.executionLogData}
-          inputFields={Array.isArray(nodeData.__executionInputFields)
-            ? nodeData.__executionInputFields
+          inputFields={Array.isArray(nodeData[EXECUTION_INPUT_FIELDS_KEY])
+            ? nodeData[EXECUTION_INPUT_FIELDS_KEY]
             : Array.isArray(nodeData.inputFields) ? nodeData.inputFields : []}
-          outputs={Array.isArray(nodeData.outputs) ? nodeData.outputs : []}
+          outputs={Array.isArray(nodeData[EXECUTION_OUTPUTS_KEY])
+            ? nodeData[EXECUTION_OUTPUTS_KEY]
+            : Array.isArray(nodeData.outputs) ? nodeData.outputs : []}
           nodeWidth={nodeWidth}
           layout={logPanelLayout}
           isLogExpanded={isLogExpanded}

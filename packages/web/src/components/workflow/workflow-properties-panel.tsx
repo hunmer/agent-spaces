@@ -34,6 +34,12 @@ interface PropertiesPanelProps {
   isPreview?: boolean;
   nodes?: WorkflowNode[];
   edges?: WorkflowEdge[];
+  variableContextWorkflow?: {
+    nodes: WorkflowNode[];
+    edges: WorkflowEdge[];
+    enabledPlugins?: string[];
+    variables?: OutputField[];
+  } | null;
   enabledPlugins?: string[];
   variables?: OutputField[];
   onUpdateData: (nodeId: string, data: Record<string, unknown>) => void;
@@ -53,6 +59,7 @@ export function WorkflowPropertiesPanel({
   isPreview = false,
   nodes = [],
   edges = [],
+  variableContextWorkflow = null,
   enabledPlugins = [],
   variables = [],
   onUpdateData,
@@ -97,8 +104,14 @@ export function WorkflowPropertiesPanel({
   const nodeId = node?.id;
   const variableContext = useMemo<WorkflowVariableContext | undefined>(() => {
     if (!node) return undefined;
-    return { nodes, edges, currentNodeId: node.id, enabledPlugins, variables };
-  }, [edges, enabledPlugins, node, nodes, variables]);
+    return {
+      nodes: variableContextWorkflow?.nodes ?? nodes,
+      edges: variableContextWorkflow?.edges ?? edges,
+      currentNodeId: node.id,
+      enabledPlugins: variableContextWorkflow?.enabledPlugins ?? enabledPlugins,
+      variables: variableContextWorkflow?.variables ?? variables,
+    };
+  }, [edges, enabledPlugins, node, nodes, variableContextWorkflow, variables]);
 
   // Handlers
   const isVariableRef = (value: unknown): boolean => typeof value === 'string' && value.includes('{{');

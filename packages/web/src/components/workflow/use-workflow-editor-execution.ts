@@ -5,6 +5,10 @@ import { createErrorShape, getCompositeParentId, LOOP_BODY_NODE_TYPE, type Clien
 import { executionLogApi } from '@/lib/workflow-api';
 import { getWS } from '@/lib/ws';
 import type { DebugResult } from './workflow-editor-types';
+import {
+  ORIGINAL_INPUT_FIELDS_KEY,
+  ORIGINAL_OUTPUTS_KEY,
+} from './workflow-execution-snapshot-fields';
 
 interface UseWorkflowEditorExecutionParams {
   workflow: Workflow | null;
@@ -18,14 +22,19 @@ type ElectronApi = {
   };
 };
 
-function withOriginalInputFieldsSnapshot(workflow: Workflow): Workflow['nodes'] {
+function withOriginalIOFieldsSnapshot(workflow: Workflow): Workflow['nodes'] {
   return workflow.nodes.map((node) => {
-    if (!Array.isArray(node.data?.inputFields)) return node;
+    if (!Array.isArray(node.data?.inputFields) && !Array.isArray(node.data?.outputs)) return node;
     return {
       ...node,
       data: {
         ...node.data,
-        __originalInputFields: JSON.parse(JSON.stringify(node.data.inputFields)),
+        ...(Array.isArray(node.data?.inputFields)
+          ? { [ORIGINAL_INPUT_FIELDS_KEY]: JSON.parse(JSON.stringify(node.data.inputFields)) }
+          : {}),
+        ...(Array.isArray(node.data?.outputs)
+          ? { [ORIGINAL_OUTPUTS_KEY]: JSON.parse(JSON.stringify(node.data.outputs)) }
+          : {}),
       },
     };
   });
@@ -192,7 +201,7 @@ export function useWorkflowEditorExecution({
         input: inputs,
         embeddedNode,
         snapshot: {
-          nodes: withOriginalInputFieldsSnapshot(workflow),
+          nodes: withOriginalIOFieldsSnapshot(workflow),
           edges: workflow.edges,
           groups: workflow.groups || [],
           variables: workflow.variables || [],
@@ -263,7 +272,7 @@ export function useWorkflowEditorExecution({
         env,
         startNodeId,
         snapshot: {
-          nodes: withOriginalInputFieldsSnapshot(workflow),
+          nodes: withOriginalIOFieldsSnapshot(workflow),
           edges: workflow.edges,
           groups: workflow.groups || [],
           variables: workflow.variables || [],

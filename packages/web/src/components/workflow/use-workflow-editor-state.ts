@@ -8,6 +8,12 @@ import { useWorkflowStore } from '@/stores/workflow';
 import { operationHistoryApi, workflowApi, workflowVersionApi } from '@/lib/workflow-api';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
+import {
+  EXECUTION_INPUT_FIELDS_KEY,
+  EXECUTION_OUTPUTS_KEY,
+  ORIGINAL_INPUT_FIELDS_KEY,
+  ORIGINAL_OUTPUTS_KEY,
+} from './workflow-execution-snapshot-fields';
 
 function resolveApiError(err: unknown): string {
   if (err instanceof ApiError) {
@@ -86,16 +92,27 @@ function findLastEndNodeId(nodes: Workflow['nodes']): string | null {
   return null;
 }
 
-function restorePreviewInputFields(nodes: Workflow['nodes']): Workflow['nodes'] {
+function restorePreviewIOFields(nodes: Workflow['nodes']): Workflow['nodes'] {
   return nodes.map((node) => {
-    const originalInputFields = node.data?.__originalInputFields;
-    if (!Array.isArray(originalInputFields)) return node;
+    const originalInputFields = node.data?.[ORIGINAL_INPUT_FIELDS_KEY];
+    const originalOutputs = node.data?.[ORIGINAL_OUTPUTS_KEY];
+    if (!Array.isArray(originalInputFields) && !Array.isArray(originalOutputs)) return node;
     return {
       ...node,
       data: {
         ...node.data,
-        __executionInputFields: node.data?.inputFields,
-        inputFields: originalInputFields,
+        ...(Array.isArray(originalInputFields)
+          ? {
+              [EXECUTION_INPUT_FIELDS_KEY]: node.data?.inputFields,
+              inputFields: originalInputFields,
+            }
+          : {}),
+        ...(Array.isArray(originalOutputs)
+          ? {
+              [EXECUTION_OUTPUTS_KEY]: node.data?.outputs,
+              outputs: originalOutputs,
+            }
+          : {}),
       },
     };
   });
@@ -118,6 +135,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const [editingName, setEditingName] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const [isPreviewDirty, setIsPreviewDirty] = useState(false);
+  const [prePreviewWorkflow, setPrePreviewWorkflow] = useState<Workflow | null>(null);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [operationLog, setOperationLog] = useState<OperationEntry[]>([]);
@@ -145,6 +163,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     setIsLoading(true);
     setLoadError(null);
     prePreviewWorkflowRef.current = null;
+    setPrePreviewWorkflow(null);
     const normalized = normalizeLegacySourceHandle(template);
     setWorkflow({ ...template, nodes: normalized.nodes, edges: normalized.edges });
     setOperationLog([]);
@@ -161,7 +180,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const enterPreview = useCallback((log: ExecutionLog) => {
     if (!log.snapshot) return;
 
-    const previewNodes = restorePreviewInputFields(JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes']);
+    const previewNodes = restorePreviewIOFields(JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes']);
     const previewEdges = JSON.parse(JSON.stringify(log.snapshot.edges)) as Workflow['edges'];
     const previewGroups = log.snapshot.groups
       ? JSON.parse(JSON.stringify(log.snapshot.groups)) as Workflow['groups']
@@ -171,7 +190,9 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     setWorkflow((current) => {
       if (!current) return current;
       if (!prePreviewWorkflowRef.current) {
-        prePreviewWorkflowRef.current = cloneWorkflow(current);
+        const snapshot = cloneWorkflow(current);
+        prePreviewWorkflowRef.current = snapshot;
+        setPrePreviewWorkflow(snapshot);
       }
 
       return {
@@ -193,6 +214,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       prePreviewWorkflowRef.current = null;
       return restored ? cloneWorkflow(restored) : current;
     });
+    setPrePreviewWorkflow(null);
     setSelectedNodeId(null);
     setSelectedNodeIds([]);
     setIsPreviewDirty(false);
@@ -212,6 +234,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       updatedAt: Date.now(),
     });
     prePreviewWorkflowRef.current = null;
+    setPrePreviewWorkflow(null);
     setIsPreviewDirty(false);
     setIsPreview(false);
     setWorkflow(saved);
@@ -405,6 +428,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     editingName, setEditingName,
     isPreview, setIsPreview,
     isPreviewDirty,
+    prePreviewWorkflow,
     undoStack, redoStack, operationLog,
     triggerDialogOpen, setTriggerDialogOpen,
     pluginsDialogOpen, setPluginsDialogOpen,

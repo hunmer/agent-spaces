@@ -722,6 +722,7 @@ function WorkflowEditorInner({
             isPreview={state.isPreview}
             nodes={workflow.nodes}
             edges={workflow.edges}
+            variableContextWorkflow={state.isPreview ? state.prePreviewWorkflow : null}
             enabledPlugins={workflow.enabledPlugins}
             variables={workflow.variables || []}
             onUpdateData={canvas.handleNodeDataUpdate}
