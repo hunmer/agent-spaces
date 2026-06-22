@@ -11,7 +11,28 @@
         "x": -225,
         "y": -75
       },
-      "data": {},
+      "data": {
+        "inputFields": [
+          {
+            "key": "content",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "style",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "preset",
+            "type": "file",
+            "value": "",
+            "children": []
+          }
+        ]
+      },
       "inputFields": [
         {
           "key": "text",
@@ -52,7 +73,16 @@
         "x": 2490,
         "y": -75
       },
-      "data": {},
+      "data": {
+        "outputs": [
+          {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
+      },
       "outputs": [
         {
           "key": "url",
@@ -72,7 +102,7 @@
       },
       "data": {
         "permissionMode": "dontAsk",
-        "prompt": "文案内容：在繁华的都市中，一位年轻的设计师正在加班赶稿。窗外霓虹闪烁，咖啡杯已经见底。\n\n画面风格：电影感胶片风格，柔光氛围，景深虚化\n\n请根据以上文案和风格，将文案拆分为多个分镜。\n\n【输出格式严格要求】\n1. 必须且只能输出一个 JSON 数组，不要输出任何额外文字、解释、注释、Markdown 代码块（不要使用 ``` 包裹）。\n2. 数组中每个元素必须且只能包含以下两个字段：\n   - text: 对应的原句（直接从原文中截取该分镜对应的文字）\n   - prompt: 该分镜的画面提示词（中文，需结合整体画面风格描述）\n3. 不要输出 index、scene、shot 等其他字段。\n\n【输出示例（仅格式参考，不要照抄内容）】\n{\"result\": [\n  {\"text\": \"今天阳光明媚，小明走进公园。\", \"prompt\": \"阳光明媚的公园入口，一个年轻人正缓步走进来，整体电影感色调。\"},\n  {\"text\": \"他看到湖面上有一只白天鹅。\", \"prompt\": \"公园湖面波光粼粼，一只优雅的白天鹅浮在水面上，电影感构图。\"}\n]}\n\n请直接输出 JSON 数组，不要加任何前后缀文字。",
+        "prompt": "文案内容：{{ __data__[\"node_1781697071787_start\"].content }}\n\n画面风格：{{ __data__[\"node_1781697071787_start\"].style }}\n\n请根据以上文案和风格，将文案拆分为多个分镜。\n\n【输出格式严格要求】\n1. 必须且只能输出一个 JSON 数组，不要输出任何额外文字、解释、注释、Markdown 代码块（不要使用 ``` 包裹）。\n2. 数组中每个元素必须且只能包含以下两个字段：\n   - text: 对应的原句（直接从原文中截取该分镜对应的文字）\n   - prompt: 该分镜的画面提示词（中文，需结合整体画面风格描述）\n3. 不要输出 index、scene、shot 等其他字段。\n\n【输出示例（仅格式参考，不要照抄内容）】\n{\"result\": [\n  {\"text\": \"今天阳光明媚，小明走进公园。\", \"prompt\": \"阳光明媚的公园入口，一个年轻人正缓步走进来，整体电影感色调。\"},\n  {\"text\": \"他看到湖面上有一只白天鹅。\", \"prompt\": \"公园湖面波光粼粼，一只优雅的白天鹅浮在水面上，电影感构图。\"}\n]}\n\n请直接输出 JSON 数组，不要加任何前后缀文字。",
         "agent": {
           "id": "storyboard-master",
           "name": "分镜大师",
@@ -111,7 +141,14 @@
           "icon": "",
           "enabled": true
         },
-        "cwd": ""
+        "cwd": "",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string",
+            "children": []
+          }
+        ]
       },
       "outputs": [
         {
@@ -136,9 +173,36 @@
         "code": "async function main({ params }) {\n  const raw = (params.agentResult || '').trim();\n  let scenes = [];\n\n  // 优先尝试直接 JSON.parse\n  try {\n    const parsed = JSON.parse(raw);\n    if (Array.isArray(parsed)) {\n      scenes = parsed;\n    } else if (parsed && Array.isArray(parsed.scenes)) {\n      scenes = parsed.scenes;\n    }\n  } catch (e) {\n    // 兜底：从字符串中截取第一个 [...] 段再尝试解析\n    const match = raw.match(/\\[[\\s\\S]*\\]/);\n    if (match) {\n      try {\n        scenes = JSON.parse(match[0]);\n      } catch (e2) {\n        scenes = [];\n      }\n    }\n  }\n\n  // 标准化：严格按照 { index, text, prompt } 三个字段输出，不做字段猜测\n  const normalized = scenes.map((item, idx) => {\n    if (typeof item === 'string') {\n      return { index: idx + 1, text: '', prompt: item };\n    }\n    if (!item || typeof item !== 'object') {\n      return { index: idx + 1, text: '', prompt: '' };\n    }\n    return {\n      index: idx + 1,\n      text: typeof item.text === 'string' ? item.text : '',\n      prompt: typeof item.prompt === 'string' ? item.prompt : '',\n    };\n  });\n\n  return {\n    scenes: normalized,\n    count: normalized.length,\n  };\n}",
         "inputFields": [
           {
-            "key": "",
+            "key": "agentResult",
             "type": "string",
-            "value": "",
+            "value": "{{ __data__[\"node_1781714576999_ignsfm\"].result }}",
+            "required": true,
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "scenes",
+            "type": "array",
+            "value": [],
+            "children": [
+              {
+                "key": "text",
+                "type": "string",
+                "value": "",
+                "children": []
+              },
+              {
+                "key": "prompt",
+                "type": "string",
+                "value": "",
+                "children": []
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "type": "number",
             "children": []
           }
         ]
@@ -178,28 +242,7 @@
         "count": 1,
         "concurrency": 1,
         "sharedVariables": [],
-        "arrayPath": [
-          {
-            "index": 1,
-            "text": "在繁华的都市中",
-            "prompt": "繁华都市夜景俯瞰，高楼林立车流穿梭光轨交织，电影感胶片颗粒质感，柔光氛围笼罩全城，景深虚化远处灯光如梦似幻。"
-          },
-          {
-            "index": 2,
-            "text": "一位年轻的设计师正在加班赶稿",
-            "prompt": "办公室内暖黄台灯下，一位年轻设计师神情专注地盯着电脑屏幕敲击键盘，桌上散落着草图和工具，电影感胶片风格，柔光勾勒侧脸轮廓，背景虚化。"
-          },
-          {
-            "index": 3,
-            "text": "窗外霓虹闪烁",
-            "prompt": "透过办公室落地窗，窗外城市霓虹灯牌五颜六色闪烁流转，玻璃上倒映室内台灯的暖光，电影感胶片色调，光晕柔化氛围感十足，景深聚焦于窗外光斑。"
-          },
-          {
-            "index": 4,
-            "text": "咖啡杯已经见底",
-            "prompt": "桌面特写，一只空咖啡杯静置，杯底残留着深褐色咖啡渍，杯壁有轻微水痕，电影感胶片风格，柔光从侧后方打来营造温暖氛围，景深虚化背景办公桌。"
-          }
-        ]
+        "arrayPath": "{{ __data__[\"node_1781714698009_vvhfrg\"].scenes }}"
       },
       "composite": {
         "role": "loop",
@@ -272,7 +315,37 @@
         "x": 1545,
         "y": 810
       },
-      "data": {},
+      "data": {
+        "outputs": [
+          {
+            "key": "text",
+            "type": "string",
+            "value": "{{ __loop__.item.text }}",
+            "inputMode": "variable",
+            "children": []
+          },
+          {
+            "key": "image",
+            "type": "image[]",
+            "value": "{{ __data__[\"node_1781714725222_zidrgv\"].data.images }}",
+            "inputMode": "variable"
+          },
+          {
+            "key": "audio",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782111026973_jqd8tn\"].data.fileUrl }}",
+            "inputMode": "variable",
+            "children": []
+          },
+          {
+            "key": "duration",
+            "type": "number",
+            "value": "{{ __data__[\"node_1782117266399_u8n1qg\"].data.duration }}",
+            "inputMode": "variable",
+            "children": []
+          }
+        ]
+      },
       "composite": {
         "rootId": "node_1781714719692_030b8s",
         "parentId": "node_1781714719692_030b8s",
@@ -318,12 +391,41 @@
         "y": 615
       },
       "data": {
-        "sessionId": "8b018a5b73bad9bf57f303eba77b723f",
+        "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
         "model": "jimeng-4.5",
         "ratio": "16:9",
         "resolution": "2k",
-        "baseUrl": "http://localhost:5100",
-        "prompt": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}"
+        "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+        "prompt": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "children": []
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]",
+                "children": []
+              },
+              {
+                "key": "created",
+                "type": "number",
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       "composite": {
         "rootId": "node_1781714719692_030b8s",
@@ -384,6 +486,21 @@
             "type": "array",
             "children": []
           }
+        ],
+        "inputFields": [
+          {
+            "key": "list",
+            "type": "array",
+            "value": [],
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "bgm",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
         ]
       },
       "inputFields": [
@@ -435,7 +552,40 @@
         "y": 255
       },
       "data": {
-        "preset_data": "{\"draft_config\":{\"canvas_config\":{\"canvas_width\":1920,\"canvas_height\":1080},\"config\":{\"maintrack_adsorb\":false},\"fps\":30},\"ruleGroup\":{\"id\":\"group_1777009082579\",\"title\":\"历史规则组\",\"rules\":[{\"type\":\"video\",\"title\":\"video\",\"material_ids\":[\"D56C8522-C2FA-4f07-A711-9396DBBD34C3\"]},{\"type\":\"subtitle\",\"title\":\"subtitle\",\"material_ids\":[\"7EF37742-9490-44e6-ABD2-F61664066EC4\"]},{\"type\":\"tip\",\"title\":\"tip\",\"material_ids\":[\"D6655FC6-E0C8-47a2-B0EA-CCC58243E99E\"]},{\"type\":\"voice\",\"title\":\"\",\"material_ids\":[\"5958392A-A9C8-4a70-BD06-117F6AE2C57E\"]},{\"type\":\"bgm\",\"title\":\"\",\"material_ids\":[\"9A84B840-65FF-4b1f-8C17-71CAB62646AB\"]}],\"createdAt\":\"2026-04-24T05:38:02.579Z\",\"updatedAt\":\"2026-04-24T05:39:26.828Z\"},\"materials\":[{\"app_id\":0,\"category_id\":\"\",\"category_name\":\"\",\"check_flag\":1,\"copyright_limit_type\":\"none\",\"duration\":221133333,\"effect_id\":\"\",\"formula_id\":\"\",\"id\":\"9A84B840-65FF-4b1f-8C17-71CAB62646AB\",\"intensifies_path\":\"\",\"is_ai_clone_tone\":false,\"is_text_edit_overdub\":false,\"is_ugc\":false,\"local_material_id\":\"\",\"music_id\":\"\",\"name\":\"发现更多精彩视频 - 抖音搜索_4.mp3\",\"path\":\"C:/Users/Administrator/Downloads/发现更多精彩视频 - 抖音搜索_4.mp3\",\"query\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"search_id\":\"\",\"source_from\":\"\",\"source_platform\":0,\"team_id\":\"\",\"text_id\":\"\",\"tone_category_id\":\"\",\"tone_category_name\":\"\",\"tone_effect_id\":\"\",\"tone_effect_name\":\"\",\"tone_platform\":\"\",\"tone_second_category_id\":\"\",\"tone_second_category_name\":\"\",\"tone_speaker\":\"\",\"tone_type\":\"\",\"type\":\"extract_music\",\"video_id\":\"\",\"wave_points\":[]},{\"app_id\":0,\"category_id\":\"\",\"category_name\":\"\",\"check_flag\":1,\"copyright_limit_type\":\"none\",\"duration\":9066666,\"effect_id\":\"\",\"formula_id\":\"\",\"id\":\"5958392A-A9C8-4a70-BD06-117F6AE2C57E\",\"intensifies_path\":\"\",\"is_ai_clone_tone\":false,\"is_text_edit_overdub\":false,\"is_ugc\":false,\"local_material_id\":\"\",\"music_id\":\"\",\"name\":\"audio.mp3\",\"path\":\"G:/agents/script_to_video/database/2026-04-24/秦始皇/resources/audio/20/audio.mp3\",\"query\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"search_id\":\"\",\"source_from\":\"\",\"source_platform\":0,\"team_id\":\"\",\"text_id\":\"\",\"tone_category_id\":\"\",\"tone_category_name\":\"\",\"tone_effect_id\":\"\",\"tone_effect_name\":\"\",\"tone_platform\":\"\",\"tone_second_category_id\":\"\",\"tone_second_category_name\":\"\",\"tone_speaker\":\"\",\"tone_type\":\"\",\"type\":\"extract_music\",\"video_id\":\"\",\"wave_points\":[]},{\"add_type\":0,\"alignment\":1,\"background_alpha\":1,\"background_color\":\"\",\"background_height\":0.14,\"background_horizontal_offset\":0,\"background_round_radius\":0,\"background_style\":0,\"background_vertical_offset\":0,\"background_width\":0.14,\"base_content\":\"\",\"bold_width\":0,\"border_alpha\":1,\"border_color\":\"#000000\",\"border_width\":0.07999999821186066,\"caption_template_info\":{\"category_id\":\"\",\"category_name\":\"\",\"effect_id\":\"\",\"is_new\":false,\"path\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"resource_name\":\"\",\"source_platform\":0},\"check_flag\":15,\"combo_info\":{\"text_templates\":[]},\"content\":\"{\\\"styles\\\":[{\\\"fill\\\":{\\\"alpha\\\":1.0,\\\"content\\\":{\\\"render_type\\\":\\\"solid\\\",\\\"solid\\\":{\\\"alpha\\\":1.0,\\\"color\\\":[1.0,1.0,1.0]}}},\\\"font\\\":{\\\"id\\\":\\\"\\\",\\\"path\\\":\\\"C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/FZCuJinLJW.ttf\\\"},\\\"range\\\":[0,10],\\\"size\\\":13.0,\\\"strokes\\\":[{\\\"alpha\\\":1.0,\\\"content\\\":{\\\"render_type\\\":\\\"solid\\\",\\\"solid\\\":{\\\"alpha\\\":1.0,\\\"color\\\":[0.0,0.0,0.0]}},\\\"width\\\":0.07999999821186066}],\\\"useLetterColor\\\":true}],\\\"text\\\":\\\"看懂司马懿的处世智慧\\\"}\",\"fixed_height\":-1,\"fixed_width\":-1,\"font_category_id\":\"\",\"font_category_name\":\"\",\"font_id\":\"\",\"font_name\":\"\",\"font_path\":\"C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/FZCuJinLJW.ttf\",\"font_resource_id\":\"\",\"font_size\":13,\"font_source_platform\":0,\"font_team_id\":\"\",\"font_title\":\"none\",\"font_url\":\"\",\"fonts\":[],\"force_apply_line_max_width\":false,\"global_alpha\":1,\"group_id\":\"\",\"has_shadow\":false,\"id\":\"7EF37742-9490-44e6-ABD2-F61664066EC4\",\"initial_scale\":1,\"inner_padding\":-1,\"is_rich_text\":false,\"italic_degree\":0,\"ktv_color\":\"\",\"language\":\"\",\"layer_weight\":1,\"letter_spacing\":0,\"line_feed\":1,\"line_max_width\":0.82,\"line_spacing\":0.02,\"multi_language_current\":\"none\",\"name\":\"\",\"original_size\":[],\"preset_category\":\"\",\"preset_category_id\":\"\",\"preset_has_set_alignment\":false,\"preset_id\":\"\",\"preset_index\":0,\"preset_name\":\"\",\"recognize_task_id\":\"\",\"recognize_type\":0,\"relevance_segment\":[],\"shadow_alpha\":0.9,\"shadow_angle\":-45,\"shadow_color\":\"\",\"shadow_distance\":5,\"shadow_point\":{\"x\":0.6363961030678928,\"y\":-0.6363961030678928},\"shadow_smoothing\":0.45,\"shape_clip_x\":false,\"shape_clip_y\":false,\"source_from\":\"\",\"style_name\":\"\",\"sub_type\":0,\"subtitle_keywords\":null,\"subtitle_template_original_fontsize\":0,\"text_alpha\":1,\"text_color\":\"#ffffff\",\"text_curve\":null,\"text_preset_resource_id\":\"\",\"text_size\":30,\"text_to_audio_ids\":[],\"tts_auto_update\":false,\"type\":\"text\",\"typesetting\":0,\"underline\":false,\"underline_offset\":0.22,\"underline_width\":0.05,\"use_effect_default_color\":false,\"words\":{\"end_time\":[],\"start_time\":[],\"text\":[]}},{\"aigc_type\":\"none\",\"audio_fade\":null,\"cartoon_path\":\"\",\"category_id\":\"\",\"category_name\":\"local\",\"check_flag\":63487,\"crop\":{\"lower_left_x\":0,\"lower_left_y\":1,\"lower_right_x\":1,\"lower_right_y\":1,\"upper_left_x\":0,\"upper_left_y\":0,\"upper_right_x\":1,\"upper_right_y\":0},\"crop_ratio\":\"free\",\"crop_scale\":1,\"duration\":16700000,\"extra_type_option\":0,\"formula_id\":\"\",\"freeze\":null,\"has_audio\":true,\"height\":2560,\"id\":\"D56C8522-C2FA-4f07-A711-9396DBBD34C3\",\"intensifies_audio_path\":\"\",\"intensifies_path\":\"\",\"is_ai_generate_content\":false,\"is_copyright\":false,\"is_text_edit_overdub\":false,\"is_unified_beauty_mode\":false,\"local_id\":\"\",\"local_material_id\":\"bea37eaa-6345-4c37-b9aa-d909849b255d\",\"material_id\":\"\",\"material_name\":\"发现更多精彩视频 - 抖音搜索_1209.mp4\",\"material_url\":\"\",\"matting\":{\"flag\":0,\"has_use_quick_brush\":false,\"has_use_quick_eraser\":false,\"interactiveTime\":[],\"path\":\"\",\"strokes\":[]},\"media_path\":\"\",\"object_locked\":null,\"origin_material_id\":\"\",\"path\":\"C:/Users/Administrator/Downloads/发现更多精彩视频 - 抖音搜索_1209.mp4\",\"picture_from\":\"none\",\"picture_set_category_id\":\"\",\"picture_set_category_name\":\"\",\"request_id\":\"\",\"reverse_intensifies_path\":\"\",\"reverse_path\":\"\",\"smart_motion\":null,\"source\":0,\"source_platform\":0,\"stable\":{\"matrix_path\":\"\",\"stable_level\":0,\"time_range\":{\"duration\":0,\"start\":0}},\"team_id\":\"\",\"type\":\"video\",\"video_algorithm\":{\"algorithms\":[],\"complement_frame_config\":null,\"deflicker\":null,\"gameplay_configs\":[],\"motion_blur_config\":null,\"noise_reduction\":null,\"path\":\"\",\"quality_enhance\":null,\"time_range\":null},\"width\":1440}],\"testData\":{\"tracks\":[{\"id\":\"video\",\"title\":\"video\",\"type\":\"video\"},{\"id\":\"subtitle\",\"title\":\"subtitle\",\"type\":\"text\"},{\"id\":\"voice\",\"title\":\"\",\"type\":\"audio\"},{\"id\":\"bgm\",\"title\":\"\",\"type\":\"audio\"}],\"items\":[]},\"raw_segments\":[{\"track_id\":\"16350343-1F58-4f49-90A9-253915698BBF\",\"track_type\":\"video\",\"track_name\":\"\",\"material_id\":\"D56C8522-C2FA-4f07-A711-9396DBBD34C3\",\"segment\":{\"caption_info\":null,\"cartoon\":false,\"clip\":{\"alpha\":1,\"flip\":{\"horizontal\":false,\"vertical\":false},\"rotation\":0,\"scale\":{\"x\":1,\"y\":1},\"transform\":{\"x\":0,\"y\":0}},\"common_keyframes\":[],\"enable_adjust\":true,\"enable_color_correct_adjust\":false,\"enable_color_curves\":true,\"enable_color_match_adjust\":false,\"enable_color_wheels\":true,\"enable_lut\":true,\"enable_smart_color_adjust\":false,\"extra_material_refs\":[\"2E3AB9F9-6E68-404a-8860-6C1E42E57856\",\"5006CBD3-2A2E-4000-BB47-54B2D785C494\",\"207EDD9C-419A-4c2f-90A8-687232AEB34F\",\"FF080A6D-7B4F-4b0f-B0AF-019DA0F4EA51\"],\"group_id\":\"\",\"hdr_settings\":{\"intensity\":1,\"mode\":1,\"nits\":1000},\"id\":\"1EEC0122-846B-49f1-ABEF-6D4C78735A8D\",\"intensifies_audio\":false,\"is_placeholder\":false,\"is_tone_modify\":false,\"keyframe_refs\":[],\"last_nonzero_volume\":0,\"material_id\":\"D56C8522-C2FA-4f07-A711-9396DBBD34C3\",\"render_index\":0,\"responsive_layout\":{\"enable\":false,\"horizontal_pos_layout\":0,\"size_layout\":0,\"target_follow\":\"\",\"vertical_pos_layout\":0},\"reverse\":false,\"source_timerange\":{\"duration\":16700000,\"start\":0},\"speed\":1,\"target_timerange\":{\"duration\":16700000,\"start\":0},\"template_id\":\"\",\"template_scene\":\"default\",\"track_attribute\":0,\"track_render_index\":0,\"uniform_scale\":{\"on\":true,\"value\":1},\"visible\":true,\"volume\":0},\"material\":{\"aigc_type\":\"none\",\"audio_fade\":null,\"cartoon_path\":\"\",\"category_id\":\"\",\"category_name\":\"local\",\"check_flag\":63487,\"crop\":{\"lower_left_x\":0,\"lower_left_y\":1,\"lower_right_x\":1,\"lower_right_y\":1,\"upper_left_x\":0,\"upper_left_y\":0,\"upper_right_x\":1,\"upper_right_y\":0},\"crop_ratio\":\"free\",\"crop_scale\":1,\"duration\":16700000,\"extra_type_option\":0,\"formula_id\":\"\",\"freeze\":null,\"has_audio\":true,\"height\":2560,\"id\":\"D56C8522-C2FA-4f07-A711-9396DBBD34C3\",\"intensifies_audio_path\":\"\",\"intensifies_path\":\"\",\"is_ai_generate_content\":false,\"is_copyright\":false,\"is_text_edit_overdub\":false,\"is_unified_beauty_mode\":false,\"local_id\":\"\",\"local_material_id\":\"bea37eaa-6345-4c37-b9aa-d909849b255d\",\"material_id\":\"\",\"material_name\":\"发现更多精彩视频 - 抖音搜索_1209.mp4\",\"material_url\":\"\",\"matting\":{\"flag\":0,\"has_use_quick_brush\":false,\"has_use_quick_eraser\":false,\"interactiveTime\":[],\"path\":\"\",\"strokes\":[]},\"media_path\":\"\",\"object_locked\":null,\"origin_material_id\":\"\",\"path\":\"C:/Users/Administrator/Downloads/发现更多精彩视频 - 抖音搜索_1209.mp4\",\"picture_from\":\"none\",\"picture_set_category_id\":\"\",\"picture_set_category_name\":\"\",\"request_id\":\"\",\"reverse_intensifies_path\":\"\",\"reverse_path\":\"\",\"smart_motion\":null,\"source\":0,\"source_platform\":0,\"stable\":{\"matrix_path\":\"\",\"stable_level\":0,\"time_range\":{\"duration\":0,\"start\":0}},\"team_id\":\"\",\"type\":\"video\",\"video_algorithm\":{\"algorithms\":[],\"complement_frame_config\":null,\"deflicker\":null,\"gameplay_configs\":[],\"motion_blur_config\":null,\"noise_reduction\":null,\"path\":\"\",\"quality_enhance\":null,\"time_range\":null},\"width\":1440},\"material_category\":\"videos\",\"extra_materials\":{\"speeds\":[{\"curve_speed\":null,\"id\":\"2E3AB9F9-6E68-404a-8860-6C1E42E57856\",\"mode\":0,\"speed\":1,\"type\":\"speed\"}],\"canvases\":[{\"album_image\":\"\",\"blur\":0,\"color\":\"\",\"id\":\"5006CBD3-2A2E-4000-BB47-54B2D785C494\",\"image\":\"\",\"image_id\":\"\",\"image_name\":\"\",\"source_platform\":0,\"team_id\":\"\",\"type\":\"canvas_color\"}],\"sound_channel_mappings\":[{\"audio_channel_mapping\":0,\"id\":\"207EDD9C-419A-4c2f-90A8-687232AEB34F\",\"is_config_open\":false,\"type\":\"none\"}],\"vocal_separations\":[{\"choice\":0,\"id\":\"FF080A6D-7B4F-4b0f-B0AF-019DA0F4EA51\",\"production_path\":\"\",\"time_range\":null,\"type\":\"vocal_separation\"}]}},{\"track_id\":\"C5A08D56-8C95-4bee-B013-DD95A40122F4\",\"track_type\":\"text\",\"track_name\":\"\",\"material_id\":\"7EF37742-9490-44e6-ABD2-F61664066EC4\",\"segment\":{\"caption_info\":null,\"cartoon\":false,\"clip\":{\"alpha\":1,\"flip\":{\"horizontal\":false,\"vertical\":false},\"rotation\":0,\"scale\":{\"x\":1,\"y\":1},\"transform\":{\"x\":0,\"y\":-0.27699530516431925}},\"common_keyframes\":[],\"enable_adjust\":false,\"enable_color_correct_adjust\":false,\"enable_color_curves\":true,\"enable_color_match_adjust\":false,\"enable_color_wheels\":true,\"enable_lut\":false,\"enable_smart_color_adjust\":false,\"extra_material_refs\":[\"644A21AA-0218-48e3-87CB-7033FA463F20\"],\"group_id\":\"\",\"hdr_settings\":null,\"id\":\"BC2868BE-0EDE-48aa-9DDD-4F867487BC12\",\"intensifies_audio\":false,\"is_placeholder\":false,\"is_tone_modify\":false,\"keyframe_refs\":[],\"last_nonzero_volume\":1,\"material_id\":\"7EF37742-9490-44e6-ABD2-F61664066EC4\",\"render_index\":14000,\"responsive_layout\":{\"enable\":false,\"horizontal_pos_layout\":0,\"size_layout\":0,\"target_follow\":\"\",\"vertical_pos_layout\":0},\"reverse\":false,\"source_timerange\":null,\"speed\":1,\"target_timerange\":{\"duration\":3233333,\"start\":0},\"template_id\":\"\",\"template_scene\":\"default\",\"track_attribute\":0,\"track_render_index\":1,\"uniform_scale\":{\"on\":true,\"value\":1},\"visible\":true,\"volume\":1},\"material\":{\"add_type\":0,\"alignment\":1,\"background_alpha\":1,\"background_color\":\"\",\"background_height\":0.14,\"background_horizontal_offset\":0,\"background_round_radius\":0,\"background_style\":0,\"background_vertical_offset\":0,\"background_width\":0.14,\"base_content\":\"\",\"bold_width\":0,\"border_alpha\":1,\"border_color\":\"#000000\",\"border_width\":0.07999999821186066,\"caption_template_info\":{\"category_id\":\"\",\"category_name\":\"\",\"effect_id\":\"\",\"is_new\":false,\"path\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"resource_name\":\"\",\"source_platform\":0},\"check_flag\":15,\"combo_info\":{\"text_templates\":[]},\"content\":\"{\\\"styles\\\":[{\\\"fill\\\":{\\\"alpha\\\":1.0,\\\"content\\\":{\\\"render_type\\\":\\\"solid\\\",\\\"solid\\\":{\\\"alpha\\\":1.0,\\\"color\\\":[1.0,1.0,1.0]}}},\\\"font\\\":{\\\"id\\\":\\\"\\\",\\\"path\\\":\\\"C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/FZCuJinLJW.ttf\\\"},\\\"range\\\":[0,10],\\\"size\\\":13.0,\\\"strokes\\\":[{\\\"alpha\\\":1.0,\\\"content\\\":{\\\"render_type\\\":\\\"solid\\\",\\\"solid\\\":{\\\"alpha\\\":1.0,\\\"color\\\":[0.0,0.0,0.0]}},\\\"width\\\":0.07999999821186066}],\\\"useLetterColor\\\":true}],\\\"text\\\":\\\"看懂司马懿的处世智慧\\\"}\",\"fixed_height\":-1,\"fixed_width\":-1,\"font_category_id\":\"\",\"font_category_name\":\"\",\"font_id\":\"\",\"font_name\":\"\",\"font_path\":\"C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/FZCuJinLJW.ttf\",\"font_resource_id\":\"\",\"font_size\":13,\"font_source_platform\":0,\"font_team_id\":\"\",\"font_title\":\"none\",\"font_url\":\"\",\"fonts\":[],\"force_apply_line_max_width\":false,\"global_alpha\":1,\"group_id\":\"\",\"has_shadow\":false,\"id\":\"7EF37742-9490-44e6-ABD2-F61664066EC4\",\"initial_scale\":1,\"inner_padding\":-1,\"is_rich_text\":false,\"italic_degree\":0,\"ktv_color\":\"\",\"language\":\"\",\"layer_weight\":1,\"letter_spacing\":0,\"line_feed\":1,\"line_max_width\":0.82,\"line_spacing\":0.02,\"multi_language_current\":\"none\",\"name\":\"\",\"original_size\":[],\"preset_category\":\"\",\"preset_category_id\":\"\",\"preset_has_set_alignment\":false,\"preset_id\":\"\",\"preset_index\":0,\"preset_name\":\"\",\"recognize_task_id\":\"\",\"recognize_type\":0,\"relevance_segment\":[],\"shadow_alpha\":0.9,\"shadow_angle\":-45,\"shadow_color\":\"\",\"shadow_distance\":5,\"shadow_point\":{\"x\":0.6363961030678928,\"y\":-0.6363961030678928},\"shadow_smoothing\":0.45,\"shape_clip_x\":false,\"shape_clip_y\":false,\"source_from\":\"\",\"style_name\":\"\",\"sub_type\":0,\"subtitle_keywords\":null,\"subtitle_template_original_fontsize\":0,\"text_alpha\":1,\"text_color\":\"#ffffff\",\"text_curve\":null,\"text_preset_resource_id\":\"\",\"text_size\":30,\"text_to_audio_ids\":[],\"tts_auto_update\":false,\"type\":\"text\",\"typesetting\":0,\"underline\":false,\"underline_offset\":0.22,\"underline_width\":0.05,\"use_effect_default_color\":false,\"words\":{\"end_time\":[],\"start_time\":[],\"text\":[]}},\"material_category\":\"texts\",\"extra_materials\":{\"material_animations\":[{\"animations\":[],\"id\":\"644A21AA-0218-48e3-87CB-7033FA463F20\",\"multi_language_current\":\"none\",\"type\":\"sticker_animation\"}]}},{\"track_id\":\"4FD5C5D4-D9DF-43d5-AB71-30EE596854B7\",\"track_type\":\"audio\",\"track_name\":\"\",\"material_id\":\"5958392A-A9C8-4a70-BD06-117F6AE2C57E\",\"segment\":{\"caption_info\":null,\"cartoon\":false,\"clip\":null,\"common_keyframes\":[],\"enable_adjust\":false,\"enable_color_correct_adjust\":false,\"enable_color_curves\":true,\"enable_color_match_adjust\":false,\"enable_color_wheels\":true,\"enable_lut\":false,\"enable_smart_color_adjust\":false,\"extra_material_refs\":[\"7FC38BA4-706E-4a03-82EC-2101CBEEBE49\",\"6A644A23-0E88-4a9b-AABD-C2BDDB3D1314\",\"E9B22DFB-725E-4e03-BEB0-F15EA92545EA\",\"9CFC6F3B-CD4B-4e7d-BEB2-54CE5DFF676F\"],\"group_id\":\"\",\"hdr_settings\":null,\"id\":\"F2BFC83A-54CE-42bb-8DF0-FD6B51CB21C4\",\"intensifies_audio\":false,\"is_placeholder\":false,\"is_tone_modify\":false,\"keyframe_refs\":[],\"last_nonzero_volume\":1,\"material_id\":\"5958392A-A9C8-4a70-BD06-117F6AE2C57E\",\"render_index\":0,\"responsive_layout\":{\"enable\":false,\"horizontal_pos_layout\":0,\"size_layout\":0,\"target_follow\":\"\",\"vertical_pos_layout\":0},\"reverse\":false,\"source_timerange\":{\"duration\":9066666,\"start\":0},\"speed\":1,\"target_timerange\":{\"duration\":9066666,\"start\":0},\"template_id\":\"\",\"template_scene\":\"default\",\"track_attribute\":0,\"track_render_index\":0,\"uniform_scale\":null,\"visible\":true,\"volume\":2.3883163928985596},\"material\":{\"app_id\":0,\"category_id\":\"\",\"category_name\":\"\",\"check_flag\":1,\"copyright_limit_type\":\"none\",\"duration\":9066666,\"effect_id\":\"\",\"formula_id\":\"\",\"id\":\"5958392A-A9C8-4a70-BD06-117F6AE2C57E\",\"intensifies_path\":\"\",\"is_ai_clone_tone\":false,\"is_text_edit_overdub\":false,\"is_ugc\":false,\"local_material_id\":\"\",\"music_id\":\"\",\"name\":\"audio.mp3\",\"path\":\"G:/agents/script_to_video/database/2026-04-24/秦始皇/resources/audio/20/audio.mp3\",\"query\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"search_id\":\"\",\"source_from\":\"\",\"source_platform\":0,\"team_id\":\"\",\"text_id\":\"\",\"tone_category_id\":\"\",\"tone_category_name\":\"\",\"tone_effect_id\":\"\",\"tone_effect_name\":\"\",\"tone_platform\":\"\",\"tone_second_category_id\":\"\",\"tone_second_category_name\":\"\",\"tone_speaker\":\"\",\"tone_type\":\"\",\"type\":\"extract_music\",\"video_id\":\"\",\"wave_points\":[]},\"material_category\":\"audios\",\"extra_materials\":{\"speeds\":[{\"curve_speed\":null,\"id\":\"7FC38BA4-706E-4a03-82EC-2101CBEEBE49\",\"mode\":0,\"speed\":1,\"type\":\"speed\"}],\"beats\":[{\"ai_beats\":{\"beat_speed_infos\":[],\"beats_path\":\"\",\"beats_url\":\"\",\"melody_path\":\"\",\"melody_percents\":[0],\"melody_url\":\"\"},\"enable_ai_beats\":false,\"gear\":404,\"gear_count\":0,\"id\":\"6A644A23-0E88-4a9b-AABD-C2BDDB3D1314\",\"mode\":404,\"type\":\"beats\",\"user_beats\":[],\"user_delete_ai_beats\":null}],\"sound_channel_mappings\":[{\"audio_channel_mapping\":0,\"id\":\"E9B22DFB-725E-4e03-BEB0-F15EA92545EA\",\"is_config_open\":false,\"type\":\"none\"}],\"vocal_separations\":[{\"choice\":0,\"id\":\"9CFC6F3B-CD4B-4e7d-BEB2-54CE5DFF676F\",\"production_path\":\"\",\"time_range\":null,\"type\":\"vocal_separation\"}]}},{\"track_id\":\"409E4458-2AFB-4f80-935B-C85C1584D3A9\",\"track_type\":\"audio\",\"track_name\":\"\",\"material_id\":\"9A84B840-65FF-4b1f-8C17-71CAB62646AB\",\"segment\":{\"caption_info\":null,\"cartoon\":false,\"clip\":null,\"common_keyframes\":[],\"enable_adjust\":false,\"enable_color_correct_adjust\":false,\"enable_color_curves\":true,\"enable_color_match_adjust\":false,\"enable_color_wheels\":true,\"enable_lut\":false,\"enable_smart_color_adjust\":false,\"extra_material_refs\":[\"F8D7F178-B17C-4df3-85A8-E8016F91A0C0\",\"4CCE86EB-00D0-4a85-B876-0632FC728FA8\",\"5A910ABE-AC9F-42ca-9633-FF24E187ED8F\",\"4CF9E2DB-8B01-4aa7-B999-14B4CC250E92\"],\"group_id\":\"\",\"hdr_settings\":null,\"id\":\"3EDC54E0-2724-48fa-BD0E-3F57B08F5CB8\",\"intensifies_audio\":false,\"is_placeholder\":false,\"is_tone_modify\":false,\"keyframe_refs\":[],\"last_nonzero_volume\":1,\"material_id\":\"9A84B840-65FF-4b1f-8C17-71CAB62646AB\",\"render_index\":0,\"responsive_layout\":{\"enable\":false,\"horizontal_pos_layout\":0,\"size_layout\":0,\"target_follow\":\"\",\"vertical_pos_layout\":0},\"reverse\":false,\"source_timerange\":{\"duration\":220433333,\"start\":700000},\"speed\":1,\"target_timerange\":{\"duration\":220433333,\"start\":0},\"template_id\":\"\",\"template_scene\":\"default\",\"track_attribute\":0,\"track_render_index\":0,\"uniform_scale\":null,\"visible\":true,\"volume\":0.2219676822423935},\"material\":{\"app_id\":0,\"category_id\":\"\",\"category_name\":\"\",\"check_flag\":1,\"copyright_limit_type\":\"none\",\"duration\":221133333,\"effect_id\":\"\",\"formula_id\":\"\",\"id\":\"9A84B840-65FF-4b1f-8C17-71CAB62646AB\",\"intensifies_path\":\"\",\"is_ai_clone_tone\":false,\"is_text_edit_overdub\":false,\"is_ugc\":false,\"local_material_id\":\"\",\"music_id\":\"\",\"name\":\"发现更多精彩视频 - 抖音搜索_4.mp3\",\"path\":\"C:/Users/Administrator/Downloads/发现更多精彩视频 - 抖音搜索_4.mp3\",\"query\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"search_id\":\"\",\"source_from\":\"\",\"source_platform\":0,\"team_id\":\"\",\"text_id\":\"\",\"tone_category_id\":\"\",\"tone_category_name\":\"\",\"tone_effect_id\":\"\",\"tone_effect_name\":\"\",\"tone_platform\":\"\",\"tone_second_category_id\":\"\",\"tone_second_category_name\":\"\",\"tone_speaker\":\"\",\"tone_type\":\"\",\"type\":\"extract_music\",\"video_id\":\"\",\"wave_points\":[]},\"material_category\":\"audios\",\"extra_materials\":{\"speeds\":[{\"curve_speed\":null,\"id\":\"F8D7F178-B17C-4df3-85A8-E8016F91A0C0\",\"mode\":0,\"speed\":1,\"type\":\"speed\"}],\"beats\":[{\"ai_beats\":{\"beat_speed_infos\":[],\"beats_path\":\"\",\"beats_url\":\"\",\"melody_path\":\"\",\"melody_percents\":[0],\"melody_url\":\"\"},\"enable_ai_beats\":false,\"gear\":404,\"gear_count\":0,\"id\":\"4CCE86EB-00D0-4a85-B876-0632FC728FA8\",\"mode\":404,\"type\":\"beats\",\"user_beats\":[],\"user_delete_ai_beats\":null}],\"sound_channel_mappings\":[{\"audio_channel_mapping\":0,\"id\":\"5A910ABE-AC9F-42ca-9633-FF24E187ED8F\",\"is_config_open\":false,\"type\":\"\"}],\"vocal_separations\":[{\"choice\":0,\"id\":\"4CF9E2DB-8B01-4aa7-B999-14B4CC250E92\",\"production_path\":\"\",\"time_range\":null,\"type\":\"vocal_separation\"}]}}],\"raw_materials\":[{\"id\":\"5958392A-A9C8-4a70-BD06-117F6AE2C57E\",\"category\":\"audios\",\"data\":{\"app_id\":0,\"category_id\":\"\",\"category_name\":\"\",\"check_flag\":1,\"copyright_limit_type\":\"none\",\"duration\":9066666,\"effect_id\":\"\",\"formula_id\":\"\",\"id\":\"5958392A-A9C8-4a70-BD06-117F6AE2C57E\",\"intensifies_path\":\"\",\"is_ai_clone_tone\":false,\"is_text_edit_overdub\":false,\"is_ugc\":false,\"local_material_id\":\"\",\"music_id\":\"\",\"name\":\"audio.mp3\",\"path\":\"G:/agents/script_to_video/database/2026-04-24/秦始皇/resources/audio/20/audio.mp3\",\"query\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"search_id\":\"\",\"source_from\":\"\",\"source_platform\":0,\"team_id\":\"\",\"text_id\":\"\",\"tone_category_id\":\"\",\"tone_category_name\":\"\",\"tone_effect_id\":\"\",\"tone_effect_name\":\"\",\"tone_platform\":\"\",\"tone_second_category_id\":\"\",\"tone_second_category_name\":\"\",\"tone_speaker\":\"\",\"tone_type\":\"\",\"type\":\"extract_music\",\"video_id\":\"\",\"wave_points\":[]}},{\"id\":\"9A84B840-65FF-4b1f-8C17-71CAB62646AB\",\"category\":\"audios\",\"data\":{\"app_id\":0,\"category_id\":\"\",\"category_name\":\"\",\"check_flag\":1,\"copyright_limit_type\":\"none\",\"duration\":221133333,\"effect_id\":\"\",\"formula_id\":\"\",\"id\":\"9A84B840-65FF-4b1f-8C17-71CAB62646AB\",\"intensifies_path\":\"\",\"is_ai_clone_tone\":false,\"is_text_edit_overdub\":false,\"is_ugc\":false,\"local_material_id\":\"\",\"music_id\":\"\",\"name\":\"发现更多精彩视频 - 抖音搜索_4.mp3\",\"path\":\"C:/Users/Administrator/Downloads/发现更多精彩视频 - 抖音搜索_4.mp3\",\"query\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"search_id\":\"\",\"source_from\":\"\",\"source_platform\":0,\"team_id\":\"\",\"text_id\":\"\",\"tone_category_id\":\"\",\"tone_category_name\":\"\",\"tone_effect_id\":\"\",\"tone_effect_name\":\"\",\"tone_platform\":\"\",\"tone_second_category_id\":\"\",\"tone_second_category_name\":\"\",\"tone_speaker\":\"\",\"tone_type\":\"\",\"type\":\"extract_music\",\"video_id\":\"\",\"wave_points\":[]}},{\"id\":\"7EF37742-9490-44e6-ABD2-F61664066EC4\",\"category\":\"texts\",\"data\":{\"add_type\":0,\"alignment\":1,\"background_alpha\":1,\"background_color\":\"\",\"background_height\":0.14,\"background_horizontal_offset\":0,\"background_round_radius\":0,\"background_style\":0,\"background_vertical_offset\":0,\"background_width\":0.14,\"base_content\":\"\",\"bold_width\":0,\"border_alpha\":1,\"border_color\":\"#000000\",\"border_width\":0.07999999821186066,\"caption_template_info\":{\"category_id\":\"\",\"category_name\":\"\",\"effect_id\":\"\",\"is_new\":false,\"path\":\"\",\"request_id\":\"\",\"resource_id\":\"\",\"resource_name\":\"\",\"source_platform\":0},\"check_flag\":15,\"combo_info\":{\"text_templates\":[]},\"content\":\"{\\\"styles\\\":[{\\\"fill\\\":{\\\"alpha\\\":1.0,\\\"content\\\":{\\\"render_type\\\":\\\"solid\\\",\\\"solid\\\":{\\\"alpha\\\":1.0,\\\"color\\\":[1.0,1.0,1.0]}}},\\\"font\\\":{\\\"id\\\":\\\"\\\",\\\"path\\\":\\\"C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/FZCuJinLJW.ttf\\\"},\\\"range\\\":[0,10],\\\"size\\\":13.0,\\\"strokes\\\":[{\\\"alpha\\\":1.0,\\\"content\\\":{\\\"render_type\\\":\\\"solid\\\",\\\"solid\\\":{\\\"alpha\\\":1.0,\\\"color\\\":[0.0,0.0,0.0]}},\\\"width\\\":0.07999999821186066}],\\\"useLetterColor\\\":true}],\\\"text\\\":\\\"看懂司马懿的处世智慧\\\"}\",\"fixed_height\":-1,\"fixed_width\":-1,\"font_category_id\":\"\",\"font_category_name\":\"\",\"font_id\":\"\",\"font_name\":\"\",\"font_path\":\"C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/FZCuJinLJW.ttf\",\"font_resource_id\":\"\",\"font_size\":13,\"font_source_platform\":0,\"font_team_id\":\"\",\"font_title\":\"none\",\"font_url\":\"\",\"fonts\":[],\"force_apply_line_max_width\":false,\"global_alpha\":1,\"group_id\":\"\",\"has_shadow\":false,\"id\":\"7EF37742-9490-44e6-ABD2-F61664066EC4\",\"initial_scale\":1,\"inner_padding\":-1,\"is_rich_text\":false,\"italic_degree\":0,\"ktv_color\":\"\",\"language\":\"\",\"layer_weight\":1,\"letter_spacing\":0,\"line_feed\":1,\"line_max_width\":0.82,\"line_spacing\":0.02,\"multi_language_current\":\"none\",\"name\":\"\",\"original_size\":[],\"preset_category\":\"\",\"preset_category_id\":\"\",\"preset_has_set_alignment\":false,\"preset_id\":\"\",\"preset_index\":0,\"preset_name\":\"\",\"recognize_task_id\":\"\",\"recognize_type\":0,\"relevance_segment\":[],\"shadow_alpha\":0.9,\"shadow_angle\":-45,\"shadow_color\":\"\",\"shadow_distance\":5,\"shadow_point\":{\"x\":0.6363961030678928,\"y\":-0.6363961030678928},\"shadow_smoothing\":0.45,\"shape_clip_x\":false,\"shape_clip_y\":false,\"source_from\":\"\",\"style_name\":\"\",\"sub_type\":0,\"subtitle_keywords\":null,\"subtitle_template_original_fontsize\":0,\"text_alpha\":1,\"text_color\":\"#ffffff\",\"text_curve\":null,\"text_preset_resource_id\":\"\",\"text_size\":30,\"text_to_audio_ids\":[],\"tts_auto_update\":false,\"type\":\"text\",\"typesetting\":0,\"underline\":false,\"underline_offset\":0.22,\"underline_width\":0.05,\"use_effect_default_color\":false,\"words\":{\"end_time\":[],\"start_time\":[],\"text\":[]}}},{\"id\":\"D56C8522-C2FA-4f07-A711-9396DBBD34C3\",\"category\":\"videos\",\"data\":{\"aigc_type\":\"none\",\"audio_fade\":null,\"cartoon_path\":\"\",\"category_id\":\"\",\"category_name\":\"local\",\"check_flag\":63487,\"crop\":{\"lower_left_x\":0,\"lower_left_y\":1,\"lower_right_x\":1,\"lower_right_y\":1,\"upper_left_x\":0,\"upper_left_y\":0,\"upper_right_x\":1,\"upper_right_y\":0},\"crop_ratio\":\"free\",\"crop_scale\":1,\"duration\":16700000,\"extra_type_option\":0,\"formula_id\":\"\",\"freeze\":null,\"has_audio\":true,\"height\":2560,\"id\":\"D56C8522-C2FA-4f07-A711-9396DBBD34C3\",\"intensifies_audio_path\":\"\",\"intensifies_path\":\"\",\"is_ai_generate_content\":false,\"is_copyright\":false,\"is_text_edit_overdub\":false,\"is_unified_beauty_mode\":false,\"local_id\":\"\",\"local_material_id\":\"bea37eaa-6345-4c37-b9aa-d909849b255d\",\"material_id\":\"\",\"material_name\":\"发现更多精彩视频 - 抖音搜索_1209.mp4\",\"material_url\":\"\",\"matting\":{\"flag\":0,\"has_use_quick_brush\":false,\"has_use_quick_eraser\":false,\"interactiveTime\":[],\"path\":\"\",\"strokes\":[]},\"media_path\":\"\",\"object_locked\":null,\"origin_material_id\":\"\",\"path\":\"C:/Users/Administrator/Downloads/发现更多精彩视频 - 抖音搜索_1209.mp4\",\"picture_from\":\"none\",\"picture_set_category_id\":\"\",\"picture_set_category_name\":\"\",\"request_id\":\"\",\"reverse_intensifies_path\":\"\",\"reverse_path\":\"\",\"smart_motion\":null,\"source\":0,\"source_platform\":0,\"stable\":{\"matrix_path\":\"\",\"stable_level\":0,\"time_range\":{\"duration\":0,\"start\":0}},\"team_id\":\"\",\"type\":\"video\",\"video_algorithm\":{\"algorithms\":[],\"complement_frame_config\":null,\"deflicker\":null,\"gameplay_configs\":[],\"motion_blur_config\":null,\"noise_reduction\":null,\"path\":\"\",\"quality_enhance\":null,\"time_range\":null},\"width\":1440}}]}"
+        "preset_data": "{{ __data__[\"node_1782109145430_abd4mi\"].text }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "valid",
+                "type": "boolean",
+                "dataType": "boolean"
+              },
+              {
+                "key": "error",
+                "type": "string"
+              },
+              {
+                "key": "stats",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       "outputs": [
         {
@@ -482,7 +632,17 @@
       "data": {
         "encoding": "utf-8",
         "timeout": 30000,
-        "url": "http://127.0.0.1:3100/static/uploads/test-1fc3493e-a6c6-49f9-8465-3e062ff60442.json"
+        "url": "{{ __data__[\"node_1781697071787_start\"].preset.httpPath }}",
+        "outputs": [
+          {
+            "key": "text",
+            "type": "string"
+          },
+          {
+            "key": "url",
+            "type": "string"
+          }
+        ]
       },
       "outputs": [
         {
@@ -509,8 +669,8 @@
         "conditions": [
           {
             "id": "cond_1782109186259_7zxe",
-            "variable": true,
-            "field": true,
+            "variable": "{{ __data__[\"node_1782109102492_qsgshy\"].data.valid }}",
+            "field": "{{ __data__[\"node_1782109102492_qsgshy\"].data.valid }}",
             "operator": "is_true",
             "value": ""
           }
@@ -544,17 +704,56 @@
         "y": 465
       },
       "data": {
-        "appkey": "ak_9630179795",
-        "secret": "1c25f2b757f94be9b1adc224de8d3179",
+        "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"] }}",
+        "secret": "{{ __config__[\"workflow.qianyin\"][\"secret\"] }}",
         "speakerId": "521",
         "format": "mp3",
         "speed": 1,
         "volume": 100,
         "pitch": 0,
-        "baseUrl": "https://open.qianyin123.com",
+        "baseUrl": "{{ __config__[\"workflow.qianyin\"][\"baseUrl\"] }}",
         "sourceNodeId": "node_1781714719692_ilnqxh",
         "sourceHandle": "source",
-        "text": "{{ loop.item.text }} "
+        "text": "{{ loop.item.text }} ",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "children": []
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "filePath",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "format",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "size",
+                "type": "number",
+                "children": []
+              },
+              {
+                "key": "fileUrl",
+                "type": "string",
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       "composite": {
         "rootId": "node_1781714719692_030b8s",
@@ -607,7 +806,56 @@
         "ffprobePath": "",
         "sourceNodeId": "node_1782111026973_jqd8tn",
         "sourceHandle": "source",
-        "inputPath": ""
+        "inputPath": "{{ __data__[\"node_1782111026973_jqd8tn\"].data.fileUrl }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "children": []
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "format",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "video",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "audio",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "streams",
+                "type": "array",
+                "children": []
+              },
+              {
+                "key": "duration",
+                "type": "number",
+                "children": []
+              },
+              {
+                "key": "raw",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       "composite": {
         "rootId": "node_1781714719692_030b8s",
@@ -713,7 +961,8 @@
           }
         ],
         "sourceNodeId": "node_1782108540500_0ggo7y",
-        "sourceHandle": "source"
+        "sourceHandle": "source",
+        "url": "{{ __data__[\"node_1782124187838_gyncrz\"].data.Location }}"
       }
     },
     {
@@ -762,7 +1011,7 @@
         "sourceNodeId": "node_1782108540500_0ggo7y",
         "sourceHandle": "source",
         "key": "jianyin.json",
-        "content": ""
+        "content": "{{ __data__[\"node_1782124458781_bq81ny\"].preset_data }}"
       }
     },
     {
@@ -795,6 +1044,14 @@
             "key": "items",
             "type": "array",
             "value": "{{ __data__[\"node_1782108540500_0ggo7y\"].items }}",
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "preset_data",
+            "type": "string",
+            "value": "",
             "children": []
           }
         ]
@@ -932,7 +1189,7 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782125031218,
+  "updatedAt": 1782128742767,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",

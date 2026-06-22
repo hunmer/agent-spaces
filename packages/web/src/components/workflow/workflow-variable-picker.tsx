@@ -227,14 +227,83 @@ function isNodeInScope(node: WorkflowNode, nodes: WorkflowNode[], scopeNodeId: s
   return false;
 }
 
+function getNodeSourceId(node: WorkflowNode): string | null {
+  return typeof node.data?.sourceNodeId === 'string' && node.data.sourceNodeId
+    ? node.data.sourceNodeId
+    : null;
+}
+
+function sortNodesByWorkflowConnections(
+  visibleNodes: WorkflowNode[],
+  allNodes: WorkflowNode[],
+  edges: WorkflowEdge[],
+): WorkflowNode[] {
+  if (visibleNodes.length < 2) return visibleNodes;
+
+  const visibleIds = new Set(visibleNodes.map((node) => node.id));
+  const originalIndex = new Map(allNodes.map((node, index) => [node.id, index]));
+  const visibleById = new Map(visibleNodes.map((node) => [node.id, node]));
+  const outgoing = new Map<string, string[]>();
+  const inDegree = new Map<string, number>();
+
+  for (const node of visibleNodes) {
+    outgoing.set(node.id, []);
+    inDegree.set(node.id, 0);
+  }
+
+  const addConnection = (source: string, target: string) => {
+    if (!visibleIds.has(source) || !visibleIds.has(target) || source === target) return;
+    const targets = outgoing.get(source);
+    if (!targets || targets.includes(target)) return;
+    targets.push(target);
+    inDegree.set(target, (inDegree.get(target) ?? 0) + 1);
+  };
+
+  for (const edge of edges) {
+    addConnection(edge.source, edge.target);
+  }
+
+  for (const node of allNodes) {
+    const sourceNodeId = getNodeSourceId(node);
+    if (sourceNodeId) addConnection(sourceNodeId, node.id);
+  }
+
+  const byOriginalOrder = (a: string, b: string) => (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0);
+  const queue = [...inDegree.entries()]
+    .filter(([, degree]) => degree === 0)
+    .map(([id]) => id)
+    .sort(byOriginalOrder);
+  const sortedIds: string[] = [];
+
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (!id) continue;
+    sortedIds.push(id);
+
+    for (const target of (outgoing.get(id) ?? []).sort(byOriginalOrder)) {
+      const nextDegree = (inDegree.get(target) ?? 1) - 1;
+      inDegree.set(target, nextDegree);
+      if (nextDegree === 0) {
+        queue.push(target);
+        queue.sort(byOriginalOrder);
+      }
+    }
+  }
+
+  if (sortedIds.length !== visibleNodes.length) return [...visibleNodes].sort((a, b) => byOriginalOrder(a.id, b.id));
+  return sortedIds.map((id) => visibleById.get(id)).filter((node): node is WorkflowNode => Boolean(node));
+}
+
 export function getLoopBodyVariableNodes(params: {
   nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
   currentNode: WorkflowNode | null;
   upstreamNodeIds: Set<string>;
   activeNodeId: string | null;
 }): WorkflowNode[] {
   const {
     nodes,
+    edges,
     currentNode,
     upstreamNodeIds,
     activeNodeId,
@@ -253,12 +322,14 @@ export function getLoopBodyVariableNodes(params: {
     }
   }
 
-  return nodes.filter((node) => (
+  const loopBodyNodes = nodes.filter((node) => (
     upstreamNodeIds.has(node.id)
     && !hidden.has(node.id)
     && node.type !== 'start'
     && isNodeInScope(node, nodes, loopBodyScopeNode.id)
   ));
+
+  return sortNodesByWorkflowConnections(loopBodyNodes, nodes, edges);
 }
 
 const FILE_CHILDREN: VariableField[] = [
@@ -427,8 +498,12 @@ export function WorkflowVariablePicker({
         if (node.type === 'loop_body' && getCompositeParentId(node) === loopParentNode.id) hidden.add(node.id);
       }
     }
-    return nodes.filter((node) => upstreamNodeIds.has(node.id) && !hidden.has(node.id));
-  }, [activeNodeId, upstreamNodeIds, isInLoopBody, loopParentNode, nodes]);
+    return sortNodesByWorkflowConnections(
+      nodes.filter((node) => upstreamNodeIds.has(node.id) && !hidden.has(node.id)),
+      nodes,
+      edges,
+    );
+  }, [activeNodeId, upstreamNodeIds, isInLoopBody, loopParentNode, nodes, edges]);
 
   const workflowInputNode = useMemo(
     () => nodes.find((node) => node.type === 'start') ?? null,
@@ -440,11 +515,12 @@ export function WorkflowVariablePicker({
   const loopBodyNodes = useMemo(
     () => getLoopBodyVariableNodes({
       nodes,
+      edges,
       currentNode,
       upstreamNodeIds,
       activeNodeId,
     }),
-    [nodes, currentNode, upstreamNodeIds, activeNodeId],
+    [nodes, edges, currentNode, upstreamNodeIds, activeNodeId],
   );
   const loopVariableFields = useMemo<VariableField[]>(() => {
     if (!isInLoopBody || !loopParentNode) return [];
