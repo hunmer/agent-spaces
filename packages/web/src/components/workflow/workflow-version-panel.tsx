@@ -21,9 +21,10 @@ interface VersionPanelProps {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   onRestore: (version: WorkflowVersion) => void;
+  onPreview: (version: WorkflowVersion) => void;
 }
 
-export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: VersionPanelProps) {
+export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore, onPreview }: VersionPanelProps) {
   const t = useTranslations('workflows');
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +66,10 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
   const handleRestore = useCallback((version: WorkflowVersion) => {
     onRestore(version);
   }, [onRestore]);
+
+  const handlePreview = useCallback((version: WorkflowVersion) => {
+    onPreview(version);
+  }, [onPreview]);
 
   const handleClear = useCallback(async () => {
     await workflowVersionApi.clear(workflowId);
@@ -117,7 +122,8 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
             {versions.map(v => (
               <div
                 key={v.id}
-                className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
+                className="group flex cursor-pointer items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
+                onClick={() => handlePreview(v)}
               >
                 <GitBranch className="h-3 w-3 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -129,13 +135,19 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
                 <div className="hidden group-hover:flex gap-0.5">
                   <Button
                     variant="ghost" size="icon" className="h-5 w-5"
-                    onClick={() => handleRestore(v)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleRestore(v);
+                    }}
                   >
                     <RotateCcw className="h-3 w-3" />
                   </Button>
                   <Button
                     variant="ghost" size="icon" className="h-5 w-5 text-destructive"
-                    onClick={() => setConfirmDeleteId(v.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setConfirmDeleteId(v.id);
+                    }}
                   >
                     <Trash2 className="h-2.5 w-2.5" />
                   </Button>

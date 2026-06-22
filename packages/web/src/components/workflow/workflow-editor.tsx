@@ -779,6 +779,16 @@ function WorkflowEditorInner({
                 edges={workflow.edges}
                 onRestore={(version) => {
                   if (isWorkflowReadOnly) return;
+                  state.pushUndo('restore version');
+                  state.setWorkflow(w => w ? {
+                    ...w,
+                    nodes: version.snapshot?.nodes || [],
+                    edges: (version.snapshot?.edges || []) as typeof workflow.edges,
+                  } : null);
+                  markEditorDirty();
+                }}
+                onPreview={(version) => {
+                  if (isWorkflowReadOnly) return;
                   state.enterSnapshotPreview(version.snapshot);
                 }}
               />

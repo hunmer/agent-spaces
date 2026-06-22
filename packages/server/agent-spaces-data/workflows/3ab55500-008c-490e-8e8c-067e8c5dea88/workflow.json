@@ -1,0 +1,58 @@
+{
+  "id": "3ab55500-008c-490e-8e8c-067e8c5dea88",
+  "name": "test",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1782170126868_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": -135,
+        "y": -75
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782170126868_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "output1",
+            "type": "any",
+            "value": "{{ __data__[\"node_1782170143916_tvqeqp\"].key1 }}",
+            "inputMode": "variable",
+            "children": []
+          },
+          {
+            "key": "output2",
+            "type": "any",
+            "value": "{{ __data__[\"node_1782170152859_hj77rg\"].key2 }}",
+            "children": []
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1782170126868_start-source-node_1782170126868_end-target",
+      "source": "node_1782170126868_start",
+      "target": "node_1782170126868_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1782170126873,
+  "updatedAt": 1782170378795,
+  "published": false,
+  "lastRunAt": 1782170304586,
+  "groups": [],
+  "variables": []
+}
