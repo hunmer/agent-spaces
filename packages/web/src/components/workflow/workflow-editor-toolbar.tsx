@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft, Loader2,
-  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play,
+  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ interface EditorToolbarProps {
   onSavePreviewEdits: (options?: { createVersion?: boolean; versionName?: string }) => Promise<void>;
   onExport: (format: 'png' | 'jpeg') => void;
   isExporting?: boolean;
+  onExportWorkflow: () => void;
   onImport: () => void;
   onOpenPluginManager: () => void;
   onOpenWorkflowLocation: () => void;
@@ -59,7 +60,7 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview, isPreviewDirty,
   onBack, onExitPreview, onSave, canRunTest, onRunTest, onSavePreviewEdits,
-  onExport, onImport, isExporting,
+  onExport, onExportWorkflow, isExporting, onImport,
   onOpenPluginManager, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
   layoutManager,
 }: EditorToolbarProps) {
@@ -192,6 +193,10 @@ export function WorkflowEditorToolbar({
           <DropdownMenuItem onClick={() => onExport('jpeg')} disabled={isExporting}>
             <ImageIcon className="h-4 w-4 mr-2" />
             {t('editor.exportJpeg')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onExportWorkflow} disabled={!workflow}>
+            <Download className="h-4 w-4 mr-2" />
+            {t('card.export')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onImport}>
             <Upload className="h-4 w-4 mr-2" />

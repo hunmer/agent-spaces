@@ -925,6 +925,7 @@ function WorkflowEditorInner({
         onSavePreviewEdits={state.savePreviewEdits}
         onExport={(format) => canvasExportRef.current?.exportCanvas(format)}
         isExporting={false}
+        onExportWorkflow={state.handleExport}
         onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
         onOpenWorkflowLocation={() => {
