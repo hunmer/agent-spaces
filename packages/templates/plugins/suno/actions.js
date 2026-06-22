@@ -560,73 +560,6 @@ module.exports = (t) => [
     },
   },
 
-  // ─── 转换为 WAV ─────────────────────────
-  {
-    name: 'suno_convert_wav',
-    label: t('action.convertWav.label', 'Convert to WAV'),
-    category: t('category', 'Suno'),
-    icon: 'FileAudio',
-    description: t('action.convertWav.description', 'Convert an audio track to high-quality WAV (Suno /generate/wav)'),
-    properties: [
-      ...baseProperties(t),
-      {
-        key: 'taskId',
-        label: t('field.taskId.label', 'Source Task ID'),
-        type: 'text',
-        dataType: 'string',
-        required: true,
-        tooltip: t('field.taskId.tooltip', 'The taskId that produced the source audio'),
-      },
-      {
-        key: 'audioId',
-        label: t('field.audioId.label', 'Audio ID'),
-        type: 'text',
-        dataType: 'string',
-        required: true,
-        tooltip: t('field.audioId.tooltip', 'The id of the audio to convert'),
-      },
-      ...waitProperties(t),
-    ],
-    toolProperties: {
-      type: 'object',
-      properties: {
-        taskId: { type: 'string', description: '产生源音频的 taskId' },
-        audioId: { type: 'string', description: '要转换的音频 ID' },
-        callBackUrl: { type: 'string', description: '回调地址，留空则使用轮询' },
-        wait: { type: 'boolean', description: '是否等待完成，默认 false' },
-        pollInterval: { type: 'number', description: '轮询间隔秒数，默认 15' },
-        maxWait: { type: 'number', description: '最长等待秒数，默认 600' },
-        ...baseToolProps(),
-      },
-      required: ['taskId', 'audioId'],
-    },
-    outputs: [
-      { key: 'success', type: 'boolean', dataType: 'boolean' },
-      { key: 'message', type: 'string' },
-      { key: 'taskId', type: 'string' },
-      { key: 'status', type: 'string' },
-      { key: 'data', type: 'object', dataType: 'object', children: [] },
-    ],
-    run: async (ctx, args) => {
-      const baseUrl = resolveBaseUrl(args)
-      const proxy = resolveProxy(args)
-      const headers = buildAuthHeader(args.apiKey)
-
-      const body = { taskId: args.taskId, audioId: args.audioId }
-      const cb = resolveCallBackUrl(args)
-      if (cb) body.callBackUrl = cb
-
-      ctx.logger.info(`Convert WAV taskId=${args.taskId} audioId=${args.audioId}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate/wav`, { headers, body, proxy, timeout: 60000 })
-      if (resp.code !== 200) {
-        return { success: false, message: `转换失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
-      }
-      const taskId = resp.data?.taskId
-      ctx.logger.info(`Convert WAV submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
-    },
-  },
-
   // ─── 生成音乐视频 ─────────────────────────
   {
     name: 'suno_music_video',
@@ -788,7 +721,7 @@ module.exports = (t) => [
     label: t('action.credits.label', 'Query Credits'),
     category: t('category', 'Suno'),
     icon: 'Coins',
-    description: t('action.credits.description', 'Query remaining Suno credits (Suno /get-credits)'),
+    description: t('action.credits.description', 'Query remaining Suno credits (Suno /generate/credit)'),
     properties: [...baseProperties(t)],
     toolProperties: {
       type: 'object',
@@ -809,11 +742,14 @@ module.exports = (t) => [
       const headers = buildAuthHeader(args.apiKey)
 
       ctx.logger.info('Query credits')
-      const resp = await getJson(`${baseUrl}/api/v1/get-credits`, { headers, proxy, timeout: 30000 })
+      const resp = await getJson(`${baseUrl}/api/v1/generate/credit`, { headers, proxy, timeout: 30000 })
       if (resp.code !== 200) {
         return { success: false, message: `查询失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
-      const credits = resp.data?.credits ?? resp.data?.totalCreditsLeft ?? null
+      // /generate/credit 返回 data 为整数
+      const credits = typeof resp.data === 'number'
+        ? resp.data
+        : resp.data?.credits ?? resp.data?.totalCreditsLeft ?? null
       return {
         success: true,
         credits,

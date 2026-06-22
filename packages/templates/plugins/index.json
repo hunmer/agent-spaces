@@ -609,7 +609,7 @@
     "id": "workflow.suno",
     "name": "Suno AI 音乐生成",
     "version": "1.0.0",
-    "description": "集成 Suno API，支持 AI 音乐生成、歌词生成、音频扩展、上传翻唱、人声分离、WAV 转换、MV 生成、任务查询与额度查询",
+    "description": "集成 Suno API，支持 AI 音乐生成、歌词生成、音频扩展、上传翻唱、人声分离、MV 生成、任务查询与额度查询",
     "author": {
       "name": "workflow"
     },
@@ -625,8 +625,8 @@
     "hasWorkflow": true,
     "path": "suno",
     "iconUrl": "plugins/suno/icon.svg",
-    "md5": "b3d53bf2df6259d83ac5cddea513eec6",
-    "updatedAt": "2026-06-22T01:52:30.444Z",
+    "md5": "5b537af7e21de428ba358be9b6147a7e",
+    "updatedAt": "2026-06-22T02:02:40.138Z",
     "files": [
       "actions.js",
       "icon.svg",

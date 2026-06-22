@@ -183,7 +183,7 @@ async function getJson(url, options) {
 // ---------- 任务详情接口路由 ----------
 //
 // 不同任务类型的详情查询接口不同，按 type 路由：
-//   generate       生成 / 扩展 / 上传翻唱 / WAV 转换
+//   generate       生成 / 扩展 / 上传翻唱
 //   lyrics         歌词生成
 //   vocal_removal  人声分离
 //   music_video    音乐视频 (MV)

@@ -19,7 +19,7 @@
       "label": "结束",
       "position": {
         "x": 250,
-        "y": 400
+        "y": 409.5
       },
       "data": {}
     },
@@ -29,7 +29,7 @@
       "label": "生成歌词",
       "position": {
         "x": 405,
-        "y": 240
+        "y": 230.5
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
@@ -68,42 +68,6 @@
       }
     },
     {
-      "id": "node_1782092541163_reo07f",
-      "type": "suno_credits",
-      "label": "查询剩余额度",
-      "position": {
-        "x": 555,
-        "y": 540
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
-        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
-        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "credits",
-            "type": "number",
-            "dataType": "number"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "dataType": "object",
-            "children": []
-          }
-        ]
-      }
-    },
-    {
       "id": "node_1782093248580_fr41dx",
       "type": "suno_record_info",
       "label": "查询任务状态",
@@ -139,11 +103,96 @@
         "taskId": "b8159d5c368572cdb2a9c33f21b992b5",
         "type": "lyrics"
       }
+    },
+    {
+      "id": "node_1782093353757_0cq5dd",
+      "type": "suno_generate",
+      "label": "生成音乐",
+      "position": {
+        "x": 945,
+        "y": 630
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "customMode": true,
+        "instrumental": false,
+        "model": "{{ __config__[\"workflow.suno\"][\"defaultModel\"]}}",
+        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
+        "wait": true,
+        "pollInterval": 15,
+        "maxWait": 600,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "taskId",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ],
+        "prompt": "[Verse 1]\n朝の机に\n君のくせだけ残る\n冷めたお茶が\nやけに静かでつらい\n\n返すはずだった\n鍵がまだポケット\n名前を呼ぶたび\n喉が少し痛む\n\n[Pre-Chorus]\n言えなかった\nほんとの気持ち\n笑ってしまうほど\n遅すぎたんだね\n\n[Chorus]\nさよなら、さよなら\nまだ好きなのに\nさよなら、さよなら\n手が届かない\n君のいない部屋で\n息をしている\n割れたままでも\nまだここにいる\n\n[Verse 2]\n洗濯機の横\n置き忘れた白い靴下\n半分のままの\n約束が揺れてる\n\n駅までの道\nいつも通り歩くのに\n君がいないだけで\n景色が変わる\n\n[Pre-Chorus]\n追いかけても\n戻らない日々\n胸の奥でずっと\n音を立てるよ\n\n[Chorus]\nさよなら、さよなら\nまだ好きなのに\nさよなら、さよなら\n手が届かない\n君のいない部屋で\n息をしている\n割れたままでも\nまだここにいる\n\n[Bridge]\nもしもあの夜\nもう少しだけ\n優しくなれたら\n違ってたかな\nでも今はただ\nこの痛みごと\n抱えて進むしかない\n\n[Final Chorus]\nさよなら、さよなら\nまだ好きなのに\nさよなら、さよなら\n手が届かない\n君のいない朝を\n越えていくたび\n割れたままでも\n少し強くなる\n\nさよなら、さよなら\nもう戻れない\nさよなら、さよなら\nでも消えない\n君のいない部屋で\n息をしている\n割れたままでも\nまだここにいる",
+        "style": "悲伤",
+        "title": "sad"
+      }
+    },
+    {
+      "id": "node_1782094267546_r7kl23",
+      "type": "suno_credits",
+      "label": "查询剩余额度",
+      "position": {
+        "x": 495,
+        "y": 630
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "credits",
+            "type": "number",
+            "dataType": "number"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1782092150508,
-  "updatedAt": 1782093276375,
+  "updatedAt": 1782094277776,
   "published": false,
   "enabledPlugins": [
     "workflow.suno"

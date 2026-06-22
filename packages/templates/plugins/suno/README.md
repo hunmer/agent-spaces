@@ -1,6 +1,6 @@
 # Suno AI 音乐生成 插件
 
-> 集成 [Suno API](https://docs.sunoapi.org) 的 AI 音乐创作能力，覆盖音乐生成、歌词生成、音频扩展、上传翻唱、人声分离、WAV 转换、MV 生成、任务查询与额度查询。
+> 集成 [Suno API](https://docs.sunoapi.org) 的 AI 音乐创作能力，覆盖音乐生成、歌词生成、音频扩展、上传翻唱、人声分离、MV 生成、任务查询与额度查询。
 
 ## 简介
 
@@ -11,7 +11,6 @@ Suno API 提供高质量的 AI 音乐与音频处理服务。本插件将其封�
 - **音频扩展**：在已有音频上继续扩展
 - **上传翻唱**：上传音频 URL 改造成新风格
 - **人声分离**：分离人声与伴奏
-- **WAV 转换**：转换为高质量 WAV
 - **MV 生成**：由音频生成可视化音乐视频
 - **任务查询 / 额度查询**：查询异步任务状态与账户剩余额度
 
@@ -47,7 +46,6 @@ Suno 大多数接口是**异步任务模式**：提交后返回 `taskId`，再�
 | `suno_extend` | 扩展音乐 |
 | `suno_upload_cover` | 上传并翻唱 |
 | `suno_vocal_removal` | 人声分离 |
-| `suno_convert_wav` | 转换为 WAV |
 | `suno_music_video` | 生成音乐视频 |
 | `suno_record_info` | 查询任务状态 |
 | `suno_credits` | 查询剩余额度 |

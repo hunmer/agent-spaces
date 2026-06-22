@@ -609,7 +609,7 @@
     "id": "workflow.suno",
     "name": "Suno AI Music",
     "version": "1.0.0",
-    "description": "Suno API integration: AI music generation, lyrics generation, audio extension, upload & cover, vocal removal, WAV conversion, music video, task query and credits query",
+    "description": "Suno API integration: AI music generation, lyrics generation, audio extension, upload & cover, vocal removal, music video, task query and credits query",
     "author": {
       "name": "workflow"
     },
@@ -625,8 +625,8 @@
     "hasWorkflow": true,
     "path": "suno",
     "iconUrl": "plugins/suno/icon.svg",
-    "md5": "b3d53bf2df6259d83ac5cddea513eec6",
-    "updatedAt": "2026-06-22T01:52:30.444Z",
+    "md5": "5b537af7e21de428ba358be9b6147a7e",
+    "updatedAt": "2026-06-22T02:02:40.138Z",
     "files": [
       "actions.js",
       "icon.svg",
