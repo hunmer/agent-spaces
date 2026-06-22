@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
 import { pluginApi } from '@/lib/workflow-plugin-api';
@@ -98,8 +99,8 @@ function MiniAppListPage() {
         const name = file.name.replace(/\.zip$/i, '');
         await sdk.miniApp.importZip({ zip, name });
         loadProjects();
-      } catch {
-        // invalid zip or import error
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : '导入失败');
       }
     };
     input.click();

@@ -43,7 +43,7 @@ export function MiniAppCard({ project, onDelete, onDuplicate, onUpdated, allPlug
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${(project.name || 'project').replace(/[^\w\-.]/g, '_')}.zip`;
+    a.download = `${(project.name || 'project').replace(/[\\/:*?"<>|]/g, '_').trim()}.zip`;
     a.click();
     URL.revokeObjectURL(url);
   };

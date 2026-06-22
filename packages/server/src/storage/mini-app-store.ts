@@ -347,7 +347,13 @@ export function writeDataFile(projectId: string, filePath: string, content: Buff
 export function importFromDir(extractDir: string, manifest: Partial<MiniAppProject> & { name: string; type: 'react' | 'html'; mainFile: string }): MiniAppProject {
   // id：优先用调用方传入的稳定 id（商店模板 id），否则从 name 生成。创建后固定不变。
   // 这样商店模板可按 id 判断「已安装」、按 updatedAt 判断「有更新」。
-  const id = manifest.id ? safeNameId(manifest.id) : safeNameId(manifest.name);
+  let id: string;
+  try {
+    id = manifest.id ? safeNameId(manifest.id) : safeNameId(manifest.name);
+  } catch {
+    // 名称清洗后为空（如纯符号/全下划线的文件名），回退到带时间戳的默认 id，避免导入直接失败
+    id = `imported-${Date.now()}`;
+  }
   const contentRoot = resolveContentRoot(extractDir, manifest.mainFile);
   const existing = getProject(id);
 
