@@ -1,17 +1,17 @@
 /**
- * 千音插件共享网络与鉴权工具
+ * 千音插件共享鉴权与接口工具
  *
+ * 网络请求统一走 ctx.api（plugin-runtime-api 注入），不自行实现 HTTP：
+ *   ctx.api.postJson(url, { body, headers, timeout })   POST JSON，返回解析后的 JSON
+ *   ctx.api.fetchJson(url, { headers, timeout })         GET，返回解析后的 JSON（别名 getJson）
+ *   ctx.api.fetchBuffer(url, { timeout })                GET 二进制，返回 { buffer, size, mimeType }
  * 鉴权: MD5(appkey + "+" + secret + "+" + timestamp)
  * TTS: POST /api/tts/Submit → 返回 fileUrl → 下载音频
  */
-const https = require('https')
-const http = require('http')
-const zlib = require('zlib')
 const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const { URL } = require('url')
 
 const QIANYIN_BASE_URL = 'https://open.qianyin123.com'
 
@@ -54,64 +54,14 @@ function resolveBaseUrl(args) {
 }
 
 // ---------- HTTP ----------
-
-function request(url, method, headers, body, timeout) {
-  const parsed = new URL(url)
-  const mod = parsed.protocol === 'https:' ? https : http
-  const opts = {
-    hostname: parsed.hostname,
-    port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-    path: parsed.pathname + (parsed.search || ''),
-    method,
-    headers,
-    timeout: timeout || 60000,
-  }
-
-  return new Promise((resolve, reject) => {
-    const req = mod.request(opts, (res) => {
-      const chunks = []
-      let stream = res
-      const encoding = res.headers['content-encoding']
-      if (encoding === 'gzip') {
-        stream = res.pipe(zlib.createGunzip())
-      } else if (encoding === 'deflate') {
-        stream = res.pipe(zlib.createInflate())
-      } else if (encoding === 'br') {
-        stream = res.pipe(zlib.createBrotliDecompress())
-      }
-      stream.on('data', c => chunks.push(c))
-      stream.on('end', () => {
-        const buf = Buffer.concat(chunks)
-        resolve({ statusCode: res.statusCode, headers: res.headers, body: buf })
-      })
-      stream.on('error', reject)
-    })
-    req.on('error', reject)
-    req.on('timeout', () => { req.destroy(); reject(new Error('请求超时')) })
-    if (body) req.write(body)
-    req.end()
-  })
-}
+// 统一走 ctx.api（postJson/fetchJson/fetchBuffer），不再自行实现 HTTP。
+// api 由 actions.js 的 run(ctx, args) 透传 ctx.api。
 
 /**
- * POST JSON，返回解析后的 JSON
+ * POST JSON，返回解析后的 JSON；业务 code !== 200 抛错
  */
-async function postJSON(url, data, headers, timeout) {
-  const body = JSON.stringify(data)
-  const resp = await request(url, 'POST', {
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(body),
-    'User-Agent': 'workflow/1.0',
-    ...headers,
-  }, body, timeout)
-
-  const text = resp.body.toString('utf-8')
-  let json
-  try {
-    json = JSON.parse(text)
-  } catch {
-    throw new Error(`千音 API 响应解析失败: ${text.slice(0, 300)}`)
-  }
+async function postJSON(api, url, data, headers, timeout) {
+  const json = await api.postJson(url, { body: data, headers, timeout: timeout || 60000 })
 
   if (json.code !== 200) {
     const err = new Error(`千音 API 错误: ${json.message || '未知错误'} (code: ${json.code})`)
@@ -125,36 +75,16 @@ async function postJSON(url, data, headers, timeout) {
 /**
  * GET JSON
  */
-async function getJSON(url, headers, timeout) {
-  const resp = await request(url, 'GET', {
-    'User-Agent': 'workflow/1.0',
-    ...headers,
-  }, null, timeout)
-
-  const text = resp.body.toString('utf-8')
-  let json
-  try {
-    json = JSON.parse(text)
-  } catch {
-    throw new Error(`千音 API 响应解析失败: ${text.slice(0, 300)}`)
-  }
-
-  return json
+async function getJSON(api, url, headers, timeout) {
+  return api.fetchJson(url, { headers, timeout: timeout || 30000 })
 }
 
 /**
  * 下载二进制文件到 Buffer
  */
-async function downloadBuffer(url, timeout) {
-  const resp = await request(url, 'GET', {
-    'User-Agent': 'workflow/1.0',
-  }, null, timeout || 30000)
-
-  if (resp.statusCode >= 400) {
-    throw new Error(`音频下载失败: HTTP ${resp.statusCode}`)
-  }
-
-  return resp.body
+async function downloadBuffer(api, url, timeout) {
+  const { buffer } = await api.fetchBuffer(url, { timeout: timeout || 30000 })
+  return buffer
 }
 
 // ---------- File ----------

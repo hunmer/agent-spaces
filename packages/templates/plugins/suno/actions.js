@@ -206,13 +206,13 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Generate music: model=${body.model} customMode=${body.customMode} instrumental=${body.instrumental}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
+      const resp = await postJson(ctx.api, `${baseUrl}/api/v1/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `生成失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Generate submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
+      return maybeWait({ api: ctx.api, baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
     },
   },
 
@@ -264,13 +264,13 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info('Generate lyrics')
-      const resp = await postJson(`${baseUrl}/api/v1/lyrics`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
+      const resp = await postJson(ctx.api, `${baseUrl}/api/v1/lyrics`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `生成失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Lyrics submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'lyrics', args, logger: ctx.logger, t })
+      return maybeWait({ api: ctx.api, baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'lyrics', args, logger: ctx.logger, t })
     },
   },
 
@@ -370,13 +370,13 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Extend audioId=${args.audioId} continueAt=${body.continueAt}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate/extend`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
+      const resp = await postJson(ctx.api, `${baseUrl}/api/v1/generate/extend`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `扩展失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Extend submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
+      return maybeWait({ api: ctx.api, baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
     },
   },
 
@@ -570,13 +570,13 @@ module.exports = (t) => [
       }
 
       ctx.logger.info(`Upload & cover: ${args.uploadUrl} customMode=${customMode} instrumental=${instrumental}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate/upload-cover`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
+      const resp = await postJson(ctx.api, `${baseUrl}/api/v1/generate/upload-cover`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `翻唱失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Upload cover submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
+      return maybeWait({ api: ctx.api, baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
     },
   },
 
@@ -637,13 +637,13 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Vocal removal taskId=${args.taskId} audioId=${args.audioId}`)
-      const resp = await postJson(`${baseUrl}/api/v1/vocal-removal/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
+      const resp = await postJson(ctx.api, `${baseUrl}/api/v1/vocal-removal/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `人声分离失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Vocal removal submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'vocal_removal', args, logger: ctx.logger, t })
+      return maybeWait({ api: ctx.api, baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'vocal_removal', args, logger: ctx.logger, t })
     },
   },
 
@@ -722,13 +722,13 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Music video taskId=${args.taskId} audioId=${args.audioId}`)
-      const resp = await postJson(`${baseUrl}/api/v1/mv/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
+      const resp = await postJson(ctx.api, `${baseUrl}/api/v1/mv/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `MV 生成失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Music video submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'music_video', args, logger: ctx.logger, t })
+      return maybeWait({ api: ctx.api, baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'music_video', args, logger: ctx.logger, t })
     },
   },
 
@@ -787,7 +787,7 @@ module.exports = (t) => [
       const type = args.type || 'generate'
 
       ctx.logger.info(`Query task taskId=${args.taskId} type=${type}`)
-      const resp = await queryRecordInfo(baseUrl, args.apiKey, args.taskId, proxy, type)
+      const resp = await queryRecordInfo(ctx.api, baseUrl, args.apiKey, args.taskId, proxy, type)
       if (resp.code !== 200) {
         return { success: false, message: `查询失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
@@ -829,7 +829,7 @@ module.exports = (t) => [
       const headers = buildAuthHeader(args.apiKey)
 
       ctx.logger.info('Query credits')
-      const resp = await getJson(`${baseUrl}/api/v1/generate/credit`, { headers, proxy, timeout: 30000 })
+      const resp = await getJson(ctx.api, `${baseUrl}/api/v1/generate/credit`, { headers, proxy, timeout: 30000 })
       if (resp.code !== 200) {
         return { success: false, message: `查询失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }

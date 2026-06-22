@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Download, Folder, Search, FileText } from 'lucide-react';
+import { Download, Folder, Search, FileText, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { fetchStoreIndex } from '@/lib/agent-store';
 import type { WorkflowTemplatePreset } from './workflow-templates';
@@ -20,6 +20,7 @@ interface WorkflowTemplatesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (data: WorkflowTemplatePreset['data']) => void;
+  onImportLocal?: () => void;
 }
 
 interface WorkflowIndexItem {
@@ -32,7 +33,7 @@ interface WorkflowIndexItem {
   agentCount: number;
 }
 
-export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: WorkflowTemplatesDialogProps) {
+export function WorkflowTemplatesDialog({ open, onOpenChange, onImport, onImportLocal }: WorkflowTemplatesDialogProps) {
   const t = useTranslations('workflows');
   const [importing, setImporting] = useState<string | null>(null);
   const [templates, setTemplates] = useState<WorkflowIndexItem[]>([]);
@@ -85,7 +86,15 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{t('templatesDialog.title')}</DialogTitle>
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle>{t('templatesDialog.title')}</DialogTitle>
+            {onImportLocal && (
+              <Button variant="outline" size="sm" className="mr-6" onClick={onImportLocal}>
+                <Upload className="size-3.5 mr-1" />
+                {t('page.import')}
+              </Button>
+            )}
+          </div>
           <DialogDescription>{t('templatesDialog.description')}</DialogDescription>
         </DialogHeader>
 

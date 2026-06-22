@@ -91,6 +91,7 @@ module.exports = (t) => [
 
       // 提交合成任务
       const result = await postJSON(
+        ctx.api,
         `${baseUrl}/api/tts/Submit`,
         requestData,
         authHeaders,
@@ -105,7 +106,7 @@ module.exports = (t) => [
       ctx.logger.info(`千音合成成功，下载音频: ${fileUrl}`)
 
       // 下载音频
-      const audioBuffer = await downloadBuffer(fileUrl)
+      const audioBuffer = await downloadBuffer(ctx.api, fileUrl)
       const ext = getFormatExt(format)
       const filePath = saveToTempFile(audioBuffer, ext)
 
@@ -148,7 +149,7 @@ module.exports = (t) => [
 
       ctx.logger.info(`获取千音发音人列表: ${baseUrl}/api/speaker/GetList`)
 
-      const result = await getJSON(`${baseUrl}/api/speaker/GetList`, null, 15000)
+      const result = await getJSON(ctx.api, `${baseUrl}/api/speaker/GetList`, null, 15000)
 
       if (result.code !== 200) {
         throw new Error(`获取发音人列表失败: ${result.message || '未知错误'} (code: ${result.code})`)

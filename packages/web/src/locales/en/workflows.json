@@ -4,6 +4,7 @@
     "subtitle": "Manage Workflow templates",
     "templates": "Templates",
     "import": "Import",
+    "plugins": "Plugins",
     "create": "New Workflow",
     "searchPlaceholder": "Search workflows...",
     "tags": "Tags",

@@ -4,6 +4,7 @@
     "subtitle": "管理 Workflow 模板",
     "templates": "模版",
     "import": "导入",
+    "plugins": "插件管理",
     "create": "新建工作流",
     "searchPlaceholder": "搜索工作流...",
     "tags": "标签",

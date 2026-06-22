@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Upload, FileText, Search, Filter, ArrowUpDown, CheckSquare, Download, Trash2 } from 'lucide-react';
+import { Plus, Plug, FileText, Search, Filter, ArrowUpDown, CheckSquare, Download, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
+import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import { WorkflowInfoDialog } from '@/components/workflow/workflow-info-dialog';
 import { WorkflowCard } from '@/components/workflows/workflow-card';
@@ -28,6 +29,7 @@ export function WorkflowsPage() {
   const router = useRouter();
   const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow, upsertWorkflow } = useWorkflowStore();
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [pluginsOpen, setPluginsOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
@@ -260,8 +262,8 @@ export function WorkflowsPage() {
           <Button variant="outline" onClick={() => setTemplatesOpen(true)}>
             <FileText className="h-4 w-4 mr-1" /> {t('page.templates')}
           </Button>
-          <Button variant="outline" onClick={handleImport}>
-            <Upload className="h-4 w-4 mr-1" /> {t('page.import')}
+          <Button variant="outline" onClick={() => setPluginsOpen(true)}>
+            <Plug className="h-4 w-4 mr-1" /> {t('page.plugins')}
           </Button>
           <Button onClick={() => setInfoDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> {t('page.create')}
@@ -406,6 +408,14 @@ export function WorkflowsPage() {
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}
         onImport={handleImportTemplate}
+        onImportLocal={handleImport}
+      />
+
+      <WorkflowPluginsDialog
+        open={pluginsOpen}
+        onOpenChange={setPluginsOpen}
+        workflow={null}
+        onWorkflowChange={() => {}}
       />
 
       <WorkflowInfoDialog

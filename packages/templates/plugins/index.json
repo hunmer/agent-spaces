@@ -387,8 +387,8 @@
     "hasWorkflow": true,
     "path": "jianying-draft",
     "iconUrl": "plugins/jianying-draft/icon.png",
-    "md5": "3a431d6e57288f3fbc955e5d1cdd9005",
-    "updatedAt": "2026-06-22T05:40:52.767Z",
+    "md5": "115e1e39ef4e6d656faaf144aa8df219",
+    "updatedAt": "2026-06-22T05:44:42.846Z",
     "files": [
       "actions.js",
       "icon.png",
