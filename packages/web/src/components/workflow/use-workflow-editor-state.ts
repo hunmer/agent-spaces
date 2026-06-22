@@ -183,25 +183,25 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   const cloneWorkflow = useCallback((value: Workflow): Workflow => JSON.parse(JSON.stringify(value)) as Workflow, []);
 
-  const enterPreview = useCallback((log: ExecutionLog) => {
-    if (!log.snapshot) return;
-
-    const snapshotNodes = JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes'];
-    const previewEdges = JSON.parse(JSON.stringify(log.snapshot.edges)) as Workflow['edges'];
-    const previewGroups = log.snapshot.groups
-      ? JSON.parse(JSON.stringify(log.snapshot.groups)) as Workflow['groups']
+  const enterSnapshotPreview = useCallback((snapshot: WorkflowSnapshot) => {
+    const normalized = normalizeLegacySourceHandle(snapshot);
+    const snapshotNodes = JSON.parse(JSON.stringify(normalized.nodes)) as Workflow['nodes'];
+    const previewEdges = JSON.parse(JSON.stringify(normalized.edges)) as Workflow['edges'];
+    const previewGroups = normalized.groups
+      ? JSON.parse(JSON.stringify(normalized.groups)) as Workflow['groups']
       : [];
     const lastEndNodeId = findLastEndNodeId(snapshotNodes);
 
     setWorkflow((current) => {
       if (!current) return current;
+      const sourceNodes = prePreviewWorkflowRef.current?.nodes ?? current.nodes;
       if (!prePreviewWorkflowRef.current) {
         const snapshot = cloneWorkflow(current);
         prePreviewWorkflowRef.current = snapshot;
         setPrePreviewWorkflow(snapshot);
       }
 
-      const previewNodes = restorePreviewIOFields(snapshotNodes, current.nodes);
+      const previewNodes = restorePreviewIOFields(snapshotNodes, sourceNodes);
 
       return {
         ...current,
@@ -215,6 +215,11 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     setIsPreviewDirty(false);
     setIsPreview(true);
   }, [cloneWorkflow]);
+
+  const enterPreview = useCallback((log: ExecutionLog) => {
+    if (!log.snapshot) return;
+    enterSnapshotPreview(log.snapshot);
+  }, [enterSnapshotPreview]);
 
   const exitPreview = useCallback(() => {
     setWorkflow((current) => {
@@ -446,7 +451,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
     // Actions
     markDirty, markPreviewDirty, pushUndo, handleUndo, handleRedo, clearOperationHistory,
-    enterPreview, exitPreview, savePreviewEdits,
+    enterPreview, enterSnapshotPreview, exitPreview, savePreviewEdits,
     saveWorkflow,
     startEditName, finishEditName,
     handleExport, handleImport,
