@@ -30,11 +30,11 @@
     "icon": "✍️",
     "description": "文案库",
     "hasIntro": true,
-    "version": "1.0.0",
+    "version": "1.0.1",
     "tags": [],
     "zipUrl": "mini-app/copywriting.zip",
-    "md5": "cde5b7b52258000804c2717fc1beb13d",
-    "updatedAt": "2026-06-18T09:07:54.685Z"
+    "md5": "fa660fa1208d2af428bd80644ae8c945",
+    "updatedAt": "2026-06-18T09:33:19.407Z"
   },
   {
     "id": "cover-generator",

@@ -606,6 +606,40 @@
     ]
   },
   {
+    "id": "workflow.suno",
+    "name": "Suno AI Music",
+    "version": "1.0.0",
+    "description": "Suno API integration: AI music generation, lyrics generation, audio extension, upload & cover, vocal removal, WAV conversion, music video, task query and credits query",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Music",
+      "Suno",
+      "Lyrics",
+      "Vocal Removal"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "suno",
+    "iconUrl": "plugins/suno/icon.svg",
+    "md5": "896f207ee6d7e2cdb5aadbb74ed26dd4",
+    "updatedAt": "2026-06-22T01:23:45.958Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.tencent-cos",
     "name": "Tencent COS",
     "version": "1.0.0",

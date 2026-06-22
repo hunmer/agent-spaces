@@ -1,0 +1,72 @@
+{
+  "id": "workflow.suno",
+  "name": "Suno AI 音乐生成",
+  "name_zh": "Suno AI 音乐生成",
+  "name_en": "Suno AI Music",
+  "version": "1.0.0",
+  "icon": "icon.svg",
+  "description": "集成 Suno API，支持 AI 音乐生成、歌词生成、音频扩展、上传翻唱、人声分离、WAV 转换、MV 生成、任务查询与额度查询",
+  "description_zh": "集成 Suno API，支持 AI 音乐生成、歌词生成、音频扩展、上传翻唱、人声分离、WAV 转换、MV 生成、任务查询与额度查询",
+  "description_en": "Suno API integration: AI music generation, lyrics generation, audio extension, upload & cover, vocal removal, WAV conversion, music video, task query and credits query",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "音乐生成", "Suno", "歌词", "人声分离"],
+  "tags_zh": ["AI", "音乐生成", "Suno", "歌词", "人声分离"],
+  "tags_en": ["AI", "Music", "Suno", "Lyrics", "Vocal Removal"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "Suno API Key（在 sunoapi.org/api-key 获取）",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的 Suno API Key",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "Suno API 基础地址",
+      "type": "string",
+      "value": "https://api.sunoapi.org",
+      "placeholder": "https://api.sunoapi.org"
+    },
+    {
+      "key": "defaultModel",
+      "label": "默认模型",
+      "desc": "默认使用的生成模型",
+      "type": "select",
+      "value": "V4_5",
+      "options": [
+        { "label": "V4（最高音质，最长 4 分钟）", "value": "V4" },
+        { "label": "V4_5（进阶，最长 8 分钟，推荐）", "value": "V4_5" },
+        { "label": "V4_5PLUS（更丰富音色，最长 8 分钟）", "value": "V4_5PLUS" },
+        { "label": "V4_5ALL（更强歌曲结构，最长 8 分钟）", "value": "V4_5ALL" },
+        { "label": "V5（更快速、更出色，最长 8 分钟）", "value": "V5" },
+        { "label": "V5_5（自定义音色）", "value": "V5_5" }
+      ]
+    },
+    {
+      "key": "callBackUrl",
+      "label": "回调地址",
+      "desc": "任务完成回调 URL（可选，留空则使用轮询获取结果）",
+      "type": "string",
+      "value": "",
+      "placeholder": "https://your-server.com/callback"
+    },
+    {
+      "key": "httpProxy",
+      "label": "HTTP 代理",
+      "desc": "HTTP 代理地址，如 http://127.0.0.1:7890（留空则不使用代理）",
+      "type": "string",
+      "value": "",
+      "placeholder": "http://127.0.0.1:7890"
+    }
+  ]
+}
