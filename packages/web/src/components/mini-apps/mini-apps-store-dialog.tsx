@@ -45,7 +45,7 @@ export function MiniAppStoreDialog({ open, onOpenChange, onImported }: MiniAppSt
   const [templates, setTemplates] = useState<MiniAppIndexItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
-  // 已安装项目：id -> updatedAt（ISO 字符串）。用于判断「已导入 / 有更新」
+  // 已安装项目：id -> version（版本号字符串）。用于判断「已导入 / 有更新」
   const [installedMap, setInstalledMap] = useState<Record<string, string>>({});
   // 当前查看详情的插件；null = 列表视图，非 null = 详情视图
   const [selected, setSelected] = useState<MiniAppIndexItem | null>(null);
@@ -61,12 +61,12 @@ export function MiniAppStoreDialog({ open, onOpenChange, onImported }: MiniAppSt
     setLoading(false);
   }, []);
 
-  // 拉取本地已安装清单，建立 id -> updatedAt 映射
+  // 拉取本地已安装清单，建立 id -> version 映射
   const refreshInstalled = useCallback(async () => {
     try {
       const list = await sdk.miniApp.list();
       const map: Record<string, string> = {};
-      for (const p of list) map[p.id] = p.updatedAt;
+      for (const p of list) map[p.id] = p.version;
       setInstalledMap(map);
     } catch {
       /* ignore */
@@ -80,12 +80,12 @@ export function MiniAppStoreDialog({ open, onOpenChange, onImported }: MiniAppSt
     }
   }, [open, fetchTemplates, refreshInstalled]);
 
-  // 三态：未安装 / 有更新（商店 updatedAt > 已安装 updatedAt）/ 已导入（已安装且无更新）
+  // 三态：未安装 / 有更新（商店 version ≠ 已安装 version）/ 已导入（已安装且版本一致）
   const getStatus = useCallback(
     (item: MiniAppIndexItem): InstallStatus => {
-      const installedAt = installedMap[item.id];
-      if (!installedAt) return 'not-installed';
-      if (item.updatedAt && item.updatedAt > installedAt) return 'updatable';
+      const installedVersion = installedMap[item.id];
+      if (!installedVersion) return 'not-installed';
+      if (item.version && item.version !== installedVersion) return 'updatable';
       return 'installed';
     },
     [installedMap],
