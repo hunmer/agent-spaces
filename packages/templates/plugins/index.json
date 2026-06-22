@@ -387,8 +387,8 @@
     "hasWorkflow": true,
     "path": "jianying-draft",
     "iconUrl": "plugins/jianying-draft/icon.png",
-    "md5": "115e1e39ef4e6d656faaf144aa8df219",
-    "updatedAt": "2026-06-22T05:44:42.846Z",
+    "md5": "b93a46354284aaa21a6d59200db17ee7",
+    "updatedAt": "2026-06-22T06:00:47.700Z",
     "files": [
       "actions.js",
       "icon.png",
@@ -624,8 +624,8 @@
     "hasWorkflow": true,
     "path": "qianyin",
     "iconUrl": "plugins/qianyin/icon.png",
-    "md5": "8b62a9d51bd8d02ff9857b55d71211a0",
-    "updatedAt": "2026-06-18T01:06:04.321Z",
+    "md5": "31fda24f79b8d751068845ffafd2196f",
+    "updatedAt": "2026-06-22T05:54:46.165Z",
     "files": [
       "actions.js",
       "icon.png",
@@ -658,8 +658,8 @@
     "hasWorkflow": true,
     "path": "suno",
     "iconUrl": "plugins/suno/icon.svg",
-    "md5": "1b3f28a071d843f9ffc2f69d83056a02",
-    "updatedAt": "2026-06-22T02:37:59.957Z",
+    "md5": "5f5723604a4683b3575e82a6e8835c67",
+    "updatedAt": "2026-06-22T05:55:10.260Z",
     "files": [
       "actions.js",
       "icon.svg",
