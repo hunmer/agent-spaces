@@ -18,6 +18,19 @@ type ElectronApi = {
   };
 };
 
+function withOriginalInputFieldsSnapshot(workflow: Workflow): Workflow['nodes'] {
+  return workflow.nodes.map((node) => {
+    if (!Array.isArray(node.data?.inputFields)) return node;
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        __originalInputFields: JSON.parse(JSON.stringify(node.data.inputFields)),
+      },
+    };
+  });
+}
+
 function getElectronApi(): ElectronApi | undefined {
   if (typeof window === 'undefined') return undefined;
   return (window as typeof window & { electronAPI?: ElectronApi }).electronAPI;
@@ -179,7 +192,7 @@ export function useWorkflowEditorExecution({
         input: inputs,
         embeddedNode,
         snapshot: {
-          nodes: workflow.nodes,
+          nodes: withOriginalInputFieldsSnapshot(workflow),
           edges: workflow.edges,
           groups: workflow.groups || [],
           variables: workflow.variables || [],
@@ -250,7 +263,7 @@ export function useWorkflowEditorExecution({
         env,
         startNodeId,
         snapshot: {
-          nodes: workflow.nodes,
+          nodes: withOriginalInputFieldsSnapshot(workflow),
           edges: workflow.edges,
           groups: workflow.groups || [],
           variables: workflow.variables || [],

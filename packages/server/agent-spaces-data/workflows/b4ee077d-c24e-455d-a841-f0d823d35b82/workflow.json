@@ -133,7 +133,15 @@
         "y": 0
       },
       "data": {
-        "code": "async function main({ params }) {\n  const raw = (params.agentResult || '').trim();\n  let scenes = [];\n\n  // 优先尝试直接 JSON.parse\n  try {\n    const parsed = JSON.parse(raw);\n    if (Array.isArray(parsed)) {\n      scenes = parsed;\n    } else if (parsed && Array.isArray(parsed.scenes)) {\n      scenes = parsed.scenes;\n    }\n  } catch (e) {\n    // 兜底：从字符串中截取第一个 [...] 段再尝试解析\n    const match = raw.match(/\\[[\\s\\S]*\\]/);\n    if (match) {\n      try {\n        scenes = JSON.parse(match[0]);\n      } catch (e2) {\n        scenes = [];\n      }\n    }\n  }\n\n  // 标准化：严格按照 { index, text, prompt } 三个字段输出，不做字段猜测\n  const normalized = scenes.map((item, idx) => {\n    if (typeof item === 'string') {\n      return { index: idx + 1, text: '', prompt: item };\n    }\n    if (!item || typeof item !== 'object') {\n      return { index: idx + 1, text: '', prompt: '' };\n    }\n    return {\n      index: idx + 1,\n      text: typeof item.text === 'string' ? item.text : '',\n      prompt: typeof item.prompt === 'string' ? item.prompt : '',\n    };\n  });\n\n  return {\n    scenes: normalized,\n    count: normalized.length,\n  };\n}"
+        "code": "async function main({ params }) {\n  const raw = (params.agentResult || '').trim();\n  let scenes = [];\n\n  // 优先尝试直接 JSON.parse\n  try {\n    const parsed = JSON.parse(raw);\n    if (Array.isArray(parsed)) {\n      scenes = parsed;\n    } else if (parsed && Array.isArray(parsed.scenes)) {\n      scenes = parsed.scenes;\n    }\n  } catch (e) {\n    // 兜底：从字符串中截取第一个 [...] 段再尝试解析\n    const match = raw.match(/\\[[\\s\\S]*\\]/);\n    if (match) {\n      try {\n        scenes = JSON.parse(match[0]);\n      } catch (e2) {\n        scenes = [];\n      }\n    }\n  }\n\n  // 标准化：严格按照 { index, text, prompt } 三个字段输出，不做字段猜测\n  const normalized = scenes.map((item, idx) => {\n    if (typeof item === 'string') {\n      return { index: idx + 1, text: '', prompt: item };\n    }\n    if (!item || typeof item !== 'object') {\n      return { index: idx + 1, text: '', prompt: '' };\n    }\n    return {\n      index: idx + 1,\n      text: typeof item.text === 'string' ? item.text : '',\n      prompt: typeof item.prompt === 'string' ? item.prompt : '',\n    };\n  });\n\n  return {\n    scenes: normalized,\n    count: normalized.length,\n  };\n}",
+        "inputFields": [
+          {
+            "key": "",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
       },
       "inputFields": [
         {
@@ -924,7 +932,7 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782124610671,
+  "updatedAt": 1782125031218,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",

@@ -86,6 +86,21 @@ function findLastEndNodeId(nodes: Workflow['nodes']): string | null {
   return null;
 }
 
+function restorePreviewInputFields(nodes: Workflow['nodes']): Workflow['nodes'] {
+  return nodes.map((node) => {
+    const originalInputFields = node.data?.__originalInputFields;
+    if (!Array.isArray(originalInputFields)) return node;
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        __executionInputFields: node.data?.inputFields,
+        inputFields: originalInputFields,
+      },
+    };
+  });
+}
+
 export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const store = useWorkflowStore();
 
@@ -146,7 +161,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const enterPreview = useCallback((log: ExecutionLog) => {
     if (!log.snapshot) return;
 
-    const previewNodes = JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes'];
+    const previewNodes = restorePreviewInputFields(JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes']);
     const previewEdges = JSON.parse(JSON.stringify(log.snapshot.edges)) as Workflow['edges'];
     const previewGroups = log.snapshot.groups
       ? JSON.parse(JSON.stringify(log.snapshot.groups)) as Workflow['groups']
