@@ -30,6 +30,12 @@
             "type": "file",
             "value": "",
             "children": []
+          },
+          {
+            "key": "bgm",
+            "type": "string",
+            "value": "",
+            "children": []
           }
         ]
       },
@@ -242,7 +248,39 @@
         "count": 1,
         "concurrency": 1,
         "sharedVariables": [],
-        "arrayPath": "{{ __data__[\"node_1781714698009_vvhfrg\"].scenes }}"
+        "arrayPath": "{{ __data__[\"node_1781714698009_vvhfrg\"].scenes }}",
+        "outputs": [
+          {
+            "key": "items",
+            "type": "array",
+            "value": "",
+            "children": [
+              {
+                "key": "image",
+                "type": "string[]",
+                "value": ""
+              },
+              {
+                "key": "audio",
+                "type": "string",
+                "value": "",
+                "children": []
+              },
+              {
+                "key": "duration",
+                "type": "number",
+                "value": "",
+                "children": []
+              },
+              {
+                "key": "text",
+                "type": "string",
+                "value": "",
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       "composite": {
         "role": "loop",
@@ -326,9 +364,10 @@
           },
           {
             "key": "image",
-            "type": "image[]",
-            "value": "{{ __data__[\"node_1781714725222_zidrgv\"].data.images }}",
-            "inputMode": "variable"
+            "type": "string[]",
+            "value": "{{ __data__[\"node_1782130304360_wzpuzi\"].data.images }}",
+            "inputMode": "variable",
+            "children": []
           },
           {
             "key": "audio",
@@ -383,87 +422,6 @@
       ]
     },
     {
-      "id": "node_1781714725222_zidrgv",
-      "type": "jimeng_text_to_image",
-      "label": "分镜生图",
-      "position": {
-        "x": 1395,
-        "y": 615
-      },
-      "data": {
-        "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
-        "model": "jimeng-4.5",
-        "ratio": "16:9",
-        "resolution": "2k",
-        "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
-        "prompt": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "children": []
-          },
-          {
-            "key": "message",
-            "type": "string",
-            "value": "",
-            "children": []
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "images",
-                "type": "image[]",
-                "children": []
-              },
-              {
-                "key": "created",
-                "type": "number",
-                "children": []
-              }
-            ]
-          }
-        ]
-      },
-      "composite": {
-        "rootId": "node_1781714719692_030b8s",
-        "parentId": "node_1781714719692_030b8s",
-        "generated": false,
-        "hidden": false
-      },
-      "outputs": [
-        {
-          "key": "success",
-          "type": "boolean",
-          "children": []
-        },
-        {
-          "key": "message",
-          "type": "string",
-          "value": "",
-          "children": []
-        },
-        {
-          "key": "data",
-          "type": "object",
-          "children": [
-            {
-              "key": "images",
-              "type": "image[]",
-              "children": []
-            },
-            {
-              "key": "created",
-              "type": "number",
-              "children": []
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "node_1782108540500_0ggo7y",
       "type": "run_code",
       "label": "nodes.run_code.label",
@@ -491,14 +449,15 @@
           {
             "key": "list",
             "type": "array",
-            "value": [],
+            "value": "{{ __data__[\"node_1781714719692_v7bbmd\"].items }}",
             "required": true,
             "children": []
           },
           {
             "key": "bgm",
             "type": "string",
-            "value": "",
+            "value": "{{ __data__[\"node_1781697071787_start\"].bgm }}",
+            "inputMode": "variable",
             "children": []
           }
         ]
@@ -701,7 +660,7 @@
       "label": "AI文字转语音",
       "position": {
         "x": 1680,
-        "y": 465
+        "y": 460.75
       },
       "data": {
         "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"] }}",
@@ -714,7 +673,7 @@
         "baseUrl": "{{ __config__[\"workflow.qianyin\"][\"baseUrl\"] }}",
         "sourceNodeId": "node_1781714719692_ilnqxh",
         "sourceHandle": "source",
-        "text": "{{ loop.item.text }} ",
+        "text": "{{ __loop__.item.text }}",
         "outputs": [
           {
             "key": "success",
@@ -800,7 +759,7 @@
       "label": "Probe Media Info",
       "position": {
         "x": 1770,
-        "y": 635.5
+        "y": 639.75
       },
       "data": {
         "ffprobePath": "",
@@ -1056,6 +1015,55 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1782130304360_wzpuzi",
+      "type": "aliyun_text_to_image",
+      "label": "AI文生图",
+      "position": {
+        "x": 1350,
+        "y": 600
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "model": "qwen-image-2.0-pro",
+        "size": "2048*2048",
+        "n": 1,
+        "promptExtend": "true",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "string[]"
+              },
+              {
+                "key": "requestId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781714719692_ilnqxh",
+        "sourceHandle": "source",
+        "prompt": "{{ __loop__.item.prompt }} {{ __data__[\"node_1781697071787_start\"].style }}"
+      },
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": false,
+        "hidden": false
+      }
     }
   ],
   "edges": [
@@ -1086,16 +1094,6 @@
         "hidden": true,
         "locked": true
       }
-    },
-    {
-      "id": "e-node_1781714719692_ilnqxh-node_1781714725222_zidrgv-mqiay8z7",
-      "source": "node_1781714719692_ilnqxh",
-      "target": "node_1781714725222_zidrgv"
-    },
-    {
-      "id": "e-node_1781714725222_zidrgv-node_1781714719692_327x83-mqiay8z7",
-      "source": "node_1781714725222_zidrgv",
-      "target": "node_1781714719692_327x83"
     },
     {
       "id": "e-node_1781714576999_ignsfm-node_1781714698009_vvhfrg-mqiay8z8",
@@ -1186,10 +1184,23 @@
       "id": "e-node_1782124458781_bq81ny-source-node_1782124187838_gyncrz-target",
       "source": "node_1782124458781_bq81ny",
       "target": "node_1782124187838_gyncrz"
+    },
+    {
+      "id": "e-node_1781714719692_ilnqxh-source-node_1782130304360_wzpuzi-target",
+      "source": "node_1781714719692_ilnqxh",
+      "target": "node_1782130304360_wzpuzi",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782130304360_wzpuzi-source-node_1781714719692_327x83-target",
+      "source": "node_1782130304360_wzpuzi",
+      "target": "node_1781714719692_327x83",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782129173775,
+  "updatedAt": 1782131149761,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",
@@ -1198,7 +1209,8 @@
     "workflow.fetch",
     "workflow.qianyin",
     "workflow.ffmpeg",
-    "workflow.tencent-cos"
+    "workflow.tencent-cos",
+    "workflow.aliyun-ai"
   ],
   "groups": [],
   "lastRunAt": 1781714754508,

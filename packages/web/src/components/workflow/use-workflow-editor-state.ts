@@ -92,10 +92,16 @@ function findLastEndNodeId(nodes: Workflow['nodes']): string | null {
   return null;
 }
 
-function restorePreviewIOFields(nodes: Workflow['nodes']): Workflow['nodes'] {
+function restorePreviewIOFields(nodes: Workflow['nodes'], sourceNodes: Workflow['nodes'] = []): Workflow['nodes'] {
+  const sourceNodeById = new Map(sourceNodes.map(node => [node.id, node]));
   return nodes.map((node) => {
-    const originalInputFields = node.data?.[ORIGINAL_INPUT_FIELDS_KEY];
-    const originalOutputs = node.data?.[ORIGINAL_OUTPUTS_KEY];
+    const sourceNode = sourceNodeById.get(node.id);
+    const originalInputFields = Array.isArray(sourceNode?.data?.inputFields)
+      ? sourceNode.data.inputFields
+      : node.data?.[ORIGINAL_INPUT_FIELDS_KEY];
+    const originalOutputs = Array.isArray(sourceNode?.data?.outputs)
+      ? sourceNode.data.outputs
+      : node.data?.[ORIGINAL_OUTPUTS_KEY];
     if (!Array.isArray(originalInputFields) && !Array.isArray(originalOutputs)) return node;
     return {
       ...node,
@@ -180,12 +186,12 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const enterPreview = useCallback((log: ExecutionLog) => {
     if (!log.snapshot) return;
 
-    const previewNodes = restorePreviewIOFields(JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes']);
+    const snapshotNodes = JSON.parse(JSON.stringify(log.snapshot.nodes)) as Workflow['nodes'];
     const previewEdges = JSON.parse(JSON.stringify(log.snapshot.edges)) as Workflow['edges'];
     const previewGroups = log.snapshot.groups
       ? JSON.parse(JSON.stringify(log.snapshot.groups)) as Workflow['groups']
       : [];
-    const lastEndNodeId = findLastEndNodeId(previewNodes);
+    const lastEndNodeId = findLastEndNodeId(snapshotNodes);
 
     setWorkflow((current) => {
       if (!current) return current;
@@ -194,6 +200,8 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
         prePreviewWorkflowRef.current = snapshot;
         setPrePreviewWorkflow(snapshot);
       }
+
+      const previewNodes = restorePreviewIOFields(snapshotNodes, current.nodes);
 
       return {
         ...current,
