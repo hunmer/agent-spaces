@@ -8,6 +8,7 @@ const shared = require('./shared')
 const {
   postJson,
   getJson,
+  queryRecordInfo,
   buildAuthHeader,
   resolveBaseUrl,
   resolveProxy,
@@ -210,7 +211,7 @@ module.exports = (t) => [
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Generate submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, args, logger: ctx.logger, t })
+      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
     },
   },
 
@@ -268,7 +269,7 @@ module.exports = (t) => [
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Lyrics submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, args, logger: ctx.logger, t })
+      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'lyrics', args, logger: ctx.logger, t })
     },
   },
 
@@ -374,7 +375,7 @@ module.exports = (t) => [
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Extend submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, args, logger: ctx.logger, t })
+      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
     },
   },
 
@@ -488,7 +489,7 @@ module.exports = (t) => [
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Upload cover submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, args, logger: ctx.logger, t })
+      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
     },
   },
 
@@ -555,7 +556,7 @@ module.exports = (t) => [
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Vocal removal submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, args, logger: ctx.logger, t })
+      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'vocal_removal', args, logger: ctx.logger, t })
     },
   },
 
@@ -622,7 +623,7 @@ module.exports = (t) => [
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Convert WAV submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, args, logger: ctx.logger, t })
+      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'generate', args, logger: ctx.logger, t })
     },
   },
 
@@ -707,7 +708,7 @@ module.exports = (t) => [
       }
       const taskId = resp.data?.taskId
       ctx.logger.info(`Music video submitted taskId=${taskId}`)
-      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, args, logger: ctx.logger, t })
+      return maybeWait({ baseUrl, apiKey: args.apiKey, proxy, taskId, type: 'music_video', args, logger: ctx.logger, t })
     },
   },
 
@@ -721,21 +722,38 @@ module.exports = (t) => [
     properties: [
       ...baseProperties(t),
       {
+        key: 'type',
+        label: t('field.recordType.label', 'Task Type'),
+        type: 'select',
+        dataType: 'string',
+        default: 'generate',
+        required: true,
+        tooltip: t('field.recordType.tooltip', 'Which record-info endpoint to query'),
+        options: [
+          { label: t('field.recordType.generate', 'Music / Extend'), value: 'generate' },
+          { label: t('field.recordType.lyrics', 'Lyrics'), value: 'lyrics' },
+          { label: t('field.recordType.vocalRemoval', 'Vocal Removal'), value: 'vocal_removal' },
+          { label: t('field.recordType.musicVideo', 'Music Video'), value: 'music_video' },
+          { label: t('field.recordType.cover', 'Cover'), value: 'cover' },
+        ],
+      },
+      {
         key: 'taskId',
         label: t('field.taskId.label', 'Task ID'),
         type: 'text',
         dataType: 'string',
         required: true,
-        tooltip: t('field.query.taskId.tooltip', 'The taskId returned by any generate action'),
+        tooltip: t('field.query.taskId.tooltip', 'The taskId returned by the corresponding generate action'),
       },
     ],
     toolProperties: {
       type: 'object',
       properties: {
+        type: { type: 'string', description: '任务类型：generate(音乐/扩展) / lyrics(歌词) / vocal_removal(人声分离) / music_video(MV) / cover(封面)，决定查询接口' },
         taskId: { type: 'string', description: '任务 ID' },
         ...baseToolProps(),
       },
-      required: ['taskId'],
+      required: ['taskId', 'type'],
     },
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
@@ -746,21 +764,19 @@ module.exports = (t) => [
     run: async (ctx, args) => {
       const baseUrl = resolveBaseUrl(args)
       const proxy = resolveProxy(args)
-      const headers = buildAuthHeader(args.apiKey)
+      const type = args.type || 'generate'
 
-      ctx.logger.info(`Query task taskId=${args.taskId}`)
-      const resp = await getJson(
-        `${baseUrl}/api/v1/generate/record-info?taskId=${encodeURIComponent(args.taskId)}`,
-        { headers, proxy, timeout: 30000 },
-      )
+      ctx.logger.info(`Query task taskId=${args.taskId} type=${type}`)
+      const resp = await queryRecordInfo(baseUrl, args.apiKey, args.taskId, proxy, type)
       if (resp.code !== 200) {
         return { success: false, message: `查询失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
       const data = resp.data || {}
+      const status = data.status || data.successFlag
       return {
         success: true,
-        status: data.status || '',
-        message: t('message.taskStatus', 'Task status: {status}').replace('{status}', data.status || 'UNKNOWN'),
+        status,
+        message: t('message.taskStatus', 'Task status: {status}').replace('{status}', status || 'UNKNOWN'),
         data,
       }
     },

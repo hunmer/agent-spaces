@@ -625,8 +625,8 @@
     "hasWorkflow": true,
     "path": "suno",
     "iconUrl": "plugins/suno/icon.svg",
-    "md5": "896f207ee6d7e2cdb5aadbb74ed26dd4",
-    "updatedAt": "2026-06-22T01:23:45.958Z",
+    "md5": "b3d53bf2df6259d83ac5cddea513eec6",
+    "updatedAt": "2026-06-22T01:52:30.444Z",
     "files": [
       "actions.js",
       "icon.svg",

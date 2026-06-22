@@ -180,21 +180,54 @@ async function getJson(url, options) {
   return requestJson('GET', url, options)
 }
 
-// ---------- 任务轮询 ----------
+// ---------- 任务详情接口路由 ----------
+//
+// 不同任务类型的详情查询接口不同，按 type 路由：
+//   generate       生成 / 扩展 / 上传翻唱 / WAV 转换
+//   lyrics         歌词生成
+//   vocal_removal  人声分离
+//   music_video    音乐视频 (MV)
+//   cover          音乐封面
+const RECORD_INFO_PATHS = {
+  generate: '/api/v1/generate/record-info',
+  lyrics: '/api/v1/lyrics/record-info',
+  vocal_removal: '/api/v1/vocal-removal/record-info',
+  music_video: '/api/v1/mp4/record-info',
+  cover: '/api/v1/suno/cover/record-info',
+}
+
+function getRecordInfoPath(type) {
+  return RECORD_INFO_PATHS[type] || RECORD_INFO_PATHS.generate
+}
+
+// 成功判定：兼容 generate/lyrics/vocal/mp4 的 status='SUCCESS' 与 cover 的 successFlag=1
+function isTaskSuccess(data) {
+  const flag = data.status || data.successFlag
+  return flag === 'SUCCESS' || flag === 1
+}
+
+// 失败判定：兼容字符串失败枚举与 cover 的 successFlag=3
+function isTaskFailed(data) {
+  const flag = data.status || data.successFlag
+  if (flag === 3) return true
+  if (typeof flag === 'string' && /FAILED|ERROR|EXCEPTION|SENSITIVE/.test(flag)) return true
+  return false
+}
 
 /**
- * 查询任务状态：GET /api/v1/generate/record-info?taskId=
- * 返回 { code, msg, data: { taskId, status, response, errorMessage } }
+ * 查询任务详情（单次）。type 决定走哪个 record-info 接口。
  */
-async function getTaskStatus(baseUrl, apiKey, taskId, proxy) {
-  const url = `${baseUrl}/api/v1/generate/record-info?taskId=${encodeURIComponent(taskId)}`
+async function queryRecordInfo(baseUrl, apiKey, taskId, proxy, type) {
+  const url = `${baseUrl}${getRecordInfoPath(type)}?taskId=${encodeURIComponent(taskId)}`
   return getJson(url, { headers: buildAuthHeader(apiKey), proxy, timeout: 30000 })
 }
+
+// ---------- 任务轮询 ----------
 
 /**
  * 轮询任务直到 SUCCESS / FAILED，或超过 maxWaitMs。
  *
- * @param {object} opts - { baseUrl, apiKey, proxy, taskId, intervalMs, maxWaitMs, logger }
+ * @param {object} opts - { baseUrl, apiKey, proxy, taskId, type, intervalMs, maxWaitMs, logger }
  * @returns {Promise<object>} Suno record-info 的 data 字段
  */
 async function waitForTask(opts) {
@@ -203,6 +236,7 @@ async function waitForTask(opts) {
     apiKey,
     proxy,
     taskId,
+    type = 'generate',
     intervalMs = 15000,
     maxWaitMs = 600000,
     logger,
@@ -218,23 +252,23 @@ async function waitForTask(opts) {
       throw new Error(`轮询超时（${Math.round(maxWaitMs / 1000)}s），最后状态：${lastStatus || 'UNKNOWN'}，taskId=${taskId}`)
     }
 
-    const resp = await getTaskStatus(baseUrl, apiKey, taskId, proxy)
+    const resp = await queryRecordInfo(baseUrl, apiKey, taskId, proxy, type)
     if (resp.code !== 200) {
       throw new Error(`查询任务状态失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}`)
     }
 
     const data = resp.data || {}
-    lastStatus = data.status || ''
+    lastStatus = data.status || data.successFlag || ''
 
     if (logger) {
-      logger.info(`Poll taskId=${taskId} status=${lastStatus} elapsed=${Math.round(elapsed / 1000)}s`)
+      logger.info(`Poll taskId=${taskId} type=${type} status=${lastStatus} elapsed=${Math.round(elapsed / 1000)}s`)
     }
 
-    if (data.status === 'SUCCESS') {
+    if (isTaskSuccess(data)) {
       return data
     }
-    if (data.status === 'FAILED' || data.status === 'ERROR') {
-      throw new Error(`任务失败：${data.errorMessage || data.error || 'unknown error'}`)
+    if (isTaskFailed(data)) {
+      throw new Error(`任务失败：${data.errorMessage || data.error || lastStatus || 'unknown error'}`)
     }
 
     await sleep(intervalMs)
@@ -273,7 +307,7 @@ function resolveDefaultModel(args) {
  * - wait=false（默认）：返回 { taskId, status, waited: false }
  * - wait=true：轮询，返回 { taskId, status:'SUCCESS', response, waited: true }
  */
-async function maybeWait({ baseUrl, apiKey, proxy, taskId, args, logger, t }) {
+async function maybeWait({ baseUrl, apiKey, proxy, taskId, type = 'generate', args, logger, t }) {
   const wait = args.wait === true || args.wait === 'true'
   if (!wait) {
     return {
@@ -291,6 +325,7 @@ async function maybeWait({ baseUrl, apiKey, proxy, taskId, args, logger, t }) {
     apiKey,
     proxy,
     taskId,
+    type,
     intervalMs: parseInt(args.pollInterval) > 0 ? parseInt(args.pollInterval) * 1000 : 15000,
     maxWaitMs: parseInt(args.maxWait) > 0 ? parseInt(args.maxWait) * 1000 : 600000,
     logger,
@@ -300,7 +335,7 @@ async function maybeWait({ baseUrl, apiKey, proxy, taskId, args, logger, t }) {
     success: true,
     waited: true,
     taskId,
-    status: data.status,
+    status: data.status || data.successFlag,
     response: data.response,
     message: t('message.taskDone', 'Task completed, taskId={taskId}').replace('{taskId}', taskId),
     data: data.response || data,
@@ -311,7 +346,8 @@ module.exports = {
   setConfig,
   postJson,
   getJson,
-  getTaskStatus,
+  queryRecordInfo,
+  getRecordInfoPath,
   waitForTask,
   maybeWait,
   buildAuthHeader,

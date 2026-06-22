@@ -1,0 +1,152 @@
+{
+  "id": "c7e6ae77-f694-48b6-8d98-4040c2393b11",
+  "name": "suno",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1782092150482_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782092150482_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782092317626_v6qi1o",
+      "type": "suno_lyrics",
+      "label": "生成歌词",
+      "position": {
+        "x": 405,
+        "y": 240
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
+        "wait": false,
+        "pollInterval": 15,
+        "maxWait": 600,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "taskId",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ],
+        "prompt": "失恋"
+      }
+    },
+    {
+      "id": "node_1782092541163_reo07f",
+      "type": "suno_credits",
+      "label": "查询剩余额度",
+      "position": {
+        "x": 555,
+        "y": 540
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "credits",
+            "type": "number",
+            "dataType": "number"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782093248580_fr41dx",
+      "type": "suno_record_info",
+      "label": "查询任务状态",
+      "position": {
+        "x": 780,
+        "y": 360
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ],
+        "taskId": "b8159d5c368572cdb2a9c33f21b992b5",
+        "type": "lyrics"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1782092150508,
+  "updatedAt": 1782093276375,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.suno"
+  ],
+  "groups": []
+}
