@@ -616,12 +616,12 @@
       }
     },
     {
-      "id": "node_1782115054622_x6hnj4",
+      "id": "node_1782115202718_lx5cjt",
       "type": "ffmpeg_probe",
       "label": "Probe Media Info",
       "position": {
-        "x": 810,
-        "y": 495
+        "x": 795,
+        "y": 435
       },
       "data": {
         "ffprobePath": "{{ __config__[\"workflow.ffmpeg\"][\"ffprobePath\"] }}",
@@ -788,7 +788,7 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782115086777,
+  "updatedAt": 1782115218564,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",
