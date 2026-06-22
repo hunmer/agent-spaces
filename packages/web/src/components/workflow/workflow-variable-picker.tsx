@@ -16,7 +16,9 @@ import { Braces } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
+import { resolveServerAssetUrl } from '@/lib/server';
 import { isStructuredOutputFieldType } from './workflow-properties-utils';
+import { PluginIcon } from './workflow-plugin-icon';
 
 type VariableField = OutputField & {
   expressionPath?: string;
@@ -547,6 +549,12 @@ export function WorkflowVariablePicker({
               {plugins.map((plugin) => (
                 <DropdownMenuSub key={plugin.id}>
                   <DropdownMenuSubTrigger className="text-xs">
+                    <PluginIcon
+                      className="h-4 w-4 shrink-0"
+                      source={plugin.iconPath
+                        ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) }
+                        : { type: 'builtin', variant: 'local' }}
+                    />
                     <span className="truncate">{plugin.name}</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="min-w-[180px]">

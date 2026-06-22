@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { OutputField } from '@agent-spaces/shared';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { InputGroup, InputGroupAddon, InputGroupTextarea } from '@/components/ui/input-group';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -143,7 +143,7 @@ export function WorkflowVariableInput({
           onClear={() => onChange('')}
         />
       ) : (
-        <InputGroupInput
+        <InputGroupTextarea
           value={value}
           readOnly={readOnly}
           placeholder={placeholder}
