@@ -1,6 +1,6 @@
 {
   "id": "c7e6ae77-f694-48b6-8d98-4040c2393b11",
-  "name": "suno",
+  "name": "国之脊梁音乐生成",
   "folderId": null,
   "nodes": [
     {
@@ -8,116 +8,83 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 250,
-        "y": 50
+        "x": 0,
+        "y": 64.5
       },
-      "data": {}
+      "data": {
+        "inputFields": [
+          {
+            "key": "audio_url",
+            "type": "string",
+            "value": "",
+            "description": "参考音频地址",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "lyric",
+            "type": "string",
+            "value": "",
+            "description": "歌词",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "is_custom_audio",
+            "type": "boolean",
+            "value": "",
+            "description": "是否为自上传参考音频",
+            "children": []
+          },
+          {
+            "key": "style",
+            "type": "string",
+            "value": "",
+            "description": "歌曲风格",
+            "children": []
+          },
+          {
+            "key": "gender",
+            "type": "string",
+            "value": "",
+            "description": "性别(f/m)",
+            "children": []
+          }
+        ]
+      }
     },
     {
       "id": "node_1782092150482_end",
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
-        "y": 409.5
-      },
-      "data": {}
-    },
-    {
-      "id": "node_1782092317626_v6qi1o",
-      "type": "suno_lyrics",
-      "label": "生成歌词",
-      "position": {
-        "x": 370,
-        "y": 230.5
+        "x": 1650,
+        "y": 64.5
       },
       "data": {
-        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
-        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
-        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
-        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
-        "wait": false,
-        "pollInterval": 15,
-        "maxWait": 600,
         "outputs": [
           {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "taskId",
-            "type": "string"
-          },
-          {
-            "key": "status",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "dataType": "object",
+            "key": "result_url",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782096152294_kpv7b6\"].data.sunoData.audioUrl }}",
             "children": []
           }
-        ],
-        "prompt": "失恋"
+        ]
       }
     },
     {
-      "id": "node_1782093248580_fr41dx",
-      "type": "suno_record_info",
-      "label": "查询任务状态",
+      "id": "node_1782096152294_kpv7b6",
+      "type": "suno_upload_cover",
+      "label": "上传并翻唱",
       "position": {
-        "x": 780,
-        "y": 392
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
-        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
-        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "status",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "dataType": "object",
-            "children": []
-          }
-        ],
-        "taskId": "b8159d5c368572cdb2a9c33f21b992b5",
-        "type": "lyrics"
-      }
-    },
-    {
-      "id": "node_1782093353757_0cq5dd",
-      "type": "suno_generate",
-      "label": "生成音乐",
-      "position": {
-        "x": 945,
-        "y": 630
+        "x": 1320,
+        "y": 0
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
         "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
         "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
         "customMode": true,
-        "instrumental": false,
         "model": "{{ __config__[\"workflow.suno\"][\"defaultModel\"]}}",
         "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
         "wait": true,
@@ -126,12 +93,11 @@
         "outputs": [
           {
             "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
+            "type": "boolean"
           },
           {
-            "key": "message",
-            "type": "string"
+            "key": "waited",
+            "type": "boolean"
           },
           {
             "key": "taskId",
@@ -142,60 +108,161 @@
             "type": "string"
           },
           {
-            "key": "data",
+            "key": "response",
             "type": "object",
-            "dataType": "object",
-            "children": []
-          }
-        ],
-        "prompt": "[Verse 1]\n朝の机に\n君のくせだけ残る\n冷めたお茶が\nやけに静かでつらい\n\n返すはずだった\n鍵がまだポケット\n名前を呼ぶたび\n喉が少し痛む\n\n[Pre-Chorus]\n言えなかった\nほんとの気持ち\n笑ってしまうほど\n遅すぎたんだね\n\n[Chorus]\nさよなら、さよなら\nまだ好きなのに\nさよなら、さよなら\n手が届かない\n君のいない部屋で\n息をしている\n割れたままでも\nまだここにいる\n\n[Verse 2]\n洗濯機の横\n置き忘れた白い靴下\n半分のままの\n約束が揺れてる\n\n駅までの道\nいつも通り歩くのに\n君がいないだけで\n景色が変わる\n\n[Pre-Chorus]\n追いかけても\n戻らない日々\n胸の奥でずっと\n音を立てるよ\n\n[Chorus]\nさよなら、さよなら\nまだ好きなのに\nさよなら、さよなら\n手が届かない\n君のいない部屋で\n息をしている\n割れたままでも\nまだここにいる\n\n[Bridge]\nもしもあの夜\nもう少しだけ\n優しくなれたら\n違ってたかな\nでも今はただ\nこの痛みごと\n抱えて進むしかない\n\n[Final Chorus]\nさよなら、さよなら\nまだ好きなのに\nさよなら、さよなら\n手が届かない\n君のいない朝を\n越えていくたび\n割れたままでも\n少し強くなる\n\nさよなら、さよなら\nもう戻れない\nさよなら、さよなら\nでも消えない\n君のいない部屋で\n息をしている\n割れたままでも\nまだここにいる",
-        "style": "悲伤",
-        "title": "sad"
-      }
-    },
-    {
-      "id": "node_1782094267546_r7kl23",
-      "type": "suno_credits",
-      "label": "查询剩余额度",
-      "position": {
-        "x": 495,
-        "y": 630
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
-        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
-        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "sunoData",
+                "type": "array",
+                "children": [
+                  {
+                    "key": "id",
+                    "type": "string"
+                  },
+                  {
+                    "key": "audioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "sourceAudioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "streamAudioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "sourceStreamAudioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "imageUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "sourceImageUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "prompt",
+                    "type": "string"
+                  },
+                  {
+                    "key": "modelName",
+                    "type": "string"
+                  },
+                  {
+                    "key": "title",
+                    "type": "string"
+                  },
+                  {
+                    "key": "tags",
+                    "type": "string"
+                  },
+                  {
+                    "key": "createTime",
+                    "type": "number"
+                  },
+                  {
+                    "key": "duration",
+                    "type": "number"
+                  }
+                ]
+              }
+            ]
           },
           {
             "key": "message",
             "type": "string"
           },
           {
-            "key": "credits",
-            "type": "number",
-            "dataType": "number"
-          },
-          {
             "key": "data",
             "type": "object",
-            "dataType": "object",
-            "children": []
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "sunoData",
+                "type": "array",
+                "children": [
+                  {
+                    "key": "id",
+                    "type": "string"
+                  },
+                  {
+                    "key": "audioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "sourceAudioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "streamAudioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "sourceStreamAudioUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "imageUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "sourceImageUrl",
+                    "type": "string"
+                  },
+                  {
+                    "key": "prompt",
+                    "type": "string"
+                  },
+                  {
+                    "key": "modelName",
+                    "type": "string"
+                  },
+                  {
+                    "key": "title",
+                    "type": "string"
+                  },
+                  {
+                    "key": "tags",
+                    "type": "string"
+                  },
+                  {
+                    "key": "createTime",
+                    "type": "number"
+                  },
+                  {
+                    "key": "duration",
+                    "type": "number"
+                  }
+                ]
+              }
+            ]
           }
-        ]
+        ],
+        "title": "国之脊梁",
+        "style": "{{ __data__[\"node_1782092150482_start\"].style }}",
+        "prompt": "{{ __data__[\"node_1782092150482_start\"].lyric }}",
+        "personaModel": "style_persona",
+        "vocalGender": "{{ __data__[\"node_1782092150482_start\"].gender }}",
+        "uploadUrl": "{{ __data__[\"node_1782096855602_v5ppti\"].result.url }}"
       }
     },
     {
-      "id": "node_1782094458372_f14fs7",
+      "id": "node_1782096673373_w6mtyd",
       "type": "cos_upload_file",
       "label": "COS上传文件",
       "position": {
-        "x": 705,
-        "y": -45
+        "x": 660,
+        "y": 107.25
       },
       "data": {
         "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
@@ -236,63 +303,128 @@
             ]
           }
         ],
-        "key": "test.wav"
+        "sourceNodeId": "node_1782092150482_start",
+        "sourceHandle": "source"
       }
     },
     {
-      "id": "node_1782096152294_kpv7b6",
-      "type": "suno_upload_cover",
-      "label": "上传并翻唱",
+      "id": "node_1782096808237_7djcsq",
+      "type": "switch",
+      "label": "nodes.switch.label",
       "position": {
-        "x": 1185,
-        "y": 300
+        "x": 330,
+        "y": 61.5
       },
       "data": {
-        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
-        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
-        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
-        "customMode": true,
-        "model": "{{ __config__[\"workflow.suno\"][\"defaultModel\"]}}",
-        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
-        "wait": false,
-        "pollInterval": 15,
-        "maxWait": 600,
+        "sourceNodeId": "node_1782092150482_start",
+        "sourceHandle": "source",
+        "conditions": [
+          {
+            "id": "cond_1782096810764_1gcv",
+            "variable": "{{ __data__[\"node_1782092150482_start\"].is_custom_audio }}",
+            "field": "{{ __data__[\"node_1782092150482_start\"].is_custom_audio }}",
+            "operator": "is_true",
+            "value": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782096855602_v5ppti",
+      "type": "variable_aggregate",
+      "label": "nodes.variable_aggregate.label",
+      "position": {
+        "x": 990,
+        "y": 64.5
+      },
+      "data": {
+        "strategy": "first_non_empty",
+        "groups": [
+          {
+            "key": "url",
+            "variables": [
+              {
+                "key": "",
+                "type": "string",
+                "value": "{{ __data__[\"node_1782096673373_w6mtyd\"].data.url }}",
+                "children": []
+              },
+              {
+                "key": "",
+                "type": "string",
+                "value": "{{ __data__[\"node_1782092150482_start\"].audio_url }}",
+                "children": []
+              }
+            ],
+            "id": 1782096866474
+          }
+        ],
         "outputs": [
           {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "taskId",
-            "type": "string"
-          },
-          {
-            "key": "status",
-            "type": "string"
-          },
-          {
-            "key": "data",
+            "key": "result",
             "type": "object",
-            "dataType": "object",
-            "children": []
+            "children": [
+              {
+                "key": "url",
+                "type": "string",
+                "value": "",
+                "children": []
+              }
+            ]
           }
         ]
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1782096152294_kpv7b6-source-node_1782092150482_end-target",
+      "source": "node_1782096152294_kpv7b6",
+      "target": "node_1782092150482_end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782092150482_start-source-node_1782096808237_7djcsq-target",
+      "source": "node_1782092150482_start",
+      "target": "node_1782096808237_7djcsq",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782096808237_7djcsq-source-node_1782096673373_w6mtyd-target",
+      "source": "node_1782096808237_7djcsq",
+      "target": "node_1782096673373_w6mtyd"
+    },
+    {
+      "id": "e-node_1782096673373_w6mtyd-source-node_1782096855602_v5ppti-target",
+      "source": "node_1782096673373_w6mtyd",
+      "target": "node_1782096855602_v5ppti",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782096808237_7djcsq-default-node_1782096855602_v5ppti-target",
+      "source": "node_1782096808237_7djcsq",
+      "target": "node_1782096855602_v5ppti",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782096855602_v5ppti-source-node_1782096152294_kpv7b6-target",
+      "source": "node_1782096855602_v5ppti",
+      "target": "node_1782096152294_kpv7b6",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1782092150508,
-  "updatedAt": 1782096173973,
-  "published": false,
+  "updatedAt": 1782097515663,
+  "published": true,
   "enabledPlugins": [
     "workflow.tencent-cos",
     "workflow.suno"
   ],
   "groups": [],
-  "variables": []
+  "variables": [],
+  "lastRunAt": 1782097246258
 }
