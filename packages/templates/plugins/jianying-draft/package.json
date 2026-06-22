@@ -1,0 +1,7 @@
+{
+  "name": "jianying-draft-plugin",
+  "version": "1.0.0",
+  "description": "JianYing draft import plugin for workflow",
+  "main": "main.js",
+  "type": "commonjs"
+}

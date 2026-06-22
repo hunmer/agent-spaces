@@ -1,0 +1,47 @@
+{
+  "id": "workflow.jianying-draft",
+  "name": "剪映草稿导入",
+  "name_zh": "剪映草稿导入",
+  "name_en": "JianYing Draft Import",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "通过 pyJianYingDraft 服务导入剪映草稿，支持提交预设数据、URL 导入、查询任务结果、校验预设",
+  "description_zh": "通过 pyJianYingDraft 服务导入剪映草稿，支持提交预设数据、URL 导入、查询任务结果、校验预设",
+  "description_en": "Import JianYing (CapCut) drafts via pyJianYingDraft server. Submit preset data, import by URL, query task result, validate preset.",
+  "author": { "name": "workflow" },
+  "tags": ["剪映", "草稿", "视频"],
+  "tags_zh": ["剪映", "草稿", "视频"],
+  "tags_en": ["JianYing", "Draft", "Video"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiBase",
+      "label": "API 地址",
+      "desc": "pyJianYingDraft 服务地址",
+      "type": "string",
+      "value": "http://127.0.0.1:8000",
+      "placeholder": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "timeout",
+      "label": "轮询超时(秒)",
+      "desc": "提交草稿后等待任务完成的最大时长",
+      "type": "number",
+      "value": 300
+    },
+    {
+      "key": "interval",
+      "label": "轮询间隔(秒)",
+      "desc": "查询任务状态的间隔",
+      "type": "number",
+      "value": 3
+    }
+  ]
+}

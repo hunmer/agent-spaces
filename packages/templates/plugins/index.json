@@ -370,6 +370,39 @@
     ]
   },
   {
+    "id": "workflow.jianying-draft",
+    "name": "剪映草稿导入",
+    "version": "1.0.0",
+    "description": "通过 pyJianYingDraft 服务导入剪映草稿，支持提交预设数据、URL 导入、查询任务结果、校验预设",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "剪映",
+      "草稿",
+      "视频"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "jianying-draft",
+    "iconUrl": "plugins/jianying-draft/icon.png",
+    "md5": "3a431d6e57288f3fbc955e5d1cdd9005",
+    "updatedAt": "2026-06-22T05:40:52.767Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.jimeng",
     "name": "即梦AI生图",
     "version": "1.0.0",
