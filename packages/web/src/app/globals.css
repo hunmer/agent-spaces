@@ -800,6 +800,52 @@
   color: var(--muted-foreground);
 }
 
+.workflow-variable-suggestion-menu {
+  width: 380px;
+}
+
+.workflow-variable-suggestion-list {
+  max-height: 320px;
+}
+
+.workflow-variable-suggestion-group + .workflow-variable-suggestion-group {
+  border-top: 1px solid var(--border);
+}
+
+.workflow-variable-suggestion-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted) 88%, var(--popover));
+  text-transform: uppercase;
+}
+
+.workflow-variable-suggestion-item {
+  gap: 4px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.workflow-variable-suggestion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.workflow-variable-suggestion-type {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

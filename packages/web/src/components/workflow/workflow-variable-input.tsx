@@ -1,17 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/react';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
-import Suggestion from '@tiptap/suggestion';
+import Suggestion, { exitSuggestion, type SuggestionProps } from '@tiptap/suggestion';
 import type { OutputField, PluginConfigField, WorkflowNode } from '@agent-spaces/shared';
 import { getCompositeParentId } from '@agent-spaces/shared';
-import { X } from 'lucide-react';
+import { Braces, Package, Repeat, Variable, Workflow, X } from 'lucide-react';
+import tippy, { type Instance } from 'tippy.js';
 import { Badge } from '@/components/ui/badge';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
 import {
@@ -20,9 +21,9 @@ import {
 import { cn } from '@/lib/utils';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
-import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
 import { FIELD_TYPES } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
+import { WorkflowNodeDefinitionIcon, type WorkflowNodeIconDefinition } from './workflow-node-icon';
 
 type EditorRange = { from: number; to: number };
 type VariableSuggestionItem = {
@@ -31,6 +32,9 @@ type VariableSuggestionItem = {
   description: string;
   path: string;
   type?: OutputField['type'] | PluginConfigField['type'];
+  groupIcon?: 'workflow' | 'variable' | 'loop' | 'plugin';
+  nodeIconDefinition?: WorkflowNodeIconDefinition;
+  [key: string]: unknown;
 };
 
 type VariableField = OutputField & {
@@ -278,6 +282,7 @@ function pushFieldItems(
   buildPath: (fieldPath: string) => string,
   group: string,
   typeFilter: OutputField['type'][],
+  groupMeta: Pick<VariableSuggestionItem, 'groupIcon' | 'nodeIconDefinition'> = {},
   parentPath?: string,
 ) {
   for (const field of fields) {
@@ -290,6 +295,7 @@ function pushFieldItems(
         description: group,
         path,
         type: field.type,
+        ...groupMeta,
       });
     }
 
@@ -305,12 +311,13 @@ function pushFieldItems(
           description: group,
           path: childVariablePath,
           type: childType,
+          ...groupMeta,
         });
       }
     }
 
     if (field.children?.length) {
-      pushFieldItems(items, field.children, buildPath, group, typeFilter, fieldPath);
+      pushFieldItems(items, field.children, buildPath, group, typeFilter, groupMeta, fieldPath);
     }
   }
 }
@@ -346,15 +353,23 @@ function buildVariableSuggestionItems({
   const items: VariableSuggestionItem[] = [];
 
   if (workflowInputNode) {
-    pushFieldItems(items, getNodeInputFields(workflowInputNode), (fieldPath) => buildVariablePath(workflowInputNode.id, fieldPath), 'workflow input', normalizedTypeFilter);
+    pushFieldItems(
+      items,
+      getNodeInputFields(workflowInputNode),
+      (fieldPath) => buildVariablePath(workflowInputNode.id, fieldPath),
+      'workflow input',
+      normalizedTypeFilter,
+      { nodeIconDefinition: getNodeDefinition(workflowInputNode.type) },
+    );
   }
 
-  pushFieldItems(items, variables, buildEnvPath, 'workflow variable', normalizedTypeFilter);
+  pushFieldItems(items, variables, buildEnvPath, 'workflow variable', normalizedTypeFilter, { groupIcon: 'variable' });
 
   for (const node of otherNodes.filter((item) => item.type !== 'start' && item.type !== 'end')) {
     const nodeLabel = getNodeLabel(node);
-    pushFieldItems(items, getNodeInputFields(node), (fieldPath) => buildInputFieldPath(node.id, fieldPath), `${nodeLabel} input`, normalizedTypeFilter);
-    pushFieldItems(items, getNodeOutputs(node), (fieldPath) => buildVariablePath(node.id, fieldPath), `${nodeLabel} output`, normalizedTypeFilter);
+    const nodeIconDefinition = getNodeDefinition(node.type);
+    pushFieldItems(items, getNodeInputFields(node), (fieldPath) => buildInputFieldPath(node.id, fieldPath), `${nodeLabel} input`, normalizedTypeFilter, { nodeIconDefinition });
+    pushFieldItems(items, getNodeOutputs(node), (fieldPath) => buildVariablePath(node.id, fieldPath), `${nodeLabel} output`, normalizedTypeFilter, { nodeIconDefinition });
   }
 
   if (isInLoopBody && loopParentNode) {
@@ -366,7 +381,7 @@ function buildVariableSuggestionItems({
       ? loopParentNode.data.sharedVariables as OutputField[]
       : [];
     loopFields.push(...mapLoopSharedVariables(sharedVariables));
-    pushFieldItems(items, loopFields, buildLoopVariablePath, 'loop', normalizedTypeFilter);
+    pushFieldItems(items, loopFields, buildLoopVariablePath, 'loop', normalizedTypeFilter, { nodeIconDefinition: getNodeDefinition(loopParentNode.type) });
   }
 
   for (const plugin of plugins) {
@@ -379,6 +394,7 @@ function buildVariableSuggestionItems({
         description: 'plugin config',
         path,
         type: field.type,
+        groupIcon: 'plugin',
       });
     }
   }
@@ -416,6 +432,208 @@ function createVariableHighlightExtension() {
   });
 }
 
+type WorkflowVariableSuggestionListRef = {
+  onKeyDown: ({ event }: { event: KeyboardEvent }) => boolean;
+};
+
+type WorkflowVariableSuggestionListProps = {
+  items: VariableSuggestionItem[];
+  command: (item: VariableSuggestionItem) => void;
+};
+
+function groupVariableSuggestionItems(items: VariableSuggestionItem[]) {
+  const groups: Array<{
+    title: string;
+    groupIcon?: VariableSuggestionItem['groupIcon'];
+    nodeIconDefinition?: WorkflowNodeIconDefinition;
+    items: Array<VariableSuggestionItem & { flatIndex: number }>;
+  }> = [];
+  const groupMap = new Map<string, Array<VariableSuggestionItem & { flatIndex: number }>>();
+  items.forEach((item, flatIndex) => {
+    const title = item.description || 'other';
+    const existing = groupMap.get(title);
+    if (existing) {
+      existing.push({ ...item, flatIndex });
+      return;
+    }
+    const nextGroup: Array<VariableSuggestionItem & { flatIndex: number }> = [{ ...item, flatIndex }];
+    groupMap.set(title, nextGroup);
+    groups.push({
+      title,
+      groupIcon: item.groupIcon,
+      nodeIconDefinition: item.nodeIconDefinition,
+      items: nextGroup,
+    });
+  });
+  return groups;
+}
+
+function WorkflowVariableSuggestionGroupIcon({
+  groupIcon,
+  nodeIconDefinition,
+}: {
+  groupIcon?: VariableSuggestionItem['groupIcon'];
+  nodeIconDefinition?: WorkflowNodeIconDefinition;
+}) {
+  if (nodeIconDefinition) {
+    return <WorkflowNodeDefinitionIcon definition={nodeIconDefinition} className="h-3.5 w-3.5 shrink-0" />;
+  }
+
+  if (groupIcon === 'variable') return <Variable className="h-3.5 w-3.5 shrink-0" />;
+  if (groupIcon === 'loop') return <Repeat className="h-3.5 w-3.5 shrink-0" />;
+  if (groupIcon === 'plugin') return <Package className="h-3.5 w-3.5 shrink-0" />;
+  if (groupIcon === 'workflow') return <Workflow className="h-3.5 w-3.5 shrink-0" />;
+  return <Braces className="h-3.5 w-3.5 shrink-0" />;
+}
+
+const WorkflowVariableSuggestionList = forwardRef<
+  WorkflowVariableSuggestionListRef,
+  WorkflowVariableSuggestionListProps
+>(function WorkflowVariableSuggestionList({ items, command }, ref) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const groupedItems = useMemo(() => groupVariableSuggestionItems(items), [items]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [items]);
+
+  useEffect(() => {
+    listRef.current
+      ?.querySelector('[data-selected="true"]')
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex]);
+
+  const selectItem = useCallback((index: number) => {
+    const item = items[index];
+    if (item) command(item);
+  }, [items, command]);
+
+  useImperativeHandle(ref, () => ({
+    onKeyDown: ({ event }) => {
+      if (!items.length) return false;
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setSelectedIndex((prev) => (prev + items.length - 1) % items.length);
+        return true;
+      }
+
+      if (event.key === 'ArrowDown' || event.key === 'Tab') {
+        event.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % items.length);
+        return true;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        selectItem(selectedIndex);
+        return true;
+      }
+
+      return false;
+    },
+  }), [items, selectItem, selectedIndex]);
+
+  if (!items.length) {
+    return (
+      <div className="suggestion-menu workflow-variable-suggestion-menu">
+        <div className="suggestion-empty">No matching variables</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="suggestion-menu workflow-variable-suggestion-menu">
+      <div className="suggestion-header">Select variable</div>
+      <div className="suggestion-list workflow-variable-suggestion-list" ref={listRef}>
+        {groupedItems.map((group) => (
+            <div key={group.title} className="workflow-variable-suggestion-group">
+              <div className="workflow-variable-suggestion-group-title">
+                <WorkflowVariableSuggestionGroupIcon
+                  groupIcon={group.groupIcon}
+                  nodeIconDefinition={group.nodeIconDefinition}
+                />
+                <span className="truncate">{group.title}</span>
+              </div>
+              {group.items.map((item) => {
+                const selected = item.flatIndex === selectedIndex;
+                return (
+                  <div
+                    key={item.id}
+                    className="suggestion-item workflow-variable-suggestion-item"
+                    data-selected={selected ? 'true' : 'false'}
+                    onMouseEnter={() => setSelectedIndex(item.flatIndex)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      command(item);
+                  }}
+                >
+                  <div className="workflow-variable-suggestion-row">
+                    <div className="suggestion-title">{item.title}</div>
+                    {item.type ? <div className="workflow-variable-suggestion-type">{item.type}</div> : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+function createVariableSuggestionRenderer(pluginKey?: PluginKey) {
+  let component: ReactRenderer | null = null;
+  let popup: Instance[] | null = null;
+
+  const createListProps = (props: SuggestionProps<VariableSuggestionItem>) => ({
+    ...props,
+    command: (item: VariableSuggestionItem) => {
+      props.command(item);
+      exitSuggestion(props.editor.view, pluginKey);
+    },
+  });
+
+  return {
+    onStart(props: SuggestionProps<VariableSuggestionItem>) {
+      component = new ReactRenderer(WorkflowVariableSuggestionList, {
+        props: createListProps(props),
+        editor: props.editor,
+      });
+      if (!props.clientRect) return;
+      const getReferenceClientRect = () => props.clientRect?.() ?? new DOMRect();
+      popup = tippy('body', {
+        getReferenceClientRect,
+        appendTo: () => document.body,
+        content: component.element,
+        showOnCreate: true,
+        interactive: true,
+        trigger: 'manual',
+        placement: 'bottom-start',
+      });
+    },
+    onUpdate(props: SuggestionProps<VariableSuggestionItem>) {
+      component?.updateProps(createListProps(props));
+      if (popup?.[0] && props.clientRect) {
+        popup[0].setProps({ getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect() });
+      }
+    },
+    onKeyDown(props: { event: KeyboardEvent }) {
+      if (component?.ref && typeof component.ref === 'object' && 'onKeyDown' in component.ref) {
+        return (component.ref as WorkflowVariableSuggestionListRef).onKeyDown(props);
+      }
+      return false;
+    },
+    onExit() {
+      popup?.[0]?.destroy();
+      component?.destroy();
+      popup = null;
+      component = null;
+    },
+  };
+}
+
 function createVariableSuggestionExtension(getItems: () => VariableSuggestionItem[]) {
   return Extension.create({
     name: 'workflowVariableSuggestion',
@@ -446,7 +664,7 @@ function createVariableSuggestionExtension(getItems: () => VariableSuggestionIte
               .insertContent(props.path)
               .run();
           },
-          render: () => createSuggestionRenderer(variableSuggestionPluginKey),
+          render: () => createVariableSuggestionRenderer(variableSuggestionPluginKey),
         },
       };
     },

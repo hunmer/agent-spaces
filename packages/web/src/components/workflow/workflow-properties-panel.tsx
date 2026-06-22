@@ -383,7 +383,6 @@ export function WorkflowPropertiesPanel({
             aria-label={`${t('properties.copy')} JSON`}
           >
             <Copy className="h-3 w-3" />
-            JSON
           </Button>
           {canEditOutputFields && (
             <Toggle
