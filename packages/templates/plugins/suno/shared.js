@@ -303,6 +303,18 @@ function resolveDefaultModel(args) {
 }
 
 /**
+ * 解析提交任务的 HTTP 超时（毫秒）。
+ * 优先级：args.requestTimeout > config.requestTimeout > 默认 60s。
+ * 同步应用到 requestJson 的 options.timeout。
+ */
+function resolveRequestTimeout(args) {
+  const fromArgs = Number(args?.requestTimeout)
+  const fromCfg = Number(_config.requestTimeout)
+  const sec = fromArgs > 0 ? fromArgs : fromCfg > 0 ? fromCfg : 60
+  return sec * 1000
+}
+
+/**
  * 提交任务后，根据 args.wait 决定是否轮询到完成。
  * - wait=false（默认）：返回 { taskId, status, waited: false }
  * - wait=true：轮询，返回 { taskId, status:'SUCCESS', response, waited: true }
@@ -355,4 +367,5 @@ module.exports = {
   resolveProxy,
   resolveCallBackUrl,
   resolveDefaultModel,
+  resolveRequestTimeout,
 }

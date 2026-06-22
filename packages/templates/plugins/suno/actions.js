@@ -14,6 +14,7 @@ const {
   resolveProxy,
   resolveCallBackUrl,
   resolveDefaultModel,
+  resolveRequestTimeout,
   maybeWait,
 } = shared
 
@@ -205,7 +206,7 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Generate music: model=${body.model} customMode=${body.customMode} instrumental=${body.instrumental}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate`, { headers, body, proxy, timeout: 60000 })
+      const resp = await postJson(`${baseUrl}/api/v1/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `生成失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
@@ -263,7 +264,7 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info('Generate lyrics')
-      const resp = await postJson(`${baseUrl}/api/v1/lyrics`, { headers, body, proxy, timeout: 60000 })
+      const resp = await postJson(`${baseUrl}/api/v1/lyrics`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `生成失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
@@ -369,7 +370,7 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Extend audioId=${args.audioId} continueAt=${body.continueAt}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate/extend`, { headers, body, proxy, timeout: 60000 })
+      const resp = await postJson(`${baseUrl}/api/v1/generate/extend`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `扩展失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
@@ -496,7 +497,7 @@ module.exports = (t) => [
       if (args.prompt) body.prompt = args.prompt
 
       ctx.logger.info(`Upload & cover: ${args.uploadUrl} customMode=${customMode} instrumental=${instrumental}`)
-      const resp = await postJson(`${baseUrl}/api/v1/generate/upload-cover`, { headers, body, proxy, timeout: 60000 })
+      const resp = await postJson(`${baseUrl}/api/v1/generate/upload-cover`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `翻唱失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
@@ -563,7 +564,7 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Vocal removal taskId=${args.taskId} audioId=${args.audioId}`)
-      const resp = await postJson(`${baseUrl}/api/v1/vocal-removal/generate`, { headers, body, proxy, timeout: 60000 })
+      const resp = await postJson(`${baseUrl}/api/v1/vocal-removal/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `人声分离失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }
@@ -648,7 +649,7 @@ module.exports = (t) => [
       if (cb) body.callBackUrl = cb
 
       ctx.logger.info(`Music video taskId=${args.taskId} audioId=${args.audioId}`)
-      const resp = await postJson(`${baseUrl}/api/v1/mv/generate`, { headers, body, proxy, timeout: 60000 })
+      const resp = await postJson(`${baseUrl}/api/v1/mv/generate`, { headers, body, proxy, timeout: resolveRequestTimeout(args) })
       if (resp.code !== 200) {
         return { success: false, message: `MV 生成失败：${resp.msg || JSON.stringify(resp).slice(0, 200)}` }
       }

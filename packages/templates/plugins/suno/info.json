@@ -61,6 +61,13 @@
       "placeholder": "https://your-server.com/callback"
     },
     {
+      "key": "requestTimeout",
+      "label": "请求超时(秒)",
+      "desc": "提交任务的 HTTP 请求超时时间（秒），默认 60",
+      "type": "number",
+      "value": 60
+    },
+    {
       "key": "httpProxy",
       "label": "HTTP 代理",
       "desc": "HTTP 代理地址，如 http://127.0.0.1:7890（留空则不使用代理）",
