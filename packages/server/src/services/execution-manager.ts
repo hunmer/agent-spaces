@@ -166,6 +166,14 @@ export class ExecutionManager {
     return count;
   }
 
+  async __executeScopedBodyForTest(
+    session: ExecutionSession,
+    bodyNode: WorkflowNode,
+    scopeNodes: WorkflowNode[],
+  ): Promise<unknown> {
+    return this.executeScopedBody(session, bodyNode, scopeNodes);
+  }
+
   async execute(
     request: WorkflowExecuteRequest,
     ownerClientId: string,
@@ -1105,6 +1113,7 @@ export class ExecutionManager {
     }
 
     const visited = new Set<string>([bodyNode.id]);
+    const completedNodeIds = new Set<string>([bodyNode.id]);
     const execFrom = async (nodeId: string): Promise<unknown> => {
       return this.executeDownstreamBranches(
         session,
@@ -1112,6 +1121,7 @@ export class ExecutionManager {
         adjacency.get(nodeId) || [],
         bodyEdges,
         visited,
+        completedNodeIds,
         id => scopeNodes.find(n => n.id === id),
         execFrom,
       );
@@ -1162,6 +1172,7 @@ export class ExecutionManager {
     }
 
     const visited = new Set<string>([startNode.id]);
+    const completedNodeIds = new Set<string>([startNode.id]);
     const execFrom = async (nodeId: string): Promise<unknown> => {
       return this.executeDownstreamBranches(
         session,
@@ -1169,6 +1180,7 @@ export class ExecutionManager {
         adjacency.get(nodeId) || [],
         workflow.edges,
         visited,
+        completedNodeIds,
         id => nodeMap.get(id),
         execFrom,
         node => node.type !== 'start',
@@ -1183,6 +1195,7 @@ export class ExecutionManager {
     outgoingEdges: WorkflowEdge[],
     dependencyEdges: WorkflowEdge[],
     visited: Set<string>,
+    completedNodeIds: Set<string>,
     getNode: (nodeId: string) => WorkflowNode | undefined,
     execFrom: (nodeId: string) => Promise<unknown>,
     shouldUseNodeResult: (node: WorkflowNode) => boolean = () => true,
@@ -1196,12 +1209,13 @@ export class ExecutionManager {
 
       const nextNode = getNode(edge.target);
       if (!nextNode || visited.has(nextNode.id)) continue;
-      if (!this.areIncomingNodesCompleted(session, nextNode.id, dependencyEdges, visited)) continue;
+      if (!this.areIncomingNodesCompleted(session, nextNode.id, dependencyEdges, completedNodeIds)) continue;
 
       visited.add(nextNode.id);
       branches.push((async () => {
         const result = await this.executeNode(session, nextNode);
         if (result === 'interrupted' || shouldInterrupt(session)) return undefined;
+        completedNodeIds.add(nextNode.id);
 
         let lastResult = shouldUseNodeResult(nextNode)
           ? this.getNodeExecutionData(session, nextNode.id)

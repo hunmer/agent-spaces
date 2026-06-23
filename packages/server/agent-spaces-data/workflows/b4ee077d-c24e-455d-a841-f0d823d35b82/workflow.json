@@ -246,7 +246,7 @@
       "data": {
         "loopType": "array",
         "count": 1,
-        "concurrency": 3,
+        "concurrency": 1,
         "sharedVariables": [],
         "arrayPath": "{{ __data__[\"node_1781714698009_vvhfrg\"].scenes }}",
         "outputs": [
@@ -1200,7 +1200,7 @@
     }
   ],
   "createdAt": 1781697071806,
-  "updatedAt": 1782178460960,
+  "updatedAt": 1782179843030,
   "published": false,
   "enabledPlugins": [
     "workflow.ai-image",
@@ -1213,6 +1213,6 @@
     "workflow.aliyun-ai"
   ],
   "groups": [],
-  "lastRunAt": 1782132032322,
+  "lastRunAt": 1782179844553,
   "variables": []
 }
