@@ -242,7 +242,15 @@
         "count": 1,
         "concurrency": 1,
         "sharedVariables": [],
-        "arrayPath": "{{ __data__[\"node_1781714698009_vvhfrg\"].scenes }}"
+        "arrayPath": "{{ __data__[\"node_1781714698009_vvhfrg\"].scenes }}",
+        "outputs": [
+          {
+            "key": "items",
+            "type": "any",
+            "value": "",
+            "children": []
+          }
+        ]
       },
       "composite": {
         "role": "loop",
@@ -264,8 +272,8 @@
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 1279,
-        "y": 275
+        "x": 886.7575691580428,
+        "y": 338.5251237610368
       },
       "data": {
         "width": 150,
@@ -287,8 +295,8 @@
       "type": "start",
       "label": "循环生成分镜图片开始",
       "position": {
-        "x": 1335,
-        "y": 375
+        "x": 942.7575691580428,
+        "y": 438.5251237610368
       },
       "data": {},
       "composite": {
@@ -312,8 +320,8 @@
       "type": "end",
       "label": "循环生成分镜图片结束",
       "position": {
-        "x": 1545,
-        "y": 810
+        "x": 1152.7575691580428,
+        "y": 873.5251237610369
       },
       "data": {
         "outputs": [
@@ -621,8 +629,8 @@
       "type": "qianyin_tts",
       "label": "AI文字转语音",
       "position": {
-        "x": 1680,
-        "y": 465
+        "x": 1287.7575691580428,
+        "y": 528.5251237610369
       },
       "data": {
         "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"] }}",
@@ -720,8 +728,8 @@
       "type": "ffmpeg_probe",
       "label": "Probe Media Info",
       "position": {
-        "x": 1770,
-        "y": 635.5
+        "x": 1377.7575691580428,
+        "y": 699.0251237610369
       },
       "data": {
         "ffprobePath": "",
@@ -984,11 +992,11 @@
       "type": "aliyun_text_to_image",
       "label": "AI文生图",
       "position": {
-        "x": 1380,
-        "y": 615
+        "x": 987.7575691580428,
+        "y": 678.5251237610369
       },
       "data": {
-        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"] }}",
         "model": "qwen-image-2.0-pro",
         "size": "2048*2048",
         "n": 1,
@@ -1023,7 +1031,7 @@
         "prompt": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}"
       },
       "composite": {
-        "rootId": "node_1781714719692_v7bbmd",
+        "rootId": "node_1781714719692_030b8s",
         "parentId": "node_1781714719692_030b8s",
         "generated": false,
         "hidden": false
@@ -1164,7 +1172,7 @@
     }
   ],
   "createdAt": 1782183030564,
-  "updatedAt": 1782186327728,
+  "updatedAt": 1782187103256,
   "published": false,
   "enabledPlugins": [
     "workflow.jimeng",

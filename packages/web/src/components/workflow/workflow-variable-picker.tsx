@@ -20,6 +20,7 @@ import { resolveServerAssetUrl } from '@/lib/server';
 import { isStructuredOutputFieldType } from './workflow-properties-utils';
 import { PluginIcon } from './workflow-plugin-icon';
 import { getUpstreamNodeIds } from './workflow-variable-scope';
+import { FILE_CHILD_FIELDS } from './workflow-variable-fields';
 
 type VariableField = OutputField & {
   expressionPath?: string;
@@ -332,16 +333,6 @@ export function getLoopBodyVariableNodes(params: {
   return sortNodesByWorkflowConnections(loopBodyNodes, nodes, edges);
 }
 
-const FILE_CHILDREN: VariableField[] = [
-  { key: 'path', type: 'string' },
-  { key: 'relativePath', type: 'string' },
-  { key: 'name', type: 'string' },
-  { key: 'size', type: 'number' },
-  { key: 'type', type: 'string' },
-  { key: 'url', type: 'string' },
-  { key: 'httpPath', type: 'string' },
-];
-
 function VariableFieldMenu({
   fields,
   nodeId,
@@ -397,7 +388,7 @@ function VariableFieldMenu({
                 <span className="truncate">{field.key}</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="min-w-[180px]">
-                {FILE_CHILDREN.map((child) => (
+                {FILE_CHILD_FIELDS.map((child) => (
                   <DropdownMenuItem
                     key={child.key}
                     className="text-xs"

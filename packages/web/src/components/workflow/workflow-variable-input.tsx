@@ -27,6 +27,7 @@ import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow
 import { WorkflowNodeDefinitionIcon, type WorkflowNodeIconDefinition } from './workflow-node-icon';
 import { PluginIcon } from './workflow-plugin-icon';
 import { getUpstreamNodeIds } from './workflow-variable-scope';
+import { FILE_CHILD_FIELDS, getFileChildField } from './workflow-variable-fields';
 
 type EditorRange = { from: number; to: number };
 type VariableSuggestionCategory = 'workflow-input' | 'workflow-variable' | 'node-input' | 'node-output' | 'loop' | 'plugin-config';
@@ -58,6 +59,11 @@ const variableSuggestionPluginKey = new PluginKey('workflowVariableSuggestion');
 function getVariableExpression(value: string | number): string | null {
   const match = String(value).match(PURE_VARIABLE_PATTERN);
   return match?.[1]?.trim() || null;
+}
+
+function normalizeVariableExpressionForCompare(value: string | number): string | null {
+  const expression = getVariableExpression(value);
+  return expression ? expression.replace(/\s+/g, '') : null;
 }
 
 function normalizeVariableFieldPath(fieldPath: string): string {
@@ -172,7 +178,23 @@ function findFieldByPath(fields: OutputField[], fieldPath: string): OutputField 
   const field = fields.find(item => item.key === key);
   if (!field) return null;
   if (rest.length === 0) return field;
+  if (field.type === 'file' && rest.length === 1) return getFileChildField(rest[0]);
   return Array.isArray(field.children) ? findFieldByPath(field.children, rest.join('.')) : null;
+}
+
+function isConfigVariableReference(value: string | number): boolean {
+  const expression = getVariableExpression(value);
+  return Boolean(expression?.match(CONFIG_VARIABLE_PATTERN));
+}
+
+function isConfigVariableReferenceMissing(value: string | number, plugins: WorkflowPlugin[]): boolean {
+  const expression = getVariableExpression(value);
+  const match = expression?.match(CONFIG_VARIABLE_PATTERN);
+  if (!match) return false;
+  const [, pluginId, key] = match;
+  const plugin = plugins.find((item) => item.id === pluginId);
+  if (!plugin) return true;
+  return !(plugin.config as PluginConfigField[] | undefined)?.some((field) => field.key === key);
 }
 
 function getFieldsForVariableExpression(value: unknown, nodes: WorkflowNode[], variables: OutputField[]): OutputField | null {
@@ -184,6 +206,67 @@ function getFieldsForVariableExpression(value: unknown, nodes: WorkflowNode[], v
   if (!node) return null;
   const fields = parsed.scope === 'inputs' ? getNodeInputFields(node) : node.type === 'start' ? getNodeInputFields(node) : getNodeOutputs(node);
   return findFieldByPath(fields, parsed.fieldPath);
+}
+
+function isVariableReferenceMissing(
+  value: string | number,
+  variableContext?: WorkflowVariableContext,
+  variableItems?: VariableSuggestionItem[],
+): boolean {
+  const expression = normalizeVariableExpressionForCompare(value);
+  if (!expression) return false;
+
+  if (variableItems) {
+    const hasConfigItems = variableItems.some((item) => item.category === 'plugin-config');
+    if (isConfigVariableReference(value) && !hasConfigItems) return false;
+    return !variableItems.some((item) => normalizeVariableExpressionForCompare(item.path) === expression);
+  }
+
+  if (!variableContext) return false;
+  if (isConfigVariableReference(value)) return false;
+  const parsed = parseVariableExpression(value);
+  if (!parsed) return false;
+  if (parsed.scope === 'env') return !findFieldByPath(variableContext.variables ?? [], parsed.fieldPath);
+  return !getFieldsForVariableExpression(value, variableContext.nodes, variableContext.variables ?? []);
+}
+
+function useEnabledWorkflowPlugins(variableContext?: WorkflowVariableContext): {
+  plugins: WorkflowPlugin[];
+  pluginsLoaded: boolean;
+} {
+  const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
+  const [pluginsLoaded, setPluginsLoaded] = useState(false);
+
+  useEffect(() => {
+    const enabledPlugins = variableContext?.enabledPlugins ?? [];
+    if (!enabledPlugins.length) {
+      setPlugins([]);
+      setPluginsLoaded(true);
+      return;
+    }
+
+    setPluginsLoaded(false);
+    let cancelled = false;
+    pluginApi.listWorkflowPlugins()
+      .then((items) => {
+        if (cancelled) return;
+        const enabled = new Set(enabledPlugins);
+        setPlugins((items as WorkflowPlugin[]).filter((plugin) => enabled.has(plugin.id) && plugin.config?.length));
+        setPluginsLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPlugins([]);
+          setPluginsLoaded(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [variableContext?.enabledPlugins]);
+
+  return { plugins, pluginsLoaded };
 }
 
 function getArrayItemField(arrayField: OutputField | null): VariableField {
@@ -285,10 +368,9 @@ function pushFieldItems(
     }
 
     if (field.type === 'file') {
-      for (const child of ['path', 'relativePath', 'name', 'size', 'type', 'url', 'httpPath']) {
-        const childPath = `${fieldPath}.${child}`;
-        const childType = child === 'size' ? 'number' : 'string';
-        if (!matchesTypeFilter(childType, typeFilter)) continue;
+      for (const child of FILE_CHILD_FIELDS) {
+        const childPath = `${fieldPath}.${child.key}`;
+        if (!matchesTypeFilter(child.type, typeFilter)) continue;
         const childVariablePath = buildPath(childPath);
         items.push({
           id: childVariablePath,
@@ -296,7 +378,7 @@ function pushFieldItems(
           description: group,
           path: childVariablePath,
           category,
-          type: childType,
+          type: child.type,
           ...groupMeta,
         });
       }
@@ -393,7 +475,7 @@ function buildVariableSuggestionItems({
   return items;
 }
 
-function createVariableHighlightExtension() {
+function createVariableHighlightExtension(getVariableItems: () => VariableSuggestionItem[]) {
   return Extension.create({
     name: 'workflowVariableHighlight',
     addProseMirrorPlugins() {
@@ -407,10 +489,11 @@ function createVariableHighlightExtension() {
                 if (!node.isText || !node.text) return;
                 for (const match of node.text.matchAll(VARIABLE_TOKEN_PATTERN)) {
                   if (match.index === undefined) continue;
+                  const missing = isVariableReferenceMissing(match[0], undefined, getVariableItems());
                   decorations.push(Decoration.inline(
                     pos + match.index,
                     pos + match.index + match[0].length,
-                    { class: 'workflow-variable-token' },
+                    { class: cn('workflow-variable-token', missing && 'workflow-variable-token-missing') },
                   ));
                 }
               });
@@ -758,7 +841,7 @@ function WorkflowVariableTiptapInput({
       codeBlock: false,
       horizontalRule: false,
     }),
-    createVariableHighlightExtension(),
+    createVariableHighlightExtension(() => variableItems),
     createVariableSuggestionExtension(() => variableItems),
   ], [variableItems]);
 
@@ -813,6 +896,10 @@ export function VariableBadgeInput({
   badgeClassName?: string;
 }) {
   const label = getVariableBadgeLabel(value, variableContext);
+  const { plugins, pluginsLoaded } = useEnabledWorkflowPlugins(variableContext);
+  const missing = isConfigVariableReference(value)
+    ? pluginsLoaded && isConfigVariableReferenceMissing(value, plugins)
+    : isVariableReferenceMissing(value, variableContext);
 
   if (!label) return null;
 
@@ -824,14 +911,21 @@ export function VariableBadgeInput({
     >
       <Badge
         variant="secondary"
-        className={cn('h-5 max-w-full gap-1 rounded px-1.5 py-0 font-mono text-[10px]', badgeClassName)}
+        className={cn(
+          'h-5 max-w-full gap-1 rounded px-1.5 py-0 font-mono text-[10px]',
+          missing && 'border-destructive/30 bg-destructive/10 text-destructive',
+          badgeClassName,
+        )}
       >
         <span className="min-w-0 truncate">{label}</span>
         {showClear ? (
           <button
             type="button"
             aria-label={`Clear ${placeholder ?? 'variable'}`}
-            className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:bg-background/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            className={cn(
+              'shrink-0 rounded-sm p-0.5 hover:bg-background/80 disabled:pointer-events-none disabled:opacity-40',
+              missing ? 'text-destructive/80 hover:text-destructive' : 'text-muted-foreground hover:text-foreground',
+            )}
             disabled={readOnly}
             onClick={onClear}
           >
@@ -867,30 +961,7 @@ export function WorkflowVariableInput({
   onSelectVariable?: (path: string) => void;
 }) {
   const [variableTypeFilter, setVariableTypeFilter] = useState<OutputField['type']>('any');
-  const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
-
-  useEffect(() => {
-    const enabledPlugins = variableContext?.enabledPlugins ?? [];
-    if (!enabledPlugins.length) {
-      setPlugins([]);
-      return;
-    }
-
-    let cancelled = false;
-    pluginApi.listWorkflowPlugins()
-      .then((items) => {
-        if (cancelled) return;
-        const enabled = new Set(enabledPlugins);
-        setPlugins((items as WorkflowPlugin[]).filter((plugin) => enabled.has(plugin.id) && plugin.config?.length));
-      })
-      .catch(() => {
-        if (!cancelled) setPlugins([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [variableContext?.enabledPlugins]);
+  const { plugins } = useEnabledWorkflowPlugins(variableContext);
 
   const variableItems = useMemo(() => buildVariableSuggestionItems({
     variableContext,
