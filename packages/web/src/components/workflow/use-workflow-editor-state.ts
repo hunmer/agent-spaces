@@ -242,7 +242,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
     setWorkflow((current) => {
       if (!current) return current;
-      const sourceNodes = prePreviewWorkflowRef.current?.nodes ?? current.nodes;
+      const sourceNodes = current.nodes;
       if (!prePreviewWorkflowRef.current) {
         const snapshot = cloneWorkflow(current);
         prePreviewWorkflowRef.current = snapshot;

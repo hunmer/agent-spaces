@@ -134,6 +134,35 @@ function toPresetOutputs(output: unknown): Record<string, unknown> {
   return isPlainObject(output) ? output : { result: output };
 }
 
+function getReachableNodeIds(workflow: WorkflowType, startNodeId: string): Set<string> {
+  const reachable = new Set<string>([startNodeId]);
+  const queue = [startNodeId];
+  while (queue.length > 0) {
+    const sourceId = queue.shift()!;
+    for (const edge of workflow.edges) {
+      if (edge.source !== sourceId || reachable.has(edge.target)) continue;
+      reachable.add(edge.target);
+      queue.push(edge.target);
+    }
+  }
+  return reachable;
+}
+
+function clearPresetFromNode(node: WorkflowType['nodes'][number], presetId: string): WorkflowType['nodes'][number] {
+  const presets = getJsonPresets(node.data?.[JSON_PRESETS_KEY]);
+  const nextPresets = presets.filter(item => item.id !== presetId);
+  const selectedPresetId = node.data?.[SELECTED_JSON_PRESET_KEY];
+  if (nextPresets.length === presets.length && selectedPresetId !== presetId) return node;
+  return {
+    ...node,
+    data: {
+      ...node.data,
+      [JSON_PRESETS_KEY]: nextPresets,
+      ...(selectedPresetId === presetId ? { [SELECTED_JSON_PRESET_KEY]: '' } : {}),
+    },
+  };
+}
+
 function applyExecutionStepPresets(
   workflow: WorkflowType,
   steps: ExecutionStep[],
@@ -142,7 +171,7 @@ function applyExecutionStepPresets(
 ): WorkflowType | null {
   const currentStepIndex = steps.findIndex(step => step.nodeId === currentNodeId);
   if (currentStepIndex < 0) return null;
-  if (currentStepIndex === 0) return workflow;
+  const rerunNodeIds = getReachableNodeIds(workflow, currentNodeId);
 
   const stepByNodeId = new Map<string, ExecutionStep>();
   for (const step of steps.slice(0, currentStepIndex)) {
@@ -150,10 +179,14 @@ function applyExecutionStepPresets(
       stepByNodeId.set(step.nodeId, step);
     }
   }
-  if (stepByNodeId.size === 0) return workflow;
 
   let changed = false;
   const nodes = workflow.nodes.map((node) => {
+    if (rerunNodeIds.has(node.id)) {
+      const nextNode = clearPresetFromNode(node, presetId);
+      if (nextNode !== node) changed = true;
+      return nextNode;
+    }
     if (node.data?.[SELECTED_JSON_PRESET_KEY]) return node;
     const step = stepByNodeId.get(node.id);
     if (!step) return node;

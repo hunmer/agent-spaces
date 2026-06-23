@@ -420,8 +420,9 @@
           {
             "key": "list",
             "type": "array",
-            "value": [],
+            "value": "{{ __data__[\"node_1781714719692_v7bbmd\"].items }}",
             "required": true,
+            "inputMode": "variable",
             "children": []
           },
           {
@@ -891,7 +892,7 @@
         ],
         "sourceNodeId": "node_1782108540500_0ggo7y",
         "sourceHandle": "source",
-        "url": "{{ __data__[\"node_1782124187838_gyncrz\"].data.Location }}"
+        "url": "https://{{ __data__[\"node_1782124187838_gyncrz\"].data.Location }}"
       }
     },
     {
@@ -1174,7 +1175,7 @@
     }
   ],
   "createdAt": 1782183030564,
-  "updatedAt": 1782187918246,
+  "updatedAt": 1782193960864,
   "published": false,
   "enabledPlugins": [
     "workflow.jimeng",
@@ -1187,5 +1188,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782193375752
+  "lastRunAt": 1782193997943
 }
