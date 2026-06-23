@@ -29,6 +29,7 @@ interface ExecutionBarProps {
   log: ExecutionLog | null;
   logs: ExecutionLog[];
   selectedLogId: string | null;
+  workflowErrorMessage?: string | null;
   startNodes: WorkflowNode[];
   variables?: OutputField[];
   validationError?: string | null;
@@ -58,7 +59,7 @@ function formatDuration(start: number, end?: number): string {
 }
 
 export function WorkflowExecutionBar({
-  status, log, logs, selectedLogId, startNodes, variables = [], validationError, workflowId,
+  status, log, logs, selectedLogId, workflowErrorMessage = null, startNodes, variables = [], validationError, workflowId,
   isPreview = false,
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs,
   onUpdateNodeData,
@@ -262,13 +263,14 @@ export function WorkflowExecutionBar({
                       {/* Output section */}
                       {(() => {
                         const lastStep = item.steps[item.steps.length - 1];
+                        const displayError = lastStep?.error || (item.id === selectedLogId ? workflowErrorMessage : null);
                         return lastStep ? (
                           <div className="p-2">
                             <div className="text-[10px] text-muted-foreground font-medium mb-1.5">{t('execution.output')}</div>
-                            {lastStep.error && (
+                            {displayError && (
                               <div className="mb-2 px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 rounded-md border border-red-500/20 flex items-start gap-1">
                                 <XCircle className="h-3 w-3 shrink-0 mt-0.5" />
-                                <span className="break-all">{lastStep.error}</span>
+                                <span className="break-all">{displayError}</span>
                               </div>
                             )}
                             {lastStep.output != null ? (

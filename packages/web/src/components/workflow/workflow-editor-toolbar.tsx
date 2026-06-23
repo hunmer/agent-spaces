@@ -17,6 +17,9 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -50,6 +53,7 @@ interface EditorToolbarProps {
   onImport: () => void;
   onOpenPluginManager: () => void;
   missingPluginCount?: number;
+  workflowErrorMessage?: string | null;
   onOpenWorkflowLocation: () => void;
   onClearNodes: () => void;
   onWorkflowInfoChange: (updates: Partial<Workflow>) => void;
@@ -76,7 +80,7 @@ export function WorkflowEditorToolbar({
   onExport, isExporting,
   canUndo, canRedo, onUndo, onRedo, onAutoLayout, onSelectAll, onInvertSelection,
   onExportWorkflow, onImport,
-  onOpenPluginManager, missingPluginCount = 0, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
+  onOpenPluginManager, missingPluginCount = 0, workflowErrorMessage = null, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
   layoutManager,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
@@ -232,6 +236,30 @@ export function WorkflowEditorToolbar({
           <AlertTriangle className="h-3.5 w-3.5" />
           缺少插件({missingPluginCount})
         </Button>
+      )}
+
+      {workflowErrorMessage && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              执行错误
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+              <div className="min-w-0">
+                <div className="mb-1 text-xs font-medium text-red-600">工作流执行错误</div>
+                <div className="break-all text-xs text-muted-foreground">{workflowErrorMessage}</div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       )}
 
       <div className="w-px h-5 bg-border mx-1" />

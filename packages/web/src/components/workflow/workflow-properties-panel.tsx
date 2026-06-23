@@ -104,8 +104,18 @@ export function WorkflowPropertiesPanel({
   const visibleDebugResult = previewResult ?? (node && debugNodeId === node.id ? debugResult : null);
   const hasDebugOutput = Boolean(node && visibleDebugResult);
   const nodeId = node?.id;
+  const latestExecutionStep = useMemo(() => {
+    if (!nodeId) return undefined;
+    const steps = executionLog?.steps;
+    if (!steps) return undefined;
+    for (let index = steps.length - 1; index >= 0; index -= 1) {
+      const step = steps[index];
+      if (step?.nodeId === nodeId) return step;
+    }
+    return undefined;
+  }, [executionLog?.steps, nodeId]);
   const visibleLogs = nodeId
-    ? visibleDebugResult?.logs ?? executionLog?.steps.find(s => s.nodeId === nodeId)?.logs
+    ? visibleDebugResult?.logs ?? latestExecutionStep?.logs
     : undefined;
   const variableContext = useMemo<WorkflowVariableContext | undefined>(() => {
     if (!node) return undefined;

@@ -60,6 +60,7 @@ export function useWorkflowEditorExecution({
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [selectedExecutionLogId, setSelectedExecutionLogId] = useState<string | null>(null);
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
+  const [workflowErrorMessage, setWorkflowErrorMessage] = useState<string | null>(null);
   const [pausedNodeId, setPausedNodeId] = useState<string | null>(null);
   const [pausedReason, setPausedReason] = useState<string | null>(null);
   const [partialExecutionStartNodeId, setPartialExecutionStartNodeId] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export function useWorkflowEditorExecution({
     setExecutionLogs([]);
     setSelectedExecutionLogId(null);
     setCurrentExecutionId(null);
+    setWorkflowErrorMessage(null);
     setPausedNodeId(null);
     setPausedReason(null);
     setPartialExecutionStartNodeId(null);
@@ -269,6 +271,7 @@ export function useWorkflowEditorExecution({
     setExecutionLog(null);
     setSelectedExecutionLogId(null);
     setCurrentExecutionId(null);
+    setWorkflowErrorMessage(null);
     setPausedNodeId(null);
     setPausedReason(null);
     setPartialExecutionStartNodeId(startNodeId ?? null);
@@ -303,6 +306,7 @@ export function useWorkflowEditorExecution({
     });
     const offError = ws.on('workflow:execute:error', () => {
       setPartialExecutionStartNodeId(null);
+      setWorkflowErrorMessage(null);
       setExecStatus('error');
     });
     const offLog = ws.on('execution:log', (data) => {
@@ -350,11 +354,17 @@ export function useWorkflowEditorExecution({
       setPausedNodeId(null);
       setPausedReason(null);
       setPartialExecutionStartNodeId(null);
+      setWorkflowErrorMessage(null);
       setExecStatus('completed');
       void loadExecutionLogs();
     });
     const offFailed = ws.on('workflow:error', (data) => {
-      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      const event = data as {
+        workflowId?: string;
+        executionId?: string;
+        log?: ExecutionLog;
+        error?: { message?: string };
+      };
       if (event.workflowId !== activeWorkflow.id) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) setExecutionLog(event.log);
@@ -362,6 +372,7 @@ export function useWorkflowEditorExecution({
         setSelectedExecutionLogId(event.log.id);
         setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
       }
+      setWorkflowErrorMessage(typeof event.error?.message === 'string' ? event.error.message : null);
       setPausedNodeId(null);
       setPausedReason(null);
       setPartialExecutionStartNodeId(null);
@@ -407,6 +418,7 @@ export function useWorkflowEditorExecution({
     setPausedNodeId(null);
     setPausedReason(null);
     setPartialExecutionStartNodeId(null);
+    setWorkflowErrorMessage(null);
     setExecStatus('stopped');
   }, [currentExecutionId, getWorkflowWS]);
 
@@ -466,6 +478,7 @@ export function useWorkflowEditorExecution({
     executionLogs,
     selectedExecutionLogId,
     currentExecutionId,
+    workflowErrorMessage,
     pausedNodeId,
     pausedReason,
     partialExecutionStartNodeId,

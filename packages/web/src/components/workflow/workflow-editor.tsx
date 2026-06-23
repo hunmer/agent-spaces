@@ -130,6 +130,15 @@ function toPreviewDebugResult(step: ExecutionStep | undefined): DebugResult | nu
   };
 }
 
+function getLastExecutionStepByNodeId(steps: ExecutionStep[] | undefined, nodeId: string | null | undefined): ExecutionStep | undefined {
+  if (!steps || !nodeId) return undefined;
+  for (let index = steps.length - 1; index >= 0; index -= 1) {
+    const step = steps[index];
+    if (step?.nodeId === nodeId) return step;
+  }
+  return undefined;
+}
+
 function toPresetOutputs(output: unknown): Record<string, unknown> {
   return isPlainObject(output) ? output : { result: output };
 }
@@ -414,7 +423,7 @@ function WorkflowEditorInner({
   const clipboardImagePasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardImagesAsGallery !== false;
   const previewResult = useMemo(() => {
     if (!state.isPreview || !state.selectedNodeId) return null;
-    const step = execution.executionLog?.steps.find(item => item.nodeId === state.selectedNodeId);
+    const step = getLastExecutionStepByNodeId(execution.executionLog?.steps, state.selectedNodeId);
     return toPreviewDebugResult(step);
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
 
@@ -524,9 +533,10 @@ function WorkflowEditorInner({
 
   const continueFromPreviewNode = useCallback((nodeId: string, presetId: string) => {
     if (!state.isPreview || !state.workflow || !execution.executionLog) return;
+    const baseWorkflow = state.prePreviewWorkflow ?? state.workflow;
     const normalizedPresetId = presetId.trim() || TEMP_DEBUG_PRESET_ID;
     const prepared = applyExecutionStepPresets(
-      state.workflow,
+      baseWorkflow,
       execution.executionLog.steps,
       nodeId,
       normalizedPresetId,
@@ -1013,6 +1023,7 @@ function WorkflowEditorInner({
             log={execution.executionLog}
             logs={execution.executionLogs}
             selectedLogId={execution.selectedExecutionLogId}
+            workflowErrorMessage={execution.workflowErrorMessage}
             startNodes={execution.startNodes}
             variables={workflow.variables || []}
             validationError={execution.executionValidationError}
@@ -1114,6 +1125,7 @@ function WorkflowEditorInner({
         onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
         missingPluginCount={missingPluginIds.length}
+        workflowErrorMessage={execution.workflowErrorMessage}
         onOpenWorkflowLocation={() => {
           if (workflow?.id) {
             fetch(`/api/folder/reveal?path=${encodeURIComponent(`workflows/${workflow.id}`)}`, { method: 'POST' });
