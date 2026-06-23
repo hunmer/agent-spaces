@@ -1213,6 +1213,14 @@
     }
   ],
   "createdAt": 1782183030564,
-  "updatedAt": 1782183030564,
-  "published": false
+  "updatedAt": 1782184558247,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.jimeng",
+    "workflow.jianying-draft",
+    "workflow.fetch",
+    "workflow.qianyin",
+    "workflow.ffmpeg",
+    "workflow.tencent-cos"
+  ]
 }

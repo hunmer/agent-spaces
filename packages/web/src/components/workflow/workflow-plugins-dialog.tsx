@@ -472,12 +472,12 @@ export function WorkflowPluginsDialog({
                 <div className="flex items-center gap-2">
                   <div className="font-medium">当前工作流缺少插件</div>
                   <div className="text-orange-700">
-                    未开启 {missingInstalledPlugins.length} 个，未安装 {missingUninstalledPluginIds.length} 个
+                    待添加/开启 {missingInstalledPlugins.length} 个，未安装 {missingUninstalledPluginIds.length} 个
                   </div>
                   <div className="ml-auto flex items-center gap-1">
                     {missingInstalledPlugins.length > 0 && (
                       <Button size="sm" className="h-6 px-2 text-xs" onClick={enableMissingInstalledPlugins}>
-                        一键开启
+                        一键添加/开启
                       </Button>
                     )}
                     {missingUninstalledPluginIds.map(pluginId => (

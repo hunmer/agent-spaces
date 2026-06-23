@@ -263,12 +263,14 @@ type WorkflowCanvasViewportRef = {
   invertSelection: () => void;
 };
 
-function collectReferencedPluginIds(workflow: WorkflowType | null): string[] {
+function collectReferencedPluginIds(workflow: WorkflowType | null, nodeTypePluginIds: Map<string, string>): string[] {
   if (!workflow) return [];
   const ids = new Set<string>(workflow.enabledPlugins || []);
   for (const node of workflow.nodes) {
     const pluginId = node.data?.pluginId;
     if (typeof pluginId === 'string' && pluginId.trim()) ids.add(pluginId.trim());
+    const nodeTypePluginId = nodeTypePluginIds.get(node.type);
+    if (nodeTypePluginId) ids.add(nodeTypePluginId);
   }
   return Array.from(ids);
 }
@@ -284,6 +286,7 @@ function WorkflowEditorInner({
   // ---- State ----
   const state = useWorkflowEditorState(template);
   const [installedWorkflowPlugins, setInstalledWorkflowPlugins] = useState<Map<string, boolean>>(new Map());
+  const [installedWorkflowNodeTypePluginIds, setInstalledWorkflowNodeTypePluginIds] = useState<Map<string, string>>(new Map());
   const [pluginListLoaded, setPluginListLoaded] = useState(false);
   const autoOpenedMissingPluginsRef = useRef<string | null>(null);
   const workspaces = useWorkspaceStore((store) => store.workspaces);
@@ -373,7 +376,7 @@ function WorkflowEditorInner({
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
 
   const { enterPreview, exitPreview, isPreview, markPreviewDirty, saveWorkflow, setWorkflow } = state;
-  const referencedPluginIds = useMemo(() => collectReferencedPluginIds(state.workflow), [state.workflow]);
+  const referencedPluginIds = useMemo(() => collectReferencedPluginIds(state.workflow, installedWorkflowNodeTypePluginIds), [installedWorkflowNodeTypePluginIds, state.workflow]);
   const missingPluginIds = useMemo(() => {
     if (!pluginListLoaded) return [];
     const enabledSet = new Set(state.workflow?.enabledPlugins || []);
@@ -547,18 +550,30 @@ function WorkflowEditorInner({
         const plugins = await pluginApi.listWorkflowPlugins();
         if (!cancelled) {
           setInstalledWorkflowPlugins(new Map(plugins.map(plugin => [plugin.id, plugin.enabled])));
+          const nodeTypePluginIds = new Map<string, string>();
+          await Promise.all(plugins.filter(plugin => plugin.enabled).map(async (plugin) => {
+            try {
+              const nodes = await pluginApi.getWorkflowNodes(plugin.id);
+              for (const node of nodes) nodeTypePluginIds.set(node.type, plugin.id);
+            } catch { /* best-effort */ }
+          }));
+          if (cancelled) return;
+          setInstalledWorkflowNodeTypePluginIds(nodeTypePluginIds);
           setPluginListLoaded(true);
         }
         return;
       }
       const plugins = await pluginApi.listWorkflowPlugins();
-      if (!cancelled) {
-        setInstalledWorkflowPlugins(new Map(plugins.map(plugin => [plugin.id, plugin.enabled])));
-        setPluginListLoaded(true);
-      }
       const enabledSet = new Set(enabledPlugins);
       const activePlugins = plugins.filter(p => enabledSet.has(p.id));
       const allNodes: NodeTypeDefinition[] = [];
+      const nodeTypePluginIds = new Map<string, string>();
+      await Promise.all(plugins.filter(plugin => plugin.enabled).map(async (plugin) => {
+        try {
+          const nodes = await pluginApi.getWorkflowNodes(plugin.id);
+          for (const node of nodes) nodeTypePluginIds.set(node.type, plugin.id);
+        } catch { /* best-effort */ }
+      }));
       for (const plugin of activePlugins) {
         try {
           const nodes = await pluginApi.getWorkflowNodes(plugin.id);
@@ -571,7 +586,12 @@ function WorkflowEditorInner({
           console.warn('[WorkflowEditor] failed to load plugin nodes', plugin.id, error);
         }
       }
-      if (!cancelled) registerPluginNodeDefinitions(allNodes);
+      if (!cancelled) {
+        setInstalledWorkflowPlugins(new Map(plugins.map(plugin => [plugin.id, plugin.enabled])));
+        setInstalledWorkflowNodeTypePluginIds(nodeTypePluginIds);
+        setPluginListLoaded(true);
+        registerPluginNodeDefinitions(allNodes);
+      }
     }
     void load();
     return () => { cancelled = true; };
