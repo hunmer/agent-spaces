@@ -6,6 +6,7 @@ import {
   Save, ArrowLeft, Loader2,
   Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play, Download,
   RotateCcw, RotateCw, CheckSquare, FlipHorizontal2, ArrowRightLeft, ArrowDownUp,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,7 @@ interface EditorToolbarProps {
   onExportWorkflow: () => void;
   onImport: () => void;
   onOpenPluginManager: () => void;
+  missingPluginCount?: number;
   onOpenWorkflowLocation: () => void;
   onClearNodes: () => void;
   onWorkflowInfoChange: (updates: Partial<Workflow>) => void;
@@ -74,7 +76,7 @@ export function WorkflowEditorToolbar({
   onExport, isExporting,
   canUndo, canRedo, onUndo, onRedo, onAutoLayout, onSelectAll, onInvertSelection,
   onExportWorkflow, onImport,
-  onOpenPluginManager, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
+  onOpenPluginManager, missingPluginCount = 0, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
   layoutManager,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
@@ -218,6 +220,19 @@ export function WorkflowEditorToolbar({
       <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
         Preview
       </Button>
+
+      {missingPluginCount > 0 && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1 border-orange-300 text-orange-600 hover:bg-orange-50"
+          disabled={!workflow}
+          onClick={onOpenPluginManager}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          缺少插件({missingPluginCount})
+        </Button>
+      )}
 
       <div className="w-px h-5 bg-border mx-1" />
 

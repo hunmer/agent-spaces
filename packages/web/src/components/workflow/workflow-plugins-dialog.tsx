@@ -48,11 +48,15 @@ export function WorkflowPluginsDialog({
   onOpenChange,
   workflow,
   onWorkflowChange,
+  missingPluginIds = [],
+  initialSearch = '',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workflow: Workflow | null;
   onWorkflowChange: (workflow: Workflow) => void;
+  missingPluginIds?: string[];
+  initialSearch?: string;
 }) {
   const [activeTab, setActiveTab] = useState<PluginTab>('local');
   const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
@@ -77,6 +81,11 @@ export function WorkflowPluginsDialog({
 
   const enabledPluginIds = useMemo(() => new Set(workflow?.enabledPlugins || []), [workflow?.enabledPlugins]);
   const installedPluginIds = useMemo(() => new Set(plugins.map(plugin => plugin.id)), [plugins]);
+  const missingInstalledPlugins = useMemo(() => missingPluginIds
+    .map(id => plugins.find(plugin => plugin.id === id))
+    .filter((plugin): plugin is WorkflowPlugin => Boolean(plugin)), [missingPluginIds, plugins]);
+  const missingUninstalledPluginIds = useMemo(() => missingPluginIds
+    .filter(id => !installedPluginIds.has(id)), [missingPluginIds, installedPluginIds]);
   const workflowStorePlugins = useMemo(() => storePlugins.filter(plugin => plugin.hasWorkflow), [storePlugins]);
   const sourcePlugins = activeTab === 'store' ? workflowStorePlugins : plugins;
 
@@ -173,6 +182,15 @@ export function WorkflowPluginsDialog({
     void loadPlugins();
     void loadStorePlugins();
   }, [open, locale]);
+
+  useEffect(() => {
+    if (!open || !initialSearch.trim()) return;
+    setActiveTab('store');
+    setQuery(initialSearch.trim());
+    setTag('__all__');
+    setStatus('all');
+    setSortBy('default');
+  }, [open, initialSearch]);
 
   function updateWorkflowPlugins(pluginId: string, enabled: boolean) {
     if (!workflow) return;
@@ -373,6 +391,32 @@ export function WorkflowPluginsDialog({
     setSortBy('default');
   }
 
+  async function enableMissingInstalledPlugins() {
+    if (!workflow) return;
+    const nextEnabledIds = new Set(workflow.enabledPlugins || []);
+    const nextPlugins = [...plugins];
+    for (const plugin of missingInstalledPlugins) {
+      if (!nextEnabledIds.has(plugin.id)) {
+        if (!plugin.enabled) {
+          await pluginApi.enable(plugin.id);
+          const index = nextPlugins.findIndex(item => item.id === plugin.id);
+          if (index >= 0) nextPlugins[index] = { ...nextPlugins[index], enabled: true };
+        }
+        nextEnabledIds.add(plugin.id);
+      }
+    }
+    setPlugins(nextPlugins);
+    onWorkflowChange({ ...workflow, enabledPlugins: Array.from(nextEnabledIds) });
+  }
+
+  function searchStorePlugin(pluginId: string) {
+    setActiveTab('store');
+    setQuery(pluginId);
+    setTag('__all__');
+    setStatus('all');
+    setSortBy('default');
+  }
+
   const hasFilters = query || tag !== '__all__' || status !== 'all';
   const currentLoading = activeTab === 'store' ? storeLoading : loading;
   const filtered = activeTab === 'store' ? filteredStore : filteredLocal;
@@ -423,6 +467,28 @@ export function WorkflowPluginsDialog({
           </DialogHeader>
 
           <div className="border-b px-4 py-2">
+            {missingPluginIds.length > 0 && (
+              <div className="mb-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-900">
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">当前工作流缺少插件</div>
+                  <div className="text-orange-700">
+                    未开启 {missingInstalledPlugins.length} 个，未安装 {missingUninstalledPluginIds.length} 个
+                  </div>
+                  <div className="ml-auto flex items-center gap-1">
+                    {missingInstalledPlugins.length > 0 && (
+                      <Button size="sm" className="h-6 px-2 text-xs" onClick={enableMissingInstalledPlugins}>
+                        一键开启
+                      </Button>
+                    )}
+                    {missingUninstalledPluginIds.map(pluginId => (
+                      <Button key={pluginId} variant="outline" size="sm" className="h-6 px-2 text-xs bg-white" onClick={() => searchStorePlugin(pluginId)}>
+                        搜索 {pluginId}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

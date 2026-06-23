@@ -263,6 +263,16 @@ type WorkflowCanvasViewportRef = {
   invertSelection: () => void;
 };
 
+function collectReferencedPluginIds(workflow: WorkflowType | null): string[] {
+  if (!workflow) return [];
+  const ids = new Set<string>(workflow.enabledPlugins || []);
+  for (const node of workflow.nodes) {
+    const pluginId = node.data?.pluginId;
+    if (typeof pluginId === 'string' && pluginId.trim()) ids.add(pluginId.trim());
+  }
+  return Array.from(ids);
+}
+
 function WorkflowEditorInner({
   template, onBack,
 }: {
@@ -273,6 +283,9 @@ function WorkflowEditorInner({
   const canvasExportRef = useRef<WorkflowCanvasViewportRef | null>(null);
   // ---- State ----
   const state = useWorkflowEditorState(template);
+  const [installedWorkflowPlugins, setInstalledWorkflowPlugins] = useState<Map<string, boolean>>(new Map());
+  const [pluginListLoaded, setPluginListLoaded] = useState(false);
+  const autoOpenedMissingPluginsRef = useRef<string | null>(null);
   const workspaces = useWorkspaceStore((store) => store.workspaces);
   const workspaceId = workspaces[0]?.id;
   const clipboard = useClipboard();
@@ -360,6 +373,13 @@ function WorkflowEditorInner({
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
 
   const { enterPreview, exitPreview, isPreview, markPreviewDirty, saveWorkflow, setWorkflow } = state;
+  const referencedPluginIds = useMemo(() => collectReferencedPluginIds(state.workflow), [state.workflow]);
+  const missingPluginIds = useMemo(() => {
+    if (!pluginListLoaded) return [];
+    const enabledSet = new Set(state.workflow?.enabledPlugins || []);
+    return referencedPluginIds.filter(id => !installedWorkflowPlugins.has(id) || !installedWorkflowPlugins.get(id) || !enabledSet.has(id));
+  }, [installedWorkflowPlugins, pluginListLoaded, referencedPluginIds, state.workflow?.enabledPlugins]);
+  const missingPluginSearch = missingPluginIds.find(id => !installedWorkflowPlugins.has(id)) || '';
 
   // 复用：取画布视口中心（带兜底）
   const getViewportCenter = useCallback((): { x: number; y: number } =>
@@ -524,9 +544,18 @@ function WorkflowEditorInner({
     async function load() {
       if (!enabledPlugins.length) {
         registerPluginNodeDefinitions([]);
+        const plugins = await pluginApi.listWorkflowPlugins();
+        if (!cancelled) {
+          setInstalledWorkflowPlugins(new Map(plugins.map(plugin => [plugin.id, plugin.enabled])));
+          setPluginListLoaded(true);
+        }
         return;
       }
       const plugins = await pluginApi.listWorkflowPlugins();
+      if (!cancelled) {
+        setInstalledWorkflowPlugins(new Map(plugins.map(plugin => [plugin.id, plugin.enabled])));
+        setPluginListLoaded(true);
+      }
       const enabledSet = new Set(enabledPlugins);
       const activePlugins = plugins.filter(p => enabledSet.has(p.id));
       const allNodes: NodeTypeDefinition[] = [];
@@ -547,6 +576,14 @@ function WorkflowEditorInner({
     void load();
     return () => { cancelled = true; };
   }, [enabledPlugins]);
+
+  useEffect(() => {
+    if (!state.workflow || missingPluginIds.length === 0) return;
+    const key = `${state.workflow.id}:${missingPluginIds.join(',')}`;
+    if (autoOpenedMissingPluginsRef.current === key) return;
+    autoOpenedMissingPluginsRef.current = key;
+    state.setPluginsDialogOpen(true);
+  }, [missingPluginIds, state.workflow, state.setPluginsDialogOpen]);
 
   useEffect(() => {
     if (!isWorkflowRunning || !canvas.nodeSelectOpen) return;
@@ -1013,6 +1050,7 @@ function WorkflowEditorInner({
         onExportWorkflow={state.handleExport}
         onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
+        missingPluginCount={missingPluginIds.length}
         onOpenWorkflowLocation={() => {
           if (workflow?.id) {
             fetch(`/api/folder/reveal?path=${encodeURIComponent(`workflows/${workflow.id}`)}`, { method: 'POST' });
@@ -1087,6 +1125,8 @@ function WorkflowEditorInner({
         open={state.pluginsDialogOpen}
         onOpenChange={state.setPluginsDialogOpen}
         workflow={workflow}
+        missingPluginIds={missingPluginIds}
+        initialSearch={missingPluginSearch}
         onWorkflowChange={(nextWorkflow) => {
           state.setWorkflow(nextWorkflow);
           markEditorDirty();
