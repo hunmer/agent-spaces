@@ -1174,7 +1174,7 @@
     }
   ],
   "createdAt": 1782183030564,
-  "updatedAt": 1782187899659,
+  "updatedAt": 1782187918246,
   "published": false,
   "enabledPlugins": [
     "workflow.jimeng",
@@ -1186,5 +1186,6 @@
     "workflow.aliyun-ai"
   ],
   "groups": [],
-  "variables": []
+  "variables": [],
+  "lastRunAt": 1782190165877
 }

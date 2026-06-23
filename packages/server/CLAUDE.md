@@ -15,7 +15,7 @@ Express 5 后端服务，185+ 个 TypeScript 源文件。提供 REST API（37 �
 - zod 用于后端请求校验
 - 除健康检查/认证/Inspector/版本端点外均需 Bearer Token 认证
 - WebSocket 认证通过 `token` 查询参数
-- 越界保护：文件路径 `safeSrcPath`、SQL `checkSql` + `validateDbName`
+- 越界保护：文件路径 `safeSrcPath`、SQL `checkSql` + `validateDbName`（详见 [claude/storage.md](claude/storage.md)）
 
 ## 文件索引
 
@@ -24,7 +24,7 @@ Express 5 后端服务，185+ 个 TypeScript 源文件。提供 REST API（37 �
 | [claude/overview.md](claude/overview.md) | 总览、核心架构、大文件列表 |
 | [claude/route-index.md](claude/route-index.md) | 37 个 REST API 路由索引 |
 | [claude/architecture.md](claude/architecture.md) | Agent 运行时架构、Workflow 引擎、Issue 自动化、通知中心 |
-| [claude/storage.md](claude/storage.md) | 存储层 22 个 store 索引、数据目录布局、写入约定 |
+| [claude/storage.md](claude/storage.md) | 存储层 24 文件索引（22 store + 2 SQL 工具）、SQLite 三层、数据目录布局、写入约定 |
 | [claude/changelog.md](claude/changelog.md) | 变更记录 |
 
 ## 入口与启动
@@ -41,7 +41,7 @@ Express 5 后端服务，185+ 个 TypeScript 源文件。提供 REST API（37 �
 |------|--------|------|
 | `src/routes/` | 37 | REST API 路由 |
 | `src/services/` | 78 | 业务逻辑（含 mini-app 5 文件 + 子目录） |
-| `src/storage/` | 22 | 持久化层（含 mini-app-store + mini-app-db） |
+| `src/storage/` | 24 | 持久化层（22 store + 2 SQL 工具，含 SQLite 三层） |
 | `src/adapters/` | 16 | Agent 运行时 + Git |
 | `src/agents/` | 10 | Agent 编排 |
 | `src/ws/` | 10 | WebSocket 处理 |
@@ -58,7 +58,8 @@ Express 5 后端服务，185+ 个 TypeScript 源文件。提供 REST API（37 �
 
 ## 扫描状态
 
-- **更新时间**：2026-06-13 16:57:29
-- **已扫描范围**：全部路由、服务、适配器、存储层、WebSocket 处理器、mini-app 子系统、新增辅助服务
-- **覆盖率**：约 94%
-- **主要缺口**：`storage/` 22 个 store 字段未逐一抽取、`notification-hub/` bot-agent/service 细节
+- **更新时间**：2026-06-23 12:12:46
+- **已扫描范围**：全部路由、服务、适配器、存储层（24 文件）、WebSocket 处理器、mini-app 子系统、新增辅助服务
+- **覆盖率**：约 95%（从 94% 提升）
+- **本次新增**：`storage/` 全部 24 文件覆盖，新增 `sql-safety.ts`（纯函数工具）+ `mini-app-db.ts`/`sqlite-store.ts`/`knowledge-base-store.ts` SQLite 三层字段抽取（驱动/落盘路径/连接池策略）
+- **主要缺口**：`storage/` 各 JSON store 的逐字段（多为扁平 CRUD，按需深挖）、`notification-hub/` bot-agent/service 细节

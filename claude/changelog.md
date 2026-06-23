@@ -1,5 +1,15 @@
 # 变更记录 (Changelog)
 
+## 2026-06-23 -- init-architect 增量更新（断点续扫）
+
+- **新增 electron 模块**：纳入根 CLAUDE.md 模块索引（之前遗漏，模块已自带 CLAUDE.md）。electron 职责：窗口生命周期 / `local://` 协议 / 桌面原生能力 / 全局快捷键 / renderer↔main 桥接，不含业务逻辑（CRUD 全走 server）
+- **server storage/ 缺口补全**：从 21 store 扩展到 24 文件。新增章节"SQL 安全 sql-safety.ts（纯函数 driver 无关）"与"SQLite 三层"（`mini-app-db` better-sqlite3 + `sqlite-store` node:sqlite + `knowledge-base-store` node:sqlite），分别记录驱动/落盘路径/连接池策略；补全 `MAX_ROWS=10000`、`DB_NAME_RE`、`IDENT_RE`、`BLOCKED_RE` 等关键校验常量
+- **web components/sidebar/ 缺口补全**：56 文件按骨架与导航(8) / 对话框(18) / Settings 子面板(14) / Skills Dialog 子目录(10) / Hooks(3) 五组展开，标注每个文件对应的资源或标签页
+- **templates agents 缺口补全**：15 个分类的目录命名全部确认（academic/design/engineering/finance/game-development/marketing/paid-media/product/project-management/sales/spatial-computing/specialized/support/testing），与 templates CLAUDE.md 既有计数对齐
+- **根 CLAUDE.md 重构**：模块索引从 7 → 8（加 electron）；Mermaid 图新增 electron 节点与 `loadFile renderer` / `HTTP/WS` 边；约定规则精简为单行摘要（详情指向 claude/conventions.md）；扫描状态时间戳更新
+- **覆盖率**：约 94%（从 92% 提升）
+- **仍存缺口**：server storage 各 JSON store 逐字段、templates agents 184 模板的 system prompt 内容抽样、electron/renderer（web 构建产物复制物）、web components/workflow/ 部分 hook/utils
+
 ## 2026-06-13 -- init-architect 增量更新（断点续扫）
 
 - **阶段 A 全仓清点**：完成 7 个模块的文件统计与差异对比，识别自 2026-06-12 以来的结构变化
@@ -9,12 +19,11 @@
 - **server agents 新增**：`agent-context.ts`（共享上下文接口）、`agent-message-parts.ts`（消息片段追踪器）、`title-generator-agent.ts`（场景标题生成）
 - **server storage 新增**：`mini-app-store.ts` + `mini-app-db.ts`（SQLite 连接池 + 越界保护）
 - **flutter 测试缺口已填补**：新增 `test/widget_test.dart`（App 构建冒烟测试）+ `test/services/file_sources/webdav_url_test.dart`（URL 规范化单元测试）
-- **templates 大幅扩展**：skills 从 15 增至 66+ 文件（新增 caveman/grill-me/handoff/improve-codebase-architecture/tdd/to-prd/planning-with-files-zh 等）；plugins 新增 mira-sdk/dingtalk/aliyun_oss/tencent_cos/epub-parser/fish-audio/jimeng/test-plugin；prompt 确认 2 个（karpathy-skills + token-efficient-coding）；output-styles 确认 7 个（carmack/codex-rigor/dhh/evan-you/jobs/linus/uncle-bob）；mini-app 确认 1 个（minimax_tts）；workflows 确认 1 个（code-writing 四阶段）
-- **web 组件缺口补全**：新增 home（10 文件，含 usage-dashboard + subscription-panel）、timeline（4 文件，版本更新日志）、layout（13 文件，含 app-shell/workspace-shell/command-palette/auth-guard）、common（15 文件，含 picker/dialog/floating-ball）、settings（5 文件）组件组
+- **templates 大幅扩展**：skills 从 15 增至 66+ 文件；plugins 新增 mira-sdk/dingtalk/aliyun_oss/tencent_cos/epub-parser/fish-audio/jimeng/test-plugin；prompt 2 个；output-styles 7 个；mini-app 1 个；workflows 1 个（code-writing 四阶段）
+- **web 组件缺口补全**：新增 home（10 文件，含 usage-dashboard + subscription-panel）、timeline（4 文件）、layout（13 文件，含 app-shell/workspace-shell/command-palette/auth-guard）、common（15 文件）、settings（5 文件）组件组
 - **web i18n 命名空间**：确认 34 个命名空间（新增 projectSettings/home/commands/agentCommands/robotAccounts/worktree/mini-apps 等）
 - **docs 新增**：mini-app-agent.md、mini-app-renderer.md、mini-app-preview-agent.md、mini-app-state-sync-ws-plan.md、plugin-faq.md、hermes-mcp-config-findings.md、flex-truncate-fix.md + superpowers/{plans,specs} 2026-06-13 三份设计文档
 - **覆盖率**：约 92%（从 88% 提升）
-- **仍存缺口**：server `storage/` 22 个 store 字段未逐一抽取、web `components/sidebar/` 56 文件未逐一展开、templates agents 184 个模板内容未逐一抽样
 
 ## 2026-06-12 -- init-architect 增量更新
 
