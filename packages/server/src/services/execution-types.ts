@@ -32,6 +32,12 @@ export interface ExecutionSession {
   edges: WorkflowEdge[]
   groups?: WorkflowGroup[]
   variables?: OutputField[]
+  logSnapshot?: {
+    nodes: WorkflowNode[]
+    edges: WorkflowEdge[]
+    groups?: WorkflowGroup[]
+    variables?: OutputField[]
+  }
   context: Record<string, any>
   status: EngineStatus
   executionOrder: WorkflowNode[]

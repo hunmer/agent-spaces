@@ -188,12 +188,14 @@ export class ExecutionManager {
       throw createErrorShape('NOT_FOUND', `Workflow not found: ${request.workflowId}`);
     }
 
-    const snapshot = this.resolveExecutionSnapshot(workflow, request);
+    const { executionSnapshot, logSnapshot } = this.resolveExecutionSnapshot(workflow, request);
     const executionId = randomUUID();
     const session = this.createSession(
-      executionId, workflow, ownerClientId, request.input || {}, snapshot, request.context, request.env, eventSink, workspaceId,
+      executionId, workflow, ownerClientId, request.input || {}, executionSnapshot, request.context, request.env, eventSink, workspaceId,
       request.dryRun,
     );
+    if (logSnapshot) session.logSnapshot = clone(logSnapshot);
+    this.recordContextPresetSteps(session);
     session.context.__config__ = this.loadPluginConfigs(session);
 
     this.sessions.set(executionId, session);
@@ -334,11 +336,17 @@ export class ExecutionManager {
   private resolveExecutionSnapshot(
     workflow: Workflow,
     request: WorkflowExecuteRequest,
-  ): { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[]; variables?: OutputField[] } | undefined {
+  ): {
+    executionSnapshot?: { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[]; variables?: OutputField[] }
+    logSnapshot?: { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[]; variables?: OutputField[] }
+  } {
     const baseNodes = request.snapshot?.nodes ? clone(request.snapshot.nodes) : clone(workflow.nodes);
     const baseEdges = request.snapshot?.edges ? clone(request.snapshot.edges) : clone(workflow.edges);
     const baseGroups = request.snapshot?.groups ? clone(request.snapshot.groups) : clone(workflow.groups || []);
     const baseVariables = request.snapshot?.variables ? clone(request.snapshot.variables) : clone(workflow.variables || []);
+    const fullSnapshot = request.snapshot
+      ? { nodes: baseNodes, edges: baseEdges, groups: baseGroups, variables: baseVariables }
+      : undefined;
 
     const rootNodes = getNodesForExecutionScope(baseNodes, null);
     const startNodes = rootNodes.filter(n => n.type === 'start');
@@ -348,7 +356,10 @@ export class ExecutionManager {
       if (!startNode) {
         throw createErrorShape('BAD_REQUEST', `Start node not found: ${request.startNodeId}`);
       }
-      return this.buildReachableSnapshot(baseNodes, baseEdges, baseGroups, baseVariables, startNode.id);
+      return {
+        executionSnapshot: this.buildReachableSnapshot(baseNodes, baseEdges, baseGroups, baseVariables, startNode.id),
+        logSnapshot: fullSnapshot,
+      };
     }
 
     if (startNodes.length > 1) {
@@ -356,7 +367,7 @@ export class ExecutionManager {
       throw createErrorShape('BAD_REQUEST', `Multiple start nodes, specify startNodeId: ${choices}`);
     }
 
-    return request.snapshot ? { nodes: baseNodes, edges: baseEdges, groups: baseGroups, variables: baseVariables } : undefined;
+    return { executionSnapshot: fullSnapshot, logSnapshot: fullSnapshot };
   }
 
   private buildReachableSnapshot(
@@ -380,6 +391,28 @@ export class ExecutionManager {
       groups,
       variables,
     };
+  }
+
+  private recordContextPresetSteps(session: ExecutionSession): void {
+    const data = session.context.__data__;
+    if (!data || typeof data !== 'object') return;
+    const executionNodeIds = new Set(session.nodes.map(node => node.id));
+    const logNodes = session.logSnapshot?.nodes ?? [];
+    const now = Date.now();
+    for (const node of logNodes) {
+      if (executionNodeIds.has(node.id)) continue;
+      if (!Object.prototype.hasOwnProperty.call(data, node.id)) continue;
+      session.steps.push({
+        nodeId: node.id,
+        nodeLabel: node.label,
+        startedAt: now,
+        finishedAt: now,
+        status: 'completed',
+        input: session.context.__inputs__?.[node.id],
+        output: data[node.id],
+        logs: [{ level: 'info', message: 'JSON preset output used', timestamp: now }],
+      });
+    }
   }
 
   private createSession(
@@ -1577,6 +1610,12 @@ export class ExecutionManager {
   }
 
   private currentLog(session: ExecutionSession): ExecutionLog {
+    const snapshot = session.logSnapshot ?? {
+      nodes: session.nodes,
+      edges: session.edges,
+      groups: session.groups || [],
+      variables: session.variables || [],
+    };
     return {
       id: session.id, workflowId: session.workflow.id,
       startedAt: session.startedAt, finishedAt: session.finishedAt,
@@ -1584,12 +1623,12 @@ export class ExecutionManager {
       steps: clone(session.steps),
       snapshot: {
         nodes: normalizeExecutionSnapshotNodes(
-          clone(session.nodes),
+          clone(snapshot.nodes),
           (_node, data) => this.resolveContextVariables(session, data, { strictDataReferences: false }),
         ),
-        edges: clone(session.edges),
-        groups: clone(session.groups || []),
-        variables: clone(session.variables || []),
+        edges: clone(snapshot.edges),
+        groups: clone(snapshot.groups || []),
+        variables: clone(snapshot.variables || []),
       },
     };
   }
