@@ -101,6 +101,9 @@
     "testSuccess": "Test passed",
     "testFailed": "Test failed",
     "currentJsonPreset": "Current JSON Preset",
+    "runResult": "Run Result",
+    "runLogs": "Run Logs",
+    "jsonPresetAnchor": "JSON Preset",
     "copy": "Copy",
     "node": "Node",
     "outputPreview": "Output Preview"

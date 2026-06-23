@@ -101,6 +101,9 @@
     "testSuccess": "测试成功",
     "testFailed": "测试失败",
     "currentJsonPreset": "当前 JSON 预设",
+    "runResult": "运行结果",
+    "runLogs": "运行日志",
+    "jsonPresetAnchor": "JSON 预设",
     "copy": "复制",
     "node": "节点",
     "outputPreview": "输出预览"

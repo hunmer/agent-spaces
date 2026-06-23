@@ -104,6 +104,9 @@ export function WorkflowPropertiesPanel({
   const visibleDebugResult = previewResult ?? (node && debugNodeId === node.id ? debugResult : null);
   const hasDebugOutput = Boolean(node && visibleDebugResult);
   const nodeId = node?.id;
+  const visibleLogs = nodeId
+    ? visibleDebugResult?.logs ?? executionLog?.steps.find(s => s.nodeId === nodeId)?.logs
+    : undefined;
   const variableContext = useMemo<WorkflowVariableContext | undefined>(() => {
     if (!node) return undefined;
     return {
@@ -247,6 +250,9 @@ export function WorkflowPropertiesPanel({
         canEditDelay={canEditDelay}
         canDebug={canDebugSelectedNode && Boolean(onDebugNode)}
         isDebugging={isDebugging}
+        showRunResultAnchor={hasDebugOutput}
+        showRunLogsAnchor={Boolean(visibleLogs?.length)}
+        showJsonPresetAnchor={Boolean(selectedJsonPreset)}
         selectedJsonPreset={selectedJsonPreset}
         onDataChange={handleDataChange}
         onDebug={onDebugNode ?? (() => {})}
@@ -258,7 +264,7 @@ export function WorkflowPropertiesPanel({
       <ScrollArea className="min-h-0 flex-1" viewportClassName="flex flex-col">
         <div className="flex flex-col gap-3 p-3 pt-0">
           {hasDebugOutput && visibleDebugResult && (
-            <section className="space-y-2 rounded border bg-muted/20 p-2 mt-2">
+            <section id="run-result-section" className="space-y-2 rounded border bg-muted/20 p-2 mt-2">
               <div className="flex items-center gap-1.5">
                 {visibleDebugResult.status === 'completed' ? (
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
@@ -308,17 +314,15 @@ export function WorkflowPropertiesPanel({
 
           
           {nodeId && (() => {
-            const logs = visibleDebugResult?.logs
-              ?? executionLog?.steps.find(s => s.nodeId === nodeId)?.logs;
-            if (!logs?.length) return null;
+            if (!visibleLogs?.length) return null;
             return (
-              <Card className="mt-2">
+              <Card id="run-logs-section" className="mt-2">
                 <CardHeader>
                   <CardTitle className="text-xs font-medium text-muted-foreground">{t('nodeUi.logs')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="max-h-48 overflow-y-auto rounded border bg-background font-mono text-[11px]">
-                    {logs.map((entry, i) => (
+                    {visibleLogs.map((entry, i) => (
                       <div
                         key={i}
                         className={`flex items-start gap-2 border-b px-2 py-1 last:border-b-0 ${
@@ -340,7 +344,7 @@ export function WorkflowPropertiesPanel({
           })()}
 
           {selectedJsonPreset && (
-            <div className="space-y-2 rounded border bg-muted/20 p-2">
+            <div id="json-preset-section" className="space-y-2 rounded border bg-muted/20 p-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{t('properties.currentJsonPreset')}</span>
                 <Button
