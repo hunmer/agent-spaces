@@ -191,7 +191,7 @@ export class ExecutionManager {
     const snapshot = this.resolveExecutionSnapshot(workflow, request);
     const executionId = randomUUID();
     const session = this.createSession(
-      executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, request.env, eventSink, workspaceId,
+      executionId, workflow, ownerClientId, request.input || {}, snapshot, request.context, request.env, eventSink, workspaceId,
       request.dryRun,
     );
     session.context.__config__ = this.loadPluginConfigs(session);

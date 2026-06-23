@@ -152,6 +152,7 @@ export interface WorkflowExecuteRequest {
   workflowId: string
   input?: Record<string, unknown>
   env?: Record<string, unknown>
+  context?: Record<string, unknown>
   snapshot?: ExecutionSnapshot
   startNodeId?: string
   dryRun?: WorkflowDryRunOptions

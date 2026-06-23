@@ -168,15 +168,19 @@ function applyExecutionStepPresets(
   steps: ExecutionStep[],
   currentNodeId: string,
   presetId: string,
-): WorkflowType | null {
+): { workflow: WorkflowType; context: Record<string, unknown> } | null {
   const currentStepIndex = steps.findIndex(step => step.nodeId === currentNodeId);
   if (currentStepIndex < 0) return null;
   const rerunNodeIds = getReachableNodeIds(workflow, currentNodeId);
+  const contextData: Record<string, unknown> = {};
+  const contextInputs: Record<string, unknown> = {};
 
   const stepByNodeId = new Map<string, ExecutionStep>();
   for (const step of steps.slice(0, currentStepIndex)) {
     if (step.status === 'completed' && step.output !== undefined && !stepByNodeId.has(step.nodeId)) {
       stepByNodeId.set(step.nodeId, step);
+      contextData[step.nodeId] = step.output;
+      if (step.input !== undefined) contextInputs[step.nodeId] = step.input;
     }
   }
 
@@ -210,7 +214,13 @@ function applyExecutionStepPresets(
     };
   });
 
-  return changed ? { ...workflow, nodes } : workflow;
+  return {
+    workflow: changed ? { ...workflow, nodes } : workflow,
+    context: {
+      __data__: contextData,
+      __inputs__: contextInputs,
+    },
+  };
 }
 
 function readBlobAsDataUrl(blob: Blob): Promise<string> {
@@ -515,16 +525,16 @@ function WorkflowEditorInner({
   const continueFromPreviewNode = useCallback((nodeId: string, presetId: string) => {
     if (!state.isPreview || !state.workflow || !execution.executionLog) return;
     const normalizedPresetId = presetId.trim() || TEMP_DEBUG_PRESET_ID;
-    const workflowWithPresets = applyExecutionStepPresets(
+    const prepared = applyExecutionStepPresets(
       state.workflow,
       execution.executionLog.steps,
       nodeId,
       normalizedPresetId,
     );
-    if (!workflowWithPresets) return;
+    if (!prepared) return;
 
-    state.setWorkflow(workflowWithPresets);
-    execution.handleExecute(undefined, undefined, undefined, workflowWithPresets);
+    state.setWorkflow(prepared.workflow);
+    execution.handleExecute(undefined, nodeId, undefined, prepared.workflow, prepared.context);
   }, [execution, state]);
 
   useEffect(() => {

@@ -249,7 +249,13 @@ export function useWorkflowEditorExecution({
   }, [workflow, cleanupDebugListeners, handleClientNodeRequest, getWorkflowWS]);
 
   // ---- Execution ----
-  const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>, workflowOverride?: Workflow) => {
+  const handleExecute = useCallback((
+    input?: Record<string, unknown>,
+    startNodeId?: string,
+    env?: Record<string, unknown>,
+    workflowOverride?: Workflow,
+    context?: Record<string, unknown>,
+  ) => {
     const activeWorkflow = workflowOverride ?? workflow;
     if (!activeWorkflow) return;
     const ws = getWorkflowWS();
@@ -276,6 +282,7 @@ export function useWorkflowEditorExecution({
         workflowId: activeWorkflow.id,
         input,
         env,
+        context,
         startNodeId,
         snapshot: {
           nodes: withOriginalIOFieldsSnapshot(activeWorkflow),

@@ -112,7 +112,7 @@ export type ClientEventMap = {
   'channel.answer_question': { channelId: string; messageId: string; questionId: string; answer: string };
   'agent.start': { workspaceId: string; role: string; issueId?: string };
   'agent.stop': { agentId: string };
-  'workflow:execute': { workflowId: string; input?: Record<string, unknown>; env?: Record<string, unknown>; snapshot?: unknown; startNodeId?: string };
+  'workflow:execute': { workflowId: string; input?: Record<string, unknown>; env?: Record<string, unknown>; context?: Record<string, unknown>; snapshot?: unknown; startNodeId?: string };
   'workflow:pause': { executionId: string };
   'workflow:resume': { executionId: string };
   'workflow:stop': { executionId: string };
