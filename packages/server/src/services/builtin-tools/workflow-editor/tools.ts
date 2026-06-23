@@ -61,6 +61,16 @@ interface MissingRequiredField {
   reason: string;
 }
 
+interface VariableDependencyIssue {
+  nodeId: string;
+  nodeLabel: string;
+  nodeType: string;
+  field: string;
+  referencedNodeId: string;
+  referencedPath: string;
+  reason: string;
+}
+
 function isRequiredValueMissing(value: unknown): boolean {
   if (value === undefined || value === null) return true;
   if (typeof value === 'string') return value.trim().length === 0;
@@ -187,6 +197,99 @@ function missingRequiredKeys(keys: string[], value: unknown): string[] {
   return keys.filter((key) => isRequiredValueMissing(record[key]));
 }
 
+function normalizeReferencePath(path: string): string {
+  return path
+    .trim()
+    .replace(/^\[['"]?/, '')
+    .replace(/['"]?\]$/, '')
+    .replace(/\[['"]?([^'"\]]+)['"]?\]/g, '.$1');
+}
+
+function collectDataReferences(value: unknown, fieldPath: string, refs: Array<{ field: string; nodeId: string; path: string }>) {
+  if (typeof value === 'string') {
+    const pattern = /\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g;
+    for (const match of value.matchAll(pattern)) {
+      refs.push({ field: fieldPath, nodeId: match[2], path: normalizeReferencePath(match[3]) });
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectDataReferences(item, `${fieldPath}[${index}]`, refs));
+    return;
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      collectDataReferences(nested, fieldPath ? `${fieldPath}.${key}` : key, refs);
+    }
+  }
+}
+
+function hasDirectedPath(edges: WorkflowEdge[], sourceId: string, targetId: string): boolean {
+  if (sourceId === targetId) return true;
+  const outgoing = new Map<string, string[]>();
+  for (const edge of edges) {
+    const list = outgoing.get(edge.source) ?? [];
+    list.push(edge.target);
+    outgoing.set(edge.source, list);
+  }
+  const visited = new Set<string>();
+  const queue = [sourceId];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || visited.has(current)) continue;
+    visited.add(current);
+    for (const next of outgoing.get(current) ?? []) {
+      if (next === targetId) return true;
+      if (!visited.has(next)) queue.push(next);
+    }
+  }
+  return false;
+}
+
+function checkVariableDependencies(
+  workflow: Pick<Workflow, 'nodes' | 'edges'>,
+  nodes: WorkflowNode[],
+): VariableDependencyIssue[] {
+  const issues: VariableDependencyIssue[] = [];
+  const nodeById = new Map(workflow.nodes.map((node) => [node.id, node]));
+  for (const node of nodes) {
+    const refs: Array<{ field: string; nodeId: string; path: string }> = [];
+    collectDataReferences(node.data, 'data', refs);
+    collectDataReferences(node.inputFields, 'inputFields', refs);
+    collectDataReferences(node.outputs, 'outputs', refs);
+
+    for (const ref of refs) {
+      const referencedNode = nodeById.get(ref.nodeId);
+      if (!referencedNode) {
+        issues.push({
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.type,
+          field: ref.field,
+          referencedNodeId: ref.nodeId,
+          referencedPath: ref.path,
+          reason: 'referenced node does not exist',
+        });
+        continue;
+      }
+
+      const sameScope = (referencedNode.composite?.parentId ?? null) === (node.composite?.parentId ?? null);
+      if (sameScope && !hasDirectedPath(workflow.edges, ref.nodeId, node.id)) {
+        issues.push({
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.type,
+          field: ref.field,
+          referencedNodeId: ref.nodeId,
+          referencedPath: ref.path,
+          reason: 'referenced node is not connected upstream of this node',
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -200,6 +303,7 @@ function checkRequiredFields(
   if (!reachableNodes) return { success: false as const, message: `Start node not found: ${startNodeId}` };
 
   const missing: MissingRequiredField[] = [];
+  const variableDependencyIssues = checkVariableDependencies(workflow, reachableNodes);
   for (const node of reachableNodes) {
     const definition = definitionByType.get(node.type);
     if (!definition?.properties?.length) continue;
@@ -225,10 +329,11 @@ function checkRequiredFields(
 
   return {
     success: true as const,
-    passed: missing.length === 0,
+    passed: missing.length === 0 && variableDependencyIssues.length === 0,
     checked_node_count: reachableNodes.length,
     checked_node_ids: reachableNodes.map((node) => node.id),
     missing_required_fields: missing,
+    variable_dependency_issues: variableDependencyIssues,
   };
 }
 

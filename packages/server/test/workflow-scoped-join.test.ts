@@ -141,3 +141,47 @@ test('scoped body join waits for every incoming branch before executing end node
   assert.equal(endStep.startedAt >= slowStep.finishedAt, true);
   assert.equal(endStep.startedAt >= fastStep.finishedAt, true);
 });
+
+test('scoped body reports missing data references instead of resolving them to empty text', async () => {
+  const manager = new ExecutionManager({
+    emit: () => {},
+    interactionManager: {} as never,
+    clientNodeManager: {} as never,
+  });
+  const dependencyEdges = edges.filter(edge => edge.id !== 'start-slow' && edge.id !== 'slow-end');
+  const session = {
+    id: 'session',
+    workflow: {
+      id: 'workflow',
+      name: 'Workflow',
+      folderId: null,
+      nodes,
+      edges: dependencyEdges,
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    ownerClientId: 'test',
+    nodes,
+    edges: dependencyEdges,
+    context: { __data__: {}, __env__: {}, __input__: {} },
+    status: 'running',
+    executionOrder: [],
+    currentIndex: 0,
+    pauseRequested: false,
+    stopRequested: false,
+    startedAt: Date.now(),
+    steps: [],
+    activeBranches: new Map(),
+    persisted: false,
+    lastUpdatedAt: Date.now(),
+    eventSequence: 0,
+    recentEvents: [],
+    loopStack: [],
+    breakpointBypassKeys: new Set(),
+  } satisfies ExecutionSession;
+
+  await assert.rejects(
+    () => manager.__executeScopedBodyForTest(session, nodes[0], nodes.slice(1)),
+    /missing node output: __data__\["slow_image"\]/,
+  );
+});

@@ -1277,24 +1277,28 @@ export class ExecutionManager {
 
   // ---- Private: Variable resolution ----
 
-  private resolveContextVariables(session: ExecutionSession, data: Record<string, any>): Record<string, any> {
-    return this.resolveValue(session, data);
+  private resolveContextVariables(
+    session: ExecutionSession,
+    data: Record<string, any>,
+    options: { strictDataReferences?: boolean } = {},
+  ): Record<string, any> {
+    return this.resolveValue(session, data, { strictDataReferences: options.strictDataReferences !== false });
   }
 
-  private resolveValue(session: ExecutionSession, value: any): any {
-    if (typeof value === 'string') return this.resolveStringValue(session, value);
-    if (Array.isArray(value)) return value.map(item => this.resolveValue(session, item));
+  private resolveValue(session: ExecutionSession, value: any, options: { strictDataReferences: boolean }): any {
+    if (typeof value === 'string') return this.resolveStringValue(session, value, options);
+    if (Array.isArray(value)) return value.map(item => this.resolveValue(session, item, options));
     if (value && typeof value === 'object') {
       const resolved: Record<string, any> = {};
       for (const [key, nested] of Object.entries(value)) {
-        resolved[key] = this.resolveValue(session, nested);
+        resolved[key] = this.resolveValue(session, nested, options);
       }
       return resolved;
     }
     return value;
   }
 
-  private resolveStringValue(session: ExecutionSession, value: string): any {
+  private resolveStringValue(session: ExecutionSession, value: string, options: { strictDataReferences: boolean }): any {
     // Full match patterns (return raw value, not string)
     const loopVarMatch = value.match(/^\s*\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}\s*$/);
     if (loopVarMatch) return this.getLoopVariableValue(session, loopVarMatch[1]) ?? '';
@@ -1309,10 +1313,14 @@ export class ExecutionManager {
     if (dataMatch) {
       const data = this.getNodeExecutionData(session, dataMatch[2]);
       if (data != null) {
-        const result = getNestedValue(data, normalizeVariablePath(dataMatch[3]));
+        const path = normalizeVariablePath(dataMatch[3]);
+        const result = getNestedValue(data, path);
         if (result !== undefined) return result;
+        if (!options.strictDataReferences) return '';
+        throw new Error(`Workflow variable reference missing field: __data__["${dataMatch[2]}"].${path}`);
       }
-      return '';
+      if (!options.strictDataReferences) return '';
+      throw new Error(`Workflow variable reference missing node output: __data__["${dataMatch[2]}"]`);
     }
 
     const inputMatch = value.match(/^\s*\{\{\s*__inputs__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}\s*$/);
@@ -1338,7 +1346,17 @@ export class ExecutionManager {
       .replace(/\{\{\s*__env__\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context.__env__ ?? {}, p) ?? ''))
       .replace(/\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
         const d = this.getNodeExecutionData(session, nid);
-        return d == null ? '' : String(getNestedValue(d, normalizeVariablePath(fp)) ?? '');
+        if (d == null) {
+          if (!options.strictDataReferences) return '';
+          throw new Error(`Workflow variable reference missing node output: __data__["${nid}"]`);
+        }
+        const path = normalizeVariablePath(fp);
+        const resolved = getNestedValue(d, path);
+        if (resolved === undefined) {
+          if (!options.strictDataReferences) return '';
+          throw new Error(`Workflow variable reference missing field: __data__["${nid}"].${path}`);
+        }
+        return String(resolved);
       })
       .replace(/\{\{\s*__inputs__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
         const d = this.getNodeExecutionInput(session, nid);
@@ -1549,7 +1567,10 @@ export class ExecutionManager {
       status: session.status === 'running' ? 'running' : session.status === 'paused' ? 'paused' : session.status === 'completed' ? 'completed' : 'error',
       steps: clone(session.steps),
       snapshot: {
-        nodes: normalizeExecutionSnapshotNodes(clone(session.nodes), (_node, data) => this.resolveContextVariables(session, data)),
+        nodes: normalizeExecutionSnapshotNodes(
+          clone(session.nodes),
+          (_node, data) => this.resolveContextVariables(session, data, { strictDataReferences: false }),
+        ),
         edges: clone(session.edges),
         groups: clone(session.groups || []),
         variables: clone(session.variables || []),

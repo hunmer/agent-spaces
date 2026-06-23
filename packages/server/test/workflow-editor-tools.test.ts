@@ -131,6 +131,53 @@ nodeDefinitions.push({
   handles: { target: true, dynamicSource: { dataKey: 'conditions', extraCount: 1 } },
 });
 
+test('check_workflow_chain reports unconnected __data__ references in the same scope', async () => {
+  const currentWorkflow: Workflow = {
+    ...workflow,
+    nodes: [
+      { id: 'start', type: 'start', label: 'Start', position: { x: 0, y: 0 }, data: {} },
+      { id: 'source', type: 'run_code', label: 'Source', position: { x: 0, y: 0 }, data: {} },
+      {
+        id: 'end',
+        type: 'end',
+        label: 'End',
+        position: { x: 0, y: 0 },
+        data: {
+          outputs: [
+            { key: 'image', type: 'string[]', value: '{{ __data__["source"].images }}' },
+          ],
+        },
+      },
+    ],
+    edges: [
+      { id: 'start-end', source: 'start', target: 'end' },
+    ],
+  };
+  const tools = createWorkflowEditorFunctionTools({ workflow: currentWorkflow, nodeDefinitions });
+  const checkWorkflowChain = tools.find((tool) => tool.name === 'check_workflow_chain');
+  assert.ok(checkWorkflowChain);
+
+  const result = await checkWorkflowChain.execute({ startNodeId: 'start' }) as {
+    success: boolean;
+    passed: boolean;
+    variable_dependency_issues: Array<{ nodeId: string; referencedNodeId: string; reason: string }>;
+  };
+
+  assert.equal(result.success, true);
+  assert.equal(result.passed, false);
+  assert.deepEqual(result.variable_dependency_issues, [
+    {
+      nodeId: 'end',
+      nodeLabel: 'End',
+      nodeType: 'end',
+      field: 'data.outputs[0].value',
+      referencedNodeId: 'source',
+      referencedPath: 'images',
+      reason: 'referenced node is not connected upstream of this node',
+    },
+  ]);
+});
+
 test('search_node_usage filters by node_type without swapping results', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const searchNodeUsage = tools.find((tool) => tool.name === 'search_node_usage');
