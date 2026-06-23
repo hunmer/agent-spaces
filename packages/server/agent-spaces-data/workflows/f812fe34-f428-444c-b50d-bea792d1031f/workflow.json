@@ -474,89 +474,11 @@
       ]
     },
     {
-      "id": "node_1782109102492_qsgshy",
-      "type": "jianying_validate_preset",
-      "label": "校验预设数据",
-      "position": {
-        "x": -75,
-        "y": 255
-      },
-      "data": {
-        "preset_data": "{{ __data__[\"node_1782109145430_abd4mi\"].text }}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "dataType": "object",
-            "children": [
-              {
-                "key": "valid",
-                "type": "boolean",
-                "dataType": "boolean"
-              },
-              {
-                "key": "error",
-                "type": "string"
-              },
-              {
-                "key": "stats",
-                "type": "object",
-                "dataType": "object",
-                "children": []
-              }
-            ]
-          }
-        ]
-      },
-      "outputs": [
-        {
-          "key": "success",
-          "type": "boolean",
-          "dataType": "boolean"
-        },
-        {
-          "key": "message",
-          "type": "string"
-        },
-        {
-          "key": "data",
-          "type": "object",
-          "dataType": "object",
-          "children": [
-            {
-              "key": "valid",
-              "type": "boolean",
-              "dataType": "boolean"
-            },
-            {
-              "key": "error",
-              "type": "string"
-            },
-            {
-              "key": "stats",
-              "type": "object",
-              "dataType": "object",
-              "children": []
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "node_1782109145430_abd4mi",
       "type": "fetch_text",
       "label": "捕获网页内容",
       "position": {
-        "x": -150,
+        "x": -105,
         "y": 75
       },
       "data": {
@@ -586,52 +508,12 @@
       ]
     },
     {
-      "id": "node_1782109181173_0nrkxh",
-      "type": "switch",
-      "label": "nodes.switch.label",
-      "position": {
-        "x": 30,
-        "y": 375
-      },
-      "data": {
-        "sourceNodeId": "node_1782109102492_qsgshy",
-        "sourceHandle": "source",
-        "conditions": [
-          {
-            "id": "cond_1782109186259_7zxe",
-            "variable": "{{ __data__[\"node_1782109102492_qsgshy\"].data.valid }}",
-            "field": "{{ __data__[\"node_1782109102492_qsgshy\"].data.valid }}",
-            "operator": "is_true",
-            "value": ""
-          }
-        ]
-      }
-    },
-    {
-      "id": "node_1782109236909_5ijemq",
-      "type": "end",
-      "label": "nodes.end.label",
-      "position": {
-        "x": 405,
-        "y": 510
-      },
-      "data": {},
-      "outputs": [
-        {
-          "key": "msg",
-          "type": "string",
-          "value": "错误的剪映草稿预设",
-          "children": []
-        }
-      ]
-    },
-    {
       "id": "node_1782111026973_jqd8tn",
       "type": "qianyin_tts",
       "label": "AI文字转语音",
       "position": {
         "x": 1287.7575691580428,
-        "y": 528.5251237610369
+        "y": 524.2751237610369
       },
       "data": {
         "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"] }}",
@@ -730,7 +612,7 @@
       "label": "Probe Media Info",
       "position": {
         "x": 1377.7575691580428,
-        "y": 699.0251237610369
+        "y": 703.2751237610369
       },
       "data": {
         "ffprobePath": "",
@@ -953,7 +835,7 @@
         "y": -60
       },
       "data": {
-        "code": "async function main({ params }) {\n    const json = JSON.parse(params.preset_data)\n    json.testData = {\n        track: params.tracks,\n        items: params.items,\n    }\n    return {\n        preset_data: JSON.stringify(json)\n    };\n}",
+        "code": "async function main({ params }) {\n    const json = JSON.parse(params.preset_data)\n    json.testData = {\n        tracks: params.tracks,\n        items: params.items,\n    }\n    return {\n        preset_data: JSON.stringify(json)\n    };\n}",
         "sourceNodeId": "node_1782108540500_0ggo7y",
         "sourceHandle": "source",
         "inputFields": [
@@ -1094,33 +976,6 @@
       "targetHandle": "target"
     },
     {
-      "id": "e-node_1782109145430_abd4mi-source-node_1782109102492_qsgshy-target",
-      "source": "node_1782109145430_abd4mi",
-      "target": "node_1782109102492_qsgshy",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1782109102492_qsgshy-source-node_1782109181173_0nrkxh-target",
-      "source": "node_1782109102492_qsgshy",
-      "target": "node_1782109181173_0nrkxh",
-      "sourceHandle": "source"
-    },
-    {
-      "id": "e-node_1782109181173_0nrkxh-case-0-node_1781714576999_ignsfm-target",
-      "source": "node_1782109181173_0nrkxh",
-      "target": "node_1781714576999_ignsfm",
-      "sourceHandle": "case-0",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1782109181173_0nrkxh-default-node_1782109236909_5ijemq-target",
-      "source": "node_1782109181173_0nrkxh",
-      "target": "node_1782109236909_5ijemq",
-      "sourceHandle": "default",
-      "targetHandle": "target"
-    },
-    {
       "id": "e-node_1781714719692_ilnqxh-source-node_1782111026973_jqd8tn-target",
       "source": "node_1781714719692_ilnqxh",
       "target": "node_1782111026973_jqd8tn",
@@ -1172,10 +1027,17 @@
       "target": "node_1781714719692_327x83",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782109145430_abd4mi-source-node_1781714576999_ignsfm-target",
+      "source": "node_1782109145430_abd4mi",
+      "target": "node_1781714576999_ignsfm",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782183030564,
-  "updatedAt": 1782197867253,
+  "updatedAt": 1782199671030,
   "published": false,
   "enabledPlugins": [
     "workflow.jimeng",
@@ -1188,5 +1050,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782196723904
+  "lastRunAt": 1782200298280
 }

@@ -508,6 +508,7 @@ export class ExecutionManager {
     try {
       const startNode = session.nodes.find(node => node.id === startNodeId);
       if (!startNode) throw new Error(`Start node not found: ${startNodeId}`);
+      const rootNodeIds = new Set(getNodesForExecutionScope(session.nodes, null).map(node => node.id));
       const completedNodeIds = new Set(
         session.steps
           .filter(step => this.doesStepSatisfyDownstreamDependency(step))
@@ -532,11 +533,14 @@ export class ExecutionManager {
 
       const adjacency = new Map<string, WorkflowEdge[]>();
       for (const edge of session.edges) {
+        if (!rootNodeIds.has(edge.source) || !rootNodeIds.has(edge.target)) continue;
         const list = adjacency.get(edge.source) || [];
         list.push(edge);
         adjacency.set(edge.source, list);
       }
-      const nodeMap = new Map(session.nodes.map(node => [node.id, node]));
+      const nodeMap = new Map(session.nodes
+        .filter(node => rootNodeIds.has(node.id))
+        .map(node => [node.id, node]));
       const execFrom = async (nodeId: string): Promise<unknown> => {
         return this.executeDownstreamBranches(
           session,
