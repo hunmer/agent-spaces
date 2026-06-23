@@ -42,6 +42,7 @@ export function InputFieldsSection({
         {node.type === 'sub_workflow' ? t('properties.startNodeInput') : t('properties.inputFields')}
       </div>
       <OutputFieldsEditor
+        key={`input-fields-${node.id}`}
         value={getOutputFields(data.inputFields)}
         onChange={(value) => onDataChange('inputFields', value)}
         variableContext={variableContext}
@@ -115,6 +116,7 @@ export function OutputFieldsSection({
         </div>
       </div>
       <OutputFieldsEditor
+        key={`output-fields-${node.id}`}
         value={getOutputFields(data.outputs)}
         onChange={(value) => onDataChange('outputs', value)}
         variableContext={variableContext}

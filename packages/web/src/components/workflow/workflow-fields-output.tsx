@@ -50,6 +50,14 @@ function getSelectOptions(options: OutputField['options']) {
 	return Array.isArray(options) ? options : [];
 }
 
+function hasConfiguredVariable(field: OutputField) {
+	return field.inputMode !== 'native' && stringifyOutputFieldValue(field.value).trim().length > 0;
+}
+
+function isDefaultExpandedField(field: OutputField) {
+	return hasConfiguredVariable(field);
+}
+
 function createOutputField(type: OutputField['type']): OutputField {
 	return isStructuredOutputFieldType(type)
 		? { key: '', type, children: [] }
@@ -113,7 +121,9 @@ export function OutputFieldsEditor({
 	const t = useTranslations('workflows.outputFields');
 	const fields = getOutputFields(value);
 	const [expandedFields, setExpandedFields] = useState<Set<number>>(() => new Set());
+	const [collapsedFields, setCollapsedFields] = useState<Set<number>>(() => new Set());
 	const [expandedDetailFields, setExpandedDetailFields] = useState<Set<number>>(() => new Set());
+	const [collapsedDetailFields, setCollapsedDetailFields] = useState<Set<number>>(() => new Set());
 	const [editorId] = useState(() => `output-fields-${outputFieldDragIdCounter++}`);
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 	const indent = depth * 16;
@@ -143,19 +153,43 @@ export function OutputFieldsEditor({
 		onChange(next);
 	};
 
+	const isFieldExpanded = (field: OutputField, index: number) => (
+		(isDefaultExpandedField(field) && !collapsedFields.has(index)) || expandedFields.has(index)
+	);
+
+	const isDetailFieldExpanded = (field: OutputField, index: number) => (
+		(isDefaultExpandedField(field) && !collapsedDetailFields.has(index)) || expandedDetailFields.has(index)
+	);
+
 	const toggleExpand = (index: number) => {
+		const defaultExpanded = isDefaultExpandedField(fields[index]);
+		const expanded = isFieldExpanded(fields[index], index);
+		setCollapsedFields((current) => {
+			const next = new Set(current);
+			if (expanded && defaultExpanded) next.add(index);
+			else next.delete(index);
+			return next;
+		});
 		setExpandedFields((current) => {
 			const next = new Set(current);
-			if (next.has(index)) next.delete(index);
+			if (expanded) next.delete(index);
 			else next.add(index);
 			return next;
 		});
 	};
 
 	const toggleDetailExpand = (index: number) => {
+		const defaultExpanded = isDefaultExpandedField(fields[index]);
+		const expanded = isDetailFieldExpanded(fields[index], index);
+		setCollapsedDetailFields((current) => {
+			const next = new Set(current);
+			if (expanded && defaultExpanded) next.add(index);
+			else next.delete(index);
+			return next;
+		});
 		setExpandedDetailFields((current) => {
 			const next = new Set(current);
-			if (next.has(index)) next.delete(index);
+			if (expanded) next.delete(index);
 			else next.add(index);
 			return next;
 		});
@@ -251,93 +285,98 @@ export function OutputFieldsEditor({
 			<div className="space-y-1">
 				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
 					<SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
-						{fields.map((field, index) => (
-							<SortableOutputField key={fieldIds[index]} id={fieldIds[index]}>
-								{({ attributes, listeners }) => (
-									<>
-										<div className="group/field flex items-center gap-1" style={{ paddingLeft: `${indent}px` }}>
-											<button
-												type="button"
-												{...attributes}
-												{...listeners}
-												className="flex h-5 w-3 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground/60 hover:bg-accent hover:text-foreground active:cursor-grabbing"
-												aria-label={t('dragSortField')}
-												title={t('dragSort')}
-											>
-												<GripVertical className="h-3 w-3" />
-											</button>
-											{isStructuredOutputFieldType(field.type) ? (
+						{fields.map((field, index) => {
+							const fieldExpanded = isFieldExpanded(field, index);
+							const detailFieldExpanded = isDetailFieldExpanded(field, index);
+
+							return (
+								<SortableOutputField key={fieldIds[index]} id={fieldIds[index]}>
+									{({ attributes, listeners }) => (
+										<>
+											<div className="group/field flex items-center gap-1" style={{ paddingLeft: `${indent}px` }}>
+												<button
+													type="button"
+													{...attributes}
+													{...listeners}
+													className="flex h-5 w-3 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground/60 hover:bg-accent hover:text-foreground active:cursor-grabbing"
+													aria-label={t('dragSortField')}
+													title={t('dragSort')}
+												>
+													<GripVertical className="h-3 w-3" />
+												</button>
+												{isStructuredOutputFieldType(field.type) ? (
+													<Button
+														variant="ghost"
+														size="icon"
+														className={`h-5 w-5 shrink-0 text-muted-foreground ${detailFieldExpanded ? 'text-foreground' : ''}`}
+														title={detailFieldExpanded ? t('addField') : t('defaultValuePlaceholder')}
+														onClick={() => toggleDetailExpand(index)}
+													>
+														{detailFieldExpanded ? <ListChecks className="h-3 w-3" /> : <Braces className="h-3 w-3" />}
+													</Button>
+												) : (
+													<Button
+														variant="ghost"
+														size="icon"
+														className={`h-5 w-5 shrink-0 ${fieldExpanded ? '' : '-rotate-90'}`}
+														onClick={() => toggleExpand(index)}
+													>
+														<ChevronRight className="h-3 w-3" />
+													</Button>
+												)}
+												{showRequired && (
+													<Checkbox
+														checked={Boolean(field.required) || false}
+														onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
+														className="h-3.5 w-3.5"
+														title={t('required')}
+													/>
+												)}
+												<Input
+													value={field.key ?? ''}
+													onChange={(e) => updateField(index, { key: e.target.value })}
+													placeholder={t('fieldNamePlaceholder')}
+													className="h-6 min-w-0 flex-1 text-[11px]"
+												/>
+												<Select
+													value={field.type ?? 'string'}
+													onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
+												>
+													<SelectTrigger size="sm" className="h-6 w-20 shrink-0 px-2 py-0 text-[11px] [&_svg]:size-3">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{selectableFieldTypes.map(type => (
+															<SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
 												<Button
 													variant="ghost"
 													size="icon"
-													className={`h-5 w-5 shrink-0 text-muted-foreground ${expandedDetailFields.has(index) ? 'text-foreground' : ''}`}
-													title={expandedDetailFields.has(index) ? t('addField') : t('defaultValuePlaceholder')}
-													onClick={() => toggleDetailExpand(index)}
+													className="h-5 w-5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/field:opacity-100"
+													onClick={() => onChange(fields.filter((_, i) => i !== index))}
 												>
-													{expandedDetailFields.has(index) ? <ListChecks className="h-3 w-3" /> : <Braces className="h-3 w-3" />}
+													<Trash2 className="h-2.5 w-2.5" />
 												</Button>
-											) : (
-												<Button
-													variant="ghost"
-													size="icon"
-													className={`h-5 w-5 shrink-0 ${expandedFields.has(index) ? '' : '-rotate-90'}`}
-													onClick={() => toggleExpand(index)}
-												>
-													<ChevronRight className="h-3 w-3" />
-												</Button>
-											)}
-											{showRequired && (
-												<Checkbox
-													checked={Boolean(field.required) || false}
-													onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
-													className="h-3.5 w-3.5"
-													title={t('required')}
-												/>
-											)}
-											<Input
-												value={field.key ?? ''}
-												onChange={(e) => updateField(index, { key: e.target.value })}
-												placeholder={t('fieldNamePlaceholder')}
-												className="h-6 min-w-0 flex-1 text-[11px]"
-											/>
-											<Select
-												value={field.type ?? 'string'}
-												onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
-											>
-												<SelectTrigger size="sm" className="h-6 w-20 shrink-0 px-2 py-0 text-[11px] [&_svg]:size-3">
-													<SelectValue />
-												</SelectTrigger>
-												<SelectContent>
-													{selectableFieldTypes.map(type => (
-														<SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-5 w-5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/field:opacity-100"
-												onClick={() => onChange(fields.filter((_, i) => i !== index))}
-											>
-												<Trash2 className="h-2.5 w-2.5" />
-											</Button>
-										</div>
-										{((expandedFields.has(index) && !isStructuredOutputFieldType(field.type))
-											|| (expandedDetailFields.has(index) && isStructuredOutputFieldType(field.type))) && renderFieldDetails(field, index)}
-										{!expandedDetailFields.has(index) && isStructuredOutputFieldType(field.type) && depth < 3 && (
-											<div>
-												<OutputFieldsEditor
-													value={getOutputFields(field.children)}
-													onChange={(children) => updateField(index, { children })}
-													variableContext={variableContext}
-													depth={depth + 1}
-												/>
 											</div>
-										)}
-									</>
-								)}
-							</SortableOutputField>
-						))}
+											{((fieldExpanded && !isStructuredOutputFieldType(field.type))
+												|| (detailFieldExpanded && isStructuredOutputFieldType(field.type))) && renderFieldDetails(field, index)}
+											{!detailFieldExpanded && isStructuredOutputFieldType(field.type) && depth < 3 && (
+												<div>
+													<OutputFieldsEditor
+														value={getOutputFields(field.children)}
+														onChange={(children) => updateField(index, { children })}
+														variableContext={variableContext}
+														depth={depth + 1}
+													/>
+												</div>
+											)}
+										</>
+									)}
+								</SortableOutputField>
+							);
+						})}
 					</SortableContext>
 				</DndContext>
 			</div>
