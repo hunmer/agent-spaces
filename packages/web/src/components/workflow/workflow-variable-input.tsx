@@ -233,12 +233,19 @@ function isVariableReferenceMissing(
 function useEnabledWorkflowPlugins(variableContext?: WorkflowVariableContext): {
   plugins: WorkflowPlugin[];
   pluginsLoaded: boolean;
+  hasPluginContext: boolean;
 } {
   const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
   const [pluginsLoaded, setPluginsLoaded] = useState(false);
 
   useEffect(() => {
     const enabledPlugins = variableContext?.enabledPlugins ?? [];
+    if (!variableContext?.enabledPlugins) {
+      setPlugins([]);
+      setPluginsLoaded(false);
+      return;
+    }
+
     if (!enabledPlugins.length) {
       setPlugins([]);
       setPluginsLoaded(true);
@@ -266,7 +273,7 @@ function useEnabledWorkflowPlugins(variableContext?: WorkflowVariableContext): {
     };
   }, [variableContext?.enabledPlugins]);
 
-  return { plugins, pluginsLoaded };
+  return { plugins, pluginsLoaded, hasPluginContext: Boolean(variableContext?.enabledPlugins) };
 }
 
 function getArrayItemField(arrayField: OutputField | null): VariableField {
@@ -896,9 +903,9 @@ export function VariableBadgeInput({
   badgeClassName?: string;
 }) {
   const label = getVariableBadgeLabel(value, variableContext);
-  const { plugins, pluginsLoaded } = useEnabledWorkflowPlugins(variableContext);
+  const { plugins, pluginsLoaded, hasPluginContext } = useEnabledWorkflowPlugins(variableContext);
   const missing = isConfigVariableReference(value)
-    ? pluginsLoaded && isConfigVariableReferenceMissing(value, plugins)
+    ? hasPluginContext && pluginsLoaded && isConfigVariableReferenceMissing(value, plugins)
     : isVariableReferenceMissing(value, variableContext);
 
   if (!label) return null;

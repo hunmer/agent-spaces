@@ -335,7 +335,7 @@
           {
             "key": "image",
             "type": "image[]",
-            "value": "{{ __data__[\"node_1781714725222_zidrgv\"].data.images }}",
+            "value": "{{ __data__[\"node_1782186261852_glyo0x\"].data.images }}",
             "inputMode": "variable",
             "children": []
           },
@@ -643,7 +643,7 @@
         "baseUrl": "{{ __config__[\"workflow.qianyin\"][\"baseUrl\"] }}",
         "sourceNodeId": "node_1781714719692_ilnqxh",
         "sourceHandle": "source",
-        "text": "{{ loop.item.text }} ",
+        "text": "{{ __loop__.item.text }}",
         "outputs": [
           {
             "key": "success",
@@ -1004,11 +1004,13 @@
         "outputs": [
           {
             "key": "success",
-            "type": "boolean"
+            "type": "boolean",
+            "children": []
           },
           {
             "key": "message",
-            "type": "string"
+            "type": "string",
+            "children": []
           },
           {
             "key": "data",
@@ -1016,19 +1018,19 @@
             "children": [
               {
                 "key": "images",
-                "type": "object",
-                "children": []
+                "type": "image[]"
               },
               {
                 "key": "requestId",
-                "type": "string"
+                "type": "string",
+                "children": []
               }
             ]
           }
         ],
         "sourceNodeId": "node_1781714719692_ilnqxh",
         "sourceHandle": "source",
-        "prompt": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}"
+        "prompt": "{{ __loop__.item.prompt }}，画面风格：{{ __data__[\"node_1781697071787_start\"].style }}"
       },
       "composite": {
         "rootId": "node_1781714719692_030b8s",
@@ -1172,7 +1174,7 @@
     }
   ],
   "createdAt": 1782183030564,
-  "updatedAt": 1782187103256,
+  "updatedAt": 1782187899659,
   "published": false,
   "enabledPlugins": [
     "workflow.jimeng",
