@@ -23,6 +23,7 @@ packages/server/public/uploads/
 .tmp*
 
 packages/server/agent-spaces-data/workflows/*/execution_history/
+packages/server/agent-spaces-data/workflows/*/versions/
 packages/server/agent-spaces-data/workflows/*/operation_history.json
 packages/server/agent-spaces-data/workflows-ui/*/data/
 packages/server/agent-spaces-data/plugins/state.json
