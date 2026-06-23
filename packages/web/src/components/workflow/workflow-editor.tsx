@@ -143,6 +143,15 @@ function toPresetOutputs(output: unknown): Record<string, unknown> {
   return isPlainObject(output) ? output : { result: output };
 }
 
+function normalizeExecutionStepOutput(output: unknown): Record<string, unknown> {
+  if (!output || typeof output !== 'object' || Array.isArray(output)) return { result: output };
+  const record = output as Record<string, unknown>;
+  if (record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
+    return { ...(record.data as Record<string, unknown>), ...record };
+  }
+  return record;
+}
+
 function getReachableNodeIds(workflow: WorkflowType, startNodeId: string): Set<string> {
   const reachable = new Set<string>([startNodeId]);
   const queue = [startNodeId];
@@ -178,17 +187,20 @@ function applyExecutionStepPresets(
   currentNodeId: string,
   presetId: string,
 ): { workflow: WorkflowType; context: Record<string, unknown> } | null {
-  const currentStepIndex = steps.findIndex(step => step.nodeId === currentNodeId);
-  if (currentStepIndex < 0) return null;
+  const currentStepIndices = steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => step.nodeId === currentNodeId);
+  if (currentStepIndices.length === 0) return null;
+  const currentStepIndex = currentStepIndices[currentStepIndices.length - 1]!.index;
   const rerunNodeIds = getReachableNodeIds(workflow, currentNodeId);
   const contextData: Record<string, unknown> = {};
   const contextInputs: Record<string, unknown> = {};
 
   const stepByNodeId = new Map<string, ExecutionStep>();
-  for (const step of steps.slice(0, currentStepIndex)) {
-    if (step.status === 'completed' && step.output !== undefined && !stepByNodeId.has(step.nodeId)) {
+  for (const step of steps.slice(0, currentStepIndex + 1)) {
+    if (step.status === 'completed' && step.output !== undefined) {
       stepByNodeId.set(step.nodeId, step);
-      contextData[step.nodeId] = step.output;
+      contextData[step.nodeId] = normalizeExecutionStepOutput(step.output);
       if (step.input !== undefined) contextInputs[step.nodeId] = step.input;
     }
   }
@@ -210,7 +222,7 @@ function applyExecutionStepPresets(
       name: presetId,
       data: {},
       inputs: isPlainObject(step.input) ? step.input : {},
-      outputs: toPresetOutputs(step.output),
+      outputs: toPresetOutputs(normalizeExecutionStepOutput(step.output)),
     };
     changed = true;
     return {

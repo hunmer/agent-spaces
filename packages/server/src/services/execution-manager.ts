@@ -497,8 +497,30 @@ export class ExecutionManager {
 
   private handleExecutionError(session: ExecutionSession, error: unknown): void {
     if (session.status === 'completed' || session.status === 'error') return;
+    const currentNode = session.executionOrder[session.currentIndex];
+    const formattedError = error instanceof Error ? error.message : String(error);
+    if (currentNode) {
+      const existingStep = [...session.steps].reverse().find(step => (
+        step.nodeId === currentNode.id && step.status === 'running'
+      ));
+      if (existingStep) {
+        existingStep.finishedAt = Date.now();
+        existingStep.status = 'error';
+        existingStep.error = formatErrorWithStack(error);
+      } else {
+        session.steps.push({
+          nodeId: currentNode.id,
+          nodeLabel: currentNode.label,
+          startedAt: Date.now(),
+          finishedAt: Date.now(),
+          status: 'error',
+          error: formatErrorWithStack(error),
+        });
+      }
+      this.emitLog(session);
+    }
     session.status = 'error';
-    session.lastErrorMessage = error instanceof Error ? error.message : String(error);
+    session.lastErrorMessage = formattedError;
     session.finishedAt = Date.now();
     this.emitWorkflowError(session);
     this.persistAndCleanup(session);
