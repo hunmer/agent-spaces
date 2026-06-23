@@ -400,7 +400,7 @@
         "y": -45
       },
       "data": {
-        "code": "async function main({ params }) {\n    const ret = {\n      \"tracks\": [\n        {\n          \"id\": \"1\",\n          \"title\": \"背景音乐\",\n          \"type\": \"audio\"\n        },\n        {\n          \"id\": \"2\",\n          \"title\": \"视频\",\n          \"type\": \"video\"\n        },\n        {\n          \"id\": \"3\",\n          \"title\": \"配音\",\n          \"type\": \"audio\"\n        },\n        {\n          \"id\": \"4\",\n          \"title\": \"字幕\",\n          \"type\": \"text\"\n        }\n      ],\n      \"items\": []\n    }\n    const animations = ['缩放','向右缩放','向左缩放']\n    let start = 0\n    params.list.forEach(({duration, image, text, audio}, i) => {\n      if(duration <= 0) duration = 1\n      ret.items.push({\n        \"type\": \"video\",\n        \"data\": {\n          \"path\": image[0],\n          \"track\": \"2\",\n          \"start\": start,\n          \"duration\": duration,\n          \"animations\": {\n            \"name\": animations[i % animations.length],\n            \"duration\": duration\n          }\n        }\n      })\n      ret.items.push({\n        \"type\": \"text\",\n        \"data\": {\n          \"text\": text,\n          \"track\": \"4\",\n          \"start\": start,\n          \"duration\": duration\n        }\n      })\n  \n      ret.items.push({\n        \"type\": \"audio\",\n        \"data\": {\n          \"path\": audio,\n          \"track\": \"3\",\n          \"start\": start,\n          \"duration\": duration\n        }\n      })\n  \n      start += duration * 1\n    })\n    if(params.bgm != '') ret.items.push({\n      \"type\": \"audio\",\n      \"data\": {\n        \"track\": \"1\",\n        \"path\": params.bgm,\n        \"start\": 0,\n        \"duration\": start\n      }\n    })\n  \n    return ret\n}",
+        "code": "async function main({ params }) {\n    const ret = {\n      \"tracks\": [\n        {\n          \"id\": \"video\",\n          \"title\": \"\",\n          \"type\": \"video\"\n        },\n        {\n          \"id\": \"subtitle\",\n          \"title\": \"\",\n          \"type\": \"text\"\n        },\n        {\n          \"id\": \"audio\",\n          \"title\": \"\",\n          \"type\": \"audio\"\n        }\n      ],\n      \"items\": []\n    }\n    const animations = ['缩放','向右缩放','向左缩放']\n    let start = 0\n    params.list.forEach(({duration, image, text, audio}, i) => {\n      if(duration <= 0) duration = 1\n      ret.items.push({\n        \"type\": \"video\",\n        \"data\": {\n          \"path\": image[0],\n          \"track\": \"2\",\n          \"start\": start,\n          \"duration\": duration,\n          \"animations\": {\n            \"name\": animations[i % animations.length],\n            \"duration\": duration\n          }\n        }\n      })\n      ret.items.push({\n        \"type\": \"subtitle\",\n        \"data\": {\n          \"text\": text,\n          \"track\": \"4\",\n          \"start\": start,\n          \"duration\": duration\n        }\n      })\n  \n      ret.items.push({\n        \"type\": \"audio\",\n        \"data\": {\n          \"path\": audio,\n          \"track\": \"3\",\n          \"start\": start,\n          \"duration\": duration\n        }\n      })\n  \n      start += duration * 1\n    })\n    return ret\n}",
         "sourceNodeId": "node_1781714719692_v7bbmd",
         "sourceHandle": "loop-next",
         "outputs": [
@@ -423,12 +423,6 @@
             "value": "{{ __data__[\"node_1781714719692_v7bbmd\"].items }}",
             "required": true,
             "inputMode": "variable",
-            "children": []
-          },
-          {
-            "key": "bgm",
-            "type": "string",
-            "value": "",
             "children": []
           }
         ]
@@ -1037,7 +1031,7 @@
     }
   ],
   "createdAt": 1782183030564,
-  "updatedAt": 1782203460642,
+  "updatedAt": 1782216943689,
   "published": false,
   "enabledPlugins": [
     "workflow.jimeng",
