@@ -81,6 +81,9 @@ import {
   mergeLoopItemResult,
 } from './execution-composite-helpers.js';
 
+const JSON_PRESETS_KEY = '__jsonPresets';
+const SELECTED_JSON_PRESET_KEY = '__selectedJsonPresetId';
+
 // 保留公共导出（外部测试直接引用），实际定义已移至 execution-value-access.ts
 export { getNestedValue } from './execution-value-access.js';
 export function __resolveWorkflowConfigValueForTest(
@@ -664,7 +667,9 @@ export class ExecutionManager {
     try {
       const dryRunOutput = this.getDryRunNodeValue(session, 'outputs', node.id);
       if (dryRunOutput !== undefined) appendLog('info', 'Dry run output override used');
-      const result = dryRunOutput ?? await this.dispatchNode(session, node, resolvedData, appendLog);
+      const presetOutput = dryRunOutput === undefined ? this.getSelectedJsonPresetOutput(node) : undefined;
+      if (presetOutput !== undefined) appendLog('info', 'JSON preset output used');
+      const result = dryRunOutput ?? presetOutput ?? await this.dispatchNode(session, node, resolvedData, appendLog);
       if (session.stopRequested) return 'interrupted';
 
       step.finishedAt = Date.now();
@@ -704,6 +709,17 @@ export class ExecutionManager {
     }
 
     return 'completed';
+  }
+
+  private getSelectedJsonPresetOutput(node: WorkflowNode): unknown {
+    const selectedPresetId = node.data?.[SELECTED_JSON_PRESET_KEY];
+    if (typeof selectedPresetId !== 'string' || !selectedPresetId) return undefined;
+    const presets = node.data?.[JSON_PRESETS_KEY];
+    if (!Array.isArray(presets)) return undefined;
+    const preset = presets.find((item): item is { id: string; outputs?: unknown } =>
+      !!item && typeof item === 'object' && (item as { id?: unknown }).id === selectedPresetId
+    );
+    return preset && preset.outputs !== undefined ? clone(preset.outputs) : undefined;
   }
 
   private async dispatchNode(

@@ -14,6 +14,7 @@ import {
   ORIGINAL_INPUT_FIELDS_KEY,
   ORIGINAL_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
+import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, TEMP_DEBUG_PRESET_ID, getJsonPresets } from './workflow-properties-utils';
 
 function resolveApiError(err: unknown): string {
   if (err instanceof ApiError) {
@@ -122,6 +123,27 @@ function restorePreviewIOFields(nodes: Workflow['nodes'], sourceNodes: Workflow[
       },
     };
   });
+}
+
+function stripTemporaryDebugPresets(workflow: Workflow): Workflow {
+  return {
+    ...workflow,
+    nodes: workflow.nodes.map((node) => {
+      const presets = getJsonPresets(node.data?.[JSON_PRESETS_KEY]).filter(preset => preset.id !== TEMP_DEBUG_PRESET_ID);
+      const selectedPresetId = node.data?.[SELECTED_JSON_PRESET_KEY];
+      if (presets.length === getJsonPresets(node.data?.[JSON_PRESETS_KEY]).length && selectedPresetId !== TEMP_DEBUG_PRESET_ID) {
+        return node;
+      }
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          [JSON_PRESETS_KEY]: presets,
+          ...(selectedPresetId === TEMP_DEBUG_PRESET_ID ? { [SELECTED_JSON_PRESET_KEY]: '' } : {}),
+        },
+      };
+    }),
+  };
 }
 
 export function useWorkflowEditorState(template: WorkflowTemplate | null) {
@@ -236,7 +258,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   const savePreviewEdits = useCallback(async (options?: { createVersion?: boolean; versionName?: string }) => {
     if (!isPreview || !workflow) return;
-    const workflowToSave = cloneWorkflow(workflow);
+    const workflowToSave = stripTemporaryDebugPresets(cloneWorkflow(workflow));
     if (options?.createVersion) {
       const name = options.versionName?.trim() || `Preview edit ${new Date().toLocaleString()}`;
       await workflowVersionApi.add(workflowToSave.id, name, workflowToSave.nodes, workflowToSave.edges);
@@ -340,10 +362,11 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     if (isPreview) return false;
     const nextWorkflow = workflowToSave ?? workflow;
     if (!nextWorkflow) return false;
+    const workflowForSave = stripTemporaryDebugPresets(cloneWorkflow(nextWorkflow));
     setIsSaving(true);
     try {
-      const saved = await workflowApi.update(nextWorkflow.id, {
-        ...nextWorkflow,
+      const saved = await workflowApi.update(workflowForSave.id, {
+        ...workflowForSave,
         updatedAt: Date.now(),
       });
       setWorkflow(saved);
@@ -356,7 +379,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     } finally {
       setIsSaving(false);
     }
-  }, [isPreview, workflow, store]);
+  }, [cloneWorkflow, isPreview, workflow, store]);
 
   // ---- Auto-save ----
   useEffect(() => {

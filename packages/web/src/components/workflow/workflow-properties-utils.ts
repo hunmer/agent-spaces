@@ -18,6 +18,7 @@ export type JsonPreset = {
 
 export const JSON_PRESETS_KEY = '__jsonPresets';
 export const SELECTED_JSON_PRESET_KEY = '__selectedJsonPresetId';
+export const TEMP_DEBUG_PRESET_ID = 'debug';
 
 export const FIELD_TYPES: OutputField['type'][] = [
   'string',

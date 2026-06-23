@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { Layout, Model, TabNode, IJsonModel, ITabRenderValues, Actions, Action } from 'flexlayout-react';
-import type { ExecutionStep, StagedNode, WorkflowTemplate } from '@agent-spaces/shared';
+import type { ExecutionStep, StagedNode, WorkflowTemplate, Workflow as WorkflowType } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -42,6 +42,14 @@ import type { DebugResult } from './workflow-editor-types';
 import { registerPluginNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { stagingApi } from '@/lib/workflow-api';
+import {
+  JSON_PRESETS_KEY,
+  SELECTED_JSON_PRESET_KEY,
+  TEMP_DEBUG_PRESET_ID,
+  getJsonPresets,
+  isPlainObject,
+  type JsonPreset,
+} from './workflow-properties-utils';
 
 // ---- flexlayout-react default model ----
 
@@ -120,6 +128,56 @@ function toPreviewDebugResult(step: ExecutionStep | undefined): DebugResult | nu
     duration: step.finishedAt ? Math.max(0, step.finishedAt - step.startedAt) : undefined,
     logs: step.logs,
   };
+}
+
+function toPresetOutputs(output: unknown): Record<string, unknown> {
+  return isPlainObject(output) ? output : { result: output };
+}
+
+function applyExecutionStepPresets(
+  workflow: WorkflowType,
+  steps: ExecutionStep[],
+  currentNodeId: string,
+  presetId: string,
+): WorkflowType | null {
+  const currentStepIndex = steps.findIndex(step => step.nodeId === currentNodeId);
+  if (currentStepIndex < 0) return null;
+  if (currentStepIndex === 0) return workflow;
+
+  const stepByNodeId = new Map<string, ExecutionStep>();
+  for (const step of steps.slice(0, currentStepIndex)) {
+    if (step.status === 'completed' && step.output !== undefined && !stepByNodeId.has(step.nodeId)) {
+      stepByNodeId.set(step.nodeId, step);
+    }
+  }
+  if (stepByNodeId.size === 0) return workflow;
+
+  let changed = false;
+  const nodes = workflow.nodes.map((node) => {
+    if (node.data?.[SELECTED_JSON_PRESET_KEY]) return node;
+    const step = stepByNodeId.get(node.id);
+    if (!step) return node;
+
+    const presets = getJsonPresets(node.data?.[JSON_PRESETS_KEY]);
+    const preset: JsonPreset = {
+      id: presetId,
+      name: presetId,
+      data: {},
+      inputs: isPlainObject(step.input) ? step.input : {},
+      outputs: toPresetOutputs(step.output),
+    };
+    changed = true;
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        [JSON_PRESETS_KEY]: [...presets.filter(item => item.id !== presetId), preset],
+        [SELECTED_JSON_PRESET_KEY]: presetId,
+      },
+    };
+  });
+
+  return changed ? { ...workflow, nodes } : workflow;
 }
 
 function readBlobAsDataUrl(blob: Blob): Promise<string> {
@@ -397,6 +455,35 @@ function WorkflowEditorInner({
     });
     markPreviewDirty();
   }, [isPreview, markPreviewDirty, setWorkflow]);
+
+  const continueFromPreviewNode = useCallback((nodeId: string, presetId: string) => {
+    if (!state.isPreview || !state.workflow || !execution.executionLog) return;
+    const normalizedPresetId = presetId.trim() || TEMP_DEBUG_PRESET_ID;
+    const workflowWithPresets = applyExecutionStepPresets(
+      state.workflow,
+      execution.executionLog.steps,
+      nodeId,
+      normalizedPresetId,
+    );
+    if (!workflowWithPresets) return;
+
+    state.setWorkflow(workflowWithPresets);
+    execution.handleExecute(undefined, undefined, undefined, workflowWithPresets);
+  }, [execution, state]);
+
+  useEffect(() => {
+    const handleContinueFromPreview = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { nodeId?: unknown; presetId?: unknown } | undefined;
+      if (typeof detail?.nodeId !== 'string') return;
+      continueFromPreviewNode(
+        detail.nodeId,
+        typeof detail.presetId === 'string' ? detail.presetId : TEMP_DEBUG_PRESET_ID,
+      );
+    };
+    window.addEventListener('workflow:continue-from-preview-node', handleContinueFromPreview);
+    return () => window.removeEventListener('workflow:continue-from-preview-node', handleContinueFromPreview);
+  }, [continueFromPreviewNode]);
+
   const exitExecutionPreview = useCallback(() => {
     exitPreview();
     clearSelectedExecutionLog();

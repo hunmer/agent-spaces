@@ -249,8 +249,9 @@ export function useWorkflowEditorExecution({
   }, [workflow, cleanupDebugListeners, handleClientNodeRequest, getWorkflowWS]);
 
   // ---- Execution ----
-  const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>) => {
-    if (!workflow) return;
+  const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>, workflowOverride?: Workflow) => {
+    const activeWorkflow = workflowOverride ?? workflow;
+    if (!activeWorkflow) return;
     const ws = getWorkflowWS();
     if (!ws) {
       setExecStatus('error');
@@ -267,15 +268,15 @@ export function useWorkflowEditorExecution({
 
     const sendExecuteRequest = () => {
       ws.send('workflow:execute', {
-        workflowId: workflow.id,
+        workflowId: activeWorkflow.id,
         input,
         env,
         startNodeId,
         snapshot: {
-          nodes: withOriginalIOFieldsSnapshot(workflow),
-          edges: workflow.edges,
-          groups: workflow.groups || [],
-          variables: workflow.variables || [],
+          nodes: withOriginalIOFieldsSnapshot(activeWorkflow),
+          edges: activeWorkflow.edges,
+          groups: activeWorkflow.groups || [],
+          variables: activeWorkflow.variables || [],
         },
       });
     };
@@ -294,7 +295,7 @@ export function useWorkflowEditorExecution({
     });
     const offLog = ws.on('execution:log', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
-      if (event.workflowId !== workflow.id || !event.log) return;
+      if (event.workflowId !== activeWorkflow.id || !event.log) return;
       setCurrentExecutionId(event.executionId || event.log.id);
       setExecutionLog(event.log);
       setSelectedExecutionLogId(event.log.id);
@@ -303,7 +304,7 @@ export function useWorkflowEditorExecution({
     });
     const offProgress = ws.on('node:progress', (data) => {
       const event = data as { workflowId?: string; nodeLabel?: string; message?: string; data?: { level?: string } };
-      if (event.workflowId !== workflow.id || !event.message) return;
+      if (event.workflowId !== activeWorkflow.id || !event.message) return;
       const prefix = event.nodeLabel ? `[Workflow:${event.nodeLabel}]` : '[Workflow]';
       if (event.data?.level === 'error') console.error(prefix, event.message);
       else if (event.data?.level === 'warning') console.warn(prefix, event.message);
@@ -311,7 +312,7 @@ export function useWorkflowEditorExecution({
     });
     const offPaused = ws.on('workflow:paused', (data) => {
       const event = data as { workflowId?: string; executionId?: string; currentNodeId?: string; reason?: string };
-      if (event.workflowId !== workflow.id) return;
+      if (event.workflowId !== activeWorkflow.id) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       setPausedNodeId(event.currentNodeId ?? null);
       setPausedReason(event.reason ?? null);
@@ -319,7 +320,7 @@ export function useWorkflowEditorExecution({
     });
     const offResumed = ws.on('workflow:resumed', (data) => {
       const event = data as { workflowId?: string; executionId?: string };
-      if (event.workflowId !== workflow.id) return;
+      if (event.workflowId !== activeWorkflow.id) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       setPausedNodeId(null);
       setPausedReason(null);
@@ -327,7 +328,7 @@ export function useWorkflowEditorExecution({
     });
     const offCompleted = ws.on('workflow:completed', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
-      if (event.workflowId !== workflow.id) return;
+      if (event.workflowId !== activeWorkflow.id) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) setExecutionLog(event.log);
       if (event.log) {
@@ -342,7 +343,7 @@ export function useWorkflowEditorExecution({
     });
     const offFailed = ws.on('workflow:error', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
-      if (event.workflowId !== workflow.id) return;
+      if (event.workflowId !== activeWorkflow.id) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) setExecutionLog(event.log);
       if (event.log) {
@@ -357,7 +358,7 @@ export function useWorkflowEditorExecution({
     });
     const offClientNode = ws.on('workflow:client-node', (data) => {
       const request = data as ClientNodeRequest;
-      if (request.type !== 'client_node_request' || request.workflowId !== workflow.id) return;
+      if (request.type !== 'client_node_request' || request.workflowId !== activeWorkflow.id) return;
       void handleClientNodeRequest(request);
     });
     executionCleanupRef.current = [offResult, offError, offLog, offProgress, offPaused, offResumed, offCompleted, offFailed, offClientNode];

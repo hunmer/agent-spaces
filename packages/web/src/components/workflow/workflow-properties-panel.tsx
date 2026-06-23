@@ -6,7 +6,7 @@ import { useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import type { ExecutionLog, OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, Image as ImageIcon, X } from 'lucide-react';
+import { Copy, Image as ImageIcon, Save, X } from 'lucide-react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Toggle } from '@/components/ui/toggle';
@@ -17,6 +17,8 @@ import {
   isVisible,
   JSON_PRESETS_KEY,
   SELECTED_JSON_PRESET_KEY,
+  TEMP_DEBUG_PRESET_ID,
+  isPlainObject,
 } from './workflow-properties-utils';
 import type { DebugResult, JsonPreset } from './workflow-properties-utils';
 import { JsonPreview } from './workflow-properties-fields';
@@ -189,6 +191,23 @@ export function WorkflowPropertiesPanel({
     if (newPresetId) handleDataChange(SELECTED_JSON_PRESET_KEY, newPresetId);
   };
 
+  const saveDebugOutputToPreset = useCallback(() => {
+    if (!visibleDebugResult || visibleDebugResult.output === undefined) return;
+    const output = visibleDebugResult.output;
+    const preset: JsonPreset = {
+      id: TEMP_DEBUG_PRESET_ID,
+      name: TEMP_DEBUG_PRESET_ID,
+      data: {},
+      inputs: {},
+      outputs: isPlainObject(output) ? output : { result: output },
+    };
+    updateJsonPresets([
+      ...jsonPresets.filter(item => item.id !== TEMP_DEBUG_PRESET_ID),
+      preset,
+    ]);
+    handleDataChange(SELECTED_JSON_PRESET_KEY, TEMP_DEBUG_PRESET_ID);
+  }, [handleDataChange, jsonPresets, updateJsonPresets, visibleDebugResult]);
+
   // Empty states
   if (!node) {
     return (
@@ -252,9 +271,20 @@ export function WorkflowPropertiesPanel({
                 {typeof visibleDebugResult.duration === 'number' && (
                   <span className="text-[10px] text-muted-foreground">{visibleDebugResult.duration}ms</span>
                 )}
+                {visibleDebugResult.output !== undefined && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto h-6 w-6 text-muted-foreground hover:text-foreground"
+                    title="保存到临时预设"
+                    onClick={saveDebugOutputToPreset}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                )}
                 {!previewResult && (
                   <X
-                    className="ml-auto h-3.5 w-3.5 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                    className={`${visibleDebugResult.output === undefined ? 'ml-auto ' : ''}h-3.5 w-3.5 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground`}
                     onClick={() => onCancelDebug?.()}
                   />
                 )}

@@ -53,9 +53,12 @@ import {
   EXECUTION_INPUT_FIELDS_KEY,
   EXECUTION_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
+import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets } from './workflow-properties-utils';
 import { VariableBadgeInput } from './workflow-variable-input';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 const DEFAULT_SOURCE_HANDLE_COLOR = '#10b981';
 const LOOP_BODY_SOURCE_HANDLE_COLOR = '#3b82f6';
@@ -120,6 +123,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState('');
   const [handleColorMenuId, setHandleColorMenuId] = useState<string | null>(null);
+  const [continueDialogOpen, setContinueDialogOpen] = useState(false);
+  const [continuePresetId, setContinuePresetId] = useState('debug');
   const inputRef = useRef<HTMLInputElement>(null);
   const nodeBodyRef = useRef<HTMLDivElement>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
@@ -217,6 +222,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const canShowNodeContent = showFullNode && !isNodeCollapsed;
   const keepCustomViewMounted = hasCustomView && !isNodeCollapsed;
   const canShowVariableReferences = !isLoopBody && !hasCustomView && variableReferences.length > 0;
+  const selectedJsonPresetId = typeof nodeData[SELECTED_JSON_PRESET_KEY] === 'string'
+    ? nodeData[SELECTED_JSON_PRESET_KEY]
+    : '';
+  const selectedJsonPreset = selectedJsonPresetId
+    ? getJsonPresets(nodeData[JSON_PRESETS_KEY]).find(preset => preset.id === selectedJsonPresetId) ?? null
+    : null;
 
   React.useEffect(() => {
     updateNodeInternals(id);
@@ -475,6 +486,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     document.addEventListener('pointercancel', handlePointerCancel);
   }, [dispatchNodePreviewDrag, isCanvasLocked]);
 
+  const handleContinueFromPreview = useCallback(() => {
+    const presetId = continuePresetId.trim() || 'debug';
+    window.dispatchEvent(new CustomEvent('workflow:continue-from-preview-node', {
+      detail: { nodeId: id, presetId },
+    }));
+    setContinueDialogOpen(false);
+  }, [continuePresetId, id]);
+
   const setHandleColor = useCallback((handleId: string, color: string | null) => {
     const nextColors = { ...handleColors };
     if (color) {
@@ -703,6 +722,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               {t('nodeUi.test.partial')}
             </button>
           ) : null}
+          {selectedJsonPreset ? (
+            <span
+              className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+              title={`预设：${selectedJsonPreset.name}`}
+            >
+              {selectedJsonPreset.name}
+            </span>
+          ) : null}
         </div>
       )}
 
@@ -855,6 +882,22 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               {isCurrentNodeDebugging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             </button>
           ) : null}
+          {nodeData.isPreview && !isBoundaryNode ? (
+            <button
+              type="button"
+              className="inline-flex h-7 items-center justify-center gap-1 rounded-full bg-blue-500 px-2.5 text-[10px] font-medium text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!isExecutionBusy) setContinueDialogOpen(true);
+              }}
+              disabled={isExecutionBusy}
+              title="从当前节点开始继续运行"
+              aria-label="从当前节点开始继续运行"
+            >
+              <Play className="h-3.5 w-3.5" />
+              继续运行
+            </button>
+          ) : null}
           {canDeleteNode && !isDeleteDisabled ? (
             <button
               type="button"
@@ -889,6 +932,42 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       >
         {nodeBody}
       </WorkflowNodeContextMenu>
+
+      <Dialog open={continueDialogOpen} onOpenChange={setContinueDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">从当前节点开始继续运行</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1">
+            <div className="text-xs font-medium">统一的预设 ID</div>
+            <Input
+              value={continuePresetId}
+              onChange={(event) => setContinuePresetId(event.target.value)}
+              className="h-8 text-xs"
+              placeholder="debug"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleContinueFromPreview();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              className="inline-flex h-8 items-center justify-center rounded border border-border px-3 text-xs hover:bg-muted"
+              onClick={() => setContinueDialogOpen(false)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-8 items-center justify-center rounded bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              onClick={handleContinueFromPreview}
+            >
+              运行
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Collapsible execution log card below the node */}
       {!isNodeCollapsed && canShowExecutionLog && displayExecutionStep ? (
