@@ -360,7 +360,9 @@ export function buildOutputObject(outputs: OutputField[] | undefined): Record<st
   for (const field of outputs) {
     if (!field.key) continue;
     if (field.type === 'object') {
-      result[field.key] = buildOutputObject(field.children) ?? {};
+      result[field.key] = Array.isArray(field.children) && field.children.length > 0
+        ? buildOutputObject(field.children) ?? {}
+        : field.value ?? {};
       continue;
     }
     if (field.type === 'array') {

@@ -22,22 +22,10 @@
         "y": 75
       },
       "data": {
-        "outputs": [
-          {
-            "key": "output1",
-            "type": "any",
-            "value": "{{ __data__[\"node_1782170143916_tvqeqp\"].key1 }}",
-            "inputMode": "variable",
-            "children": []
-          },
-          {
-            "key": "output2",
-            "type": "any",
-            "value": "{{ __data__[\"node_1782170152859_hj77rg\"].key2 }}",
-            "children": []
-          }
-        ]
-      }
+        "__originalOutputs": [],
+        "outputs": []
+      },
+      "outputs": []
     },
     {
       "id": "node_1782170379911_j20pc9",
@@ -52,14 +40,20 @@
         "count": 1,
         "concurrency": 1,
         "sharedVariables": [],
-        "outputs": [
+        "sourceNodeId": "node_1782170126868_start",
+        "sourceHandle": "source",
+        "__originalOutputs": [
           {
             "key": "items",
             "type": "any"
           }
         ],
-        "sourceNodeId": "node_1782170126868_start",
-        "sourceHandle": "source"
+        "outputs": [
+          {
+            "key": "items",
+            "type": "any"
+          }
+        ]
       },
       "composite": {
         "role": "loop",
@@ -68,21 +62,27 @@
         "scopeBoundary": false,
         "rootId": "node_1782170379911_j20pc9",
         "parentId": null
-      }
+      },
+      "outputs": [
+        {
+          "key": "items",
+          "type": "any"
+        }
+      ]
     },
     {
       "id": "node_1782170379911_wowes4",
       "type": "loop_body",
       "label": "nodes.loop_body.label",
       "position": {
-        "x": 317.5,
-        "y": 222.5
+        "x": 341.5,
+        "y": 179.5556640625
       },
       "data": {
         "width": 150,
         "height": 260,
-        "nodeWidth": 740,
-        "nodeHeight": 280
+        "nodeWidth": 445,
+        "nodeHeight": 554
       },
       "composite": {
         "role": "loop_body",
@@ -99,7 +99,7 @@
       "label": "nodes.loop.label开始",
       "position": {
         "x": 397.5,
-        "y": 302.5
+        "y": 279.5556640625
       },
       "data": {},
       "composite": {
@@ -114,16 +114,146 @@
       "type": "end",
       "label": "nodes.loop.label结束",
       "position": {
-        "x": 737.5,
-        "y": 302.5
+        "x": 510,
+        "y": 570
       },
-      "data": {},
+      "data": {
+        "__originalOutputs": [
+          {
+            "key": "output1",
+            "type": "string[]",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "output2",
+            "type": "object",
+            "value": "",
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "out1",
+            "type": "string[]",
+            "value": "{{ __data__[\"node_1782178636929_6unlvl\"].key1 }}",
+            "children": []
+          },
+          {
+            "key": "out2",
+            "type": "object",
+            "value": "{{ __data__[\"node_1782178633010_5ux9c5\"].key2 }}",
+            "children": []
+          }
+        ]
+      },
       "composite": {
         "rootId": "node_1782170379911_wowes4",
         "parentId": "node_1782170379911_wowes4",
         "generated": true,
         "hidden": false
-      }
+      },
+      "outputs": [
+        {
+          "key": "output1",
+          "type": "string[]",
+          "value": "{{ __data__[\"node_1782178636929_6unlvl\"].key1 }}",
+          "children": []
+        },
+        {
+          "key": "output2",
+          "type": "object",
+          "value": "{{ __data__[\"node_1782178633010_5ux9c5\"].key2 }}",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1782178633010_5ux9c5",
+      "type": "run_code",
+      "label": "run_2",
+      "position": {
+        "x": 453.75,
+        "y": 459.28466796875
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}",
+        "sourceNodeId": "node_1782170379911_3t46tf",
+        "sourceHandle": null,
+        "__originalOutputs": [
+          {
+            "key": "key2",
+            "type": "object",
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "key2",
+            "type": "object",
+            "children": []
+          }
+        ],
+        "label": "run_2"
+      },
+      "composite": {
+        "rootId": "node_1782170379911_wowes4",
+        "parentId": "node_1782170379911_wowes4",
+        "generated": false,
+        "hidden": false
+      },
+      "outputs": [
+        {
+          "key": "key2",
+          "type": "object",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1782178636929_6unlvl",
+      "type": "run_code",
+      "label": "run_1",
+      "position": {
+        "x": 425.625,
+        "y": 369.28466796875
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n\n    \"key1\": [\"hello\", \"world\"],\n\n  }\n\n  return ret\n}",
+        "sourceNodeId": "node_1782170379911_3t46tf",
+        "sourceHandle": null,
+        "__originalOutputs": [
+          {
+            "key": "key1",
+            "type": "string[]",
+            "value": [],
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "key1",
+            "type": "string[]",
+            "value": [],
+            "children": []
+          }
+        ],
+        "label": "run_1"
+      },
+      "composite": {
+        "rootId": "node_1782170379911_wowes4",
+        "parentId": "node_1782170379911_wowes4",
+        "generated": false,
+        "hidden": false
+      },
+      "outputs": [
+        {
+          "key": "key1",
+          "type": "string[]",
+          "value": [],
+          "children": []
+        }
+      ]
     }
   ],
   "edges": [
@@ -162,23 +292,40 @@
       }
     },
     {
-      "id": "e-node_1782170379911_3t46tf-source-node_1782170379911_bibh8u-target",
-      "source": "node_1782170379911_3t46tf",
-      "target": "node_1782170379911_bibh8u",
-      "sourceHandle": null,
-      "targetHandle": "target"
-    },
-    {
       "id": "e-node_1782170379911_j20pc9-loop-next-node_1782170126868_end-target",
       "source": "node_1782170379911_j20pc9",
       "target": "node_1782170126868_end",
       "sourceHandle": "loop-next"
+    },
+    {
+      "id": "e-node_1782178633010_5ux9c5-source-node_1782170379911_bibh8u-target",
+      "source": "node_1782178633010_5ux9c5",
+      "target": "node_1782170379911_bibh8u"
+    },
+    {
+      "id": "e-node_1782170379911_3t46tf-source-node_1782178636929_6unlvl-target",
+      "source": "node_1782170379911_3t46tf",
+      "target": "node_1782178636929_6unlvl"
+    },
+    {
+      "id": "e-node_1782170379911_3t46tf-source-node_1782178633010_5ux9c5-target",
+      "source": "node_1782170379911_3t46tf",
+      "target": "node_1782178633010_5ux9c5",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782178636929_6unlvl-source-node_1782170379911_bibh8u-target",
+      "source": "node_1782178636929_6unlvl",
+      "target": "node_1782170379911_bibh8u",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782170126873,
-  "updatedAt": 1782170404669,
+  "updatedAt": 1782178917579,
   "published": false,
-  "lastRunAt": 1782170304586,
+  "lastRunAt": 1782178919356,
   "groups": [],
   "variables": []
 }
