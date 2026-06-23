@@ -545,7 +545,7 @@ function WorkflowEditorInner({
 
   const continueFromPreviewNode = useCallback((nodeId: string, presetId: string) => {
     if (!state.isPreview || !state.workflow || !execution.executionLog) return;
-    const baseWorkflow = state.prePreviewWorkflow ?? state.workflow;
+    const baseWorkflow = state.workflow;
     const normalizedPresetId = presetId.trim() || TEMP_DEBUG_PRESET_ID;
     const prepared = applyExecutionStepPresets(
       baseWorkflow,
