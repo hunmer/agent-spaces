@@ -405,6 +405,7 @@ export function WorkflowPropertiesPanel({
               <CardContent >
                   <OutputFieldsSection
                     node={node}
+                    nodes={nodes}
                     data={data}
                     variableContext={variableContext}
                     selectedJsonPreset={selectedJsonPreset}

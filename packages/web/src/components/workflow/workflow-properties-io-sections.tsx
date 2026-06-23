@@ -1,6 +1,7 @@
 'use client';
 
-import type { WorkflowNode } from '@agent-spaces/shared';
+import { getCompositeParentId, LOOP_BODY_NODE_TYPE, LOOP_BODY_ROLE, LOOP_NODE_TYPE } from '@agent-spaces/shared';
+import type { OutputField, WorkflowNode } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Import, FileDown, RotateCcw } from 'lucide-react';
@@ -19,6 +20,7 @@ interface InputFieldsSectionProps {
 
 interface OutputFieldsSectionProps {
   node: WorkflowNode;
+  nodes: WorkflowNode[];
   data: Record<string, unknown>;
   variableContext: WorkflowVariableContext | undefined;
   selectedJsonPreset: JsonPreset | null;
@@ -26,6 +28,30 @@ interface OutputFieldsSectionProps {
   hasDebugOutput: boolean;
   onDataChange: (key: string, value: unknown) => void;
   onOpenImport: () => void;
+}
+
+function getLoopResetOutputs(node: WorkflowNode, nodes: WorkflowNode[]): OutputField[] | null {
+  if (node.type !== LOOP_NODE_TYPE) return null;
+
+  const loopBodyNode = nodes.find(item => (
+    item.type === LOOP_BODY_NODE_TYPE
+    && getCompositeParentId(item) === node.id
+    && (item.composite?.role === LOOP_BODY_ROLE || item.composite?.role === undefined)
+  ));
+  if (!loopBodyNode) return null;
+
+  const endNode = nodes.find(item => (
+    item.type === 'end'
+    && getCompositeParentId(item) === loopBodyNode.id
+  ));
+  const endOutputs = getOutputFields(endNode?.data.outputs);
+  if (!endOutputs.length) return null;
+
+  return [{
+    key: 'items',
+    type: 'array',
+    children: endOutputs,
+  }];
 }
 
 export function InputFieldsSection({
@@ -55,6 +81,7 @@ export function InputFieldsSection({
 
 export function OutputFieldsSection({
   node,
+  nodes,
   data,
   variableContext,
   selectedJsonPreset,
@@ -106,6 +133,12 @@ export function OutputFieldsSection({
             size="sm"
             className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
             onClick={() => {
+              const loopOutputs = getLoopResetOutputs(node, nodes);
+              if (loopOutputs) {
+                onDataChange('outputs', loopOutputs);
+                return;
+              }
+
               const defaults = getNodeDefinition(node.type)?.outputs;
               if (defaults) onDataChange('outputs', defaults);
             }}

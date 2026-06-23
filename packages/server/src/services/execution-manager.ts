@@ -499,8 +499,10 @@ export class ExecutionManager {
   }
 
   private async runFromIndex(session: ExecutionSession, startIndex: number): Promise<void> {
+    const executionNodeIds = new Set(session.executionOrder.map(node => node.id));
     const completedNodeIds = new Set(
       session.steps
+        .filter(step => executionNodeIds.has(step.nodeId))
         .filter(step => this.doesStepSatisfyDownstreamDependency(step))
         .map(step => step.nodeId),
     );
