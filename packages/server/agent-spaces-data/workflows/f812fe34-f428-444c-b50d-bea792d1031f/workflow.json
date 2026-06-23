@@ -1,0 +1,1218 @@
+{
+  "id": "f812fe34-f428-444c-b50d-bea792d1031f",
+  "name": "AI生成剪映草稿",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781697071787_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": -225,
+        "y": -75
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "content",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "style",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "preset",
+            "type": "file",
+            "value": "",
+            "children": []
+          }
+        ]
+      },
+      "inputFields": [
+        {
+          "key": "text",
+          "type": "string",
+          "value": "在繁华的都市中，一位年轻的设计师正在加班赶稿。窗外霓虹闪烁，咖啡杯已经见底。",
+          "description": "用户输入的文案内容",
+          "required": true,
+          "children": []
+        },
+        {
+          "key": "style",
+          "type": "string",
+          "value": "电影感胶片风格，柔光氛围，景深虚化",
+          "description": "画面风格描述，例如：电影感、动漫风格、水墨画风等",
+          "required": true,
+          "children": []
+        },
+        {
+          "key": "bgm",
+          "type": "string",
+          "value": "",
+          "children": []
+        },
+        {
+          "key": "preset",
+          "type": "file",
+          "value": "",
+          "fileNameFilter": ".json",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1781697071787_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 2490,
+        "y": -75
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "url",
+          "type": "string",
+          "value": "{{ __data__[\"node_1782108094063_zeffxo\"].data.draft_path }}",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1781714576999_ignsfm",
+      "type": "agent_run",
+      "label": "分镜大师 Agent",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "prompt": "文案内容：{{ __data__[\"node_1781697071787_start\"].content }}\n\n画面风格：{{ __data__[\"node_1781697071787_start\"].style }}\n\n请根据以上文案和风格，将文案拆分为多个分镜。\n\n【输出格式严格要求】\n1. 必须且只能输出一个 JSON 数组，不要输出任何额外文字、解释、注释、Markdown 代码块（不要使用 ``` 包裹）。\n2. 数组中每个元素必须且只能包含以下两个字段：\n   - text: 对应的原句（直接从原文中截取该分镜对应的文字）\n   - prompt: 该分镜的画面提示词（中文，需结合整体画面风格描述）\n3. 不要输出 index、scene、shot 等其他字段。\n\n【输出示例（仅格式参考，不要照抄内容）】\n{\"result\": [\n  {\"text\": \"今天阳光明媚，小明走进公园。\", \"prompt\": \"阳光明媚的公园入口，一个年轻人正缓步走进来，整体电影感色调。\"},\n  {\"text\": \"他看到湖面上有一只白天鹅。\", \"prompt\": \"公园湖面波光粼粼，一只优雅的白天鹅浮在水面上，电影感构图。\"}\n]}\n\n请直接输出 JSON 数组，不要加任何前后缀文字。",
+        "agent": {
+          "id": "storyboard-master",
+          "name": "分镜大师",
+          "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "langchain",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
+          "modelId": "MiniMax-M3",
+          "apiBase": "https://api.minimaxi.com/v1",
+          "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [
+            {
+              "name": "coding.md",
+              "content": "# coding\n"
+            },
+            {
+              "name": "debugging.md",
+              "content": "# debugging\n"
+            },
+            {
+              "name": "testing.md",
+              "content": "# testing\n"
+            }
+          ],
+          "tools": [],
+          "systemPrompt": "你是分镜大师",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "cwd": "",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string",
+            "children": []
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "result",
+          "type": "string"
+        },
+        {
+          "key": "usage",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "id": "node_1781714698009_vvhfrg",
+      "type": "run_code",
+      "label": "解析分镜 JSON",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const raw = (params.agentResult || '').trim();\n  let scenes = [];\n\n  // 优先尝试直接 JSON.parse\n  try {\n    const parsed = JSON.parse(raw);\n    if (Array.isArray(parsed)) {\n      scenes = parsed;\n    } else if (parsed && Array.isArray(parsed.scenes)) {\n      scenes = parsed.scenes;\n    }\n  } catch (e) {\n    // 兜底：从字符串中截取第一个 [...] 段再尝试解析\n    const match = raw.match(/\\[[\\s\\S]*\\]/);\n    if (match) {\n      try {\n        scenes = JSON.parse(match[0]);\n      } catch (e2) {\n        scenes = [];\n      }\n    }\n  }\n\n  // 标准化：严格按照 { index, text, prompt } 三个字段输出，不做字段猜测\n  const normalized = scenes.map((item, idx) => {\n    if (typeof item === 'string') {\n      return { index: idx + 1, text: '', prompt: item };\n    }\n    if (!item || typeof item !== 'object') {\n      return { index: idx + 1, text: '', prompt: '' };\n    }\n    return {\n      index: idx + 1,\n      text: typeof item.text === 'string' ? item.text : '',\n      prompt: typeof item.prompt === 'string' ? item.prompt : '',\n    };\n  });\n\n  return {\n    scenes: normalized,\n    count: normalized.length,\n  };\n}",
+        "inputFields": [
+          {
+            "key": "agentResult",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781714576999_ignsfm\"].result }}",
+            "required": true,
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "scenes",
+            "type": "array",
+            "value": [],
+            "children": [
+              {
+                "key": "text",
+                "type": "string",
+                "value": "",
+                "children": []
+              },
+              {
+                "key": "prompt",
+                "type": "string",
+                "value": "",
+                "children": []
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "type": "number",
+            "children": []
+          }
+        ]
+      },
+      "inputFields": [
+        {
+          "key": "agentResult",
+          "type": "string",
+          "value": "{{ __data__[\"node_1781714576999_ignsfm\"].result }}",
+          "description": "分镜大师 Agent 的原始输出字符串",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "scenes",
+          "type": "any[]",
+          "description": "解析后的分镜列表，每个元素包含 index 和 prompt"
+        },
+        {
+          "key": "count",
+          "type": "number",
+          "description": "分镜数量"
+        }
+      ]
+    },
+    {
+      "id": "node_1781714719692_v7bbmd",
+      "type": "loop",
+      "label": "循环生成分镜图片",
+      "position": {
+        "x": 890.15625,
+        "y": 0
+      },
+      "data": {
+        "loopType": "array",
+        "count": 1,
+        "concurrency": 1,
+        "sharedVariables": [],
+        "arrayPath": "{{ __data__[\"node_1781714698009_vvhfrg\"].scenes }}"
+      },
+      "composite": {
+        "role": "loop",
+        "generated": false,
+        "hidden": false,
+        "scopeBoundary": false,
+        "rootId": "node_1781714719692_v7bbmd",
+        "parentId": null
+      },
+      "outputs": [
+        {
+          "key": "items",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "id": "node_1781714719692_030b8s",
+      "type": "loop_body",
+      "label": "nodes.loop_body.label",
+      "position": {
+        "x": 1279,
+        "y": 275
+      },
+      "data": {
+        "width": 150,
+        "height": 260,
+        "nodeWidth": 767,
+        "nodeHeight": 699
+      },
+      "composite": {
+        "role": "loop_body",
+        "generated": true,
+        "hidden": false,
+        "scopeBoundary": true,
+        "rootId": "node_1781714719692_v7bbmd",
+        "parentId": "node_1781714719692_v7bbmd"
+      }
+    },
+    {
+      "id": "node_1781714719692_ilnqxh",
+      "type": "start",
+      "label": "循环生成分镜图片开始",
+      "position": {
+        "x": 1335,
+        "y": 375
+      },
+      "data": {},
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": true,
+        "hidden": false
+      },
+      "inputFields": [
+        {
+          "key": "style",
+          "type": "string",
+          "value": "{{ __data__[\"node_1781697071787_start\"].style }}",
+          "description": "从工作流开始节点透传的全局画面风格，在循环体内供 jimeng 生图节点引用",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "node_1781714719692_327x83",
+      "type": "end",
+      "label": "循环生成分镜图片结束",
+      "position": {
+        "x": 1545,
+        "y": 810
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "text",
+            "type": "string",
+            "value": "{{ __loop__.item.text }}",
+            "inputMode": "variable",
+            "children": []
+          },
+          {
+            "key": "image",
+            "type": "image[]",
+            "value": "{{ __data__[\"node_1781714725222_zidrgv\"].data.images }}",
+            "inputMode": "variable"
+          },
+          {
+            "key": "audio",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782111026973_jqd8tn\"].data.fileUrl }}",
+            "inputMode": "variable",
+            "children": []
+          },
+          {
+            "key": "duration",
+            "type": "number",
+            "value": "{{ __data__[\"node_1782117266399_u8n1qg\"].data.duration }}",
+            "inputMode": "variable",
+            "children": []
+          }
+        ]
+      },
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": true,
+        "hidden": false
+      },
+      "outputs": [
+        {
+          "key": "duration",
+          "type": "number",
+          "value": "{{ __data__[\"node_1782117266399_u8n1qg\"].data.duration }}",
+          "inputMode": "variable",
+          "children": []
+        },
+        {
+          "key": "image",
+          "type": "image[]",
+          "value": "{{ __data__[\"node_1781714725222_zidrgv\"].data.images }}",
+          "inputMode": "variable",
+          "children": []
+        },
+        {
+          "key": "text",
+          "type": "string",
+          "value": "{{ __loop__.item.text }}",
+          "children": []
+        },
+        {
+          "key": "audio",
+          "type": "string",
+          "value": "{{ __data__[\"node_1782111026973_jqd8tn\"].data.fileUrl }}",
+          "inputMode": "variable",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1781714725222_zidrgv",
+      "type": "jimeng_text_to_image",
+      "label": "分镜生图",
+      "position": {
+        "x": 1395,
+        "y": 615
+      },
+      "data": {
+        "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
+        "model": "jimeng-4.5",
+        "ratio": "16:9",
+        "resolution": "2k",
+        "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
+        "prompt": "{{ loop.item.prompt }}，画面风格：{{ loop.shared.style }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "children": []
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]",
+                "children": []
+              },
+              {
+                "key": "created",
+                "type": "number",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": false,
+        "hidden": false
+      },
+      "outputs": [
+        {
+          "key": "success",
+          "type": "boolean",
+          "children": []
+        },
+        {
+          "key": "message",
+          "type": "string",
+          "value": "",
+          "children": []
+        },
+        {
+          "key": "data",
+          "type": "object",
+          "children": [
+            {
+              "key": "images",
+              "type": "image[]",
+              "children": []
+            },
+            {
+              "key": "created",
+              "type": "number",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "node_1782108540500_0ggo7y",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 1212.6513671875,
+        "y": -45
+      },
+      "data": {
+        "code": "async function main({ params }) {\n    const ret = {\n      \"tracks\": [\n        {\n          \"id\": \"1\",\n          \"title\": \"背景音乐\",\n          \"type\": \"audio\"\n        },\n        {\n          \"id\": \"2\",\n          \"title\": \"视频\",\n          \"type\": \"video\"\n        },\n        {\n          \"id\": \"3\",\n          \"title\": \"配音\",\n          \"type\": \"audio\"\n        },\n        {\n          \"id\": \"4\",\n          \"title\": \"字幕\",\n          \"type\": \"text\"\n        }\n      ],\n      \"items\": []\n    }\n    const animations = ['缩放','向右缩放','向左缩放']\n    let start = 0\n    params.list.forEach(({duration, image, text, audio}, i) => {\n      if(duration <= 0) duration = 1\n      ret.items.push({\n        \"type\": \"image\",\n        \"data\": {\n          \"path\": image[0],\n          \"track\": \"2\",\n          \"start\": start,\n          \"duration\": duration,\n          \"animations\": {\n            \"name\": animations[i % animations.length],\n            \"duration\": duration\n          }\n        }\n      })\n      ret.items.push({\n        \"type\": \"subtitle\",\n        \"data\": {\n          \"text\": text,\n          \"track\": \"4\",\n          \"start\": start,\n          \"duration\": duration\n        }\n      })\n  \n      ret.items.push({\n        \"type\": \"vocal\",\n        \"data\": {\n          \"path\": audio,\n          \"track\": \"3\",\n          \"start\": start,\n          \"duration\": duration\n        }\n      })\n  \n      start += duration * 1\n    })\n    if(params.bgm != '') ret.items.push({\n      \"type\": \"music\",\n      \"data\": {\n        \"track\": \"1\",\n        \"path\": params.bgm,\n        \"start\": 0,\n        \"duration\": start\n      }\n    })\n  \n    return ret\n}",
+        "sourceNodeId": "node_1781714719692_v7bbmd",
+        "sourceHandle": "loop-next",
+        "outputs": [
+          {
+            "key": "tracks",
+            "type": "array",
+            "children": []
+          },
+          {
+            "key": "items",
+            "type": "array",
+            "children": []
+          }
+        ],
+        "inputFields": [
+          {
+            "key": "list",
+            "type": "array",
+            "value": "",
+            "required": true,
+            "children": [
+              {
+                "key": "text",
+                "type": "string",
+                "value": "",
+                "children": []
+              },
+              {
+                "key": "image",
+                "type": "image[]",
+                "value": ""
+              },
+              {
+                "key": "audio",
+                "type": "string",
+                "value": "",
+                "children": []
+              },
+              {
+                "key": "duration",
+                "type": "number",
+                "value": "",
+                "children": []
+              }
+            ]
+          },
+          {
+            "key": "bgm",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
+      },
+      "inputFields": [
+        {
+          "key": "list",
+          "type": "array",
+          "value": "",
+          "required": true,
+          "children": [
+            {
+              "key": "duration",
+              "type": "number",
+              "value": "",
+              "children": []
+            },
+            {
+              "key": "image",
+              "type": "image[]",
+              "value": ""
+            },
+            {
+              "key": "audio",
+              "type": "string",
+              "value": "",
+              "children": []
+            },
+            {
+              "key": "text",
+              "type": "string",
+              "value": "",
+              "children": []
+            }
+          ]
+        },
+        {
+          "key": "bgm",
+          "type": "string",
+          "value": "",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1782109102492_qsgshy",
+      "type": "jianying_validate_preset",
+      "label": "校验预设数据",
+      "position": {
+        "x": -75,
+        "y": 255
+      },
+      "data": {
+        "preset_data": "{{ __data__[\"node_1782109145430_abd4mi\"].text }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "valid",
+                "type": "boolean",
+                "dataType": "boolean"
+              },
+              {
+                "key": "error",
+                "type": "string"
+              },
+              {
+                "key": "stats",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "success",
+          "type": "boolean",
+          "dataType": "boolean"
+        },
+        {
+          "key": "message",
+          "type": "string"
+        },
+        {
+          "key": "data",
+          "type": "object",
+          "dataType": "object",
+          "children": [
+            {
+              "key": "valid",
+              "type": "boolean",
+              "dataType": "boolean"
+            },
+            {
+              "key": "error",
+              "type": "string"
+            },
+            {
+              "key": "stats",
+              "type": "object",
+              "dataType": "object",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "node_1782109145430_abd4mi",
+      "type": "fetch_text",
+      "label": "捕获网页内容",
+      "position": {
+        "x": -150,
+        "y": 75
+      },
+      "data": {
+        "encoding": "utf-8",
+        "timeout": 30000,
+        "url": "{{ __data__[\"node_1781697071787_start\"].preset.httpPath }}",
+        "outputs": [
+          {
+            "key": "text",
+            "type": "string"
+          },
+          {
+            "key": "url",
+            "type": "string"
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "text",
+          "type": "string"
+        },
+        {
+          "key": "url",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "node_1782109181173_0nrkxh",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 30,
+        "y": 375
+      },
+      "data": {
+        "sourceNodeId": "node_1782109102492_qsgshy",
+        "sourceHandle": "source",
+        "conditions": [
+          {
+            "id": "cond_1782109186259_7zxe",
+            "variable": "{{ __data__[\"node_1782109102492_qsgshy\"].data.valid }}",
+            "field": "{{ __data__[\"node_1782109102492_qsgshy\"].data.valid }}",
+            "operator": "is_true",
+            "value": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782109236909_5ijemq",
+      "type": "end",
+      "label": "nodes.end.label",
+      "position": {
+        "x": 405,
+        "y": 510
+      },
+      "data": {},
+      "outputs": [
+        {
+          "key": "msg",
+          "type": "string",
+          "value": "错误的剪映草稿预设",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1782111026973_jqd8tn",
+      "type": "qianyin_tts",
+      "label": "AI文字转语音",
+      "position": {
+        "x": 1680,
+        "y": 465
+      },
+      "data": {
+        "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"] }}",
+        "secret": "{{ __config__[\"workflow.qianyin\"][\"secret\"] }}",
+        "speakerId": "521",
+        "format": "mp3",
+        "speed": 1,
+        "volume": 100,
+        "pitch": 0,
+        "baseUrl": "{{ __config__[\"workflow.qianyin\"][\"baseUrl\"] }}",
+        "sourceNodeId": "node_1781714719692_ilnqxh",
+        "sourceHandle": "source",
+        "text": "{{ loop.item.text }} ",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "children": []
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "filePath",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "format",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "size",
+                "type": "number",
+                "children": []
+              },
+              {
+                "key": "fileUrl",
+                "type": "string",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": false,
+        "hidden": false
+      },
+      "outputs": [
+        {
+          "key": "success",
+          "type": "boolean"
+        },
+        {
+          "key": "message",
+          "type": "string"
+        },
+        {
+          "key": "data",
+          "type": "object",
+          "children": [
+            {
+              "key": "filePath",
+              "type": "string"
+            },
+            {
+              "key": "format",
+              "type": "string"
+            },
+            {
+              "key": "size",
+              "type": "number"
+            },
+            {
+              "key": "fileUrl",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "node_1782117266399_u8n1qg",
+      "type": "ffmpeg_probe",
+      "label": "Probe Media Info",
+      "position": {
+        "x": 1770,
+        "y": 635.5
+      },
+      "data": {
+        "ffprobePath": "",
+        "sourceNodeId": "node_1782111026973_jqd8tn",
+        "sourceHandle": "source",
+        "inputPath": "{{ __data__[\"node_1782111026973_jqd8tn\"].data.fileUrl }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "message",
+            "type": "string",
+            "children": []
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "format",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "video",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "audio",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "streams",
+                "type": "array",
+                "children": []
+              },
+              {
+                "key": "duration",
+                "type": "number",
+                "children": []
+              },
+              {
+                "key": "raw",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": false,
+        "hidden": false
+      },
+      "outputs": [
+        {
+          "key": "success",
+          "type": "boolean",
+          "dataType": "boolean"
+        },
+        {
+          "key": "message",
+          "type": "string"
+        },
+        {
+          "key": "data",
+          "type": "object",
+          "dataType": "object",
+          "children": [
+            {
+              "key": "format",
+              "type": "object",
+              "dataType": "object"
+            },
+            {
+              "key": "video",
+              "type": "object",
+              "dataType": "object"
+            },
+            {
+              "key": "audio",
+              "type": "object",
+              "dataType": "object"
+            },
+            {
+              "key": "streams",
+              "type": "array",
+              "dataType": "array"
+            },
+            {
+              "key": "duration",
+              "type": "number",
+              "dataType": "number"
+            },
+            {
+              "key": "raw",
+              "type": "object",
+              "dataType": "object"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "node_1782124160537_uf1dlh",
+      "type": "jianying_submit_draft_by_url",
+      "label": "通过 URL 导入草稿",
+      "position": {
+        "x": 2190,
+        "y": -75
+      },
+      "data": {
+        "apiBase": "{{ __config__[\"workflow.jianying-draft\"][\"apiBase\"]}}",
+        "timeout": "{{ __config__[\"workflow.jianying-draft\"][\"timeout\"]}}",
+        "interval": "{{ __config__[\"workflow.jianying-draft\"][\"interval\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "task_id",
+                "type": "string"
+              },
+              {
+                "key": "status",
+                "type": "string"
+              },
+              {
+                "key": "draft_path",
+                "type": "string"
+              },
+              {
+                "key": "progress",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1782108540500_0ggo7y",
+        "sourceHandle": "source",
+        "url": "{{ __data__[\"node_1782124187838_gyncrz\"].data.Location }}"
+      }
+    },
+    {
+      "id": "node_1782124187838_gyncrz",
+      "type": "cos_upload_content",
+      "label": "COS上传内容",
+      "position": {
+        "x": 1830,
+        "y": -75
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1782108540500_0ggo7y",
+        "sourceHandle": "source",
+        "key": "jianyin.json",
+        "content": "{{ __data__[\"node_1782124458781_bq81ny\"].preset_data }}"
+      }
+    },
+    {
+      "id": "node_1782124458781_bq81ny",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 1521.32568359375,
+        "y": -60
+      },
+      "data": {
+        "code": "async function main({ params }) {\n    const json = JSON.parse(params.preset_data)\n    json.testData = {\n        track: params.tracks,\n        items: params.items,\n    }\n    return {\n        preset_data: JSON.stringify(json)\n    };\n}",
+        "sourceNodeId": "node_1782108540500_0ggo7y",
+        "sourceHandle": "source",
+        "inputFields": [
+          {
+            "key": "preset_data",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "tracks",
+            "type": "array",
+            "value": "{{ __data__[\"node_1782108540500_0ggo7y\"].tracks }}",
+            "inputMode": "variable",
+            "children": []
+          },
+          {
+            "key": "items",
+            "type": "array",
+            "value": "{{ __data__[\"node_1782108540500_0ggo7y\"].items }}",
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "preset_data",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781714719692_v7bbmd-loop-body-node_1781714719692_030b8s-target",
+      "source": "node_1781714719692_v7bbmd",
+      "target": "node_1781714719692_030b8s",
+      "sourceHandle": "loop-body",
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781714719692_v7bbmd",
+        "parentId": "node_1781714719692_v7bbmd",
+        "generated": true,
+        "hidden": false,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781714719692_030b8s-source-node_1781714719692_ilnqxh-target",
+      "source": "node_1781714719692_030b8s",
+      "target": "node_1781714719692_ilnqxh",
+      "sourceHandle": null,
+      "targetHandle": "target",
+      "composite": {
+        "rootId": "node_1781714719692_030b8s",
+        "parentId": "node_1781714719692_030b8s",
+        "generated": true,
+        "hidden": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "e-node_1781714719692_ilnqxh-node_1781714725222_zidrgv-mqiay8z7",
+      "source": "node_1781714719692_ilnqxh",
+      "target": "node_1781714725222_zidrgv"
+    },
+    {
+      "id": "e-node_1781714725222_zidrgv-node_1781714719692_327x83-mqiay8z7",
+      "source": "node_1781714725222_zidrgv",
+      "target": "node_1781714719692_327x83"
+    },
+    {
+      "id": "e-node_1781714576999_ignsfm-node_1781714698009_vvhfrg-mqiay8z8",
+      "source": "node_1781714576999_ignsfm",
+      "target": "node_1781714698009_vvhfrg"
+    },
+    {
+      "id": "e-node_1781714698009_vvhfrg-node_1781714719692_v7bbmd-mqiay8z8",
+      "source": "node_1781714698009_vvhfrg",
+      "target": "node_1781714719692_v7bbmd"
+    },
+    {
+      "id": "e-node_1781714719692_v7bbmd-loop-next-node_1782108540500_0ggo7y-target",
+      "source": "node_1781714719692_v7bbmd",
+      "target": "node_1782108540500_0ggo7y",
+      "sourceHandle": "loop-next"
+    },
+    {
+      "id": "e-node_1781697071787_start-source-node_1782109145430_abd4mi-target",
+      "source": "node_1781697071787_start",
+      "target": "node_1782109145430_abd4mi",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782109145430_abd4mi-source-node_1782109102492_qsgshy-target",
+      "source": "node_1782109145430_abd4mi",
+      "target": "node_1782109102492_qsgshy",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782109102492_qsgshy-source-node_1782109181173_0nrkxh-target",
+      "source": "node_1782109102492_qsgshy",
+      "target": "node_1782109181173_0nrkxh",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782109181173_0nrkxh-case-0-node_1781714576999_ignsfm-target",
+      "source": "node_1782109181173_0nrkxh",
+      "target": "node_1781714576999_ignsfm",
+      "sourceHandle": "case-0",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782109181173_0nrkxh-default-node_1782109236909_5ijemq-target",
+      "source": "node_1782109181173_0nrkxh",
+      "target": "node_1782109236909_5ijemq",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781714719692_ilnqxh-source-node_1782111026973_jqd8tn-target",
+      "source": "node_1781714719692_ilnqxh",
+      "target": "node_1782111026973_jqd8tn",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782111026973_jqd8tn-source-node_1782117266399_u8n1qg-target",
+      "source": "node_1782111026973_jqd8tn",
+      "target": "node_1782117266399_u8n1qg",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782117266399_u8n1qg-source-node_1781714719692_327x83-target",
+      "source": "node_1782117266399_u8n1qg",
+      "target": "node_1781714719692_327x83",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782124160537_uf1dlh-source-node_1781697071787_end-target",
+      "source": "node_1782124160537_uf1dlh",
+      "target": "node_1781697071787_end"
+    },
+    {
+      "id": "e-node_1782124187838_gyncrz-source-node_1782124160537_uf1dlh-target",
+      "source": "node_1782124187838_gyncrz",
+      "target": "node_1782124160537_uf1dlh"
+    },
+    {
+      "id": "e-node_1782108540500_0ggo7y-source-node_1782124458781_bq81ny-target",
+      "source": "node_1782108540500_0ggo7y",
+      "target": "node_1782124458781_bq81ny",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782124458781_bq81ny-source-node_1782124187838_gyncrz-target",
+      "source": "node_1782124458781_bq81ny",
+      "target": "node_1782124187838_gyncrz"
+    }
+  ],
+  "createdAt": 1782183030564,
+  "updatedAt": 1782183030564,
+  "published": false
+}

@@ -258,6 +258,7 @@ export function useWorkflowEditorExecution({
       return;
     }
     cleanupExecutionListeners();
+    cleanupDebugListeners();
     setExecStatus('running');
     setExecutionLog(null);
     setSelectedExecutionLogId(null);
@@ -265,6 +266,10 @@ export function useWorkflowEditorExecution({
     setPausedNodeId(null);
     setPausedReason(null);
     setPartialExecutionStartNodeId(startNodeId ?? null);
+    setPendingInteraction(null);
+    setDebugStatus('idle');
+    setDebugResult(null);
+    setDebugNodeId(null);
 
     const sendExecuteRequest = () => {
       ws.send('workflow:execute', {
@@ -373,7 +378,7 @@ export function useWorkflowEditorExecution({
       });
       executionCleanupRef.current.push(offConnected);
     }
-  }, [workflow, cleanupExecutionListeners, handleClientNodeRequest, loadExecutionLogs, getWorkflowWS]);
+  }, [workflow, cleanupDebugListeners, cleanupExecutionListeners, handleClientNodeRequest, loadExecutionLogs, getWorkflowWS]);
 
   const handlePauseExecution = useCallback(() => {
     if (!currentExecutionId) return;

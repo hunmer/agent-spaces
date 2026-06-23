@@ -315,6 +315,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     };
   }, [currentNodeDebugStatus, displayLabel, hasCurrentNodeDebugResult, id]);
   const displayExecutionStep = executionStep ?? debugExecutionStep;
+  const canContinueFromPreview = nodeData.isPreview === true
+    && displayExecutionStep?.status === 'completed'
+    && !isBoundaryNode;
   const canShowExecutionLog = !!displayExecutionStep
     && (
       displayExecutionStep.status === 'running'
@@ -882,7 +885,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               {isCurrentNodeDebugging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             </button>
           ) : null}
-          {nodeData.isPreview && !isBoundaryNode ? (
+          {canContinueFromPreview ? (
             <button
               type="button"
               className="inline-flex h-7 items-center justify-center gap-1 rounded-full bg-blue-500 px-2.5 text-[10px] font-medium text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
