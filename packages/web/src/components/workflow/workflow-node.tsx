@@ -50,6 +50,7 @@ import {
 } from './workflow-node-handles';
 import { WorkflowNodeExecutionLog } from './workflow-node-execution-log';
 import {
+  EXECUTION_DATA_KEY,
   EXECUTION_INPUT_FIELDS_KEY,
   EXECUTION_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
@@ -980,7 +981,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           executionSteps={Array.isArray(nodeData.executionSteps) ? nodeData.executionSteps : undefined}
           nodeType={workflowNodeType}
           loopExecutionScopeId={nodeData.loopExecutionScopeId}
-          data={nodeData.executionLogData}
+          data={nodeData[EXECUTION_DATA_KEY] ?? nodeData.executionLogData}
           inputFields={Array.isArray(nodeData[EXECUTION_INPUT_FIELDS_KEY])
             ? nodeData[EXECUTION_INPUT_FIELDS_KEY]
             : Array.isArray(nodeData.inputFields) ? nodeData.inputFields : []}

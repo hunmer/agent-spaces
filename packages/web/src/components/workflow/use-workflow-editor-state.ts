@@ -9,6 +9,7 @@ import { operationHistoryApi, workflowApi, workflowVersionApi } from '@/lib/work
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import {
+  EXECUTION_DATA_KEY,
   EXECUTION_INPUT_FIELDS_KEY,
   EXECUTION_OUTPUTS_KEY,
   ORIGINAL_INPUT_FIELDS_KEY,
@@ -93,21 +94,46 @@ function findLastEndNodeId(nodes: Workflow['nodes']): string | null {
   return null;
 }
 
+function stripExecutionSnapshotData(data: Workflow['nodes'][number]['data']): Workflow['nodes'][number]['data'] {
+  const {
+    [EXECUTION_DATA_KEY]: _executionData,
+    [EXECUTION_INPUT_FIELDS_KEY]: _executionInputFields,
+    [EXECUTION_OUTPUTS_KEY]: _executionOutputs,
+    [ORIGINAL_INPUT_FIELDS_KEY]: _originalInputFields,
+    [ORIGINAL_OUTPUTS_KEY]: _originalOutputs,
+    ...rest
+  } = data ?? {};
+  return rest;
+}
+
+function stripExecutionSnapshotFields(workflow: Workflow): Workflow {
+  return {
+    ...workflow,
+    nodes: workflow.nodes.map(node => ({
+      ...node,
+      data: stripExecutionSnapshotData(node.data),
+    })),
+  };
+}
+
 function restorePreviewIOFields(nodes: Workflow['nodes'], sourceNodes: Workflow['nodes'] = []): Workflow['nodes'] {
   const sourceNodeById = new Map(sourceNodes.map(node => [node.id, node]));
   return nodes.map((node) => {
     const sourceNode = sourceNodeById.get(node.id);
+    const originalData = sourceNode?.data ? stripExecutionSnapshotData(sourceNode.data) : undefined;
     const originalInputFields = Array.isArray(sourceNode?.data?.inputFields)
       ? sourceNode.data.inputFields
       : node.data?.[ORIGINAL_INPUT_FIELDS_KEY];
     const originalOutputs = Array.isArray(sourceNode?.data?.outputs)
       ? sourceNode.data.outputs
       : node.data?.[ORIGINAL_OUTPUTS_KEY];
-    if (!Array.isArray(originalInputFields) && !Array.isArray(originalOutputs)) return node;
+    if (!originalData && !Array.isArray(originalInputFields) && !Array.isArray(originalOutputs)) return node;
     return {
       ...node,
       data: {
         ...node.data,
+        ...(originalData ?? {}),
+        [EXECUTION_DATA_KEY]: node.data,
         ...(Array.isArray(originalInputFields)
           ? {
               [EXECUTION_INPUT_FIELDS_KEY]: node.data?.inputFields,
@@ -258,7 +284,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   const savePreviewEdits = useCallback(async (options?: { createVersion?: boolean; versionName?: string }) => {
     if (!isPreview || !workflow) return;
-    const workflowToSave = stripTemporaryDebugPresets(cloneWorkflow(workflow));
+    const workflowToSave = stripExecutionSnapshotFields(stripTemporaryDebugPresets(cloneWorkflow(workflow)));
     if (options?.createVersion) {
       const name = options.versionName?.trim() || `Preview edit ${new Date().toLocaleString()}`;
       await workflowVersionApi.add(workflowToSave.id, name, workflowToSave.nodes, workflowToSave.edges);
@@ -362,7 +388,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     if (isPreview) return false;
     const nextWorkflow = workflowToSave ?? workflow;
     if (!nextWorkflow) return false;
-    const workflowForSave = stripTemporaryDebugPresets(cloneWorkflow(nextWorkflow));
+    const workflowForSave = stripExecutionSnapshotFields(stripTemporaryDebugPresets(cloneWorkflow(nextWorkflow)));
     setIsSaving(true);
     try {
       const saved = await workflowApi.update(workflowForSave.id, {
