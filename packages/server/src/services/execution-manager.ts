@@ -15,6 +15,7 @@ import type {
   ExecutionStep,
   ExecutionLogEntry,
   OutputField,
+  EngineStatus,
 } from '@agent-spaces/shared';
 import type {
   ExecutionEventChannel,
@@ -195,6 +196,7 @@ export class ExecutionManager {
       request.dryRun,
     );
     if (logSnapshot) session.logSnapshot = clone(logSnapshot);
+    if (request.startNodeId) session.partialStartNodeId = request.startNodeId;
     this.recordContextPresetSteps(session);
     session.context.__config__ = this.loadPluginConfigs(session);
 
@@ -475,6 +477,10 @@ export class ExecutionManager {
       });
       this.emitLog(session);
       this.emitContext(session);
+      if (session.partialStartNodeId) {
+        await this.runPartialFromNode(session, session.partialStartNodeId);
+        return;
+      }
       await this.runSafe(session, 0);
     } catch (error) {
       this.handleExecutionError(session, error);
@@ -496,6 +502,81 @@ export class ExecutionManager {
     session.finishedAt = Date.now();
     this.emitWorkflowError(session);
     this.persistAndCleanup(session);
+  }
+
+  private async runPartialFromNode(session: ExecutionSession, startNodeId: string): Promise<void> {
+    try {
+      const startNode = session.nodes.find(node => node.id === startNodeId);
+      if (!startNode) throw new Error(`Start node not found: ${startNodeId}`);
+      const completedNodeIds = new Set(
+        session.steps
+          .filter(step => this.doesStepSatisfyDownstreamDependency(step))
+          .map(step => step.nodeId),
+      );
+      const visited = new Set<string>([startNode.id]);
+      const startIndex = Math.max(0, session.executionOrder.findIndex(node => node.id === startNode.id));
+      const result = await this.executeWorkflowNodeAtIndex(session, startNode, startIndex);
+      if (result === 'paused') return;
+      if (result === 'interrupted' || session.status === 'error' || session.stopRequested) {
+        if (session.stopRequested && session.status !== 'error') {
+          session.status = 'error';
+          session.lastErrorMessage = 'Execution stopped';
+        }
+        session.finishedAt = Date.now();
+        this.emitLog(session);
+        this.emitWorkflowError(session);
+        this.persistAndCleanup(session);
+        return;
+      }
+      completedNodeIds.add(startNode.id);
+
+      const adjacency = new Map<string, WorkflowEdge[]>();
+      for (const edge of session.edges) {
+        const list = adjacency.get(edge.source) || [];
+        list.push(edge);
+        adjacency.set(edge.source, list);
+      }
+      const nodeMap = new Map(session.nodes.map(node => [node.id, node]));
+      const execFrom = async (nodeId: string): Promise<unknown> => {
+        return this.executeDownstreamBranches(
+          session,
+          nodeId,
+          adjacency.get(nodeId) || [],
+          session.edges,
+          visited,
+          completedNodeIds,
+          id => nodeMap.get(id),
+          execFrom,
+        );
+      };
+      await execFrom(startNode.id);
+
+      if (session.status === 'paused') return;
+      const statusAfterDownstream = session.status as EngineStatus;
+      if (statusAfterDownstream === 'error' || session.stopRequested) {
+        if (session.stopRequested && statusAfterDownstream !== 'error') {
+          session.status = 'error';
+          session.lastErrorMessage = 'Execution stopped';
+        }
+        session.finishedAt = Date.now();
+        this.emitLog(session);
+        this.emitWorkflowError(session);
+        this.persistAndCleanup(session);
+        return;
+      }
+      session.status = 'completed';
+      session.finishedAt = Date.now();
+      this.emitLog(session);
+      this.emitContext(session);
+      this.emitEvent(session, 'workflow:completed', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: Date.now(), status: 'completed',
+        log: this.currentLog(session), context: this.currentContext(session),
+      });
+      this.persistAndCleanup(session);
+    } catch (error) {
+      this.handleExecutionError(session, error);
+    }
   }
 
   private async runFromIndex(session: ExecutionSession, startIndex: number): Promise<void> {

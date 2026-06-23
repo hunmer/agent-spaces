@@ -38,6 +38,7 @@ export interface ExecutionSession {
     groups?: WorkflowGroup[]
     variables?: OutputField[]
   }
+  partialStartNodeId?: string
   context: Record<string, any>
   status: EngineStatus
   executionOrder: WorkflowNode[]
