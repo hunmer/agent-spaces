@@ -101,7 +101,7 @@
       "label": "nodes.switch.label",
       "position": {
         "x": 0,
-        "y": 606
+        "y": 607.75
       },
       "data": {
         "sourceNodeId": "node_1781681640891_ouni81",
@@ -127,6 +127,13 @@
             "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
             "operator": "equals",
             "value": "jimeng"
+          },
+          {
+            "id": "cond_1782282908847_d6nx",
+            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "operator": "equals",
+            "value": "openai"
           }
         ]
       }
@@ -192,24 +199,30 @@
             "key": "images",
             "variables": [
               {
-                "key": "",
+                "key": "keling",
                 "type": "any",
                 "value": "{{ __data__[\"node_1782272004979_7i96r6\"].data.images }}",
                 "inputMode": "variable",
                 "children": []
               },
               {
-                "key": "",
+                "key": "qwen",
                 "type": "any",
                 "value": "{{ __data__[\"node_1782273534381_i64jku\"].data.images }}",
                 "inputMode": "variable",
                 "children": []
               },
               {
-                "key": "",
+                "key": "jimeng",
                 "type": "any",
                 "value": "{{ __data__[\"node_1782281425296_uwjx97\"].data.images }}",
                 "inputMode": "variable",
+                "children": []
+              },
+              {
+                "key": "openai",
+                "type": "any",
+                "value": "{{ __data__[\"node_1782282946001_rr0sss\"].data.images }}",
                 "children": []
               }
             ],
@@ -355,7 +368,7 @@
       "label": "nodes.run_code.label",
       "position": {
         "x": 0,
-        "y": 490.5
+        "y": 488.75
       },
       "data": {
         "code": "async function main({ params }) {\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break \n    case '2k':\n      size = '2024*2024'\n      break \n  }\n  return {size}\n}",
@@ -378,6 +391,54 @@
             "children": []
           }
         ]
+      }
+    },
+    {
+      "id": "node_1782282946001_rr0sss",
+      "type": "ai_image_edit",
+      "label": "AI图片编辑",
+      "position": {
+        "x": 435,
+        "y": 1320
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
+        "model": "{{ __data__[\"node_1781681576137_start\"].model }}",
+        "aspectRatio": "{{ __data__[\"node_1781681576137_start\"].aspect }}",
+        "n": 1,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-3",
+        "image": "{{ __data__[\"node_1781681576137_start\"].images }}",
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
       }
     }
   ],
@@ -444,18 +505,32 @@
       "id": "e-node_1782281779113_6rk17s-source-node_1781686908308_6flfam-target",
       "source": "node_1782281779113_6rk17s",
       "target": "node_1781686908308_6flfam"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-case-3-node_1782282946001_rr0sss-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1782282946001_rr0sss",
+      "sourceHandle": "case-3"
+    },
+    {
+      "id": "e-node_1782282946001_rr0sss-source-node_1782272119586_dim19h-target",
+      "source": "node_1782282946001_rr0sss",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1782282423490,
+  "updatedAt": 1782283763379,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.tencent-cos",
     "workflow.aliyun-ai",
-    "workflow.jimeng"
+    "workflow.jimeng",
+    "workflow.ai-image"
   ],
-  "lastRunAt": 1782282426724,
+  "lastRunAt": 1782281352043,
   "groups": [],
   "description": "生成图片",
   "variables": []

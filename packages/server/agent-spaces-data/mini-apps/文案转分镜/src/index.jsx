@@ -4,7 +4,7 @@ import { useStore } from './hooks/useStore.js';
 import { DEFAULT_SETTINGS, SETTING_KEYS } from './utils/constants.js';
 import CharacterPanel from './components/CharacterPanel.jsx';
 import ScenePanel from './components/ScenePanel.jsx';
-import { ImportDialog, SettingsDialog, AgentConfigButton } from './components/Dialogs.jsx';
+import { ImportDialog, GenerateParamsDialog, AgentConfigButton } from './components/Dialogs.jsx';
 
 function Style() {
   return (
@@ -37,10 +37,10 @@ function Style() {
       .sb-list-item.is-active { background: #f4f4f5; border-color: #d4d4d8; }
       .sb-list-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
       .sb-list-item-name { font-size: 13px; font-weight: 600; color: #18181b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sb-list-item-sub { font-size: 11px; color: #a1a1aa; }
       .sb-list-gen { flex: 0 0 auto; border: 1px solid #e4e4e7; background: #fff; border-radius: 6px; padding: 5px; cursor: pointer; color: #52525b; display: grid; place-items: center; }
       .sb-list-gen:hover:not(:disabled) { background: #18181b; color: #fff; border-color: #18181b; }
       .sb-list-gen:disabled { opacity: .6; cursor: default; }
-      .sb-list-item-sub { font-size: 11px; color: #a1a1aa; }
       .sb-list-empty, .sb-edit-empty { display: grid; place-items: center; color: #a1a1aa; font-size: 13px; padding: 24px; text-align: center; }
 
       .sb-edit { background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; overflow: auto; }
@@ -105,17 +105,39 @@ function Style() {
 
 function App() {
   const AS = window.AgentSpaces;
-  const { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Plus, Pencil, Trash2, Settings, FileText } = window.AgentSpacesUI;
+  const { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Plus, Pencil, Trash2, FileText } = window.AgentSpacesUI;
 
   const { projects, project, projectId, settings, actions } = useStore();
 
   const [tab, setTab] = React.useState('characters');
   const [importOpen, setImportOpen] = React.useState(false);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [agentConfigId, setAgentConfigId] = React.useState(() => AS.getUserSetting?.(SETTING_KEYS.agentConfigId, '') || '');
   const [agentMeta, setAgentMeta] = React.useState(() => AS.getUserSetting?.(SETTING_KEYS.agentMeta, null) || null);
 
   const cfg = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+
+  // 生成参数对话框（每次生成前弹出，默认填上次参数）
+  const resolverRef = React.useRef(null);
+  const [genOpen, setGenOpen] = React.useState(false);
+  const [genValue, setGenValue] = React.useState(cfg);
+
+  const requestParams = React.useCallback(() => {
+    setGenValue({ ...DEFAULT_SETTINGS, ...(settings || {}) });
+    setGenOpen(true);
+    return new Promise((resolve) => { resolverRef.current = resolve; });
+  }, [settings]);
+
+  const onParamsConfirm = (p) => {
+    setGenOpen(false);
+    actions.saveSettings(p); // 记忆为下次默认
+    resolverRef.current?.(p);
+    resolverRef.current = null;
+  };
+  const onParamsCancel = () => {
+    setGenOpen(false);
+    resolverRef.current?.(null);
+    resolverRef.current = null;
+  };
 
   const newProject = async () => {
     const name = window.prompt('项目名称', `项目 ${projects.length + 1}`);
@@ -163,9 +185,6 @@ function App() {
           <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} disabled={!project}>
             <FileText className="sb-icon" />导入文案
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
-            <Settings className="sb-icon" />设置
-          </Button>
           <AgentConfigButton agentConfigId={agentConfigId} agentMeta={agentMeta} onConfigured={onAgentConfigured} />
         </div>
       </header>
@@ -185,14 +204,19 @@ function App() {
             尚未选择项目，点击左上角「+」新建一个项目开始
           </div>
         ) : tab === 'characters' ? (
-          <CharacterPanel project={project} actions={actions} settings={cfg} />
+          <CharacterPanel project={project} actions={actions} settings={cfg} requestParams={requestParams} />
         ) : (
-          <ScenePanel project={project} settings={cfg} actions={actions} />
+          <ScenePanel project={project} actions={actions} settings={cfg} requestParams={requestParams} />
         )}
       </main>
 
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} actions={actions} agentConfigId={agentConfigId} />
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={cfg} actions={actions} />
+      <GenerateParamsDialog
+        open={genOpen}
+        value={genValue}
+        onConfirm={onParamsConfirm}
+        onCancel={onParamsCancel}
+      />
     </div>
   );
 }

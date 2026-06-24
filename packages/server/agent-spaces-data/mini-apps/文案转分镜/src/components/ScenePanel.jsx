@@ -1,6 +1,6 @@
 // 文案转分镜 · 分镜管理
 import React, { useState, useEffect } from 'react';
-import { uid, DEFAULT_SETTINGS } from '../utils/constants.js';
+import { uid } from '../utils/constants.js';
 import { runGeneration } from '../utils/workflow.js';
 
 function sameScene(a, b) {
@@ -16,8 +16,8 @@ function sameScene(a, b) {
     && (a.video || '') === (b.video || '');
 }
 
-function SceneCard({ scene, index, characters, settings, actions, onRemove }) {
-  const { Button, Input, Label, Textarea, Badge, Trash2, Loader2, WandSparkles, Film: FilmIcon, Image: ImageIcon, Eraser } = window.AgentSpacesUI;
+function SceneCard({ scene, index, characters, settings, actions, onRemove, requestParams }) {
+  const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser } = window.AgentSpacesUI;
 
   const [draft, setDraft] = useState(() => ({ ...scene, characterIds: [...(scene.characterIds || [])] }));
   const [imgRunning, setImgRunning] = useState(false);
@@ -60,6 +60,8 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove }) {
 
   const generateImage = async () => {
     if (!draft.visualPrompt?.trim()) { setError('请填写画面提示词'); return; }
+    const params = await requestParams();
+    if (!params) return;
     setError(''); setImgRunning(true);
     try {
       const images = collectRefImages();
@@ -70,7 +72,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove }) {
       const urls = await runGeneration({
         kind: 'image',
         workflowId: settings.imageWorkflowId,
-        input: { images, prompt, provider: settings.provider, model: settings.model, aspect: settings.aspect, size: settings.size },
+        input: { images, prompt, provider: params.provider, model: params.model, aspect: params.aspect, size: params.size },
         label: `分镜 ${index} 生图`,
       });
       await actions.addSceneMedia(draft.id, 'image', urls);
@@ -80,6 +82,8 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove }) {
 
   const generateVideo = async () => {
     if (!draft.animationPrompt?.trim()) { setError('请填写动画提示词'); return; }
+    const params = await requestParams();
+    if (!params) return;
     setError(''); setVidRunning(true);
     try {
       // 优先用本镜已生成的图片作为视频首帧，否则退回角色选中图
@@ -87,7 +91,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove }) {
       const urls = await runGeneration({
         kind: 'video',
         workflowId: settings.videoWorkflowId,
-        input: { images, prompt: draft.animationPrompt, provider: settings.provider, model: settings.model, aspect: settings.aspect, size: settings.size },
+        input: { images, prompt: draft.animationPrompt, provider: params.provider, model: params.model, aspect: params.aspect, size: params.size },
         label: `分镜 ${index} 生视频`,
       });
       await actions.addSceneMedia(draft.id, 'video', urls);
@@ -187,11 +191,10 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove }) {
   );
 }
 
-export default function ScenePanel({ project, settings, actions }) {
+export default function ScenePanel({ project, settings, actions, requestParams }) {
   const { Button, Badge, Plus, Film } = window.AgentSpacesUI;
   const scenes = (project?.scenes || []).slice().sort((a, b) => a.index - b.index);
   const characters = project?.characters || [];
-  const cfg = { ...DEFAULT_SETTINGS, ...(settings || {}) };
 
   const addScene = async () => {
     const s = {
@@ -230,9 +233,10 @@ export default function ScenePanel({ project, settings, actions }) {
             scene={s}
             index={i + 1}
             characters={characters}
-            settings={cfg}
+            settings={settings}
             actions={actions}
             onRemove={removeScene}
+            requestParams={requestParams}
           />
         ))}
       </div>

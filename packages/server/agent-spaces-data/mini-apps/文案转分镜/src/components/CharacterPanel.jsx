@@ -12,7 +12,7 @@ function sameChar(a, b) {
   return ai.every((x, i) => x.id === bi[i].id && x.url === bi[i].url && !!x.selected === !!bi[i].selected);
 }
 
-export default function CharacterPanel({ project, actions, settings }) {
+export default function CharacterPanel({ project, actions, settings, requestParams }) {
   const { Button, Input, Label, Textarea, FileUpload, Badge, Trash2, Plus, User, Star, Loader2, WandSparkles } = window.AgentSpacesUI;
 
   const characters = project?.characters || [];
@@ -64,7 +64,8 @@ export default function CharacterPanel({ project, actions, settings }) {
   // 一键生成角色图片：用角色 prompt 调图片工作流，结果追加进该角色图片列表
   const generateCharImage = async (char) => {
     if (!char?.prompt?.trim()) { window.alert?.('请先填写该角色的提示词'); return; }
-    if (!settings?.imageWorkflowId) { window.alert?.('未配置图片工作流，请在「设置」中确认'); return; }
+    const params = await requestParams();
+    if (!params) return;
     setGenRunningId(char.id);
     try {
       const urls = await runGeneration({
@@ -73,10 +74,10 @@ export default function CharacterPanel({ project, actions, settings }) {
         input: {
           images: [],
           prompt: char.prompt,
-          provider: settings.provider,
-          model: settings.model,
-          aspect: settings.aspect,
-          size: settings.size,
+          provider: params.provider,
+          model: params.model,
+          aspect: params.aspect,
+          size: params.size,
         },
         label: `角色「${char.name || ''}」生图`,
       });

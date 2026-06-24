@@ -1,12 +1,10 @@
-// 文案转分镜 · 对话框（导入文案 / 设置 / Agent 配置）
+// 文案转分镜 · 对话框（导入文案 / 生成参数 / Agent 配置）
 import React, { useState, useEffect } from 'react';
 import {
   BUILTIN_PLUGIN,
   PROVIDER_OPTIONS,
   ASPECT_OPTIONS,
   SIZE_OPTIONS,
-  DEFAULT_IMAGE_WORKFLOW_ID,
-  DEFAULT_VIDEO_WORKFLOW_ID,
   AGENT_INIT_NAME,
   AGENT_INIT_PROMPT,
 } from '../utils/constants.js';
@@ -55,6 +53,70 @@ export function AgentConfigButton({ agentConfigId, agentMeta, onConfigured }) {
     <Button size="sm" variant="outline" onClick={configure} title="配置文案转分镜 AI">
       {agentMeta ? `🤖 ${agentMeta.name}${agentMeta.modelProvider ? ` · ${agentMeta.modelProvider}` : ''}` : '⚙️ 配置 AI'}
     </Button>
+  );
+}
+
+// 生成参数对话框：每次生成前弹出，默认填入上次参数
+export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
+  const { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } = window.AgentSpacesUI;
+
+  const [cfg, setCfg] = useState(value || {});
+  useEffect(() => { if (open) setCfg(value || {}); }, [open, value]);
+
+  const patch = (p) => setCfg((prev) => ({ ...prev, ...p }));
+  const providerOpt = PROVIDER_OPTIONS.find((p) => p.value === cfg.provider) || PROVIDER_OPTIONS[0];
+
+  const onProviderChange = (v) => {
+    const opt = PROVIDER_OPTIONS.find((p) => p.value === v);
+    patch({ provider: v, model: opt?.models?.[0]?.value || '' });
+  };
+
+  return (
+    <Modal open={open} onClose={onCancel} title="生成参数" width={460}>
+      <div className="sb-grid-2">
+        <div className="sb-field">
+          <Label>提供商</Label>
+          <Select value={cfg.provider} onValueChange={onProviderChange}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PROVIDER_OPTIONS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="sb-field">
+          <Label>模型</Label>
+          <Select value={cfg.model} onValueChange={(v) => patch({ model: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(providerOpt?.models || []).map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="sb-field">
+          <Label>比例</Label>
+          <Select value={cfg.aspect} onValueChange={(v) => patch({ aspect: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {ASPECT_OPTIONS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="sb-field">
+          <Label>尺寸</Label>
+          <Select value={cfg.size} onValueChange={(v) => patch({ size: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SIZE_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="sb-modal-foot">
+        <Button variant="outline" onClick={onCancel}>取消</Button>
+        <Button onClick={() => onConfirm(cfg)}>开始生成</Button>
+      </div>
+    </Modal>
   );
 }
 
@@ -146,86 +208,6 @@ export function ImportDialog({ open, onClose, actions, agentConfigId }) {
           {running ? <Loader2 className="sb-icon sb-spin" /> : <WandSparkles className="sb-icon" />}
           {running ? '生成中' : '生成并导入'}
         </Button>
-      </div>
-    </Modal>
-  );
-}
-
-// 设置对话框（provider/model/aspect/size/workflow）
-export function SettingsDialog({ open, onClose, settings, actions }) {
-  const {
-    Button, Label, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  } = window.AgentSpacesUI;
-
-  const [cfg, setCfg] = useState(settings || {});
-  useEffect(() => { if (open) setCfg(settings || {}); }, [open, settings]);
-
-  const patch = (p) => setCfg((prev) => ({ ...prev, ...p }));
-  const providerOpt = PROVIDER_OPTIONS.find((p) => p.value === cfg.provider) || PROVIDER_OPTIONS[0];
-
-  const onProviderChange = (v) => {
-    const opt = PROVIDER_OPTIONS.find((p) => p.value === v);
-    patch({ provider: v, model: opt?.models?.[0]?.value || '' });
-  };
-
-  const save = async () => {
-    await actions.saveSettings(cfg);
-    onClose();
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="生成设置" width={520}>
-      <div className="sb-grid-2">
-        <div className="sb-field">
-          <Label>提供商</Label>
-          <Select value={cfg.provider} onValueChange={onProviderChange}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PROVIDER_OPTIONS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="sb-field">
-          <Label>模型</Label>
-          <Select value={cfg.model} onValueChange={(v) => patch({ model: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {(providerOpt?.models || []).map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="sb-field">
-          <Label>比例</Label>
-          <Select value={cfg.aspect} onValueChange={(v) => patch({ aspect: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {ASPECT_OPTIONS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="sb-field">
-          <Label>尺寸</Label>
-          <Select value={cfg.size} onValueChange={(v) => patch({ size: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {SIZE_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="sb-field">
-        <Label>图片工作流 ID</Label>
-        <Input value={cfg.imageWorkflowId || ''} onChange={(e) => patch({ imageWorkflowId: e.target.value })} placeholder={DEFAULT_IMAGE_WORKFLOW_ID} />
-      </div>
-      <div className="sb-field">
-        <Label>视频工作流 ID</Label>
-        <Input value={cfg.videoWorkflowId || ''} onChange={(e) => patch({ videoWorkflowId: e.target.value })} placeholder={DEFAULT_VIDEO_WORKFLOW_ID} />
-      </div>
-
-      <div className="sb-modal-foot">
-        <Button variant="outline" onClick={onClose}>取消</Button>
-        <Button onClick={save}>保存</Button>
       </div>
     </Modal>
   );
