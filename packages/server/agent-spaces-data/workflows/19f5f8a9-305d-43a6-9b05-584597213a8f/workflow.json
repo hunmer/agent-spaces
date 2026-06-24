@@ -9,68 +9,48 @@
       "label": "开始",
       "position": {
         "x": 0,
-        "y": 375
+        "y": 542.5
       },
       "data": {
         "inputFields": [
           {
             "key": "images",
             "type": "string[]",
-            "value": "",
-            "description": "图片列表",
-            "children": []
+            "description": "图片列表"
           },
           {
             "key": "prompt",
             "type": "string",
-            "value": "",
             "description": "提示词",
-            "required": true,
-            "children": []
-          },
-          {
-            "key": "provider",
-            "type": "string",
-            "value": "",
-            "description": "提供商",
-            "required": true,
-            "children": []
+            "required": true
           },
           {
             "key": "model",
             "type": "string",
-            "value": "",
             "description": "模型名称",
-            "required": true,
-            "children": []
+            "required": true
           },
           {
             "key": "aspect",
             "type": "select",
-            "value": "",
             "required": true,
-            "inputMode": "native",
             "options": [
               "16:9",
               "9:16",
               "1:1",
               "4:3",
               "3:4"
-            ],
-            "children": []
+            ]
           },
           {
             "key": "size",
             "type": "select",
-            "value": "",
             "required": true,
-            "inputMode": "native",
             "options": [
               "1k",
               "2k",
               "4k"
-            ],
-            "children": []
+            ]
           }
         ]
       }
@@ -80,8 +60,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 60,
-        "y": 1080
+        "x": 990,
+        "y": 996
       },
       "data": {
         "outputs": [
@@ -100,40 +80,40 @@
       "type": "switch",
       "label": "nodes.switch.label",
       "position": {
-        "x": 0,
-        "y": 607.75
+        "x": 660,
+        "y": 503.5
       },
       "data": {
-        "sourceNodeId": "node_1781681640891_ouni81",
+        "sourceNodeId": "node_1782281779113_6rk17s",
         "sourceHandle": "source",
         "conditions": [
           {
             "id": "cond_1781686912427_7hb8",
-            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
-            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
             "operator": "equals",
-            "value": "keling"
+            "value": "case-0"
           },
           {
             "id": "cond_1782273364173_chpi",
-            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
-            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
             "operator": "equals",
-            "value": "qwen"
+            "value": "case-1"
           },
           {
             "id": "cond_1782281410888_ywvg",
-            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
-            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
             "operator": "equals",
-            "value": "jimeng"
+            "value": "case-2"
           },
           {
             "id": "cond_1782282908847_d6nx",
-            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
-            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
             "operator": "equals",
-            "value": "openai"
+            "value": "case-3"
           }
         ]
       }
@@ -143,8 +123,8 @@
       "type": "aliyun_kling_image_generation",
       "label": "可灵图像生成",
       "position": {
-        "x": 435,
-        "y": 420
+        "x": 990,
+        "y": 747
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -189,8 +169,8 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 855,
-        "y": 615
+        "x": 1320,
+        "y": 403.5
       },
       "data": {
         "strategy": "first_non_empty",
@@ -251,8 +231,8 @@
       "type": "end",
       "label": "nodes.end.label",
       "position": {
-        "x": 1185,
-        "y": 630
+        "x": 1650,
+        "y": 418
       },
       "data": {
         "outputs": [
@@ -270,8 +250,8 @@
       "type": "aliyun_image_edit",
       "label": "AI图像编辑",
       "position": {
-        "x": 435,
-        "y": 675
+        "x": 990,
+        "y": 518
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -315,8 +295,8 @@
       "type": "jimeng_image_to_image",
       "label": "AI图生图",
       "position": {
-        "x": 435,
-        "y": 960
+        "x": 990,
+        "y": 249
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -367,14 +347,21 @@
       "type": "run_code",
       "label": "nodes.run_code.label",
       "position": {
-        "x": 0,
-        "y": 488.75
+        "x": 330,
+        "y": 542.5
       },
       "data": {
-        "code": "async function main({ params }) {\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break \n    case '2k':\n      size = '2024*2024'\n      break \n  }\n  return {size}\n}",
+        "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  return {target}\n}",
         "sourceNodeId": "node_1781681576137_start",
         "sourceHandle": "source",
         "inputFields": [
+          {
+            "key": "model",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781681576137_start\"].model }}",
+            "required": true,
+            "children": []
+          },
           {
             "key": "size",
             "type": "string",
@@ -385,10 +372,12 @@
         ],
         "outputs": [
           {
+            "key": "target",
+            "type": "string"
+          },
+          {
             "key": "size",
-            "type": "string",
-            "value": "",
-            "children": []
+            "type": "string"
           }
         ]
       }
@@ -398,8 +387,8 @@
       "type": "ai_image_edit",
       "label": "AI图片编辑",
       "position": {
-        "x": 435,
-        "y": 1320
+        "x": 990,
+        "y": 0
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -521,7 +510,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1782283763379,
+  "updatedAt": 1782284486802,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -530,7 +519,7 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1782281352043,
+  "lastRunAt": 1782284501278,
   "groups": [],
   "description": "生成图片",
   "variables": []

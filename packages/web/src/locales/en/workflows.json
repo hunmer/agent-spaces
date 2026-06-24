@@ -338,6 +338,9 @@
   },
   "infoDialog": {
     "title": "Workflow Info",
+    "copyInfo": "Copy Info",
+    "copied": "Copied",
+    "copySuccess": "Workflow info copied",
     "untitled": "Untitled",
     "nameLabel": "Title",
     "namePlaceholder": "Enter workflow title",

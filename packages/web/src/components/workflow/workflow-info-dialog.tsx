@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { Check, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -14,13 +16,69 @@ import { Textarea } from '@/components/ui/textarea';
 import { TagInput } from '@/components/common/tag-input';
 import { AvatarUploader } from '@/components/common/avatar-uploader';
 import { Switch } from '@/components/ui/switch';
-import type { Workflow } from '@agent-spaces/shared';
+import { copyToClipboard } from '@/lib/utils';
+import type { OutputField, Workflow, WorkflowNode } from '@agent-spaces/shared';
 
 interface WorkflowInfoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workflow: Workflow | null;
   onSave: (updates: Partial<Workflow>) => void;
+}
+
+function formatField(field: OutputField, depth = 0): string[] {
+  const indent = '  '.repeat(depth);
+  const required = field.required ? 'required' : 'optional';
+  const description = field.description ? ` - ${field.description}` : '';
+  const lines = [`${indent}- ${field.key} (${field.type}, ${required})${description}`];
+
+  if (field.children?.length) {
+    for (const child of field.children) {
+      lines.push(...formatField(child, depth + 1));
+    }
+  }
+
+  return lines;
+}
+
+function formatNodeFields(nodes: WorkflowNode[], key: 'inputFields' | 'outputs', emptyText: string): string {
+  if (nodes.length === 0) return emptyText;
+
+  return nodes.map((node, index) => {
+    const fields = node[key] ?? [];
+    const header = `${index + 1}. ${node.label || node.id} (${node.id})`;
+    const body = fields.length > 0
+      ? formatFieldList(fields)
+      : emptyText;
+    return `${header}\n${body}`;
+  }).join('\n\n');
+}
+
+function formatFieldList(fields: OutputField[]): string {
+  if (fields.length === 0) return '无';
+  return fields.flatMap(field => formatField(field)).join('\n');
+}
+
+function buildWorkflowInfoText(workflow: Workflow, untitled: string): string {
+  const startNodes = workflow.nodes.filter(node => node.type === 'start');
+  const endNodes = workflow.nodes.filter(node => node.type === 'end');
+
+  return [
+    '【工作流路径】',
+    `/workflows/${workflow.id}`,
+    '',
+    '【工作流名称】',
+    workflow.name || untitled,
+    '',
+    '【注释】',
+    workflow.description?.trim() || '无',
+    '',
+    '【开始节点需要的参数】',
+    formatNodeFields(startNodes, 'inputFields', '无'),
+    '',
+    '【结束节点返回的参数】',
+    formatNodeFields(endNodes, 'outputs', '无'),
+  ].join('\n');
 }
 
 export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: WorkflowInfoDialogProps) {
@@ -31,6 +89,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [published, setPublished] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (workflow) {
@@ -45,6 +104,12 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
     }
   }, [workflow, open]);
 
+  useEffect(() => {
+    if (!copied) return undefined;
+    const timer = window.setTimeout(() => setCopied(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
   const handleSave = () => {
     onSave({
       name: name.trim() || t('untitled'),
@@ -56,11 +121,26 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
     onOpenChange(false);
   };
 
+  const handleCopyWorkflowInfo = async () => {
+    if (!workflow) return;
+    await copyToClipboard(buildWorkflowInfoText(workflow, t('untitled')));
+    setCopied(true);
+    toast.success(t('copySuccess'));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('title')}</DialogTitle>
+          <div className="flex items-center justify-between gap-3">
+            <DialogTitle>{t('title')}</DialogTitle>
+            {workflow && (
+              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={handleCopyWorkflowInfo}>
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? t('copied') : t('copyInfo')}
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
