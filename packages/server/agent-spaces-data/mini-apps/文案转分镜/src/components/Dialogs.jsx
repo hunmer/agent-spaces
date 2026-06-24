@@ -5,6 +5,8 @@ import {
   MODEL_OPTIONS,
   ASPECT_OPTIONS,
   SIZE_OPTIONS,
+  QUALITY_OPTIONS,
+  DURATION_OPTIONS,
   AGENT_INIT_NAME,
   AGENT_INIT_PROMPT,
 } from '../utils/constants.js';
@@ -60,7 +62,7 @@ export function AgentConfigButton({ agentConfigId, agentMeta, onConfigured }) {
 }
 
 // 生成参数对话框：每次生成前弹出，默认填入上次参数
-export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
+export function GenerateParamsDialog({ open, value, mode, onConfirm, onCancel }) {
   const { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } = window.AgentSpacesUI;
 
   const [cfg, setCfg] = useState(value || {});
@@ -106,14 +108,25 @@ export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
           </Select>
         </div>
         <div className="sb-field">
-          <Label>尺寸</Label>
-          <Select value={cfg.size} onValueChange={(v) => patch({ size: v })}>
+          <Label>{mode === 'video' ? '画质' : '尺寸'}</Label>
+          <Select value={mode === 'video' ? cfg.quality : cfg.size} onValueChange={(v) => patch(mode === 'video' ? { quality: v } : { size: v })}>
             <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {SIZE_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {(mode === 'video' ? QUALITY_OPTIONS : SIZE_OPTIONS).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
+        {mode === 'video' && (
+          <div className="sb-field">
+            <Label>时长</Label>
+            <Select value={cfg.duration} onValueChange={(v) => patch({ duration: v })}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {DURATION_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="sb-modal-foot">

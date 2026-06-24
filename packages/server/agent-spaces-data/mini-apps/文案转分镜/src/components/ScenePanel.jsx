@@ -60,7 +60,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
 
   const generateImage = async () => {
     if (!draft.visualPrompt?.trim()) { setError('请填写画面提示词'); return; }
-    const params = await requestParams();
+    const params = await requestParams('image');
     if (!params) return;
     setError(''); setImgRunning(true);
     try {
@@ -69,10 +69,15 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
         .map((cid) => characters.find((x) => x.id === cid)?.prompt)
         .filter(Boolean).join('; ');
       const prompt = [charPrompt, draft.visualPrompt].filter(Boolean).join('\n');
+      const hasRefImages = images.length > 0;
       const urls = await runGeneration({
         kind: 'image',
-        workflowId: settings.imageWorkflowId,
-        input: { images, prompt, model: params.model, aspect: params.aspect, size: params.size },
+        workflowId: hasRefImages
+          ? (settings.editImageWorkflowId || settings.imageWorkflowId)
+          : (settings.textToImageWorkflowId || settings.imageWorkflowId),
+        input: hasRefImages
+          ? { images, prompt, model: params.model, aspect: params.aspect, size: params.size }
+          : { prompt, model: params.model, aspect: params.aspect, size: params.size },
         label: `分镜 ${index} 生图`,
       });
       await actions.addSceneMedia(draft.id, 'image', urls);
@@ -82,7 +87,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
 
   const generateVideo = async () => {
     if (!draft.animationPrompt?.trim()) { setError('请填写动画提示词'); return; }
-    const params = await requestParams();
+    const params = await requestParams('video');
     if (!params) return;
     setError(''); setVidRunning(true);
     try {
@@ -91,7 +96,14 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
       const urls = await runGeneration({
         kind: 'video',
         workflowId: settings.videoWorkflowId,
-        input: { images, prompt: draft.animationPrompt, provider: params.provider, model: params.model, aspect: params.aspect, size: params.size },
+        input: {
+          images,
+          prompt: draft.animationPrompt,
+          model: params.model,
+          aspect: params.aspect,
+          quality: params.quality,
+          duration: params.duration,
+        },
         label: `分镜 ${index} 生视频`,
       });
       await actions.addSceneMedia(draft.id, 'video', urls);

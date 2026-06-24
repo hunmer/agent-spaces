@@ -4,7 +4,8 @@
 
 const DATA_PATH = 'data.json';
 
-const DEFAULT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
+const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID = 'd88dcb7c-7f5f-47c8-962c-89217a2c0ad6';
+const DEFAULT_EDIT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
 const DEFAULT_VIDEO_WORKFLOW_ID = '5130958f-a78e-4c36-8f03-1f2f733b87d7';
 
 function defaultData() {
@@ -13,14 +14,20 @@ function defaultData() {
     activeProjectId: '',
     projects: [],
     settings: {
-      imageWorkflowId: DEFAULT_IMAGE_WORKFLOW_ID,
-      imageWorkflowName: 'image_generator',
+      imageWorkflowId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
+      imageWorkflowName: 'edit_image',
+      textToImageWorkflowId: DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID,
+      textToImageWorkflowName: 'text_to_image',
+      editImageWorkflowId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
+      editImageWorkflowName: 'edit_image',
       videoWorkflowId: DEFAULT_VIDEO_WORKFLOW_ID,
       videoWorkflowName: 'video_generator',
       provider: 'keling',
       model: 'kling/kling-v3-image-generation',
       aspect: '16:9',
       size: '1k',
+      quality: '720',
+      duration: '5',
     },
   };
 }

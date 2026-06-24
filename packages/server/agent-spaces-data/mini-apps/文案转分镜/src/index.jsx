@@ -116,9 +116,11 @@ function App() {
   // 生成参数对话框（每次生成前弹出，默认填上次参数）
   const resolverRef = React.useRef(null);
   const [genOpen, setGenOpen] = React.useState(false);
+  const [genMode, setGenMode] = React.useState('image');
   const [genValue, setGenValue] = React.useState(cfg);
 
-  const requestParams = React.useCallback(() => {
+  const requestParams = React.useCallback((mode = 'image') => {
+    setGenMode(mode);
     setGenValue({ ...DEFAULT_SETTINGS, ...(settings || {}) });
     setGenOpen(true);
     return new Promise((resolve) => { resolverRef.current = resolve; });
@@ -211,6 +213,7 @@ function App() {
       <GenerateParamsDialog
         open={genOpen}
         value={genValue}
+        mode={genMode}
         onConfirm={onParamsConfirm}
         onCancel={onParamsCancel}
       />

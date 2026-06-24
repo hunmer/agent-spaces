@@ -64,15 +64,14 @@ export default function CharacterPanel({ project, actions, settings, requestPara
   // 一键生成角色图片：用角色 prompt 调图片工作流，结果追加进该角色图片列表
   const generateCharImage = async (char) => {
     if (!char?.prompt?.trim()) { window.alert?.('请先填写该角色的提示词'); return; }
-    const params = await requestParams();
+    const params = await requestParams('image');
     if (!params) return;
     setGenRunningId(char.id);
     try {
       const urls = await runGeneration({
         kind: 'image',
-        workflowId: settings.imageWorkflowId,
+        workflowId: settings.textToImageWorkflowId || settings.imageWorkflowId,
         input: {
-          images: [],
           prompt: char.prompt,
           model: params.model,
           aspect: params.aspect,

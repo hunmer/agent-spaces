@@ -81,7 +81,7 @@
       "label": "nodes.switch.label",
       "position": {
         "x": 660,
-        "y": 503.5
+        "y": 510
       },
       "data": {
         "sourceNodeId": "node_1782281779113_6rk17s",
@@ -510,7 +510,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1782292958240,
+  "updatedAt": 1782294992193,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",

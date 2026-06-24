@@ -4,9 +4,11 @@
 export const DATA_PATH = 'data.json';
 
 // 目标工作流（用户指定）
-export const DEFAULT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
+export const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID = 'd88dcb7c-7f5f-47c8-962c-89217a2c0ad6';
+export const DEFAULT_EDIT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
 export const DEFAULT_VIDEO_WORKFLOW_ID = '5130958f-a78e-4c36-8f03-1f2f733b87d7';
-export const DEFAULT_IMAGE_WORKFLOW_NAME = 'image_generator';
+export const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_NAME = 'text_to_image';
+export const DEFAULT_EDIT_IMAGE_WORKFLOW_NAME = 'edit_image';
 export const DEFAULT_VIDEO_WORKFLOW_NAME = 'video_generator';
 
 // 图片模型选项（按最新 image_generator 工作流整理）
@@ -64,16 +66,25 @@ export const MODEL_OPTIONS = PROVIDER_OPTIONS.flatMap((provider) =>
 
 export const ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4'];
 export const SIZE_OPTIONS = ['1k', '2k', '4k'];
+export const QUALITY_OPTIONS = ['720', '1080'];
+export const DURATION_OPTIONS = ['5', '10'];
 
 export const DEFAULT_SETTINGS = {
-  imageWorkflowId: DEFAULT_IMAGE_WORKFLOW_ID,
-  imageWorkflowName: DEFAULT_IMAGE_WORKFLOW_NAME,
+  // Legacy keys remain for compatibility with existing persisted settings.
+  imageWorkflowId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
+  imageWorkflowName: DEFAULT_EDIT_IMAGE_WORKFLOW_NAME,
+  textToImageWorkflowId: DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID,
+  textToImageWorkflowName: DEFAULT_TEXT_TO_IMAGE_WORKFLOW_NAME,
+  editImageWorkflowId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
+  editImageWorkflowName: DEFAULT_EDIT_IMAGE_WORKFLOW_NAME,
   videoWorkflowId: DEFAULT_VIDEO_WORKFLOW_ID,
   videoWorkflowName: DEFAULT_VIDEO_WORKFLOW_NAME,
   provider: 'keling',
   model: 'kling/kling-v3-image-generation',
   aspect: '16:9',
   size: '1k',
+  quality: '720',
+  duration: '5',
 };
 
 // 内置插件
