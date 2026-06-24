@@ -16,8 +16,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { TagInput } from '@/components/common/tag-input';
 import { AvatarUploader } from '@/components/common/avatar-uploader';
 import { Switch } from '@/components/ui/switch';
+import { workflowFolderApi } from '@/lib/workflow-api';
 import { copyToClipboard } from '@/lib/utils';
-import type { OutputField, Workflow, WorkflowNode } from '@agent-spaces/shared';
+import type { Workflow, WorkflowFolder, WorkflowNode } from '@agent-spaces/shared';
 
 interface WorkflowInfoDialogProps {
   open: boolean;
@@ -26,58 +27,58 @@ interface WorkflowInfoDialogProps {
   onSave: (updates: Partial<Workflow>) => void;
 }
 
-function formatField(field: OutputField, depth = 0): string[] {
-  const indent = '  '.repeat(depth);
-  const required = field.required ? 'required' : 'optional';
-  const description = field.description ? ` - ${field.description}` : '';
-  const lines = [`${indent}- ${field.key} (${field.type}, ${required})${description}`];
+function buildWorkflowFolderPath(
+  folders: WorkflowFolder[],
+  folderId: string | null | undefined,
+  workflowName: string,
+): string {
+  const folderMap = new Map(folders.map(folder => [folder.id, folder]));
+  const segments: string[] = [workflowName];
+  const visited = new Set<string>();
+  let currentId = folderId ?? null;
 
-  if (field.children?.length) {
-    for (const child of field.children) {
-      lines.push(...formatField(child, depth + 1));
-    }
+  while (currentId) {
+    if (visited.has(currentId)) break;
+    visited.add(currentId);
+    const folder = folderMap.get(currentId);
+    if (!folder) break;
+    segments.unshift(folder.name);
+    currentId = folder.parentId;
   }
 
-  return lines;
+  return `/${segments.join('/')}`;
 }
 
-function formatNodeFields(nodes: WorkflowNode[], key: 'inputFields' | 'outputs', emptyText: string): string {
-  if (nodes.length === 0) return emptyText;
-
-  return nodes.map((node, index) => {
-    const fields = node[key] ?? [];
-    const header = `${index + 1}. ${node.label || node.id} (${node.id})`;
-    const body = fields.length > 0
-      ? formatFieldList(fields)
-      : emptyText;
-    return `${header}\n${body}`;
-  }).join('\n\n');
+function formatNodeJson(nodes: WorkflowNode[]): string {
+  if (nodes.length === 0) return '[]';
+  return JSON.stringify(
+    nodes.map(({ position: _position, ...node }) => node),
+    null,
+    2,
+  );
 }
 
-function formatFieldList(fields: OutputField[]): string {
-  if (fields.length === 0) return '无';
-  return fields.flatMap(field => formatField(field)).join('\n');
-}
-
-function buildWorkflowInfoText(workflow: Workflow, untitled: string): string {
+function buildWorkflowInfoText(workflow: Workflow, untitled: string, folders: WorkflowFolder[]): string {
   const startNodes = workflow.nodes.filter(node => node.type === 'start');
   const endNodes = workflow.nodes.filter(node => node.type === 'end');
+  const workflowName = workflow.name || untitled;
+  const workflowPath = buildWorkflowFolderPath(folders, workflow.folderId, workflowName);
 
   return [
     '【工作流路径】',
-    `/workflows/${workflow.id}`,
+    workflowPath,
     '',
     '【工作流名称】',
-    workflow.name || untitled,
+    workflowName,
     '',
     '【注释】',
     workflow.description?.trim() || '无',
     '',
     '【开始节点需要的参数】',
-    formatNodeFields(startNodes, 'inputFields', '无'),
+    formatNodeJson(startNodes),
     '',
     '【结束节点返回的参数】',
-    formatNodeFields(endNodes, 'outputs', '无'),
+    formatNodeJson(endNodes),
   ].join('\n');
 }
 
@@ -90,6 +91,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
   const [tags, setTags] = useState<string[]>([]);
   const [published, setPublished] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [folders, setFolders] = useState<WorkflowFolder[]>([]);
 
   useEffect(() => {
     if (workflow) {
@@ -110,6 +112,23 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
     return () => window.clearTimeout(timer);
   }, [copied]);
 
+  useEffect(() => {
+    if (!open || !workflow) return undefined;
+
+    let cancelled = false;
+    workflowFolderApi.list()
+      .then((nextFolders) => {
+        if (!cancelled) setFolders(nextFolders);
+      })
+      .catch(() => {
+        if (!cancelled) setFolders([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, workflow]);
+
   const handleSave = () => {
     onSave({
       name: name.trim() || t('untitled'),
@@ -123,9 +142,13 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
 
   const handleCopyWorkflowInfo = async () => {
     if (!workflow) return;
-    await copyToClipboard(buildWorkflowInfoText(workflow, t('untitled')));
-    setCopied(true);
-    toast.success(t('copySuccess'));
+    try {
+      await copyToClipboard(buildWorkflowInfoText(workflow, t('untitled'), folders));
+      setCopied(true);
+      toast.success(t('copySuccess'));
+    } catch {
+      toast.error(t('copyFailed'));
+    }
   };
 
   return (
@@ -135,7 +158,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
           <div className="flex items-center justify-between gap-3">
             <DialogTitle>{t('title')}</DialogTitle>
             {workflow && (
-              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={handleCopyWorkflowInfo}>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 me-5" onClick={handleCopyWorkflowInfo}>
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {copied ? t('copied') : t('copyInfo')}
               </Button>

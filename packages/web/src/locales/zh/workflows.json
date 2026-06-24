@@ -341,6 +341,7 @@
     "copyInfo": "复制工作流信息",
     "copied": "已复制",
     "copySuccess": "工作流信息已复制",
+    "copyFailed": "复制工作流信息失败",
     "untitled": "未命名",
     "nameLabel": "标题",
     "namePlaceholder": "输入工作流标题",

@@ -341,6 +341,7 @@
     "copyInfo": "Copy Info",
     "copied": "Copied",
     "copySuccess": "Workflow info copied",
+    "copyFailed": "Failed to copy workflow info",
     "untitled": "Untitled",
     "nameLabel": "Title",
     "namePlaceholder": "Enter workflow title",
