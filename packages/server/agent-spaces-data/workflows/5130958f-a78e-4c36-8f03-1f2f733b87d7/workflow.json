@@ -132,8 +132,8 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 1500,
-        "y": 90
+        "x": 1620,
+        "y": -17
       },
       "data": {
         "strategy": "first_non_empty",
@@ -182,7 +182,7 @@
       "label": "nodes.end.label",
       "position": {
         "x": 1800,
-        "y": 90
+        "y": 122
       },
       "data": {
         "outputs": [
@@ -201,7 +201,7 @@
       "label": "AI视频生成",
       "position": {
         "x": 1200,
-        "y": 189.5
+        "y": 255.10980224609375
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -248,7 +248,7 @@
       "label": "万相图生视频(2.7)",
       "position": {
         "x": 1200,
-        "y": -9.5
+        "y": -36.89453125
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -389,13 +389,6 @@
       "target": "node_1782291911473_of3iac"
     },
     {
-      "id": "e-node_1782291057464_2sx2fe-source-node_1782272119586_dim19h-target",
-      "source": "node_1782291057464_2sx2fe",
-      "target": "node_1782272119586_dim19h",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
-    {
       "id": "e-node_1781681576137_start-node_1782293130533_309iyn-mqrvbil1",
       "source": "node_1781681576137_start",
       "target": "node_1782293130533_309iyn",
@@ -408,10 +401,17 @@
       "target": "node_1781686908308_6flfam",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782291057464_2sx2fe-source-node_1782272119586_dim19h-target",
+      "source": "node_1782291057464_2sx2fe",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782275955731,
-  "updatedAt": 1782293410193,
+  "updatedAt": 1782294474480,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -419,7 +419,7 @@
     "workflow.aliyun-ai",
     "workflow.jimeng"
   ],
-  "lastRunAt": 1782273803016,
+  "lastRunAt": 1782294191920,
   "groups": [],
   "description": "生成视频",
   "variables": []

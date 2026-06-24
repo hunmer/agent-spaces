@@ -173,7 +173,7 @@ module.exports = (t) => [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', dataType: 'object', children: [
-        { key: 'videos', type: 'video[]' },
+        { key: 'video', type: 'video' },
         { key: 'created', type: 'number', dataType: 'number' },
       ] },
     ],
@@ -193,8 +193,9 @@ module.exports = (t) => [
       if (body.filePaths) ctx.logger.info(`输入图片: ${body.filePaths.length} 张`)
       const result = await ctx.api.postJson(`${baseUrl}/v1/videos/generations`, { headers, body, timeout: 600000 })
       const urls = result.data?.map(d => d.url) || []
-      ctx.logger.info(`视频生成完成，共 ${urls.length} 个视频`)
-      return { success: true, message: t('message.videoGenerated', 'Video generation completed'), data: { videos: urls, created: result.created } }
+      const video = urls[0]
+      ctx.logger.info(`视频生成完成，共 ${urls.length} 个视频，取第 1 个`)
+      return { success: true, message: t('message.videoGenerated', 'Video generation completed'), data: { video, created: result.created } }
     },
   },
 ]
