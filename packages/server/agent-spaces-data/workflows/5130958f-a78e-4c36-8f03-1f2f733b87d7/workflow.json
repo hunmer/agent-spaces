@@ -1,0 +1,348 @@
+{
+  "id": "5130958f-a78e-4c36-8f03-1f2f733b87d7",
+  "name": "video_generator",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781681576137_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 0,
+        "y": 375
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "images",
+            "type": "string[]",
+            "value": "",
+            "description": "图片列表",
+            "children": []
+          },
+          {
+            "key": "prompt",
+            "type": "string",
+            "value": "",
+            "description": "提示词",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "provider",
+            "type": "string",
+            "value": "",
+            "description": "提供商",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "model",
+            "type": "string",
+            "value": "",
+            "description": "模型名称",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "aspect",
+            "type": "select",
+            "value": "",
+            "required": true,
+            "inputMode": "native",
+            "options": [
+              "16:9",
+              "9:16",
+              "1:1",
+              "4:3",
+              "3:4"
+            ],
+            "children": []
+          },
+          {
+            "key": "size",
+            "type": "select",
+            "value": "",
+            "required": true,
+            "inputMode": "native",
+            "options": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1781681576137_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 60,
+        "y": 1080
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "error",
+            "type": "string",
+            "value": "错误的提供商",
+            "children": []
+          }
+        ],
+        "outputPreviewEnabled": true
+      }
+    },
+    {
+      "id": "node_1781686908308_6flfam",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 0,
+        "y": 606
+      },
+      "data": {
+        "sourceNodeId": "node_1781681640891_ouni81",
+        "sourceHandle": "source",
+        "conditions": [
+          {
+            "id": "cond_1781686912427_7hb8",
+            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "operator": "equals",
+            "value": "keling"
+          },
+          {
+            "id": "cond_1782273364173_chpi",
+            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "operator": "equals",
+            "value": "qwen"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782272004979_7i96r6",
+      "type": "aliyun_kling_image_generation",
+      "label": "可灵图像生成",
+      "position": {
+        "x": 435,
+        "y": 420
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "model": "{{ __data__[\"node_1781681576137_start\"].model }}",
+        "aspectRatio": "{{ __data__[\"node_1781681576137_start\"].aspect }}",
+        "resolution": "{{ __data__[\"node_1781681576137_start\"].size }}",
+        "n": 1,
+        "resultType": "single",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "requestId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-0",
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "images": "{{ __data__[\"node_1781681576137_start\"].images }}"
+      }
+    },
+    {
+      "id": "node_1782272119586_dim19h",
+      "type": "variable_aggregate",
+      "label": "nodes.variable_aggregate.label",
+      "position": {
+        "x": 450,
+        "y": 870
+      },
+      "data": {
+        "strategy": "first_non_empty",
+        "groups": [
+          {
+            "key": "images",
+            "variables": [
+              {
+                "key": "",
+                "type": "any",
+                "value": "{{ __data__[\"node_1782272004979_7i96r6\"].data.images }}",
+                "inputMode": "variable",
+                "children": []
+              },
+              {
+                "key": "",
+                "type": "any",
+                "value": "{{ __data__[\"node_1782273534381_i64jku\"].data.images }}",
+                "inputMode": "variable",
+                "children": []
+              }
+            ],
+            "id": 1782272122681
+          }
+        ],
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "string[]",
+                "value": ""
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1782272004979_7i96r6",
+        "sourceHandle": "source"
+      }
+    },
+    {
+      "id": "node_1782272191524_rvv1lk",
+      "type": "end",
+      "label": "nodes.end.label",
+      "position": {
+        "x": 630,
+        "y": 1125
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string[]",
+            "value": "{{ __data__[\"node_1782272119586_dim19h\"].result.images }}",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782273534381_i64jku",
+      "type": "aliyun_image_edit",
+      "label": "AI图像编辑",
+      "position": {
+        "x": 435,
+        "y": 675
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
+        "model": "{{ __data__[\"node_1781681576137_start\"].model }}",
+        "size": "2048*2048",
+        "n": 1,
+        "promptExtend": "true",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "object",
+                "children": []
+              },
+              {
+                "key": "requestId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-1",
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "images": "{{ __data__[\"node_1781681576137_start\"].images }}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781686908308_6flfam-default-node_1781681576137_end-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1781681576137_end",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1781686908308_6flfam-target",
+      "source": "node_1781681576137_start",
+      "target": "node_1781686908308_6flfam",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-case-0-node_1782272004979_7i96r6-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1782272004979_7i96r6",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1782272004979_7i96r6-source-node_1782272119586_dim19h-target",
+      "source": "node_1782272004979_7i96r6",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782272119586_dim19h-source-node_1782272191524_rvv1lk-target",
+      "source": "node_1782272119586_dim19h",
+      "target": "node_1782272191524_rvv1lk",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-case-1-node_1782273534381_i64jku-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1782273534381_i64jku",
+      "sourceHandle": "case-1"
+    },
+    {
+      "id": "e-node_1782273534381_i64jku-source-node_1782272119586_dim19h-target",
+      "source": "node_1782273534381_i64jku",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1782275955731,
+  "updatedAt": 1782275970174,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.openai",
+    "workflow.tencent-cos",
+    "workflow.aliyun-ai",
+    "workflow.jimeng"
+  ],
+  "lastRunAt": 1782273803016,
+  "groups": [],
+  "description": "生成视频",
+  "variables": []
+}

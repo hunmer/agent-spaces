@@ -775,8 +775,9 @@ export class ExecutionManager {
     }
 
     const dryRunInput = this.getDryRunNodeValue(session, 'inputs', node.id);
+    const strictDataReferences = node.type !== 'variable_aggregate';
     const resolvedData = this.applyDryRunInput(
-      this.resolveContextVariables(session, { ...node.data }),
+      this.resolveContextVariables(session, { ...node.data }, { strictDataReferences }),
       dryRunInput,
     );
     const stepInput = dryRunInput ?? getStepInput(node, resolvedData);

@@ -26,7 +26,11 @@
   ],
   "edges": [],
   "createdAt": 1782268403696,
-  "updatedAt": 1782269316192,
+  "updatedAt": 1782269570182,
   "published": false,
-  "enabledPlugins": []
+  "enabledPlugins": [
+    "workflow.mira-sdk",
+    "workflow.mail"
+  ],
+  "groups": []
 }
