@@ -887,6 +887,7 @@ export function WorkflowCanvas({
         minZoom={0.2}
         maxZoom={4}
         deleteKeyCode={null}
+        panActivationKeyCode={null}
         nodesDraggable={!isCanvasLocked}
         nodesConnectable={!isCanvasLocked}
         edgesReconnectable={!isCanvasLocked}

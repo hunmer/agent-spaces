@@ -54,6 +54,7 @@ const NODE_VARIABLE_PATTERN = /^__(?:data|inputs)__\["([^"]+)"\]\.?(.*)$/;
 const CONFIG_VARIABLE_PATTERN = /^__config__\["([^"]+)"\]\["([^"]+)"\]$/;
 const LOOP_VARIABLE_PATTERN = /^__loop__\.?(.*)$/;
 const VARIABLE_TOKEN_PATTERN = /\{\{\s*[^{}]+?\s*\}\}/g;
+const variableHighlightPluginKey = new PluginKey('workflowVariableHighlight');
 const variableSuggestionPluginKey = new PluginKey('workflowVariableSuggestion');
 
 function getVariableExpression(value: string | number): string | null {
@@ -320,6 +321,9 @@ function normalizeTypeFilter(typeFilter: OutputField['type'] | OutputField['type
 function matchesTypeFilter(fieldType: OutputField['type'] | PluginConfigField['type'] | undefined, typeFilter: OutputField['type'][]): boolean {
   if (!typeFilter.length || !fieldType) return true;
   if (fieldType === 'any' || typeFilter.includes('any')) return true;
+  const isStringLikeField = fieldType === 'string' || fieldType === 'select';
+  const acceptsStringLike = typeFilter.includes('string') || typeFilter.includes('select');
+  if (isStringLikeField && acceptsStringLike) return true;
   return typeFilter.includes(fieldType as OutputField['type']);
 }
 
@@ -488,7 +492,7 @@ function createVariableHighlightExtension(getVariableItems: () => VariableSugges
     addProseMirrorPlugins() {
       return [
         new Plugin({
-          key: new PluginKey('workflowVariableHighlight'),
+          key: variableHighlightPluginKey,
           props: {
             decorations(state) {
               const decorations: Decoration[] = [];
@@ -839,6 +843,9 @@ function WorkflowVariableTiptapInput({
   onFocus: () => void;
   onBlur: () => void;
 }) {
+  const variableItemsRef = useRef(variableItems);
+  const getVariableItems = useCallback(() => variableItemsRef.current, []);
+
   const extensions = useMemo(() => [
     StarterKit.configure({
       heading: false,
@@ -848,9 +855,9 @@ function WorkflowVariableTiptapInput({
       codeBlock: false,
       horizontalRule: false,
     }),
-    createVariableHighlightExtension(() => variableItems),
-    createVariableSuggestionExtension(() => variableItems),
-  ], [variableItems]);
+    createVariableHighlightExtension(getVariableItems),
+    createVariableSuggestionExtension(getVariableItems),
+  ], [getVariableItems]);
 
   const editor = useEditor({
     extensions,
@@ -868,6 +875,12 @@ function WorkflowVariableTiptapInput({
     onFocus,
     onBlur,
   });
+
+  useEffect(() => {
+    variableItemsRef.current = variableItems;
+    if (!editor) return;
+    editor.view.dispatch(editor.state.tr.setMeta(variableHighlightPluginKey, { refreshedAt: Date.now() }));
+  }, [editor, variableItems]);
 
   useEffect(() => {
     editor?.setEditable(!readOnly);
