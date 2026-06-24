@@ -304,4 +304,49 @@ module.exports = (t) => [
       return { success: true, message: t('message.fileCopied', 'File copied: {src} -> {dest}').replace('{src}', args.src).replace('{dest}', args.dest), data: { src: args.src, dest: args.dest } }
     },
   },
+  {
+    name: 'get_file_hash',
+    label: t('action.get_file_hash.label', 'Get File Hash'),
+    category: t('category', 'File Operations'),
+    icon: 'Fingerprint',
+    description: t('action.get_file_hash.description', 'Compute a hash/checksum of a file (md5, sha1, sha256, sha512) as its unique identifier'),
+    properties: [
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'algorithm', label: t('field.algorithm.label', 'Algorithm'), type: 'select', dataType: 'string', default: 'sha256', options: [
+        { label: 'MD5', value: 'md5' },
+        { label: 'SHA-1', value: 'sha1' },
+        { label: 'SHA-256', value: 'sha256' },
+        { label: 'SHA-512', value: 'sha512' },
+      ], tooltip: t('field.algorithm.tooltip', 'Hash algorithm') },
+      { key: 'encoding', label: t('field.hash_encoding.label', 'Digest Encoding'), type: 'select', dataType: 'string', default: 'hex', options: [
+        { label: 'Hex', value: 'hex' },
+        { label: 'Base64', value: 'base64' },
+      ], tooltip: t('field.hash_encoding.tooltip', 'Output digest encoding format') },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'hash', type: 'string' },
+        { key: 'algorithm', type: 'string' },
+        { key: 'encoding', type: 'string' },
+        { key: 'path', type: 'string' },
+      ] },
+    ],
+    run: async (ctx, args) => {
+      const crypto = require('node:crypto')
+      const fs = require('node:fs')
+      const algorithm = String(args.algorithm || 'sha256').toLowerCase()
+      const encoding = String(args.encoding || 'hex').toLowerCase()
+      const hash = crypto.createHash(algorithm)
+      await new Promise((resolve, reject) => {
+        const stream = fs.createReadStream(args.path)
+        stream.on('data', (chunk) => hash.update(chunk))
+        stream.on('end', resolve)
+        stream.on('error', reject)
+      })
+      const digest = hash.digest(encoding)
+      return { success: true, message: t('message.fileHashComputed', 'Hash computed ({algorithm}): {hash}').replace('{algorithm}', algorithm).replace('{hash}', digest), data: { hash: digest, algorithm, encoding, path: args.path } }
+    },
+  },
 ]

@@ -83,7 +83,14 @@
     "message.dirDeleted": "目录已删除: {path}",
     "message.statRetrieved": "文件信息已获取",
     "message.renamed": "已重命名: {oldPath} → {newPath}",
-    "message.fileCopied": "文件已复制: {src} → {dest}"
+    "message.fileCopied": "文件已复制: {src} → {dest}",
+    "action.get_file_hash.label": "获取文件哈希",
+    "action.get_file_hash.description": "计算文件的哈希/校验和（md5、sha1、sha256、sha512）作为文件唯一标识",
+    "field.algorithm.label": "哈希算法",
+    "field.algorithm.tooltip": "哈希算法，默认 sha256",
+    "field.hash_encoding.label": "输出编码",
+    "field.hash_encoding.tooltip": "摘要输出编码格式，默认 hex",
+    "message.fileHashComputed": "哈希已计算（{algorithm}）: {hash}"
   },
   "en": {
     "category": "File Operations",
@@ -169,6 +176,13 @@
     "message.dirDeleted": "Directory removed: {path}",
     "message.statRetrieved": "File info retrieved",
     "message.renamed": "Renamed: {oldPath} -> {newPath}",
-    "message.fileCopied": "File copied: {src} -> {dest}"
+    "message.fileCopied": "File copied: {src} -> {dest}",
+    "action.get_file_hash.label": "Get File Hash",
+    "action.get_file_hash.description": "Compute a hash/checksum of a file (md5, sha1, sha256, sha512) as its unique identifier",
+    "field.algorithm.label": "Algorithm",
+    "field.algorithm.tooltip": "Hash algorithm, default sha256",
+    "field.hash_encoding.label": "Digest Encoding",
+    "field.hash_encoding.tooltip": "Output digest encoding format, default hex",
+    "message.fileHashComputed": "Hash computed ({algorithm}): {hash}"
   }
 }

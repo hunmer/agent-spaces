@@ -241,7 +241,7 @@ module.exports = (t) => {
     { key: 'success', type: 'boolean', dataType: 'boolean' },
     { key: 'message', type: 'string' },
     { key: 'data', type: 'object', dataType: 'object', children: [
-      { key: 'images', type: 'object', dataType: 'object', children: [] },
+      { key: 'images', type: 'object', dataType: 'image[]', children: [] },
       { key: 'requestId', type: 'string' },
     ] },
   ]

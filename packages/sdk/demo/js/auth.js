@@ -15,7 +15,6 @@ function refreshBadge() {
 $('#btn-login').addEventListener('click', (e) =>
   run(e.target, $('#out-login'), async () => {
     const secret = $('#in-secret').value.trim();
-    if (!secret) throw new Error('请输入 secret key');
     const { token } = await sdk().auth.login(secret);
     store.setToken(token);
     refreshBadge();

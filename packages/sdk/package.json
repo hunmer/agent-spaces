@@ -14,7 +14,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/fix-esm-extensions.mjs",
     "dev": "tsc --watch"
   },
   "dependencies": {

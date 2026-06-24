@@ -46,7 +46,6 @@ const loginBtn = $('#login-btn');
 const loginOut = $('#login-out');
 $('#login-btn').addEventListener('click', async (e) => {
   const secret = $('#login-secret').value.trim();
-  if (!secret) { loginOut.textContent = '请输入 secret key'; return; }
   await run(loginBtn, loginOut, async () => {
     const { token } = await sdk().auth.login(secret);
     store.setToken(token);

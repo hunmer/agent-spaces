@@ -3,7 +3,7 @@
 // 合并自: tools.js, workflow.js
 // ============================================================
 
-const { createClient, getBucketParams, getPublicUrl } = require('./shared')
+const { createClient, getBucketParams, getPublicUrl, normalizeLocation } = require('./shared')
 
 const CONFIG_PREFIX = '{{ __config__["workflow.tencent-cos"]'
 
@@ -57,7 +57,7 @@ module.exports = (t) => {
       return {
         success: true,
         message: t('message.uploadSuccess', 'File uploaded: {key}').replace('{key}', args.key),
-        data: { Key: result.Key || args.key, ETag: result.ETag, Location: result.Location, url },
+        data: { Key: result.Key || args.key, ETag: result.ETag, Location: normalizeLocation(result.Location), url },
       }
     },
   },
@@ -99,7 +99,7 @@ module.exports = (t) => {
       return {
         success: true,
         message: t('message.contentUploaded', 'Content uploaded: {key}').replace('{key}', args.key),
-        data: { Key: result.Key || args.key, ETag: result.ETag, Location: result.Location },
+        data: { Key: result.Key || args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) },
       }
     },
   },
@@ -143,7 +143,7 @@ module.exports = (t) => {
       return {
         success: true,
         message: t('message.bufferUploaded', 'Binary uploaded: {key}').replace('{key}', args.key),
-        data: { Key: result.Key || args.key, ETag: result.ETag, Location: result.Location },
+        data: { Key: result.Key || args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) },
       }
     },
   },
@@ -186,7 +186,7 @@ module.exports = (t) => {
       if (!args.key) return { success: false, message: t('message.missingKey', 'Missing key') }
       if (args.filePath) {
         const result = await cos.sliceUploadFile({ ...base, Key: args.key, FilePath: args.filePath })
-        return { success: true, message: t('message.uploadOk', 'Upload succeeded: {key}').replace('{key}', args.key), data: { Key: args.key, ETag: result.ETag, Location: result.Location } }
+        return { success: true, message: t('message.uploadOk', 'Upload succeeded: {key}').replace('{key}', args.key), data: { Key: args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) } }
       }
       const params = { ...base, Key: args.key }
       if (args.content) {
@@ -200,7 +200,7 @@ module.exports = (t) => {
       }
       if (args.contentType) params.ContentType = args.contentType
       const result = await cos.putObject(params)
-      return { success: true, message: t('message.uploadOk', 'Upload succeeded: {key}').replace('{key}', args.key), data: { Key: args.key, ETag: result.ETag, Location: result.Location } }
+      return { success: true, message: t('message.uploadOk', 'Upload succeeded: {key}').replace('{key}', args.key), data: { Key: args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) } }
     },
   },
 
