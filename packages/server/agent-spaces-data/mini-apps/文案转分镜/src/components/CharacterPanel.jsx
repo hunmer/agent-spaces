@@ -13,7 +13,7 @@ function sameChar(a, b) {
 }
 
 export default function CharacterPanel({ project, actions, settings, requestParams }) {
-  const { Button, Input, Label, Textarea, FileUpload, Badge, Trash2, Plus, User, Star, Loader2, WandSparkles } = window.AgentSpacesUI;
+  const { Button, Input, Label, Textarea, FileUpload, Badge, Trash2, Plus, User, Star, Loader2, WandSparkles, ImagePlus } = window.AgentSpacesUI;
 
   const characters = project?.characters || [];
   const [selectedId, setSelectedId] = useState('');
@@ -64,19 +64,29 @@ export default function CharacterPanel({ project, actions, settings, requestPara
   // 一键生成角色图片：用角色 prompt 调图片工作流，结果追加进该角色图片列表
   const generateCharImage = async (char) => {
     if (!char?.prompt?.trim()) { window.alert?.('请先填写该角色的提示词'); return; }
-    const params = await requestParams('image');
+    const params = await requestParams({ mode: 'image', variant: 'character' });
     if (!params) return;
     setGenRunningId(char.id);
     try {
       const urls = await runGeneration({
         kind: 'image',
-        workflowId: settings.textToImageWorkflowId || settings.imageWorkflowId,
-        input: {
-          prompt: char.prompt,
-          model: params.model,
-          aspect: params.aspect,
-          size: params.size,
-        },
+        workflowId: params.generationMode === 'reference'
+          ? (settings.editImageWorkflowId || settings.imageWorkflowId)
+          : (settings.textToImageWorkflowId || settings.imageWorkflowId),
+        input: params.generationMode === 'reference'
+          ? {
+            images: params.referenceImages || [],
+            prompt: char.prompt,
+            model: params.model,
+            aspect: params.aspect,
+            size: params.size,
+          }
+          : {
+            prompt: char.prompt,
+            model: params.model,
+            aspect: params.aspect,
+            size: params.size,
+          },
         label: `角色「${char.name || ''}」生图`,
       });
       const existing = Array.isArray(char.images) ? char.images : [];
@@ -132,6 +142,14 @@ export default function CharacterPanel({ project, actions, settings, requestPara
       if (!imgs.some((i) => i.selected) && imgs.length) imgs[0].selected = true;
       return { ...d, images: imgs };
     });
+  };
+
+  const openPreview = (imgId) => {
+    const openFn = window.AgentSpacesUI?.openMediaGallery;
+    if (typeof openFn !== 'function' || !draft?.images?.length) return;
+    const items = draft.images.map((img) => ({ type: 'image', src: img.url, alt: draft.name || '' }));
+    const startIndex = Math.max(0, draft.images.findIndex((img) => img.id === imgId));
+    openFn(items, startIndex);
   };
 
   return (
@@ -217,25 +235,37 @@ export default function CharacterPanel({ project, actions, settings, requestPara
               <div className="sb-img-grid">
                 {(draft.images || []).map((img) => (
                   <div key={img.id} className={`sb-img-thumb${img.selected ? ' is-selected' : ''}`}>
-                    <img src={img.url} alt="" onClick={() => toggleSelected(img.id)} />
-                    {img.selected && <span className="sb-img-star" title="选中图"><Star className="sb-icon" /></span>}
+                    <img src={img.url} alt="" onClick={() => openPreview(img.id)} />
+                    <button
+                      type="button"
+                      className={`sb-img-star${img.selected ? ' is-selected' : ''}`}
+                      onClick={() => toggleSelected(img.id)}
+                      title={img.selected ? '取消选中图' : '设为选中图'}
+                    >
+                      <Star className="sb-icon" />
+                    </button>
                     <button type="button" className="sb-img-del" onClick={() => removeImage(img.id)} title="删除">
                       <Trash2 className="sb-icon" />
                     </button>
                   </div>
                 ))}
-                {uploading && (
-                  <div className="sb-img-thumb is-uploading"><Loader2 className="sb-icon sb-spin" /></div>
-                )}
+                <div className="sb-img-thumb sb-upload-thumb">
+                  <div className="sb-upload-thumb-ui">
+                    {uploading ? <Loader2 className="sb-icon sb-spin" /> : <ImagePlus className="sb-icon" />}
+                    <span>{uploading ? '上传中' : '上传图片'}</span>
+                  </div>
+                  <div className="sb-upload-thumb-input">
+                    <FileUpload
+                      value={pendingFiles}
+                      onChange={onFilesChange}
+                      onUploadStatusChange={onUploadStatus}
+                      accept="image/*"
+                      autoUpload
+                      multiple
+                    />
+                  </div>
+                </div>
               </div>
-              <FileUpload
-                value={pendingFiles}
-                onChange={onFilesChange}
-                onUploadStatusChange={onUploadStatus}
-                accept="image/*"
-                autoUpload
-                multiple
-              />
             </div>
           </div>
         )}

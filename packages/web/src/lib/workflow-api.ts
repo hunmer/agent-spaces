@@ -88,6 +88,10 @@ export const workflowApi = {
     return request;
   },
 
+  getPath(id: string): Promise<{ path: string }> {
+    return fetchWithAuth(`/api/workflows/${id}/path`).then(r => r.json());
+  },
+
   create(data: Partial<Workflow>): Promise<Workflow> {
     return sdk.workflow.create(sanitizeWorkflowData(data));
   },

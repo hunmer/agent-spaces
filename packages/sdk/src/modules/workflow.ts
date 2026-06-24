@@ -13,6 +13,9 @@ export function createWorkflowApi(http: HttpClient) {
     get: (id: string): Promise<WorkflowTemplate> =>
       http.get(`/api/workflows/${id}`),
 
+    getPath: (id: string): Promise<{ path: string }> =>
+      http.get(`/api/workflows/${id}/path`),
+
     create: (data: Partial<WorkflowTemplate>): Promise<WorkflowTemplate> =>
       http.post('/api/workflows', data),
 

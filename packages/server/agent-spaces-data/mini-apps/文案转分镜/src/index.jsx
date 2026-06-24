@@ -61,9 +61,14 @@ function Style() {
       .sb-img-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; display: block; }
       .sb-img-thumb.is-selected { border-color: #111827; box-shadow: 0 0 0 2px #111827 inset; }
       .sb-img-thumb.is-uploading { display: grid; place-items: center; color: #71717a; }
-      .sb-img-star { position: absolute; top: 4px; left: 4px; background: #111827; color: #fbbf24; border-radius: 50%; padding: 3px; display: grid; place-items: center; }
+      .sb-img-star { position: absolute; top: 4px; left: 4px; background: rgba(255,255,255,.92); color: #71717a; border: 1px solid rgba(0,0,0,.08); border-radius: 50%; padding: 3px; display: grid; place-items: center; cursor: pointer; }
+      .sb-img-star.is-selected { background: #111827; color: #fbbf24; border-color: #111827; }
       .sb-img-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.55); color: #fff; border: 0; border-radius: 50%; padding: 3px; cursor: pointer; display: grid; place-items: center; }
       .sb-img-del:hover { background: #000; }
+      .sb-upload-thumb { background: #fafaf9; border-style: dashed; }
+      .sb-upload-thumb-ui { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #71717a; font-size: 12px; pointer-events: none; }
+      .sb-upload-thumb-input { position: absolute; inset: 0; overflow: hidden; }
+      .sb-upload-thumb-input > * { width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
       .sb-scenes { display: flex; flex-direction: column; gap: 12px; }
       .sb-scenes-head { display: flex; align-items: center; gap: 8px; }
@@ -88,6 +93,7 @@ function Style() {
       .sb-modal-body { padding-top: 4px; }
       .sb-modal-body-scroll { max-height: min(70vh, 720px); overflow: auto; }
       .sb-modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+      .sb-tab-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .sb-radio-row { display: flex; flex-direction: column; gap: 8px; }
       .sb-radio { padding: 10px 12px; border: 1px solid #e4e4e7; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; text-align: left; color: #52525b; }
       .sb-radio.is-on { border-color: #111827; background: #fafafa; color: #18181b; font-weight: 600; }
@@ -117,10 +123,13 @@ function App() {
   const resolverRef = React.useRef(null);
   const [genOpen, setGenOpen] = React.useState(false);
   const [genMode, setGenMode] = React.useState('image');
+  const [genVariant, setGenVariant] = React.useState('default');
   const [genValue, setGenValue] = React.useState(cfg);
 
-  const requestParams = React.useCallback((mode = 'image') => {
-    setGenMode(mode);
+  const requestParams = React.useCallback((options = 'image') => {
+    const normalized = typeof options === 'string' ? { mode: options, variant: 'default' } : { mode: 'image', variant: 'default', ...(options || {}) };
+    setGenMode(normalized.mode);
+    setGenVariant(normalized.variant);
     setGenValue({ ...DEFAULT_SETTINGS, ...(settings || {}) });
     setGenOpen(true);
     return new Promise((resolve) => { resolverRef.current = resolve; });
@@ -128,7 +137,8 @@ function App() {
 
   const onParamsConfirm = (p) => {
     setGenOpen(false);
-    actions.saveSettings(p); // 记忆为下次默认
+    const { referenceImages, ...persisted } = p || {};
+    actions.saveSettings(persisted); // 记忆为下次默认
     resolverRef.current?.(p);
     resolverRef.current = null;
   };
@@ -214,6 +224,7 @@ function App() {
         open={genOpen}
         value={genValue}
         mode={genMode}
+        variant={genVariant}
         onConfirm={onParamsConfirm}
         onCancel={onParamsCancel}
       />

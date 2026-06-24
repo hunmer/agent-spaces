@@ -6,19 +6,31 @@
       "id": "proj-mqrn3nyi-qtyq9g",
       "name": "项目 1",
       "createdAt": "2026-06-24T05:35:39.786Z",
-      "updatedAt": "2026-06-24T07:44:09.803Z",
+      "updatedAt": "2026-06-24T10:08:37.901Z",
       "characters": [
         {
           "id": "char-1782280615437-dgpedb",
           "name": "Link",
           "prompt": "a young hero with blonde hair, green tunic and hat, determined expression, holding a sword, fantasy adventure style, detailed character design, The Legend of Zelda game aesthetic",
-          "images": []
+          "images": [
+            {
+              "id": "img-mqrwp7u2-adc3s7",
+              "url": "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ce/20260624/51613171/ae7791fd-2747-4b4b-ba6a-9e59e6c4fc9c.png?Expires=1782901259&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=D857dhuEKsURjCr0oU2WRoAy9wc%3D",
+              "selected": true
+            }
+          ]
         },
         {
           "id": "char-1782280615437-scb7k8",
           "name": "Zelda",
           "prompt": "a young princess with long blonde hair, elegant royal attire in blue and gold tones, serene and wise expression, fantasy adventure style, detailed character design, The Legend of Zelda game aesthetic",
-          "images": []
+          "images": [
+            {
+              "id": "img-mqrwqg4e-hh334b",
+              "url": "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/89/20260624/51613171/a7b5913c-79f6-4ccc-bb78-d03cefe78301.png?Expires=1782901316&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=xI9uytHvwzEIH9bdv1skFRtUnR0%3D",
+              "selected": false
+            }
+          ]
         }
       ],
       "scenes": [
@@ -190,11 +202,17 @@
   "settings": {
     "imageWorkflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
     "imageWorkflowName": "image_generator",
+    "textToImageWorkflowId": "d88dcb7c-7f5f-47c8-962c-89217a2c0ad6",
+    "textToImageWorkflowName": "text_to_image",
+    "editImageWorkflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
+    "editImageWorkflowName": "edit_image",
     "videoWorkflowId": "5130958f-a78e-4c36-8f03-1f2f733b87d7",
     "videoWorkflowName": "video_generator",
     "provider": "qwen",
     "model": "qwen-image-2.0-pro",
     "aspect": "9:16",
-    "size": "1k"
+    "size": "1k",
+    "quality": "720",
+    "duration": "5"
   }
 }

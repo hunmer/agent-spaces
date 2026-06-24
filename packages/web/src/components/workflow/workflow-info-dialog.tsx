@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TagInput } from '@/components/common/tag-input';
 import { AvatarUploader } from '@/components/common/avatar-uploader';
 import { Switch } from '@/components/ui/switch';
-import { workflowFolderApi } from '@/lib/workflow-api';
+import { workflowApi, workflowFolderApi } from '@/lib/workflow-api';
 import { copyToClipboard } from '@/lib/utils';
 import type { Workflow, WorkflowFolder, WorkflowNode } from '@agent-spaces/shared';
 
@@ -58,15 +58,21 @@ function formatNodeJson(nodes: WorkflowNode[]): string {
   );
 }
 
-function buildWorkflowInfoText(workflow: Workflow, untitled: string, folders: WorkflowFolder[]): string {
+function buildWorkflowInfoText(
+  workflow: Workflow,
+  untitled: string,
+  workflowPath: string,
+): string {
   const startNodes = workflow.nodes.filter(node => node.type === 'start');
   const endNodes = workflow.nodes.filter(node => node.type === 'end');
   const workflowName = workflow.name || untitled;
-  const workflowPath = buildWorkflowFolderPath(folders, workflow.folderId, workflowName);
 
   return [
     '【工作流路径】',
     workflowPath,
+    '',
+    '【工作流ID】',
+    workflow.id,
     '',
     '【工作流名称】',
     workflowName,
@@ -92,6 +98,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
   const [published, setPublished] = useState(false);
   const [copied, setCopied] = useState(false);
   const [folders, setFolders] = useState<WorkflowFolder[]>([]);
+  const [workflowPath, setWorkflowPath] = useState('');
 
   useEffect(() => {
     if (workflow) {
@@ -116,12 +123,19 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
     if (!open || !workflow) return undefined;
 
     let cancelled = false;
-    workflowFolderApi.list()
-      .then((nextFolders) => {
-        if (!cancelled) setFolders(nextFolders);
+    Promise.all([
+      workflowFolderApi.list().catch(() => [] as WorkflowFolder[]),
+      workflowApi.getPath(workflow.id).catch(() => ({ path: '' })),
+    ])
+      .then(([nextFolders, workflowPathResult]) => {
+        if (cancelled) return;
+        setFolders(nextFolders);
+        setWorkflowPath(workflowPathResult.path);
       })
       .catch(() => {
-        if (!cancelled) setFolders([]);
+        if (cancelled) return;
+        setFolders([]);
+        setWorkflowPath('');
       });
 
     return () => {
@@ -143,7 +157,8 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
   const handleCopyWorkflowInfo = async () => {
     if (!workflow) return;
     try {
-      await copyToClipboard(buildWorkflowInfoText(workflow, t('untitled'), folders));
+      const finalWorkflowPath = workflowPath || buildWorkflowFolderPath(folders, workflow.folderId, workflow.name || t('untitled'));
+      await copyToClipboard(buildWorkflowInfoText(workflow, t('untitled'), finalWorkflowPath));
       setCopied(true);
       toast.success(t('copySuccess'));
     } catch {

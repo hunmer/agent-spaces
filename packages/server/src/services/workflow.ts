@@ -369,6 +369,10 @@ export function getExecutionLogPath(workflowId: string, logId: string): string {
   return store.getExecutionLogPath(workflowId, logId);
 }
 
+export function getWorkflowPath(workflowId: string): string {
+  return store.getWorkflowPath(workflowId);
+}
+
 export function deleteExecutionLog(workflowId: string, logId: string): void {
   store.deleteExecutionLog(workflowId, logId);
 }

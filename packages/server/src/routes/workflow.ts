@@ -201,6 +201,20 @@ router.get('/:workflowId/execution-logs/:logId/path', (req: Request<{ workflowId
   }
 });
 
+router.get('/:workflowId/path', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    const workflow = ws.getWorkflow(req.params.workflowId);
+    if (!workflow) {
+      res.status(404).json({ error: 'Workflow not found' });
+      return;
+    }
+    const filePath = ws.getWorkflowPath(req.params.workflowId);
+    res.json({ path: filePath });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/:workflowId/execution-logs/:logId', (req: Request<{ workflowId: string; logId: string }>, res: Response) => {
   try {
     ws.deleteExecutionLog(req.params.workflowId, req.params.logId);

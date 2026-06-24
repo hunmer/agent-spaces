@@ -10,7 +10,7 @@ import {
   AGENT_INIT_NAME,
   AGENT_INIT_PROMPT,
 } from '../utils/constants.js';
-import { parseStoryboardJson } from '../utils/workflow.js';
+import { parseStoryboardJson, resolveUploadItem } from '../utils/workflow.js';
 
 // 通用 dialog 外壳（使用 AgentSpacesUI 自带 Dialog，避免 Select 浮层层级异常）
 function Modal({ open, onClose, title, children, width, className = '', bodyClassName = '' }) {
@@ -62,18 +62,40 @@ export function AgentConfigButton({ agentConfigId, agentMeta, onConfigured }) {
 }
 
 // 生成参数对话框：每次生成前弹出，默认填入上次参数
-export function GenerateParamsDialog({ open, value, mode, onConfirm, onCancel }) {
-  const { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } = window.AgentSpacesUI;
+export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, onCancel }) {
+  const { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FileUpload, Trash2, Loader2 } = window.AgentSpacesUI;
 
   const [cfg, setCfg] = useState(value || {});
+  const [imageMode, setImageMode] = useState('text');
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [referenceImages, setReferenceImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
   useEffect(() => {
     if (!open) return;
     const next = value || {};
     const validModel = MODEL_OPTIONS.some((m) => m.value === next.model);
     setCfg(validModel ? next : { ...next, model: MODEL_OPTIONS[0]?.value || '' });
+    setImageMode(next.generationMode || 'text');
+    setPendingFiles([]);
+    setReferenceImages(Array.isArray(next.referenceImages) ? next.referenceImages : []);
+    setUploading(false);
   }, [open, value]);
 
   const patch = (p) => setCfg((prev) => ({ ...prev, ...p }));
+  const enableImageTabs = mode === 'image' && variant === 'character';
+
+  const onUploadStatus = (s) => {
+    const isUploading = !!s?.uploading;
+    setUploading(isUploading);
+    if (!isUploading && pendingFiles.length) {
+      const files = pendingFiles.slice();
+      Promise.all(files.map((f) => resolveUploadItem(f).catch(() => null))).then((urls) => {
+        const valid = urls.filter(Boolean);
+        if (valid.length) setReferenceImages((prev) => [...prev, ...valid]);
+        setPendingFiles([]);
+      });
+    }
+  };
 
   return (
     <Modal
@@ -85,6 +107,19 @@ export function GenerateParamsDialog({ open, value, mode, onConfirm, onCancel })
       bodyClassName="sb-modal-body"
     >
       <div>
+        {enableImageTabs && (
+          <div className="sb-field">
+            <Label>生成方式</Label>
+            <div className="sb-tab-row">
+              <button type="button" className={`sb-radio${imageMode === 'text' ? ' is-on' : ''}`} onClick={() => setImageMode('text')}>
+                纯文本生图
+              </button>
+              <button type="button" className={`sb-radio${imageMode === 'reference' ? ' is-on' : ''}`} onClick={() => setImageMode('reference')}>
+                上传参考图生图
+              </button>
+            </div>
+          </div>
+        )}
         <div className="sb-field">
           <Label>模型</Label>
           <Select value={cfg.model} onValueChange={(v) => patch({ model: v })}>
@@ -127,14 +162,54 @@ export function GenerateParamsDialog({ open, value, mode, onConfirm, onCancel })
             </Select>
           </div>
         )}
+        {enableImageTabs && imageMode === 'reference' && (
+          <div className="sb-field">
+            <Label>参考图</Label>
+            {referenceImages.length > 0 && (
+              <div className="sb-img-grid">
+                {referenceImages.map((url, i) => (
+                  <div key={`${url}-${i}`} className="sb-img-thumb">
+                    <img src={url} alt="" />
+                    <button
+                      type="button"
+                      className="sb-img-del"
+                      onClick={() => setReferenceImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      title="删除"
+                    >
+                      <Trash2 className="sb-icon" />
+                    </button>
+                  </div>
+                ))}
+                {uploading && <div className="sb-img-thumb is-uploading"><Loader2 className="sb-icon sb-spin" /></div>}
+              </div>
+            )}
+            {referenceImages.length === 0 && !uploading && (
+              <div className="sb-chips-empty">请先上传至少一张参考图</div>
+            )}
+            <FileUpload
+              value={pendingFiles}
+              onChange={(files) => setPendingFiles(files || [])}
+              onUploadStatusChange={onUploadStatus}
+              accept="image/*"
+              autoUpload
+              multiple
+            />
+          </div>
+        )}
       </div>
 
       <div className="sb-modal-foot">
         <Button variant="outline" onClick={onCancel}>取消</Button>
         <Button
+          disabled={uploading || (enableImageTabs && imageMode === 'reference' && referenceImages.length === 0)}
           onClick={() => {
             const modelMeta = MODEL_OPTIONS.find((m) => m.value === cfg.model);
-            onConfirm({ ...cfg, provider: modelMeta?.provider || cfg.provider || '' });
+            onConfirm({
+              ...cfg,
+              provider: modelMeta?.provider || cfg.provider || '',
+              generationMode: enableImageTabs ? imageMode : 'text',
+              referenceImages: enableImageTabs && imageMode === 'reference' ? referenceImages : [],
+            });
           }}
         >
           开始生成
