@@ -68,6 +68,7 @@ export const ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4'];
 export const SIZE_OPTIONS = ['1k', '2k', '4k'];
 export const QUALITY_OPTIONS = ['720', '1080'];
 export const DURATION_OPTIONS = ['5', '10'];
+export const BATCH_LIMIT_OPTIONS = ['1', '2', '3', '5'];
 
 export const DEFAULT_SETTINGS = {
   // Legacy keys remain for compatibility with existing persisted settings.
@@ -85,6 +86,7 @@ export const DEFAULT_SETTINGS = {
   size: '1k',
   quality: '720',
   duration: '5',
+  batchLimit: '1',
 };
 
 // 内置插件

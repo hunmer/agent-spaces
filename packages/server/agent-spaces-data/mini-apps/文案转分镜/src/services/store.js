@@ -28,6 +28,7 @@ function defaultData() {
       size: '1k',
       quality: '720',
       duration: '5',
+      batchLimit: '1',
     },
   };
 }

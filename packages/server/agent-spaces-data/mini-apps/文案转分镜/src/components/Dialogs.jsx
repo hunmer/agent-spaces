@@ -7,6 +7,7 @@ import {
   SIZE_OPTIONS,
   QUALITY_OPTIONS,
   DURATION_OPTIONS,
+  BATCH_LIMIT_OPTIONS,
   AGENT_INIT_NAME,
   AGENT_INIT_PROMPT,
 } from '../utils/constants.js';
@@ -83,6 +84,7 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
 
   const patch = (p) => setCfg((prev) => ({ ...prev, ...p }));
   const enableImageTabs = mode === 'image' && variant === 'character';
+  const enableBatchLimit = variant === 'bulk';
 
   const onUploadStatus = (s) => {
     const isUploading = !!s?.uploading;
@@ -158,6 +160,17 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {DURATION_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {enableBatchLimit && (
+          <div className="sb-field">
+            <Label>批量运行上限</Label>
+            <Select value={cfg.batchLimit || '1'} onValueChange={(v) => patch({ batchLimit: v })}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {BATCH_LIMIT_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

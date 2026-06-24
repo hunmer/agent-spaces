@@ -326,19 +326,36 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     }
   };
 
+  const runQueue = async (items, limit, worker) => {
+    const concurrency = Math.max(1, Number(limit) || 1);
+    let cursor = 0;
+    const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+      while (cursor < items.length) {
+        const current = items[cursor];
+        cursor += 1;
+        await worker(current);
+      }
+    });
+    await Promise.all(runners);
+  };
+
   const generateAllImages = async () => {
     if (!scenes.length || bulkRunning) return;
-    const params = await requestParams('image');
+    const params = await requestParams({ mode: 'image', variant: 'bulk' });
     if (!params) return;
     setBulkRunning('image');
     clearBulkSceneStatus();
     const stats = { success: 0, skipped: 0, failed: 0, failedItems: [] };
     try {
+      const pendingScenes = [];
       for (const scene of scenes) {
         if (!scene?.visualPrompt?.trim() || scene?.images?.length) {
           stats.skipped += 1;
           continue;
         }
+      }
+      pendingScenes.push(...scenes.filter((scene) => scene?.visualPrompt?.trim() && !scene?.images?.length));
+      await runQueue(pendingScenes, params.batchLimit, async (scene) => {
         const images = collectRefImagesForScene(scene);
         const prompt = buildSceneImagePrompt(scene);
         const hasRefImages = images.length > 0;
@@ -363,7 +380,7 @@ export default function ScenePanel({ project, settings, actions, requestParams }
           stats.failed += 1;
           stats.failedItems.push({ index: scene.index, message: e?.message || '生成失败' });
         }
-      }
+      });
     } finally {
       setBulkRunning('');
       showBulkSummary('批量生成图片', stats);
@@ -372,17 +389,21 @@ export default function ScenePanel({ project, settings, actions, requestParams }
 
   const generateAllVideos = async () => {
     if (!scenes.length || bulkRunning) return;
-    const params = await requestParams('video');
+    const params = await requestParams({ mode: 'video', variant: 'bulk' });
     if (!params) return;
     setBulkRunning('video');
     clearBulkSceneStatus();
     const stats = { success: 0, skipped: 0, failed: 0, failedItems: [] };
     try {
+      const pendingScenes = [];
       for (const scene of scenes) {
         if (!scene?.animationPrompt?.trim() || !scene?.images?.length || scene?.video) {
           stats.skipped += 1;
           continue;
         }
+      }
+      pendingScenes.push(...scenes.filter((scene) => scene?.animationPrompt?.trim() && scene?.images?.length && !scene?.video));
+      await runQueue(pendingScenes, params.batchLimit, async (scene) => {
         try {
           const urls = await runWithRetry({
             sceneId: scene.id,
@@ -407,7 +428,7 @@ export default function ScenePanel({ project, settings, actions, requestParams }
           stats.failed += 1;
           stats.failedItems.push({ index: scene.index, message: e?.message || '生成失败' });
         }
-      }
+      });
     } finally {
       setBulkRunning('');
       showBulkSummary('批量生成视频', stats);

@@ -6,7 +6,7 @@
       "id": "proj-mqrn3nyi-qtyq9g",
       "name": "项目 1",
       "createdAt": "2026-06-24T05:35:39.786Z",
-      "updatedAt": "2026-06-24T12:17:58.158Z",
+      "updatedAt": "2026-06-24T12:27:50.616Z",
       "characters": [
         {
           "id": "char-1782280615437-dgpedb",
@@ -131,7 +131,9 @@
           "characterIds": [
             "char-1782280615437-dgpedb"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ff/20260624/51613171/ed3764df-7786-472c-80bd-156f4d24de76.png?Expires=1782909479&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=xYTMUIC2sfZ9jvdPULJ8tFDeVeg%3D"
+          ],
           "video": ""
         },
         {
@@ -143,7 +145,9 @@
           "characterIds": [
             "char-1782280615437-dgpedb"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/6f/20260624/51613171/2a83f7e6-f9cb-4796-bedb-0fb6f591ecb4.png?Expires=1782909491&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=IStezvKNju8fqyLoMoZHEWWOj6Y%3D"
+          ],
           "video": ""
         },
         {
@@ -156,7 +160,9 @@
             "char-1782280615437-dgpedb",
             "char-1782280615437-scb7k8"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/cc/20260624/51613171/5d7fd206-67c5-451a-bbc1-71e48f028923.png?Expires=1782909868&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=higuamUqEUmLqDKOTmYBgvN09G0%3D"
+          ],
           "video": ""
         },
         {
@@ -229,6 +235,7 @@
     "size": "1k",
     "quality": "720",
     "duration": "5",
-    "generationMode": "text"
+    "generationMode": "text",
+    "batchLimit": "1"
   }
 }
