@@ -510,7 +510,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1782290830618,
+  "updatedAt": 1782292958240,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",

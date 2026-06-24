@@ -16,6 +16,33 @@ export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function coerceFieldValue(field: OutputField): unknown {
+  const value = field.value;
+  switch (field.type) {
+    case 'number': {
+      if (value === '' || value === null || value === undefined) return value ?? '';
+      if (typeof value === 'number') return value;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : value;
+    }
+    case 'boolean': {
+      if (typeof value === 'boolean') return value;
+      if (value === 'true' || value === '1') return true;
+      if (value === 'false' || value === '0') return false;
+      return value;
+    }
+    case 'number[]': {
+      if (!Array.isArray(value)) return value ?? [];
+      return value.map(item => {
+        const parsed = Number(item);
+        return Number.isFinite(parsed) ? parsed : item;
+      });
+    }
+    default:
+      return value ?? '';
+  }
+}
+
 // ---- 节点结果归一化 / 客户端插件识别 ----
 
 export function isClientPluginNode(node: WorkflowNode): boolean {
@@ -369,7 +396,7 @@ export function buildOutputObject(outputs: OutputField[] | undefined): Record<st
       result[field.key] = Array.isArray(field.value) ? field.value : [];
       continue;
     }
-    result[field.key] = field.value ?? '';
+    result[field.key] = coerceFieldValue(field);
   }
   return result;
 }

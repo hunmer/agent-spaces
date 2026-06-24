@@ -1202,6 +1202,15 @@ export function getPluginIdByNodeType(nodeType: string): string | null {
   return getExecutablePluginByNodeType(nodeType)?.plugin.id ?? null;
 }
 
+export function getWorkflowNodeDefinitionByType(nodeType: string): NodeTypeDefinition | null {
+  for (const plugin of listWorkflowPlugins()) {
+    if (!plugin.enabled) continue;
+    const definition = getWorkflowNodes(plugin.id).find(node => node.type === nodeType);
+    if (definition) return definition;
+  }
+  return null;
+}
+
 export async function executeWorkflowNode(
   nodeType: string,
   args: Record<string, any>,

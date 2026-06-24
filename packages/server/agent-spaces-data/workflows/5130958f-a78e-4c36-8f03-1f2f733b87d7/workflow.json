@@ -9,7 +9,7 @@
       "label": "开始",
       "position": {
         "x": 0,
-        "y": 375
+        "y": 180
       },
       "data": {
         "inputFields": [
@@ -52,15 +52,14 @@
             "children": []
           },
           {
-            "key": "size",
+            "key": "quality",
             "type": "select",
             "value": "",
             "required": true,
             "inputMode": "native",
             "options": [
-              "1k",
-              "2k",
-              "4k"
+              "720",
+              "1080"
             ],
             "children": []
           },
@@ -84,8 +83,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 60,
-        "y": 1080
+        "x": 900,
+        "y": 280
       },
       "data": {
         "outputs": [
@@ -104,26 +103,26 @@
       "type": "switch",
       "label": "nodes.switch.label",
       "position": {
-        "x": -31.25,
-        "y": 606
+        "x": 600,
+        "y": 180
       },
       "data": {
-        "sourceNodeId": "node_1781681640891_ouni81",
+        "sourceNodeId": "node_1782293130533_309iyn",
         "sourceHandle": "source",
         "conditions": [
           {
-            "id": "cond_1781686912427_7hb8",
-            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
-            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "id": "cond_jimeng",
+            "variable": "{{ __data__[\"node_1782293130533_309iyn\"].target }}",
+            "field": "{{ __data__[\"node_1782293130533_309iyn\"].target }}",
             "operator": "equals",
-            "value": "keling"
+            "value": "jimeng"
           },
           {
-            "id": "cond_1782273364173_chpi",
-            "variable": "{{ __data__[\"node_1781681576137_start\"].provider }}",
-            "field": "{{ __data__[\"node_1781681576137_start\"].provider }}",
+            "id": "cond_aliyun",
+            "variable": "{{ __data__[\"node_1782293130533_309iyn\"].target }}",
+            "field": "{{ __data__[\"node_1782293130533_309iyn\"].target }}",
             "operator": "equals",
-            "value": "qwen"
+            "value": "aliyun"
           }
         ]
       }
@@ -133,14 +132,14 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 450,
-        "y": 884.083984375
+        "x": 1500,
+        "y": 90
       },
       "data": {
         "strategy": "first_non_empty",
         "groups": [
           {
-            "key": "images",
+            "key": "video",
             "variables": [
               {
                 "key": "",
@@ -151,8 +150,8 @@
               },
               {
                 "key": "",
-                "type": "any",
-                "value": "{{ __data__[\"node_1782273534381_i64jku\"].data.images }}",
+                "type": "string",
+                "value": "{{ __data__[\"node_1782291911473_of3iac\"].data.videoUrl }}",
                 "inputMode": "variable",
                 "children": []
               }
@@ -166,8 +165,8 @@
             "type": "object",
             "children": [
               {
-                "key": "images",
-                "type": "string[]",
+                "key": "video",
+                "type": "string",
                 "value": ""
               }
             ]
@@ -182,15 +181,15 @@
       "type": "end",
       "label": "nodes.end.label",
       "position": {
-        "x": 630,
-        "y": 1125
+        "x": 1800,
+        "y": 90
       },
       "data": {
         "outputs": [
           {
             "key": "result",
-            "type": "string[]",
-            "value": "{{ __data__[\"node_1782272119586_dim19h\"].result.images }}",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782272119586_dim19h\"].result.video }}",
             "children": []
           }
         ]
@@ -201,8 +200,8 @@
       "type": "jimeng_text_to_video",
       "label": "AI视频生成",
       "position": {
-        "x": 435,
-        "y": 412.08203125
+        "x": 1200,
+        "y": 189.5
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -248,13 +247,13 @@
       "type": "aliyun_image_to_video_v27",
       "label": "万相图生视频(2.7)",
       "position": {
-        "x": 630,
-        "y": 745.083984375
+        "x": 1200,
+        "y": -9.5
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
-        "resolution": "720P",
-        "duration": "5",
+        "resolution": "{{ __data__[\"node_1781681576137_start\"].quality }}P",
+        "duration": "{{ __data__[\"node_1781681576137_start\"].duration }}",
         "promptExtend": "true",
         "watermark": "false",
         "outputs": [
@@ -288,16 +287,16 @@
         "sourceNodeId": "node_1781686908308_6flfam",
         "sourceHandle": "case-1",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
-        "media": ""
+        "media": "{{ __data__[\"node_1782292131441_o7bxvz\"].media }}"
       }
     },
     {
       "id": "node_1782292131441_o7bxvz",
       "type": "run_code",
-      "label": "nodes.run_code.label",
+      "label": "合并参考参数",
       "position": {
-        "x": 330,
-        "y": 720
+        "x": 900,
+        "y": 0
       },
       "data": {
         "code": "async function main({ params }) {\n  let {images} = params\n  let media = [\n      {\n          \"type\": \"first_frame\",\n          \"url\": images[0]\n      }\n  ]\n  if(images.length > 1){\n    media.push({\n        \"type\": \"last_frame\",\n        \"url\": images[1]\n    })\n  }\n  return {media}\n}",
@@ -319,6 +318,34 @@
             "value": "",
             "children": []
           }
+        ],
+        "label": "合并参考参数"
+      }
+    },
+    {
+      "id": "node_1782293130533_309iyn",
+      "type": "run_code",
+      "label": "模型路由判断",
+      "position": {
+        "x": 300,
+        "y": 180
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const { model } = params;\n  // 即梦支持的模型列表\n  const jimengModels = [\n    'jimeng-video-3.5-pro',\n    'jimeng-video-3.0',\n    'jimeng-video-3.0-pro',\n    'jimeng-video-3.0-fast',\n    'jimeng-video-2.0',\n    'jimeng-video-2.0-pro'\n  ];\n  // 判断是否为即梦模型\n  if (model && jimengModels.includes(model)) {\n    return { target: 'jimeng' };\n  } else {\n    // 其他模型走阿里云万相\n    return { target: 'aliyun' };\n  }\n}",
+        "inputFields": [
+          {
+            "key": "model",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781681576137_start\"].model }}",
+            "required": true,
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "target",
+            "type": "string"
+          }
         ]
       }
     }
@@ -329,13 +356,6 @@
       "source": "node_1781686908308_6flfam",
       "target": "node_1781681576137_end",
       "sourceHandle": "default",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1781681576137_start-source-node_1781686908308_6flfam-target",
-      "source": "node_1781681576137_start",
-      "target": "node_1781686908308_6flfam",
-      "sourceHandle": "source",
       "targetHandle": "target"
     },
     {
@@ -367,10 +387,31 @@
       "id": "e-node_1782292131441_o7bxvz-source-node_1782291911473_of3iac-target",
       "source": "node_1782292131441_o7bxvz",
       "target": "node_1782291911473_of3iac"
+    },
+    {
+      "id": "e-node_1782291057464_2sx2fe-source-node_1782272119586_dim19h-target",
+      "source": "node_1782291057464_2sx2fe",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781681576137_start-node_1782293130533_309iyn-mqrvbil1",
+      "source": "node_1781681576137_start",
+      "target": "node_1782293130533_309iyn",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782293130533_309iyn-node_1781686908308_6flfam-mqrvbil1",
+      "source": "node_1782293130533_309iyn",
+      "target": "node_1781686908308_6flfam",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782275955731,
-  "updatedAt": 1782292532181,
+  "updatedAt": 1782293410193,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",

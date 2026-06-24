@@ -776,10 +776,10 @@ export class ExecutionManager {
 
     const dryRunInput = this.getDryRunNodeValue(session, 'inputs', node.id);
     const strictDataReferences = node.type !== 'variable_aggregate';
-    const resolvedData = this.applyDryRunInput(
+    const resolvedData = this.normalizeResolvedNodeDataTypes(node, this.applyDryRunInput(
       this.resolveContextVariables(session, { ...node.data }, { strictDataReferences }),
       dryRunInput,
-    );
+    ));
     const stepInput = dryRunInput ?? getStepInput(node, resolvedData);
     this.setNodeExecutionInput(session, node.id, dryRunInput ?? (node.type === 'end' ? {} : buildOutputObject(resolvedData.inputFields) ?? {}));
 
@@ -998,6 +998,22 @@ export class ExecutionManager {
         if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(inputRecord, key)) return field;
         return { ...(field as Record<string, unknown>), value: inputRecord[key] };
       });
+    }
+    return next;
+  }
+
+  private normalizeResolvedNodeDataTypes(node: WorkflowNode, resolvedData: Record<string, any>): Record<string, any> {
+    if (!pluginService.canExecuteWorkflowNode(node.type)) return resolvedData;
+    const definition = pluginService.getWorkflowNodeDefinitionByType(node.type);
+    if (!definition?.properties?.length) return resolvedData;
+
+    const next: Record<string, any> = { ...resolvedData };
+    for (const property of definition.properties) {
+      if (!property?.key || !Object.prototype.hasOwnProperty.call(next, property.key)) continue;
+      const dataType = property.dataType
+        ?? (property.type === 'number' ? 'number' : undefined)
+        ?? (property.type === 'checkbox' ? 'boolean' : undefined);
+      next[property.key] = pluginService.coerceByDataType(next[property.key], dataType);
     }
     return next;
   }

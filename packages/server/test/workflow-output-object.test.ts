@@ -27,3 +27,15 @@ test('buildOutputObject builds declared object children when present', () => {
     out2: { key21: 'hi' },
   });
 });
+
+test('buildOutputObject coerces number and boolean field values', () => {
+  assert.deepEqual(buildOutputObject([
+    { key: 'count', type: 'number', value: '5' },
+    { key: 'enabled', type: 'boolean', value: 'true' },
+    { key: 'values', type: 'number[]', value: ['1', '2', 3] },
+  ]), {
+    count: 5,
+    enabled: true,
+    values: [1, 2, 3],
+  });
+});

@@ -700,7 +700,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               onBlur={finishEdit}
               onKeyDown={(e) => { if (e.key === 'Enter') finishEdit(); }}
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 text-xs bg-transparent outline-none border-b border-primary min-w-0"
+              onPointerDown={(e) => e.stopPropagation()}
+              className="nodrag nopan flex-1 text-xs bg-transparent outline-none border-b border-primary min-w-0"
               autoFocus
             />
           ) : (
