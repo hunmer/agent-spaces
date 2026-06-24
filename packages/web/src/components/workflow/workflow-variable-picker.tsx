@@ -19,6 +19,7 @@ import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { isStructuredOutputFieldType } from './workflow-properties-utils';
 import { PluginIcon } from './workflow-plugin-icon';
+import { getFieldsForVariableExpression } from './workflow-variable-path';
 import { getUpstreamNodeIds } from './workflow-variable-scope';
 import { FILE_CHILD_FIELDS } from './workflow-variable-fields';
 
@@ -75,47 +76,6 @@ function buildConfigPath(pluginId: string, key: string): string {
 
 function buildEnvPath(fieldPath: string): string {
   return `{{ __env__.${fieldPath} }}`;
-}
-
-function unwrapExpressionPath(value: unknown): string {
-  const text = typeof value === 'string' ? value.trim() : '';
-  const match = text.match(/^\{\{\s*(.*?)\s*\}\}$/);
-  return match ? match[1].trim() : text;
-}
-
-function parseVariableExpression(value: unknown): { scope: 'data' | 'inputs' | 'env'; nodeId?: string; fieldPath: string } | null {
-  const expression = unwrapExpressionPath(value);
-  const nodeScoped = expression.match(/^__(data|inputs)__\["([^"]+)"\]\.(.+)$/);
-  if (nodeScoped) {
-    return {
-      scope: nodeScoped[1] === 'data' ? 'data' : 'inputs',
-      nodeId: nodeScoped[2],
-      fieldPath: nodeScoped[3],
-    };
-  }
-  const envScoped = expression.match(/^__env__\.(.+)$/);
-  if (envScoped) return { scope: 'env', fieldPath: envScoped[1] };
-  return null;
-}
-
-function findFieldByPath(fields: OutputField[], fieldPath: string): OutputField | null {
-  const [key, ...rest] = fieldPath.split('.').filter(Boolean);
-  if (!key) return null;
-  const field = fields.find(item => item.key === key);
-  if (!field) return null;
-  if (rest.length === 0) return field;
-  return Array.isArray(field.children) ? findFieldByPath(field.children, rest.join('.')) : null;
-}
-
-function getFieldsForVariableExpression(value: unknown, nodes: WorkflowNode[], variables: OutputField[]): OutputField | null {
-  const parsed = parseVariableExpression(value);
-  if (!parsed) return null;
-  if (parsed.scope === 'env') return findFieldByPath(variables, parsed.fieldPath);
-
-  const node = nodes.find(item => item.id === parsed.nodeId);
-  if (!node) return null;
-  const fields = parsed.scope === 'inputs' ? getNodeInputFields(node) : node.type === 'start' ? getNodeInputFields(node) : getNodeOutputs(node);
-  return findFieldByPath(fields, parsed.fieldPath);
 }
 
 function getArrayItemField(arrayField: OutputField | null): VariableField {

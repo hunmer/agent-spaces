@@ -139,8 +139,8 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 1655,
-        "y": -17
+        "x": 1875,
+        "y": 255
       },
       "data": {
         "strategy": "first_non_empty",
@@ -188,8 +188,8 @@
       "type": "end",
       "label": "nodes.end.label",
       "position": {
-        "x": 1815,
-        "y": 210
+        "x": 2220,
+        "y": 315
       },
       "data": {
         "outputs": [
@@ -362,13 +362,13 @@
       "label": "图生视频",
       "position": {
         "x": 1530,
-        "y": 690
+        "y": 694.5
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
-        "model": "MiniMax-Hailuo-2.3",
+        "model": "{{ __data__[\"node_1781681576137_start\"].model }}",
         "duration": 6,
-        "resolution": "768P",
+        "resolution": "{{ __data__[\"node_1781681576137_start\"].quality }}P",
         "promptOptimizer": "true",
         "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
         "outputs": [
@@ -391,7 +391,8 @@
             ]
           }
         ],
-        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[0] }}"
+        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[0] }}",
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
       }
     },
     {
@@ -428,13 +429,13 @@
       "type": "minimax_start_end_to_video",
       "label": "首尾帧视频",
       "position": {
-        "x": 1530,
-        "y": 495
+        "x": 1545,
+        "y": 475.5
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
         "duration": 6,
-        "resolution": "768P",
+        "resolution": "{{ __data__[\"node_1781681576137_start\"].quality }}P",
         "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
         "outputs": [
           {
@@ -458,7 +459,9 @@
         ],
         "sourceNodeId": "node_1782299095140_v2k0ss",
         "sourceHandle": "case-0",
-        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images }}"
+        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[0] }}",
+        "lastFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[1] }}",
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
       }
     }
   ],
@@ -539,10 +542,24 @@
       "target": "node_1782299033531_slkx6j",
       "sourceHandle": "default",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782300311660_hg69cl-source-node_1782272119586_dim19h-target",
+      "source": "node_1782300311660_hg69cl",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782299033531_slkx6j-source-node_1782272119586_dim19h-target",
+      "source": "node_1782299033531_slkx6j",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782275955731,
-  "updatedAt": 1782300334188,
+  "updatedAt": 1782301714177,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",

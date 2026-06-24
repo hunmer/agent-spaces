@@ -26,8 +26,14 @@ import { FIELD_TYPES } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowNodeDefinitionIcon, type WorkflowNodeIconDefinition } from './workflow-node-icon';
 import { PluginIcon } from './workflow-plugin-icon';
+import {
+  findFieldByPath,
+  getFieldsForVariableExpression,
+  normalizeVariableFieldPath,
+  parseVariableExpression,
+} from './workflow-variable-path';
 import { getUpstreamNodeIds } from './workflow-variable-scope';
-import { FILE_CHILD_FIELDS, getFileChildField } from './workflow-variable-fields';
+import { FILE_CHILD_FIELDS } from './workflow-variable-fields';
 
 type EditorRange = { from: number; to: number };
 type VariableSuggestionCategory = 'workflow-input' | 'workflow-variable' | 'node-input' | 'node-output' | 'loop' | 'plugin-config';
@@ -65,13 +71,6 @@ function getVariableExpression(value: string | number): string | null {
 function normalizeVariableExpressionForCompare(value: string | number): string | null {
   const expression = getVariableExpression(value);
   return expression ? expression.replace(/\s+/g, '') : null;
-}
-
-function normalizeVariableFieldPath(fieldPath: string): string {
-  return fieldPath
-    .replace(/\["([^"]+)"\]/g, '.$1')
-    .replace(/^\./, '')
-    .trim();
 }
 
 function getVariableBadgeLabel(
@@ -152,37 +151,6 @@ function buildEnvPath(fieldPath: string): string {
   return `{{ __env__.${fieldPath} }}`;
 }
 
-function unwrapExpressionPath(value: unknown): string {
-  const text = typeof value === 'string' ? value.trim() : '';
-  const match = text.match(/^\{\{\s*([^{}]*?)\s*\}\}$/);
-  return match ? match[1].trim() : text;
-}
-
-function parseVariableExpression(value: unknown): { scope: 'data' | 'inputs' | 'env'; nodeId?: string; fieldPath: string } | null {
-  const expression = unwrapExpressionPath(value);
-  const nodeScoped = expression.match(/^__(data|inputs)__\["([^"]+)"\]\.(.+)$/);
-  if (nodeScoped) {
-    return {
-      scope: nodeScoped[1] === 'data' ? 'data' : 'inputs',
-      nodeId: nodeScoped[2],
-      fieldPath: nodeScoped[3],
-    };
-  }
-  const envScoped = expression.match(/^__env__\.(.+)$/);
-  if (envScoped) return { scope: 'env', fieldPath: envScoped[1] };
-  return null;
-}
-
-function findFieldByPath(fields: OutputField[], fieldPath: string): OutputField | null {
-  const [key, ...rest] = fieldPath.split('.').filter(Boolean);
-  if (!key) return null;
-  const field = fields.find(item => item.key === key);
-  if (!field) return null;
-  if (rest.length === 0) return field;
-  if (field.type === 'file' && rest.length === 1) return getFileChildField(rest[0]);
-  return Array.isArray(field.children) ? findFieldByPath(field.children, rest.join('.')) : null;
-}
-
 function isConfigVariableReference(value: string | number): boolean {
   const expression = getVariableExpression(value);
   return Boolean(expression?.match(CONFIG_VARIABLE_PATTERN));
@@ -198,17 +166,6 @@ function isConfigVariableReferenceMissing(value: string | number, plugins: Workf
   return !(plugin.config as PluginConfigField[] | undefined)?.some((field) => field.key === key);
 }
 
-function getFieldsForVariableExpression(value: unknown, nodes: WorkflowNode[], variables: OutputField[]): OutputField | null {
-  const parsed = parseVariableExpression(value);
-  if (!parsed) return null;
-  if (parsed.scope === 'env') return findFieldByPath(variables, parsed.fieldPath);
-
-  const node = nodes.find(item => item.id === parsed.nodeId);
-  if (!node) return null;
-  const fields = parsed.scope === 'inputs' ? getNodeInputFields(node) : node.type === 'start' ? getNodeInputFields(node) : getNodeOutputs(node);
-  return findFieldByPath(fields, parsed.fieldPath);
-}
-
 function isVariableReferenceMissing(
   value: string | number,
   variableContext?: WorkflowVariableContext,
@@ -217,18 +174,21 @@ function isVariableReferenceMissing(
   const expression = normalizeVariableExpressionForCompare(value);
   if (!expression) return false;
 
+  if (variableContext) {
+    if (isConfigVariableReference(value)) return false;
+    const parsed = parseVariableExpression(value);
+    if (!parsed) return false;
+    if (parsed.scope === 'env') return !findFieldByPath(variableContext.variables ?? [], parsed.fieldPath);
+    return !getFieldsForVariableExpression(value, variableContext.nodes, variableContext.variables ?? []);
+  }
+
   if (variableItems) {
     const hasConfigItems = variableItems.some((item) => item.category === 'plugin-config');
     if (isConfigVariableReference(value) && !hasConfigItems) return false;
     return !variableItems.some((item) => normalizeVariableExpressionForCompare(item.path) === expression);
   }
 
-  if (!variableContext) return false;
-  if (isConfigVariableReference(value)) return false;
-  const parsed = parseVariableExpression(value);
-  if (!parsed) return false;
-  if (parsed.scope === 'env') return !findFieldByPath(variableContext.variables ?? [], parsed.fieldPath);
-  return !getFieldsForVariableExpression(value, variableContext.nodes, variableContext.variables ?? []);
+  return false;
 }
 
 function useEnabledWorkflowPlugins(variableContext?: WorkflowVariableContext): {
@@ -486,7 +446,10 @@ function buildVariableSuggestionItems({
   return items;
 }
 
-function createVariableHighlightExtension(getVariableItems: () => VariableSuggestionItem[]) {
+function createVariableHighlightExtension(
+  variableItemsRef: React.RefObject<VariableSuggestionItem[]>,
+  variableContextRef: React.RefObject<WorkflowVariableContext | undefined>,
+) {
   return Extension.create({
     name: 'workflowVariableHighlight',
     addProseMirrorPlugins() {
@@ -500,7 +463,7 @@ function createVariableHighlightExtension(getVariableItems: () => VariableSugges
                 if (!node.isText || !node.text) return;
                 for (const match of node.text.matchAll(VARIABLE_TOKEN_PATTERN)) {
                   if (match.index === undefined) continue;
-                  const missing = isVariableReferenceMissing(match[0], undefined, getVariableItems());
+                  const missing = isVariableReferenceMissing(match[0], variableContextRef.current, variableItemsRef.current);
                   decorations.push(Decoration.inline(
                     pos + match.index,
                     pos + match.index + match[0].length,
@@ -778,7 +741,7 @@ function createVariableSuggestionRenderer(pluginKey?: PluginKey) {
   };
 }
 
-function createVariableSuggestionExtension(getItems: () => VariableSuggestionItem[]) {
+function createVariableSuggestionExtension(variableItemsRef: React.RefObject<VariableSuggestionItem[]>) {
   return Extension.create({
     name: 'workflowVariableSuggestion',
     addOptions() {
@@ -788,7 +751,7 @@ function createVariableSuggestionExtension(getItems: () => VariableSuggestionIte
           allowedPrefixes: null,
           items: ({ query }: { query: string }) => {
             const keyword = normalizeSuggestionQuery(query);
-            return getItems()
+            return variableItemsRef.current
               .filter((item) => normalizeSuggestionQuery(`${item.title} ${item.description} ${item.path}`).includes(keyword))
               .slice(0, 40);
           },
@@ -829,6 +792,7 @@ function WorkflowVariableTiptapInput({
   readOnly,
   placeholder,
   variableItems,
+  variableContext,
   className,
   onChange,
   onFocus,
@@ -838,13 +802,14 @@ function WorkflowVariableTiptapInput({
   readOnly: boolean;
   placeholder?: string;
   variableItems: VariableSuggestionItem[];
+  variableContext?: WorkflowVariableContext;
   className?: string;
   onChange: (value: string) => void;
   onFocus: () => void;
   onBlur: () => void;
 }) {
   const variableItemsRef = useRef(variableItems);
-  const getVariableItems = useCallback(() => variableItemsRef.current, []);
+  const variableContextRef = useRef(variableContext);
 
   const extensions = useMemo(() => [
     StarterKit.configure({
@@ -855,9 +820,9 @@ function WorkflowVariableTiptapInput({
       codeBlock: false,
       horizontalRule: false,
     }),
-    createVariableHighlightExtension(getVariableItems),
-    createVariableSuggestionExtension(getVariableItems),
-  ], [getVariableItems]);
+    createVariableHighlightExtension(variableItemsRef, variableContextRef),
+    createVariableSuggestionExtension(variableItemsRef),
+  ], []);
 
   const editor = useEditor({
     extensions,
@@ -878,9 +843,10 @@ function WorkflowVariableTiptapInput({
 
   useEffect(() => {
     variableItemsRef.current = variableItems;
+    variableContextRef.current = variableContext;
     if (!editor) return;
     editor.view.dispatch(editor.state.tr.setMeta(variableHighlightPluginKey, { refreshedAt: Date.now() }));
-  }, [editor, variableItems]);
+  }, [editor, variableContext, variableItems]);
 
   useEffect(() => {
     editor?.setEditable(!readOnly);
@@ -1005,6 +971,7 @@ export function WorkflowVariableInput({
         placeholder={placeholder}
         className={inputClassName}
         variableItems={variableItems}
+        variableContext={variableContext}
         onChange={onChange}
         onFocus={() => undefined}
         onBlur={() => undefined}
