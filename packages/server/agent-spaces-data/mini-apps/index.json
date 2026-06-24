@@ -7,7 +7,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-08T05:18:45.999Z",
-    "updatedAt": "2026-06-18T03:17:14.981Z",
+    "updatedAt": "2026-06-24T07:45:40.891Z",
     "enabledPlugins": [
       "workflow.minimax",
       "workflow.fish-audio",
@@ -77,7 +77,7 @@
     "tags": [],
     "mainFile": "index.jsx",
     "createdAt": "2026-06-12T09:48:13.813Z",
-    "updatedAt": "2026-06-16T03:15:10.237Z",
+    "updatedAt": "2026-06-24T07:45:49.745Z",
     "icon": "💻",
     "storeUrl": "http://localhost:3101/mini-app/database-demo.zip",
     "storeChecksum": "7d6a04c98ef7150c7bea44966bf0228a"
@@ -254,6 +254,6 @@
     ],
     "icon": "🎬",
     "createdAt": "2026-06-24T04:41:50.917Z",
-    "updatedAt": "2026-06-24T06:32:09.869Z"
+    "updatedAt": "2026-06-24T07:50:29.825Z"
   }
 ]

@@ -10,19 +10,22 @@ import {
 } from '../utils/constants.js';
 import { parseStoryboardJson } from '../utils/workflow.js';
 
-// 通用 modal 外壳
-function Modal({ open, onClose, title, children, width }) {
+// 通用 dialog 外壳（使用 AgentSpacesUI 自带 Dialog，避免 Select 浮层层级异常）
+function Modal({ open, onClose, title, children, width, className = '', bodyClassName = '' }) {
+  const { Dialog, DialogContent, DialogHeader, DialogTitle } = window.AgentSpacesUI;
   if (!open) return null;
   return (
-    <div className="sb-modal-mask" onClick={onClose}>
-      <div className="sb-modal" style={width ? { maxWidth: width } : undefined} onClick={(e) => e.stopPropagation()}>
-        <header className="sb-modal-head">
-          <span>{title}</span>
-          <button type="button" className="sb-modal-close" onClick={onClose}>×</button>
-        </header>
-        <div className="sb-modal-body">{children}</div>
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
+      <DialogContent
+        className={className || undefined}
+        style={width ? { maxWidth: width } : undefined}
+      >
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className={bodyClassName || undefined}>{children}</div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -71,12 +74,19 @@ export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
   const patch = (p) => setCfg((prev) => ({ ...prev, ...p }));
 
   return (
-    <Modal open={open} onClose={onCancel} title="生成参数" width={460}>
-      <div className="sb-grid-2">
+    <Modal
+      open={open}
+      onClose={onCancel}
+      title="生成参数"
+      width={460}
+      className="sm:max-w-[460px]"
+      bodyClassName="sb-modal-body"
+    >
+      <div>
         <div className="sb-field">
           <Label>模型</Label>
           <Select value={cfg.model} onValueChange={(v) => patch({ model: v })}>
-            <SelectTrigger><SelectValue placeholder="选择模型" /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue placeholder="选择模型" /></SelectTrigger>
             <SelectContent>
               {MODEL_OPTIONS.map((m) => (
                 <SelectItem key={m.value} value={m.value}>
@@ -89,7 +99,7 @@ export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
         <div className="sb-field">
           <Label>比例</Label>
           <Select value={cfg.aspect} onValueChange={(v) => patch({ aspect: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               {ASPECT_OPTIONS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
             </SelectContent>
@@ -98,7 +108,7 @@ export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
         <div className="sb-field">
           <Label>尺寸</Label>
           <Select value={cfg.size} onValueChange={(v) => patch({ size: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               {SIZE_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
@@ -178,7 +188,14 @@ export function ImportDialog({ open, onClose, actions, agentConfigId }) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="导入文案生成分镜" width={680}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="导入文案生成分镜"
+      width={680}
+      className="sm:max-w-[680px]"
+      bodyClassName="sb-modal-body sb-modal-body-scroll"
+    >
       <div className="sb-field">
         <Label>设定 / 文案（Agent 会据此输出角色 + 分镜 JSON 并导入）</Label>
         <Textarea

@@ -6,7 +6,7 @@
       "id": "proj-mqrn3nyi-qtyq9g",
       "name": "项目 1",
       "createdAt": "2026-06-24T05:35:39.786Z",
-      "updatedAt": "2026-06-24T05:56:55.437Z",
+      "updatedAt": "2026-06-24T07:44:09.803Z",
       "characters": [
         {
           "id": "char-1782280615437-dgpedb",
@@ -192,9 +192,9 @@
     "imageWorkflowName": "image_generator",
     "videoWorkflowId": "5130958f-a78e-4c36-8f03-1f2f733b87d7",
     "videoWorkflowName": "video_generator",
-    "provider": "keling",
-    "model": "kling-v1",
-    "aspect": "16:9",
+    "provider": "qwen",
+    "model": "qwen-image-2.0-pro",
+    "aspect": "9:16",
     "size": "1k"
   }
 }

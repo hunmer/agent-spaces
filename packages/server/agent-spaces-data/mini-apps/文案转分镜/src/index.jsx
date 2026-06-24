@@ -85,11 +85,8 @@ function Style() {
 
       .sb-error { margin-top: 10px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px; font-size: 13px; }
 
-      .sb-modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: grid; place-items: center; padding: 16px; }
-      .sb-modal { background: #fff; border-radius: 10px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.2); }
-      .sb-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-weight: 650; }
-      .sb-modal-close { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: #71717a; }
-      .sb-modal-body { padding: 16px; overflow: auto; }
+      .sb-modal-body { padding-top: 4px; }
+      .sb-modal-body-scroll { max-height: min(70vh, 720px); overflow: auto; }
       .sb-modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
       .sb-radio-row { display: flex; flex-direction: column; gap: 8px; }
       .sb-radio { padding: 10px 12px; border: 1px solid #e4e4e7; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; text-align: left; color: #52525b; }

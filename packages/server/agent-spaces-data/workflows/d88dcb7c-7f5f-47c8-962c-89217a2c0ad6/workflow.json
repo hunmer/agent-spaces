@@ -1,6 +1,6 @@
 {
-  "id": "19f5f8a9-305d-43a6-9b05-584597213a8f",
-  "name": "edit_image",
+  "id": "d88dcb7c-7f5f-47c8-962c-89217a2c0ad6",
+  "name": "text_to_image",
   "folderId": null,
   "nodes": [
     {
@@ -14,21 +14,18 @@
       "data": {
         "inputFields": [
           {
-            "key": "images",
-            "type": "string[]",
-            "description": "图片列表"
-          },
-          {
             "key": "prompt",
             "type": "string",
             "description": "提示词",
-            "required": true
+            "required": true,
+            "children": []
           },
           {
             "key": "model",
             "type": "string",
             "description": "模型名称",
-            "required": true
+            "required": true,
+            "children": []
           },
           {
             "key": "aspect",
@@ -40,7 +37,8 @@
               "1:1",
               "4:3",
               "3:4"
-            ]
+            ],
+            "children": []
           },
           {
             "key": "size",
@@ -50,7 +48,8 @@
               "1k",
               "2k",
               "4k"
-            ]
+            ],
+            "children": []
           }
         ]
       }
@@ -509,8 +508,8 @@
       "targetHandle": "target"
     }
   ],
-  "createdAt": 1782271756656,
-  "updatedAt": 1782287567885,
+  "createdAt": 1782287549292,
+  "updatedAt": 1782287649181,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -521,6 +520,6 @@
   ],
   "lastRunAt": 1782287429840,
   "groups": [],
-  "description": "编辑图片",
+  "description": "文字生成图片",
   "variables": []
 }
