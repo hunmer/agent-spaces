@@ -72,6 +72,19 @@ type CanvasViewportRef = {
   invertSelection: () => void;
 };
 
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+
+  return (
+    target instanceof HTMLInputElement
+    || target instanceof HTMLTextAreaElement
+    || target instanceof HTMLSelectElement
+    || target.isContentEditable
+    || target.closest('.monaco-editor, .monaco-editor *') !== null
+    || target.closest('[contenteditable="true"], [role="textbox"]') !== null
+  );
+}
+
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
@@ -677,6 +690,33 @@ export function WorkflowCanvas({
     onEdgesChange(changes);
   }, [isCanvasLocked, onEdgesChange]);
 
+  useEffect(() => {
+    if (isCanvasLocked) return;
+
+    const handleCanvasDeleteKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      if (isEditableKeyboardTarget(event.target)) return;
+
+      if (selectedEdgeId) {
+        event.preventDefault();
+        event.stopPropagation();
+        selectEdge(null);
+        onEdgesChange([{ id: selectedEdgeId, type: 'remove' }]);
+        return;
+      }
+
+      if (selectedNodeIds.length === 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      if (selectedNodeIds.length === 1) onNodeDelete(selectedNodeIds[0]);
+      else onBatchDeleteNodes?.(selectedNodeIds);
+    };
+
+    window.addEventListener('keydown', handleCanvasDeleteKey, true);
+    return () => window.removeEventListener('keydown', handleCanvasDeleteKey, true);
+  }, [isCanvasLocked, onBatchDeleteNodes, onEdgesChange, onNodeDelete, selectEdge, selectedEdgeId, selectedNodeIds]);
+
   const handleSelectionStart = useCallback(() => {
     isRangeSelectingRef.current = true;
     pendingRangeSelectionRef.current = selectedNodeIds;
@@ -846,7 +886,7 @@ export function WorkflowCanvas({
         snapGrid={[15, 15]}
         minZoom={0.2}
         maxZoom={4}
-        deleteKeyCode={isCanvasLocked || selectedEdgeId ? null : ['Backspace', 'Delete']}
+        deleteKeyCode={null}
         nodesDraggable={!isCanvasLocked}
         nodesConnectable={!isCanvasLocked}
         edgesReconnectable={!isCanvasLocked}

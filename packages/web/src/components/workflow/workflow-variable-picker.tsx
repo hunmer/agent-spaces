@@ -162,6 +162,9 @@ function normalizeTypeFilter(typeFilter: VariablePickerProps['typeFilter']): Out
 function matchesTypeFilter(fieldType: OutputField['type'] | undefined, typeFilter: OutputField['type'][]): boolean {
   if (!typeFilter.length || !fieldType) return true;
   if (fieldType === 'any' || typeFilter.includes('any')) return true;
+  const isStringLikeField = fieldType === 'string' || fieldType === 'select';
+  const acceptsStringLike = typeFilter.includes('string') || typeFilter.includes('select');
+  if (isStringLikeField && acceptsStringLike) return true;
   return typeFilter.includes(fieldType);
 }
 

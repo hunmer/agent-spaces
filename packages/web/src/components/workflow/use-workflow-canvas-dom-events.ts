@@ -211,31 +211,5 @@ export function useCanvasDomEvents({
     };
   }, [handleEdgeDataUpdate, handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeSelectEvent, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleMergeNodesToWorkflowEvent, handleMergeNodesToGroupEvent, handleBatchDeleteNodesEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
 
-  // Keyboard delete for selected edge
-  useEffect(() => {
-    if (isCanvasLocked || !selectedEdgeId) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
-
-      const target = event.target;
-      if (
-        target instanceof HTMLInputElement
-        || target instanceof HTMLTextAreaElement
-        || target instanceof HTMLSelectElement
-        || (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      removeEdge(selectedEdgeId);
-    };
-
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isCanvasLocked, removeEdge, selectedEdgeId]);
-
   return { selectedEdgeId, selectEdge, removeEdge };
 }

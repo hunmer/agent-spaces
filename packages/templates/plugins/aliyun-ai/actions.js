@@ -120,6 +120,17 @@ function parseArray(value) {
   }
 }
 
+// 分辨率简写自动转换：1k->1024*1024, 2k->2048*2048, 4k->4096*4096（支持小数，如 2.5k->2560*2560）
+function normalizeSize(size) {
+  if (!size || typeof size !== 'string') return size
+  const m = size.trim().toLowerCase().match(/^(\d+(?:\.\d+)?)k$/)
+  if (m) {
+    const px = Math.round(parseFloat(m[1]) * 1024)
+    return `${px}*${px}`
+  }
+  return size
+}
+
 function extractAsrTexts(transcription) {
   const texts = []
   const transcripts = transcription.transcripts || []
@@ -295,7 +306,7 @@ module.exports = (t) => {
         model: args.model || 'qwen-image-2.0-pro',
         input: { messages: [{ role: 'user', content: [{ text: args.prompt }] }] },
         parameters: {
-          size: args.size || '2048*2048',
+          size: normalizeSize(args.size || '2048*2048'),
           ...(args.n && { n: args.n }),
           ...(args.negativePrompt && { negative_prompt: args.negativePrompt }),
           ...(args.seed != null && { seed: args.seed }),
@@ -357,7 +368,7 @@ module.exports = (t) => {
         model: args.model || 'qwen-image-2.0-pro',
         input: { messages: [{ role: 'user', content }] },
         parameters: {
-          size: args.size || '2048*2048',
+          size: normalizeSize(args.size || '2048*2048'),
           ...(args.n && { n: args.n }),
           ...(args.negativePrompt && { negative_prompt: args.negativePrompt }),
           prompt_extend: args.promptExtend !== 'false' && args.promptExtend !== false,
@@ -413,7 +424,7 @@ module.exports = (t) => {
           ...(args.negativePrompt && { negative_prompt: args.negativePrompt }),
         },
         parameters: {
-          size: args.size || '1280*1280',
+          size: normalizeSize(args.size || '1280*1280'),
           ...(args.n && { n: args.n }),
           ...(args.seed != null && { seed: args.seed }),
           prompt_extend: args.promptExtend !== 'false' && args.promptExtend !== false,

@@ -263,7 +263,7 @@
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
         "model": "{{ __data__[\"node_1781681576137_start\"].model }}",
-        "size": "1024*1024",
+        "size": "{{ __data__[\"node_1782281779113_6rk17s\"].size }}",
         "n": 1,
         "promptExtend": "true",
         "outputs": [
@@ -348,6 +348,37 @@
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
         "images": "{{ __data__[\"node_1781681576137_start\"].images }}"
       }
+    },
+    {
+      "id": "node_1782281779113_6rk17s",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 0,
+        "y": 490.5
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break \n    case '2k':\n      size = '2024*2024'\n      break \n  }\n  return {size}\n}",
+        "sourceNodeId": "node_1781681576137_start",
+        "sourceHandle": "source",
+        "inputFields": [
+          {
+            "key": "size",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781681576137_start\"].size }}",
+            "required": true,
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "size",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
+      }
     }
   ],
   "edges": [
@@ -356,13 +387,6 @@
       "source": "node_1781686908308_6flfam",
       "target": "node_1781681576137_end",
       "sourceHandle": "default",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1781681576137_start-source-node_1781686908308_6flfam-target",
-      "source": "node_1781681576137_start",
-      "target": "node_1781686908308_6flfam",
-      "sourceHandle": "source",
       "targetHandle": "target"
     },
     {
@@ -409,10 +433,21 @@
       "target": "node_1782272119586_dim19h",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1782281779113_6rk17s-target",
+      "source": "node_1781681576137_start",
+      "target": "node_1782281779113_6rk17s",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-source-node_1781686908308_6flfam-target",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam"
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1782281586186,
+  "updatedAt": 1782282423490,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -420,7 +455,7 @@
     "workflow.aliyun-ai",
     "workflow.jimeng"
   ],
-  "lastRunAt": 1782281352043,
+  "lastRunAt": 1782282426724,
   "groups": [],
   "description": "生成图片",
   "variables": []
