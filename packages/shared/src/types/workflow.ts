@@ -35,6 +35,12 @@ export interface ConditionItem {
   value: string
 }
 
+export interface ConditionGroup {
+  id: string
+  joiner?: 'and' | 'or'
+  conditions: ConditionItem[]
+}
+
 export interface WorkflowNodeCompositeMeta {
   rootId?: string
   parentId?: string | null

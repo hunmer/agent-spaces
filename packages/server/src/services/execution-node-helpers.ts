@@ -7,6 +7,7 @@ import type {
   WorkflowEdge,
   OutputField,
   ConditionItem,
+  ConditionGroup,
   ExecutionLogEntry,
 } from '@agent-spaces/shared';
 import type { ExecutionSession, LoopIterations } from './execution-types.js';
@@ -228,20 +229,51 @@ export function evaluateCondition(
   }
 }
 
-export function executeSwitch(conditions: unknown): any {
+function normalizeConditionGroups(conditions: unknown): ConditionGroup[] {
   const conditionItems = Array.isArray(conditions) ? conditions : [];
 
-  for (let i = 0; i < conditionItems.length; i++) {
-    const cond = conditionItems[i];
-    if (!cond || typeof cond !== 'object') continue;
+  return conditionItems.flatMap((item, index) => {
+    if (!item || typeof item !== 'object') return [];
 
-    const item = cond as Partial<ConditionItem> & { field?: unknown };
-    const variable = item.variable ?? item.field ?? '';
-    const value = item.value ?? '';
-    const operator = typeof item.operator === 'string' ? item.operator : 'equals';
-    const compareMode = item.compareMode === 'length' ? 'length' : 'value';
+    const maybeGroup = item as Partial<ConditionGroup> & { field?: unknown };
+    if (Array.isArray(maybeGroup.conditions)) {
+      return [{
+        id: typeof maybeGroup.id === 'string' ? maybeGroup.id : `group_${index}`,
+        joiner: maybeGroup.joiner === 'or' ? 'or' : 'and',
+        conditions: maybeGroup.conditions.filter((condition: unknown): condition is ConditionItem =>
+          !!condition && typeof condition === 'object'
+        ),
+      }];
+    }
 
-    if (evaluateCondition(variable, value, operator, compareMode)) {
+    return [{
+      id: typeof maybeGroup.id === 'string' ? maybeGroup.id : `group_${index}`,
+      joiner: 'and',
+      conditions: [maybeGroup as ConditionItem],
+    }];
+  });
+}
+
+export function executeSwitch(conditions: unknown): any {
+  const conditionGroups = normalizeConditionGroups(conditions);
+
+  for (let i = 0; i < conditionGroups.length; i++) {
+    const group = conditionGroups[i];
+    if (!Array.isArray(group.conditions) || group.conditions.length === 0) continue;
+    const joiner = group.joiner === 'or' ? 'or' : 'and';
+
+    const results = group.conditions.map((cond: ConditionItem) => {
+      if (!cond || typeof cond !== 'object') return false;
+      const item = cond as Partial<ConditionItem> & { field?: unknown };
+      const variable = item.variable ?? item.field ?? '';
+      const value = item.value ?? '';
+      const operator = typeof item.operator === 'string' ? item.operator : 'equals';
+      const compareMode = item.compareMode === 'length' ? 'length' : 'value';
+      return evaluateCondition(variable, value, operator, compareMode);
+    });
+    const matched = joiner === 'or' ? results.some(Boolean) : results.every(Boolean);
+
+    if (matched) {
       return { __branch__: `case-${i}`, matchedIndex: i };
     }
   }

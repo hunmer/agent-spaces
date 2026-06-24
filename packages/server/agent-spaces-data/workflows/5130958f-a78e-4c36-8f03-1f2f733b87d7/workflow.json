@@ -74,11 +74,6 @@
               "10"
             ],
             "children": []
-          },
-          {
-            "key": "use_frame",
-            "type": "boolean",
-            "value": ""
           }
         ]
       }
@@ -366,8 +361,8 @@
       "type": "minimax_image_to_video",
       "label": "图生视频",
       "position": {
-        "x": 1800,
-        "y": 435
+        "x": 1530,
+        "y": 690
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
@@ -413,13 +408,57 @@
         "conditions": [
           {
             "id": "cond_1782299101116_av5e",
-            "variable": "{{ __data__[\"node_1781681576137_start\"].use_frame }}",
-            "field": "{{ __data__[\"node_1781681576137_start\"].use_frame }}",
-            "operator": "is_true",
-            "value": "",
-            "compareMode": "value"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782299101116_av5e",
+                "variable": "{{ __data__[\"node_1781681576137_start\"].images }}",
+                "field": "{{ __data__[\"node_1781681576137_start\"].images }}",
+                "compareMode": "length",
+                "operator": "greater_than",
+                "value": "1"
+              }
+            ]
           }
         ]
+      }
+    },
+    {
+      "id": "node_1782300311660_hg69cl",
+      "type": "minimax_start_end_to_video",
+      "label": "首尾帧视频",
+      "position": {
+        "x": 1530,
+        "y": 495
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "duration": 6,
+        "resolution": "768P",
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1782299095140_v2k0ss",
+        "sourceHandle": "case-0",
+        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images }}"
       }
     }
   ],
@@ -489,13 +528,21 @@
       "sourceHandle": "case-2"
     },
     {
-      "id": "e-node_1782299095140_v2k0ss-source-node_1782299033531_slkx6j-target",
+      "id": "e-node_1782299095140_v2k0ss-case-0-node_1782300311660_hg69cl-target",
       "source": "node_1782299095140_v2k0ss",
-      "target": "node_1782299033531_slkx6j"
+      "target": "node_1782300311660_hg69cl",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1782299095140_v2k0ss-default-node_1782299033531_slkx6j-target",
+      "source": "node_1782299095140_v2k0ss",
+      "target": "node_1782299033531_slkx6j",
+      "sourceHandle": "default",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782275955731,
-  "updatedAt": 1782299695182,
+  "updatedAt": 1782300334188,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
