@@ -32,10 +32,14 @@ function Style() {
       .sb-list-title { display: flex; align-items: center; gap: 6px; font-weight: 650; font-size: 14px; }
       .sb-ml-auto { margin-left: auto; }
       .sb-list { flex: 1; min-height: 0; overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
-      .sb-list-item { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 9px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
+      .sb-list-item { display: flex; align-items: center; gap: 8px; text-align: left; padding: 9px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
       .sb-list-item:hover { background: #f4f4f5; }
       .sb-list-item.is-active { background: #f4f4f5; border-color: #d4d4d8; }
-      .sb-list-item-name { font-size: 13px; font-weight: 600; color: #18181b; }
+      .sb-list-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+      .sb-list-item-name { font-size: 13px; font-weight: 600; color: #18181b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sb-list-gen { flex: 0 0 auto; border: 1px solid #e4e4e7; background: #fff; border-radius: 6px; padding: 5px; cursor: pointer; color: #52525b; display: grid; place-items: center; }
+      .sb-list-gen:hover:not(:disabled) { background: #18181b; color: #fff; border-color: #18181b; }
+      .sb-list-gen:disabled { opacity: .6; cursor: default; }
       .sb-list-item-sub { font-size: 11px; color: #a1a1aa; }
       .sb-list-empty, .sb-edit-empty { display: grid; place-items: center; color: #a1a1aa; font-size: 13px; padding: 24px; text-align: center; }
 
@@ -43,6 +47,7 @@ function Style() {
       .sb-edit-body { padding: 16px; }
       .sb-edit-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; background: #fff; }
       .sb-edit-title { font-weight: 650; font-size: 14px; }
+      .sb-edit-head-actions { display: flex; align-items: center; gap: 6px; }
 
       .sb-field { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; }
       .sb-field:first-child { margin-top: 0; }
@@ -180,7 +185,7 @@ function App() {
             尚未选择项目，点击左上角「+」新建一个项目开始
           </div>
         ) : tab === 'characters' ? (
-          <CharacterPanel project={project} actions={actions} />
+          <CharacterPanel project={project} actions={actions} settings={cfg} />
         ) : (
           <ScenePanel project={project} settings={cfg} actions={actions} />
         )}

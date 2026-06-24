@@ -1,7 +1,192 @@
 {
   "version": 1,
-  "activeProjectId": "",
-  "projects": [],
+  "activeProjectId": "proj-mqrn3nyi-qtyq9g",
+  "projects": [
+    {
+      "id": "proj-mqrn3nyi-qtyq9g",
+      "name": "项目 1",
+      "createdAt": "2026-06-24T05:35:39.786Z",
+      "updatedAt": "2026-06-24T05:56:55.437Z",
+      "characters": [
+        {
+          "id": "char-1782280615437-dgpedb",
+          "name": "Link",
+          "prompt": "a young hero with blonde hair, green tunic and hat, determined expression, holding a sword, fantasy adventure style, detailed character design, The Legend of Zelda game aesthetic",
+          "images": []
+        },
+        {
+          "id": "char-1782280615437-scb7k8",
+          "name": "Zelda",
+          "prompt": "a young princess with long blonde hair, elegant royal attire in blue and gold tones, serene and wise expression, fantasy adventure style, detailed character design, The Legend of Zelda game aesthetic",
+          "images": []
+        }
+      ],
+      "scenes": [
+        {
+          "id": "scene-1782280615437-l3b7pk",
+          "index": 1,
+          "narration": "林克与塞尔达并肩穿越茂密的森林，小心翼翼地拨开垂落的藤蔓。",
+          "visualPrompt": "A fantasy forest with lush green vegetation, hanging vines, dappled sunlight filtering through the canopy, two figures walking side by side in the center of the frame, cinematic composition, warm natural lighting, detailed environment art, The Legend of Zelda game style",
+          "animationPrompt": "Medium shot following the two characters walking forward, gentle camera movement matching their pace, leaves rustling, ambient forest atmosphere",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-2hp7s0",
+          "index": 2,
+          "narration": "周围的岩壁上生长着奇异的发光蘑菇，闪烁着柔和的蓝绿色光芒。",
+          "visualPrompt": "Close-up of bioluminescent mushrooms growing on ancient stone walls, soft cyan and green glow illuminating the surrounding rocks, magical atmosphere, detailed fantasy environment, dreamy lighting",
+          "animationPrompt": "Slow push-in to close-up of glowing mushrooms, subtle pulsing light animation, magical particles floating, ethereal ambiance",
+          "characterIds": [],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-kmdrdn",
+          "index": 3,
+          "narration": "地面上隐约可见古老的希卡族遗迹痕迹，神秘的几何图案若隐若现。",
+          "visualPrompt": "Ancient Sheikah ruins with glowing cyan geometric patterns on weathered stone ground, mystical symbols carved into the earth, overgrown with moss, dramatic lighting highlighting the ancient technology, fantasy archaeological site",
+          "animationPrompt": "Slow tracking shot along the ancient patterns on the ground, the cyan glow subtly pulsing, revealing details of the Sheikah symbols, mysterious atmosphere",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-payvts",
+          "index": 4,
+          "narration": "两人突然停下脚步，警觉地望向前方。",
+          "visualPrompt": "Two characters frozen mid-step, looking forward with alert expressions, one hand near weapon, tense body language, forest path ahead appears darker, composition focusing on their reactions, dramatic lighting",
+          "animationPrompt": "Medium shot pausing on the characters, slight camera push forward to emphasize tension, wind rustling through leaves, building suspense",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-d3v9fv",
+          "index": 5,
+          "narration": "一只巨大的史莱姆从阴影中弹跳而出，透明的凝胶状身体内闪烁着危险的光芒。",
+          "visualPrompt": "A massive slime enemy in the forest clearing, translucent gel-like body with inner glow, bouncing animation, semi-transparent purple and cyan colors, large in frame filling the scene, threatening presence, fantasy game enemy design",
+          "animationPrompt": "Dramatic reveal shot, the slime bouncing into frame with impact, camera slight shake, particle effects from the slime's movement, aggressive animation",
+          "characterIds": [
+            "char-1782280615437-dgpedb"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-guifvi",
+          "index": 6,
+          "narration": "林克毫不犹豫地拔出大师之剑，剑身闪耀着神圣的光芒。",
+          "visualPrompt": "Link drawing his legendary sword, the Master Sword glowing with holy light, dramatic pose with blade extended, rays of light emanating from the sword, action hero framing, epic fantasy scene, detailed sword design",
+          "animationPrompt": "Quick draw animation, sword flash effect, camera pulling back to show full dramatic pose, light particles emanating from blade, heroic moment",
+          "characterIds": [
+            "char-1782280615437-dgpedb"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-jdksso",
+          "index": 7,
+          "narration": "林克挥剑斩向史莱姆，剑光划破空气。",
+          "visualPrompt": "Link mid-swing with glowing sword cutting through the air towards the slime enemy, motion blur on sword blade, impact about to happen, dynamic action composition, fantasy combat scene, intense lighting",
+          "animationPrompt": "Fast sword swing animation, horizontal slash motion, camera tracking the sword trajectory, wind effect, anticipation of impact, high-energy sequence",
+          "characterIds": [
+            "char-1782280615437-dgpedb"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-xi4u1x",
+          "index": 8,
+          "narration": "剑锋精准地击中史莱姆，巨大的凝胶生物被劈成碎片，逐渐消散在空气中。",
+          "visualPrompt": "Sword cutting through slime with bright flash impact, slime splitting into fragments and particles dissolving into the air, destruction effect with light bursts, victorious pose of the hero, aftermath of combat, fantasy game battle resolution",
+          "animationPrompt": "Impact flash, slime fragments scattering and dissolving into glowing particles, camera shake on hit, particles dispersing into the forest air, satisfying combat resolution",
+          "characterIds": [
+            "char-1782280615437-dgpedb"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-dj8yty",
+          "index": 9,
+          "narration": "林克收剑入鞘，与塞尔达交换了一个眼神，确认彼此平安无事。",
+          "visualPrompt": "Link sheathing his sword, looking at Zelda with relief in his eyes, brief moment of connection between the two characters, forest clearing after battle, softer lighting, calm after action, character interaction close-up",
+          "animationPrompt": "Smooth sheathing animation, gentle transition to two-shot of the characters looking at each other, subtle smile, peaceful moment, camera slowly pulling back slightly",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-o19stl",
+          "index": 10,
+          "narration": "两人继续踏上旅程，沿着隐约可见的小径前行。",
+          "visualPrompt": "Two characters walking together along a narrow hidden path, ancient stone structures visible in the distance, sunlight breaking through forest canopy ahead, scenic fantasy landscape, journey continuation mood, warm lighting",
+          "animationPrompt": "Walking sequence following the characters, camera panning alongside them, transitioning from dense forest to more open area, atmospheric transition, sense of progress and discovery",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-hny4xd",
+          "index": 11,
+          "narration": "穿过最后一片灌木丛，一座隐藏的古老喷泉出现在眼前。",
+          "visualPrompt": "A hidden ancient fountain revealed in a sunlit clearing, weathered stone basin with mystical water, faint glow from the water surface, surrounding overgrown ruins, magical discovery moment, ethereal atmosphere, fantasy game secret location",
+          "animationPrompt": "Bushes parting transition, reveal shot of the fountain, camera slowly orbiting to show the full scene, water surface glimmering, magical particles floating, sense of wonder and achievement",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-bdhb20",
+          "index": 12,
+          "narration": "他们来到喷泉边，凝视着那泛着微光的水面，倒影中映出两人的身影。",
+          "visualPrompt": "Two characters standing at the edge of a mystical fountain, gazing down at glowing water with their reflections, intimate moment between them, soft ambient lighting from the water, peaceful and serene atmosphere, fantasy game scene composition",
+          "animationPrompt": "Slow camera push to over-shoulder shot looking at the water surface, reflections visible in the glowing water, characters breathing calmly, gentle particle effects rising from water, emotional and tranquil tone",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        },
+        {
+          "id": "scene-1782280615437-lwhzbc",
+          "index": 13,
+          "narration": "经历了冒险与战斗，此刻的宁静格外珍贵，两人相视而笑。",
+          "visualPrompt": "Two characters smiling at each other with warmth and contentment, standing beside the magical fountain, golden hour lighting from behind them, peaceful and victorious atmosphere, emotional character moment, fantasy adventure tone, cinematic composition",
+          "animationPrompt": "Slow zoom out to two-shot, characters turning to each other with genuine smiles, soft golden light wrapping around them, gentle ambient motion in the background, warm and emotional conclusion",
+          "characterIds": [
+            "char-1782280615437-dgpedb",
+            "char-1782280615437-scb7k8"
+          ],
+          "images": [],
+          "video": ""
+        }
+      ]
+    }
+  ],
   "settings": {
     "imageWorkflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
     "imageWorkflowName": "image_generator",

@@ -239,11 +239,21 @@
   {
     "id": "文案转分镜",
     "name": "文案转分镜",
+    "description": "多项目管理 · 角色/分镜管理 · 调用工作流生成分镜图片与视频 · 文案经 Agent 一键导入",
     "version": "1.0.0",
     "type": "react",
-    "tags": [],
+    "tags": [
+      "分镜",
+      "图片生成",
+      "视频生成",
+      "工作流"
+    ],
     "mainFile": "index.jsx",
+    "enabledPlugins": [
+      "@agent-spaces/builtin"
+    ],
+    "icon": "🎬",
     "createdAt": "2026-06-24T04:41:50.917Z",
-    "updatedAt": "2026-06-24T04:41:50.917Z"
+    "updatedAt": "2026-06-24T05:56:55.438Z"
   }
 ]

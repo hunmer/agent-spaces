@@ -1,7 +1,7 @@
 // 文案转分镜 · 角色管理
 import React, { useState, useEffect, useRef } from 'react';
 import { uid } from '../utils/constants.js';
-import { resolveUploadItem } from '../utils/workflow.js';
+import { resolveUploadItem, runGeneration } from '../utils/workflow.js';
 
 function sameChar(a, b) {
   if (!a || !b) return false;
@@ -12,14 +12,15 @@ function sameChar(a, b) {
   return ai.every((x, i) => x.id === bi[i].id && x.url === bi[i].url && !!x.selected === !!bi[i].selected);
 }
 
-export default function CharacterPanel({ project, actions }) {
-  const { Button, Input, Label, Textarea, FileUpload, Badge, Trash2, Plus, User, Star, Loader2 } = window.AgentSpacesUI;
+export default function CharacterPanel({ project, actions, settings }) {
+  const { Button, Input, Label, Textarea, FileUpload, Badge, Trash2, Plus, User, Star, Loader2, WandSparkles } = window.AgentSpacesUI;
 
   const characters = project?.characters || [];
   const [selectedId, setSelectedId] = useState('');
   const [draft, setDraft] = useState(null);
   const [pendingFiles, setPendingFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [genRunningId, setGenRunningId] = useState('');
   const pendingRef = useRef([]);
 
   // 选中角色兜底（项目切换 / 删除后）
@@ -58,6 +59,37 @@ export default function CharacterPanel({ project, actions }) {
   const removeCharacter = async (id) => {
     if (!window.confirm('删除该角色？分镜中对该角色的引用也会被移除。')) return;
     await actions.deleteCharacter(id);
+  };
+
+  // 一键生成角色图片：用角色 prompt 调图片工作流，结果追加进该角色图片列表
+  const generateCharImage = async (char) => {
+    if (!char?.prompt?.trim()) { window.alert?.('请先填写该角色的提示词'); return; }
+    if (!settings?.imageWorkflowId) { window.alert?.('未配置图片工作流，请在「设置」中确认'); return; }
+    setGenRunningId(char.id);
+    try {
+      const urls = await runGeneration({
+        kind: 'image',
+        workflowId: settings.imageWorkflowId,
+        input: {
+          images: [],
+          prompt: char.prompt,
+          provider: settings.provider,
+          model: settings.model,
+          aspect: settings.aspect,
+          size: settings.size,
+        },
+        label: `角色「${char.name || ''}」生图`,
+      });
+      const existing = Array.isArray(char.images) ? char.images : [];
+      const fresh = urls.map((url) => ({ id: uid('img'), url, selected: false }));
+      const all = [...existing, ...fresh];
+      if (!all.some((i) => i.selected) && all.length) all[0].selected = true;
+      await actions.saveCharacter({ ...char, images: all });
+    } catch (e) {
+      window.alert?.(e?.message || '生成失败');
+    } finally {
+      setGenRunningId('');
+    }
   };
 
   const onFilesChange = (files) => {
@@ -117,15 +149,28 @@ export default function CharacterPanel({ project, actions }) {
           {characters.length === 0 ? (
             <div className="sb-list-empty">暂无角色，点击「新增」</div>
           ) : characters.map((c) => (
-            <button
-              type="button"
+            <div
               key={c.id}
+              role="button"
+              tabIndex={0}
               className={`sb-list-item${c.id === selectedId ? ' is-active' : ''}`}
               onClick={() => setSelectedId(c.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(c.id); } }}
             >
-              <span className="sb-list-item-name">{c.name || '未命名'}</span>
-              <span className="sb-list-item-sub">{(c.images || []).length} 张图</span>
-            </button>
+              <div className="sb-list-item-info">
+                <span className="sb-list-item-name">{c.name || '未命名'}</span>
+                <span className="sb-list-item-sub">{(c.images || []).length} 张图</span>
+              </div>
+              <button
+                type="button"
+                className="sb-list-gen"
+                onClick={(e) => { e.stopPropagation(); generateCharImage(c); }}
+                disabled={genRunningId === c.id}
+                title="一键生成角色图片"
+              >
+                {genRunningId === c.id ? <Loader2 className="sb-icon sb-spin" /> : <WandSparkles className="sb-icon" />}
+              </button>
+            </div>
           ))}
         </div>
       </aside>
@@ -137,9 +182,20 @@ export default function CharacterPanel({ project, actions }) {
           <div className="sb-edit-body">
             <div className="sb-edit-head">
               <span className="sb-edit-title">{draft.name || '未命名角色'}</span>
-              <Button size="icon" variant="ghost" onClick={() => removeCharacter(draft.id)} title="删除角色">
-                <Trash2 className="sb-icon" />
-              </Button>
+              <div className="sb-edit-head-actions">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateCharImage(draft)}
+                  disabled={genRunningId === draft.id}
+                >
+                  {genRunningId === draft.id ? <Loader2 className="sb-icon sb-spin" /> : <WandSparkles className="sb-icon" />}
+                  {genRunningId === draft.id ? '生成中' : '一键生成角色图片'}
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => removeCharacter(draft.id)} title="删除角色">
+                  <Trash2 className="sb-icon" />
+                </Button>
+              </div>
             </div>
 
             <div className="sb-field">
