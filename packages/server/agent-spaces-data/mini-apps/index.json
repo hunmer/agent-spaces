@@ -235,5 +235,15 @@
       "@agent-spaces/builtin"
     ],
     "icon": "🎵"
+  },
+  {
+    "id": "文案转分镜",
+    "name": "文案转分镜",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-06-24T04:41:50.917Z",
+    "updatedAt": "2026-06-24T04:41:50.917Z"
   }
 ]

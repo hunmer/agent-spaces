@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "activeProjectId": "",
+  "projects": [],
+  "settings": {
+    "imageWorkflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
+    "imageWorkflowName": "image_generator",
+    "videoWorkflowId": "5130958f-a78e-4c36-8f03-1f2f733b87d7",
+    "videoWorkflowName": "video_generator",
+    "provider": "keling",
+    "model": "kling-v1",
+    "aspect": "16:9",
+    "size": "1k"
+  }
+}
