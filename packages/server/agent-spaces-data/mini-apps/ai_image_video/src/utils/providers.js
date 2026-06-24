@@ -411,8 +411,6 @@ export function buildToolCall(providerId, modeId, formData) {
             ...(formData.duration && { duration: formData.duration }),
             ...(formData.resolution && { resolution: formData.resolution }),
           },
-          // MiniMax 视频是异步任务，需要后续轮询
-          asyncVideo: true,
         };
       }
       if (providerId === 'jimeng') {
@@ -530,8 +528,7 @@ export function checkResultError(result) {
  *   - jimeng_text_to_image / jimeng_image_to_image → { images: string[], created }
  *
  * 视频类 tool data 结构：
- *   - minimax_image_to_video → { taskId } (异步，需轮询)
- *   - minimax_video_async_wait → { downloadUrl, fileId, ... }
+ *   - minimax_image_to_video → { downloadUrl, fileId, ... } (节点内部已轮询至完成)
  *   - aliyun_image_to_video_v27 → { videoUrl, taskId, requestId }
  *   - jimeng_text_to_video → { videos: string[], created }
  */

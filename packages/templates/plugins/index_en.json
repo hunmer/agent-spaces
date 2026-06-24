@@ -470,7 +470,7 @@
   {
     "id": "workflow.minimax",
     "name": "MiniMax AI",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "MiniMax AI multimodal generation with text synthesis (M2.x LLM), character dialogue (M2-her), TTS, music generation, video generation (text-to-video/image-to-video/first-last-frame/subject-reference), and lyrics generation",
     "author": {
       "name": "workflow"
@@ -490,8 +490,8 @@
     "hasWorkflow": true,
     "path": "minimax",
     "iconUrl": "plugins/minimax/icon.svg",
-    "md5": "a3d744d83b252c7251942c55ae79e670",
-    "updatedAt": "2026-06-18T01:06:04.315Z",
+    "md5": "dfda2066b2cf679be59addb90a67d628",
+    "updatedAt": "2026-06-24T12:01:44.034Z",
     "files": [
       "actions.js",
       "icon.svg",

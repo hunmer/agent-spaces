@@ -16,7 +16,7 @@ function sameScene(a, b) {
     && (a.video || '') === (b.video || '');
 }
 
-function SceneCard({ scene, index, characters, settings, actions, onRemove, requestParams }) {
+function SceneCard({ scene, index, characters, settings, actions, onRemove, requestParams, bulkStatus }) {
   const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser } = window.AgentSpacesUI;
 
   const [draft, setDraft] = useState(() => ({ ...scene, characterIds: [...(scene.characterIds || [])] }));
@@ -124,16 +124,18 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
     openMediaPreview(buildMediaGalleryItems(draft.video ? [draft.video] : [], 'video', `分镜 ${index}`), 0);
   };
 
-  const canGenerateVideo = !!draft.images?.length && !imgRunning && !vidRunning;
+  const imageBusy = imgRunning || bulkStatus?.image === 'running' || bulkStatus?.image === 'retrying';
+  const videoBusy = vidRunning || bulkStatus?.video === 'running' || bulkStatus?.video === 'retrying';
+  const canGenerateVideo = !!draft.images?.length && !imageBusy && !videoBusy;
 
   return (
     <article className="sb-scene-card">
       <header className="sb-scene-head">
         <div className="sb-scene-no">{index}</div>
         <div className="sb-scene-actions">
-          <Button size="sm" variant="outline" onClick={generateImage} disabled={imgRunning || vidRunning}>
-            {imgRunning ? <Loader2 className="sb-icon sb-spin" /> : <ImageIcon className="sb-icon" />}
-            {imgRunning ? '生成中' : '生成图片'}
+          <Button size="sm" variant="outline" onClick={generateImage} disabled={imageBusy || videoBusy}>
+            {imageBusy ? <Loader2 className="sb-icon sb-spin" /> : <ImageIcon className="sb-icon" />}
+            {bulkStatus?.image === 'retrying' ? '重试中' : imageBusy ? '生成中' : '生成图片'}
           </Button>
           <Button
             size="sm"
@@ -142,8 +144,8 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
             disabled={!canGenerateVideo}
             title={draft.images?.length ? '基于当前分镜图片生成视频' : '请先生成图片'}
           >
-            {vidRunning ? <Loader2 className="sb-icon sb-spin" /> : <FilmIcon className="sb-icon" />}
-            {vidRunning ? '生成中' : '生成视频'}
+            {videoBusy ? <Loader2 className="sb-icon sb-spin" /> : <FilmIcon className="sb-icon" />}
+            {bulkStatus?.video === 'retrying' ? '重试中' : videoBusy ? '生成中' : '生成视频'}
           </Button>
           <Button size="icon" variant="ghost" onClick={() => onRemove(draft.id)} title="删除分镜">
             <Trash2 className="sb-icon" />
@@ -235,6 +237,7 @@ export default function ScenePanel({ project, settings, actions, requestParams }
   const scenes = (project?.scenes || []).slice().sort((a, b) => a.index - b.index);
   const characters = project?.characters || [];
   const [bulkRunning, setBulkRunning] = useState('');
+  const [bulkSceneStatus, setBulkSceneStatus] = useState({});
 
   const addScene = async () => {
     const s = {
@@ -272,26 +275,66 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     return [charPrompt, scene?.visualPrompt || ''].filter(Boolean).join('\n');
   };
 
+  const markBulkSceneStatus = (sceneId, kind, status) => {
+    setBulkSceneStatus((prev) => ({
+      ...prev,
+      [sceneId]: {
+        ...(prev[sceneId] || {}),
+        [kind]: status,
+      },
+    }));
+  };
+
+  const clearBulkSceneStatus = () => setBulkSceneStatus({});
+
+  const runWithRetry = async ({ sceneId, kind, task }) => {
+    markBulkSceneStatus(sceneId, kind, 'running');
+    try {
+      return await task();
+    } catch (error) {
+      markBulkSceneStatus(sceneId, kind, 'retrying');
+      try {
+        return await task();
+      } catch (retryError) {
+        markBulkSceneStatus(sceneId, kind, 'error');
+        throw retryError;
+      }
+    } finally {
+      setBulkSceneStatus((prev) => {
+        const next = { ...prev };
+        if (!next[sceneId]) return prev;
+        next[sceneId] = { ...next[sceneId], [kind]: '' };
+        if (!next[sceneId].image && !next[sceneId].video) delete next[sceneId];
+        return next;
+      });
+    }
+  };
+
   const generateAllImages = async () => {
     if (!scenes.length || bulkRunning) return;
     const params = await requestParams('image');
     if (!params) return;
     setBulkRunning('image');
+    clearBulkSceneStatus();
     try {
       for (const scene of scenes) {
-        if (!scene?.visualPrompt?.trim()) continue;
+        if (!scene?.visualPrompt?.trim() || scene?.images?.length) continue;
         const images = collectRefImagesForScene(scene);
         const prompt = buildSceneImagePrompt(scene);
         const hasRefImages = images.length > 0;
-        const urls = await runGeneration({
+        const urls = await runWithRetry({
+          sceneId: scene.id,
           kind: 'image',
-          workflowId: hasRefImages
-            ? (settings.editImageWorkflowId || settings.imageWorkflowId)
-            : (settings.textToImageWorkflowId || settings.imageWorkflowId),
-          input: hasRefImages
-            ? { images, prompt, model: params.model, aspect: params.aspect, size: params.size }
-            : { prompt, model: params.model, aspect: params.aspect, size: params.size },
-          label: `分镜 ${scene.index} 生成图片`,
+          task: () => runGeneration({
+            kind: 'image',
+            workflowId: hasRefImages
+              ? (settings.editImageWorkflowId || settings.imageWorkflowId)
+              : (settings.textToImageWorkflowId || settings.imageWorkflowId),
+            input: hasRefImages
+              ? { images, prompt, model: params.model, aspect: params.aspect, size: params.size }
+              : { prompt, model: params.model, aspect: params.aspect, size: params.size },
+            label: `分镜 ${scene.index} 生成图片`,
+          }),
         });
         await actions.addSceneMedia(scene.id, 'image', urls);
       }
@@ -307,21 +350,26 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     const params = await requestParams('video');
     if (!params) return;
     setBulkRunning('video');
+    clearBulkSceneStatus();
     try {
       for (const scene of scenes) {
-        if (!scene?.animationPrompt?.trim() || !scene?.images?.length) continue;
-        const urls = await runGeneration({
+        if (!scene?.animationPrompt?.trim() || !scene?.images?.length || scene?.video) continue;
+        const urls = await runWithRetry({
+          sceneId: scene.id,
           kind: 'video',
-          workflowId: settings.videoWorkflowId,
-          input: {
-            images: scene.images.slice(-1),
-            prompt: scene.animationPrompt,
-            model: params.model,
-            aspect: params.aspect,
-            quality: params.quality,
-            duration: params.duration,
-          },
-          label: `分镜 ${scene.index} 生成视频`,
+          task: () => runGeneration({
+            kind: 'video',
+            workflowId: settings.videoWorkflowId,
+            input: {
+              images: scene.images.slice(-1),
+              prompt: scene.animationPrompt,
+              model: params.model,
+              aspect: params.aspect,
+              quality: params.quality,
+              duration: params.duration,
+            },
+            label: `分镜 ${scene.index} 生成视频`,
+          }),
         });
         await actions.addSceneMedia(scene.id, 'video', urls);
       }
@@ -332,7 +380,8 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     }
   };
 
-  const canBulkVideo = scenes.some((scene) => scene?.images?.length);
+  const canBulkImage = scenes.some((scene) => scene?.visualPrompt?.trim() && !scene?.images?.length);
+  const canBulkVideo = scenes.some((scene) => scene?.images?.length && !scene?.video);
 
   return (
     <div className="sb-scenes">
@@ -340,7 +389,13 @@ export default function ScenePanel({ project, settings, actions, requestParams }
         <span className="sb-list-title"><Film className="sb-icon" />分镜</span>
         <Badge variant="secondary">{scenes.length}</Badge>
         <div className="sb-scenes-head-actions sb-ml-auto">
-          <Button size="sm" variant="outline" onClick={generateAllImages} disabled={!scenes.length || !!bulkRunning}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={generateAllImages}
+            disabled={!canBulkImage || !!bulkRunning}
+            title={canBulkImage ? '批量补齐缺失图片' : '没有需要补生成图片的分镜'}
+          >
             {bulkRunning === 'image' ? '生成中' : '一键生成图片'}
           </Button>
           <Button
@@ -370,6 +425,7 @@ export default function ScenePanel({ project, settings, actions, requestParams }
             actions={actions}
             onRemove={removeScene}
             requestParams={requestParams}
+            bulkStatus={bulkSceneStatus[s.id] || {}}
           />
         ))}
       </div>

@@ -186,7 +186,7 @@ export default function useGeneration() {
       updateTask(data.taskId, { status: 'completed', progress: `已完成 (${final.length}个结果)` });
       scheduleRemoval(data.taskId);
     } else {
-      // 无媒体的中间态（如异步视频刚提交，仅返回 asyncTaskId）→ 保持 running 等待轮询完成
+      // 无媒体的中间态 → 保持 running
       updateTask(data.taskId, { status: 'running', progress: '处理中...' });
     }
   }, [updateTask, scheduleRemoval]);
@@ -246,24 +246,7 @@ export default function useGeneration() {
         setError(err);
         return;
       }
-
-      // MiniMax 视频是异步任务，data.taskId 触发轮询；复用同一 taskId 让后端 cache 幂等
-      const asyncTaskId = result?.data?.taskId;
-      if (toolCall.asyncVideo && asyncTaskId) {
-        updateTask(taskId, { progress: '视频生成中，请耐心等待...' });
-        const videoResult = await window.AgentSpaces.callPluginTool(
-          toolCall.pluginId,
-          'minimax_video_async_wait',
-          { taskId: asyncTaskId },
-          { taskId, meta },
-        );
-        const vErr = checkResultError(videoResult);
-        if (vErr) {
-          updateTask(taskId, { status: 'failed', error: vErr });
-          scheduleRemoval(taskId);
-          setError(vErr);
-        }
-      }
+      // 生成节点（含 MiniMax 视频）已在服务端内部轮询至完成，结果由 taskFinished 事件统一落库
     } catch (err) {
       console.error('Generation error:', err);
       const msg = err?.message || err?.toString() || '生成失败，请检查参数后重试';

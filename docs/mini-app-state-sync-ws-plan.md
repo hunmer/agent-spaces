@@ -43,7 +43,7 @@ interface Task {
 4. 成功 → `finishTask(result)` + 广播 `miniApp.taskFinished`；失败 → `failTask(err)` + 广播 `miniApp.taskFailed`。
 5. 响应体不变（`{ success, result }`），发起方照常拿结果。
 
-> 异步视频轮询 `minimax_video_async_wait` 本身也是一次 execute，会自然触发 `taskFinished`，无需特判。
+> 视频生成节点（内部轮询）同样是一次 execute，会自然触发 `taskFinished`，无需特判。
 
 ### 4.3 加入频道即拿现状（断线/刷新恢复）
 在 `onClientConnected` 回调里，按该连接的 workspaceId 调 `sendToClient(clientId, {event:'miniApp.taskSnapshot', data:{tasks: listTasks(workspaceId)}})`。

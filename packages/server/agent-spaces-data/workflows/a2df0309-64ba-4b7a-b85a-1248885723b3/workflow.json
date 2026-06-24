@@ -43,7 +43,7 @@
           {
             "key": "url",
             "type": "string",
-            "value": "{{ __data__[\"node_1781075458346_at5pxd\"].data.downloadUrl }}",
+            "value": "{{ __data__[\"node_1781074716386_wytbfp\"].data.downloadUrl }}",
             "children": []
           }
         ]
@@ -78,48 +78,7 @@
             "type": "object",
             "children": [
               {
-                "key": "taskId",
-                "type": "string"
-              }
-            ]
-          }
-        ],
-        "firstFrameImage": "{{ __data__[\"node_1781075839906_ueljwm\"].data.url }}",
-        "prompt": "{{ __data__[\"node_1781074664189_start\"].prompt }}"
-      }
-    },
-    {
-      "id": "node_1781075458346_at5pxd",
-      "type": "minimax_video_async_wait",
-      "label": "Video Async Wait",
-      "position": {
-        "x": 1005,
-        "y": 0
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
-        "timeout": 600,
-        "pollInterval": 10,
-        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
                 "key": "status",
-                "type": "string"
-              },
-              {
-                "key": "taskId",
                 "type": "string"
               },
               {
@@ -149,9 +108,8 @@
             ]
           }
         ],
-        "sourceNodeId": "node_1781074716386_wytbfp",
-        "sourceHandle": "source",
-        "taskId": "{{ __data__[\"node_1781074716386_wytbfp\"].data.taskId }}"
+        "firstFrameImage": "{{ __data__[\"node_1781075839906_ueljwm\"].data.url }}",
+        "prompt": "{{ __data__[\"node_1781074664189_start\"].prompt }}"
       }
     },
     {
@@ -260,15 +218,10 @@
   ],
   "edges": [
     {
-      "id": "e-node_1781074716386_wytbfp-source-node_1781075458346_at5pxd-target",
+      "id": "e-node_1781074716386_wytbfp-source-node_1781074664189_end-target",
       "source": "node_1781074716386_wytbfp",
-      "target": "node_1781075458346_at5pxd",
+      "target": "node_1781074664189_end",
       "sourceHandle": "source"
-    },
-    {
-      "id": "e-node_1781075458346_at5pxd-source-node_1781074664189_end-target",
-      "source": "node_1781075458346_at5pxd",
-      "target": "node_1781074664189_end"
     },
     {
       "id": "e-node_1781074664189_start-source-node_1781075839906_ueljwm-target",

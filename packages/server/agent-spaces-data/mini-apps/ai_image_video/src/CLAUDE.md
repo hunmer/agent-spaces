@@ -35,7 +35,7 @@ AI 绘图创作工具，支持七种模式：文生图、图生图、图片编�
 - **瀑布流布局**: 资源使用 CSS Columns（`column-count: 2`）实现瀑布流布局，图片以原始比例展示（无 `aspect-ratio` 裁剪），卡片高度自适应
 - **凭据持久化**: 通过 `window.AgentSpacesUI.writeConfigJson/readConfigJson` 保存 API Key / Session ID
 - **结果持久化**: 生成结果通过 `writeConfigJson('generation-history.json')` 自动保存，页面重载后通过 `readConfigJson` 恢复历史记录
-- **异步视频**: MiniMax 视频生成走 `minimax_video_async_wait` 自动轮询
+- **视频生成**: MiniMax 视频生成节点内部自动轮询至完成，直接返回 `downloadUrl`
 - **结果解析**: `extractMediaUrls` 兼容多种返回格式（直接 URL / 嵌套对象 / 数组 / OpenAI data 数组）
 - **文件上传**: 使用 `window.AgentSpacesUI.FileUpload` 组件替代手动 URL 输入，支持拖拽/点击上传本地图片、视频、音频。host 会先落盘，普通模式可回退 data URL，需要公网 URL 的模式会自动转存云存储。图生视频/扩图模式限 1 张，图生图模式限 4 张，视频编辑参考图限 4 张，数字人需要 1 个视频 + 1 个音频
 - **ResizablePanel 尺寸**: 使用百分比字符串 `"32%"` 而非数字 `32`（数字被解释为 px）

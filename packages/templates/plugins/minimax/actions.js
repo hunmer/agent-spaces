@@ -43,6 +43,85 @@ function cleanHerMessages(raw, defaultRole = 'user') {
     .filter(m => m.content.trim())
 }
 
+/**
+ * 视频生成任务内部循环轮询：循环查询 task 状态，成功后自动取下载链接。
+ * 由各视频生成节点在拿到 task_id 后内部调用，对外不再暴露 taskId。
+ */
+async function pollVideoTask(ctx, { baseUrl, headers, taskId, timeoutMs = 600000, pollMs = 10000, t }) {
+  const deadline = Date.now() + timeoutMs
+  ctx.logger.info(`视频任务轮询开始: taskId=${taskId}, 超时=${timeoutMs / 1000}s, 轮询间隔=${pollMs / 1000}s`)
+
+  while (Date.now() < deadline) {
+    const result = await ctx.api.fetchJson(
+      `${baseUrl}/v1/query/video_generation?task_id=${encodeURIComponent(taskId)}`,
+      { headers, timeout: 30000 },
+    )
+
+    if (result.base_resp?.status_code !== 0) {
+      const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+      return {
+        success: false,
+        message: t('message.queryFailed', 'Query failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code),
+      }
+    }
+
+    const status = result.status
+
+    if (status === 'Success') {
+      const fileId = result.file_id
+      ctx.logger.info(`视频任务完成: taskId=${taskId}, fileId=${fileId}`)
+
+      let downloadUrl, fileName, fileSize
+      if (fileId) {
+        try {
+          const fileResult = await ctx.api.fetchJson(
+            `${baseUrl}/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`,
+            { headers, timeout: 30000 },
+          )
+          if (fileResult.file) {
+            downloadUrl = fileResult.file.download_url
+            fileName = fileResult.file.filename
+            fileSize = fileResult.file.bytes
+          }
+        } catch (e) {
+          ctx.logger.warn(`获取下载链接失败: ${e.message}`)
+        }
+      }
+
+      return {
+        success: true,
+        message: t('message.videoAsyncComplete', 'Video generation completed'),
+        data: {
+          status,
+          fileId,
+          downloadUrl,
+          fileName,
+          fileSize,
+          videoWidth: result.video_width,
+          videoHeight: result.video_height,
+        },
+      }
+    }
+
+    if (status === 'Fail') {
+      ctx.logger.warn(`视频任务失败: taskId=${taskId}`)
+      return {
+        success: false,
+        message: t('message.videoAsyncFailed', 'Video generation task failed'),
+      }
+    }
+
+    ctx.logger.info(`视频任务状态: ${status}, 等待 ${pollMs / 1000}s 后重试`)
+    await new Promise(r => setTimeout(r, pollMs))
+  }
+
+  ctx.logger.warn(`视频任务轮询超时: taskId=${taskId}`)
+  return {
+    success: false,
+    message: t('message.videoAsyncTimeout', 'Video generation timed out after {timeout}s').replace('{timeout}', String(timeoutMs / 1000)),
+  }
+}
+
 module.exports = (t) => {
   // --- TTS ---
   const TTS_MODELS = [
@@ -647,7 +726,13 @@ module.exports = (t) => {
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', dataType: 'object', children: [
-        { key: 'taskId', type: 'string' },
+        { key: 'status', type: 'string' },
+        { key: 'fileId', type: 'string' },
+        { key: 'downloadUrl', type: 'video' },
+        { key: 'fileName', type: 'string' },
+        { key: 'fileSize', type: 'number', dataType: 'number' },
+        { key: 'videoWidth', type: 'number', dataType: 'number' },
+        { key: 'videoHeight', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -670,12 +755,13 @@ module.exports = (t) => {
         return { success: false, message: t('message.t2vFailed', 'Text-to-video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
-      ctx.logger.info(`文生视频任务已创建: taskId=${result.task_id}`)
-      return {
-        success: true,
-        message: t('message.t2vTaskCreated', 'Video generation task created, taskId: {taskId}').replace('{taskId}', result.task_id),
-        data: { taskId: result.task_id },
-      }
+      const taskId = result.task_id
+      ctx.logger.info(`文生视频任务已创建: taskId=${taskId}, 开始轮询查询`)
+      return pollVideoTask(ctx, {
+        baseUrl, headers, taskId, t,
+        timeoutMs: (Number(args.timeout) || 600) * 1000,
+        pollMs: (Number(args.pollInterval) || 10) * 1000,
+      })
     },
   },
 
@@ -713,7 +799,13 @@ module.exports = (t) => {
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', dataType: 'object', children: [
-        { key: 'taskId', type: 'string' },
+        { key: 'status', type: 'string' },
+        { key: 'fileId', type: 'string' },
+        { key: 'downloadUrl', type: 'video' },
+        { key: 'fileName', type: 'string' },
+        { key: 'fileSize', type: 'number', dataType: 'number' },
+        { key: 'videoWidth', type: 'number', dataType: 'number' },
+        { key: 'videoHeight', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -737,12 +829,13 @@ module.exports = (t) => {
         return { success: false, message: t('message.i2vFailed', 'Image-to-video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
-      ctx.logger.info(`图生视频任务已创建: taskId=${result.task_id}`)
-      return {
-        success: true,
-        message: t('message.i2vTaskCreated', 'Image-to-video task created, taskId: {taskId}').replace('{taskId}', result.task_id),
-        data: { taskId: result.task_id },
-      }
+      const taskId = result.task_id
+      ctx.logger.info(`图生视频任务已创建: taskId=${taskId}, 开始轮询查询`)
+      return pollVideoTask(ctx, {
+        baseUrl, headers, taskId, t,
+        timeoutMs: (Number(args.timeout) || 600) * 1000,
+        pollMs: (Number(args.pollInterval) || 10) * 1000,
+      })
     },
   },
 
@@ -779,7 +872,13 @@ module.exports = (t) => {
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', dataType: 'object', children: [
-        { key: 'taskId', type: 'string' },
+        { key: 'status', type: 'string' },
+        { key: 'fileId', type: 'string' },
+        { key: 'downloadUrl', type: 'video' },
+        { key: 'fileName', type: 'string' },
+        { key: 'fileSize', type: 'number', dataType: 'number' },
+        { key: 'videoWidth', type: 'number', dataType: 'number' },
+        { key: 'videoHeight', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -803,12 +902,13 @@ module.exports = (t) => {
         return { success: false, message: t('message.sevFailed', 'Start-end frame video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
-      ctx.logger.info(`首尾帧视频任务已创建: taskId=${result.task_id}`)
-      return {
-        success: true,
-        message: t('message.sevTaskCreated', 'Start-end frame video task created, taskId: {taskId}').replace('{taskId}', result.task_id),
-        data: { taskId: result.task_id },
-      }
+      const taskId = result.task_id
+      ctx.logger.info(`首尾帧视频任务已创建: taskId=${taskId}, 开始轮询查询`)
+      return pollVideoTask(ctx, {
+        baseUrl, headers, taskId, t,
+        timeoutMs: (Number(args.timeout) || 600) * 1000,
+        pollMs: (Number(args.pollInterval) || 10) * 1000,
+      })
     },
   },
 
@@ -837,7 +937,13 @@ module.exports = (t) => {
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', dataType: 'object', children: [
-        { key: 'taskId', type: 'string' },
+        { key: 'status', type: 'string' },
+        { key: 'fileId', type: 'string' },
+        { key: 'downloadUrl', type: 'video' },
+        { key: 'fileName', type: 'string' },
+        { key: 'fileSize', type: 'number', dataType: 'number' },
+        { key: 'videoWidth', type: 'number', dataType: 'number' },
+        { key: 'videoHeight', type: 'number', dataType: 'number' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -863,70 +969,13 @@ module.exports = (t) => {
         return { success: false, message: t('message.svFailed', 'Subject reference video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
-      ctx.logger.info(`主体参考视频任务已创建: taskId=${result.task_id}`)
-      return {
-        success: true,
-        message: t('message.svTaskCreated', 'Subject reference video task created, taskId: {taskId}').replace('{taskId}', result.task_id),
-        data: { taskId: result.task_id },
-      }
-    },
-  },
-
-  // ============================
-  // 查询视频任务状态
-  // ============================
-  {
-    name: 'minimax_video_query',
-    label: t('action.videoQuery.label', 'Video Task Query'),
-    category: t('category', 'MiniMax AI'),
-    icon: 'Search',
-    description: t('action.videoQuery.description', 'Query MiniMax video generation task status (Preparing/Queueing/Processing/Success/Fail)'),
-    toolProperties: [
-      { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
-      { key: 'taskId', type: 'string', description: '视频生成任务ID', required: true },
-      { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
-    ],
-    properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'taskId', label: t('field.taskId.label', 'Task ID'), type: 'text', dataType: 'string', required: true, tooltip: t('field.taskId.tooltip', 'Task ID returned by video generation') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
-    ],
-    outputs: [
-      { key: 'success', type: 'boolean', dataType: 'boolean' },
-      { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', dataType: 'object', children: [
-        { key: 'status', type: 'string' },
-        { key: 'taskId', type: 'string' },
-        { key: 'fileId', type: 'string' },
-        { key: 'videoWidth', type: 'number', dataType: 'number' },
-        { key: 'videoHeight', type: 'number', dataType: 'number' },
-      ] },
-    ],
-    run: async (ctx, args) => {
-      const baseUrl = getBaseUrl(args)
-      const headers = getHeaders(args)
-
-      ctx.logger.info(`查询视频任务: taskId=${args.taskId}`)
-      const result = await ctx.api.fetchJson(`${baseUrl}/v1/query/video_generation?task_id=${encodeURIComponent(args.taskId)}`, { headers, timeout: 30000 })
-
-      if (result.base_resp?.status_code !== 0) {
-        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
-        return { success: false, message: t('message.queryFailed', 'Query failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
-      }
-
-      const status = result.status
-      ctx.logger.info(`视频任务状态: ${status}, fileId=${result.file_id || '无'}`)
-      return {
-        success: true,
-        message: t('message.queryStatus', 'Task status: {status}').replace('{status}', status),
-        data: {
-          status,
-          taskId: result.task_id,
-          fileId: result.file_id,
-          videoWidth: result.video_width,
-          videoHeight: result.video_height,
-        },
-      }
+      const taskId = result.task_id
+      ctx.logger.info(`主体参考视频任务已创建: taskId=${taskId}, 开始轮询查询`)
+      return pollVideoTask(ctx, {
+        baseUrl, headers, taskId, t,
+        timeoutMs: (Number(args.timeout) || 600) * 1000,
+        pollMs: (Number(args.pollInterval) || 10) * 1000,
+      })
     },
   },
 
@@ -984,129 +1033,5 @@ module.exports = (t) => {
     },
   },
 
-  // ============================
-  // 视频异步等待（轮询至完成）
-  // ============================
-  {
-    name: 'minimax_video_async_wait',
-    label: t('action.videoAsyncWait.label', 'Video Async Wait'),
-    category: t('category', 'MiniMax AI'),
-    icon: 'Timer',
-    description: t('action.videoAsyncWait.description', 'Poll video generation task until completion, auto-retrieve download link on success'),
-    toolProperties: [
-      { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
-      { key: 'taskId', type: 'string', description: '视频生成任务ID', required: true },
-      { key: 'timeout', type: 'number', description: '超时时间（秒），默认 600（10分钟）' },
-      { key: 'pollInterval', type: 'number', description: '轮询间隔（秒），默认 10' },
-      { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
-    ],
-    properties: [
-      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', dataType: 'string', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'taskId', label: t('field.taskId.label', 'Task ID'), type: 'text', dataType: 'string', required: true, tooltip: t('field.taskId.tooltip', 'Task ID returned by video generation') },
-      { key: 'timeout', label: t('field.timeout.label', 'Timeout (sec)'), type: 'number', dataType: 'number', default: 600, tooltip: t('field.timeout.tooltip', 'Max wait time in seconds, default 600 (10 min)') },
-      { key: 'pollInterval', label: t('field.pollInterval.label', 'Poll Interval (sec)'), type: 'number', dataType: 'number', default: 10, tooltip: t('field.pollInterval.tooltip', 'Query interval in seconds, default 10') },
-      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
-    ],
-    outputs: [
-      { key: 'success', type: 'boolean', dataType: 'boolean' },
-      { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', dataType: 'object', children: [
-        { key: 'status', type: 'string' },
-        { key: 'taskId', type: 'string' },
-        { key: 'fileId', type: 'string' },
-        { key: 'downloadUrl', type: 'video' },
-        { key: 'fileName', type: 'string' },
-        { key: 'fileSize', type: 'number', dataType: 'number' },
-        { key: 'videoWidth', type: 'number', dataType: 'number' },
-        { key: 'videoHeight', type: 'number', dataType: 'number' },
-      ] },
-    ],
-    run: async (ctx, args) => {
-      const baseUrl = getBaseUrl(args)
-      const headers = getHeaders(args)
-      const taskId = args.taskId
-      const timeoutMs = (Number(args.timeout) || 600) * 1000
-      const pollMs = (Number(args.pollInterval) || 10) * 1000
-      const deadline = Date.now() + timeoutMs
-
-      ctx.logger.info(`视频异步等待开始: taskId=${taskId}, 超时=${timeoutMs / 1000}s, 轮询间隔=${pollMs / 1000}s`)
-
-      while (Date.now() < deadline) {
-        const result = await ctx.api.fetchJson(
-          `${baseUrl}/v1/query/video_generation?task_id=${encodeURIComponent(taskId)}`,
-          { headers, timeout: 30000 },
-        )
-
-        if (result.base_resp?.status_code !== 0) {
-          const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
-          return { success: false, message: t('message.queryFailed', 'Query failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
-        }
-
-        const status = result.status
-
-        if (status === 'Success') {
-          const fileId = result.file_id
-          ctx.logger.info(`视频任务完成: taskId=${taskId}, fileId=${fileId}`)
-
-          // 获取下载链接
-          let downloadUrl, fileName, fileSize
-          if (fileId) {
-            try {
-              const fileResult = await ctx.api.fetchJson(
-                `${baseUrl}/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`,
-                { headers, timeout: 30000 },
-              )
-              if (fileResult.file) {
-                downloadUrl = fileResult.file.download_url
-                fileName = fileResult.file.filename
-                fileSize = fileResult.file.bytes
-              }
-            } catch (e) {
-              ctx.logger.warn(`获取下载链接失败: ${e.message}`)
-            }
-          }
-
-          return {
-            success: true,
-            message: t('message.videoAsyncComplete', 'Video generation completed'),
-            data: {
-              status,
-              taskId: result.task_id,
-              fileId,
-              downloadUrl,
-              fileName,
-              fileSize,
-              videoWidth: result.video_width,
-              videoHeight: result.video_height,
-            },
-          }
-        }
-
-        if (status === 'Fail') {
-          ctx.logger.warn(`视频任务失败: taskId=${taskId}`)
-          return {
-            success: false,
-            message: t('message.videoAsyncFailed', 'Video generation task failed, taskId: {taskId}').replace('{taskId}', taskId),
-            data: {
-              status,
-              taskId: result.task_id,
-              fileId: result.file_id,
-            },
-          }
-        }
-
-        // 仍在处理中
-        ctx.logger.info(`视频任务状态: ${status}, 等待 ${pollMs / 1000}s 后重试`)
-        await new Promise(r => setTimeout(r, pollMs))
-      }
-
-      // 超时
-      ctx.logger.warn(`视频异步等待超时: taskId=${taskId}`)
-      return {
-        success: false,
-        message: t('message.videoAsyncTimeout', 'Video generation timed out after {timeout}s, taskId: {taskId}').replace('{timeout}', String(timeoutMs / 1000)).replace('{taskId}', taskId),
-      }
-    },
-  },
   ]
 }

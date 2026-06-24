@@ -42,7 +42,7 @@
 | `minimax_music_generation` | 音乐生成（含翻唱模式） |
 | `minimax_lyrics_generation` | 歌词生成（写全歌 / 续写） |
 
-### 视频（异步任务）
+### 视频（节点内部自动轮询至完成）
 
 | 节点 | 用途 |
 | --- | --- |
@@ -50,9 +50,7 @@
 | `minimax_image_to_video` | 图生视频 |
 | `minimax_start_end_to_video` | 首尾帧生视频 |
 | `minimax_subject_to_video` | 主体参考视频（保持人物一致性） |
-| `minimax_video_query` | 查询任务状态 |
 | `minimax_video_download` | 拿到 `fileId` 后获取 1 小时有效的下载链接 |
-| `minimax_video_async_wait` | 一步到位：自动轮询 + 取下载链接 |
 
 ## 节点字段速查
 
@@ -98,17 +96,17 @@
 
 ### 视频类（minimax_text_to_video / image_to_video / start_end_to_video / subject_to_video）
 
-- 这些都是**异步任务**，返回 `taskId`
+- 生成节点**内部自动轮询**至任务完成，直接返回 `downloadUrl`（不再暴露 `taskId`）
 - 模型 `MiniMax-Hailuo-2.3`（推荐） / Hailuo-02 / I2V-01-Director / I2V-01-live / S2V-01 等
 - `duration`：`6`（默认） / `10` 秒
 - `resolution`：`720P` / `768P`（默认） / `1080P`
 - `promptOptimizer`：是否自动优化提示词
+- `timeout` / `pollInterval`（可选，默认 600s / 10s）：轮询超时与间隔，可在节点 JSON 中手动添加
 
 **视频工作流**：
 
-1. 调生成节点 → 拿到 `taskId`
-2. 用 `minimax_video_async_wait` 自动轮询 → 拿到 `downloadUrl`
-3. 或手动组合 `minimax_video_query` + `minimax_video_download`（下载链接 1 小时内有效）
+1. 拖入生成节点 → 节点内部自动轮询 → 从 `data.downloadUrl` 拿到 1 小时有效的下载链接
+2. 下载链接过期后，可用 `data.fileId` 调 `minimax_video_download` 重新获取
 
 ## 使用示例
 
@@ -127,10 +125,10 @@ emotion = happy
 voiceId = Chinese (Mandarin)_Lyrical_Voice
 ```
 
-**示例 3：文生视频后自动取链接**
+**示例 3：文生视频**
 
-1. 拖入「Text to Video」 → 得到 `data.taskId`
-2. 拖入「Video Async Wait」 → 把 `taskId` 传给它
+1. 拖入「Text to Video」节点，填写 prompt / 模型 / 时长 / 分辨率
+2. 节点会内部轮询直到生成完成（默认超时 10 分钟）
 3. 从 `data.downloadUrl` 拿到 1 小时有效的下载链接
 
 **示例 4：人物主体参考**
@@ -145,8 +143,8 @@ subjectImage = https://example.com/portrait.jpg
 - **401 / 鉴权失败**：API Key 错误或账号未开通对应模型。
 - **TTS 文本超长**：单次合成上限 10000 字符，超长请分批。
 - **TTS 音色找不到**：`voiceId` 必须使用系统音色 ID（参考官方音色列表）。
-- **视频任务一直 Queueing**：高峰期排队较久，可调大 `pollInterval` / `timeout`。
-- **下载链接过期**：`downloadUrl` 1 小时内有效；过期后需要重新调 `video_download` 节点。
+- **视频任务一直 Queueing**：高峰期排队较久，可在节点 JSON 中调大 `timeout`（默认 600s）；轮询间隔 `pollInterval` 默认 10s。
+- **下载链接过期**：`downloadUrl` 1 小时内有效；过期后可用 `fileId` 调 `minimax_video_download` 重新获取。
 - **M2-her 风格跑偏**：调高 `sampleMessages` 示例对话条数，让模型「看清」人设。
 
 ## 依赖

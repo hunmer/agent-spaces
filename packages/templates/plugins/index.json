@@ -470,7 +470,7 @@
   {
     "id": "workflow.minimax",
     "name": "MiniMax AI",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "MiniMax AI 多模态生成，支持文本合成(M2.x大模型)、角色对话(M2-her)、语音合成(TTS)、音乐生成、视频生成(文生/图生/首尾帧/主体参考)、歌词生成",
     "author": {
       "name": "workflow"
@@ -490,8 +490,8 @@
     "hasWorkflow": true,
     "path": "minimax",
     "iconUrl": "plugins/minimax/icon.svg",
-    "md5": "a3d744d83b252c7251942c55ae79e670",
-    "updatedAt": "2026-06-18T01:06:04.315Z",
+    "md5": "dfda2066b2cf679be59addb90a67d628",
+    "updatedAt": "2026-06-24T12:01:44.034Z",
     "files": [
       "actions.js",
       "icon.svg",
