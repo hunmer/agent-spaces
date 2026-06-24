@@ -64,8 +64,8 @@
     "hasWorkflow": true,
     "path": "aliyun-ai",
     "iconUrl": "plugins/aliyun-ai/icon.svg",
-    "md5": "2d16f08fb216828f1f05547965ee4e26",
-    "updatedAt": "2026-06-24T01:53:35.158Z",
+    "md5": "33aba992070ae5a1faffd0a3108a37cd",
+    "updatedAt": "2026-06-24T06:15:47.828Z",
     "files": [
       "actions.js",
       "icon.svg",
@@ -405,7 +405,7 @@
   {
     "id": "workflow.jimeng",
     "name": "即梦AI生图",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
     "author": {
       "name": "workflow"
@@ -421,8 +421,8 @@
     "hasWorkflow": true,
     "path": "jimeng",
     "iconUrl": "plugins/jimeng/icon.png",
-    "md5": "c05586feb5250e1423e5fcdbe5c15c7c",
-    "updatedAt": "2026-06-18T01:06:04.313Z",
+    "md5": "5ced00566adf119a0855abbe3a89d031",
+    "updatedAt": "2026-06-24T09:50:25.943Z",
     "files": [
       "actions.js",
       "icon.png",

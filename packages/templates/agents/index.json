@@ -1660,6 +1660,16 @@
     "updatedAt": "2026-04-12T04:25:59.000Z"
   },
   {
+    "id": "specialized-storyboard-writer",
+    "name": "Storyboard Writer",
+    "group": "specialized",
+    "path": "specialized/specialized-storyboard-writer",
+    "description": "把一段设定或文案拆解为标准分镜 JSON（角色列表 + 场景列表），可直接导入「文案转分镜」应用，用于批量生成分镜图片与视频",
+    "emoji": "\"🎬\"",
+    "md5": "4313b9fb0b334fb8fecec67faa34201e",
+    "updatedAt": "2026-06-24T09:30:00.000Z"
+  },
+  {
     "id": "specialized-workflow-architect",
     "name": "Workflow Architect",
     "group": "specialized",
@@ -1838,15 +1848,5 @@
     "emoji": "⚡",
     "md5": "33f928d72a59c9493007a49032a5efcb",
     "updatedAt": "2026-04-12T04:25:59.000Z"
-  },
-  {
-    "id": "specialized-storyboard-writer",
-    "name": "Storyboard Writer",
-    "group": "specialized",
-    "path": "specialized/specialized-storyboard-writer",
-    "description": "把一段设定或文案拆解为标准分镜 JSON（角色列表 + 场景列表），可直接导入「文案转分镜」应用，用于批量生成分镜图片与视频",
-    "emoji": "🎬",
-    "md5": "4313b9fb0b334fb8fecec67faa34201e",
-    "updatedAt": "2026-06-24T09:30:00.000Z"
   }
 ]

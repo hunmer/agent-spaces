@@ -144,7 +144,7 @@
               {
                 "key": "",
                 "type": "any",
-                "value": "{{ __data__[\"node_1782291057464_2sx2fe\"].data.videos }}",
+                "value": "{{ __data__[\"node_1782291057464_2sx2fe\"].data.video }}",
                 "inputMode": "variable",
                 "children": []
               },
@@ -181,8 +181,8 @@
       "type": "end",
       "label": "nodes.end.label",
       "position": {
-        "x": 1800,
-        "y": 122
+        "x": 1815,
+        "y": 210
       },
       "data": {
         "outputs": [
@@ -225,8 +225,8 @@
             "dataType": "object",
             "children": [
               {
-                "key": "videos",
-                "type": "video[]"
+                "key": "video",
+                "type": "video"
               },
               {
                 "key": "created",
@@ -411,7 +411,7 @@
     }
   ],
   "createdAt": 1782275955731,
-  "updatedAt": 1782294474480,
+  "updatedAt": 1782294674246,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",

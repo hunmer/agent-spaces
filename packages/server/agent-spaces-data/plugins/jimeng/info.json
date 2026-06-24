@@ -3,7 +3,7 @@
   "name": "即梦AI生图",
   "name_zh": "即梦AI生图",
   "name_en": "Jimeng AI Image Generation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "icon": "icon.png",
   "description": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
   "description_zh": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
