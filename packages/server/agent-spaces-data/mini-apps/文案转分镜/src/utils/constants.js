@@ -9,27 +9,58 @@ export const DEFAULT_VIDEO_WORKFLOW_ID = '5130958f-a78e-4c36-8f03-1f2f733b87d7';
 export const DEFAULT_IMAGE_WORKFLOW_NAME = 'image_generator';
 export const DEFAULT_VIDEO_WORKFLOW_NAME = 'video_generator';
 
-// 提供商 / 模型 / 比例 / 尺寸 选项（与两个 workflow 的 start 节点 inputFields 对齐）
+// 图片模型选项（按最新 image_generator 工作流整理）
 export const PROVIDER_OPTIONS = [
   {
     value: 'keling',
-    label: '可灵',
+    label: '可灵图像生成',
     models: [
-      { value: 'kling-v1', label: 'Kling v1' },
-      { value: 'kling-v1-5', label: 'Kling v1.5' },
-      { value: 'kling-v2-master', label: 'Kling v2 Master' },
+      { value: 'kling/kling-v3-image-generation', label: 'kling/kling-v3-image-generation' },
+      { value: 'kling/kling-v3-omni-image-generation', label: 'kling/kling-v3-omni-image-generation' },
     ],
   },
   {
     value: 'qwen',
-    label: '通义万相',
+    label: 'AI图像编辑',
     models: [
-      { value: 'wanx2.1-t2i-turbo', label: '万相 2.1 Turbo' },
-      { value: 'qwen-image-2.0-pro', label: '千问图像 2.0 Pro' },
-      { value: 'qwen-image-2.0', label: '千问图像 2.0' },
+      { value: 'qwen-image-2.0-pro', label: 'qwen-image-2.0-pro' },
+      { value: 'qwen-image-2.0', label: 'qwen-image-2.0' },
+      { value: 'qwen-image-edit', label: 'qwen-image-edit' },
+      { value: 'wan2.7-image-pro', label: 'wan2.7-image-pro' },
+      { value: 'wan2.7-image', label: 'wan2.7-image' },
+    ],
+  },
+  {
+    value: 'jimeng',
+    label: 'AI图生图',
+    models: [
+      { value: 'jimeng-4.5', label: 'jimeng-4.5' },
+      { value: 'jimeng-5.0', label: 'jimeng-5.0' },
+      { value: 'jimeng-4.6', label: 'jimeng-4.6' },
+      { value: 'jimeng-4.1', label: 'jimeng-4.1' },
+      { value: 'jimeng-4.0', label: 'jimeng-4.0' },
+    ],
+  },
+  {
+    value: 'openai',
+    label: 'AI图片编辑',
+    models: [
+      { value: 'gpt-image-2-all', label: 'gpt-image-2-all' },
+      { value: 'gpt-image-1', label: 'gpt-image-1' },
+      { value: 'flux-kontext-pro', label: 'flux-kontext-pro' },
+      { value: 'flux-kontext-max', label: 'flux-kontext-max' },
+      { value: 'nano-banana', label: 'nano-banana' },
     ],
   },
 ];
+
+export const MODEL_OPTIONS = PROVIDER_OPTIONS.flatMap((provider) =>
+  provider.models.map((model) => ({
+    ...model,
+    provider: provider.value,
+    providerLabel: provider.label,
+  })),
+);
 
 export const ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4'];
 export const SIZE_OPTIONS = ['1k', '2k', '4k'];
@@ -40,7 +71,7 @@ export const DEFAULT_SETTINGS = {
   videoWorkflowId: DEFAULT_VIDEO_WORKFLOW_ID,
   videoWorkflowName: DEFAULT_VIDEO_WORKFLOW_NAME,
   provider: 'keling',
-  model: 'kling-v1',
+  model: 'kling/kling-v3-image-generation',
   aspect: '16:9',
   size: '1k',
 };

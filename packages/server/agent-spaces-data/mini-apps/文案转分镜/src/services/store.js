@@ -18,7 +18,7 @@ function defaultData() {
       videoWorkflowId: DEFAULT_VIDEO_WORKFLOW_ID,
       videoWorkflowName: 'video_generator',
       provider: 'keling',
-      model: 'kling-v1',
+      model: 'kling/kling-v3-image-generation',
       aspect: '16:9',
       size: '1k',
     },

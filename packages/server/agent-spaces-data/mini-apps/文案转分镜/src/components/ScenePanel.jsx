@@ -72,7 +72,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
       const urls = await runGeneration({
         kind: 'image',
         workflowId: settings.imageWorkflowId,
-        input: { images, prompt, provider: params.provider, model: params.model, aspect: params.aspect, size: params.size },
+        input: { images, prompt, model: params.model, aspect: params.aspect, size: params.size },
         label: `分镜 ${index} 生图`,
       });
       await actions.addSceneMedia(draft.id, 'image', urls);

@@ -17,14 +17,16 @@ export function unwrapWorkflowPayload(value) {
 }
 
 // 从 end 节点 output.result（string[]）提取 URL 数组
+// 新版工作流可能有多个结束节点，优先取真正带 result / result_url 的那个
 export function extractResultUrls(payload) {
   const steps = Array.isArray(payload?.steps) ? payload.steps : [];
-  const endStep = steps.find((s) =>
+  const endSteps = steps.filter((s) =>
     String(s?.nodeId || '').endsWith('_end')
     || String(s?.nodeLabel || '').includes('结束')
     || String(s?.nodeLabel || '').toLowerCase().includes('end'),
   );
-  const raw = endStep?.output?.result ?? endStep?.output?.result_url ?? [];
+  const resultStep = endSteps.find((s) => s?.output?.result || s?.output?.result_url) || endSteps[0];
+  const raw = resultStep?.output?.result ?? resultStep?.output?.result_url ?? [];
   const list = Array.isArray(raw) ? raw : [raw];
   return list
     .map((item) => {

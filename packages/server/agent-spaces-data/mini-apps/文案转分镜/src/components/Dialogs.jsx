@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   BUILTIN_PLUGIN,
-  PROVIDER_OPTIONS,
+  MODEL_OPTIONS,
   ASPECT_OPTIONS,
   SIZE_OPTIONS,
   AGENT_INIT_NAME,
@@ -61,34 +61,28 @@ export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
   const { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } = window.AgentSpacesUI;
 
   const [cfg, setCfg] = useState(value || {});
-  useEffect(() => { if (open) setCfg(value || {}); }, [open, value]);
+  useEffect(() => {
+    if (!open) return;
+    const next = value || {};
+    const validModel = MODEL_OPTIONS.some((m) => m.value === next.model);
+    setCfg(validModel ? next : { ...next, model: MODEL_OPTIONS[0]?.value || '' });
+  }, [open, value]);
 
   const patch = (p) => setCfg((prev) => ({ ...prev, ...p }));
-  const providerOpt = PROVIDER_OPTIONS.find((p) => p.value === cfg.provider) || PROVIDER_OPTIONS[0];
-
-  const onProviderChange = (v) => {
-    const opt = PROVIDER_OPTIONS.find((p) => p.value === v);
-    patch({ provider: v, model: opt?.models?.[0]?.value || '' });
-  };
 
   return (
     <Modal open={open} onClose={onCancel} title="生成参数" width={460}>
       <div className="sb-grid-2">
         <div className="sb-field">
-          <Label>提供商</Label>
-          <Select value={cfg.provider} onValueChange={onProviderChange}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PROVIDER_OPTIONS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="sb-field">
           <Label>模型</Label>
           <Select value={cfg.model} onValueChange={(v) => patch({ model: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="选择模型" /></SelectTrigger>
             <SelectContent>
-              {(providerOpt?.models || []).map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              {MODEL_OPTIONS.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label} · {m.providerLabel}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -114,7 +108,14 @@ export function GenerateParamsDialog({ open, value, onConfirm, onCancel }) {
 
       <div className="sb-modal-foot">
         <Button variant="outline" onClick={onCancel}>取消</Button>
-        <Button onClick={() => onConfirm(cfg)}>开始生成</Button>
+        <Button
+          onClick={() => {
+            const modelMeta = MODEL_OPTIONS.find((m) => m.value === cfg.model);
+            onConfirm({ ...cfg, provider: modelMeta?.provider || cfg.provider || '' });
+          }}
+        >
+          开始生成
+        </Button>
       </div>
     </Modal>
   );

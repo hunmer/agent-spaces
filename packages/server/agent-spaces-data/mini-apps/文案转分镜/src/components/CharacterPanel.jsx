@@ -74,7 +74,6 @@ export default function CharacterPanel({ project, actions, settings, requestPara
         input: {
           images: [],
           prompt: char.prompt,
-          provider: params.provider,
           model: params.model,
           aspect: params.aspect,
           size: params.size,
