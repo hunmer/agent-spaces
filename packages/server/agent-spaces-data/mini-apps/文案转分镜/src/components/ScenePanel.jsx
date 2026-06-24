@@ -275,6 +275,22 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     return [charPrompt, scene?.visualPrompt || ''].filter(Boolean).join('\n');
   };
 
+  const showBulkSummary = (label, stats) => {
+    const lines = [
+      `${label}完成`,
+      `成功: ${stats.success}`,
+      `跳过: ${stats.skipped}`,
+      `失败: ${stats.failed}`,
+    ];
+    if (stats.failedItems.length) {
+      lines.push('', '失败分镜:');
+      stats.failedItems.forEach((item) => {
+        lines.push(`- 分镜 ${item.index}: ${item.message}`);
+      });
+    }
+    window.alert?.(lines.join('\n'));
+  };
+
   const markBulkSceneStatus = (sceneId, kind, status) => {
     setBulkSceneStatus((prev) => ({
       ...prev,
@@ -316,32 +332,41 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     if (!params) return;
     setBulkRunning('image');
     clearBulkSceneStatus();
+    const stats = { success: 0, skipped: 0, failed: 0, failedItems: [] };
     try {
       for (const scene of scenes) {
-        if (!scene?.visualPrompt?.trim() || scene?.images?.length) continue;
+        if (!scene?.visualPrompt?.trim() || scene?.images?.length) {
+          stats.skipped += 1;
+          continue;
+        }
         const images = collectRefImagesForScene(scene);
         const prompt = buildSceneImagePrompt(scene);
         const hasRefImages = images.length > 0;
-        const urls = await runWithRetry({
-          sceneId: scene.id,
-          kind: 'image',
-          task: () => runGeneration({
+        try {
+          const urls = await runWithRetry({
+            sceneId: scene.id,
             kind: 'image',
-            workflowId: hasRefImages
-              ? (settings.editImageWorkflowId || settings.imageWorkflowId)
-              : (settings.textToImageWorkflowId || settings.imageWorkflowId),
-            input: hasRefImages
-              ? { images, prompt, model: params.model, aspect: params.aspect, size: params.size }
-              : { prompt, model: params.model, aspect: params.aspect, size: params.size },
-            label: `分镜 ${scene.index} 生成图片`,
-          }),
-        });
-        await actions.addSceneMedia(scene.id, 'image', urls);
+            task: () => runGeneration({
+              kind: 'image',
+              workflowId: hasRefImages
+                ? (settings.editImageWorkflowId || settings.imageWorkflowId)
+                : (settings.textToImageWorkflowId || settings.imageWorkflowId),
+              input: hasRefImages
+                ? { images, prompt, model: params.model, aspect: params.aspect, size: params.size }
+                : { prompt, model: params.model, aspect: params.aspect, size: params.size },
+              label: `分镜 ${scene.index} 生成图片`,
+            }),
+          });
+          await actions.addSceneMedia(scene.id, 'image', urls);
+          stats.success += 1;
+        } catch (e) {
+          stats.failed += 1;
+          stats.failedItems.push({ index: scene.index, message: e?.message || '生成失败' });
+        }
       }
-    } catch (e) {
-      window.alert?.(e?.message || '批量生成图片失败');
     } finally {
       setBulkRunning('');
+      showBulkSummary('批量生成图片', stats);
     }
   };
 
@@ -351,32 +376,41 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     if (!params) return;
     setBulkRunning('video');
     clearBulkSceneStatus();
+    const stats = { success: 0, skipped: 0, failed: 0, failedItems: [] };
     try {
       for (const scene of scenes) {
-        if (!scene?.animationPrompt?.trim() || !scene?.images?.length || scene?.video) continue;
-        const urls = await runWithRetry({
-          sceneId: scene.id,
-          kind: 'video',
-          task: () => runGeneration({
+        if (!scene?.animationPrompt?.trim() || !scene?.images?.length || scene?.video) {
+          stats.skipped += 1;
+          continue;
+        }
+        try {
+          const urls = await runWithRetry({
+            sceneId: scene.id,
             kind: 'video',
-            workflowId: settings.videoWorkflowId,
-            input: {
-              images: scene.images.slice(-1),
-              prompt: scene.animationPrompt,
-              model: params.model,
-              aspect: params.aspect,
-              quality: params.quality,
-              duration: params.duration,
-            },
-            label: `分镜 ${scene.index} 生成视频`,
-          }),
-        });
-        await actions.addSceneMedia(scene.id, 'video', urls);
+            task: () => runGeneration({
+              kind: 'video',
+              workflowId: settings.videoWorkflowId,
+              input: {
+                images: scene.images.slice(-1),
+                prompt: scene.animationPrompt,
+                model: params.model,
+                aspect: params.aspect,
+                quality: params.quality,
+                duration: params.duration,
+              },
+              label: `分镜 ${scene.index} 生成视频`,
+            }),
+          });
+          await actions.addSceneMedia(scene.id, 'video', urls);
+          stats.success += 1;
+        } catch (e) {
+          stats.failed += 1;
+          stats.failedItems.push({ index: scene.index, message: e?.message || '生成失败' });
+        }
       }
-    } catch (e) {
-      window.alert?.(e?.message || '批量生成视频失败');
     } finally {
       setBulkRunning('');
+      showBulkSummary('批量生成视频', stats);
     }
   };
 

@@ -6,7 +6,7 @@
       "id": "proj-mqrn3nyi-qtyq9g",
       "name": "项目 1",
       "createdAt": "2026-06-24T05:35:39.786Z",
-      "updatedAt": "2026-06-24T12:11:33.086Z",
+      "updatedAt": "2026-06-24T12:17:58.158Z",
       "characters": [
         {
           "id": "char-1782280615437-dgpedb",
@@ -103,7 +103,9 @@
           "characterIds": [
             "char-1782280615437-dgpedb"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/bb/20260624/51613171/8c8cd8d5-693e-41d4-acc3-ca7dd4714d59.png?Expires=1782909263&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=F2NF0lmMO26LqSmr1Fh0UgA%2BDEc%3D"
+          ],
           "video": ""
         },
         {
@@ -115,7 +117,9 @@
           "characterIds": [
             "char-1782280615437-dgpedb"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ba/20260624/51613171/2a5ca2e9-2c75-4f98-a38b-798d28867da0.png?Expires=1782909276&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=ANAWlJ9SDzkbZxJUsfid6ZHgaio%3D"
+          ],
           "video": ""
         },
         {
