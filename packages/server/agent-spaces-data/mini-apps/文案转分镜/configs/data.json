@@ -6,7 +6,7 @@
       "id": "proj-mqrn3nyi-qtyq9g",
       "name": "项目 1",
       "createdAt": "2026-06-24T05:35:39.786Z",
-      "updatedAt": "2026-06-24T12:27:50.616Z",
+      "updatedAt": "2026-06-24T12:29:39.762Z",
       "characters": [
         {
           "id": "char-1782280615437-dgpedb",
@@ -175,7 +175,9 @@
             "char-1782280615437-dgpedb",
             "char-1782280615437-scb7k8"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/6d/20260624/51613171/53d411c1-c52a-4689-a4c9-42f0ad89eb81.png?Expires=1782909881&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=WNONmRlr6qkCiwnZxRq3MM4tSSE%3D"
+          ],
           "video": ""
         },
         {
@@ -188,7 +190,9 @@
             "char-1782280615437-dgpedb",
             "char-1782280615437-scb7k8"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/9c/20260624/51613171/f7c80485-53a4-486f-9399-dda0ad40192e.png?Expires=1782909896&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=7s4QEM5Wywx2ktfAfG0wVxMc%2BJI%3D"
+          ],
           "video": ""
         },
         {
@@ -201,7 +205,9 @@
             "char-1782280615437-dgpedb",
             "char-1782280615437-scb7k8"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/11/20260624/51613171/a96be614-0d0b-483f-a466-9e496b21674f.png?Expires=1782909911&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=hwqotQo1P6qySX47ifVqcPF1ims%3D"
+          ],
           "video": ""
         },
         {
@@ -214,7 +220,9 @@
             "char-1782280615437-dgpedb",
             "char-1782280615437-scb7k8"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/16/20260624/51613171/513d49b0-4eb7-46e8-b912-990d669dee16.png?Expires=1782909977&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=MEenDYa%2Ba2VFgOc%2FEOjgyoxsC8Q%3D"
+          ],
           "video": ""
         }
       ]

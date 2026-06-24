@@ -328,12 +328,14 @@ export default function ScenePanel({ project, settings, actions, requestParams }
 
   const runQueue = async (items, limit, worker) => {
     const concurrency = Math.max(1, Number(limit) || 1);
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     let cursor = 0;
     const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
       while (cursor < items.length) {
         const current = items[cursor];
         cursor += 1;
         await worker(current);
+        if (cursor < items.length) await sleep(1000);
       }
     });
     await Promise.all(runners);
