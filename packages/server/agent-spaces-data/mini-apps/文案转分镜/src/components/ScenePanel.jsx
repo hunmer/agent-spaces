@@ -1,7 +1,7 @@
 // 文案转分镜 · 分镜管理
 import React, { useState, useEffect } from 'react';
 import { uid } from '../utils/constants.js';
-import { runGeneration } from '../utils/workflow.js';
+import { runGeneration, buildMediaGalleryItems, openMediaPreview } from '../utils/workflow.js';
 
 function sameScene(a, b) {
   if (!a || !b) return false;
@@ -24,14 +24,12 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
   const [vidRunning, setVidRunning] = useState(false);
   const [error, setError] = useState('');
 
-  // store 变化（生成结果回填）同步到 draft
   useEffect(() => {
     setDraft((prev) => (sameScene(prev, scene)
       ? prev
       : { ...scene, characterIds: [...(scene.characterIds || [])] }));
   }, [scene]);
 
-  // autosave
   useEffect(() => {
     if (sameScene(draft, scene)) return;
     const t = setTimeout(() => actions.saveScene(draft), 500);
@@ -48,7 +46,6 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
     });
   };
 
-  // 取参与角色的「选中图」URL，作为生图参考
   const collectRefImages = () => {
     const refs = [];
     (draft.characterIds || []).forEach((cid) => {
@@ -62,12 +59,14 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
     if (!draft.visualPrompt?.trim()) { setError('请填写画面提示词'); return; }
     const params = await requestParams('image');
     if (!params) return;
-    setError(''); setImgRunning(true);
+    setError('');
+    setImgRunning(true);
     try {
       const images = collectRefImages();
       const charPrompt = (draft.characterIds || [])
         .map((cid) => characters.find((x) => x.id === cid)?.prompt)
-        .filter(Boolean).join('; ');
+        .filter(Boolean)
+        .join('; ');
       const prompt = [charPrompt, draft.visualPrompt].filter(Boolean).join('\n');
       const hasRefImages = images.length > 0;
       const urls = await runGeneration({
@@ -78,20 +77,23 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
         input: hasRefImages
           ? { images, prompt, model: params.model, aspect: params.aspect, size: params.size }
           : { prompt, model: params.model, aspect: params.aspect, size: params.size },
-        label: `分镜 ${index} 生图`,
+        label: `分镜 ${index} 生成图片`,
       });
       await actions.addSceneMedia(draft.id, 'image', urls);
-    } catch (e) { setError(e?.message || '生成失败'); }
-    finally { setImgRunning(false); }
+    } catch (e) {
+      setError(e?.message || '生成失败');
+    } finally {
+      setImgRunning(false);
+    }
   };
 
   const generateVideo = async () => {
     if (!draft.animationPrompt?.trim()) { setError('请填写动画提示词'); return; }
     const params = await requestParams('video');
     if (!params) return;
-    setError(''); setVidRunning(true);
+    setError('');
+    setVidRunning(true);
     try {
-      // 优先用本镜已生成的图片作为视频首帧，否则退回角色选中图
       const images = (draft.images && draft.images.length) ? draft.images.slice(-1) : collectRefImages();
       const urls = await runGeneration({
         kind: 'video',
@@ -104,12 +106,25 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
           quality: params.quality,
           duration: params.duration,
         },
-        label: `分镜 ${index} 生视频`,
+        label: `分镜 ${index} 生成视频`,
       });
       await actions.addSceneMedia(draft.id, 'video', urls);
-    } catch (e) { setError(e?.message || '生成失败'); }
-    finally { setVidRunning(false); }
+    } catch (e) {
+      setError(e?.message || '生成失败');
+    } finally {
+      setVidRunning(false);
+    }
   };
+
+  const previewImages = (startIndex = 0) => {
+    openMediaPreview(buildMediaGalleryItems(draft.images || [], 'image', `分镜 ${index}`), startIndex);
+  };
+
+  const previewVideo = () => {
+    openMediaPreview(buildMediaGalleryItems(draft.video ? [draft.video] : [], 'video', `分镜 ${index}`), 0);
+  };
+
+  const canGenerateVideo = !!draft.images?.length && !imgRunning && !vidRunning;
 
   return (
     <article className="sb-scene-card">
@@ -120,7 +135,13 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
             {imgRunning ? <Loader2 className="sb-icon sb-spin" /> : <ImageIcon className="sb-icon" />}
             {imgRunning ? '生成中' : '生成图片'}
           </Button>
-          <Button size="sm" variant="outline" onClick={generateVideo} disabled={imgRunning || vidRunning}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={generateVideo}
+            disabled={!canGenerateVideo}
+            title={draft.images?.length ? '基于当前分镜图片生成视频' : '请先生成图片'}
+          >
             {vidRunning ? <Loader2 className="sb-icon sb-spin" /> : <FilmIcon className="sb-icon" />}
             {vidRunning ? '生成中' : '生成视频'}
           </Button>
@@ -137,30 +158,36 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
 
       <div className="sb-grid-2">
         <div className="sb-field">
-          <Label>画面提示词</Label>
+          <Label className="sb-field-label">画面提示词</Label>
           <Textarea value={draft.visualPrompt} onChange={(e) => patch({ visualPrompt: e.target.value })} placeholder="场景、构图、光线、主体动作..." className="sb-textarea-sm" />
         </div>
         <div className="sb-field">
-          <Label>动画提示词</Label>
+          <Label className="sb-field-label">动画提示词</Label>
           <Textarea value={draft.animationPrompt} onChange={(e) => patch({ animationPrompt: e.target.value })} placeholder="运镜、动作、节奏..." className="sb-textarea-sm" />
         </div>
       </div>
 
       <div className="sb-field">
         <Label>参与角色</Label>
-        <div className="sb-chips">
+        <div className="sb-avatars">
           {characters.length === 0 ? (
             <span className="sb-chips-empty">先在「角色」页添加角色</span>
           ) : characters.map((c) => {
             const on = (draft.characterIds || []).includes(c.id);
+            const cover = (c.images || []).find((img) => img.selected)?.url || c.images?.[0]?.url || '';
+            const initial = (c.name || '?').slice(0, 1).toUpperCase();
             return (
               <button
                 type="button"
                 key={c.id}
-                className={`sb-chip${on ? ' is-on' : ''}`}
+                className={`sb-avatar${on ? ' is-on' : ''}`}
                 onClick={() => toggleChar(c.id)}
+                title={c.name || '未命名角色'}
               >
-                {c.name || '未命名'}
+                <span className="sb-avatar-media">
+                  {cover ? <img src={cover} alt={c.name || ''} /> : <span className="sb-avatar-fallback">{initial}</span>}
+                </span>
+                <span className="sb-avatar-name">{c.name || '未命名'}</span>
               </button>
             );
           })}
@@ -181,7 +208,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
               </div>
               <div className="sb-img-grid">
                 {draft.images.map((url, i) => (
-                  <div key={i} className="sb-img-thumb"><img src={url} alt="" /></div>
+                  <div key={i} className="sb-img-thumb"><img src={url} alt="" onClick={() => previewImages(i)} /></div>
                 ))}
               </div>
             </div>
@@ -194,7 +221,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
                   <Eraser className="sb-icon" />
                 </Button>
               </div>
-              <video className="sb-video" src={draft.video} controls />
+              <video className="sb-video" src={draft.video} controls onClick={previewVideo} />
             </div>
           )}
         </div>
@@ -207,6 +234,7 @@ export default function ScenePanel({ project, settings, actions, requestParams }
   const { Button, Badge, Plus, Film } = window.AgentSpacesUI;
   const scenes = (project?.scenes || []).slice().sort((a, b) => a.index - b.index);
   const characters = project?.characters || [];
+  const [bulkRunning, setBulkRunning] = useState('');
 
   const addScene = async () => {
     const s = {
@@ -227,14 +255,107 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     await actions.deleteScene(id);
   };
 
+  const collectRefImagesForScene = (scene) => {
+    const refs = [];
+    (scene?.characterIds || []).forEach((cid) => {
+      const c = characters.find((x) => x.id === cid);
+      (c?.images || []).forEach((img) => { if (img.selected && img.url) refs.push(img.url); });
+    });
+    return refs;
+  };
+
+  const buildSceneImagePrompt = (scene) => {
+    const charPrompt = (scene?.characterIds || [])
+      .map((cid) => characters.find((x) => x.id === cid)?.prompt)
+      .filter(Boolean)
+      .join('; ');
+    return [charPrompt, scene?.visualPrompt || ''].filter(Boolean).join('\n');
+  };
+
+  const generateAllImages = async () => {
+    if (!scenes.length || bulkRunning) return;
+    const params = await requestParams('image');
+    if (!params) return;
+    setBulkRunning('image');
+    try {
+      for (const scene of scenes) {
+        if (!scene?.visualPrompt?.trim()) continue;
+        const images = collectRefImagesForScene(scene);
+        const prompt = buildSceneImagePrompt(scene);
+        const hasRefImages = images.length > 0;
+        const urls = await runGeneration({
+          kind: 'image',
+          workflowId: hasRefImages
+            ? (settings.editImageWorkflowId || settings.imageWorkflowId)
+            : (settings.textToImageWorkflowId || settings.imageWorkflowId),
+          input: hasRefImages
+            ? { images, prompt, model: params.model, aspect: params.aspect, size: params.size }
+            : { prompt, model: params.model, aspect: params.aspect, size: params.size },
+          label: `分镜 ${scene.index} 生成图片`,
+        });
+        await actions.addSceneMedia(scene.id, 'image', urls);
+      }
+    } catch (e) {
+      window.alert?.(e?.message || '批量生成图片失败');
+    } finally {
+      setBulkRunning('');
+    }
+  };
+
+  const generateAllVideos = async () => {
+    if (!scenes.length || bulkRunning) return;
+    const params = await requestParams('video');
+    if (!params) return;
+    setBulkRunning('video');
+    try {
+      for (const scene of scenes) {
+        if (!scene?.animationPrompt?.trim() || !scene?.images?.length) continue;
+        const urls = await runGeneration({
+          kind: 'video',
+          workflowId: settings.videoWorkflowId,
+          input: {
+            images: scene.images.slice(-1),
+            prompt: scene.animationPrompt,
+            model: params.model,
+            aspect: params.aspect,
+            quality: params.quality,
+            duration: params.duration,
+          },
+          label: `分镜 ${scene.index} 生成视频`,
+        });
+        await actions.addSceneMedia(scene.id, 'video', urls);
+      }
+    } catch (e) {
+      window.alert?.(e?.message || '批量生成视频失败');
+    } finally {
+      setBulkRunning('');
+    }
+  };
+
+  const canBulkVideo = scenes.some((scene) => scene?.images?.length);
+
   return (
     <div className="sb-scenes">
       <div className="sb-scenes-head">
         <span className="sb-list-title"><Film className="sb-icon" />分镜</span>
         <Badge variant="secondary">{scenes.length}</Badge>
-        <Button size="sm" variant="outline" onClick={addScene} className="sb-ml-auto">
-          <Plus className="sb-icon" />新增分镜
-        </Button>
+        <div className="sb-scenes-head-actions sb-ml-auto">
+          <Button size="sm" variant="outline" onClick={generateAllImages} disabled={!scenes.length || !!bulkRunning}>
+            {bulkRunning === 'image' ? '生成中' : '一键生成图片'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={generateAllVideos}
+            disabled={!canBulkVideo || !!bulkRunning}
+            title={canBulkVideo ? '基于已有分镜图片批量生成视频' : '请先至少生成一张分镜图片'}
+          >
+            {bulkRunning === 'video' ? '生成中' : '一键生成视频'}
+          </Button>
+          <Button size="sm" variant="outline" onClick={addScene}>
+            <Plus className="sb-icon" />新增分镜
+          </Button>
+        </div>
       </div>
       <div className="sb-scene-list">
         {scenes.length === 0 ? (

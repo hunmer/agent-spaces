@@ -11,6 +11,13 @@ import { isPlainObject } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
 
+const LENGTH_COMPARE_OPERATORS = new Set([
+  'greater_than',
+  'greater_than_or_equal',
+  'less_than',
+  'less_than_or_equal',
+]);
+
 export function ConditionsEditor({
   value,
   onChange,
@@ -31,8 +38,16 @@ export function ConditionsEditor({
   return (
     <div className="space-y-2">
       {conditions.map((condition, index) => {
-        const operator = String(condition.operator ?? 'equals');
+        const compareMode = condition.compareMode === 'length' ? 'length' : 'value';
+        const operator = String(
+          compareMode === 'length' && !LENGTH_COMPARE_OPERATORS.has(String(condition.operator ?? ''))
+            ? 'greater_than'
+            : (condition.operator ?? 'equals'),
+        );
         const variable = String(condition.variable ?? condition.field ?? '');
+        const operatorOptions = compareMode === 'length'
+          ? CONDITION_OPERATORS.filter(option => LENGTH_COMPARE_OPERATORS.has(option.value))
+          : CONDITION_OPERATORS;
         return (
           <div key={index} className="group/cond relative space-y-1.5 rounded border p-2">
             <div className="flex items-center gap-1">
@@ -48,21 +63,44 @@ export function ConditionsEditor({
                 onSelectVariable={(path) => updateCondition(index, { variable: path, field: path })}
               />
             </div>
-            <Select
-              value={operator}
-              onValueChange={(nextOperator) => updateCondition(index, { operator: nextOperator })}
-            >
-              <SelectTrigger className="h-6 text-[11px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CONDITION_OPERATORS.map(option => (
-                  <SelectItem key={option.value} value={option.value} className="text-xs">
-                    {t(`nodes.${option.label}` as Parameters<typeof t>[0])}
+            <div className="flex items-center gap-2">
+              <Select
+                value={compareMode}
+                onValueChange={(nextCompareMode) => updateCondition(index, {
+                  compareMode: nextCompareMode,
+                  operator: nextCompareMode === 'length' && !LENGTH_COMPARE_OPERATORS.has(operator)
+                    ? 'greater_than'
+                    : operator,
+                })}
+              >
+                <SelectTrigger className="h-6 flex-1 text-[11px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="value" className="text-xs">
+                    {t('nodes.switch.props.compareMode.value')}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <SelectItem value="length" className="text-xs">
+                    {t('nodes.switch.props.compareMode.length')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={operator}
+                onValueChange={(nextOperator) => updateCondition(index, { operator: nextOperator })}
+              >
+                <SelectTrigger className="h-6 flex-1 text-[11px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {operatorOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {t(`nodes.${option.label}` as Parameters<typeof t>[0])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {!NO_VALUE_OPERATORS.has(operator) && (
               <WorkflowVariableInput
                 value={String(condition.value ?? '')}
@@ -88,7 +126,14 @@ export function ConditionsEditor({
         variant="outline"
         size="sm"
         className="h-7 w-full gap-1 text-xs"
-        onClick={() => onChange([...conditions, { id: `cond_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, variable: '', field: '', operator: 'equals', value: '' }])}
+        onClick={() => onChange([...conditions, {
+          id: `cond_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          variable: '',
+          field: '',
+          compareMode: 'value',
+          operator: 'equals',
+          value: '',
+        }])}
       >
         <Plus className="h-3.5 w-3.5" />
         添加条件

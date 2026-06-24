@@ -465,7 +465,11 @@
       "label": "Switch",
       "description": "Conditional branch routing",
       "props": {
-        "conditions": "Conditions"
+        "conditions": "Conditions",
+        "compareMode": {
+          "value": "Value",
+          "length": "Length"
+        }
       }
     },
     "variable_aggregate": {

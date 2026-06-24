@@ -74,6 +74,11 @@
               "10"
             ],
             "children": []
+          },
+          {
+            "key": "use_frame",
+            "type": "boolean",
+            "value": ""
           }
         ]
       }
@@ -83,8 +88,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 900,
-        "y": 280
+        "x": 810,
+        "y": 480
       },
       "data": {
         "outputs": [
@@ -123,6 +128,13 @@
             "field": "{{ __data__[\"node_1782293130533_309iyn\"].target }}",
             "operator": "equals",
             "value": "aliyun"
+          },
+          {
+            "id": "cond_1782299064593_w6iu",
+            "variable": "{{ __data__[\"node_1782293130533_309iyn\"].target }}",
+            "field": "{{ __data__[\"node_1782293130533_309iyn\"].target }}",
+            "operator": "equals",
+            "value": "minimax"
           }
         ]
       }
@@ -132,7 +144,7 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 1620,
+        "x": 1655,
         "y": -17
       },
       "data": {
@@ -200,8 +212,8 @@
       "type": "jimeng_text_to_video",
       "label": "AI视频生成",
       "position": {
-        "x": 1200,
-        "y": 255.10980224609375
+        "x": 1246.25,
+        "y": 210
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -247,8 +259,8 @@
       "type": "aliyun_image_to_video_v27",
       "label": "万相图生视频(2.7)",
       "position": {
-        "x": 1200,
-        "y": -36.89453125
+        "x": 1375,
+        "y": -60
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -295,8 +307,8 @@
       "type": "run_code",
       "label": "合并参考参数",
       "position": {
-        "x": 900,
-        "y": 0
+        "x": 932.5,
+        "y": -60
       },
       "data": {
         "code": "async function main({ params }) {\n  let {images} = params\n  let media = [\n      {\n          \"type\": \"first_frame\",\n          \"url\": images[0]\n      }\n  ]\n  if(images.length > 1){\n    media.push({\n        \"type\": \"last_frame\",\n        \"url\": images[1]\n    })\n  }\n  return {media}\n}",
@@ -345,6 +357,67 @@
           {
             "key": "target",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782299033531_slkx6j",
+      "type": "minimax_image_to_video",
+      "label": "图生视频",
+      "position": {
+        "x": 1800,
+        "y": 435
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "model": "MiniMax-Hailuo-2.3",
+        "duration": 6,
+        "resolution": "768P",
+        "promptOptimizer": "true",
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[0] }}"
+      }
+    },
+    {
+      "id": "node_1782299095140_v2k0ss",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 1130.15625,
+        "y": 510
+      },
+      "data": {
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-2",
+        "conditions": [
+          {
+            "id": "cond_1782299101116_av5e",
+            "variable": "{{ __data__[\"node_1781681576137_start\"].use_frame }}",
+            "field": "{{ __data__[\"node_1781681576137_start\"].use_frame }}",
+            "operator": "is_true",
+            "value": "",
+            "compareMode": "value"
           }
         ]
       }
@@ -408,16 +481,28 @@
       "target": "node_1782272119586_dim19h",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-case-2-node_1782299095140_v2k0ss-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1782299095140_v2k0ss",
+      "sourceHandle": "case-2"
+    },
+    {
+      "id": "e-node_1782299095140_v2k0ss-source-node_1782299033531_slkx6j-target",
+      "source": "node_1782299095140_v2k0ss",
+      "target": "node_1782299033531_slkx6j"
     }
   ],
   "createdAt": 1782275955731,
-  "updatedAt": 1782294674246,
+  "updatedAt": 1782299695182,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.tencent-cos",
     "workflow.aliyun-ai",
-    "workflow.jimeng"
+    "workflow.jimeng",
+    "workflow.minimax"
   ],
   "lastRunAt": 1782294191920,
   "groups": [],

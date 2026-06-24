@@ -1,7 +1,7 @@
 // 文案转分镜 · 角色管理
 import React, { useState, useEffect, useRef } from 'react';
 import { uid } from '../utils/constants.js';
-import { resolveUploadItem, runGeneration } from '../utils/workflow.js';
+import { resolveUploadItem, runGeneration, buildMediaGalleryItems, openMediaPreview } from '../utils/workflow.js';
 
 function sameChar(a, b) {
   if (!a || !b) return false;
@@ -145,11 +145,10 @@ export default function CharacterPanel({ project, actions, settings, requestPara
   };
 
   const openPreview = (imgId) => {
-    const openFn = window.AgentSpacesUI?.openMediaGallery;
-    if (typeof openFn !== 'function' || !draft?.images?.length) return;
-    const items = draft.images.map((img) => ({ type: 'image', src: img.url, alt: draft.name || '' }));
+    if (!draft?.images?.length) return;
+    const items = buildMediaGalleryItems(draft.images.map((img) => img.url), 'image', draft.name || '');
     const startIndex = Math.max(0, draft.images.findIndex((img) => img.id === imgId));
-    openFn(items, startIndex);
+    openMediaPreview(items, startIndex);
   };
 
   return (

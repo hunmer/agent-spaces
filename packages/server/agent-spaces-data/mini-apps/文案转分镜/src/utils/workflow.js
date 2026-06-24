@@ -96,6 +96,20 @@ export async function resolveUploadItem(item) {
 }
 
 // 解析 agent 返回的文本，提取分镜 JSON
+export function buildMediaGalleryItems(items, type = 'image', alt = '') {
+  return (Array.isArray(items) ? items : [])
+    .filter(Boolean)
+    .map((src) => ({ type, src, alt }));
+}
+
+export function openMediaPreview(items, startIndex = 0) {
+  const openFn = window.AgentSpacesUI?.openMediaGallery;
+  if (typeof openFn !== 'function') return;
+  const list = Array.isArray(items) ? items.filter((item) => item?.src) : [];
+  if (!list.length) return;
+  openFn(list, Math.max(0, startIndex));
+}
+
 export function parseStoryboardJson(text) {
   if (!text) return null;
   let raw = String(text).trim();

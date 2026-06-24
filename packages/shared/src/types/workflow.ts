@@ -30,6 +30,7 @@ export type NodeBreakpoint = 'start' | 'end'
 export interface ConditionItem {
   id: string
   variable: string
+  compareMode?: 'value' | 'length'
   operator: string
   value: string
 }

@@ -199,22 +199,31 @@ export function replaceTextWithLimit(
 
 // ---- 条件与聚合 ----
 
-export function evaluateCondition(variable: any, value: any, operator: string): boolean {
+export function evaluateCondition(
+  variable: any,
+  value: any,
+  operator: string,
+  compareMode: 'value' | 'length' = 'value',
+): boolean {
+  const actualValue = compareMode === 'length'
+    ? (Array.isArray(variable) ? variable.length : 0)
+    : variable;
+
   switch (operator) {
-    case 'equals': return variable == value;
-    case 'not_equals': return variable != value;
-    case 'greater_than': return Number(variable) > Number(value);
-    case 'less_than': return Number(variable) < Number(value);
-    case 'greater_than_or_equal': return Number(variable) >= Number(value);
-    case 'less_than_or_equal': return Number(variable) <= Number(value);
-    case 'contains': return String(variable).includes(String(value));
-    case 'not_contains': return !String(variable).includes(String(value));
-    case 'starts_with': return String(variable).startsWith(String(value));
-    case 'ends_with': return String(variable).endsWith(String(value));
-    case 'is_empty': return variable === '' || variable === null || variable === undefined;
-    case 'is_not_empty': return variable !== '' && variable !== null && variable !== undefined;
-    case 'is_true': return variable === true || variable === 'true' || variable === 1;
-    case 'is_false': return variable === false || variable === 'false' || variable === 0;
+    case 'equals': return actualValue == value;
+    case 'not_equals': return actualValue != value;
+    case 'greater_than': return Number(actualValue) > Number(value);
+    case 'less_than': return Number(actualValue) < Number(value);
+    case 'greater_than_or_equal': return Number(actualValue) >= Number(value);
+    case 'less_than_or_equal': return Number(actualValue) <= Number(value);
+    case 'contains': return String(actualValue).includes(String(value));
+    case 'not_contains': return !String(actualValue).includes(String(value));
+    case 'starts_with': return String(actualValue).startsWith(String(value));
+    case 'ends_with': return String(actualValue).endsWith(String(value));
+    case 'is_empty': return actualValue === '' || actualValue === null || actualValue === undefined;
+    case 'is_not_empty': return actualValue !== '' && actualValue !== null && actualValue !== undefined;
+    case 'is_true': return actualValue === true || actualValue === 'true' || actualValue === 1;
+    case 'is_false': return actualValue === false || actualValue === 'false' || actualValue === 0;
     default: return false;
   }
 }
@@ -230,8 +239,9 @@ export function executeSwitch(conditions: unknown): any {
     const variable = item.variable ?? item.field ?? '';
     const value = item.value ?? '';
     const operator = typeof item.operator === 'string' ? item.operator : 'equals';
+    const compareMode = item.compareMode === 'length' ? 'length' : 'value';
 
-    if (evaluateCondition(variable, value, operator)) {
+    if (evaluateCondition(variable, value, operator, compareMode)) {
       return { __branch__: `case-${i}`, matchedIndex: i };
     }
   }

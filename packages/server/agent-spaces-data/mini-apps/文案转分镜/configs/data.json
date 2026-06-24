@@ -6,7 +6,7 @@
       "id": "proj-mqrn3nyi-qtyq9g",
       "name": "项目 1",
       "createdAt": "2026-06-24T05:35:39.786Z",
-      "updatedAt": "2026-06-24T10:08:37.901Z",
+      "updatedAt": "2026-06-24T10:44:17.444Z",
       "characters": [
         {
           "id": "char-1782280615437-dgpedb",
@@ -16,7 +16,7 @@
             {
               "id": "img-mqrwp7u2-adc3s7",
               "url": "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ce/20260624/51613171/ae7791fd-2747-4b4b-ba6a-9e59e6c4fc9c.png?Expires=1782901259&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=D857dhuEKsURjCr0oU2WRoAy9wc%3D",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -44,7 +44,9 @@
             "char-1782280615437-dgpedb",
             "char-1782280615437-scb7k8"
           ],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/d2/20260624/51613171/43e446a5-c933-4b44-aa3c-338864c3a454.png?Expires=1782903111&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=Cq0q6ZS7O5RmBCTeBaLobkuXChU%3D"
+          ],
           "video": ""
         },
         {
@@ -54,7 +56,9 @@
           "visualPrompt": "Close-up of bioluminescent mushrooms growing on ancient stone walls, soft cyan and green glow illuminating the surrounding rocks, magical atmosphere, detailed fantasy environment, dreamy lighting",
           "animationPrompt": "Slow push-in to close-up of glowing mushrooms, subtle pulsing light animation, magical particles floating, ethereal ambiance",
           "characterIds": [],
-          "images": [],
+          "images": [
+            "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/b6/20260624/51613171/db347a89-6c5b-4653-84ef-196f28e1ba1f.png?Expires=1782903562&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=mWR%2BpvqfKX%2F%2BhTLPqxqikN7vXuM%3D"
+          ],
           "video": ""
         },
         {
@@ -67,7 +71,9 @@
             "char-1782280615437-dgpedb",
             "char-1782280615437-scb7k8"
           ],
-          "images": [],
+          "images": [
+            "https://storage.fonedis.cc/xezq/YWl7o6pXy1qAL5ZhsodUmn4537x6laDHQJoMUgaLdBP9mlsF/tmp_6ycml5a.png"
+          ],
           "video": ""
         },
         {
@@ -208,11 +214,12 @@
     "editImageWorkflowName": "edit_image",
     "videoWorkflowId": "5130958f-a78e-4c36-8f03-1f2f733b87d7",
     "videoWorkflowName": "video_generator",
-    "provider": "qwen",
-    "model": "qwen-image-2.0-pro",
+    "provider": "openai",
+    "model": "flux-kontext-max",
     "aspect": "9:16",
     "size": "1k",
     "quality": "720",
-    "duration": "5"
+    "duration": "5",
+    "generationMode": "text"
   }
 }

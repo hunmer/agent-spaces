@@ -465,7 +465,11 @@
       "label": "选择器",
       "description": "条件分支路由",
       "props": {
-        "conditions": "条件列表"
+        "conditions": "条件列表",
+        "compareMode": {
+          "value": "值",
+          "length": "长度"
+        }
       }
     },
     "variable_aggregate": {
