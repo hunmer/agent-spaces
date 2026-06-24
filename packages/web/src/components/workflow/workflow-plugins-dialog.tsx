@@ -183,14 +183,19 @@ export function WorkflowPluginsDialog({
     void loadStorePlugins();
   }, [open, locale]);
 
+  // 仅在对话框打开时按传入的初始词初始化一次搜索；安装插件会让父组件的
+  // missingPluginSearch(=initialSearch) 变化，不应反复重置用户当前的搜索状态
   useEffect(() => {
-    if (!open || !initialSearch.trim()) return;
+    if (!open) return;
+    const keyword = initialSearch.trim();
+    if (!keyword) return;
     setActiveTab('store');
-    setQuery(initialSearch.trim());
+    setQuery(keyword);
     setTag('__all__');
     setStatus('all');
     setSortBy('default');
-  }, [open, initialSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function updateWorkflowPlugins(pluginId: string, enabled: boolean) {
     if (!workflow) return;

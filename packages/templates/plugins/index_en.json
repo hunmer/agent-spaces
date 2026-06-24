@@ -64,8 +64,8 @@
     "hasWorkflow": true,
     "path": "aliyun-ai",
     "iconUrl": "plugins/aliyun-ai/icon.svg",
-    "md5": "da21f19e9e174cff7cdd90d3e22746b9",
-    "updatedAt": "2026-06-18T01:06:04.299Z",
+    "md5": "2d16f08fb216828f1f05547965ee4e26",
+    "updatedAt": "2026-06-24T01:53:35.158Z",
     "files": [
       "actions.js",
       "icon.svg",
@@ -321,8 +321,8 @@
     "hasWorkflow": true,
     "path": "file-system",
     "iconUrl": "plugins/file-system/icon.svg",
-    "md5": "a49c9415f1b4b5d7341febefdfcb67c0",
-    "updatedAt": "2026-06-18T01:06:04.310Z",
+    "md5": "1b02b1bf9027345643397947219ac28a",
+    "updatedAt": "2026-06-24T01:59:52.675Z",
     "files": [
       "actions.js",
       "icon.svg",
@@ -520,8 +520,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "mira-sdk",
-    "md5": "d0a98d3aaaca54b3e41c5348c400a833",
-    "updatedAt": "2026-06-18T01:06:04.316Z",
+    "md5": "830fc03286d46d7facd336eeda4b798f",
+    "updatedAt": "2026-06-24T02:47:41.665Z",
     "files": [
       "actions.js",
       "info.json",
@@ -690,8 +690,8 @@
     "hasWorkflow": true,
     "path": "tencent_cos",
     "iconUrl": "plugins/tencent_cos/icon.svg",
-    "md5": "40fe7393cbcf3a9a6b18f6815d5c2575",
-    "updatedAt": "2026-06-18T01:06:04.323Z",
+    "md5": "750d53e3c9d5dd6536dc7f71374772c5",
+    "updatedAt": "2026-06-24T01:59:27.199Z",
     "files": [
       "actions.js",
       "icon.svg",

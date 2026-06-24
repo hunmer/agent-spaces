@@ -1,0 +1,32 @@
+{
+  "id": "25e2dfc6-a285-4909-9bee-1201497a81a9",
+  "name": "mira",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1782268403690_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782268403690_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    }
+  ],
+  "edges": [],
+  "createdAt": 1782268403696,
+  "updatedAt": 1782269316192,
+  "published": false,
+  "enabledPlugins": []
+}

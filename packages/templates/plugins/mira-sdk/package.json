@@ -4,5 +4,7 @@
   "description": "Mira App Server SDK plugin for workflow",
   "main": "main.js",
   "type": "commonjs",
-  "dependencies": {}
+  "dependencies": {
+    "mira-app-core": "^1.0.24"
+  }
 }

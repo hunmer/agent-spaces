@@ -1,4 +1,4 @@
-const MiraClient = require('mira-app-server/sdk').MiraClient
+const MiraClient = require('mira-app-core/shared/sdk').MiraClient
 
 let _client = null
 
