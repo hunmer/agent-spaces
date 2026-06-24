@@ -26,7 +26,7 @@ Agent Spaces 是一个**本地多 Agent 协同编程平台**。基于 pnpm monor
 | [claude/entrypoints.md](claude/entrypoints.md) | 入口文件、启动命令、环境变量 |
 | [claude/public-interfaces.md](claude/public-interfaces.md) | REST API、WebSocket 事件、页面路由、SDK |
 | [claude/dependencies-and-config.md](claude/dependencies-and-config.md) | 依赖关系图、关键依赖、构建顺序、配置文件 |
-| [claude/data-model.md](claude/data-model.md) | 持久化架构、核心类型、状态枚举 |
+| [claude/data-model.md](claude/data-model.md) | 持久化架构、核心类型、状态枚举、Store 字段抽样 |
 | [claude/testing-and-quality.md](claude/testing-and-quality.md) | 测试现状、验证命令、质量工具 |
 | [claude/file-map.md](claude/file-map.md) | 文件地图、源码结构、文档目录 |
 | [claude/faq.md](claude/faq.md) | 常见问题 |
@@ -100,18 +100,19 @@ pnpm publish          # 构建 shared/server 并发布到 npm
 
 ## 扫描状态
 
-- **更新时间**：2026-06-23 12:12:46
-- **本次性质**：增量更新 + 断点续扫（自 2026-06-13）
-- **已扫描范围**：全部 8 个模块（含新增 electron）；server storage 24 文件全部覆盖、web sidebar 56 文件分组展开、templates agents 15 分类全部命名确认
+- **更新时间**：2026-06-24 09:27:10
+- **本次性质**：增量更新 + 断点续扫（自 2026-06-23）
+- **已扫描范围**：全部 8 个模块；本次定点深挖 4 处缺口：server `storage/` 关键 store 字段（chat-store 全字段 / agent-store=SQLite usage / workflow-store 目录布局 / task/issue/workspace 扁平 CRUD 范式）、web `components/workflow/` hooks/utils 5 文件、templates agents 模板格式样本（含 engineering-code-reviewer 完整结构）、确认 electron/renderer/ 为 Monaco 离线 bundle
 - **跳过范围**：node_modules、dist、.next、构建产物、二进制文件、`.agent-spaces-data`、`packages/electron/renderer/monaco/`（Monaco 离线 bundle，与业务无关）
-- **覆盖率**：约 94%（从 92% 提升）
+- **覆盖率**：约 95%（从 94% 提升）
 - **本次新增**：
-  - 把 electron 纳入模块索引（之前遗漏，模块已自带 CLAUDE.md）
-  - server `storage/` 从 21 store 补全到 24 文件（新增 `mini-app-db.ts` / `sqlite-store.ts` / `knowledge-base-store.ts` / `sql-safety.ts` 完整字段、驱动、落盘路径）
-  - web `components/sidebar/` 56 文件按骨架/对话框/Settings(14)/Skills(10)/Hooks(3) 五组展开
-  - templates agents 15 个分类命名全部列名（academic/design/engineering/finance/game-development/marketing/paid-media/product/project-management/sales/spatial-computing/specialized/support/testing）
+  - `claude/data-model.md` 新增"Store 字段抽样"章节（chat-store ChatAgent/ChatMessage/ChatSession/WorkspaceTabState 全字段、agent-store 实为 SQLite usage 表结构 + 成本估算 fallback、workflow-store 目录式布局、workspace/issue/task store 扁平 CRUD 范式）
+  - `packages/server/claude/storage.md` 修正 agent-store 误描述（实为 SQLite usage 而非 preset）、补充 chat-store/workspace-store/issue-store/task-store 字段要点
+  - `packages/web/claude/component-groups.md` 新增"workflow/ 86 文件分组（2026-06-24 补全）"章节（按 hook/utils/types/节点视图/对话框/属性面板/画布七组展开）
+  - 全部 .md 文件确保 UTF-8 编码（修复此前 GBK 读写异常）
 - **仍存缺口**：
-  - server storage 各 JSON store 的逐字段（多为扁平 CRUD，按需深挖即可）
-  - templates agents 184 个模板的具体 system prompt 内容未逐一抽样
-  - `packages/electron/renderer/` 为 web 构建产物的复制物，未抽样
-  - web `components/workflow/` 86 文件中部分 hook/utils 未深抽
+  - server `storage/` 其余 JSON store（command/code-favorites/worktree/robot-account/subscription/hook/llm/speech/user-settings/npm-settings）字段未逐一抽取（多为 100–300 行扁平 CRUD，按需 Read 即可）
+  - templates agents 184 模板的具体 system prompt 内容未逐一抽样（已确认格式：YAML frontmatter + 7 段标准章节）
+  - templates plugins 120+ 文件中各插件的 tools.js/workflow.js 实现细节未深抽
+  - web `components/workflow/` 部分 .tsx 对话框/属性面板内部结构未逐一深抽
+  - `packages/electron/renderer/` 为 web 构建产物复制物 + Monaco 离线 bundle，继续跳过

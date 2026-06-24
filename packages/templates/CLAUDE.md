@@ -119,6 +119,8 @@ vibe: Short personality tagline
 ## 🚀 Advanced Capabilities
 ```
 
+**实际样本（engineering/code-reviewer，2026-06-24 抽样确认）**：frontmatter 含 name/description/color/emoji/vibe 五字段；正文遵循上述 7 段标准章节，每段用 emoji 标题（🧠 Identity & Memory / 🎯 Core Mission / 🔧 Critical Rules / 📋 Core Capabilities / 🔄 Workflow Process / 💭 Communication Style / 🎯 Success Metrics）。Critical Rules 段落会列举编号硬性约束（如审查聚焦 correctness/security/maintainability/performance/testing 五维度，不纠缠代码风格）。
+
 ### Output Style 模板（Markdown + YAML frontmatter）
 
 ```markdown
@@ -163,12 +165,13 @@ description: Linus Torvalds 风格 - 直接、高效、代码说话
 
 ## 扫描状态
 
-- **更新时间**：2026-06-13 16:57:29
-- **已扫描范围**：全部子目录索引、prompt/output-styles/mini-app/workflows 内容样本确认、skills/plugins 扩展确认
-- **覆盖率**：约 90%
-- **本次新增**：确认 prompt(2)/output-styles(7)/mini-app(1)/workflows(1) 内容；skills 扩展至 66+；plugins 扩展至 120+
-- **仍存缺口**：agents 184 个模板内容未逐一抽样、plugins 各插件的 tools.js/workflow.js 细节未深抽
+- **更新时间**：2026-06-24 09:27:10
+- **已扫描范围**：全部子目录索引、prompt/output-styles/mini-app/workflows 内容样本确认、skills/plugins 扩展确认、agents 模板格式样本（engineering/code-reviewer 抽样确认 7 段标准章节结构）
+- **覆盖率**：约 91%（从 90% 提升）
+- **本次新增（2026-06-24）**：抽样 `agents/engineering/engineering-code-reviewer.md`，确认 Agent 模板统一格式为 YAML frontmatter（name/description/color/emoji/vibe）+ 7 段标准章节（Identity/Mission/Critical Rules/Capabilities/Workflow/Communication/Success Metrics）
+- **仍存缺口**：agents 184 模板的具体 system prompt 内容未逐一抽样（已确认格式骨架）、plugins 120+ 文件中各插件的 tools.js/workflow.js 实现细节未深抽
 
 ## 变更记录 (Changelog)
 
+- **2026-06-24**：增量更新。抽样 `agents/engineering/engineering-code-reviewer.md`，确认 Agent 模板 7 段标准章节结构（🧠 Identity & Memory / 🎯 Core Mission / 🔧 Critical Rules / 📋 Core Capabilities / 🔄 Workflow Process / 💭 Communication Style / 🎯 Success Metrics）。覆盖率提升至 91%。
 - **2026-06-13**：增量更新。Skills 从 15 扩展至 66+ 文件（新增 caveman/grill-me/handoff/improve-codebase-architecture/tdd/to-prd/planning-with-files-zh）。Plugins 新增 mira-sdk/dingtalk/aliyun_oss/tencent_cos/epub-parser/fish-audio/jimeng/test-plugin。确认 prompt(2)/output-styles(7)/mini-app(1)/workflows(1) 内容样本。覆盖率提升至 90%。

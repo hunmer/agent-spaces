@@ -1,5 +1,15 @@
 # 变更记录 (Changelog)
 
+## 2026-06-24 -- init-architect 增量更新（断点续扫）
+
+- **server storage/ 关键 store 字段深挖**：修正 `agent-store.ts` 误描述（实为 SQLite Agent Usage 统计，非 Agent preset；preset 实际分散在 `chat-templates/` 与 `agent-templates/`）。补充 chat-store 全字段（ChatAgent 30+ 字段含 runtimeKind/providerId/skills/tools/outputStyle、ChatMessage 含 thinking/usage/toolCalls/timeline、ChatSession、ChatWorkspace、WorkspaceTabState）、workspace-store/issue-store/task-store 扁平 CRUD 范式（index.json + {id}.json 双写）、workflow-store 目录式布局（versions/execution_history/plugin_configs/staging/operation_history/chat）
+- **web components/workflow/ hooks/utils 深抽**：5 个关键文件确认用途 —— `use-workflow-editor-canvas.ts`（节点/边/组操作编排）、`use-workflow-canvas-data.ts`（执行步骤聚合 + scope 迭代）、`use-workflow-node-actions.ts`（节点 CustomEvent dispatch）、`workflow-canvas-utils.ts`（loop body 边界 + scope 布局同步）、`workflow-canvas-helpers.ts`（多边形命中 + 连接落点判断）
+- **templates agents 格式确认**：抽样 `engineering-code-reviewer.md`，确认统一格式为 YAML frontmatter（name/description/color/emoji/vibe）+ 7 段标准章节（Identity/Mission/Critical Rules/Capabilities/Workflow/Communication/Success Metrics）
+- **electron/renderer 现状确认**：实为 Monaco 离线 bundle（vs/ 下 100+ 语言 chunk + nls 多语言 + worker），无业务代码，继续跳过
+- **UTF-8 编码保障**：全部 .md 文件以 UTF-8 写入，修复此前可能的 GBK 读写异常
+- **覆盖率**：约 95%（从 94% 提升）
+- **仍存缺口**：storage 其余 10 个 JSON store 字段、agents 184 模板逐一抽样、plugins 120+ 的 tools.js/workflow.js、workflow 部分 .tsx 对话框内部结构
+
 ## 2026-06-23 -- init-architect 增量更新（断点续扫）
 
 - **新增 electron 模块**：纳入根 CLAUDE.md 模块索引（之前遗漏，模块已自带 CLAUDE.md）。electron 职责：窗口生命周期 / `local://` 协议 / 桌面原生能力 / 全局快捷键 / renderer↔main 桥接，不含业务逻辑（CRUD 全走 server）
@@ -8,7 +18,6 @@
 - **templates agents 缺口补全**：15 个分类的目录命名全部确认（academic/design/engineering/finance/game-development/marketing/paid-media/product/project-management/sales/spatial-computing/specialized/support/testing），与 templates CLAUDE.md 既有计数对齐
 - **根 CLAUDE.md 重构**：模块索引从 7 → 8（加 electron）；Mermaid 图新增 electron 节点与 `loadFile renderer` / `HTTP/WS` 边；约定规则精简为单行摘要（详情指向 claude/conventions.md）；扫描状态时间戳更新
 - **覆盖率**：约 94%（从 92% 提升）
-- **仍存缺口**：server storage 各 JSON store 逐字段、templates agents 184 模板的 system prompt 内容抽样、electron/renderer（web 构建产物复制物）、web components/workflow/ 部分 hook/utils
 
 ## 2026-06-13 -- init-architect 增量更新（断点续扫）
 
@@ -20,9 +29,6 @@
 - **server storage 新增**：`mini-app-store.ts` + `mini-app-db.ts`（SQLite 连接池 + 越界保护）
 - **flutter 测试缺口已填补**：新增 `test/widget_test.dart`（App 构建冒烟测试）+ `test/services/file_sources/webdav_url_test.dart`（URL 规范化单元测试）
 - **templates 大幅扩展**：skills 从 15 增至 66+ 文件；plugins 新增 mira-sdk/dingtalk/aliyun_oss/tencent_cos/epub-parser/fish-audio/jimeng/test-plugin；prompt 2 个；output-styles 7 个；mini-app 1 个；workflows 1 个（code-writing 四阶段）
-- **web 组件缺口补全**：新增 home（10 文件，含 usage-dashboard + subscription-panel）、timeline（4 文件）、layout（13 文件，含 app-shell/workspace-shell/command-palette/auth-guard）、common（15 文件）、settings（5 文件）组件组
-- **web i18n 命名空间**：确认 34 个命名空间（新增 projectSettings/home/commands/agentCommands/robotAccounts/worktree/mini-apps 等）
-- **docs 新增**：mini-app-agent.md、mini-app-renderer.md、mini-app-preview-agent.md、mini-app-state-sync-ws-plan.md、plugin-faq.md、hermes-mcp-config-findings.md、flex-truncate-fix.md + superpowers/{plans,specs} 2026-06-13 三份设计文档
 - **覆盖率**：约 92%（从 88% 提升）
 
 ## 2026-06-12 -- init-architect 增量更新
@@ -31,7 +37,6 @@
 - 补建 `packages/dom-inspector-hook/CLAUDE.md`（此前缺失，确认 2 源文件 + 3 公开导出）
 - 根 CLAUDE.md：补充 Mermaid 图缺失的 dom-inspector-hook 节点 click 链接、刷新模块源文件计数与运行命令（新增 `up` / `lint` / `publish`）
 - 覆盖率：约 88%
-- 主要缺口：server service 子模块细节、web `components/` 部分子目录、flutter/templates 内容样本
 
 ## 2026-06-09 -- init-architect 扫描
 

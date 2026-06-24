@@ -24,7 +24,7 @@ Next.js 16 前端应用，提供多 Agent 协同编程平台的用户界面。29
 | [claude/overview.md](claude/overview.md) | 总览、核心功能、布局架构、技术栈 |
 | [claude/conventions.md](claude/conventions.md) | 编码约定、组件组织、API 调用规范 |
 | [claude/stores.md](claude/stores.md) | 44 个 Zustand Store 文件索引（含子目录） |
-| [claude/component-groups.md](claude/component-groups.md) | 组件目录索引（按功能域分组，20+ 子目录，含 sidebar 56 文件五组展开） |
+| [claude/component-groups.md](claude/component-groups.md) | 组件目录索引（按功能域分组，20+ 子目录，含 sidebar 56 文件五组 + workflow 86 文件七组展开） |
 | [claude/lib-index.md](claude/lib-index.md) | 工具库索引（src/lib/ 下 37 文件） |
 | [claude/changelog.md](claude/changelog.md) | 变更记录 |
 
@@ -51,7 +51,7 @@ Next.js 16 前端应用，提供多 Agent 协同编程平台的用户界面。29
 
 | 分组 | 文件数 | 说明 |
 |------|--------|------|
-| workflow/ | 86 | DAG 编辑器（画布/节点/属性/执行/display-node-views） |
+| workflow/ | 86 | DAG 编辑器（hook/utils/types/节点视图/对话框/属性面板/画布七组，详见 component-groups.md） |
 | sidebar/ | 56 | 侧边栏（骨架8 + 对话框18 + Settings14 + Skills10 + Hooks3，详见 component-groups.md） |
 | chat/ | 40 | 聊天（消息/输入/成员/工具时间线/只读代码块） |
 | editor/ | 21 | Monaco 编辑器（含移动端适配/搜索/收藏） |
@@ -71,8 +71,8 @@ Next.js 16 前端应用，提供多 Agent 协同编程平台的用户界面。29
 
 ## 扫描状态
 
-- **更新时间**：2026-06-23 12:12:46
-- **已扫描范围**：全部 Store、主要组件目录、工具库、页面路由、i18n 命名空间、`components/sidebar/` 56 文件五组展开
-- **覆盖率**：约 94%（从 92% 提升）
-- **本次新增**：`components/sidebar/` 56 文件按骨架与导航(8) / 对话框(18) / Settings 子面板(14) / Skills Dialog(10) / Hooks(3) 五组在 `claude/component-groups.md` 中逐一展开
-- **主要缺口**：`components/workflow/` 86 文件中部分 hook/utils 未深抽
+- **更新时间**：2026-06-24 09:27:10
+- **已扫描范围**：全部 Store、主要组件目录、工具库、页面路由、i18n 命名空间、`components/sidebar/` 56 文件五组展开、`components/workflow/` 86 文件七组展开
+- **覆盖率**：约 95%（从 94% 提升）
+- **本次新增（2026-06-24）**：`components/workflow/` 86 文件按 Hooks 行为层(11) / Utils 工具层(6+) / Types(5) / 节点视图 / 对话框 / 属性面板 / 画布 七组在 `claude/component-groups.md` 中展开；深抽 5 个关键 hook/utils 文件用途（`use-workflow-editor-canvas` 顶层编排、`use-workflow-canvas-data` 执行步骤聚合+z-index 分层、`use-workflow-node-actions` CustomEvent dispatch、`workflow-canvas-utils` loop body 边界保证、`workflow-canvas-helpers` 几何/DOM 工具）
+- **主要缺口**：`components/workflow/` 部分 .tsx 对话框/属性面板内部 JSX 结构未逐一深抽（渲染入口收敛于 `app/workflows/[id]/page.tsx`）

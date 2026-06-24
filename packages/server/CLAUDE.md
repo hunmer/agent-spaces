@@ -24,7 +24,7 @@ Express 5 后端服务，185+ 个 TypeScript 源文件。提供 REST API（37 �
 | [claude/overview.md](claude/overview.md) | 总览、核心架构、大文件列表 |
 | [claude/route-index.md](claude/route-index.md) | 37 个 REST API 路由索引 |
 | [claude/architecture.md](claude/architecture.md) | Agent 运行时架构、Workflow 引擎、Issue 自动化、通知中心 |
-| [claude/storage.md](claude/storage.md) | 存储层 24 文件索引（22 store + 2 SQL 工具）、SQLite 三层、数据目录布局、写入约定 |
+| [claude/storage.md](claude/storage.md) | 存储层 24 文件索引（22 store + 2 SQL 工具）、SQLite 三层、关键 store 字段抽样、数据目录布局、写入约定 |
 | [claude/changelog.md](claude/changelog.md) | 变更记录 |
 
 ## 入口与启动
@@ -58,8 +58,8 @@ Express 5 后端服务，185+ 个 TypeScript 源文件。提供 REST API（37 �
 
 ## 扫描状态
 
-- **更新时间**：2026-06-23 12:12:46
+- **更新时间**：2026-06-24 09:27:10
 - **已扫描范围**：全部路由、服务、适配器、存储层（24 文件）、WebSocket 处理器、mini-app 子系统、新增辅助服务
-- **覆盖率**：约 95%（从 94% 提升）
-- **本次新增**：`storage/` 全部 24 文件覆盖，新增 `sql-safety.ts`（纯函数工具）+ `mini-app-db.ts`/`sqlite-store.ts`/`knowledge-base-store.ts` SQLite 三层字段抽取（驱动/落盘路径/连接池策略）
-- **主要缺口**：`storage/` 各 JSON store 的逐字段（多为扁平 CRUD，按需深挖）、`notification-hub/` bot-agent/service 细节
+- **覆盖率**：约 96%（从 95% 提升）
+- **本次新增（2026-06-24）**：`storage/` 关键 store 字段深挖 —— 修正 `agent-store.ts` 误描述（实为 SQLite Agent Usage 统计，非 Agent preset）；补充 chat-store 全字段（ChatAgent 30+ 字段含运行时不持久化的凭据剥离、ChatMessage 结构化 thinking/usage/toolCalls/timeline、WorkspaceTabState）、workspace/issue/task store 扁平 CRUD 范式（index.json + {id}.json 双写）、workflow-store 目录式布局、agent-store 双表结构 + 成本估算 fallback + Dashboard 聚合逻辑。详见 [claude/storage.md](claude/storage.md) "关键 store 字段抽样" 章节
+- **主要缺口**：`storage/` 其余 10 个 JSON store（command/code-favorites/worktree/robot-account/subscription/hook/llm/speech/user-settings/npm-settings）字段未逐一抽取（多为扁平 CRUD，按需 Read 即可）、`notification-hub/` bot-agent/service 细节
