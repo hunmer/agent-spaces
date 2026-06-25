@@ -107,6 +107,7 @@ type PropertyModeHandle = {
   color: string;
   valueType?: string;
   tooltip?: string;
+  depth?: number;
 };
 
 function getVariableContextNodeLabel(
@@ -164,6 +165,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const nodeBodyRef = useRef<HTMLDivElement>(null);
   const propertyNodeViewRef = useRef<HTMLDivElement>(null);
+  const propertyContentRef = useRef<HTMLDivElement | null>(null);
+  const [measuredPropertyHeight, setMeasuredPropertyHeight] = useState<number>(0);
+  const rafCleanupRef = useRef<(() => void) | null>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
 
   const displayLabel = useMemo(
@@ -205,7 +209,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
   const logPanelLayout = nodeData.logPanelLayout === 'tabs' ? 'tabs' : 'vertical';
   const nodeDisplayMode = nodeData.nodeDisplayMode === 'properties' ? 'properties' : 'normal';
-  const floatingHandles = nodeData.floatingHandles === true || nodeDisplayMode === 'properties';
+  const floatingHandles = !isNodeCollapsed && (nodeData.floatingHandles === true || nodeDisplayMode === 'properties');
   const floatingHandleClassName = floatingHandles ? 'workflow-node-floating-handle' : '';
   const floatingLabelClassName = floatingHandles ? 'workflow-node-floating-handle-label' : '';
   const inputFields = useMemo(() => getWorkflowFields(nodeData.inputFields), [nodeData.inputFields]);
@@ -217,7 +221,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         : prop.visibleWhen.in?.includes(nodeData[prop.visibleWhen.key])
     )) ?? []
   ), [definition?.properties, nodeData]);
-  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView;
+  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView && !isNodeCollapsed;
   const propertyModeHandles = useMemo<PropertyModeHandle[]>(() => {
     if (!canShowPropertyNodeView) return [];
     const isStartNode = workflowNodeType === 'start';
@@ -240,15 +244,26 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       valueType: mapPropertyDataTypeToWorkflowHandleType(getEffectiveDataType(field)),
       tooltip: field.tooltip,
     }));
-    const outputHandles = outputFields.map((field, index) => ({
-      id: getWorkflowFieldHandleId('output', field.key, index),
-      label: field.key,
-      side: 'right' as const,
-      type: 'source' as const,
-      color: DEFAULT_SOURCE_HANDLE_COLOR,
-      valueType: field.type,
-      tooltip: field.description,
-    }));
+    const outputHandles = outputFields.reduce<PropertyModeHandle[]>((acc, field, index) => {
+      const appendOutputField = (current: OutputField, parentKey: string, depth: number) => {
+        const compositeKey = parentKey ? `${parentKey}.${current.key}` : current.key;
+        acc.push({
+          id: getWorkflowFieldHandleId('output', compositeKey, index),
+          label: parentKey ? `↳ ${current.key}` : current.key,
+          side: 'right' as const,
+          type: 'source' as const,
+          color: DEFAULT_SOURCE_HANDLE_COLOR,
+          valueType: current.type,
+          tooltip: current.description,
+          depth,
+        });
+        if (current.type === 'object' && Array.isArray(current.children) && current.children.length > 0) {
+          current.children.forEach((child) => appendOutputField(child, compositeKey, depth + 1));
+        }
+      };
+      appendOutputField(field, '', 0);
+      return acc;
+    }, []);
 
     return [...inputHandles, ...propertyHandles, ...outputHandles];
   }, [canShowPropertyNodeView, inputFields, outputFields, propertyFields, workflowNodeType]);
@@ -346,7 +361,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     sourceHandleCount,
   } = nodeSize;
   const displayNodeWidth = isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeWidth;
-  const displayNodeHeight = isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeHeight;
+  const displayNodeHeight = isNodeCollapsed
+    ? COLLAPSED_NODE_SIZE
+    : (canShowPropertyNodeView && measuredPropertyHeight > 0 ? measuredPropertyHeight : nodeHeight);
   const canShowNodeContent = showFullNode && !isNodeCollapsed;
   const keepCustomViewMounted = hasCustomView && !isNodeCollapsed;
   const canShowVariableReferences = !isLoopBody && !hasCustomView && variableReferences.length > 0;
@@ -360,6 +377,35 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   React.useEffect(() => {
     updateNodeInternals(id);
   }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length]);
+
+  // 属性模式：测量面板实际内容高度，动态撑开节点
+  // 依赖 canShowNodeContent：缩放到图标态会卸载 panel，放大回来需重新挂载测量/监听
+  React.useEffect(() => {
+    if (!canShowPropertyNodeView || !canShowNodeContent || typeof ResizeObserver === 'undefined') return;
+    const wrapper = propertyContentRef.current;
+    if (!wrapper) return;
+    const measureTarget = wrapper.firstElementChild as HTMLElement | null;
+    if (!measureTarget) return;
+    // 用 scrollHeight 取完整内容高度（不受外层节点高度钳制），getBoundingClientRect 在长内容时会被 flex 链路限制
+    const update = () => {
+      const next = Math.ceil(measureTarget.scrollHeight);
+      if (next > 0) setMeasuredPropertyHeight(prev => (prev === next ? prev : next));
+    };
+    // 首次延迟到布局稳定后测量（双 rAF 应对 panel 异步内容），ResizeObserver 负责后续变化
+    const raf1 = requestAnimationFrame(() => {
+      update();
+      const raf2 = requestAnimationFrame(update);
+      rafCleanupRef.current = () => cancelAnimationFrame(raf2);
+    });
+    rafCleanupRef.current = () => cancelAnimationFrame(raf1);
+    const observer = new ResizeObserver(update);
+    observer.observe(measureTarget);
+    return () => {
+      rafCleanupRef.current?.();
+      rafCleanupRef.current = null;
+      observer.disconnect();
+    };
+  }, [canShowPropertyNodeView, canShowNodeContent]);
 
   const handleCtx: HandleContext = useMemo(
     () => ({ isLoopBody, nodeHeight: displayNodeHeight, handlePositions }),
@@ -695,9 +741,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const renderPropertyModeBadgeHandle = useCallback((handle: PropertyModeHandle, index: number, total: number) => {
     const isSourceHandle = handle.type === 'source';
     const visualState = getPropertyHandleVisualState(handle);
+    const depth = handle.depth ?? 0;
+    // 子属性相对父 object 向外（远离节点边缘）偏移，形成层级区分
+    const depthOffset = depth * 16;
     const horizontalStyle = handle.side === 'left'
-      ? { left: 0 }
-      : { right: 0 };
+      ? { left: depthOffset }
+      : { right: depthOffset };
     const transform = handle.side === 'left'
       ? 'translate(-100%, -50%)'
       : 'translate(100%, -50%)';
@@ -894,7 +943,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         ) : null}
       </div>
       <div className="absolute -bottom-1 -right-1 z-30 flex items-center gap-1">
-        {showFullNode && selected && !isCanvasLocked && !isNodeCollapsed ? (
+        {showFullNode && selected && !isCanvasLocked && !isNodeCollapsed && !canShowPropertyNodeView ? (
           <button
             type="button"
             className="nodrag nopan inline-flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
@@ -1023,8 +1072,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           {propertyModeRightHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeRightHandles.length))}
           {canShowNodeContent ? (
             <div
-              className="h-full overflow-y-auto overflow-x-hidden bg-background"
+              ref={propertyContentRef}
+              className="self-start overflow-x-hidden bg-background"
               data-workflow-property-content="true"
+              onWheelCapture={(event) => {
+                if (event.ctrlKey || event.metaKey) return;
+                event.stopPropagation();
+              }}
             >
               <WorkflowPropertiesPanel
                 node={{

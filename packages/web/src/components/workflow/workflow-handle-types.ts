@@ -9,6 +9,20 @@ function getWorkflowFields(value: unknown): OutputField[] {
   )) : [];
 }
 
+// 支持复合 key（如 "obj.child"）在 output 字段树中递归查找类型
+function findOutputFieldTypeByKey(fields: OutputField[], key: string): OutputField['type'] | undefined {
+  const direct = fields.find(field => field.key === key);
+  if (direct) return direct.type;
+  const separatorIndex = key.indexOf('.');
+  if (separatorIndex <= 0) return undefined;
+  const parentKey = key.slice(0, separatorIndex);
+  const childKey = key.slice(separatorIndex + 1);
+  if (!childKey) return undefined;
+  const parent = fields.find(field => field.key === parentKey);
+  if (!parent || !Array.isArray(parent.children) || parent.children.length === 0) return undefined;
+  return findOutputFieldTypeByKey(parent.children, childKey);
+}
+
 export function mapPropertyDataTypeToWorkflowHandleType(type: string | undefined): OutputField['type'] | undefined {
   if (!type) return undefined;
   if (type === 'object[]') return 'array';
@@ -65,9 +79,9 @@ export function getWorkflowHandleValueType(
   if (parsed.kind === 'output') {
     const isStartNode = node.type === 'start'
       || (typeof node.data?.nodeType === 'string' && node.data.nodeType === 'start');
-    return getWorkflowFields(node.data?.outputs).find(field => field.key === parsed.key)?.type
+    return findOutputFieldTypeByKey(getWorkflowFields(node.data?.outputs), parsed.key)
       ?? (isStartNode
-        ? getWorkflowFields(node.data?.inputFields).find(field => field.key === parsed.key)?.type
+        ? findOutputFieldTypeByKey(getWorkflowFields(node.data?.inputFields), parsed.key)
         : undefined);
   }
 

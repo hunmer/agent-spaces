@@ -96,11 +96,11 @@ export function getWorkflowNodeSize(
     : definition?.customViewMinSize?.width || DEFAULT_NODE_MIN_WIDTH;
   const baseMinHeight = definition?.customViewMinSize?.height || DEFAULT_NODE_MIN_HEIGHT;
   const isLoopBody = definition?.type === LOOP_BODY_NODE_TYPE;
-  const propertyMinHeight = isPropertyNodeView ? PROPERTY_NODE_MIN_HEIGHT : baseMinHeight;
   const handleMinHeight = isLoopBody || sourceHandleCount <= 1
-    ? propertyMinHeight
-    : Math.max(propertyMinHeight, HEADER_HEIGHT + sourceHandleCount * HANDLE_ROW_HEIGHT + HANDLE_BOTTOM_PADDING);
+    ? baseMinHeight
+    : Math.max(baseMinHeight, HEADER_HEIGHT + sourceHandleCount * HANDLE_ROW_HEIGHT + HANDLE_BOTTOM_PADDING);
   const minHeight = handleMinHeight + (isPropertyNodeView ? 0 : getWorkflowNodeVariableBadgeHeight(definition, data));
+  const propertyDefaultHeight = Math.max(PROPERTY_NODE_MIN_HEIGHT, handleMinHeight);
 
   return {
     minWidth,
@@ -112,7 +112,12 @@ export function getWorkflowNodeSize(
         : typeof data.width === 'number' ? data.width : DEFAULT_NODE_WIDTH,
     ),
     height: isPropertyNodeView
-      ? minHeight
+      ? Math.max(
+        minHeight,
+        typeof data.nodeHeight === 'number'
+          ? data.nodeHeight
+          : typeof data.height === 'number' ? data.height : propertyDefaultHeight,
+      )
       : Math.max(
         minHeight,
         typeof data.nodeHeight === 'number'

@@ -4,12 +4,12 @@
   "folderId": null,
   "nodes": [
     {
-      "id": "node_1781685716936_start",
+      "id": "node_1782378005328_2qxags",
       "type": "start",
-      "label": "开始",
+      "label": "nodes.start.label",
       "position": {
-        "x": -60,
-        "y": 90
+        "x": -45,
+        "y": 435
       },
       "data": {
         "inputFields": [
@@ -19,32 +19,38 @@
             "value": "",
             "children": []
           }
-        ],
-        "nodeWidth": 295,
-        "nodeHeight": 265
+        ]
       }
     },
     {
-      "id": "node_1781685716936_end",
+      "id": "node_1782378019339_kjipap",
       "type": "end",
-      "label": "结束",
+      "label": "nodes.end.label",
       "position": {
-        "x": 1260,
-        "y": 105
+        "x": 1305,
+        "y": 375
       },
-      "data": {}
+      "data": {
+        "outputs": [
+          {
+            "key": "images",
+            "type": "image[]",
+            "value": ""
+          }
+        ]
+      }
     },
     {
-      "id": "node_1781685909746_pulssd",
+      "id": "node_1782378030225_i28iuk",
       "type": "nano_banana_create_image",
       "label": "Nano Banana 文生图",
       "position": {
-        "x": 615,
-        "y": 105
+        "x": 630,
+        "y": 240
       },
       "data": {
-        "apiKey": "",
-        "model": "",
+        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
+        "model": "gemini-3.1-flash-image",
         "responseModalities": "auto",
         "aspectRatio": "auto",
         "imageSize": "default",
@@ -53,15 +59,18 @@
         "outputs": [
           {
             "key": "success",
-            "type": "boolean"
+            "type": "boolean",
+            "children": []
           },
           {
             "key": "message",
-            "type": "string"
+            "type": "string",
+            "children": []
           },
           {
             "key": "thinking",
-            "type": "string"
+            "type": "string",
+            "children": []
           },
           {
             "key": "data",
@@ -69,19 +78,23 @@
             "children": [
               {
                 "key": "images",
-                "type": "image[]"
+                "type": "image[]",
+                "children": []
               },
               {
                 "key": "text",
-                "type": "string"
+                "type": "string",
+                "children": []
               },
               {
                 "key": "thoughts",
-                "type": "string"
+                "type": "string",
+                "children": []
               },
               {
                 "key": "model",
-                "type": "string"
+                "type": "string",
+                "children": []
               },
               {
                 "key": "groundingMetadata",
@@ -91,15 +104,21 @@
             ]
           }
         ],
-        "prompt": "动漫女孩",
-        "nodeWidth": 464,
-        "nodeHeight": 874
+        "prompt": "{{ __data__[\"node_1782378005328_2qxags\"].prompt }}"
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1782378005328_2qxags-output:prompt-node_1782378030225_i28iuk-property:prompt",
+      "source": "node_1782378005328_2qxags",
+      "target": "node_1782378030225_i28iuk",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    }
+  ],
   "createdAt": 1781685716941,
-  "updatedAt": 1782375467561,
+  "updatedAt": 1782380021403,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",
