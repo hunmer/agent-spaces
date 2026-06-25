@@ -8,19 +8,13 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 45,
+        "x": -60,
         "y": 90
       },
       "data": {
         "inputFields": [
           {
-            "key": "a",
-            "type": "string",
-            "value": "",
-            "children": []
-          },
-          {
-            "key": "b",
+            "key": "prompt",
             "type": "string",
             "value": "",
             "children": []
@@ -35,59 +29,25 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 1260,
+        "y": 105
       },
       "data": {}
-    },
-    {
-      "id": "node_1781685855248_7f1hj1",
-      "type": "nano_banana_models",
-      "label": "Nano Banana 模型列表",
-      "position": {
-        "x": 1050,
-        "y": 180
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
-        "baseUrl": "{{ __config__[\"workflow.nano-banana\"][\"baseUrl\"] }}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "models",
-                "type": "object",
-                "children": []
-              }
-            ]
-          }
-        ]
-      }
     },
     {
       "id": "node_1781685909746_pulssd",
       "type": "nano_banana_create_image",
       "label": "Nano Banana 文生图",
       "position": {
-        "x": 1395,
-        "y": 855
+        "x": 615,
+        "y": 105
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
-        "model": "{{ __data__[\"node_1781685855248_7f1hj1\"].data }}",
+        "model": "gemini-3.1-flash-image",
         "responseModalities": "auto",
         "aspectRatio": "auto",
-        "imageSize": "{{ __data__[\"node_1781685855248_7f1hj1\"].data }}",
+        "imageSize": "default",
         "thinkingLevel": "auto",
         "baseUrl": "{{ __config__[\"workflow.nano-banana\"][\"baseUrl\"] }}",
         "outputs": [
@@ -135,122 +95,11 @@
         "nodeWidth": 464,
         "nodeHeight": 874
       }
-    },
-    {
-      "id": "node_1781685997492_5jgg2v",
-      "type": "nano_banana_models",
-      "label": "Nano Banana 模型列表",
-      "position": {
-        "x": 690,
-        "y": 1155
-      },
-      "data": {
-        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
-        "baseUrl": "{{ __config__[\"workflow.nano-banana\"][\"baseUrl\"] }}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "models",
-                "type": "object",
-                "children": []
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "node_1782357489483_4e2h91",
-      "type": "toast",
-      "label": "nodes.toast.label",
-      "position": {
-        "x": 630,
-        "y": 210
-      },
-      "data": {
-        "type": "info"
-      }
-    },
-    {
-      "id": "node_1782370463926_9tvadt",
-      "type": "openai_edit_image",
-      "label": "OpenAI 图片编辑",
-      "position": {
-        "x": 2295,
-        "y": 1155
-      },
-      "data": {
-        "apiKey": "{{ __data__[\"node_1781685909746_pulssd\"].success }}",
-        "model": "dall-e-2",
-        "size": "auto",
-        "quality": "auto",
-        "n": 1,
-        "response_format": "",
-        "background": "auto",
-        "baseUrl": "{{ __config__[\"workflow.openai\"][\"baseUrl\"] }}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "children": [
-              {
-                "key": "images",
-                "type": "image[]"
-              },
-              {
-                "key": "created",
-                "type": "number"
-              },
-              {
-                "key": "usage",
-                "type": "object",
-                "children": []
-              }
-            ]
-          }
-        ],
-        "prompt": "{{ __data__[\"node_1781685909746_pulssd\"].message }}",
-        "image": "{{ __data__[\"node_1781685909746_pulssd\"].thinking }}"
-      }
     }
   ],
-  "edges": [
-    {
-      "id": "e-node_1781685909746_pulssd-output:success-node_1782370463926_9tvadt-property:apiKey",
-      "source": "node_1781685909746_pulssd",
-      "target": "node_1782370463926_9tvadt",
-      "sourceHandle": "output:success",
-      "targetHandle": "property:apiKey"
-    },
-    {
-      "id": "e-node_1781685909746_pulssd-output:message-node_1782370463926_9tvadt-property:prompt",
-      "source": "node_1781685909746_pulssd",
-      "target": "node_1782370463926_9tvadt",
-      "sourceHandle": "output:message",
-      "targetHandle": "property:prompt"
-    }
-  ],
+  "edges": [],
   "createdAt": 1781685716941,
-  "updatedAt": 1782371669340,
+  "updatedAt": 1782373163638,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",
@@ -259,5 +108,6 @@
   "groups": [],
   "layoutSnapshot": {
     "nodeDisplayMode": "properties"
-  }
+  },
+  "variables": []
 }

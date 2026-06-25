@@ -40,6 +40,7 @@ import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
+import { areWorkflowHandleValueTypesCompatible, getWorkflowHandleValueType } from './workflow-handle-types';
 import type { HandlePositionMode } from './workflow-node-types';
 import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
 import { useTheme } from '@/components/layout/theme-provider';
@@ -304,12 +305,16 @@ export function WorkflowCanvas({
 
     const nodes = workflow.nodes;
     const edges = workflow.edges;
+    const sourceNode = nodes.find(node => node.id === connection.source);
     const targetNode = nodes.find(node => node.id === connection.target);
-    if (!targetNode) return false;
+    if (!sourceNode || !targetNode) return false;
     const targetDefinition = getNodeDefinition(targetNode.type);
     const targetHandle = connection.targetHandle || undefined;
     const targetFieldHandle = parseWorkflowFieldHandleId(targetHandle);
     const sourceFieldHandle = parseWorkflowFieldHandleId(connection.sourceHandle || undefined);
+    const sourceHandleType = getWorkflowHandleValueType(sourceNode, connection.sourceHandle || undefined);
+    const targetHandleType = getWorkflowHandleValueType(targetNode, targetHandle);
+    if (!areWorkflowHandleValueTypesCompatible(sourceHandleType, targetHandleType)) return false;
     if (
       (targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property')
       && sourceFieldHandle?.kind !== 'output'

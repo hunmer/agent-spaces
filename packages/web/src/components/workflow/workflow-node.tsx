@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { Handle, NodeToolbar, Position, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import { Handle, NodeToolbar, Position, useConnection, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps, ReactFlowState } from '@xyflow/react';
 import {
   ChevronDown,
@@ -26,6 +26,7 @@ import {
 } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 import { getWorkflowNodeSize, getWorkflowNodeVariableReferences } from './workflow-node-size';
@@ -57,6 +58,12 @@ import {
   EXECUTION_INPUT_FIELDS_KEY,
   EXECUTION_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
+import {
+  areWorkflowHandleValueTypesCompatible,
+  getWorkflowHandleValueType,
+  mapPropertyDataTypeToWorkflowHandleType,
+} from './workflow-handle-types';
+import { getEffectiveDataType } from './workflow-properties-utils';
 import { getWorkflowFieldHandleId } from './workflow-field-handles';
 import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets } from './workflow-properties-utils';
 import { VariableBadgeInput } from './workflow-variable-input';
@@ -98,6 +105,8 @@ type PropertyModeHandle = {
   side: 'left' | 'right';
   type: 'target' | 'source';
   color: string;
+  valueType?: string;
+  tooltip?: string;
 };
 
 function getVariableContextNodeLabel(
@@ -121,6 +130,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const showFullNode = useStore(showFullNodeSelector);
   const canvasZoom = useStore(canvasZoomSelector);
   const workflowNodes = useStore(workflowNodesSelector);
+  const connectionState = useConnection();
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
   const updateNodeInternals = useUpdateNodeInternals();
   useSyncExternalStore(
@@ -217,6 +227,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       side: 'left' as const,
       type: 'target' as const,
       color: '#3b82f6',
+      valueType: field.type,
+      tooltip: field.description,
     }));
     const propertyHandles = propertyFields.map((field, index) => ({
       id: getWorkflowFieldHandleId('property', field.key, index),
@@ -224,6 +236,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       side: 'left' as const,
       type: 'target' as const,
       color: '#8b5cf6',
+      valueType: mapPropertyDataTypeToWorkflowHandleType(getEffectiveDataType(field)),
+      tooltip: field.tooltip,
     }));
     const outputHandles = outputFields.map((field, index) => ({
       id: getWorkflowFieldHandleId('output', field.key, index),
@@ -231,6 +245,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       side: 'right' as const,
       type: 'source' as const,
       color: DEFAULT_SOURCE_HANDLE_COLOR,
+      valueType: field.type,
+      tooltip: field.description,
     }));
 
     return [...inputHandles, ...propertyHandles, ...outputHandles];
@@ -243,6 +259,44 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     () => propertyModeHandles.filter(handle => handle.side === 'right'),
     [propertyModeHandles],
   );
+  const getHandleValueType = useCallback((nodeId: string, handleId: string | null | undefined): OutputField['type'] | undefined => {
+    const node = workflowNodes.find(item => item.id === nodeId);
+    return getWorkflowHandleValueType(node as SharedWorkflowNode | undefined, handleId);
+  }, [workflowNodes]);
+  const validatePropertyModeConnection = useCallback((handle: PropertyModeHandle) => (
+    (connection: { source?: string | null; target?: string | null; sourceHandle?: string | null; targetHandle?: string | null }) => {
+      if (!connection.source || !connection.target) return true;
+      const sourceType = handle.type === 'source'
+        ? handle.valueType
+        : getHandleValueType(connection.source, connection.sourceHandle);
+      const targetType = handle.type === 'target'
+        ? handle.valueType
+        : getHandleValueType(connection.target, connection.targetHandle);
+      return areWorkflowHandleValueTypesCompatible(sourceType, targetType);
+    }
+  ), [getHandleValueType]);
+  const getPropertyHandleVisualState = useCallback((handle: PropertyModeHandle) => {
+    const fromHandle = connectionState.fromHandle;
+    const inProgress = connectionState.inProgress;
+    if (!inProgress || !fromHandle) {
+      return {
+        isActiveSource: false,
+        isIncompatibleTarget: false,
+        sourceType: undefined as OutputField['type'] | undefined,
+      };
+    }
+
+    const sourceType = getHandleValueType(fromHandle.nodeId, fromHandle.id);
+    const isActiveSource = handle.type === 'source'
+      && fromHandle.nodeId === id
+      && fromHandle.id === handle.id
+      && fromHandle.type === 'source';
+    const isIncompatibleTarget = handle.type === 'target'
+      && fromHandle.type === 'source'
+      && !areWorkflowHandleValueTypesCompatible(sourceType, handle.valueType);
+
+    return { isActiveSource, isIncompatibleTarget, sourceType };
+  }, [connectionState.fromHandle, connectionState.inProgress, getHandleValueType, id]);
   const variableReferences = useMemo(
     () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
     [nodeData],
@@ -639,12 +693,35 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   const renderPropertyModeBadgeHandle = useCallback((handle: PropertyModeHandle, index: number, total: number) => {
     const isSourceHandle = handle.type === 'source';
+    const visualState = getPropertyHandleVisualState(handle);
     const horizontalStyle = handle.side === 'left'
       ? { left: 0 }
       : { right: 0 };
     const transform = handle.side === 'left'
       ? 'translate(-100%, -50%)'
       : 'translate(100%, -50%)';
+
+    const badge = (
+      <span
+        className={cn(
+          'pointer-events-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap shadow-sm transition-colors',
+          visualState.isIncompatibleTarget && 'border-destructive bg-destructive/10 text-destructive opacity-70',
+          visualState.isActiveSource && 'ring-1 ring-primary/50',
+        )}
+        style={{
+          borderColor: visualState.isIncompatibleTarget ? undefined : handle.color,
+          backgroundColor: visualState.isIncompatibleTarget ? undefined : `${handle.color}1a`,
+          color: visualState.isIncompatibleTarget ? undefined : handle.color,
+        }}
+      >
+        <span>{handle.label}</span>
+        {handle.valueType ? (
+          <span className="rounded bg-background/60 px-1 py-px text-[9px] leading-none opacity-80">
+            {handle.valueType}
+          </span>
+        ) : null}
+      </span>
+    );
 
     return (
       <div
@@ -666,6 +743,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               type={handle.type}
               position={handle.side === 'left' ? Position.Left : Position.Right}
               isConnectable
+              isValidConnection={validatePropertyModeConnection(handle)}
               className={cn('!z-30 !h-7 !w-auto !min-w-0 !rounded-full !border-0 !bg-transparent !p-0 shadow-none', floatingHandleClassName)}
               style={{
                 ...horizontalStyle,
@@ -674,24 +752,29 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               }}
               onContextMenu={isSourceHandle ? (event) => openHandleColorMenu(event, handle.id) : undefined}
             >
-              <span
-                className={cn(
-                  'pointer-events-auto inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap shadow-sm',
-                )}
-                style={{
-                  borderColor: handle.color,
-                  backgroundColor: `${handle.color}1a`,
-                  color: handle.color,
-                }}
-              >
-                {handle.label}
-              </span>
+              {handle.tooltip || handle.valueType ? (
+                <TooltipProvider delay={300}>
+                  <Tooltip>
+                    <TooltipTrigger render={badge} />
+                    <TooltipContent side={handle.side === 'left' ? 'left' : 'right'} className="max-w-56 text-xs">
+                      {handle.tooltip ? <div>{handle.tooltip}</div> : null}
+                      {handle.valueType ? <div className={handle.tooltip ? 'mt-1 opacity-70' : 'opacity-70'}>类型: {handle.valueType}</div> : null}
+                      {visualState.isIncompatibleTarget ? (
+                        <div className="mt-1 text-destructive">
+                          类型不兼容
+                          {visualState.sourceType ? `: ${visualState.sourceType} -> ${handle.valueType || 'unknown'}` : ''}
+                        </div>
+                      ) : null}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : badge}
             </Handle>,
           )}
         </div>
       </div>
     );
-  }, [floatingHandleClassName, handleCtx, openHandleColorMenu, renderHandleColorPopover]);
+  }, [floatingHandleClassName, getPropertyHandleVisualState, handleCtx, openHandleColorMenu, renderHandleColorPopover, validatePropertyModeConnection]);
 
   const renderCompatibilityHandle = useCallback((
     handleId: string,

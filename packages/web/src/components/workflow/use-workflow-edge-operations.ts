@@ -32,6 +32,7 @@ import {
   ensureLoopBodyBoundaryNodes,
 } from './workflow-canvas-utils';
 import { cleanupGroupsOnNodeDelete } from './workflow-canvas-groups';
+import { areWorkflowHandleValueTypesCompatible, getWorkflowHandleValueType } from './workflow-handle-types';
 
 interface UseEdgeOperationsParams {
   workflow: Workflow | null;
@@ -228,6 +229,10 @@ export function useEdgeOperations({
     const nextEdges = workflow.nodes
       .filter(node => sourceIdSet.has(node.id))
       .filter(node => canUseSourceHandle(node, connection.sourceHandle))
+      .filter(node => areWorkflowHandleValueTypesCompatible(
+        getWorkflowHandleValueType(node, connection.sourceHandle),
+        getWorkflowHandleValueType(targetNode, connection.targetHandle),
+      ))
       .filter(node => !wouldCreateCycle(node.id, connection.target!))
       .map((node): Workflow['edges'][number] => ({
         id: isDefaultSourceHandle(node, connection.sourceHandle)
