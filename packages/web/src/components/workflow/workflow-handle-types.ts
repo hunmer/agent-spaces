@@ -1,7 +1,7 @@
 import type { OutputField, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getEffectiveDataType } from './workflow-properties-utils';
-import { parseWorkflowFieldHandleId } from './workflow-field-handles';
+import { getWorkflowFieldHandleId, parseWorkflowFieldHandleId } from './workflow-field-handles';
 
 function getWorkflowFields(value: unknown): OutputField[] {
   return Array.isArray(value) ? value.filter((field): field is OutputField => (
@@ -25,6 +25,7 @@ function findOutputFieldTypeByKey(fields: OutputField[], key: string): OutputFie
 
 export function mapPropertyDataTypeToWorkflowHandleType(type: string | undefined): OutputField['type'] | undefined {
   if (!type) return undefined;
+  if (type === 'select' || type === 'textarea' || type === 'text') return 'string';
   if (type === 'object[]') return 'array';
   if (type === 'string' || type === 'number' || type === 'boolean' || type === 'string[]' || type === 'number[]' || type === 'object' || type === 'any') {
     return type;
@@ -34,7 +35,7 @@ export function mapPropertyDataTypeToWorkflowHandleType(type: string | undefined
 
 function normalizeWorkflowHandleValueType(type: string | undefined): OutputField['type'] | undefined {
   if (!type) return undefined;
-  if (type === 'select') return 'string';
+  if (type === 'select' || type === 'textarea' || type === 'text') return 'string';
   if (type === 'array') return 'array';
   if (type === 'object[]') return 'array';
   return type as OutputField['type'];
@@ -68,8 +69,8 @@ export function getWorkflowHandleValueType(
   node: WorkflowNode | Workflow['nodes'][number] | undefined,
   handleId: string | null | undefined,
 ): OutputField['type'] | undefined {
-  if (!node || !handleId) return undefined;
-  const parsed = parseWorkflowFieldHandleId(handleId);
+  if (!node) return undefined;
+  const parsed = parseWorkflowFieldHandleId(getNormalizedWorkflowSourceHandle(node, handleId));
   if (!parsed) return undefined;
 
   if (parsed.kind === 'input') {
@@ -95,4 +96,20 @@ export function getWorkflowHandleValueType(
       : prop.visibleWhen.in?.includes(actual);
   });
   return mapPropertyDataTypeToWorkflowHandleType(property ? getEffectiveDataType(property) : undefined);
+}
+
+export function getNormalizedWorkflowSourceHandle(
+  node: WorkflowNode | Workflow['nodes'][number] | undefined,
+  handleId: string | null | undefined,
+): string | undefined {
+  const normalizedHandleId = handleId || undefined;
+  if (!node || (normalizedHandleId && normalizedHandleId !== 'source')) return normalizedHandleId;
+
+  const isStartNode = node.type === 'start'
+    || (typeof node.data?.nodeType === 'string' && node.data.nodeType === 'start');
+  if (!isStartNode) return normalizedHandleId;
+
+  const inputFields = getWorkflowFields(node.data?.inputFields);
+  if (inputFields.length !== 1) return normalizedHandleId;
+  return getWorkflowFieldHandleId('output', inputFields[0].key, 0);
 }

@@ -47,7 +47,6 @@ import { useWorkflowLogsCollapsed } from './workflow-logs-collapsed-context';
 import {
   HANDLE_POSITION_MAP,
   getHandleStyle,
-  getHandleTop,
   getSourceLabelStyle,
   getTargetHandleStyle,
   WORKFLOW_NODE_DRAG_HANDLE_CLASS,
@@ -94,6 +93,20 @@ function getWorkflowFields(value: unknown): OutputField[] {
   return Array.isArray(value) ? value.filter((field): field is OutputField => (
     !!field && typeof field === 'object' && typeof (field as OutputField).key === 'string'
   )) : [];
+}
+
+function getWorkflowFieldsSignature(fields: OutputField[]): string {
+  return fields
+    .map((field, index) => {
+      const children = getWorkflowFields(field.children);
+      return [
+        index,
+        field.key,
+        field.type,
+        children.length > 0 ? getWorkflowFieldsSignature(children) : '',
+      ].join(':');
+    })
+    .join('|');
 }
 
 function getRecordValue(value: unknown): Record<string, unknown> | undefined {
@@ -166,13 +179,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState('');
   const [handleColorMenuId, setHandleColorMenuId] = useState<string | null>(null);
+  const collapsedOutputKeysValue = nodeData[COLLAPSED_OUTPUT_HANDLES_KEY];
   // 折叠状态从 nodeData 读取（持久化）；写入逻辑见 actions 之后
   const collapsedOutputKeys = useMemo(() => {
-    const raw = nodeData[COLLAPSED_OUTPUT_HANDLES_KEY];
+    const raw = collapsedOutputKeysValue;
     return raw && typeof raw === 'object' && !Array.isArray(raw)
       ? raw as Record<string, boolean>
       : {};
-  }, [nodeData[COLLAPSED_OUTPUT_HANDLES_KEY]]);
+  }, [collapsedOutputKeysValue]);
   const [continueDialogOpen, setContinueDialogOpen] = useState(false);
   const [continuePresetId, setContinuePresetId] = useState('debug');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -234,10 +248,25 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         : prop.visibleWhen.in?.includes(nodeData[prop.visibleWhen.key])
     )) ?? []
   ), [definition?.properties, nodeData]);
+  const inputFieldsSignature = useMemo(() => getWorkflowFieldsSignature(inputFields), [inputFields]);
+  const outputFieldsSignature = useMemo(() => getWorkflowFieldsSignature(outputFields), [outputFields]);
+  const propertyFieldsSignature = useMemo(
+    () => propertyFields.map((field, index) => `${index}:${field.key}:${getEffectiveDataType(field)}`).join('|'),
+    [propertyFields],
+  );
+  const collapsedOutputKeysSignature = useMemo(
+    () => Object.entries(collapsedOutputKeys)
+      .filter(([, collapsed]) => collapsed)
+      .map(([key]) => key)
+      .sort()
+      .join('|'),
+    [collapsedOutputKeys],
+  );
   const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView && !isNodeCollapsed;
   const propertyModeHandles = useMemo<PropertyModeHandle[]>(() => {
     if (!canShowPropertyNodeView) return [];
     const isStartNode = workflowNodeType === 'start';
+    const isEndNode = workflowNodeType === 'end';
 
     const inputHandles = inputFields.map((field, index) => ({
       id: getWorkflowFieldHandleId(isStartNode ? 'output' : 'input', field.key, index),
@@ -264,8 +293,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         acc.push({
           id: getWorkflowFieldHandleId('output', compositeKey, index),
           label: parentKey ? `↳ ${current.key}` : current.key,
-          side: 'right' as const,
-          type: 'source' as const,
+          side: isEndNode ? 'left' as const : 'right' as const,
+          type: isEndNode ? 'target' as const : 'source' as const,
           color: DEFAULT_SOURCE_HANDLE_COLOR,
           valueType: current.type,
           tooltip: current.description,
@@ -284,23 +313,23 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
     return [...inputHandles, ...propertyHandles, ...outputHandles];
   }, [canShowPropertyNodeView, inputFields, outputFields, propertyFields, workflowNodeType]);
+  // output 子属性：若任一祖先被折叠则隐藏
+  const isOutputHandleVisible = useCallback((handle: PropertyModeHandle) => {
+    let ancestor = handle.parentCollapsedKey;
+    while (ancestor) {
+      if (collapsedOutputKeys[ancestor]) return false;
+      const ancestorHandle = propertyModeHandles.find(h => h.collapsedKey === ancestor);
+      ancestor = ancestorHandle?.parentCollapsedKey;
+    }
+    return true;
+  }, [collapsedOutputKeys, propertyModeHandles]);
   const propertyModeLeftHandles = useMemo(
-    () => propertyModeHandles.filter(handle => handle.side === 'left'),
-    [propertyModeHandles],
+    () => propertyModeHandles.filter(handle => handle.side === 'left' && isOutputHandleVisible(handle)),
+    [propertyModeHandles, isOutputHandleVisible],
   );
   const propertyModeRightHandles = useMemo(
-    () => propertyModeHandles.filter((handle) => {
-      if (handle.side !== 'right') return false;
-      // output 子属性：若任一祖先被折叠则隐藏
-      let ancestor = handle.parentCollapsedKey;
-      while (ancestor) {
-        if (collapsedOutputKeys[ancestor]) return false;
-        const ancestorHandle = propertyModeHandles.find(h => h.collapsedKey === ancestor);
-        ancestor = ancestorHandle?.parentCollapsedKey;
-      }
-      return true;
-    }),
-    [propertyModeHandles, collapsedOutputKeys],
+    () => propertyModeHandles.filter(handle => handle.side === 'right' && isOutputHandleVisible(handle)),
+    [propertyModeHandles, isOutputHandleVisible],
   );
   const getHandleValueType = useCallback((nodeId: string, handleId: string | null | undefined): OutputField['type'] | undefined => {
     const node = workflowNodes.find(item => item.id === nodeId);
@@ -315,9 +344,20 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       const targetType = handle.type === 'target'
         ? handle.valueType
         : getHandleValueType(connection.target, connection.targetHandle);
-      return areWorkflowHandleValueTypesCompatible(sourceType, targetType);
+      const valid = areWorkflowHandleValueTypesCompatible(sourceType, targetType);
+      console.log('[workflow:connect]', {
+        phase: 'handle-validate',
+        result: valid ? 'accepted' : 'rejected',
+        nodeId: id,
+        handleId: handle.id,
+        handleType: handle.type,
+        sourceType,
+        targetType,
+        connection,
+      });
+      return valid;
     }
-  ), [getHandleValueType]);
+  ), [getHandleValueType, id]);
   const getPropertyHandleVisualState = useCallback((handle: PropertyModeHandle) => {
     const fromHandle = connectionState.fromHandle;
     const inProgress = connectionState.inProgress;
@@ -403,7 +443,17 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length, collapsedOutputKeys]);
+    let firstFrame = 0;
+    let secondFrame = 0;
+    firstFrame = requestAnimationFrame(() => {
+      updateNodeInternals(id);
+      secondFrame = requestAnimationFrame(() => updateNodeInternals(id));
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFieldsSignature, outputFieldsSignature, propertyFieldsSignature, collapsedOutputKeysSignature]);
 
   // 属性模式：测量面板实际内容高度，动态撑开节点
   // 依赖 canShowNodeContent：缩放到图标态会卸载 panel，放大回来需重新挂载测量/监听
@@ -789,6 +839,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
     const badge = (
       <span
+        data-workflow-node-id={id}
+        data-workflow-handle-id={handle.id}
+        data-workflow-handle-type={handle.type}
         className={cn(
           'pointer-events-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap shadow-sm transition-colors',
           visualState.isIncompatibleTarget && 'border-destructive bg-destructive/10 text-destructive opacity-70',
@@ -847,11 +900,20 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               position={handle.side === 'left' ? Position.Left : Position.Right}
               isConnectable
               isValidConnection={validatePropertyModeConnection(handle)}
-              className={cn('!z-30 !h-7 !w-auto !min-w-0 !rounded-full !border-0 !bg-transparent !p-0 shadow-none', floatingHandleClassName)}
+              className={cn('!pointer-events-auto !z-30 !h-7 !w-auto !min-w-0 !rounded-full !border-0 !bg-transparent !p-0 shadow-none', floatingHandleClassName)}
               style={{
                 ...horizontalStyle,
                 top: 0,
                 transform,
+              }}
+              onPointerDownCapture={() => {
+                console.log('[workflow:connect]', {
+                  phase: 'handle-pointer-down',
+                  nodeId: id,
+                  handleId: handle.id,
+                  handleType: handle.type,
+                  valueType: handle.valueType,
+                });
               }}
               onContextMenu={isSourceHandle ? (event) => openHandleColorMenu(event, handle.id) : undefined}
             >
@@ -877,7 +939,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       </div>
     );
-  }, [floatingHandleClassName, getPropertyHandleVisualState, handleCtx, openHandleColorMenu, renderHandleColorPopover, validatePropertyModeConnection, collapsedOutputKeys, toggleOutputHandleCollapsed]);
+  }, [floatingHandleClassName, getPropertyHandleVisualState, handleCtx, id, openHandleColorMenu, renderHandleColorPopover, validatePropertyModeConnection, collapsedOutputKeys, toggleOutputHandleCollapsed]);
 
   const renderCompatibilityHandle = useCallback((
     handleId: string,
@@ -957,9 +1019,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       )}
       {!canShowPropertyNodeView && inputFields.map((field, index) => (
         renderCompatibilityHandle(
-          getWorkflowFieldHandleId('input', field.key, index),
-          'target',
-          handlePositions.target,
+          getWorkflowFieldHandleId(isStartNode ? 'output' : 'input', field.key, index),
+          isStartNode ? 'source' : 'target',
+          isStartNode ? handlePositions.source : handlePositions.target,
           index,
           Math.max(1, inputFields.length + propertyFields.length),
         )
@@ -1208,6 +1270,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               id="source" type="source" position={handlePositions.source}
               className={cn('!z-10 !w-3 !h-3 !border-2 handle-dot', floatingHandleClassName)}
               style={getSourceHandleStyle(SOURCE_HANDLE_KEY, DEFAULT_SOURCE_HANDLE_COLOR, handlePositions.source, 0, 1)}
+              onPointerDownCapture={() => {
+                console.log('[workflow:connect]', {
+                  phase: 'handle-pointer-down',
+                  nodeId: id,
+                  handleId: SOURCE_HANDLE_KEY,
+                  handleType: 'source',
+                });
+              }}
               onContextMenu={(event) => openHandleColorMenu(event, SOURCE_HANDLE_KEY)}
             />,
           )

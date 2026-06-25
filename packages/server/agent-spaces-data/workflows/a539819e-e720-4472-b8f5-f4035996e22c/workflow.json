@@ -35,42 +35,39 @@
           {
             "key": "images",
             "type": "image[]",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "success",
+            "type": "boolean",
             "value": ""
           }
         ]
       }
     },
     {
-      "id": "node_1782378030225_i28iuk",
-      "type": "nano_banana_create_image",
-      "label": "Nano Banana 文生图",
+      "id": "node_1782381377377_25j238",
+      "type": "ai_image_generate",
+      "label": "AI文生图",
       "position": {
         "x": 630,
-        "y": 240
+        "y": 405
       },
       "data": {
-        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
-        "model": "gemini-3.1-flash-image",
-        "responseModalities": "auto",
-        "aspectRatio": "auto",
-        "imageSize": "default",
-        "thinkingLevel": "auto",
-        "baseUrl": "{{ __config__[\"workflow.nano-banana\"][\"baseUrl\"] }}",
+        "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
+        "model": "gpt-image-2-all",
+        "aspectRatio": "1:1",
+        "n": 1,
         "outputs": [
           {
             "key": "success",
-            "type": "boolean",
-            "children": []
+            "type": "boolean"
           },
           {
             "key": "message",
-            "type": "string",
-            "children": []
-          },
-          {
-            "key": "thinking",
-            "type": "string",
-            "children": []
+            "type": "string"
           },
           {
             "key": "data",
@@ -78,58 +75,64 @@
             "children": [
               {
                 "key": "images",
-                "type": "image[]",
-                "children": []
+                "type": "image[]"
               },
               {
-                "key": "text",
-                "type": "string",
-                "children": []
-              },
-              {
-                "key": "thoughts",
-                "type": "string",
-                "children": []
+                "key": "taskId",
+                "type": "string"
               },
               {
                 "key": "model",
-                "type": "string",
-                "children": []
+                "type": "string"
               },
               {
-                "key": "groundingMetadata",
-                "type": "object",
-                "children": []
+                "key": "created",
+                "type": "number"
               }
             ]
           }
         ],
-        "prompt": "{{ __data__[\"node_1782378005328_2qxags\"].prompt }}",
-        "__collapsedOutputHandles": {
-          "data": false
-        }
+        "sourceNodeId": "node_1782378005328_2qxags",
+        "sourceHandle": "output:prompt",
+        "prompt": "{{ __data__[\"node_1782378005328_2qxags\"].prompt }}"
       }
     }
   ],
   "edges": [
     {
-      "id": "e-node_1782378005328_2qxags-output:prompt-node_1782378030225_i28iuk-property:prompt",
+      "id": "e-node_1782381377377_25j238-output:data.images-node_1782378019339_kjipap-output:images",
+      "source": "node_1782381377377_25j238",
+      "target": "node_1782378019339_kjipap",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "output:images"
+    },
+    {
+      "id": "e-node_1782381377377_25j238-output:success-node_1782378019339_kjipap-output:success",
+      "source": "node_1782381377377_25j238",
+      "target": "node_1782378019339_kjipap",
+      "sourceHandle": "output:success",
+      "targetHandle": "output:success"
+    },
+    {
+      "id": "e-node_1782378005328_2qxags-output:prompt-node_1782381377377_25j238-property:prompt",
       "source": "node_1782378005328_2qxags",
-      "target": "node_1782378030225_i28iuk",
+      "target": "node_1782381377377_25j238",
       "sourceHandle": "output:prompt",
       "targetHandle": "property:prompt"
     }
   ],
   "createdAt": 1781685716941,
-  "updatedAt": 1782380981864,
+  "updatedAt": 1782385494396,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",
-    "workflow.openai"
+    "workflow.openai",
+    "workflow.ai-image"
   ],
   "groups": [],
   "layoutSnapshot": {
     "nodeDisplayMode": "properties"
   },
-  "variables": []
+  "variables": [],
+  "lastRunAt": 1782381337486
 }

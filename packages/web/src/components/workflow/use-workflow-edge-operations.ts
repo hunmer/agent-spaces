@@ -32,7 +32,11 @@ import {
   ensureLoopBodyBoundaryNodes,
 } from './workflow-canvas-utils';
 import { cleanupGroupsOnNodeDelete } from './workflow-canvas-groups';
-import { areWorkflowHandleValueTypesCompatible, getWorkflowHandleValueType } from './workflow-handle-types';
+import {
+  areWorkflowHandleValueTypesCompatible,
+  getNormalizedWorkflowSourceHandle,
+  getWorkflowHandleValueType,
+} from './workflow-handle-types';
 
 interface UseEdgeOperationsParams {
   workflow: Workflow | null;
@@ -194,8 +198,24 @@ export function useEdgeOperations({
   }, [workflow?.edges]);
 
   const handleConnect = useCallback((connection: Connection) => {
-    if (!workflow || isReadOnly) return;
-    if (!connection.source || !connection.target) return;
+    const log = (reason: string, details?: Record<string, unknown>) => {
+      console.log('[workflow:connect]', {
+        phase: 'connect',
+        result: 'rejected',
+        reason,
+        connection,
+        ...details,
+      });
+    };
+
+    if (!workflow || isReadOnly) {
+      log('workflow-missing-or-readonly', { hasWorkflow: !!workflow, isReadOnly });
+      return;
+    }
+    if (!connection.source || !connection.target) {
+      log('missing-source-or-target');
+      return;
+    }
 
     const selectedIds = selectedNodeIds.length > 0
       ? selectedNodeIds
@@ -206,15 +226,29 @@ export function useEdgeOperations({
     sourceIdSet.delete(connection.target);
 
     const edgeIds = new Set(workflow.edges.map(edge => edge.id));
+    const sourceNode = workflow.nodes.find(node => node.id === connection.source);
     const targetNode = workflow.nodes.find(node => node.id === connection.target);
-    if (!targetNode) return;
+    if (!sourceNode || !targetNode) {
+      log('source-or-target-node-not-found', {
+        sourceFound: !!sourceNode,
+        targetFound: !!targetNode,
+      });
+      return;
+    }
+    const sourceHandle = getNormalizedWorkflowSourceHandle(sourceNode, connection.sourceHandle);
     const targetFieldHandle = parseWorkflowFieldHandleId(connection.targetHandle);
-    const sourceFieldHandle = parseWorkflowFieldHandleId(connection.sourceHandle);
+    const sourceFieldHandle = parseWorkflowFieldHandleId(sourceHandle);
     if (
       (targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property')
       && sourceFieldHandle?.kind !== 'output'
       && sourceFieldHandle?.kind !== 'input'
     ) {
+      log('field-target-requires-field-source', {
+        sourceHandle,
+        targetHandle: connection.targetHandle || undefined,
+        sourceFieldHandle,
+        targetFieldHandle,
+      });
       return;
     }
     const targetConnectionCount = getFieldTargetConnectionCount(connection.targetHandle, targetNode);
@@ -224,33 +258,40 @@ export function useEdgeOperations({
       && (edge.targetHandle || undefined) === targetHandle
     ).length;
     let remainingTargetConnections = Math.max(0, targetConnectionCount - existingTargetConnectionCount);
-    if (remainingTargetConnections === 0) return;
+    if (remainingTargetConnections === 0) {
+      log('target-handle-connection-limit-reached', {
+        targetHandle,
+        existingTargetConnectionCount,
+        targetConnectionCount,
+      });
+      return;
+    }
 
     const nextEdges = workflow.nodes
       .filter(node => sourceIdSet.has(node.id))
-      .filter(node => canUseSourceHandle(node, connection.sourceHandle))
+      .filter(node => canUseSourceHandle(node, sourceHandle))
       .filter(node => areWorkflowHandleValueTypesCompatible(
-        getWorkflowHandleValueType(node, connection.sourceHandle),
+        getWorkflowHandleValueType(node, sourceHandle),
         getWorkflowHandleValueType(targetNode, connection.targetHandle),
       ))
       .filter(node => !wouldCreateCycle(node.id, connection.target!))
       .map((node): Workflow['edges'][number] => ({
-        id: isDefaultSourceHandle(node, connection.sourceHandle)
+        id: isDefaultSourceHandle(node, sourceHandle)
           ? createUniqueEdgeId({
             source: node.id,
             target: connection.target,
-            sourceHandle: connection.sourceHandle,
+            sourceHandle,
             targetHandle: connection.targetHandle,
           })
           : createWorkflowEdgeId({
           source: node.id,
           target: connection.target,
-          sourceHandle: connection.sourceHandle,
+          sourceHandle,
           targetHandle: connection.targetHandle,
         }),
         source: node.id,
         target: connection.target!,
-        sourceHandle: connection.sourceHandle || undefined,
+        sourceHandle,
         targetHandle,
       }))
       .filter(edge => {
@@ -261,7 +302,14 @@ export function useEdgeOperations({
         return true;
       });
 
-    if (nextEdges.length === 0) return;
+    if (nextEdges.length === 0) {
+      log('no-next-edges', {
+        sourceHandle,
+        targetHandle,
+        sourceIdSet: [...sourceIdSet],
+      });
+      return;
+    }
     pushUndo('connect');
     setWorkflow(w => {
       if (!w) return null;

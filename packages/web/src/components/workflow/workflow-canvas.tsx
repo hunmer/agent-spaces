@@ -40,7 +40,11 @@ import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
-import { areWorkflowHandleValueTypesCompatible, getWorkflowHandleValueType } from './workflow-handle-types';
+import {
+  areWorkflowHandleValueTypesCompatible,
+  getNormalizedWorkflowSourceHandle,
+  getWorkflowHandleValueType,
+} from './workflow-handle-types';
 import type { HandlePositionMode } from './workflow-node-types';
 import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
 import { useTheme } from '@/components/layout/theme-provider';
@@ -66,6 +70,26 @@ import {
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
+type WorkflowBadgeHandleTarget = {
+  nodeId: string;
+  handleId: string;
+  handleType: 'target' | 'source';
+};
+
+function getWorkflowBadgeHandleTarget(clientPosition: { x: number; y: number }): WorkflowBadgeHandleTarget | null {
+  const element = document.elementFromPoint(clientPosition.x, clientPosition.y);
+  const handleElement = element?.closest<HTMLElement>(
+    '[data-workflow-node-id][data-workflow-handle-id][data-workflow-handle-type]',
+  );
+  if (!handleElement) return null;
+
+  const nodeId = handleElement.dataset.workflowNodeId;
+  const handleId = handleElement.dataset.workflowHandleId;
+  const handleType = handleElement.dataset.workflowHandleType;
+  if (!nodeId || !handleId || (handleType !== 'target' && handleType !== 'source')) return null;
+  return { nodeId, handleId, handleType };
+}
+
 type CanvasViewportRef = {
   exportCanvas: (format: 'png' | 'jpeg') => void;
   getViewportCenter: () => { x: number; y: number };
@@ -300,27 +324,54 @@ export function WorkflowCanvas({
   }, [screenToFlowPosition]);
 
   const isValidConnection = useCallback((connection: Connection | Edge) => {
-    if (!connection.source || !connection.target) return false;
-    if (connection.source === connection.target) return false;
+    const reject = (reason: string, details?: Record<string, unknown>) => {
+      console.log('[workflow:connect]', {
+        phase: 'validate',
+        result: 'rejected',
+        reason,
+        connection,
+        ...details,
+      });
+      return false;
+    };
+
+    if (!connection.source || !connection.target) return reject('missing-source-or-target');
+    if (connection.source === connection.target) return reject('same-source-and-target');
 
     const nodes = workflow.nodes;
     const edges = workflow.edges;
     const sourceNode = nodes.find(node => node.id === connection.source);
     const targetNode = nodes.find(node => node.id === connection.target);
-    if (!sourceNode || !targetNode) return false;
+    if (!sourceNode || !targetNode) return reject('source-or-target-node-not-found', {
+      sourceFound: !!sourceNode,
+      targetFound: !!targetNode,
+    });
     const targetDefinition = getNodeDefinition(targetNode.type);
     const targetHandle = connection.targetHandle || undefined;
     const targetFieldHandle = parseWorkflowFieldHandleId(targetHandle);
-    const sourceFieldHandle = parseWorkflowFieldHandleId(connection.sourceHandle || undefined);
-    const sourceHandleType = getWorkflowHandleValueType(sourceNode, connection.sourceHandle || undefined);
+    const sourceHandle = getNormalizedWorkflowSourceHandle(sourceNode, connection.sourceHandle || undefined);
+    const sourceFieldHandle = parseWorkflowFieldHandleId(sourceHandle);
+    const sourceHandleType = getWorkflowHandleValueType(sourceNode, sourceHandle);
     const targetHandleType = getWorkflowHandleValueType(targetNode, targetHandle);
-    if (!areWorkflowHandleValueTypesCompatible(sourceHandleType, targetHandleType)) return false;
+    if (!areWorkflowHandleValueTypesCompatible(sourceHandleType, targetHandleType)) {
+      return reject('incompatible-handle-types', {
+        sourceHandle,
+        targetHandle,
+        sourceHandleType,
+        targetHandleType,
+      });
+    }
     if (
       (targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property')
       && sourceFieldHandle?.kind !== 'output'
       && sourceFieldHandle?.kind !== 'input'
     ) {
-      return false;
+      return reject('field-target-requires-field-source', {
+        sourceHandle,
+        targetHandle,
+        sourceFieldHandle,
+        targetFieldHandle,
+      });
     }
     const targetConnectionCount = targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property'
       ? 1
@@ -330,7 +381,13 @@ export function WorkflowCanvas({
       && (edge.targetHandle || undefined) === targetHandle
       && edge.id !== ('id' in connection ? connection.id : undefined)
     ).length;
-    if (existingTargetConnectionCount >= targetConnectionCount) return false;
+    if (existingTargetConnectionCount >= targetConnectionCount) {
+      return reject('target-handle-connection-limit-reached', {
+        targetHandle,
+        existingTargetConnectionCount,
+        targetConnectionCount,
+      });
+    }
 
     const hasCycle = (node: typeof targetNode, visited = new Set<string>()): boolean => {
       if (visited.has(node.id)) return false;
@@ -344,7 +401,8 @@ export function WorkflowCanvas({
       return false;
     };
 
-    return !hasCycle(targetNode);
+    if (hasCycle(targetNode)) return reject('would-create-cycle');
+    return true;
   }, [workflow.edges, workflow.nodes]);
 
   // --- Extracted hooks ---
@@ -757,6 +815,11 @@ export function WorkflowCanvas({
   const handleConnect = useCallback((connection: Connection) => {
     if (isCanvasLocked) return;
     connectSucceededRef.current = true;
+    console.log('[workflow:connect]', {
+      phase: 'connect-callback',
+      result: 'received',
+      connection,
+    });
     onConnect(connection);
   }, [isCanvasLocked, onConnect]);
 
@@ -774,15 +837,35 @@ export function WorkflowCanvas({
         : null;
       connectSourceRef.current = nodeId ? { nodeId, handleId, handleType } : null;
       connectSucceededRef.current = false;
+      console.log('[workflow:connect]', {
+        phase: 'start',
+        result: nodeId ? 'started' : 'ignored',
+        nodeId,
+        handleId,
+        handleType,
+        params,
+      });
     }
   }, [isCanvasLocked]);
 
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
     setIsConnecting(false);
     const connectSource = connectSourceRef.current;
+    console.log('[workflow:connect]', {
+      phase: 'end',
+      result: connectSucceededRef.current ? 'connected' : 'not-connected',
+      source: connectSource,
+      eventType: 'type' in event ? event.type : undefined,
+    });
     if (!isCanvasLocked && connectSource && !connectSucceededRef.current) {
       const isSourceHandle = connectSource.handleType === 'source';
       if (!isSourceHandle) {
+        console.log('[workflow:connect]', {
+          phase: 'end',
+          result: 'rejected',
+          reason: 'connect-start-was-not-source-handle',
+          source: connectSource,
+        });
         connectSourceRef.current = null;
         connectSucceededRef.current = false;
         return;
@@ -796,13 +879,52 @@ export function WorkflowCanvas({
         clientPosition = { x: touch.clientX, y: touch.clientY };
       }
 
+      const badgeTarget = clientPosition ? getWorkflowBadgeHandleTarget(clientPosition) : null;
+      if (
+        badgeTarget
+        && badgeTarget.handleType === 'target'
+        && badgeTarget.nodeId !== connectSource.nodeId
+      ) {
+        const connection: Connection = {
+          source: connectSource.nodeId,
+          sourceHandle: connectSource.handleId,
+          target: badgeTarget.nodeId,
+          targetHandle: badgeTarget.handleId,
+        };
+        console.log('[workflow:connect]', {
+          phase: 'badge-drop',
+          result: 'connect',
+          source: connectSource,
+          target: badgeTarget,
+          connection,
+        });
+        connectSucceededRef.current = true;
+        onConnect(connection);
+        connectSourceRef.current = null;
+        connectSucceededRef.current = false;
+        return;
+      }
+
       if (clientPosition && isConnectionEndOnCanvasNode(clientPosition, { ignoredNodeIds: scopeBoundaryNodeIds })) {
+        console.log('[workflow:connect]', {
+          phase: 'end',
+          result: 'rejected',
+          reason: 'ended-on-canvas-node-without-valid-target-handle',
+          source: connectSource,
+          clientPosition,
+        });
         connectSourceRef.current = null;
         connectSucceededRef.current = false;
         return;
       }
 
       const position = clientPosition ? screenToFlowPosition(clientPosition) : null;
+      console.log('[workflow:connect]', {
+        phase: 'drop',
+        result: 'open-node-select',
+        source: connectSource,
+        position,
+      });
       onConnectionDrop?.({
         sourceNodeId: connectSource.nodeId,
         sourceHandle: connectSource.handleId,
@@ -812,7 +934,7 @@ export function WorkflowCanvas({
 
     connectSourceRef.current = null;
     connectSucceededRef.current = false;
-  }, [isCanvasLocked, onConnectionDrop, scopeBoundaryNodeIds, screenToFlowPosition]);
+  }, [isCanvasLocked, onConnect, onConnectionDrop, scopeBoundaryNodeIds, screenToFlowPosition]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
     isNodeDraggingRef.current = true;
