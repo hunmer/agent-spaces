@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Plug, FileText, Search, Filter, ArrowUpDown, CheckSquare, Download, Trash2 } from 'lucide-react';
+import { Plus, Plug, FileText, Search, Filter, ArrowUpDown, CheckSquare, Download, Trash2, Clock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
@@ -37,6 +37,7 @@ export function WorkflowsPage() {
   const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [scheduleFilter, setScheduleFilter] = useState<'all' | 'scheduled' | 'unscheduled'>('all');
   const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'lastRunAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectionMode, setSelectionMode] = useState(false);
@@ -53,14 +54,19 @@ export function WorkflowsPage() {
       const q = search.toLowerCase();
       const matchesSearch = !search || wf.name.toLowerCase().includes(q) || wf.description?.toLowerCase().includes(q) || toPinyinSearchKey(wf.name).includes(q) || toPinyinSearchKey(wf.description ?? '').includes(q);
       const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => wf.tags?.includes(tag));
-      return matchesSearch && matchesTags;
+      const hasEnabledCronTrigger = wf.triggers?.some(trigger => trigger.type === 'cron' && trigger.enabled) || false;
+      const matchesSchedule =
+        scheduleFilter === 'all'
+        || (scheduleFilter === 'scheduled' && hasEnabledCronTrigger)
+        || (scheduleFilter === 'unscheduled' && !hasEnabledCronTrigger);
+      return matchesSearch && matchesTags && matchesSchedule;
     }).sort((a, b) => {
       // lastRunAt is undefined for workflows that have never run — treat as 0 (oldest).
       const av = a[sortField] ?? 0;
       const bv = b[sortField] ?? 0;
       return sortOrder === 'asc' ? av - bv : bv - av;
     });
-  }, [workflows, search, selectedTags, sortField, sortOrder]);
+  }, [workflows, search, selectedTags, scheduleFilter, sortField, sortOrder]);
 
   useEffect(() => {
     loadWorkflows();
@@ -325,6 +331,30 @@ export function WorkflowsPage() {
                 {sortOrder === 'desc' && <span className="text-primary">✓</span>}
                 {t('page.desc')}
               </button>
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Popover>
+          <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
+            <Clock className="h-3.5 w-3.5" />
+            {scheduleFilter === 'scheduled' ? '定时运行' : scheduleFilter === 'unscheduled' ? '未定时运行' : '定时筛选'}
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-44 p-2">
+            <div className="flex flex-col gap-1">
+              {[
+                ['all', '全部工作流'],
+                ['scheduled', '定时运行'],
+                ['unscheduled', '未定时运行'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${scheduleFilter === value ? 'font-medium' : ''}`}
+                  onClick={() => setScheduleFilter(value as typeof scheduleFilter)}
+                >
+                  {scheduleFilter === value && <span className="text-primary">✓</span>}
+                  {label}
+                </button>
+              ))}
             </div>
           </PopoverContent>
         </Popover>

@@ -5,7 +5,7 @@ import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Copy, Trash2, MoreVertical, Download, Globe, Lock, Eye } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Download, Globe, Lock, Eye, Clock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
@@ -47,6 +47,8 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
     if (!workflow.createdAt) return '';
     return new Date(workflow.createdAt).toLocaleString();
   }, [workflow.createdAt]);
+  const cronTriggerCount = workflow.triggers?.filter(trigger => trigger.type === 'cron').length || 0;
+  const enabledCronTriggerCount = workflow.triggers?.filter(trigger => trigger.type === 'cron' && trigger.enabled).length || 0;
 
   return (
     <Card
@@ -96,7 +98,7 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
               {(workflow.name || t('card.defaultInitial')).charAt(0).toUpperCase()}
             </span>
           )}
-          <CardTitle className="text-sm truncate">{workflow.name}</CardTitle>
+          <CardTitle className="text-sm truncate min-w-0 flex-1">{workflow.name}</CardTitle>
           {workflow.published ? (
             <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">
               <Globe className="h-3 w-3" />
@@ -106,6 +108,20 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
             <Badge variant="secondary" className="shrink-0 gap-1 text-[10px] text-muted-foreground" title={t('card.unpublished')}>
               <Lock className="h-3 w-3" />
               {t('card.unpublished')}
+            </Badge>
+          )}
+          {cronTriggerCount > 0 && (
+            <Badge
+              variant="secondary"
+              className={`shrink-0 gap-1 text-[10px] ${
+                enabledCronTriggerCount > 0
+                  ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10'
+                  : 'text-muted-foreground'
+              }`}
+              title={enabledCronTriggerCount > 0 ? `已启用 ${enabledCronTriggerCount} 个定时触发器` : '定时触发器未启用'}
+            >
+              <Clock className="h-3 w-3" />
+              {enabledCronTriggerCount > 0 ? '定时运行' : '定时停用'}
             </Badge>
           )}
         </div>

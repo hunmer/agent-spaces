@@ -43,5 +43,6 @@
       "enabled": true,
       "cron": "* * * * *"
     }
-  ]
+  ],
+  "lastRunAt": 1782353160029
 }

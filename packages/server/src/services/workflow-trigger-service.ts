@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
-import type { default as nodeCronType, ScheduledTask } from 'node-cron';
+import nodeCron, { type ScheduledTask } from 'node-cron';
+import { CronExpressionParser } from 'cron-parser';
 import type { Workflow, WorkflowTrigger } from '@agent-spaces/shared';
 import * as store from '../storage/workflow-store.js';
 import type { ExecutionManager } from './execution-manager.js';
@@ -12,16 +12,9 @@ interface HookBinding {
 export class WorkflowTriggerService {
   private cronJobs = new Map<string, ScheduledTask>();
   private hookIndex = new Map<string, Set<HookBinding>>();
-  private nodeCron: typeof nodeCronType | null = null;
   private executionManager: ExecutionManager | null = null;
 
-  constructor(private port: number = 3100) {
-    try {
-      this.nodeCron = require('node-cron');
-    } catch {
-      // node-cron not available
-    }
-  }
+  constructor(private port: number = 3100) {}
 
   setExecutionManager(em: ExecutionManager): void {
     this.executionManager = em;
@@ -70,12 +63,10 @@ export class WorkflowTriggerService {
   }
 
   validateCron(cronExpr: string): { valid: boolean; nextRuns: string[]; error?: string } {
-    if (!this.nodeCron) return { valid: false, nextRuns: [], error: 'node-cron not available' };
-    if (!this.nodeCron.validate(cronExpr)) {
+    if (!nodeCron.validate(cronExpr)) {
       return { valid: false, nextRuns: [], error: 'Invalid cron expression' };
     }
     try {
-      const CronExpressionParser = require('cron-parser');
       const interval = CronExpressionParser.parse(cronExpr);
       const nextRuns: string[] = [];
       for (let i = 0; i < 5; i++) {
@@ -98,10 +89,7 @@ export class WorkflowTriggerService {
   }
 
   private registerTriggers(wf: Workflow): void {
-    if (!wf.triggers || wf.triggers.length === 0) {
-      console.log(`[TriggerService] Workflow ${wf.id} has no triggers to register`);
-      return;
-    }
+    if (!wf.triggers || wf.triggers.length === 0) return;
     console.log(`[TriggerService] Registering ${wf.triggers.length} trigger(s) for workflow ${wf.id}`);
     for (const trigger of wf.triggers) {
       if (!trigger.enabled) {
@@ -117,14 +105,10 @@ export class WorkflowTriggerService {
   }
 
   private registerCronJob(workflowId: string, trigger: WorkflowTrigger & { type: 'cron' }): void {
-    if (!this.nodeCron) {
-      console.warn(`[TriggerService] node-cron unavailable, skip cron trigger ${trigger.id} for workflow ${workflowId}`);
-      return;
-    }
     const key = `${workflowId}:${trigger.id}`;
     try {
       console.log(`[TriggerService] Register cron trigger ${trigger.id} for workflow ${workflowId}: expr="${trigger.cron}" timezone="${trigger.timezone || 'system'}"`);
-      const task = this.nodeCron.schedule(trigger.cron, () => {
+      const task = nodeCron.schedule(trigger.cron, () => {
         console.log(`[TriggerService] Cron fired for workflow ${workflowId} (trigger=${trigger.id}, expr="${trigger.cron}", timezone="${trigger.timezone || 'system'}")`);
         if (this.executionManager) {
           console.log(`[TriggerService] Dispatching cron execution for workflow ${workflowId} via execution manager`);

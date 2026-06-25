@@ -1,6 +1,8 @@
 // packages/server/src/services/workflow.ts
 
 import { v4 as uuid } from 'uuid';
+import nodeCron from 'node-cron';
+import { CronExpressionParser } from 'cron-parser';
 import type {
   Workflow, WorkflowTemplate, WorkflowNode, WorkflowEdge,
   WorkflowFolder, WorkflowVersion, ExecutionLog, StagedNode, OperationEntry,
@@ -516,8 +518,7 @@ export function validateWorkflowForRun(_workspaceId: string, template: Workflow,
 
 export function validateCron(cronExpr: string): { valid: boolean; nextRuns: string[]; error?: string } {
   try {
-    const { validate } = require('node-cron');
-    if (!validate(cronExpr)) {
+    if (!nodeCron.validate(cronExpr)) {
       return { valid: false, nextRuns: [], error: 'Invalid cron expression' };
     }
   } catch {
@@ -525,7 +526,6 @@ export function validateCron(cronExpr: string): { valid: boolean; nextRuns: stri
   }
 
   try {
-    const CronExpressionParser = require('cron-parser');
     const interval = CronExpressionParser.parse(cronExpr);
     const nextRuns: string[] = [];
     for (let i = 0; i < 5; i++) {
