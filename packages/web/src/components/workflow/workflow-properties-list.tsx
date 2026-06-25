@@ -9,6 +9,7 @@ import { getPropertyValue } from './workflow-properties-utils';
 import { PropertyField } from './workflow-properties-fields';
 import { useDynamicOptions } from './workflow-dynamic-options';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
+import { getWorkflowFieldHandleId } from './workflow-field-handles';
 
 interface PropertiesListProps {
   properties: NodeProperty[];
@@ -140,6 +141,7 @@ const PropertyItem = memo(function PropertyItem({
         onCollapsedChange(next);
       }}
       className="mt-2"
+      data-workflow-property-anchor={getWorkflowFieldHandleId('property', prop.key)}
     >
       <div className="flex items-center gap-1 text-xs font-medium">
         <CollapsibleTriggerAsChild>

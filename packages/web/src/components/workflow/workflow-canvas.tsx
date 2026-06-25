@@ -39,6 +39,7 @@ import { useCanvasDomEvents } from './use-workflow-canvas-dom-events';
 import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
+import { parseWorkflowFieldHandleId } from './workflow-field-handles';
 import type { HandlePositionMode } from './workflow-node-types';
 import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
 import { useTheme } from '@/components/layout/theme-provider';
@@ -306,8 +307,19 @@ export function WorkflowCanvas({
     const targetNode = nodes.find(node => node.id === connection.target);
     if (!targetNode) return false;
     const targetDefinition = getNodeDefinition(targetNode.type);
-    const targetConnectionCount = targetDefinition?.handles?.connectionCount ?? 1;
     const targetHandle = connection.targetHandle || undefined;
+    const targetFieldHandle = parseWorkflowFieldHandleId(targetHandle);
+    const sourceFieldHandle = parseWorkflowFieldHandleId(connection.sourceHandle || undefined);
+    if (
+      (targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property')
+      && sourceFieldHandle?.kind !== 'output'
+      && sourceFieldHandle?.kind !== 'input'
+    ) {
+      return false;
+    }
+    const targetConnectionCount = targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property'
+      ? 1
+      : targetDefinition?.handles?.connectionCount ?? 1;
     const existingTargetConnectionCount = edges.filter(edge =>
       edge.target === connection.target
       && (edge.targetHandle || undefined) === targetHandle

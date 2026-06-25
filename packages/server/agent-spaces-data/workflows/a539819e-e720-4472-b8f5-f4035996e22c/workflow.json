@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 135,
-        "y": 60
+        "x": 45,
+        "y": 90
       },
       "data": {
         "inputFields": [
@@ -79,8 +79,8 @@
       "type": "nano_banana_create_image",
       "label": "Nano Banana 文生图",
       "position": {
-        "x": 1005,
-        "y": 450
+        "x": 885,
+        "y": 435
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
@@ -183,7 +183,7 @@
   ],
   "edges": [],
   "createdAt": 1781685716941,
-  "updatedAt": 1782358729405,
+  "updatedAt": 1782362914409,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",
