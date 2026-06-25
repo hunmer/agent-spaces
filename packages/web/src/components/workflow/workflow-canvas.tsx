@@ -327,7 +327,14 @@ export function WorkflowCanvas({
   }, [screenToFlowPosition]);
 
   const isValidConnection = useCallback((connection: Connection | Edge) => {
-    const reject = (_reason?: string, _details?: Record<string, unknown>) => false;
+    const reject = (reason?: string, details?: Record<string, unknown>) => {
+      console.debug('[DEBUG-badge-connect] canvas reject', {
+        reason,
+        connection,
+        ...details,
+      });
+      return false;
+    };
 
     if (!connection.source || !connection.target) return reject('missing-source-or-target');
     if (connection.source === connection.target) return reject('same-source-and-target');
@@ -344,27 +351,24 @@ export function WorkflowCanvas({
     const targetHandle = connection.targetHandle || undefined;
     const targetFieldHandle = parseWorkflowFieldHandleId(targetHandle);
     const sourceHandle = getNormalizedWorkflowSourceHandle(sourceNode, connection.sourceHandle || undefined);
-    const sourceFieldHandle = parseWorkflowFieldHandleId(sourceHandle);
     const sourceHandleType = getWorkflowHandleValueType(sourceNode, sourceHandle);
     const targetHandleType = getWorkflowHandleValueType(targetNode, targetHandle);
+    console.debug('[DEBUG-badge-connect] canvas validate', {
+      connection,
+      sourceNodeType: sourceNode.type,
+      targetNodeType: targetNode.type,
+      sourceHandle,
+      targetHandle,
+      targetFieldHandle,
+      sourceHandleType,
+      targetHandleType,
+    });
     if (!areWorkflowHandleValueTypesCompatible(sourceHandleType, targetHandleType)) {
       return reject('incompatible-handle-types', {
         sourceHandle,
         targetHandle,
         sourceHandleType,
         targetHandleType,
-      });
-    }
-    if (
-      (targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property')
-      && sourceFieldHandle?.kind !== 'output'
-      && sourceFieldHandle?.kind !== 'input'
-    ) {
-      return reject('field-target-requires-field-source', {
-        sourceHandle,
-        targetHandle,
-        sourceFieldHandle,
-        targetFieldHandle,
       });
     }
     const targetConnectionCount = targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property'

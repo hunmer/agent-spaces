@@ -198,7 +198,13 @@ export function useEdgeOperations({
   }, [workflow?.edges]);
 
   const handleConnect = useCallback((connection: Connection) => {
-    const log = (_reason: string, _details?: Record<string, unknown>) => undefined;
+    const log = (reason: string, details?: Record<string, unknown>) => {
+      console.debug('[DEBUG-badge-connect] edge connect reject', {
+        reason,
+        connection,
+        ...details,
+      });
+    };
 
     if (!workflow || isReadOnly) {
       log('workflow-missing-or-readonly', { hasWorkflow: !!workflow, isReadOnly });
@@ -228,21 +234,18 @@ export function useEdgeOperations({
       return;
     }
     const sourceHandle = getNormalizedWorkflowSourceHandle(sourceNode, connection.sourceHandle);
-    const targetFieldHandle = parseWorkflowFieldHandleId(connection.targetHandle);
-    const sourceFieldHandle = parseWorkflowFieldHandleId(sourceHandle);
-    if (
-      (targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property')
-      && sourceFieldHandle?.kind !== 'output'
-      && sourceFieldHandle?.kind !== 'input'
-    ) {
-      log('field-target-requires-field-source', {
-        sourceHandle,
-        targetHandle: connection.targetHandle || undefined,
-        sourceFieldHandle,
-        targetFieldHandle,
-      });
-      return;
-    }
+    const sourceHandleType = getWorkflowHandleValueType(sourceNode, sourceHandle);
+    const targetHandleType = getWorkflowHandleValueType(targetNode, connection.targetHandle);
+    console.debug('[DEBUG-badge-connect] edge connect start', {
+      connection,
+      sourceNodeType: sourceNode.type,
+      targetNodeType: targetNode.type,
+      sourceHandle,
+      targetHandle: connection.targetHandle || undefined,
+      sourceHandleType,
+      targetHandleType,
+      compatible: areWorkflowHandleValueTypesCompatible(sourceHandleType, targetHandleType),
+    });
     const targetConnectionCount = getFieldTargetConnectionCount(connection.targetHandle, targetNode);
     const targetHandle = connection.targetHandle || undefined;
     const existingTargetConnectionCount = workflow.edges.filter(edge =>
@@ -261,12 +264,43 @@ export function useEdgeOperations({
 
     const nextEdges = workflow.nodes
       .filter(node => sourceIdSet.has(node.id))
-      .filter(node => canUseSourceHandle(node, sourceHandle))
-      .filter(node => areWorkflowHandleValueTypesCompatible(
-        getWorkflowHandleValueType(node, sourceHandle),
-        getWorkflowHandleValueType(targetNode, connection.targetHandle),
-      ))
-      .filter(node => !wouldCreateCycle(node.id, connection.target!))
+      .filter((node) => {
+        const canUse = canUseSourceHandle(node, sourceHandle);
+        if (!canUse) {
+          console.debug('[DEBUG-badge-connect] edge source handle rejected', {
+            nodeId: node.id,
+            nodeType: node.type,
+            sourceHandle,
+          });
+        }
+        return canUse;
+      })
+      .filter((node) => {
+        const nodeSourceType = getWorkflowHandleValueType(node, sourceHandle);
+        const nodeTargetType = getWorkflowHandleValueType(targetNode, connection.targetHandle);
+        const compatible = areWorkflowHandleValueTypesCompatible(nodeSourceType, nodeTargetType);
+        if (!compatible) {
+          console.debug('[DEBUG-badge-connect] edge type rejected', {
+            nodeId: node.id,
+            nodeType: node.type,
+            sourceHandle,
+            targetHandle: connection.targetHandle || undefined,
+            sourceType: nodeSourceType,
+            targetType: nodeTargetType,
+          });
+        }
+        return compatible;
+      })
+      .filter((node) => {
+        const createsCycle = wouldCreateCycle(node.id, connection.target!);
+        if (createsCycle) {
+          console.debug('[DEBUG-badge-connect] edge cycle rejected', {
+            nodeId: node.id,
+            target: connection.target,
+          });
+        }
+        return !createsCycle;
+      })
       .map((node): Workflow['edges'][number] => ({
         id: isDefaultSourceHandle(node, sourceHandle)
           ? createUniqueEdgeId({
@@ -302,9 +336,17 @@ export function useEdgeOperations({
       });
       return;
     }
+    console.debug('[DEBUG-badge-connect] edge connect nextEdges', {
+      connection,
+      nextEdges,
+    });
     pushUndo('connect');
     setWorkflow(w => {
       if (!w) return null;
+      console.debug('[DEBUG-badge-connect] edge connect apply', {
+        existingEdges: w.edges.length,
+        nextEdges,
+      });
       const nextNodes = w.nodes.map(node => {
         const matchingEdge = nextEdges.find(edge => edge.target === node.id);
         if (!matchingEdge) return node;

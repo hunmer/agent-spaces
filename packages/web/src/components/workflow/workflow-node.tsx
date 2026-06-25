@@ -340,16 +340,32 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   }, [workflowNodes]);
   const validatePropertyModeConnection = useCallback((handle: PropertyModeHandle) => (
     (connection: { source?: string | null; target?: string | null; sourceHandle?: string | null; targetHandle?: string | null }) => {
-      if (!connection.source || !connection.target) return true;
+      if (!connection.source || !connection.target) {
+        console.debug('[DEBUG-badge-connect] badge validate pending', {
+          nodeId: id,
+          handle,
+          connection,
+        });
+        return true;
+      }
       const sourceType = handle.type === 'source'
         ? handle.valueType
         : getHandleValueType(connection.source, connection.sourceHandle);
       const targetType = handle.type === 'target'
         ? handle.valueType
         : getHandleValueType(connection.target, connection.targetHandle);
-      return areWorkflowHandleValueTypesCompatible(sourceType, targetType);
+      const valid = areWorkflowHandleValueTypesCompatible(sourceType, targetType);
+      console.debug('[DEBUG-badge-connect] badge validate', {
+        nodeId: id,
+        handle,
+        connection,
+        sourceType,
+        targetType,
+        valid,
+      });
+      return valid;
     }
-  ), [getHandleValueType]);
+  ), [getHandleValueType, id]);
   const getPropertyHandleVisualState = useCallback((handle: PropertyModeHandle) => {
     const fromHandle = connectionState.fromHandle;
     const inProgress = connectionState.inProgress;

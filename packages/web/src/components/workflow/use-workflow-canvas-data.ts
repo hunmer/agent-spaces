@@ -407,6 +407,16 @@ export function useCanvasData({
       const targetNode = nodeById.get(e.target);
       const displaySourceHandle = getNormalizedSourceHandle(sourceNode, e.sourceHandle, nodeDisplayMode);
       const displayTargetHandle = getNormalizedTargetHandle(targetNode, e.targetHandle, nodeDisplayMode);
+      if (String(e.sourceHandle || '').startsWith('output:') || String(e.targetHandle || '').startsWith('property:')) {
+        console.debug('[DEBUG-badge-connect] canvas data edge', {
+          edge: e,
+          nodeDisplayMode,
+          sourceNodeType: sourceNode?.type,
+          targetNodeType: targetNode?.type,
+          displaySourceHandle,
+          displayTargetHandle,
+        });
+      }
       return {
         id: e.id,
         source: e.source,
