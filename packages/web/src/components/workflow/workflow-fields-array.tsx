@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import type { ArrayFieldItem, NodeProperty } from '@agent-spaces/shared';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -14,6 +13,7 @@ import { isPlainObject, getOutputFields } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
 import { OutputFieldsEditor } from './workflow-fields-output';
+import { ImeSafeInput } from './workflow-fields-debounced';
 
 export function ArrayFieldEditor({
   prop,
@@ -199,11 +199,11 @@ export function ArrayItemField({
   }
 
   return (
-    <Input
+    <ImeSafeInput
       type={field.type === 'number' ? 'number' : 'text'}
       value={String(value ?? '')}
       placeholder={field.placeholder}
-      onChange={(e) => onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)}
+      onChange={(nextValue) => onChange(field.type === 'number' ? Number(nextValue) : nextValue)}
       className="h-6 text-[11px]"
     />
   );

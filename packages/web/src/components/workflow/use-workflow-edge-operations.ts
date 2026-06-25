@@ -198,15 +198,7 @@ export function useEdgeOperations({
   }, [workflow?.edges]);
 
   const handleConnect = useCallback((connection: Connection) => {
-    const log = (reason: string, details?: Record<string, unknown>) => {
-      console.log('[workflow:connect]', {
-        phase: 'connect',
-        result: 'rejected',
-        reason,
-        connection,
-        ...details,
-      });
-    };
+    const log = (_reason: string, _details?: Record<string, unknown>) => undefined;
 
     if (!workflow || isReadOnly) {
       log('workflow-missing-or-readonly', { hasWorkflow: !!workflow, isReadOnly });

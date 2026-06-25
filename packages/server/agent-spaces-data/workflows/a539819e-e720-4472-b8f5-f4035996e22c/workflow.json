@@ -14,7 +14,7 @@
       "data": {
         "inputFields": [
           {
-            "key": "prompt",
+            "key": "promp",
             "type": "string",
             "value": "",
             "children": []
@@ -96,6 +96,30 @@
         "sourceHandle": "output:prompt",
         "prompt": "{{ __data__[\"node_1782378005328_2qxags\"].prompt }}"
       }
+    },
+    {
+      "id": "node_1782385768364_3dy0t4",
+      "type": "set_variable",
+      "label": "nodes.set_variable.label",
+      "position": {
+        "x": 15,
+        "y": 825
+      },
+      "data": {
+        "variables": [
+          {
+            "key": "prompt  ",
+            "value": "         ",
+            "id": 1782385771860
+          }
+        ],
+        "outputs": [
+          {
+            "key": "env",
+            "type": "object"
+          }
+        ]
+      }
     }
   ],
   "edges": [
@@ -122,7 +146,7 @@
     }
   ],
   "createdAt": 1781685716941,
-  "updatedAt": 1782385494396,
+  "updatedAt": 1782387848407,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",

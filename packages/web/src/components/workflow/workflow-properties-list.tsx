@@ -9,6 +9,7 @@ import { getPropertyValue } from './workflow-properties-utils';
 import { PropertyField } from './workflow-properties-fields';
 import { useDynamicOptions } from './workflow-dynamic-options';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
+import { getWorkflowFieldHandleId } from './workflow-field-handles';
 
 interface PropertiesListProps {
   properties: NodeProperty[];
@@ -24,6 +25,7 @@ interface PropertiesListProps {
   onDataChange: (key: string, value: unknown) => void;
   onPreviewDataChange?: (key: string, value: unknown) => void;
   workspaceId?: string;
+  dropTargetNodeId?: string;
 }
 
 export function PropertiesList({
@@ -40,6 +42,7 @@ export function PropertiesList({
   onDataChange,
   onPreviewDataChange,
   workspaceId,
+  dropTargetNodeId,
 }: PropertiesListProps) {
   // Cascade reset: when a dependency source (e.g. databaseId) changes, clear the
   // dependent keys (table -> '', columns -> '*') so stale values never survive a
@@ -86,6 +89,7 @@ export function PropertiesList({
             onDataChange={handleDataChange}
             onPreviewDataChange={onPreviewDataChange}
             workspaceId={workspaceId}
+            dropTargetNodeId={dropTargetNodeId}
           />
         );
       })}
@@ -109,6 +113,7 @@ const PropertyItem = memo(function PropertyItem({
   onDataChange,
   onPreviewDataChange,
   workspaceId,
+  dropTargetNodeId,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -125,6 +130,7 @@ const PropertyItem = memo(function PropertyItem({
   onDataChange: (key: string, value: unknown) => void;
   onPreviewDataChange?: (key: string, value: unknown) => void;
   workspaceId?: string;
+  dropTargetNodeId?: string;
 }) {
   const variableValue = useMemo(() => toVariableInputValue(value), [toVariableInputValue, value]);
   const variableOnly = prop.inputMode === 'variable';
@@ -140,6 +146,9 @@ const PropertyItem = memo(function PropertyItem({
         onCollapsedChange(next);
       }}
       className="mt-2"
+      data-workflow-node-id={dropTargetNodeId}
+      data-workflow-handle-id={dropTargetNodeId ? getWorkflowFieldHandleId('property', prop.key) : undefined}
+      data-workflow-handle-type={dropTargetNodeId ? 'target' : undefined}
     >
       <div className="flex items-center gap-1 text-xs font-medium">
         <CollapsibleTriggerAsChild>

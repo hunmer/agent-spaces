@@ -344,20 +344,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       const targetType = handle.type === 'target'
         ? handle.valueType
         : getHandleValueType(connection.target, connection.targetHandle);
-      const valid = areWorkflowHandleValueTypesCompatible(sourceType, targetType);
-      console.log('[workflow:connect]', {
-        phase: 'handle-validate',
-        result: valid ? 'accepted' : 'rejected',
-        nodeId: id,
-        handleId: handle.id,
-        handleType: handle.type,
-        sourceType,
-        targetType,
-        connection,
-      });
-      return valid;
+      return areWorkflowHandleValueTypesCompatible(sourceType, targetType);
     }
-  ), [getHandleValueType, id]);
+  ), [getHandleValueType]);
   const getPropertyHandleVisualState = useCallback((handle: PropertyModeHandle) => {
     const fromHandle = connectionState.fromHandle;
     const inProgress = connectionState.inProgress;
@@ -906,15 +895,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                 top: 0,
                 transform,
               }}
-              onPointerDownCapture={() => {
-                console.log('[workflow:connect]', {
-                  phase: 'handle-pointer-down',
-                  nodeId: id,
-                  handleId: handle.id,
-                  handleType: handle.type,
-                  valueType: handle.valueType,
-                });
-              }}
               onContextMenu={isSourceHandle ? (event) => openHandleColorMenu(event, handle.id) : undefined}
             >
               {handle.tooltip || handle.valueType ? (
@@ -1270,14 +1250,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               id="source" type="source" position={handlePositions.source}
               className={cn('!z-10 !w-3 !h-3 !border-2 handle-dot', floatingHandleClassName)}
               style={getSourceHandleStyle(SOURCE_HANDLE_KEY, DEFAULT_SOURCE_HANDLE_COLOR, handlePositions.source, 0, 1)}
-              onPointerDownCapture={() => {
-                console.log('[workflow:connect]', {
-                  phase: 'handle-pointer-down',
-                  nodeId: id,
-                  handleId: SOURCE_HANDLE_KEY,
-                  handleType: 'source',
-                });
-              }}
               onContextMenu={(event) => openHandleColorMenu(event, SOURCE_HANDLE_KEY)}
             />,
           )

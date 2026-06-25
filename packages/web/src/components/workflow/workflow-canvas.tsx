@@ -324,16 +324,7 @@ export function WorkflowCanvas({
   }, [screenToFlowPosition]);
 
   const isValidConnection = useCallback((connection: Connection | Edge) => {
-    const reject = (reason: string, details?: Record<string, unknown>) => {
-      console.log('[workflow:connect]', {
-        phase: 'validate',
-        result: 'rejected',
-        reason,
-        connection,
-        ...details,
-      });
-      return false;
-    };
+    const reject = (_reason?: string, _details?: Record<string, unknown>) => false;
 
     if (!connection.source || !connection.target) return reject('missing-source-or-target');
     if (connection.source === connection.target) return reject('same-source-and-target');
@@ -815,11 +806,6 @@ export function WorkflowCanvas({
   const handleConnect = useCallback((connection: Connection) => {
     if (isCanvasLocked) return;
     connectSucceededRef.current = true;
-    console.log('[workflow:connect]', {
-      phase: 'connect-callback',
-      result: 'received',
-      connection,
-    });
     onConnect(connection);
   }, [isCanvasLocked, onConnect]);
 
@@ -837,35 +823,15 @@ export function WorkflowCanvas({
         : null;
       connectSourceRef.current = nodeId ? { nodeId, handleId, handleType } : null;
       connectSucceededRef.current = false;
-      console.log('[workflow:connect]', {
-        phase: 'start',
-        result: nodeId ? 'started' : 'ignored',
-        nodeId,
-        handleId,
-        handleType,
-        params,
-      });
     }
   }, [isCanvasLocked]);
 
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
     setIsConnecting(false);
     const connectSource = connectSourceRef.current;
-    console.log('[workflow:connect]', {
-      phase: 'end',
-      result: connectSucceededRef.current ? 'connected' : 'not-connected',
-      source: connectSource,
-      eventType: 'type' in event ? event.type : undefined,
-    });
     if (!isCanvasLocked && connectSource && !connectSucceededRef.current) {
       const isSourceHandle = connectSource.handleType === 'source';
       if (!isSourceHandle) {
-        console.log('[workflow:connect]', {
-          phase: 'end',
-          result: 'rejected',
-          reason: 'connect-start-was-not-source-handle',
-          source: connectSource,
-        });
         connectSourceRef.current = null;
         connectSucceededRef.current = false;
         return;
@@ -891,13 +857,6 @@ export function WorkflowCanvas({
           target: badgeTarget.nodeId,
           targetHandle: badgeTarget.handleId,
         };
-        console.log('[workflow:connect]', {
-          phase: 'badge-drop',
-          result: 'connect',
-          source: connectSource,
-          target: badgeTarget,
-          connection,
-        });
         connectSucceededRef.current = true;
         onConnect(connection);
         connectSourceRef.current = null;
@@ -906,25 +865,12 @@ export function WorkflowCanvas({
       }
 
       if (clientPosition && isConnectionEndOnCanvasNode(clientPosition, { ignoredNodeIds: scopeBoundaryNodeIds })) {
-        console.log('[workflow:connect]', {
-          phase: 'end',
-          result: 'rejected',
-          reason: 'ended-on-canvas-node-without-valid-target-handle',
-          source: connectSource,
-          clientPosition,
-        });
         connectSourceRef.current = null;
         connectSucceededRef.current = false;
         return;
       }
 
       const position = clientPosition ? screenToFlowPosition(clientPosition) : null;
-      console.log('[workflow:connect]', {
-        phase: 'drop',
-        result: 'open-node-select',
-        source: connectSource,
-        position,
-      });
       onConnectionDrop?.({
         sourceNodeId: connectSource.nodeId,
         sourceHandle: connectSource.handleId,

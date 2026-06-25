@@ -39,6 +39,7 @@ import {
 } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
+import { ImeSafeInput } from './workflow-fields-debounced';
 
 let outputFieldDragIdCounter = 0;
 
@@ -335,9 +336,9 @@ export function OutputFieldsEditor({
 														title={t('required')}
 													/>
 												)}
-												<Input
+												<ImeSafeInput
 													value={field.key ?? ''}
-													onChange={(e) => updateField(index, { key: e.target.value })}
+													onChange={(key) => updateField(index, { key })}
 													placeholder={t('fieldNamePlaceholder')}
 													className="h-6 min-w-0 flex-1 text-[11px]"
 												/>
