@@ -13,7 +13,6 @@ import {
   MoveDiagonal,
   Palette,
   Play,
-  Plug,
   Square,
   X,
 } from 'lucide-react';
@@ -48,6 +47,7 @@ import {
   getHandleStyle,
   getSourceLabelStyle,
   getTargetHandleStyle,
+  WORKFLOW_NODE_DRAG_HANDLE_CLASS,
   type HandleContext,
 } from './workflow-node-handles';
 import { WorkflowNodeExecutionLog } from './workflow-node-execution-log';
@@ -56,8 +56,9 @@ import {
   EXECUTION_INPUT_FIELDS_KEY,
   EXECUTION_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
-import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets, parseArrayOutputFieldValue, stringifyOutputFieldValue } from './workflow-properties-utils';
-import { VariableBadgeInput, WorkflowVariableInput } from './workflow-variable-input';
+import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets } from './workflow-properties-utils';
+import { VariableBadgeInput } from './workflow-variable-input';
+import { WorkflowPropertiesPanel } from './workflow-properties-panel';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -86,6 +87,10 @@ function getWorkflowFields(value: unknown): OutputField[] {
 function getFieldHandleId(kind: 'input' | 'output', field: OutputField, index: number) {
   const key = field.key.trim() || String(index + 1);
   return `${kind}:${key}`;
+}
+
+function getFieldHandleTop(index: number, total: number): string {
+  return `${((index + 0.5) / Math.max(1, total)) * 100}%`;
 }
 
 function getVariableContextNodeLabel(
@@ -239,7 +244,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const canShowNodeContent = showFullNode && !isNodeCollapsed;
   const keepCustomViewMounted = hasCustomView && !isNodeCollapsed;
   const canShowVariableReferences = !isLoopBody && !hasCustomView && variableReferences.length > 0;
-  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView && (inputFields.length > 0 || outputFields.length > 0);
+  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView;
   const selectedJsonPresetId = typeof nodeData[SELECTED_JSON_PRESET_KEY] === 'string'
     ? nodeData[SELECTED_JSON_PRESET_KEY]
     : '';
@@ -526,14 +531,20 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     setHandleColorMenuId(null);
   }, [actions, handleColors]);
 
-  const updateInputFieldValue = useCallback((index: number, value: string) => {
-    const nextFields = inputFields.map((field, fieldIndex) => (
-      fieldIndex === index
-        ? { ...field, value: parseArrayOutputFieldValue(field.type, value) }
-        : field
-    ));
-    actions.dispatchNodeUpdate({ inputFields: nextFields });
-  }, [actions, inputFields]);
+  const handlePropertyPanelDataChange = useCallback((nodeId: string, nextData: Record<string, unknown>) => {
+    window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
+      detail: { nodeId, data: nextData },
+    }));
+  }, []);
+
+  const handlePropertyPanelDebug = useCallback((nodeId: string) => {
+    if (isCanvasLocked || isBoundaryNode) return;
+    window.dispatchEvent(new CustomEvent('workflow:debug-node', { detail: { nodeId } }));
+  }, [isBoundaryNode, isCanvasLocked]);
+
+  const handlePropertyPanelCancelDebug = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('workflow:cancel-debug-node', { detail: { nodeId: id } }));
+  }, [id]);
 
   const renderHandleColorPopover = (handleId: string, trigger: React.ReactElement) => (
     <Popover
@@ -578,7 +589,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeBody = (
     <div
       ref={nodeBodyRef}
-      className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
+      className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col overflow-visible
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
         ${floatingHandles ? 'workflow-node-has-floating-handles' : ''}
         ${selected ? 'workflow-node-floating-handles-visible' : ''}
@@ -765,88 +776,68 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       )}
 
       {canShowNodeContent && canShowPropertyNodeView ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
-            <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <div
-              className={cn(
-                'min-w-0 flex-1 truncate text-xs font-medium',
-                currentNodeState === 'disabled' && 'opacity-50 line-through',
-              )}
-              onDoubleClick={(e) => { e.stopPropagation(); startEdit(); }}
-            >
-              {displayLabel}
-            </div>
+        <div className="relative min-h-0 flex-1 overflow-hidden rounded-md">
+          <div className="absolute inset-y-10 left-0 z-30">
+            {inputFields.map((field, index) => (
+              <Handle
+                key={getFieldHandleId('input', field, index)}
+                id={getFieldHandleId('input', field, index)}
+                type="target"
+                position={Position.Left}
+                isConnectable
+                className={cn('!z-30 !h-3 !w-3 !border-2 !border-blue-300 !bg-blue-500 handle-dot', floatingHandleClassName)}
+                style={{ left: -6, top: getFieldHandleTop(index, inputFields.length) }}
+              />
+            ))}
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {Array.from({ length: Math.max(inputFields.length, outputFields.length) }).map((_, index) => {
-              const inputField = inputFields[index];
-              const outputField = outputFields[index];
-              return (
-                <div
-                  key={`${inputField?.key ?? 'input'}-${outputField?.key ?? 'output'}-${index}`}
-                  className="relative grid min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-border/40 px-3 py-1.5 last:border-b-0"
-                >
-                  {inputField ? (
-                    <>
-                      <Handle
-                        id={getFieldHandleId('input', inputField, index)}
-                        type="target"
-                        position={Position.Left}
-                        isConnectable
-                        className={cn('!z-10 !h-2.5 !w-2.5 !border-2 !border-blue-300 !bg-blue-500 handle-dot', floatingHandleClassName)}
-                        style={{ left: -6, top: '50%' }}
-                      />
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <Plug className="h-3 w-3 shrink-0 text-blue-500" />
-                          <span className="truncate text-[11px] font-medium">{inputField.key || '-'}</span>
-                          <span className="shrink-0 text-[10px] text-muted-foreground">{inputField.type}</span>
-                        </div>
-                        <WorkflowVariableInput
-                          value={stringifyOutputFieldValue(inputField.value)}
-                          placeholder={inputField.key || inputField.type}
-                          variableContext={variableContext}
-                          typeFilter={inputField.type}
-                          groupClassName="nodrag nopan min-h-6 h-auto rounded-md"
-                          inputClassName="text-[11px]"
-                          onChange={(nextValue) => updateInputFieldValue(index, nextValue)}
-                          onSelectVariable={(path) => updateInputFieldValue(index, path)}
-                        />
-                      </div>
-                    </>
-                  ) : <div />}
-                  <div className="h-5 w-px bg-border/70" />
-                  {outputField ? (
-                    <>
-                      <div className="min-w-0 space-y-0.5 text-right">
-                        <div className="flex min-w-0 items-center justify-end gap-1.5">
-                          <span className="truncate text-[11px] font-medium">{outputField.key || '-'}</span>
-                          <Plug className="h-3 w-3 shrink-0 text-emerald-500" />
-                        </div>
-                        <div className="truncate text-[10px] text-muted-foreground">{outputField.type}</div>
-                      </div>
-                      {renderHandleColorPopover(
-                        getFieldHandleId('output', outputField, index),
-                        <Handle
-                          id={getFieldHandleId('output', outputField, index)}
-                          type="source"
-                          position={Position.Right}
-                          className={cn('!z-10 !h-2.5 !w-2.5 !border-2 handle-dot', floatingHandleClassName)}
-                          style={{
-                            right: -6,
-                            top: '50%',
-                            backgroundColor: getSourceHandleColor(getFieldHandleId('output', outputField, index), DEFAULT_SOURCE_HANDLE_COLOR),
-                            borderColor: getSourceHandleColor(getFieldHandleId('output', outputField, index), DEFAULT_SOURCE_HANDLE_COLOR),
-                          }}
-                          onContextMenu={(event) => openHandleColorMenu(event, getFieldHandleId('output', outputField, index))}
-                        />,
-                      )}
-                    </>
-                  ) : <div />}
-                </div>
+          <div className="absolute inset-y-10 right-0 z-30">
+            {outputFields.map((field, index) => {
+              const handleId = getFieldHandleId('output', field, index);
+              const handleColor = getSourceHandleColor(handleId, DEFAULT_SOURCE_HANDLE_COLOR);
+              return renderHandleColorPopover(
+                handleId,
+                <Handle
+                  key={handleId}
+                  id={handleId}
+                  type="source"
+                  position={Position.Right}
+                  isConnectable
+                  className={cn('!z-30 !h-3 !w-3 !border-2 handle-dot', floatingHandleClassName)}
+                  style={{
+                    right: -6,
+                    top: getFieldHandleTop(index, outputFields.length),
+                    backgroundColor: handleColor,
+                    borderColor: handleColor,
+                  }}
+                  onContextMenu={(event) => openHandleColorMenu(event, handleId)}
+                />,
               );
             })}
+          </div>
+          <div className="h-full overflow-hidden bg-background">
+            <WorkflowPropertiesPanel
+              node={{
+                id,
+                type: workflowNodeType || 'unknown',
+                label: displayLabel,
+                position: { x: 0, y: 0 },
+                data: nodeData,
+                nodeState: currentNodeState,
+                breakpoint: currentBreakpoint ?? undefined,
+                nodeColor: typeof nodeData.nodeColor === 'string' ? nodeData.nodeColor : undefined,
+              }}
+              nodes={variableContext.nodes}
+              edges={variableContext.edges}
+              variableContextWorkflow={variableContext}
+              isPreview={nodeData.isPreview === true}
+              onUpdateData={handlePropertyPanelDataChange}
+              onPreviewUpdateData={handlePropertyPanelDataChange}
+              debugNodeId={typeof nodeData.debugNodeId === 'string' ? nodeData.debugNodeId : null}
+              debugStatus={nodeData.debugStatus}
+              onDebugNode={handlePropertyPanelDebug}
+              onCancelDebug={handlePropertyPanelCancelDebug}
+              dragHandleClassName={WORKFLOW_NODE_DRAG_HANDLE_CLASS}
+            />
           </div>
         </div>
       ) : null}

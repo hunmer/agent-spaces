@@ -15,6 +15,7 @@ import {
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode } from './workflow-node-types';
+import { WORKFLOW_NODE_DRAG_HANDLE_CLASS } from './workflow-node-handles';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
 const LOOP_BODY_NODE_Z_INDEX = -100;
@@ -254,6 +255,7 @@ export function useCanvasData({
       const isLoopBody = n.type === LOOP_BODY_NODE_TYPE;
       const isScopedChild = !!parentId && !isScopeBoundaryWorkflowNode(n);
       const hasCustomView = !!definition?.customView;
+      const hasPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView;
       const isSelected = selectedNodeIdSet.has(n.id);
       const baseZIndex = isLoopBody
         ? LOOP_BODY_NODE_Z_INDEX
@@ -263,7 +265,7 @@ export function useCanvasData({
         id: n.id,
         type: 'custom',
         position: n.position,
-        dragHandle: hasCustomView ? '.workflow-node-drag-handle' : undefined,
+        dragHandle: hasCustomView || hasPropertyNodeView ? `.${WORKFLOW_NODE_DRAG_HANDLE_CLASS}` : undefined,
         selected: isSelected,
         zIndex,
         width,

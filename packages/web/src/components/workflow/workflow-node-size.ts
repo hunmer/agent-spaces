@@ -6,9 +6,8 @@ const DEFAULT_NODE_MIN_HEIGHT = 60;
 const HEADER_HEIGHT = 33;
 const HANDLE_ROW_HEIGHT = 24;
 const HANDLE_BOTTOM_PADDING = 16;
-const PROPERTY_FIELD_ROW_HEIGHT = 44;
-const PROPERTY_FIELD_HEADER_HEIGHT = 37;
-const PROPERTY_NODE_MIN_WIDTH = 280;
+const PROPERTY_NODE_MIN_WIDTH = 420;
+const PROPERTY_NODE_MIN_HEIGHT = 560;
 const VARIABLE_BADGE_BLOCK_VERTICAL_PADDING = 9;
 const VARIABLE_BADGE_ROW_HEIGHT = 20;
 const WORKFLOW_VARIABLE_SCOPE_PREFIXES = [
@@ -102,10 +101,7 @@ export function getWorkflowNodeSize(
     : definition?.customViewMinSize?.width || DEFAULT_NODE_MIN_WIDTH;
   const baseMinHeight = definition?.customViewMinSize?.height || DEFAULT_NODE_MIN_HEIGHT;
   const isLoopBody = definition?.type === LOOP_BODY_NODE_TYPE;
-  const propertyFieldCount = Math.max(getWorkflowFieldCount(data.inputFields), getWorkflowFieldCount(data.outputs));
-  const propertyMinHeight = isPropertyNodeView
-    ? PROPERTY_FIELD_HEADER_HEIGHT + Math.max(1, propertyFieldCount) * PROPERTY_FIELD_ROW_HEIGHT
-    : baseMinHeight;
+  const propertyMinHeight = isPropertyNodeView ? PROPERTY_NODE_MIN_HEIGHT : baseMinHeight;
   const handleMinHeight = isLoopBody || sourceHandleCount <= 1
     ? propertyMinHeight
     : Math.max(propertyMinHeight, HEADER_HEIGHT + sourceHandleCount * HANDLE_ROW_HEIGHT + HANDLE_BOTTOM_PADDING);

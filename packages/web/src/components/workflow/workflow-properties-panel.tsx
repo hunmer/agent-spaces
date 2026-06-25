@@ -54,6 +54,7 @@ interface PropertiesPanelProps {
   onCancelDebug?: () => void;
   executionLog?: ExecutionLog | null;
   workspaceId?: string;
+  dragHandleClassName?: string;
 }
 
 export function WorkflowPropertiesPanel({
@@ -74,6 +75,7 @@ export function WorkflowPropertiesPanel({
   onCancelDebug,
   executionLog = null,
   workspaceId,
+  dragHandleClassName,
 }: PropertiesPanelProps) {
   const t = useTranslations('workflows');
   const [importOpen, setImportOpen] = useState(false);
@@ -250,6 +252,7 @@ export function WorkflowPropertiesPanel({
         onAddPreset={openAddPresetDialog}
         onEditPreset={openEditPresetDialog}
         onUpdatePresets={updateJsonPresets}
+        dragHandleClassName={dragHandleClassName}
       />
 
       <Toolbar

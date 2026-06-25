@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import type { JsonPreset } from './workflow-properties-utils';
 import { SELECTED_JSON_PRESET_KEY } from './workflow-properties-utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
@@ -27,6 +28,7 @@ interface NodeHeaderProps {
   onAddPreset: () => void;
   onEditPreset: (preset: JsonPreset) => void;
   onUpdatePresets: (presets: JsonPreset[]) => void;
+  dragHandleClassName?: string;
 }
 
 export function NodeHeader({
@@ -40,13 +42,14 @@ export function NodeHeader({
   onAddPreset,
   onEditPreset,
   onUpdatePresets,
+  dragHandleClassName,
 }: NodeHeaderProps) {
   const t = useTranslations('workflows');
   const resolveLabel = (v: unknown) => { const s = String(v ?? ''); return s && !s.startsWith('nodes.') ? s : ''; };
   const displayLabel = resolveLabel(data.label) || resolveLabel(node.label) || '';
   const placeholder = definition?.label || node.type || '';
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b p-3">
+    <div className={cn('flex shrink-0 items-center gap-2 border-b p-3', dragHandleClassName)}>
       <WorkflowNodeDefinitionIcon definition={definition} className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <Input
