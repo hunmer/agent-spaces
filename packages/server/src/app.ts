@@ -16,7 +16,7 @@ import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
 import channelRouter from './routes/channel.js';
 import issueRouter from './routes/issue.js';
-import workflowRouter from './routes/workflow.js';
+import workflowRouter, { setWorkflowTriggerService } from './routes/workflow.js';
 import pluginRouter from './routes/plugin.js';
 import agentRouter from './routes/agent.js';
 import taskRouter from './routes/task.js';
@@ -266,6 +266,7 @@ const executionManager = new ExecutionManager({
 });
 const triggerService = new WorkflowTriggerService(PORT);
 triggerService.setExecutionManager(executionManager);
+setWorkflowTriggerService(triggerService);
 setWorkflowExecutionManager(executionManager);
 
 // Workflow webhook hook SSE endpoint (after auth middleware)

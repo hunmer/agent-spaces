@@ -1,8 +1,30 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import * as ws from '../services/workflow.js';
+import type { WorkflowTriggerService } from '../services/workflow-trigger-service.js';
 
 const router = Router();
+let workflowTriggerService: WorkflowTriggerService | null = null;
+
+export function setWorkflowTriggerService(service: WorkflowTriggerService): void {
+  workflowTriggerService = service;
+}
+
+function reloadWorkflowTriggers(workflowId: string): void {
+  if (!workflowTriggerService) {
+    console.warn(`[workflow] Trigger service unavailable; skip reloading triggers for workflow ${workflowId}`);
+    return;
+  }
+  workflowTriggerService.reloadWorkflow(workflowId);
+}
+
+function removeWorkflowTriggers(workflowId: string): void {
+  if (!workflowTriggerService) {
+    console.warn(`[workflow] Trigger service unavailable; skip removing triggers for workflow ${workflowId}`);
+    return;
+  }
+  workflowTriggerService.removeWorkflow(workflowId);
+}
 
 // ---- Workflow CRUD ----
 
@@ -92,6 +114,7 @@ router.get('/:workflowId', (req: Request<{ workflowId: string }>, res: Response)
 router.post('/', (req: Request, res: Response) => {
   try {
     const workflow = ws.createWorkflow(req.body);
+    reloadWorkflowTriggers(workflow.id);
     res.status(201).json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -101,6 +124,7 @@ router.post('/', (req: Request, res: Response) => {
 router.put('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
     const workflow = ws.updateWorkflow(req.params.workflowId, req.body);
+    reloadWorkflowTriggers(workflow.id);
     res.json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -110,6 +134,7 @@ router.put('/:workflowId', (req: Request<{ workflowId: string }>, res: Response)
 router.delete('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
     ws.deleteWorkflow(req.params.workflowId);
+    removeWorkflowTriggers(req.params.workflowId);
     res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -119,6 +144,7 @@ router.delete('/:workflowId', (req: Request<{ workflowId: string }>, res: Respon
 router.post('/:workflowId/duplicate', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
     const workflow = ws.duplicateWorkflow(req.params.workflowId);
+    reloadWorkflowTriggers(workflow.id);
     res.status(201).json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

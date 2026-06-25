@@ -1148,6 +1148,7 @@ function WorkflowEditorInner({
         onExportWorkflow={state.handleExport}
         onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
+        onOpenTriggerDialog={() => state.setTriggerDialogOpen(true)}
         missingPluginCount={missingPluginIds.length}
         workflowErrorMessage={execution.workflowErrorMessage}
         onOpenWorkflowLocation={() => {

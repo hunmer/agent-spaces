@@ -6,7 +6,7 @@ import {
   Save, ArrowLeft, Loader2,
   Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play, Download,
   RotateCcw, RotateCw, CheckSquare, FlipHorizontal2, ArrowRightLeft, ArrowDownUp,
-  AlertTriangle,
+  AlertTriangle, Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,7 @@ interface EditorToolbarProps {
   onExportWorkflow: () => void;
   onImport: () => void;
   onOpenPluginManager: () => void;
+  onOpenTriggerDialog: () => void;
   missingPluginCount?: number;
   workflowErrorMessage?: string | null;
   onOpenWorkflowLocation: () => void;
@@ -80,7 +81,7 @@ export function WorkflowEditorToolbar({
   onExport, isExporting,
   canUndo, canRedo, onUndo, onRedo, onAutoLayout, onSelectAll, onInvertSelection,
   onExportWorkflow, onImport,
-  onOpenPluginManager, missingPluginCount = 0, workflowErrorMessage = null, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
+  onOpenPluginManager, onOpenTriggerDialog, missingPluginCount = 0, workflowErrorMessage = null, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
   layoutManager,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
@@ -91,6 +92,7 @@ export function WorkflowEditorToolbar({
   const [versionName, setVersionName] = useState('');
   const [savingPreview, setSavingPreview] = useState<'save' | 'version' | null>(null);
   const t = useTranslations('workflows');
+  const hasTriggers = (workflow?.triggers?.length || 0) > 0;
 
   const handleSavePreview = async (createVersion: boolean) => {
     setSavingPreview(createVersion ? 'version' : 'save');
@@ -223,6 +225,10 @@ export function WorkflowEditorToolbar({
 
       <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
         Preview
+      </Button>
+      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={onOpenTriggerDialog}>
+        <Clock className="h-3.5 w-3.5" />
+        {hasTriggers ? '管理触发器' : '触发器设置'}
       </Button>
 
       {missingPluginCount > 0 && (
