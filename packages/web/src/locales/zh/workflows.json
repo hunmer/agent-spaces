@@ -238,7 +238,8 @@
     "cancel": "取消",
     "create": "创建",
     "params": "参数",
-    "outputs": "输出"
+    "outputs": "输出",
+    "idCopied": "节点 ID 已复制"
   },
   "pluginPicker": {
     "title": "选择插件",

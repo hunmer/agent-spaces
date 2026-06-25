@@ -8,7 +8,7 @@ import { LOOP_BREAK_NODE_TYPE } from '@agent-spaces/shared';
 /** 侧边栏隐藏的节点类型（仅在节点选择对话框中可见）。 */
 const SIDEBAR_HIDDEN_NODE_TYPES = new Set<string>([LOOP_BREAK_NODE_TYPE]);
 import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
-import { toPinyinSearchKey } from '@/lib/utils';
+import { toPinyinSearchKey, copyToClipboard } from '@/lib/utils';
 import { pluginApi, workflowPluginSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
-import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2, LayoutList, LayoutGrid } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2, LayoutList, LayoutGrid, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
 import { WORKFLOW_NODE_DRAG_MIME } from './workflow-drag-types';
@@ -339,7 +340,20 @@ export function WorkflowNodeSidebar({
                             <div className="flex items-center gap-2">
                               <WorkflowNodeDefinitionIcon definition={node} className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <span className="text-sm font-semibold">{node.label}</span>
-                              <span className="text-[10px] text-muted-foreground font-mono ml-auto">{node.type}</span>
+                              <span className="flex items-center gap-1 ml-auto">
+                                <span className="text-[10px] text-muted-foreground font-mono">{node.type}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-4 w-4 shrink-0"
+                                  onClick={() => {
+                                    void copyToClipboard(node.type);
+                                    toast.success(t('sidebar.idCopied'));
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </span>
                             </div>
                             {node.description && (
                               <p className="text-xs text-muted-foreground">{node.description}</p>

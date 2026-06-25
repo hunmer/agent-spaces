@@ -39,6 +39,7 @@ import {
 } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
+import { useDeferredInputDraft } from './workflow-fields-debounced';
 
 let outputFieldDragIdCounter = 0;
 
@@ -86,6 +87,29 @@ function SortableOutputField({
 		>
 			{children(sortable)}
 		</div>
+	);
+}
+
+function OutputFieldKeyEditor({
+	value,
+	onCommit,
+	placeholder,
+	className,
+}: {
+	value: string;
+	onCommit: (value: string) => void;
+	placeholder?: string;
+	className?: string;
+}) {
+	const { draft, inputProps } = useDeferredInputDraft(value, onCommit);
+
+	return (
+		<Input
+			{...inputProps}
+			value={draft}
+			placeholder={placeholder}
+			className={className}
+		/>
 	);
 }
 
@@ -335,9 +359,9 @@ export function OutputFieldsEditor({
 														title={t('required')}
 													/>
 												)}
-												<Input
+												<OutputFieldKeyEditor
 													value={field.key ?? ''}
-													onChange={(e) => updateField(index, { key: e.target.value })}
+													onCommit={(key) => updateField(index, { key })}
 													placeholder={t('fieldNamePlaceholder')}
 													className="h-6 min-w-0 flex-1 text-[11px]"
 												/>

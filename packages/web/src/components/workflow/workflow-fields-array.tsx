@@ -14,6 +14,7 @@ import { isPlainObject, getOutputFields } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
 import { OutputFieldsEditor } from './workflow-fields-output';
+import { useDeferredInputDraft } from './workflow-fields-debounced';
 
 export function ArrayFieldEditor({
   prop,
@@ -148,6 +149,11 @@ export function ArrayItemField({
   variableContext?: WorkflowVariableContext;
   onInsertVariable?: (path: string) => void;
 }) {
+  const { draft, inputProps } = useDeferredInputDraft(
+    String(value ?? ''),
+    (nextValue) => onChange(field.type === 'number' ? Number(nextValue) : nextValue),
+  );
+
   if (variableMode) {
     return (
       <WorkflowVariableInput
@@ -200,10 +206,10 @@ export function ArrayItemField({
 
   return (
     <Input
+      {...inputProps}
       type={field.type === 'number' ? 'number' : 'text'}
-      value={String(value ?? '')}
+      value={draft}
       placeholder={field.placeholder}
-      onChange={(e) => onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)}
       className="h-6 text-[11px]"
     />
   );

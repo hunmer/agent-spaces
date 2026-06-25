@@ -238,7 +238,8 @@
     "cancel": "Cancel",
     "create": "Create",
     "params": "Parameters",
-    "outputs": "Outputs"
+    "outputs": "Outputs",
+    "idCopied": "Node ID copied"
   },
   "pluginPicker": {
     "title": "Select Plugin",

@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CompositionEvent,
+  type FocusEvent,
+} from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -130,4 +138,55 @@ export function DebouncedNumberInput({
       className={className}
     />
   );
+}
+
+export function useDeferredInputDraft(
+  value: string,
+  onCommit: (value: string) => void,
+) {
+  const [draft, setDraft] = useState(value);
+  const composingRef = useRef(false);
+
+  useEffect(() => {
+    if (!composingRef.current) {
+      setDraft(value);
+    }
+  }, [value]);
+
+  const commit = useCallback((nextValue: string) => {
+    onCommit(nextValue);
+  }, [onCommit]);
+
+  const onCompositionStart = useCallback(() => {
+    composingRef.current = true;
+  }, []);
+
+  const onCompositionEnd = useCallback((event: CompositionEvent<HTMLInputElement>) => {
+    composingRef.current = false;
+    const nextValue = event.currentTarget.value;
+    setDraft(nextValue);
+    commit(nextValue);
+  }, [commit]);
+
+  const onChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.currentTarget.value;
+    setDraft(nextValue);
+    if (!composingRef.current) {
+      commit(nextValue);
+    }
+  }, [commit]);
+
+  const onBlur = useCallback((event: FocusEvent<HTMLInputElement>) => {
+    commit(event.currentTarget.value);
+  }, [commit]);
+
+  return {
+    draft,
+    inputProps: {
+      onCompositionStart,
+      onCompositionEnd,
+      onChange,
+      onBlur,
+    },
+  };
 }
