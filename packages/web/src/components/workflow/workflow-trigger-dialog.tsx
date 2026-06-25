@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WorkflowTrigger } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,14 +31,14 @@ interface TriggerDialogProps {
 }
 
 const CRON_PRESETS = [
-  { label: '每分钟', value: '* * * * *' },
-  { label: '每5分钟', value: '*/5 * * * *' },
-  { label: '每30分钟', value: '*/30 * * * *' },
-  { label: '每小时', value: '0 * * * *' },
-  { label: '每天 0 点', value: '0 0 * * *' },
-  { label: '每天 8 点', value: '0 8 * * *' },
-  { label: '每周一 9 点', value: '0 9 * * 1' },
-  { label: '每月1号 0 点', value: '0 0 1 * *' },
+  { labelKey: 'presets.everyMinute', value: '* * * * *' },
+  { labelKey: 'presets.every5Minutes', value: '*/5 * * * *' },
+  { labelKey: 'presets.every30Minutes', value: '*/30 * * * *' },
+  { labelKey: 'presets.everyHour', value: '0 * * * *' },
+  { labelKey: 'presets.dailyAt0', value: '0 0 * * *' },
+  { labelKey: 'presets.dailyAt8', value: '0 8 * * *' },
+  { labelKey: 'presets.mondayAt9', value: '0 9 * * 1' },
+  { labelKey: 'presets.firstOfMonthAt0', value: '0 0 1 * *' },
 ];
 
 function CronEditor({
@@ -48,6 +49,7 @@ function CronEditor({
   isValidating: boolean;
   validationResult: { valid: boolean; error?: string; nextRuns?: string[] } | null;
 }) {
+  const t = useTranslations('workflows.triggerDialog');
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -72,7 +74,7 @@ function CronEditor({
 
       {validationResult?.nextRuns && validationResult.nextRuns.length > 0 && (
         <div className="text-[10px] text-muted-foreground">
-          <span className="font-medium">下次执行：</span>
+          <span className="font-medium">{t('nextRuns')}</span>
           {validationResult.nextRuns.slice(0, 3).map((run, i) => (
             <span key={i} className="ml-1">{run}</span>
           ))}
@@ -88,7 +90,7 @@ function CronEditor({
             className="cursor-pointer text-[9px] px-1.5 py-0"
             onClick={() => onChange(preset.value)}
           >
-            {preset.label}
+            {t(preset.labelKey)}
           </Badge>
         ))}
       </div>
@@ -99,6 +101,7 @@ function CronEditor({
 export function WorkflowTriggerDialog({
   open, triggers, onSave, onClose, workflowId, validateCron, checkHookName,
 }: TriggerDialogProps) {
+  const t = useTranslations('workflows.triggerDialog');
   const [edited, setEdited] = useState<WorkflowTrigger[]>([]);
   const [cronValidation, setCronValidation] = useState<Record<string, { valid: boolean; error?: string; nextRuns?: string[] }>>({});
   const [validating, setValidating] = useState<string | null>(null);
@@ -168,14 +171,14 @@ export function WorkflowTriggerDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-sm">触发器设置</DialogTitle>
+          <DialogTitle className="text-sm">{t('title')}</DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-3 pr-2">
             {edited.length === 0 && (
               <div className="text-xs text-muted-foreground text-center py-4">
-                暂无触发器，点击下方按钮添加
+                {t('empty')}
               </div>
             )}
 
@@ -189,11 +192,11 @@ export function WorkflowTriggerDialog({
                       <Globe className="h-3.5 w-3.5 text-green-500" />
                     )}
                     <Badge variant="secondary" className="text-[9px] h-4">
-                      {trigger.type === 'cron' ? '定时触发' : 'Webhook'}
+                      {trigger.type === 'cron' ? t('cronTrigger') : t('webhook')}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Label className="text-[10px]">启用</Label>
+                    <Label className="text-[10px]">{t('enabled')}</Label>
                     <Switch
                       checked={trigger.enabled}
                       onCheckedChange={() => toggleEnabled(trigger.id)}
@@ -207,7 +210,7 @@ export function WorkflowTriggerDialog({
 
                 {trigger.type === 'cron' ? (
                   <div className="space-y-1">
-                    <Label className="text-[10px]">Cron 表达式</Label>
+                    <Label className="text-[10px]">{t('cronExpression')}</Label>
                     <CronEditor
                       value={trigger.type === 'cron' ? trigger.cron : ''}
                       onChange={(v) => handleCronChange(trigger.id, v)}
@@ -217,7 +220,7 @@ export function WorkflowTriggerDialog({
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <Label className="text-[10px]">Hook 名称</Label>
+                    <Label className="text-[10px]">{t('hookName')}</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         value={trigger.type === 'hook' ? trigger.hookName : ''}
@@ -247,16 +250,16 @@ export function WorkflowTriggerDialog({
 
         <div className="flex gap-2 pt-2 border-t">
           <Button variant="outline" size="sm" className="text-xs" onClick={addCronTrigger}>
-            <Clock className="h-3 w-3 mr-1" /> 定时触发
+            <Clock className="h-3 w-3 mr-1" /> {t('cronTrigger')}
           </Button>
           <Button variant="outline" size="sm" className="text-xs" onClick={addHookTrigger}>
-            <Globe className="h-3 w-3 mr-1" /> Webhook
+            <Globe className="h-3 w-3 mr-1" /> {t('webhook')}
           </Button>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" size="sm" onClick={onClose}>取消</Button>
-          <Button size="sm" onClick={() => { onSave(edited); onClose(); }}>保存</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>{t('cancel')}</Button>
+          <Button size="sm" onClick={() => { onSave(edited); onClose(); }}>{t('save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

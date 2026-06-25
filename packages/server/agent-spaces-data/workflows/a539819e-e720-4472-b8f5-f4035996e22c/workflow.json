@@ -43,8 +43,8 @@
         "y": 105
       },
       "data": {
-        "apiKey": "{{ __config__[\"workflow.nano-banana\"][\"apiKey\"] }}",
-        "model": "gemini-3.1-flash-image",
+        "apiKey": "",
+        "model": "",
         "responseModalities": "auto",
         "aspectRatio": "auto",
         "imageSize": "default",
@@ -99,7 +99,7 @@
   ],
   "edges": [],
   "createdAt": 1781685716941,
-  "updatedAt": 1782373163638,
+  "updatedAt": 1782375108616,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",

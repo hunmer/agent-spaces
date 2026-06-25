@@ -63,7 +63,10 @@ export function getWorkflowHandleValueType(
   }
 
   if (parsed.kind === 'output') {
-    return getWorkflowFields(node.data?.outputs).find(field => field.key === parsed.key)?.type;
+    return getWorkflowFields(node.data?.outputs).find(field => field.key === parsed.key)?.type
+      ?? (node.type === 'start'
+        ? getWorkflowFields(node.data?.inputFields).find(field => field.key === parsed.key)?.type
+        : undefined);
   }
 
   const definition = getNodeDefinition(node.type);

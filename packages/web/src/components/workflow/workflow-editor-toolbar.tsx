@@ -224,11 +224,11 @@ export function WorkflowEditorToolbar({
       <div className="flex-1" />
 
       <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
-        Preview
+        {t('editor.preview')}
       </Button>
       <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={onOpenTriggerDialog}>
         <Clock className="h-3.5 w-3.5" />
-        {hasTriggers ? '管理触发器' : '触发器设置'}
+        {hasTriggers ? t('editor.manageTriggers') : t('editor.triggerSettings')}
       </Button>
 
       {missingPluginCount > 0 && (
@@ -240,7 +240,7 @@ export function WorkflowEditorToolbar({
           onClick={onOpenPluginManager}
         >
           <AlertTriangle className="h-3.5 w-3.5" />
-          缺少插件({missingPluginCount})
+          {t('editor.missingPlugins', { count: missingPluginCount })}
         </Button>
       )}
 
@@ -253,14 +253,14 @@ export function WorkflowEditorToolbar({
               className="h-7 gap-1 border-red-300 text-red-600 hover:bg-red-50"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
-              执行错误
+              {t('editor.executionError')}
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80">
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
               <div className="min-w-0">
-                <div className="mb-1 text-xs font-medium text-red-600">工作流执行错误</div>
+                <div className="mb-1 text-xs font-medium text-red-600">{t('editor.workflowExecutionError')}</div>
                 <div className="break-all text-xs text-muted-foreground">{workflowErrorMessage}</div>
               </div>
             </div>
@@ -272,7 +272,7 @@ export function WorkflowEditorToolbar({
 
       <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!canRunTest} onClick={onRunTest}>
         <Play className="h-3.5 w-3.5" />
-        运行测试
+        {t('editor.runTest')}
       </Button>
 
       {isPreview && (
@@ -323,7 +323,7 @@ export function WorkflowEditorToolbar({
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setLayoutOpen(true)} disabled={!workflow}>
             <LayoutTemplate className="h-4 w-4 mr-2" />
-            布局管理
+            {t('editor.layoutManager')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onOpenWorkflowLocation} disabled={!workflow}>
             <FolderOpen className="h-4 w-4 mr-2" />

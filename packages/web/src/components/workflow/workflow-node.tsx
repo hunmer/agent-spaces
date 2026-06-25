@@ -220,12 +220,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView;
   const propertyModeHandles = useMemo<PropertyModeHandle[]>(() => {
     if (!canShowPropertyNodeView) return [];
+    const isStartNode = workflowNodeType === 'start';
 
     const inputHandles = inputFields.map((field, index) => ({
-      id: getWorkflowFieldHandleId('input', field.key, index),
+      id: getWorkflowFieldHandleId(isStartNode ? 'output' : 'input', field.key, index),
       label: field.key,
-      side: 'left' as const,
-      type: 'target' as const,
+      side: isStartNode ? 'right' as const : 'left' as const,
+      type: isStartNode ? 'source' as const : 'target' as const,
       color: '#3b82f6',
       valueType: field.type,
       tooltip: field.description,
@@ -250,7 +251,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     }));
 
     return [...inputHandles, ...propertyHandles, ...outputHandles];
-  }, [canShowPropertyNodeView, inputFields, outputFields, propertyFields]);
+  }, [canShowPropertyNodeView, inputFields, outputFields, propertyFields, workflowNodeType]);
   const propertyModeLeftHandles = useMemo(
     () => propertyModeHandles.filter(handle => handle.side === 'left'),
     [propertyModeHandles],

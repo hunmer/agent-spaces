@@ -211,6 +211,14 @@
     },
     "exportPng": "Export PNG",
     "exportJpeg": "Export JPEG",
+    "preview": "Preview",
+    "manageTriggers": "Manage Triggers",
+    "triggerSettings": "Trigger Settings",
+    "missingPlugins": "Missing Plugins ({count})",
+    "executionError": "Execution Error",
+    "workflowExecutionError": "Workflow Execution Error",
+    "runTest": "Run Test",
+    "layoutManager": "Layout Manager",
     "clearNodes": "Clear Nodes",
     "clearNodesConfirmTitle": "Clear All Nodes",
     "clearNodesConfirmDesc": "This will delete all nodes and edges, keeping only the start and end nodes, and clear input/output parameters. This cannot be undone. Continue?",
@@ -290,6 +298,28 @@
     "mergeToWorkflow": "Merge to Workflow",
     "mergeToGroup": "Merge to Group",
     "batchDelete": "Batch Delete"
+  },
+  "triggerDialog": {
+    "title": "Trigger Settings",
+    "empty": "No triggers yet. Click a button below to add one.",
+    "cronTrigger": "Cron Trigger",
+    "webhook": "Webhook",
+    "enabled": "Enabled",
+    "cronExpression": "Cron Expression",
+    "hookName": "Hook Name",
+    "nextRuns": "Next runs:",
+    "cancel": "Cancel",
+    "save": "Save",
+    "presets": {
+      "everyMinute": "Every minute",
+      "every5Minutes": "Every 5 min",
+      "every30Minutes": "Every 30 min",
+      "everyHour": "Every hour",
+      "dailyAt0": "Daily at 0:00",
+      "dailyAt8": "Daily at 8:00",
+      "mondayAt9": "Mon at 9:00",
+      "firstOfMonthAt0": "1st of month at 0:00"
+    }
   },
   "version": {
     "count": "{count} versions",
