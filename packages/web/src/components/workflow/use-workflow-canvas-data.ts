@@ -14,7 +14,7 @@ import {
 } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
-import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout } from './workflow-node-types';
+import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode } from './workflow-node-types';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
 const LOOP_BODY_NODE_Z_INDEX = -100;
@@ -133,6 +133,7 @@ interface UseCanvasDataParams {
   handlePosition?: HandlePositionMode;
   floatingHandles?: boolean;
   logPanelLayout?: WorkflowLogPanelLayout;
+  nodeDisplayMode?: WorkflowNodeDisplayMode;
   edgePathType?: string;
   edgeLineStyle?: string;
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
@@ -156,6 +157,7 @@ export function useCanvasData({
   handlePosition = 'left-right',
   floatingHandles = false,
   logPanelLayout = 'vertical',
+  nodeDisplayMode = 'normal',
   edgePathType = 'bezier',
   edgeLineStyle = 'solid',
   onAutoLayout,
@@ -293,6 +295,7 @@ export function useCanvasData({
           handlePosition,
           floatingHandles,
           logPanelLayout,
+          nodeDisplayMode,
           loopExecutionScopeId: getLoopExecutionScopeId(n, nodeById),
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
@@ -303,7 +306,7 @@ export function useCanvasData({
       };
     });
     },
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
   );
 
   const runningEdgeIds = useMemo(() => {

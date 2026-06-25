@@ -41,6 +41,7 @@ export function WorkflowCanvasStylePanel({
   const customThemeCss = (canvasPrefs.canvasCustomThemeCss as string) || '';
   const edgeLineStyle = (canvasPrefs.edgeLineStyle as string) || 'solid';
   const logPanelLayout = (canvasPrefs.logPanelLayout as string) || 'vertical';
+  const nodeDisplayMode = (canvasPrefs.nodeDisplayMode as string) || 'normal';
 
   const update = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange({ ...canvasPrefs, ...patch });
@@ -104,7 +105,19 @@ export function WorkflowCanvasStylePanel({
       label: t(`canvasStyle.logPanel.${v}.label`),
     }));
 
+    const nodeDisplayModeOptions = (['normal', 'properties'] as const).map(v => ({
+      value: v,
+      label: t(`canvasStyle.nodeDisplayModeOptions.${v}.label`),
+    }));
+
     return [
+      {
+        id: 'nodeDisplayMode',
+        title: t('canvasStyle.nodeDisplayMode'),
+        value: nodeDisplayModeOptions.some(o => o.value === nodeDisplayMode) ? nodeDisplayMode : 'normal',
+        options: nodeDisplayModeOptions,
+        onChange: (v: string) => update({ nodeDisplayMode: v }),
+      },
       {
         id: 'canvasTheme',
         title: t('canvasStyle.canvasTheme'),
@@ -162,7 +175,7 @@ export function WorkflowCanvasStylePanel({
         onChange: (v: string) => update({ logPanelLayout: v }),
       },
     ];
-  }, [t, themeKey, bgVariantKey, snapEnabled, layoutEngine, handlePosition, canvasPrefs.edgePathType, edgeLineStyle, logPanelLayout, update, handleLayoutEngineChange]);
+  }, [t, nodeDisplayMode, themeKey, bgVariantKey, snapEnabled, layoutEngine, handlePosition, canvasPrefs.edgePathType, edgeLineStyle, logPanelLayout, update, handleLayoutEngineChange]);
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">

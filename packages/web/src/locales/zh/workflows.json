@@ -1009,6 +1009,11 @@
     "save": "保存"
   },
   "canvasStyle": {
+    "nodeDisplayMode": "节点显示模式",
+    "nodeDisplayModeOptions": {
+      "normal": { "label": "常规输入", "description": "使用默认的通用节点输入输出连接点" },
+      "properties": { "label": "属性输入", "description": "将输入和输出字段展示为节点连接点" }
+    },
     "canvasTheme": "画布主题",
     "backgroundStyle": "背景样式",
     "snapToGrid": "网格吸附",

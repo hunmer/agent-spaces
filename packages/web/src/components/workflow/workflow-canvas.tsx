@@ -240,6 +240,7 @@ export function WorkflowCanvas({
     ? savedAttributionPosition as HandlePositionMode
     : 'left-right';
   const floatingHandles = canvasPrefs.floatingHandles === true;
+  const nodeDisplayMode = canvasPrefs.nodeDisplayMode === 'properties' ? 'properties' : 'normal';
   const scopeBoundaryNodeIds = useMemo(
     () => new Set(workflow.nodes.filter(isScopeBoundaryWorkflowNode).map(item => item.id)),
     [workflow.nodes],
@@ -367,6 +368,7 @@ export function WorkflowCanvas({
     partialExecutionStartNodeId,
     handlePosition,
     floatingHandles,
+    nodeDisplayMode,
     logPanelLayout: canvasPrefs.logPanelLayout === 'tabs' ? 'tabs' : 'vertical',
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
     edgeLineStyle: (canvasPrefs.edgeLineStyle as string) || 'solid',

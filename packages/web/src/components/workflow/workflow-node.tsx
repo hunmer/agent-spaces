@@ -13,6 +13,7 @@ import {
   MoveDiagonal,
   Palette,
   Play,
+  Plug,
   Square,
   X,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion, 
 import {
   type ExecutionStep,
   type WorkflowNode as SharedWorkflowNode,
+  type OutputField,
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
 } from '@agent-spaces/shared';
@@ -54,8 +56,8 @@ import {
   EXECUTION_INPUT_FIELDS_KEY,
   EXECUTION_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
-import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets } from './workflow-properties-utils';
-import { VariableBadgeInput } from './workflow-variable-input';
+import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets, parseArrayOutputFieldValue, stringifyOutputFieldValue } from './workflow-properties-utils';
+import { VariableBadgeInput, WorkflowVariableInput } from './workflow-variable-input';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -74,6 +76,17 @@ const canvasZoomSelector = (state: ReactFlowState) => state.transform[2] || 1;
 
 const workflowNodesSelector = (state: ReactFlowState) => state.nodes;
 type NodePreviewDragPhase = 'start' | 'move' | 'end' | 'cancel';
+
+function getWorkflowFields(value: unknown): OutputField[] {
+  return Array.isArray(value) ? value.filter((field): field is OutputField => (
+    !!field && typeof field === 'object' && typeof (field as OutputField).key === 'string'
+  )) : [];
+}
+
+function getFieldHandleId(kind: 'input' | 'output', field: OutputField, index: number) {
+  const key = field.key.trim() || String(index + 1);
+  return `${kind}:${key}`;
+}
 
 function getVariableContextNodeLabel(
   nodeType: string,
@@ -169,8 +182,11 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
   const floatingHandles = nodeData.floatingHandles === true;
   const logPanelLayout = nodeData.logPanelLayout === 'tabs' ? 'tabs' : 'vertical';
+  const nodeDisplayMode = nodeData.nodeDisplayMode === 'properties' ? 'properties' : 'normal';
   const floatingHandleClassName = floatingHandles ? 'workflow-node-floating-handle' : '';
   const floatingLabelClassName = floatingHandles ? 'workflow-node-floating-handle-label' : '';
+  const inputFields = useMemo(() => getWorkflowFields(nodeData.inputFields), [nodeData.inputFields]);
+  const outputFields = useMemo(() => getWorkflowFields(nodeData.outputs), [nodeData.outputs]);
   const variableReferences = useMemo(
     () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
     [nodeData],
@@ -223,6 +239,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const canShowNodeContent = showFullNode && !isNodeCollapsed;
   const keepCustomViewMounted = hasCustomView && !isNodeCollapsed;
   const canShowVariableReferences = !isLoopBody && !hasCustomView && variableReferences.length > 0;
+  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView && (inputFields.length > 0 || outputFields.length > 0);
   const selectedJsonPresetId = typeof nodeData[SELECTED_JSON_PRESET_KEY] === 'string'
     ? nodeData[SELECTED_JSON_PRESET_KEY]
     : '';
@@ -232,7 +249,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length]);
 
   const handleCtx: HandleContext = useMemo(
     () => ({ isLoopBody, nodeHeight: displayNodeHeight, handlePositions }),
@@ -509,6 +526,15 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     setHandleColorMenuId(null);
   }, [actions, handleColors]);
 
+  const updateInputFieldValue = useCallback((index: number, value: string) => {
+    const nextFields = inputFields.map((field, fieldIndex) => (
+      fieldIndex === index
+        ? { ...field, value: parseArrayOutputFieldValue(field.type, value) }
+        : field
+    ));
+    actions.dispatchNodeUpdate({ inputFields: nextFields });
+  }, [actions, inputFields]);
+
   const renderHandleColorPopover = (handleId: string, trigger: React.ReactElement) => (
     <Popover
       open={handleColorMenuId === handleId}
@@ -595,7 +621,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {/* Target handle */}
-      {showTargetHandle && (
+      {showTargetHandle && !canShowPropertyNodeView && (
         <Handle
           id="target" type="target" position={handlePositions.target}
           isConnectable={isTargetConnectable}
@@ -689,7 +715,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {/* Header */}
-      {canShowNodeContent && !isLoopBody && !hasCustomView && (
+      {canShowNodeContent && !isLoopBody && !hasCustomView && !canShowPropertyNodeView && (
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
           <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
           {isEditing ? (
@@ -738,7 +764,94 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       )}
 
-      {canShowNodeContent && canShowVariableReferences ? (
+      {canShowNodeContent && canShowPropertyNodeView ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
+            <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div
+              className={cn(
+                'min-w-0 flex-1 truncate text-xs font-medium',
+                currentNodeState === 'disabled' && 'opacity-50 line-through',
+              )}
+              onDoubleClick={(e) => { e.stopPropagation(); startEdit(); }}
+            >
+              {displayLabel}
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {Array.from({ length: Math.max(inputFields.length, outputFields.length) }).map((_, index) => {
+              const inputField = inputFields[index];
+              const outputField = outputFields[index];
+              return (
+                <div
+                  key={`${inputField?.key ?? 'input'}-${outputField?.key ?? 'output'}-${index}`}
+                  className="relative grid min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-border/40 px-3 py-1.5 last:border-b-0"
+                >
+                  {inputField ? (
+                    <>
+                      <Handle
+                        id={getFieldHandleId('input', inputField, index)}
+                        type="target"
+                        position={Position.Left}
+                        isConnectable
+                        className={cn('!z-10 !h-2.5 !w-2.5 !border-2 !border-blue-300 !bg-blue-500 handle-dot', floatingHandleClassName)}
+                        style={{ left: -6, top: '50%' }}
+                      />
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <Plug className="h-3 w-3 shrink-0 text-blue-500" />
+                          <span className="truncate text-[11px] font-medium">{inputField.key || '-'}</span>
+                          <span className="shrink-0 text-[10px] text-muted-foreground">{inputField.type}</span>
+                        </div>
+                        <WorkflowVariableInput
+                          value={stringifyOutputFieldValue(inputField.value)}
+                          placeholder={inputField.key || inputField.type}
+                          variableContext={variableContext}
+                          typeFilter={inputField.type}
+                          groupClassName="nodrag nopan min-h-6 h-auto rounded-md"
+                          inputClassName="text-[11px]"
+                          onChange={(nextValue) => updateInputFieldValue(index, nextValue)}
+                          onSelectVariable={(path) => updateInputFieldValue(index, path)}
+                        />
+                      </div>
+                    </>
+                  ) : <div />}
+                  <div className="h-5 w-px bg-border/70" />
+                  {outputField ? (
+                    <>
+                      <div className="min-w-0 space-y-0.5 text-right">
+                        <div className="flex min-w-0 items-center justify-end gap-1.5">
+                          <span className="truncate text-[11px] font-medium">{outputField.key || '-'}</span>
+                          <Plug className="h-3 w-3 shrink-0 text-emerald-500" />
+                        </div>
+                        <div className="truncate text-[10px] text-muted-foreground">{outputField.type}</div>
+                      </div>
+                      {renderHandleColorPopover(
+                        getFieldHandleId('output', outputField, index),
+                        <Handle
+                          id={getFieldHandleId('output', outputField, index)}
+                          type="source"
+                          position={Position.Right}
+                          className={cn('!z-10 !h-2.5 !w-2.5 !border-2 handle-dot', floatingHandleClassName)}
+                          style={{
+                            right: -6,
+                            top: '50%',
+                            backgroundColor: getSourceHandleColor(getFieldHandleId('output', outputField, index), DEFAULT_SOURCE_HANDLE_COLOR),
+                            borderColor: getSourceHandleColor(getFieldHandleId('output', outputField, index), DEFAULT_SOURCE_HANDLE_COLOR),
+                          }}
+                          onContextMenu={(event) => openHandleColorMenu(event, getFieldHandleId('output', outputField, index))}
+                        />,
+                      )}
+                    </>
+                  ) : <div />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {canShowNodeContent && canShowVariableReferences && !canShowPropertyNodeView ? (
         <div className="flex w-full min-w-0 flex-wrap gap-1 overflow-hidden px-3 py-1.5">
           {variableReferences.map(reference => (
             <VariableBadgeInput
@@ -776,7 +889,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {/* Source handles (static) */}
-      {showSourceHandle && !dynamicHandles && (
+      {showSourceHandle && !dynamicHandles && !canShowPropertyNodeView && (
         staticSourceHandles.length === 0 ? (
           renderHandleColorPopover(
             SOURCE_HANDLE_KEY,
@@ -821,7 +934,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       )}
 
       {/* Dynamic source handles (switch) */}
-      {dynamicHandles && (
+      {dynamicHandles && !canShowPropertyNodeView && (
         <>
           {dynamicHandles.map(h => (
             <React.Fragment key={h.id}>

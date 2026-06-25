@@ -1009,6 +1009,11 @@
     "save": "Save"
   },
   "canvasStyle": {
+    "nodeDisplayMode": "Node Display Mode",
+    "nodeDisplayModeOptions": {
+      "normal": { "label": "Normal Input", "description": "Use the default generic node input/output handles" },
+      "properties": { "label": "Property Input", "description": "Expose input and output fields as node handles" }
+    },
     "canvasTheme": "Canvas Theme",
     "backgroundStyle": "Background Style",
     "snapToGrid": "Snap to Grid",

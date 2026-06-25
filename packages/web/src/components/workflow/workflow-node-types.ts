@@ -5,6 +5,7 @@ export const HANDLE_MARGIN = 12;
 
 export type HandlePositionMode = 'top-bottom' | 'left-right' | 'bottom-top' | 'right-left';
 export type WorkflowLogPanelLayout = 'vertical' | 'tabs';
+export type WorkflowNodeDisplayMode = 'normal' | 'properties';
 
 export type WorkflowNodeData = Record<string, unknown> & {
   label?: string;
@@ -28,6 +29,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   handlePosition?: HandlePositionMode;
   floatingHandles?: boolean;
   logPanelLayout?: WorkflowLogPanelLayout;
+  nodeDisplayMode?: WorkflowNodeDisplayMode;
   loopExecutionScopeId?: string;
   executionLogData?: Record<string, unknown>;
   handleColors?: Record<string, string>;
