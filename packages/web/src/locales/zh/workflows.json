@@ -750,6 +750,9 @@
             "caption_placeholder": "显示标题（可选）"
           }
         }
+      },
+      "outputs": {
+        "items": "资源列表（图片/视频）"
       }
     },
     "music_player": {
@@ -1044,6 +1047,12 @@
     "nodeDisplayModeOptions": {
       "normal": { "label": "常规输入", "description": "使用默认的通用节点输入输出连接点" },
       "properties": { "label": "属性输入", "description": "将输入和输出字段展示为节点连接点" }
+    },
+    "propertyModeBadgePosition": "属性连接点位置",
+    "propertyModeBadgePositionOptions": {
+      "top": { "label": "顶部显示" },
+      "center": { "label": "居中显示" },
+      "bottom": { "label": "底部显示" }
     },
     "canvasTheme": "画布主题",
     "backgroundStyle": "背景样式",

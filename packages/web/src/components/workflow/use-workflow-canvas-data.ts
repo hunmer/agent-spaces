@@ -14,7 +14,7 @@ import {
 } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
-import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode } from './workflow-node-types';
+import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode, type WorkflowPropertyModeBadgePosition } from './workflow-node-types';
 import { WORKFLOW_NODE_DRAG_HANDLE_CLASS } from './workflow-node-handles';
 import { getWorkflowFieldHandleId, parseWorkflowFieldHandleId } from './workflow-field-handles';
 
@@ -157,6 +157,7 @@ function getNormalizedTargetHandle(
 
   const parsed = parseWorkflowFieldHandleId(targetHandle);
   if (parsed?.kind === 'input' || parsed?.kind === 'property') return targetHandle || undefined;
+  if (targetHandle) return targetHandle;
 
   const inputFields = getWorkflowFields(node.data.inputFields);
   if (inputFields.length > 0) {
@@ -183,6 +184,7 @@ function getNormalizedSourceHandle(
 
   const parsed = parseWorkflowFieldHandleId(sourceHandle);
   if (parsed?.kind === 'output') return sourceHandle || undefined;
+  if (sourceHandle) return sourceHandle;
 
   const outputFields = getWorkflowFields(node.data.outputs);
   if (outputFields.length > 0) {
@@ -209,6 +211,7 @@ interface UseCanvasDataParams {
   floatingHandles?: boolean;
   logPanelLayout?: WorkflowLogPanelLayout;
   nodeDisplayMode?: WorkflowNodeDisplayMode;
+  propertyModeBadgePosition?: WorkflowPropertyModeBadgePosition;
   edgePathType?: string;
   edgeLineStyle?: string;
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
@@ -233,6 +236,7 @@ export function useCanvasData({
   floatingHandles = false,
   logPanelLayout = 'vertical',
   nodeDisplayMode = 'normal',
+  propertyModeBadgePosition = 'center',
   edgePathType = 'bezier',
   edgeLineStyle = 'solid',
   onAutoLayout,
@@ -372,6 +376,7 @@ export function useCanvasData({
           floatingHandles,
           logPanelLayout,
           nodeDisplayMode,
+          propertyModeBadgePosition,
           loopExecutionScopeId: getLoopExecutionScopeId(n, nodeById),
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
@@ -382,7 +387,7 @@ export function useCanvasData({
       };
     });
     },
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, propertyModeBadgePosition, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
   );
 
   const runningEdgeIds = useMemo(() => {

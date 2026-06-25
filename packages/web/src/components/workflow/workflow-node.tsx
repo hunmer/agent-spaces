@@ -236,6 +236,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
   const logPanelLayout = nodeData.logPanelLayout === 'tabs' ? 'tabs' : 'vertical';
   const nodeDisplayMode = nodeData.nodeDisplayMode === 'properties' ? 'properties' : 'normal';
+  const propertyModeBadgePosition = nodeData.propertyModeBadgePosition === 'top' || nodeData.propertyModeBadgePosition === 'bottom'
+    ? nodeData.propertyModeBadgePosition
+    : 'center';
   const floatingHandles = !isNodeCollapsed && (nodeData.floatingHandles === true || nodeDisplayMode === 'properties');
   const floatingHandleClassName = floatingHandles ? 'workflow-node-floating-handle' : '';
   const floatingLabelClassName = floatingHandles ? 'workflow-node-floating-handle-label' : '';
@@ -442,7 +445,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
     };
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFieldsSignature, outputFieldsSignature, propertyFieldsSignature, collapsedOutputKeysSignature]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, propertyModeBadgePosition, inputFieldsSignature, outputFieldsSignature, propertyFieldsSignature, collapsedOutputKeysSignature]);
 
   // 属性模式：测量面板实际内容高度，动态撑开节点
   // 依赖 canShowNodeContent：缩放到图标态会卸载 panel，放大回来需重新挂载测量/监听
@@ -825,6 +828,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ? 'translate(-100%, -50%)'
       : 'translate(100%, -50%)';
     const isCollapsed = !!handle.collapsedKey && collapsedOutputKeys[handle.collapsedKey];
+    const rowGap = 28;
+    const edgeOffset = 16;
+    const top = propertyModeBadgePosition === 'top'
+      ? edgeOffset + index * rowGap
+      : propertyModeBadgePosition === 'bottom'
+        ? handleCtx.nodeHeight - edgeOffset - (total - 1 - index) * rowGap
+        : handleCtx.nodeHeight / 2 + (index - (total - 1) / 2) * rowGap;
 
     const badge = (
       <span
@@ -876,7 +886,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         )}
         style={{
           // 固定行高、以节点中心对称堆叠，避免按节点高度等分导致间距过大
-          top: `${handleCtx.nodeHeight / 2 + (index - (total - 1) / 2) * 28}px`,
+          top: `${top}px`,
           width: 0,
         }}
       >
@@ -919,7 +929,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       </div>
     );
-  }, [floatingHandleClassName, getPropertyHandleVisualState, handleCtx, id, openHandleColorMenu, renderHandleColorPopover, validatePropertyModeConnection, collapsedOutputKeys, toggleOutputHandleCollapsed]);
+  }, [floatingHandleClassName, getPropertyHandleVisualState, handleCtx, id, openHandleColorMenu, propertyModeBadgePosition, renderHandleColorPopover, validatePropertyModeConnection, collapsedOutputKeys, toggleOutputHandleCollapsed]);
 
   const renderCompatibilityHandle = useCallback((
     handleId: string,
@@ -989,7 +999,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {/* Target handle */}
-      {showTargetHandle && !canShowPropertyNodeView && (
+      {showTargetHandle && (
         <Handle
           id="target" type="target" position={handlePositions.target}
           isConnectable={isTargetConnectable}
@@ -1161,8 +1171,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
       {canShowPropertyNodeView ? (
         <div ref={propertyNodeViewRef} className="relative min-h-0 flex-1 overflow-visible rounded-md">
-          {showTargetHandle ? renderCompatibilityHandle('target', 'target', Position.Left, 0, 1) : null}
-          {showSourceHandle ? renderCompatibilityHandle('source', 'source', Position.Right, 0, 1) : null}
           {propertyModeLeftHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeLeftHandles.length))}
           {propertyModeRightHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeRightHandles.length))}
           {canShowNodeContent ? (
@@ -1242,7 +1250,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {/* Source handles (static) */}
-      {showSourceHandle && !dynamicHandles && !canShowPropertyNodeView && (
+      {showSourceHandle && !dynamicHandles && (
         staticSourceHandles.length === 0 ? (
           renderHandleColorPopover(
             SOURCE_HANDLE_KEY,
@@ -1287,7 +1295,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       )}
 
       {/* Dynamic source handles (switch) */}
-      {dynamicHandles && !canShowPropertyNodeView && (
+      {dynamicHandles && (
         <>
           {dynamicHandles.map(h => (
             <React.Fragment key={h.id}>

@@ -750,6 +750,9 @@
             "caption_placeholder": "Display caption (optional)"
           }
         }
+      },
+      "outputs": {
+        "items": "Resource list (images/videos)"
       }
     },
     "music_player": {
@@ -1044,6 +1047,12 @@
     "nodeDisplayModeOptions": {
       "normal": { "label": "Normal Input", "description": "Use the default generic node input/output handles" },
       "properties": { "label": "Property Input", "description": "Expose input and output fields as node handles" }
+    },
+    "propertyModeBadgePosition": "Property Handle Position",
+    "propertyModeBadgePositionOptions": {
+      "top": { "label": "Show at Top" },
+      "center": { "label": "Show Centered" },
+      "bottom": { "label": "Show at Bottom" }
     },
     "canvasTheme": "Canvas Theme",
     "backgroundStyle": "Background Style",

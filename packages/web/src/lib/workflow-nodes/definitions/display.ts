@@ -53,6 +53,9 @@ export const displayNodes: NodeTypeDefinition[] = [
         ],
       },
     ],
+    outputs: [
+      { key: 'items', type: 'array', description: 'nodes.gallery_preview.outputs.items' },
+    ],
   },
   {
     type: 'music_player',

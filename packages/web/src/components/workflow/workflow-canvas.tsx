@@ -267,6 +267,9 @@ export function WorkflowCanvas({
     : 'left-right';
   const floatingHandles = canvasPrefs.floatingHandles === true;
   const nodeDisplayMode = canvasPrefs.nodeDisplayMode === 'properties' ? 'properties' : 'normal';
+  const propertyModeBadgePosition = canvasPrefs.propertyModeBadgePosition === 'top' || canvasPrefs.propertyModeBadgePosition === 'bottom'
+    ? canvasPrefs.propertyModeBadgePosition
+    : 'center';
   const scopeBoundaryNodeIds = useMemo(
     () => new Set(workflow.nodes.filter(isScopeBoundaryWorkflowNode).map(item => item.id)),
     [workflow.nodes],
@@ -435,6 +438,7 @@ export function WorkflowCanvas({
     handlePosition,
     floatingHandles,
     nodeDisplayMode,
+    propertyModeBadgePosition,
     logPanelLayout: canvasPrefs.logPanelLayout === 'tabs' ? 'tabs' : 'vertical',
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
     edgeLineStyle: (canvasPrefs.edgeLineStyle as string) || 'solid',
