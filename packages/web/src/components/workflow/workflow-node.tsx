@@ -62,7 +62,6 @@ import { WorkflowPropertiesPanel } from './workflow-properties-panel';
 import {
   getWorkflowFieldHandleId,
   getWorkflowFieldHandleIdFromField,
-  getWorkflowFieldHandleTop,
 } from './workflow-field-handles';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
@@ -148,6 +147,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const [continuePresetId, setContinuePresetId] = useState('debug');
   const inputRef = useRef<HTMLInputElement>(null);
   const nodeBodyRef = useRef<HTMLDivElement>(null);
+  const propertyNodeViewRef = useRef<HTMLDivElement>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
 
   const displayLabel = useMemo(
@@ -201,7 +201,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         : prop.visibleWhen.in?.includes(nodeData[prop.visibleWhen.key])
     )) ?? []
   ), [definition?.properties, nodeData]);
-  const [propertyHandleTops, setPropertyHandleTops] = useState<Record<string, number>>({});
+  const [fieldHandleTops, setFieldHandleTops] = useState<Record<string, number>>({});
   const variableReferences = useMemo(
     () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
     [nodeData],
@@ -262,19 +262,28 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     ? getJsonPresets(nodeData[JSON_PRESETS_KEY]).find(preset => preset.id === selectedJsonPresetId) ?? null
     : null;
 
-  const refreshPropertyHandleTops = useCallback(() => {
+  const refreshFieldHandleTops = useCallback(() => {
     const body = nodeBodyRef.current;
-    if (!body) return;
-    const bodyRect = body.getBoundingClientRect();
+    const propertyNodeView = propertyNodeViewRef.current;
+    if (!body || !propertyNodeView) return;
+    const propertyNodeViewRect = propertyNodeView.getBoundingClientRect();
     const next: Record<string, number> = {};
-    for (const prop of propertyFields) {
-      const handleId = getWorkflowFieldHandleId('property', prop.key);
-      const anchor = body.querySelector<HTMLElement>(`[data-workflow-property-anchor="${CSS.escape(handleId)}"]`);
+    const handleIds = [
+      ...inputFields.map((field, index) => getWorkflowFieldHandleIdFromField('input', field, index)),
+      ...propertyFields.map(prop => getWorkflowFieldHandleId('property', prop.key)),
+      ...outputFields.map((field, index) => getWorkflowFieldHandleIdFromField('output', field, index)),
+    ];
+    for (const handleId of handleIds) {
+      const anchor = body.querySelector<HTMLElement>(
+        `[data-workflow-field-anchor="${CSS.escape(handleId)}"], [data-workflow-property-anchor="${CSS.escape(handleId)}"]`,
+      );
       if (!anchor) continue;
       const rect = anchor.getBoundingClientRect();
-      next[handleId] = rect.top - bodyRect.top + rect.height / 2;
+      const top = rect.top - propertyNodeViewRect.top + rect.height / 2;
+      if (top < 0 || top > propertyNodeViewRect.height) continue;
+      next[handleId] = top;
     }
-    setPropertyHandleTops((current) => {
+    setFieldHandleTops((current) => {
       const currentEntries = Object.entries(current);
       const nextEntries = Object.entries(next);
       if (
@@ -285,23 +294,29 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       }
       return next;
     });
-  }, [propertyFields]);
+  }, [inputFields, outputFields, propertyFields]);
 
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length, propertyHandleTops]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length, fieldHandleTops]);
 
   React.useLayoutEffect(() => {
     if (!canShowPropertyNodeView) return;
-    refreshPropertyHandleTops();
+    refreshFieldHandleTops();
     const body = nodeBodyRef.current;
     if (!body) return;
-    const observer = new ResizeObserver(refreshPropertyHandleTops);
+    const observer = new ResizeObserver(refreshFieldHandleTops);
     observer.observe(body);
+    if (propertyNodeViewRef.current) observer.observe(propertyNodeViewRef.current);
     const content = body.querySelector<HTMLElement>('[data-workflow-property-content="true"]');
     if (content) observer.observe(content);
     return () => observer.disconnect();
-  }, [canShowPropertyNodeView, refreshPropertyHandleTops]);
+  }, [canShowPropertyNodeView, refreshFieldHandleTops]);
+
+  React.useLayoutEffect(() => {
+    if (!canShowPropertyNodeView) return;
+    refreshFieldHandleTops();
+  }, [canShowPropertyNodeView, canvasZoom, refreshFieldHandleTops]);
 
   const handleCtx: HandleContext = useMemo(
     () => ({ isLoopBody, nodeHeight: displayNodeHeight, handlePositions }),
@@ -823,24 +838,29 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       )}
 
       {canShowNodeContent && canShowPropertyNodeView ? (
-        <div className="relative min-h-0 flex-1 overflow-hidden rounded-md">
+        <div ref={propertyNodeViewRef} className="relative min-h-0 flex-1 overflow-visible rounded-md">
           <div className="absolute inset-y-10 left-0 z-30">
-            {inputFields.map((field, index) => (
-              <Handle
-                key={getWorkflowFieldHandleIdFromField('input', field, index)}
-                id={getWorkflowFieldHandleIdFromField('input', field, index)}
-                type="target"
-                position={Position.Left}
-                isConnectable
-                className={cn('!z-30 !h-3 !w-3 !border-2 !border-blue-300 !bg-blue-500 handle-dot', floatingHandleClassName)}
-                style={{ left: -6, top: getWorkflowFieldHandleTop(index, inputFields.length) }}
-              />
-            ))}
+            {inputFields.map((field, index) => {
+              const handleId = getWorkflowFieldHandleIdFromField('input', field, index);
+              const top = fieldHandleTops[handleId];
+              if (typeof top !== 'number') return null;
+              return (
+                <Handle
+                  key={handleId}
+                  id={handleId}
+                  type="target"
+                  position={Position.Left}
+                  isConnectable
+                  className={cn('!z-30 !h-3 !w-3 !border-2 !border-blue-300 !bg-blue-500 handle-dot', floatingHandleClassName)}
+                  style={{ left: -6, top }}
+                />
+              );
+            })}
           </div>
           <div className="absolute inset-0 left-0 z-30 pointer-events-none">
             {propertyFields.map((prop) => {
               const handleId = getWorkflowFieldHandleId('property', prop.key);
-              const top = propertyHandleTops[handleId];
+              const top = fieldHandleTops[handleId];
               if (typeof top !== 'number') return null;
               return (
                 <Handle
@@ -858,6 +878,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <div className="absolute inset-y-10 right-0 z-30">
             {outputFields.map((field, index) => {
               const handleId = getWorkflowFieldHandleIdFromField('output', field, index);
+              const top = fieldHandleTops[handleId];
+              if (typeof top !== 'number') return null;
               const handleColor = getSourceHandleColor(handleId, DEFAULT_SOURCE_HANDLE_COLOR);
               return renderHandleColorPopover(
                 handleId,
@@ -870,7 +892,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                   className={cn('!z-30 !h-3 !w-3 !border-2 handle-dot', floatingHandleClassName)}
                   style={{
                     right: -6,
-                    top: getWorkflowFieldHandleTop(index, outputFields.length),
+                    top,
                     backgroundColor: handleColor,
                     borderColor: handleColor,
                   }}
@@ -879,7 +901,11 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               );
             })}
           </div>
-          <div className="h-full overflow-hidden bg-background" data-workflow-property-content="true">
+          <div
+            className="h-full overflow-y-auto overflow-x-hidden bg-background"
+            data-workflow-property-content="true"
+            onScroll={refreshFieldHandleTops}
+          >
             <WorkflowPropertiesPanel
               node={{
                 id,
@@ -902,6 +928,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               onDebugNode={handlePropertyPanelDebug}
               onCancelDebug={handlePropertyPanelCancelDebug}
               dragHandleClassName={WORKFLOW_NODE_DRAG_HANDLE_CLASS}
+              contentScrollable={false}
             />
           </div>
         </div>

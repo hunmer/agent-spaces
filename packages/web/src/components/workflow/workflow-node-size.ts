@@ -70,10 +70,6 @@ function getDynamicSourceHandleCount(definition: NodeTypeDefinition | undefined,
   return itemCount + (dynamicSource.extraCount || 0);
 }
 
-function getWorkflowFieldCount(value: unknown): number {
-  return Array.isArray(value) ? value.length : 0;
-}
-
 export function getWorkflowNodeSourceHandleCount(
   definition: NodeTypeDefinition | undefined,
   data: Record<string, unknown>,
@@ -94,8 +90,7 @@ export function getWorkflowNodeSize(
   const sourceHandleCount = getWorkflowNodeSourceHandleCount(definition, data);
   const isPropertyNodeView = data.nodeDisplayMode === 'properties'
     && definition?.type !== LOOP_BODY_NODE_TYPE
-    && !definition?.customView
-    && (getWorkflowFieldCount(data.inputFields) > 0 || getWorkflowFieldCount(data.outputs) > 0);
+    && !definition?.customView;
   const minWidth = isPropertyNodeView
     ? Math.max(PROPERTY_NODE_MIN_WIDTH, definition?.customViewMinSize?.width || DEFAULT_NODE_MIN_WIDTH)
     : definition?.customViewMinSize?.width || DEFAULT_NODE_MIN_WIDTH;
@@ -105,7 +100,7 @@ export function getWorkflowNodeSize(
   const handleMinHeight = isLoopBody || sourceHandleCount <= 1
     ? propertyMinHeight
     : Math.max(propertyMinHeight, HEADER_HEIGHT + sourceHandleCount * HANDLE_ROW_HEIGHT + HANDLE_BOTTOM_PADDING);
-  const minHeight = handleMinHeight + getWorkflowNodeVariableBadgeHeight(definition, data);
+  const minHeight = handleMinHeight + (isPropertyNodeView ? 0 : getWorkflowNodeVariableBadgeHeight(definition, data));
 
   return {
     minWidth,
@@ -116,12 +111,14 @@ export function getWorkflowNodeSize(
         ? data.nodeWidth
         : typeof data.width === 'number' ? data.width : DEFAULT_NODE_WIDTH,
     ),
-    height: Math.max(
-      minHeight,
-      typeof data.nodeHeight === 'number'
-        ? data.nodeHeight
-        : typeof data.height === 'number' ? data.height : minHeight,
-    ),
+    height: isPropertyNodeView
+      ? minHeight
+      : Math.max(
+        minHeight,
+        typeof data.nodeHeight === 'number'
+          ? data.nodeHeight
+          : typeof data.height === 'number' ? data.height : minHeight,
+      ),
     sourceHandleCount,
   };
 }

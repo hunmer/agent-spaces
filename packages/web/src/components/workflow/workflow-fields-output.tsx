@@ -39,6 +39,7 @@ import {
 } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
+import { getWorkflowFieldHandleId, type WorkflowFieldHandleKind } from './workflow-field-handles';
 
 let outputFieldDragIdCounter = 0;
 
@@ -106,8 +107,9 @@ export function OutputFieldsEditor({
 	allowedFieldTypes,
 	depth = 0,
 	showRequired = false,
-	outputPreviewEnabled,
-	onOutputPreviewEnabledChange,
+	outputPreviewEnabled: _outputPreviewEnabled,
+	onOutputPreviewEnabledChange: _onOutputPreviewEnabledChange,
+	anchorKind,
 }: {
 	value: OutputField[];
 	onChange: (v: OutputField[]) => void;
@@ -117,6 +119,7 @@ export function OutputFieldsEditor({
 	showRequired?: boolean;
 	outputPreviewEnabled?: boolean;
 	onOutputPreviewEnabledChange?: (enabled: boolean) => void;
+	anchorKind?: Extract<WorkflowFieldHandleKind, 'input' | 'output'>;
 }) {
 	const t = useTranslations('workflows.outputFields');
 	const fields = getOutputFields(value);
@@ -293,7 +296,11 @@ export function OutputFieldsEditor({
 								<SortableOutputField key={fieldIds[index]} id={fieldIds[index]}>
 									{({ attributes, listeners }) => (
 										<>
-											<div className="group/field flex items-center gap-1" style={{ paddingLeft: `${indent}px` }}>
+											<div
+												className="group/field flex items-center gap-1"
+												style={{ paddingLeft: `${indent}px` }}
+												data-workflow-field-anchor={anchorKind && depth === 0 ? getWorkflowFieldHandleId(anchorKind, field.key, index) : undefined}
+											>
 												<button
 													type="button"
 													{...attributes}
@@ -369,6 +376,7 @@ export function OutputFieldsEditor({
 														onChange={(children) => updateField(index, { children })}
 														variableContext={variableContext}
 														depth={depth + 1}
+														anchorKind={anchorKind}
 													/>
 												</div>
 											)}

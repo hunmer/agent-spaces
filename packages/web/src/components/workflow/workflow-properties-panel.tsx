@@ -55,6 +55,7 @@ interface PropertiesPanelProps {
   executionLog?: ExecutionLog | null;
   workspaceId?: string;
   dragHandleClassName?: string;
+  contentScrollable?: boolean;
 }
 
 export function WorkflowPropertiesPanel({
@@ -76,6 +77,7 @@ export function WorkflowPropertiesPanel({
   executionLog = null,
   workspaceId,
   dragHandleClassName,
+  contentScrollable = true,
 }: PropertiesPanelProps) {
   const t = useTranslations('workflows');
   const [importOpen, setImportOpen] = useState(false);
@@ -240,7 +242,7 @@ export function WorkflowPropertiesPanel({
   }
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className={`${contentScrollable ? 'h-full' : 'min-h-full'} flex flex-col bg-background`}>
       <NodeHeader
         node={node}
         data={data}
@@ -274,7 +276,8 @@ export function WorkflowPropertiesPanel({
         onResetToDefaults={handleResetToDefaults}
       />
 
-      <ScrollArea className="min-h-0 flex-1" viewportClassName="flex flex-col">
+      {(() => {
+        const content = (
         <div className="flex flex-col gap-3 p-3 pt-0">
           {hasDebugOutput && visibleDebugResult && (
             <section id="run-result-section" className="space-y-2 rounded border bg-muted/20 p-2 mt-2">
@@ -432,7 +435,14 @@ export function WorkflowPropertiesPanel({
           )}
 
         </div>
-      </ScrollArea>
+        );
+
+        return contentScrollable ? (
+          <ScrollArea className="min-h-0 flex-1" viewportClassName="flex flex-col">
+            {content}
+          </ScrollArea>
+        ) : content;
+      })()}
 
       {node && (
         <div className="flex shrink-0 items-center gap-2 border-t px-3 py-2">
