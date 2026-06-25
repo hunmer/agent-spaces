@@ -14,7 +14,13 @@
       "data": {
         "inputFields": [
           {
-            "key": "promp",
+            "key": "prompa",
+            "type": "string",
+            "value": "",
+            "children": []
+          },
+          {
+            "key": "ss",
             "type": "string",
             "value": "",
             "children": []
@@ -146,7 +152,7 @@
     }
   ],
   "createdAt": 1781685716941,
-  "updatedAt": 1782387848407,
+  "updatedAt": 1782388552948,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",
