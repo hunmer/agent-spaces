@@ -74,7 +74,6 @@ export function InputFieldsSection({
         variableContext={variableContext}
         allowedFieldTypes={getNodeDefinition(node.type)?.allowedInputFieldTypes}
         showRequired
-        anchorKind="input"
       />
     </section>
   );
@@ -156,7 +155,6 @@ export function OutputFieldsSection({
         variableContext={variableContext}
         outputPreviewEnabled={data.outputPreviewEnabled !== false}
         onOutputPreviewEnabledChange={(enabled) => onDataChange('outputPreviewEnabled', enabled)}
-        anchorKind="output"
       />
     </section>
   );

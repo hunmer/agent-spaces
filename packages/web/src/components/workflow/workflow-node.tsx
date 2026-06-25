@@ -59,10 +59,6 @@ import {
 import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets } from './workflow-properties-utils';
 import { VariableBadgeInput } from './workflow-variable-input';
 import { WorkflowPropertiesPanel } from './workflow-properties-panel';
-import {
-  getWorkflowFieldHandleId,
-  getWorkflowFieldHandleIdFromField,
-} from './workflow-field-handles';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -187,9 +183,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const staticSourceHandles = definition?.handles?.sourceHandles || [];
   const handlePositionMode = nodeData.handlePosition || 'left-right';
   const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
-  const floatingHandles = nodeData.floatingHandles === true;
   const logPanelLayout = nodeData.logPanelLayout === 'tabs' ? 'tabs' : 'vertical';
   const nodeDisplayMode = nodeData.nodeDisplayMode === 'properties' ? 'properties' : 'normal';
+  const floatingHandles = nodeData.floatingHandles === true || nodeDisplayMode === 'properties';
   const floatingHandleClassName = floatingHandles ? 'workflow-node-floating-handle' : '';
   const floatingLabelClassName = floatingHandles ? 'workflow-node-floating-handle-label' : '';
   const inputFields = useMemo(() => getWorkflowFields(nodeData.inputFields), [nodeData.inputFields]);
@@ -201,7 +197,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         : prop.visibleWhen.in?.includes(nodeData[prop.visibleWhen.key])
     )) ?? []
   ), [definition?.properties, nodeData]);
-  const [fieldHandleTops, setFieldHandleTops] = useState<Record<string, number>>({});
   const variableReferences = useMemo(
     () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
     [nodeData],
@@ -262,61 +257,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     ? getJsonPresets(nodeData[JSON_PRESETS_KEY]).find(preset => preset.id === selectedJsonPresetId) ?? null
     : null;
 
-  const refreshFieldHandleTops = useCallback(() => {
-    const body = nodeBodyRef.current;
-    const propertyNodeView = propertyNodeViewRef.current;
-    if (!body || !propertyNodeView) return;
-    const propertyNodeViewRect = propertyNodeView.getBoundingClientRect();
-    const next: Record<string, number> = {};
-    const handleIds = [
-      ...inputFields.map((field, index) => getWorkflowFieldHandleIdFromField('input', field, index)),
-      ...propertyFields.map(prop => getWorkflowFieldHandleId('property', prop.key)),
-      ...outputFields.map((field, index) => getWorkflowFieldHandleIdFromField('output', field, index)),
-    ];
-    for (const handleId of handleIds) {
-      const anchor = body.querySelector<HTMLElement>(
-        `[data-workflow-field-anchor="${CSS.escape(handleId)}"], [data-workflow-property-anchor="${CSS.escape(handleId)}"]`,
-      );
-      if (!anchor) continue;
-      const rect = anchor.getBoundingClientRect();
-      const top = rect.top - propertyNodeViewRect.top + rect.height / 2;
-      if (top < 0 || top > propertyNodeViewRect.height) continue;
-      next[handleId] = top;
-    }
-    setFieldHandleTops((current) => {
-      const currentEntries = Object.entries(current);
-      const nextEntries = Object.entries(next);
-      if (
-        currentEntries.length === nextEntries.length
-        && nextEntries.every(([key, value]) => current[key] === value)
-      ) {
-        return current;
-      }
-      return next;
-    });
-  }, [inputFields, outputFields, propertyFields]);
-
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length, fieldHandleTops]);
-
-  React.useLayoutEffect(() => {
-    if (!canShowPropertyNodeView) return;
-    refreshFieldHandleTops();
-    const body = nodeBodyRef.current;
-    if (!body) return;
-    const observer = new ResizeObserver(refreshFieldHandleTops);
-    observer.observe(body);
-    if (propertyNodeViewRef.current) observer.observe(propertyNodeViewRef.current);
-    const content = body.querySelector<HTMLElement>('[data-workflow-property-content="true"]');
-    if (content) observer.observe(content);
-    return () => observer.disconnect();
-  }, [canShowPropertyNodeView, refreshFieldHandleTops]);
-
-  React.useLayoutEffect(() => {
-    if (!canShowPropertyNodeView) return;
-    refreshFieldHandleTops();
-  }, [canShowPropertyNodeView, canvasZoom, refreshFieldHandleTops]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length]);
 
   const handleCtx: HandleContext = useMemo(
     () => ({ isLoopBody, nodeHeight: displayNodeHeight, handlePositions }),
@@ -654,7 +597,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col overflow-visible
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
         ${floatingHandles ? 'workflow-node-has-floating-handles' : ''}
-        ${selected ? 'workflow-node-floating-handles-visible' : ''}
+        ${selected || canShowPropertyNodeView ? 'workflow-node-floating-handles-visible' : ''}
         ${stateBackgroundClass}`}
       style={{
         minWidth: isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeMinWidth,
@@ -839,72 +782,32 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
       {canShowNodeContent && canShowPropertyNodeView ? (
         <div ref={propertyNodeViewRef} className="relative min-h-0 flex-1 overflow-visible rounded-md">
-          <div className="absolute inset-y-10 left-0 z-30">
-            {inputFields.map((field, index) => {
-              const handleId = getWorkflowFieldHandleIdFromField('input', field, index);
-              const top = fieldHandleTops[handleId];
-              if (typeof top !== 'number') return null;
-              return (
-                <Handle
-                  key={handleId}
-                  id={handleId}
-                  type="target"
-                  position={Position.Left}
-                  isConnectable
-                  className={cn('!z-30 !h-3 !w-3 !border-2 !border-blue-300 !bg-blue-500 handle-dot', floatingHandleClassName)}
-                  style={{ left: -6, top }}
-                />
-              );
-            })}
-          </div>
-          <div className="absolute inset-0 left-0 z-30 pointer-events-none">
-            {propertyFields.map((prop) => {
-              const handleId = getWorkflowFieldHandleId('property', prop.key);
-              const top = fieldHandleTops[handleId];
-              if (typeof top !== 'number') return null;
-              return (
-                <Handle
-                  key={handleId}
-                  id={handleId}
-                  type="target"
-                  position={Position.Left}
-                  isConnectable
-                  className={cn('!pointer-events-auto !z-30 !h-3 !w-3 !border-2 !border-blue-300 !bg-blue-500 handle-dot', floatingHandleClassName)}
-                  style={{ left: -6, top }}
-                />
-              );
-            })}
-          </div>
-          <div className="absolute inset-y-10 right-0 z-30">
-            {outputFields.map((field, index) => {
-              const handleId = getWorkflowFieldHandleIdFromField('output', field, index);
-              const top = fieldHandleTops[handleId];
-              if (typeof top !== 'number') return null;
-              const handleColor = getSourceHandleColor(handleId, DEFAULT_SOURCE_HANDLE_COLOR);
-              return renderHandleColorPopover(
-                handleId,
-                <Handle
-                  key={handleId}
-                  id={handleId}
-                  type="source"
-                  position={Position.Right}
-                  isConnectable
-                  className={cn('!z-30 !h-3 !w-3 !border-2 handle-dot', floatingHandleClassName)}
-                  style={{
-                    right: -6,
-                    top,
-                    backgroundColor: handleColor,
-                    borderColor: handleColor,
-                  }}
-                  onContextMenu={(event) => openHandleColorMenu(event, handleId)}
-                />,
-              );
-            })}
-          </div>
+          {renderHandleColorPopover(
+            'floating-target',
+            <Handle
+              id="target"
+              type="target"
+              position={Position.Left}
+              isConnectable
+              className={cn('!z-30 !h-3 !w-3 !border-2 !border-blue-300 !bg-blue-500 handle-dot -translate-y-1/2', floatingHandleClassName)}
+              style={{ left: -15, top: '50%' }}
+            />,
+          )}
+          {renderHandleColorPopover(
+            'floating-source',
+            <Handle
+              id="source"
+              type="source"
+              position={Position.Right}
+              isConnectable
+              className={cn('!z-30 !h-3 !w-3 !border-2 handle-dot -translate-y-1/2', floatingHandleClassName)}
+              style={{ right: -15, top: '50%', backgroundColor: DEFAULT_SOURCE_HANDLE_COLOR, borderColor: DEFAULT_SOURCE_HANDLE_COLOR }}
+              onContextMenu={(event) => openHandleColorMenu(event, 'source')}
+            />,
+          )}
           <div
             className="h-full overflow-y-auto overflow-x-hidden bg-background"
             data-workflow-property-content="true"
-            onScroll={refreshFieldHandleTops}
           >
             <WorkflowPropertiesPanel
               node={{
