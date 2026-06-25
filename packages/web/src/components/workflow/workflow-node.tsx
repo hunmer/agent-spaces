@@ -6,6 +6,7 @@ import { Handle, NodeToolbar, Position, useConnection, useNodeConnections, useSt
 import type { NodeProps, ReactFlowState } from '@xyflow/react';
 import {
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Flag,
   Grip,
@@ -80,6 +81,8 @@ const DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR = '#f97316';
 const SOURCE_HANDLE_KEY = 'source';
 const COMPACT_NODE_ZOOM_THRESHOLD = 0.65;
 const COLLAPSED_NODE_SIZE = 56;
+// 持久化折叠状态到 nodeData 的 key：记录被折叠的 output object 复合 key
+const COLLAPSED_OUTPUT_HANDLES_KEY = '__collapsedOutputHandles';
 const showFullNodeSelector = (state: ReactFlowState) =>
   state.transform[2] >= COMPACT_NODE_ZOOM_THRESHOLD;
 const canvasZoomSelector = (state: ReactFlowState) => state.transform[2] || 1;
@@ -108,6 +111,9 @@ type PropertyModeHandle = {
   valueType?: string;
   tooltip?: string;
   depth?: number;
+  collapsible?: boolean;
+  collapsedKey?: string;
+  parentCollapsedKey?: string;
 };
 
 function getVariableContextNodeLabel(
@@ -160,6 +166,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState('');
   const [handleColorMenuId, setHandleColorMenuId] = useState<string | null>(null);
+  // 折叠状态从 nodeData 读取（持久化）；写入逻辑见 actions 之后
+  const collapsedOutputKeys = useMemo(() => {
+    const raw = nodeData[COLLAPSED_OUTPUT_HANDLES_KEY];
+    return raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? raw as Record<string, boolean>
+      : {};
+  }, [nodeData[COLLAPSED_OUTPUT_HANDLES_KEY]]);
   const [continueDialogOpen, setContinueDialogOpen] = useState(false);
   const [continuePresetId, setContinuePresetId] = useState('debug');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -245,8 +258,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       tooltip: field.tooltip,
     }));
     const outputHandles = outputFields.reduce<PropertyModeHandle[]>((acc, field, index) => {
-      const appendOutputField = (current: OutputField, parentKey: string, depth: number) => {
+      const appendOutputField = (current: OutputField, parentKey: string, depth: number, parentCollapsedKey?: string) => {
         const compositeKey = parentKey ? `${parentKey}.${current.key}` : current.key;
+        const hasChildren = current.type === 'object' && Array.isArray(current.children) && current.children.length > 0;
         acc.push({
           id: getWorkflowFieldHandleId('output', compositeKey, index),
           label: parentKey ? `↳ ${current.key}` : current.key,
@@ -256,9 +270,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           valueType: current.type,
           tooltip: current.description,
           depth,
+          collapsible: hasChildren,
+          collapsedKey: compositeKey,
+          parentCollapsedKey,
         });
-        if (current.type === 'object' && Array.isArray(current.children) && current.children.length > 0) {
-          current.children.forEach((child) => appendOutputField(child, compositeKey, depth + 1));
+        if (hasChildren) {
+          current.children!.forEach((child) => appendOutputField(child, compositeKey, depth + 1, compositeKey));
         }
       };
       appendOutputField(field, '', 0);
@@ -272,8 +289,18 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     [propertyModeHandles],
   );
   const propertyModeRightHandles = useMemo(
-    () => propertyModeHandles.filter(handle => handle.side === 'right'),
-    [propertyModeHandles],
+    () => propertyModeHandles.filter((handle) => {
+      if (handle.side !== 'right') return false;
+      // output 子属性：若任一祖先被折叠则隐藏
+      let ancestor = handle.parentCollapsedKey;
+      while (ancestor) {
+        if (collapsedOutputKeys[ancestor]) return false;
+        const ancestorHandle = propertyModeHandles.find(h => h.collapsedKey === ancestor);
+        ancestor = ancestorHandle?.parentCollapsedKey;
+      }
+      return true;
+    }),
+    [propertyModeHandles, collapsedOutputKeys],
   );
   const getHandleValueType = useCallback((nodeId: string, handleId: string | null | undefined): OutputField['type'] | undefined => {
     const node = workflowNodes.find(item => item.id === nodeId);
@@ -376,7 +403,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, inputFields.length, outputFields.length, propertyFields.length, collapsedOutputKeys]);
 
   // 属性模式：测量面板实际内容高度，动态撑开节点
   // 依赖 canShowNodeContent：缩放到图标态会卸载 panel，放大回来需重新挂载测量/监听
@@ -537,6 +564,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     nodeMinWidth,
     nodeMinHeight,
   });
+
+  // 折叠状态持久化到 nodeData
+  const toggleOutputHandleCollapsed = useCallback((collapsedKey: string) => {
+    actions.dispatchNodeUpdate({
+      [COLLAPSED_OUTPUT_HANDLES_KEY]: { ...collapsedOutputKeys, [collapsedKey]: !collapsedOutputKeys[collapsedKey] },
+    });
+  }, [actions, collapsedOutputKeys]);
 
   const dispatchResizePreview = useCallback((rect: { left: number; top: number; width: number; height: number } | null) => {
     window.dispatchEvent(new CustomEvent('workflow:node-resize-preview', { detail: { rect } }));
@@ -743,13 +777,15 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     const visualState = getPropertyHandleVisualState(handle);
     const depth = handle.depth ?? 0;
     // 子属性相对父 object 向外（远离节点边缘）偏移，形成层级区分
+    // 右侧：right 减小 = 定位点向右移；左侧：left 增大 = 定位点向左移
     const depthOffset = depth * 16;
     const horizontalStyle = handle.side === 'left'
       ? { left: depthOffset }
-      : { right: depthOffset };
+      : { right: -depthOffset };
     const transform = handle.side === 'left'
       ? 'translate(-100%, -50%)'
       : 'translate(100%, -50%)';
+    const isCollapsed = !!handle.collapsedKey && collapsedOutputKeys[handle.collapsedKey];
 
     const badge = (
       <span
@@ -764,6 +800,22 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           color: visualState.isIncompatibleTarget ? undefined : handle.color,
         }}
       >
+        {handle.collapsible ? (
+          <button
+            type="button"
+            className="nodrag nopan -ml-0.5 inline-flex h-3 w-3 shrink-0 cursor-pointer items-center justify-center hover:opacity-70"
+            title={isCollapsed ? '展开' : '收起'}
+            aria-label={isCollapsed ? '展开' : '收起'}
+            onPointerDown={(event) => { event.stopPropagation(); }}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (!handle.collapsedKey) return;
+              toggleOutputHandleCollapsed(handle.collapsedKey);
+            }}
+          >
+            {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        ) : null}
         <span>{handle.label}</span>
         {handle.valueType ? (
           <span className="rounded bg-background/60 px-1 py-px text-[9px] leading-none opacity-80">
@@ -781,7 +833,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           handle.side === 'left' ? 'left-0 justify-start' : 'right-0 justify-end',
         )}
         style={{
-          top: getHandleTop(index, total, handleCtx),
+          // 固定行高、以节点中心对称堆叠，避免按节点高度等分导致间距过大
+          top: `${handleCtx.nodeHeight / 2 + (index - (total - 1) / 2) * 28}px`,
           width: 0,
         }}
       >
@@ -824,7 +877,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       </div>
     );
-  }, [floatingHandleClassName, getPropertyHandleVisualState, handleCtx, openHandleColorMenu, renderHandleColorPopover, validatePropertyModeConnection]);
+  }, [floatingHandleClassName, getPropertyHandleVisualState, handleCtx, openHandleColorMenu, renderHandleColorPopover, validatePropertyModeConnection, collapsedOutputKeys, toggleOutputHandleCollapsed]);
 
   const renderCompatibilityHandle = useCallback((
     handleId: string,

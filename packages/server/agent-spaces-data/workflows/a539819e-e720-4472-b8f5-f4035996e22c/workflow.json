@@ -104,7 +104,10 @@
             ]
           }
         ],
-        "prompt": "{{ __data__[\"node_1782378005328_2qxags\"].prompt }}"
+        "prompt": "{{ __data__[\"node_1782378005328_2qxags\"].prompt }}",
+        "__collapsedOutputHandles": {
+          "data": false
+        }
       }
     }
   ],
@@ -118,7 +121,7 @@
     }
   ],
   "createdAt": 1781685716941,
-  "updatedAt": 1782380021403,
+  "updatedAt": 1782380981864,
   "published": false,
   "enabledPlugins": [
     "workflow.nano-banana",
