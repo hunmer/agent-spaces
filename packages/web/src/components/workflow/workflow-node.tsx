@@ -45,6 +45,7 @@ import { useWorkflowLogsCollapsed } from './workflow-logs-collapsed-context';
 import {
   HANDLE_POSITION_MAP,
   getHandleStyle,
+  getHandleTop,
   getSourceLabelStyle,
   getTargetHandleStyle,
   WORKFLOW_NODE_DRAG_HANDLE_CLASS,
@@ -56,6 +57,7 @@ import {
   EXECUTION_INPUT_FIELDS_KEY,
   EXECUTION_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
+import { getWorkflowFieldHandleId } from './workflow-field-handles';
 import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets } from './workflow-properties-utils';
 import { VariableBadgeInput } from './workflow-variable-input';
 import { WorkflowPropertiesPanel } from './workflow-properties-panel';
@@ -89,6 +91,14 @@ function getRecordValue(value: unknown): Record<string, unknown> | undefined {
     ? value as Record<string, unknown>
     : undefined;
 }
+
+type PropertyModeHandle = {
+  id: string;
+  label: string;
+  side: 'left' | 'right';
+  type: 'target' | 'source';
+  color: string;
+};
 
 function getVariableContextNodeLabel(
   nodeType: string,
@@ -197,6 +207,42 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         : prop.visibleWhen.in?.includes(nodeData[prop.visibleWhen.key])
     )) ?? []
   ), [definition?.properties, nodeData]);
+  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView;
+  const propertyModeHandles = useMemo<PropertyModeHandle[]>(() => {
+    if (!canShowPropertyNodeView) return [];
+
+    const inputHandles = inputFields.map((field, index) => ({
+      id: getWorkflowFieldHandleId('input', field.key, index),
+      label: field.key,
+      side: 'left' as const,
+      type: 'target' as const,
+      color: '#3b82f6',
+    }));
+    const propertyHandles = propertyFields.map((field, index) => ({
+      id: getWorkflowFieldHandleId('property', field.key, index),
+      label: field.label || field.key,
+      side: 'left' as const,
+      type: 'target' as const,
+      color: '#8b5cf6',
+    }));
+    const outputHandles = outputFields.map((field, index) => ({
+      id: getWorkflowFieldHandleId('output', field.key, index),
+      label: field.key,
+      side: 'right' as const,
+      type: 'source' as const,
+      color: DEFAULT_SOURCE_HANDLE_COLOR,
+    }));
+
+    return [...inputHandles, ...propertyHandles, ...outputHandles];
+  }, [canShowPropertyNodeView, inputFields, outputFields, propertyFields]);
+  const propertyModeLeftHandles = useMemo(
+    () => propertyModeHandles.filter(handle => handle.side === 'left'),
+    [propertyModeHandles],
+  );
+  const propertyModeRightHandles = useMemo(
+    () => propertyModeHandles.filter(handle => handle.side === 'right'),
+    [propertyModeHandles],
+  );
   const variableReferences = useMemo(
     () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
     [nodeData],
@@ -249,7 +295,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const canShowNodeContent = showFullNode && !isNodeCollapsed;
   const keepCustomViewMounted = hasCustomView && !isNodeCollapsed;
   const canShowVariableReferences = !isLoopBody && !hasCustomView && variableReferences.length > 0;
-  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView;
   const selectedJsonPresetId = typeof nodeData[SELECTED_JSON_PRESET_KEY] === 'string'
     ? nodeData[SELECTED_JSON_PRESET_KEY]
     : '';
@@ -551,7 +596,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     window.dispatchEvent(new CustomEvent('workflow:cancel-debug-node', { detail: { nodeId: id } }));
   }, [id]);
 
-  const renderHandleColorPopover = (handleId: string, trigger: React.ReactElement) => (
+  const renderHandleColorPopover = useCallback((handleId: string, trigger: React.ReactElement) => (
     <Popover
       open={handleColorMenuId === handleId}
       onOpenChange={(open) => {
@@ -588,8 +633,87 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           </button>
         ))}
       </PopoverContent>
-    </Popover>
-  );
+      </Popover>
+    ),
+  [handleColorMenuId, setHandleColor, t]);
+
+  const renderPropertyModeBadgeHandle = useCallback((handle: PropertyModeHandle, index: number, total: number) => {
+    const isSourceHandle = handle.type === 'source';
+    const horizontalStyle = handle.side === 'left'
+      ? { left: 0 }
+      : { right: 0 };
+    const transform = handle.side === 'left'
+      ? 'translate(-100%, -50%)'
+      : 'translate(100%, -50%)';
+
+    return (
+      <div
+        key={handle.id}
+        className={cn(
+          'pointer-events-none absolute z-30 flex',
+          handle.side === 'left' ? 'left-0 justify-start' : 'right-0 justify-end',
+        )}
+        style={{
+          top: getHandleTop(index, total, handleCtx),
+          width: 0,
+        }}
+      >
+        <div className="relative flex items-center">
+          {renderHandleColorPopover(
+            handle.id,
+            <Handle
+              id={handle.id}
+              type={handle.type}
+              position={handle.side === 'left' ? Position.Left : Position.Right}
+              isConnectable
+              className={cn('!z-30 !h-7 !w-auto !min-w-0 !rounded-full !border-0 !bg-transparent !p-0 shadow-none', floatingHandleClassName)}
+              style={{
+                ...horizontalStyle,
+                top: 0,
+                transform,
+              }}
+              onContextMenu={isSourceHandle ? (event) => openHandleColorMenu(event, handle.id) : undefined}
+            >
+              <span
+                className={cn(
+                  'pointer-events-auto inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap shadow-sm',
+                )}
+                style={{
+                  borderColor: handle.color,
+                  backgroundColor: `${handle.color}1a`,
+                  color: handle.color,
+                }}
+              >
+                {handle.label}
+              </span>
+            </Handle>,
+          )}
+        </div>
+      </div>
+    );
+  }, [floatingHandleClassName, handleCtx, openHandleColorMenu, renderHandleColorPopover]);
+
+  const renderCompatibilityHandle = useCallback((
+    handleId: string,
+    handleType: 'target' | 'source',
+    position: Position,
+    index: number,
+    total: number,
+  ) => (
+    <Handle
+      key={`${handleType}-${handleId}`}
+      id={handleId}
+      type={handleType}
+      position={position}
+      isConnectable={false}
+      className="!pointer-events-none !opacity-0 !border-0 !bg-transparent"
+      style={{
+        ...getHandleStyle(position, index, total, handleCtx),
+        width: 1,
+        height: 1,
+      }}
+    />
+  ), [handleCtx]);
 
   const nodeBody = (
     <div
@@ -645,6 +769,33 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           style={getTargetHandleStyle(handlePositions.target, handleCtx)}
         />
       )}
+      {!canShowPropertyNodeView && inputFields.map((field, index) => (
+        renderCompatibilityHandle(
+          getWorkflowFieldHandleId('input', field.key, index),
+          'target',
+          handlePositions.target,
+          index,
+          Math.max(1, inputFields.length + propertyFields.length),
+        )
+      ))}
+      {!canShowPropertyNodeView && propertyFields.map((field, index) => (
+        renderCompatibilityHandle(
+          getWorkflowFieldHandleId('property', field.key, index),
+          'target',
+          handlePositions.target,
+          inputFields.length + index,
+          Math.max(1, inputFields.length + propertyFields.length),
+        )
+      ))}
+      {!canShowPropertyNodeView && outputFields.map((field, index) => (
+        renderCompatibilityHandle(
+          getWorkflowFieldHandleId('output', field.key, index),
+          'source',
+          handlePositions.source,
+          index,
+          Math.max(1, outputFields.length),
+        )
+      ))}
       <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
         {showFullNode && hasCustomView && !isLoopBody && !isCanvasLocked ? (
           <button
@@ -780,60 +931,43 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       )}
 
-      {canShowNodeContent && canShowPropertyNodeView ? (
+      {canShowPropertyNodeView ? (
         <div ref={propertyNodeViewRef} className="relative min-h-0 flex-1 overflow-visible rounded-md">
-          {renderHandleColorPopover(
-            'floating-target',
-            <Handle
-              id="target"
-              type="target"
-              position={Position.Left}
-              isConnectable
-              className={cn('!z-30 !h-3 !w-3 !border-2 !border-blue-300 !bg-blue-500 handle-dot -translate-y-1/2', floatingHandleClassName)}
-              style={{ left: -15, top: '50%' }}
-            />,
-          )}
-          {renderHandleColorPopover(
-            'floating-source',
-            <Handle
-              id="source"
-              type="source"
-              position={Position.Right}
-              isConnectable
-              className={cn('!z-30 !h-3 !w-3 !border-2 handle-dot -translate-y-1/2', floatingHandleClassName)}
-              style={{ right: -15, top: '50%', backgroundColor: DEFAULT_SOURCE_HANDLE_COLOR, borderColor: DEFAULT_SOURCE_HANDLE_COLOR }}
-              onContextMenu={(event) => openHandleColorMenu(event, 'source')}
-            />,
-          )}
-          <div
-            className="h-full overflow-y-auto overflow-x-hidden bg-background"
-            data-workflow-property-content="true"
-          >
-            <WorkflowPropertiesPanel
-              node={{
-                id,
-                type: workflowNodeType || 'unknown',
-                label: displayLabel,
-                position: { x: 0, y: 0 },
-                data: nodeData,
-                nodeState: currentNodeState,
-                breakpoint: currentBreakpoint ?? undefined,
-                nodeColor: typeof nodeData.nodeColor === 'string' ? nodeData.nodeColor : undefined,
-              }}
-              nodes={variableContext.nodes}
-              edges={variableContext.edges}
-              variableContextWorkflow={variableContext}
-              isPreview={nodeData.isPreview === true}
-              onUpdateData={handlePropertyPanelDataChange}
-              onPreviewUpdateData={handlePropertyPanelDataChange}
-              debugNodeId={typeof nodeData.debugNodeId === 'string' ? nodeData.debugNodeId : null}
-              debugStatus={nodeData.debugStatus}
-              onDebugNode={handlePropertyPanelDebug}
-              onCancelDebug={handlePropertyPanelCancelDebug}
-              dragHandleClassName={WORKFLOW_NODE_DRAG_HANDLE_CLASS}
-              contentScrollable={false}
-            />
-          </div>
+          {showTargetHandle ? renderCompatibilityHandle('target', 'target', Position.Left, 0, 1) : null}
+          {showSourceHandle ? renderCompatibilityHandle('source', 'source', Position.Right, 0, 1) : null}
+          {propertyModeLeftHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeLeftHandles.length))}
+          {propertyModeRightHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeRightHandles.length))}
+          {canShowNodeContent ? (
+            <div
+              className="h-full overflow-y-auto overflow-x-hidden bg-background"
+              data-workflow-property-content="true"
+            >
+              <WorkflowPropertiesPanel
+                node={{
+                  id,
+                  type: workflowNodeType || 'unknown',
+                  label: displayLabel,
+                  position: { x: 0, y: 0 },
+                  data: nodeData,
+                  nodeState: currentNodeState,
+                  breakpoint: currentBreakpoint ?? undefined,
+                  nodeColor: typeof nodeData.nodeColor === 'string' ? nodeData.nodeColor : undefined,
+                }}
+                nodes={variableContext.nodes}
+                edges={variableContext.edges}
+                variableContextWorkflow={variableContext}
+                isPreview={nodeData.isPreview === true}
+                onUpdateData={handlePropertyPanelDataChange}
+                onPreviewUpdateData={handlePropertyPanelDataChange}
+                debugNodeId={typeof nodeData.debugNodeId === 'string' ? nodeData.debugNodeId : null}
+                debugStatus={nodeData.debugStatus}
+                onDebugNode={handlePropertyPanelDebug}
+                onCancelDebug={handlePropertyPanelCancelDebug}
+                dragHandleClassName={WORKFLOW_NODE_DRAG_HANDLE_CLASS}
+                contentScrollable={false}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -1111,6 +1245,10 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         .workflow-canvas-show-floating-handles .workflow-node-floating-handle,
         .workflow-canvas-show-floating-handles .workflow-node-floating-handle-label {
           opacity: 1;
+        }
+        .workflow-node-floating-handle .react-flow__handle {
+          width: auto;
+          height: auto;
         }
         .source-handle-label { position: absolute; display: flex; align-items: center; pointer-events: none; }
       `}</style>

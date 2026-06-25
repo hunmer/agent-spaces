@@ -126,6 +126,40 @@ export function useEdgeOperations({
     return changed ? { ...node, data: { ...node.data, inputFields: nextInputFields } } : node;
   }, []);
 
+  const clearFieldConnectionValue = useCallback((
+    node: Workflow['nodes'][number],
+    sourceNodeId: string,
+    sourceHandle: string | null | undefined,
+    targetHandle: string | null | undefined,
+  ): Workflow['nodes'][number] => {
+    const targetField = parseWorkflowFieldHandleId(targetHandle);
+    if (!targetField || (targetField.kind !== 'input' && targetField.kind !== 'property')) return node;
+
+    const sourceField = parseWorkflowFieldHandleId(sourceHandle);
+    const sourceKey = sourceField?.key;
+    if (!sourceKey) return node;
+    const reference = sourceField.kind === 'input'
+      ? makeInputReference(sourceNodeId, sourceKey)
+      : makeDataReference(sourceNodeId, sourceKey);
+
+    if (targetField.kind === 'property') {
+      if (node.data[targetField.key] !== reference) return node;
+      return { ...node, data: { ...node.data, [targetField.key]: '' } };
+    }
+
+    const inputFields = Array.isArray(node.data.inputFields) ? node.data.inputFields : [];
+    let changed = false;
+    const nextInputFields = inputFields.map((field) => {
+      if (!field || typeof field !== 'object') return field;
+      const key = typeof (field as { key?: unknown }).key === 'string' ? (field as { key: string }).key : '';
+      if (key !== targetField.key) return field;
+      if ((field as { value?: unknown }).value !== reference) return field;
+      changed = true;
+      return { ...field, value: '' };
+    });
+    return changed ? { ...node, data: { ...node.data, inputFields: nextInputFields } } : node;
+  }, []);
+
   const createUniqueEdgeId = useCallback((params: {
     source: string;
     target: string;
@@ -420,10 +454,24 @@ export function useEdgeOperations({
     }));
     const updated = applyEdgeChanges(allowedChanges, rfEdges);
     const remainingIds = new Set(updated.map(e => e.id));
+    const removedEdges = workflow.edges.filter(edge => !remainingIds.has(edge.id));
 
-    setWorkflow(w => w ? { ...w, edges: w.edges.filter(e => remainingIds.has(e.id)) } : null);
+    setWorkflow(w => {
+      if (!w) return null;
+      const nextNodes = removedEdges.length === 0
+        ? w.nodes
+        : w.nodes.map((node) => {
+            const relatedRemovedEdges = removedEdges.filter(edge => edge.target === node.id);
+            if (relatedRemovedEdges.length === 0) return node;
+            return relatedRemovedEdges.reduce(
+              (currentNode, edge) => clearFieldConnectionValue(currentNode, edge.source, edge.sourceHandle, edge.targetHandle),
+              node,
+            );
+          });
+      return { ...w, nodes: nextNodes, edges: w.edges.filter(e => remainingIds.has(e.id)) };
+    });
     if (hasDelete) markDirty();
-  }, [workflow, isReadOnly, pushUndo, markDirty, setWorkflow]);
+  }, [workflow, isReadOnly, pushUndo, markDirty, setWorkflow, clearFieldConnectionValue]);
 
   const handleEdgeDataUpdate = useCallback((edgeId: string, data: Record<string, unknown>) => {
     if (!workflow || isReadOnly) return;

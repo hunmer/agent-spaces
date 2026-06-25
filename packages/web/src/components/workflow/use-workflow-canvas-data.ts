@@ -16,6 +16,7 @@ import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode } from './workflow-node-types';
 import { WORKFLOW_NODE_DRAG_HANDLE_CLASS } from './workflow-node-handles';
+import { getWorkflowFieldHandleId, parseWorkflowFieldHandleId } from './workflow-field-handles';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
 const LOOP_BODY_NODE_Z_INDEX = -100;
@@ -115,6 +116,79 @@ function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: s
   const handleId = sourceHandle || DEFAULT_SOURCE_HANDLE_ID;
   const colorKey = (handleColors as Record<string, unknown>)[handleId];
   return typeof colorKey === 'string' ? NODE_COLOR_MAP[colorKey] : undefined;
+}
+
+function getWorkflowFields(value: unknown): Array<{ key: string }> {
+  return Array.isArray(value)
+    ? value.filter((field): field is { key: string } => !!field && typeof field === 'object' && typeof (field as { key?: unknown }).key === 'string')
+    : [];
+}
+
+function canShowPropertyNodeView(node: WorkflowNode, nodeDisplayMode: WorkflowNodeDisplayMode): boolean {
+  if (nodeDisplayMode !== 'properties') return false;
+  if (node.type === LOOP_BODY_NODE_TYPE) return false;
+  const definition = getNodeDefinition(node.type);
+  return !definition?.customView;
+}
+
+function getVisiblePropertyKeys(node: WorkflowNode): string[] {
+  const definition = getNodeDefinition(node.type);
+  if (!definition?.properties) return [];
+  return definition.properties
+    .filter(prop => !prop.visibleWhen || (
+      'equals' in prop.visibleWhen
+        ? node.data[prop.visibleWhen.key] === prop.visibleWhen.equals
+        : prop.visibleWhen.in?.includes(node.data[prop.visibleWhen.key])
+    ))
+    .map(prop => prop.key);
+}
+
+function getNormalizedTargetHandle(
+  node: WorkflowNode | undefined,
+  targetHandle: string | null | undefined,
+  nodeDisplayMode: WorkflowNodeDisplayMode,
+): string | undefined {
+  if (!node) return targetHandle || undefined;
+  if (!canShowPropertyNodeView(node, nodeDisplayMode)) {
+    const parsed = parseWorkflowFieldHandleId(targetHandle);
+    if (parsed?.kind === 'input' || parsed?.kind === 'property') return 'target';
+    return targetHandle || undefined;
+  }
+
+  const parsed = parseWorkflowFieldHandleId(targetHandle);
+  if (parsed?.kind === 'input' || parsed?.kind === 'property') return targetHandle || undefined;
+
+  const inputFields = getWorkflowFields(node.data.inputFields);
+  if (inputFields.length > 0) {
+    return getWorkflowFieldHandleId('input', inputFields[0].key, 0);
+  }
+  const propertyKeys = getVisiblePropertyKeys(node);
+  if (propertyKeys.length > 0) {
+    return getWorkflowFieldHandleId('property', propertyKeys[0], 0);
+  }
+  return targetHandle || 'target';
+}
+
+function getNormalizedSourceHandle(
+  node: WorkflowNode | undefined,
+  sourceHandle: string | null | undefined,
+  nodeDisplayMode: WorkflowNodeDisplayMode,
+): string | undefined {
+  if (!node) return sourceHandle || undefined;
+  if (!canShowPropertyNodeView(node, nodeDisplayMode)) {
+    const parsed = parseWorkflowFieldHandleId(sourceHandle);
+    if (parsed?.kind === 'output') return 'source';
+    return sourceHandle || undefined;
+  }
+
+  const parsed = parseWorkflowFieldHandleId(sourceHandle);
+  if (parsed?.kind === 'output') return sourceHandle || undefined;
+
+  const outputFields = getWorkflowFields(node.data.outputs);
+  if (outputFields.length > 0) {
+    return getWorkflowFieldHandleId('output', outputFields[0].key, 0);
+  }
+  return sourceHandle || 'source';
 }
 
 interface UseCanvasDataParams {
@@ -325,13 +399,16 @@ export function useCanvasData({
     const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
     return workflow.edges.filter(edge => !isHiddenWorkflowEdge(edge)).map(e => {
       const sourceNode = nodeById.get(e.source);
+      const targetNode = nodeById.get(e.target);
+      const displaySourceHandle = getNormalizedSourceHandle(sourceNode, e.sourceHandle, nodeDisplayMode);
+      const displayTargetHandle = getNormalizedTargetHandle(targetNode, e.targetHandle, nodeDisplayMode);
       return {
         id: e.id,
         source: e.source,
         target: e.target,
         type: 'custom',
-        sourceHandle: e.sourceHandle || undefined,
-        targetHandle: e.targetHandle || undefined,
+        sourceHandle: displaySourceHandle,
+        targetHandle: displayTargetHandle,
         selected: e.id === selectedEdgeId,
         data: {
           composite: e.composite,
@@ -349,7 +426,7 @@ export function useCanvasData({
         } as Record<string, unknown>,
       };
     });
-  }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType, edgeLineStyle]);
+  }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType, edgeLineStyle, nodeDisplayMode]);
 
   return { rfNodes, rfEdges, selectedNodeIdSet, executionNodeIds, executionStepByNodeId, executionStepsByNodeId, runningEdgeIds };
 }
