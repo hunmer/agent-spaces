@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getWorkflowEditorStore } from '@/stores/workflow-editor';
 import type { WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
+import { copyToClipboard } from '@/lib/utils';
 
 // ---- useWorkflowEditor ----
 
@@ -112,6 +113,41 @@ export interface ClipboardRecord {
 }
 
 const MAX_CLIPBOARD_RECORDS = 10;
+const WORKFLOW_CLIPBOARD_KIND = 'agent-spaces/workflow-nodes';
+
+interface WorkflowClipboardPayload {
+  kind: typeof WORKFLOW_CLIPBOARD_KIND;
+  version: 1;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+}
+
+function buildWorkflowClipboardPayload(nodes: WorkflowNode[], edges: WorkflowEdge[]): WorkflowClipboardPayload {
+  return {
+    kind: WORKFLOW_CLIPBOARD_KIND,
+    version: 1,
+    nodes: JSON.parse(JSON.stringify(nodes)),
+    edges: JSON.parse(JSON.stringify(edges)),
+  };
+}
+
+export function parseWorkflowClipboardText(text: string): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null {
+  if (!text.trim()) return null;
+
+  try {
+    const parsed = JSON.parse(text) as Partial<WorkflowClipboardPayload> & { nodes?: WorkflowNode[]; edges?: WorkflowEdge[] };
+    const nodes = Array.isArray(parsed.nodes) ? parsed.nodes : null;
+    const edges = Array.isArray(parsed.edges) ? parsed.edges : [];
+    if (!nodes || nodes.length === 0) return null;
+    if (parsed.kind && parsed.kind !== WORKFLOW_CLIPBOARD_KIND) return null;
+    return {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges)),
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function useClipboard() {
   const recordsRef = useRef<ClipboardRecord[]>([]);
@@ -119,16 +155,18 @@ export function useClipboard() {
 
   const copy = useCallback((nodes: WorkflowNode[], edges: WorkflowEdge[]) => {
     if (nodes.length === 0) return;
+    const payload = buildWorkflowClipboardPayload(nodes, edges);
     const record: ClipboardRecord = {
       id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      nodes: JSON.parse(JSON.stringify(nodes)),
-      edges: JSON.parse(JSON.stringify(edges)),
+      nodes: payload.nodes,
+      edges: payload.edges,
       count: nodes.length,
       label: nodes[0]?.label?.trim() || nodes[0]?.type || 'node',
     };
     const next = [record, ...recordsRef.current].slice(0, MAX_CLIPBOARD_RECORDS);
     recordsRef.current = next;
     setRecords(next);
+    void copyToClipboard(JSON.stringify(payload, null, 2)).catch(() => {});
   }, []);
 
   // record 省略时取最近一次复制

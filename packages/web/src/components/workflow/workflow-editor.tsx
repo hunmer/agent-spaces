@@ -28,7 +28,7 @@ import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, History, Waypoints, Workflow, Play, Palette, ListTree } from 'lucide-react';
-import { useEditorShortcuts, useClipboard, type ClipboardRecord } from '@/hooks/use-workflow-editor';
+import { useEditorShortcuts, useClipboard, parseWorkflowClipboardText, type ClipboardRecord } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorkflowEditorState } from './use-workflow-editor-state';
@@ -498,8 +498,20 @@ function WorkflowEditorInner({
       }
     }
 
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        const workflowClipboardData = parseWorkflowClipboardText(clipboardText);
+        if (workflowClipboardData) {
+          clipboard.copy(workflowClipboardData.nodes, workflowClipboardData.edges);
+        }
+      } catch {
+        // Browser clipboard text access is optional.
+      }
+    }
+
     pasteWorkflowNodes();
-  }, [canvas, getViewportCenter, pasteWorkflowNodes, clipboardImagePasteEnabled]);
+  }, [canvas, clipboard, getViewportCenter, pasteWorkflowNodes, clipboardImagePasteEnabled]);
 
   const moveClipboardNodesToStaging = useCallback(async (record?: ClipboardRecord) => {
     const copied = clipboard.getData(record);
