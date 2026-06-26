@@ -52,6 +52,7 @@ import {
 } from './workflow-properties-utils';
 import { replaceFieldKeyReferences } from './workflow-canvas-references';
 import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
+import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
 
 // ---- flexlayout-react default model ----
 
@@ -454,16 +455,45 @@ function WorkflowEditorInner({
     if (isWorkflowReadOnly) return;
     setWorkflow((current) => {
       if (!current) return current;
-      return {
-        ...current,
-        nodes: current.nodes.map(node => ({
+      console.debug('[FIELD-KEY-RENAME][WorkflowEditor:start]', {
+        params,
+        nodeCount: current.nodes.length,
+        edgeCount: current.edges.length,
+      });
+      const changedNodeIds: string[] = [];
+      const nextNodes = current.nodes.map((node) => {
+        const nextData = replaceFieldKeyReferences(node.data, [params]) as typeof node.data;
+        if (JSON.stringify(nextData) !== JSON.stringify(node.data)) {
+          changedNodeIds.push(node.id);
+        }
+        return {
           ...node,
-          data: replaceFieldKeyReferences(node.data, [params]) as typeof node.data,
-        })),
+          data: nextData,
+        };
+      });
+      const nextWorkflow = {
+        ...current,
+        nodes: nextNodes,
         variables: current.variables
           ? replaceFieldKeyReferences(current.variables, [params]) as typeof current.variables
           : current.variables,
       };
+      const syncedWorkflow = syncWorkflowReferenceEdges(nextWorkflow);
+      console.debug('[FIELD-KEY-RENAME][WorkflowEditor:done]', {
+        params,
+        changedNodeIds,
+        edgeCountBefore: current.edges.length,
+        edgeCountAfter: syncedWorkflow.edges.length,
+        referenceEdges: syncedWorkflow.edges
+          .filter(edge => edge.edgeKind === 'reference')
+          .map(edge => ({
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle,
+          })),
+      });
+      return syncedWorkflow;
     });
     markEditorDirty();
   }, [isWorkflowReadOnly, markEditorDirty, setWorkflow]);
@@ -912,6 +942,7 @@ function WorkflowEditorInner({
                 onNodeSelect={canvas.handleNodeSelect}
                 onNodesSelect={canvas.handleNodesSelect}
                 onNodeDataUpdate={canvas.handleNodeDataUpdate}
+                onFieldKeyRename={handleFieldKeyRename}
                 onEdgeDataUpdate={canvas.handleEdgeDataUpdate}
                 onNodesChange={canvas.handleNodesChange}
                 onNodeDragStateChange={state.setAutoSaveSuspended}

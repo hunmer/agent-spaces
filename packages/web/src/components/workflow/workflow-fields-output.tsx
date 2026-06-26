@@ -181,7 +181,15 @@ export function OutputFieldsEditor({
 		}
 		onChange(next);
 		if (patch.key !== undefined && oldKey && patch.key && oldKey !== patch.key) {
-			onFieldKeyChange?.(oldKey, patch.key, parentFieldPath ? `${parentFieldPath}.${patch.key}` : patch.key);
+			const nextFieldPath = parentFieldPath ? `${parentFieldPath}.${patch.key}` : patch.key;
+			console.debug('[FIELD-KEY-RENAME][OutputFieldsEditor]', {
+				oldKey,
+				newKey: patch.key,
+				parentFieldPath,
+				nextFieldPath,
+				depth,
+			});
+			onFieldKeyChange?.(oldKey, patch.key, nextFieldPath);
 		}
 	};
 

@@ -32,6 +32,7 @@ export function PropertyField({
   variableValue = '',
   onInsertVariable,
   workspaceId,
+  onFieldKeyChange,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -43,6 +44,7 @@ export function PropertyField({
   variableValue?: string | number;
   onInsertVariable?: (path: string) => void;
   workspaceId?: string;
+  onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
 }) {
   const disabled = Boolean(prop.readonly);
 
@@ -134,13 +136,21 @@ export function PropertyField({
       );
 
     case 'output_fields':
-      return <OutputFieldsEditor value={getOutputFields(value)} onChange={onChange} variableContext={variableContext} />;
+      return (
+        <OutputFieldsEditor
+          value={getOutputFields(value)}
+          onChange={onChange}
+          variableContext={variableContext}
+          parentFieldPath={prop.key}
+          onFieldKeyChange={onFieldKeyChange}
+        />
+      );
 
     case 'conditions':
       return <ConditionsEditor value={value} onChange={onChange} variableContext={variableContext} />;
 
     case 'array':
-      return <ArrayFieldEditor prop={prop} value={value} onChange={onChange} variableContext={variableContext} />;
+      return <ArrayFieldEditor prop={prop} value={value} onChange={onChange} variableContext={variableContext} onFieldKeyChange={onFieldKeyChange} />;
 
     case 'agent':
       return (

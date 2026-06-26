@@ -47,8 +47,8 @@
       "type": "ai_image_generate",
       "label": "AI文生图",
       "position": {
-        "x": 945,
-        "y": 330
+        "x": 990,
+        "y": 345
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -104,12 +104,12 @@
       "id": "e-node_1782383055448_start-source-node_1782383391455_irpbq4-target--reference-runtime",
       "source": "node_1782383055448_start",
       "target": "node_1782383391455_irpbq4",
+      "edgeKind": "runtime",
       "composite": {
         "generated": true,
         "hidden": false,
         "locked": false
-      },
-      "edgeKind": "runtime"
+      }
     },
     {
       "id": "e-node_1782383055448_start-output:prompt-node_1782383391455_irpbq4-property:prompt",
@@ -121,7 +121,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782440952159,
+  "updatedAt": 1782442273151,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties"

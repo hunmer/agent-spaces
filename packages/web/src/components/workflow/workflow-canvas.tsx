@@ -40,6 +40,7 @@ import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
+import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 import {
   areWorkflowHandleValueTypesCompatible,
   getNormalizedWorkflowSourceHandle,
@@ -168,6 +169,7 @@ interface WorkflowCanvasProps {
   onInsertExistingNodeOnEdge?: (edgeId: string, nodeId: string) => void;
   canvasExportRef?: React.RefObject<CanvasViewportRef | null>;
   onNodeDragStateChange?: (dragging: boolean) => void;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
 }
 
 export function WorkflowCanvas({
@@ -188,6 +190,7 @@ export function WorkflowCanvas({
   partialExecutionStartNodeId = null,
   canvasExportRef,
   onNodeDragStateChange,
+  onFieldKeyRename,
 }: WorkflowCanvasProps) {
   const { resolvedTheme } = useTheme();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -403,6 +406,7 @@ export function WorkflowCanvas({
     selectedEdgeId,
     executionLog,
     isPreview,
+    onFieldKeyRename,
     isCanvasLocked,
     execStatus,
     debugNodeId,

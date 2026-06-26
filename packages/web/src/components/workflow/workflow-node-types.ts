@@ -1,4 +1,5 @@
 import type { NodeRunState, NodeBreakpoint } from '@agent-spaces/shared';
+import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 
 export const HEADER_HEIGHT = 33;
 export const HANDLE_MARGIN = 12;
@@ -38,6 +39,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   executionStep?: import('@agent-spaces/shared').ExecutionStep;
   executionSteps?: import('@agent-spaces/shared').ExecutionStep[];
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
   layoutEngine?: string;
 };
 

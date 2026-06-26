@@ -17,6 +17,7 @@ import { getWorkflowNodeSize } from './workflow-node-size';
 import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode, type WorkflowPropertyModeBadgePosition } from './workflow-node-types';
 import { WORKFLOW_NODE_DRAG_HANDLE_CLASS } from './workflow-node-handles';
 import { getWorkflowFieldHandleId, parseWorkflowFieldHandleId } from './workflow-field-handles';
+import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
 const LOOP_BODY_NODE_Z_INDEX = -100;
@@ -215,6 +216,7 @@ interface UseCanvasDataParams {
   edgePathType?: string;
   edgeLineStyle?: string;
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
   layoutEngine?: string;
 }
 
@@ -240,6 +242,7 @@ export function useCanvasData({
   edgePathType = 'bezier',
   edgeLineStyle = 'solid',
   onAutoLayout,
+  onFieldKeyRename,
   layoutEngine = 'dagre',
 }: UseCanvasDataParams) {
   const selectedNodeIdSet = useMemo(
@@ -383,12 +386,13 @@ export function useCanvasData({
           executionStep: executionStepByNodeId.get(n.id),
           executionSteps: executionStepsByNodeId.get(n.id),
           onAutoLayout,
+          onFieldKeyRename,
           layoutEngine,
         } as Record<string, unknown>,
       };
     });
     },
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, propertyModeBadgePosition, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, propertyModeBadgePosition, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, onFieldKeyRename, layoutEngine],
   );
 
   const runningEdgeIds = useMemo(() => {

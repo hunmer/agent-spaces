@@ -21,11 +21,13 @@ export function ArrayFieldEditor({
   value,
   onChange,
   variableContext,
+  onFieldKeyChange,
 }: {
   prop: NodeProperty;
   value: unknown;
   onChange: (v: Record<string, unknown>[]) => void;
   variableContext?: WorkflowVariableContext;
+  onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
 }) {
   const items = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const fields = prop.fields ?? [];
@@ -114,6 +116,8 @@ export function ArrayFieldEditor({
                 variableValue={toVariableInputValue(item[field.key])}
                 variableContext={variableContext}
                 onInsertVariable={(path) => insertArrayVariable(index, field.key, path)}
+                parentFieldPath={`${prop.key}[${index}].${field.key}`}
+                onFieldKeyChange={onFieldKeyChange}
               />
             </div>
           ))}
@@ -140,6 +144,8 @@ export function ArrayItemField({
   variableValue = '',
   variableContext,
   onInsertVariable,
+  parentFieldPath,
+  onFieldKeyChange,
 }: {
   field: ArrayFieldItem;
   value: unknown;
@@ -148,6 +154,8 @@ export function ArrayItemField({
   variableValue?: string | number;
   variableContext?: WorkflowVariableContext;
   onInsertVariable?: (path: string) => void;
+  parentFieldPath?: string;
+  onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
 }) {
   const { draft, inputProps } = useDeferredInputDraft(
     String(value ?? ''),
@@ -200,6 +208,8 @@ export function ArrayItemField({
         value={getOutputFields(value)}
         onChange={onChange}
         variableContext={variableContext}
+        parentFieldPath={parentFieldPath}
+        onFieldKeyChange={onFieldKeyChange}
       />
     );
   }

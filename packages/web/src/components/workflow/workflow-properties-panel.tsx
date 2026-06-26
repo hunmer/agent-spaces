@@ -423,6 +423,7 @@ export function WorkflowPropertiesPanel({
                     onPreviewDataChange={handlePreviewDataChange}
                     workspaceId={workspaceId}
                     dropTargetNodeId={nodeId}
+                    onFieldKeyRename={onFieldKeyRename}
                   />
               </CardContent>
             </Card>

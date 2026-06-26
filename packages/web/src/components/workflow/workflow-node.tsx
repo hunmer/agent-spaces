@@ -1226,6 +1226,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                 isPreview={nodeData.isPreview === true}
                 onUpdateData={handlePropertyPanelDataChange}
                 onPreviewUpdateData={handlePropertyPanelDataChange}
+                onFieldKeyRename={(params) => {
+                  console.debug('[FIELD-KEY-RENAME][WorkflowNode:propertyPanel]', {
+                    nodeId: id,
+                    params,
+                    hasHandler: Boolean(nodeData.onFieldKeyRename),
+                  });
+                  nodeData.onFieldKeyRename?.(params);
+                }}
                 debugNodeId={typeof nodeData.debugNodeId === 'string' ? nodeData.debugNodeId : null}
                 debugStatus={nodeData.debugStatus}
                 onDebugNode={handlePropertyPanelDebug}

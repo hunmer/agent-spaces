@@ -91,12 +91,16 @@ export function InputFieldsSection({
         variableContext={variableContext}
         allowedFieldTypes={getNodeDefinition(node.type)?.allowedInputFieldTypes}
         showRequired
-        onFieldKeyChange={(oldKey, newKey, newPath) => onFieldKeyRename?.({
-          scope: node.type === 'start' ? 'data' : 'inputs',
-          nodeId: node.id,
-          oldPath: getOldFieldPath(oldKey, newKey, newPath),
-          newPath,
-        })}
+        onFieldKeyChange={(oldKey, newKey, newPath) => {
+          const params = {
+            scope: node.type === 'start' ? 'data' as const : 'inputs' as const,
+            nodeId: node.id,
+            oldPath: getOldFieldPath(oldKey, newKey, newPath),
+            newPath,
+          };
+          console.debug('[FIELD-KEY-RENAME][InputFieldsSection]', params);
+          onFieldKeyRename?.(params);
+        }}
       />
     </section>
   );
@@ -179,12 +183,16 @@ export function OutputFieldsSection({
         variableContext={variableContext}
         outputPreviewEnabled={data.outputPreviewEnabled !== false}
         onOutputPreviewEnabledChange={(enabled) => onDataChange('outputPreviewEnabled', enabled)}
-        onFieldKeyChange={(oldKey, newKey, newPath) => onFieldKeyRename?.({
-          scope: 'data',
-          nodeId: node.id,
-          oldPath: getOldFieldPath(oldKey, newKey, newPath),
-          newPath,
-        })}
+        onFieldKeyChange={(oldKey, newKey, newPath) => {
+          const params = {
+            scope: 'data' as const,
+            nodeId: node.id,
+            oldPath: getOldFieldPath(oldKey, newKey, newPath),
+            newPath,
+          };
+          console.debug('[FIELD-KEY-RENAME][OutputFieldsSection]', params);
+          onFieldKeyRename?.(params);
+        }}
       />
     </section>
   );

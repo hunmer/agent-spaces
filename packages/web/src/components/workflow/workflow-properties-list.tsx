@@ -10,6 +10,7 @@ import { PropertyField } from './workflow-properties-fields';
 import { useDynamicOptions } from './workflow-dynamic-options';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { getWorkflowFieldHandleId } from './workflow-field-handles';
+import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 
 interface PropertiesListProps {
   properties: NodeProperty[];
@@ -26,6 +27,14 @@ interface PropertiesListProps {
   onPreviewDataChange?: (key: string, value: unknown) => void;
   workspaceId?: string;
   dropTargetNodeId?: string;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
+}
+
+function getOldFieldPath(oldKey: string, newKey: string, newPath: string) {
+  if (newPath === newKey) return oldKey;
+  const suffix = `.${newKey}`;
+  if (!newPath.endsWith(suffix)) return oldKey;
+  return `${newPath.slice(0, -suffix.length)}.${oldKey}`;
 }
 
 export function PropertiesList({
@@ -43,6 +52,7 @@ export function PropertiesList({
   onPreviewDataChange,
   workspaceId,
   dropTargetNodeId,
+  onFieldKeyRename,
 }: PropertiesListProps) {
   // Cascade reset: when a dependency source (e.g. databaseId) changes, clear the
   // dependent keys (table -> '', columns -> '*') so stale values never survive a
@@ -90,6 +100,7 @@ export function PropertiesList({
             onPreviewDataChange={onPreviewDataChange}
             workspaceId={workspaceId}
             dropTargetNodeId={dropTargetNodeId}
+            onFieldKeyRename={onFieldKeyRename}
           />
         );
       })}
@@ -114,6 +125,7 @@ const PropertyItem = memo(function PropertyItem({
   onPreviewDataChange,
   workspaceId,
   dropTargetNodeId,
+  onFieldKeyRename,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -131,6 +143,7 @@ const PropertyItem = memo(function PropertyItem({
   onPreviewDataChange?: (key: string, value: unknown) => void;
   workspaceId?: string;
   dropTargetNodeId?: string;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
 }) {
   const variableValue = useMemo(() => toVariableInputValue(value), [toVariableInputValue, value]);
   const variableOnly = prop.inputMode === 'variable';
@@ -199,6 +212,8 @@ const PropertyItem = memo(function PropertyItem({
             onPreviewDataChange={onPreviewDataChange}
             onInsertVariable={onInsertVariable}
             workspaceId={workspaceId}
+            onFieldKeyRename={onFieldKeyRename}
+            dropTargetNodeId={dropTargetNodeId}
           />
         ) : (
           <PropertyField
@@ -212,6 +227,20 @@ const PropertyItem = memo(function PropertyItem({
             variableValue={variableValue}
             onInsertVariable={(path) => onInsertVariable(prop.key, path)}
             workspaceId={workspaceId}
+            onFieldKeyChange={(oldKey, newKey, newPath) => {
+              if (!dropTargetNodeId) return;
+              const params = {
+                scope: 'data',
+                nodeId: dropTargetNodeId,
+                oldPath: getOldFieldPath(oldKey, newKey, newPath),
+                newPath,
+              } as const;
+              console.debug('[FIELD-KEY-RENAME][PropertiesList]', {
+                propKey: prop.key,
+                params,
+              });
+              onFieldKeyRename?.(params);
+            }}
           />
         )}
       </CollapsibleContent>
@@ -238,6 +267,8 @@ function DynamicSelectField({
   onPreviewDataChange,
   onInsertVariable,
   workspaceId,
+  onFieldKeyRename,
+  dropTargetNodeId,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -248,6 +279,8 @@ function DynamicSelectField({
   onPreviewDataChange?: (key: string, value: unknown) => void;
   onInsertVariable: (key: string, path: string) => void;
   workspaceId?: string;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
+  dropTargetNodeId?: string;
 }) {
   const { options, loading } = useDynamicOptions(prop.dynamicOptions, data);
   return (
@@ -264,6 +297,20 @@ function DynamicSelectField({
           variableValue={String(value ?? '')}
           onInsertVariable={(path) => onInsertVariable(prop.key, path)}
           workspaceId={workspaceId}
+          onFieldKeyChange={(oldKey, newKey, newPath) => {
+            if (!dropTargetNodeId) return;
+            const params = {
+              scope: 'data',
+              nodeId: dropTargetNodeId,
+              oldPath: getOldFieldPath(oldKey, newKey, newPath),
+              newPath,
+            } as const;
+            console.debug('[FIELD-KEY-RENAME][DynamicSelectField]', {
+              propKey: prop.key,
+              params,
+            });
+            onFieldKeyRename?.(params);
+          }}
         />
       </div>
       {loading && (
