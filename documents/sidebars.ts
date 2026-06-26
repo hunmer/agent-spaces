@@ -54,6 +54,13 @@ const sidebars: SidebarsConfig = {
         'advanced/flutter-client',
       ],
     },
+    {
+      type: 'category',
+      label: 'Research',
+      items: [
+        'research/index',
+      ],
+    },
   ],
 };
 
