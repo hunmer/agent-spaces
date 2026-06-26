@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 255,
-        "y": 75
+        "x": 270,
+        "y": 330
       },
       "data": {
         "inputFields": [
@@ -47,13 +47,13 @@
       "type": "ai_image_generate",
       "label": "AI文生图",
       "position": {
-        "x": 975,
-        "y": 360
+        "x": 945,
+        "y": 330
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
         "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
-        "model": "gpt-image-2-all",
+        "model": "",
         "aspectRatio": "1:1",
         "n": 1,
         "outputs": [
@@ -88,48 +88,7 @@
             ]
           }
         ],
-        "prompt": "{{ __data__[\"node_1782383055448_start\"].ab }}"
-      }
-    },
-    {
-      "id": "node_1782436996966_u1khx0",
-      "type": "set_variable",
-      "label": "nodes.set_variable.label",
-      "position": {
-        "x": 180,
-        "y": 705
-      },
-      "data": {
-        "variables": [
-          {
-            "key": "name1",
-            "value": "str",
-            "id": 1782436998916
-          },
-          {
-            "key": "name2",
-            "value": "",
-            "id": 1782437007209
-          }
-        ],
-        "outputs": [
-          {
-            "key": "env",
-            "type": "object",
-            "children": [
-              {
-                "key": "name1",
-                "type": "any",
-                "children": []
-              },
-              {
-                "key": "name2",
-                "type": "any",
-                "children": []
-              }
-            ]
-          }
-        ]
+        "prompt": ""
       }
     }
   ],
@@ -150,7 +109,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782437061124,
+  "updatedAt": 1782437990382,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties"
@@ -158,5 +117,6 @@
   "enabledPlugins": [
     "workflow.ai-image"
   ],
-  "groups": []
+  "groups": [],
+  "variables": []
 }

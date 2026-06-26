@@ -469,26 +469,48 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     if (!canShowPropertyNodeView || !canShowNodeContent || typeof ResizeObserver === 'undefined') return;
     const wrapper = propertyContentRef.current;
     if (!wrapper) return;
-    const measureTarget = wrapper.firstElementChild as HTMLElement | null;
-    if (!measureTarget) return;
+    let observedTarget: HTMLElement | null = null;
+    let frame = 0;
+    const resizeObserver = new ResizeObserver(() => scheduleUpdate());
+    const observeCurrentTarget = () => {
+      const nextTarget = wrapper.firstElementChild as HTMLElement | null;
+      if (nextTarget === observedTarget) return nextTarget;
+      if (observedTarget) resizeObserver.unobserve(observedTarget);
+      observedTarget = nextTarget;
+      if (observedTarget) resizeObserver.observe(observedTarget);
+      return observedTarget;
+    };
     // 用 scrollHeight 取完整内容高度（不受外层节点高度钳制），getBoundingClientRect 在长内容时会被 flex 链路限制
     const update = () => {
+      const measureTarget = observeCurrentTarget();
+      if (!measureTarget) return;
       const next = Math.ceil(measureTarget.scrollHeight);
       if (next > 0) setMeasuredPropertyHeight(prev => (prev === next ? prev : next));
+    };
+    const scheduleUpdate = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        update();
+      });
     };
     // 首次延迟到布局稳定后测量（双 rAF 应对 panel 异步内容），ResizeObserver 负责后续变化
     const raf1 = requestAnimationFrame(() => {
       update();
-      const raf2 = requestAnimationFrame(update);
+      const raf2 = requestAnimationFrame(scheduleUpdate);
       rafCleanupRef.current = () => cancelAnimationFrame(raf2);
     });
     rafCleanupRef.current = () => cancelAnimationFrame(raf1);
-    const observer = new ResizeObserver(update);
-    observer.observe(measureTarget);
+    resizeObserver.observe(wrapper);
+    observeCurrentTarget();
+    const mutationObserver = new MutationObserver(scheduleUpdate);
+    mutationObserver.observe(wrapper, { childList: true, subtree: true });
     return () => {
       rafCleanupRef.current?.();
       rafCleanupRef.current = null;
-      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
     };
   }, [canShowPropertyNodeView, canShowNodeContent]);
 
@@ -976,6 +998,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
         ${floatingHandles ? 'workflow-node-has-floating-handles' : ''}
         ${selected || canShowPropertyNodeView ? 'workflow-node-floating-handles-visible' : ''}
+        ${!showFullNode ? WORKFLOW_NODE_DRAG_HANDLE_CLASS : ''}
         ${stateBackgroundClass}`}
       style={{
         minWidth: isNodeCollapsed ? COLLAPSED_NODE_SIZE : nodeMinWidth,
