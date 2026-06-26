@@ -30,6 +30,7 @@ import { PropertiesList } from './workflow-properties-list';
 import { InputFieldsSection, OutputFieldsSection } from './workflow-properties-io-sections';
 import { ImportDialog } from './workflow-properties-import-dialog';
 import { PresetDialog } from './workflow-properties-preset-dialog';
+import { createSetVariableOutputs } from '@/lib/workflow-nodes/definitions/flow-control';
 
 interface PropertiesPanelProps {
   node: WorkflowNode | null;
@@ -157,8 +158,15 @@ export function WorkflowPropertiesPanel({
   }, []);
   const handleDataChange = useCallback((key: string, value: unknown) => {
     if (!nodeId) return;
+    if (node?.type === 'set_variable' && key === 'variables') {
+      onUpdateData(nodeId, {
+        [key]: value,
+        outputs: createSetVariableOutputs(value, data.outputs),
+      });
+      return;
+    }
     onUpdateData(nodeId, { [key]: value });
-  }, [nodeId, onUpdateData]);
+  }, [data.outputs, node?.type, nodeId, onUpdateData]);
   const handlePreviewDataChange = useCallback((key: string, value: unknown) => {
     if (!nodeId) return;
     onPreviewUpdateData?.(nodeId, { [key]: value });

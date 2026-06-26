@@ -1,4 +1,4 @@
-import type { NodeTypeDefinition } from '@agent-spaces/shared';
+import type { NodeTypeDefinition, OutputField } from '@agent-spaces/shared';
 import {
   LOOP_BREAK_NODE_TYPE,
   LOOP_BODY_NODE_TYPE,
@@ -12,6 +12,75 @@ import { LoopBodyView } from '@/components/workflow/loop-body-view';
 import { RUN_CODE_DEFAULT_CODE, RUN_PYTHON_DEFAULT_CODE } from '../constants';
 
 const UNLIMITED_CONNECTION_COUNT = Number.MAX_SAFE_INTEGER;
+
+function normalizeSetVariablePath(path: string): string {
+  return path
+    .trim()
+    .replace(/\]\s*\[\s*/g, '.')
+    .replace(/\[\s*(["'])([^"']+)\1\s*\]/g, '.$2')
+    .replace(/\[\s*([^\]"'\s]+)\s*\]/g, '.$1')
+    .replace(/^\[\s*/, '')
+    .replace(/\s*\]$/, '')
+    .replace(/^(["'])([^"']+)\1$/, '$2')
+    .replace(/(["'])\s*\.\s*(["'])/g, '.')
+    .replace(/["']/g, '')
+    .replace(/^\./, '');
+}
+
+function getOutputFieldChildren(field: OutputField | undefined): OutputField[] {
+  return Array.isArray(field?.children) ? field.children : [];
+}
+
+function insertSetVariableOutputField(
+  fields: OutputField[],
+  path: string[],
+  existingFields: OutputField[],
+): void {
+  const [key, ...rest] = path;
+  if (!key) return;
+
+  const existing = existingFields.find(field => field.key === key);
+  let field = fields.find(item => item.key === key);
+  if (!field) {
+    field = {
+      ...existing,
+      key,
+      type: rest.length > 0 ? 'object' : existing?.type ?? 'any',
+      children: rest.length > 0 ? [] : getOutputFieldChildren(existing),
+    };
+    fields.push(field);
+  }
+
+  if (rest.length > 0) {
+    field.type = 'object';
+    field.children = getOutputFieldChildren(field);
+    insertSetVariableOutputField(field.children, rest, getOutputFieldChildren(existing));
+  }
+}
+
+export function createSetVariableOutputs(variables: unknown, currentOutputs?: unknown): OutputField[] {
+  const currentOutputFields = Array.isArray(currentOutputs)
+    ? currentOutputs.filter((field): field is OutputField => !!field && typeof field === 'object' && 'key' in field)
+    : [];
+  const currentEnv = currentOutputFields.find(field => field.key === 'env');
+  const envChildren: OutputField[] = [];
+  const items = Array.isArray(variables) ? variables : [];
+
+  for (const item of items) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    const rawKey = (item as Record<string, unknown>).key;
+    const key = typeof rawKey === 'string' ? rawKey.trim() : '';
+    const path = normalizeSetVariablePath(key).split('.').filter(Boolean);
+    insertSetVariableOutputField(envChildren, path, getOutputFieldChildren(currentEnv));
+  }
+
+  return [{
+    ...currentEnv,
+    key: 'env',
+    type: 'object',
+    children: envChildren,
+  }];
+}
 
 export const flowControlNodes: NodeTypeDefinition[] = [
   {

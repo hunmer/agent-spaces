@@ -14,7 +14,7 @@
       "data": {
         "inputFields": [
           {
-            "key": "ab",
+            "key": "prompt",
             "type": "string",
             "value": "",
             "children": []
@@ -29,10 +29,18 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 1710,
+        "y": 570
       },
-      "data": {}
+      "data": {
+        "outputs": [
+          {
+            "key": "images",
+            "type": "image[]",
+            "value": ""
+          }
+        ]
+      }
     },
     {
       "id": "node_1782383391455_irpbq4",
@@ -40,7 +48,7 @@
       "label": "AI文生图",
       "position": {
         "x": 975,
-        "y": 405
+        "y": 360
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -80,13 +88,69 @@
             ]
           }
         ],
-        "prompt": ""
+        "prompt": "{{ __data__[\"node_1782383055448_start\"].ab }}"
+      }
+    },
+    {
+      "id": "node_1782436996966_u1khx0",
+      "type": "set_variable",
+      "label": "nodes.set_variable.label",
+      "position": {
+        "x": 180,
+        "y": 705
+      },
+      "data": {
+        "variables": [
+          {
+            "key": "name1",
+            "value": "str",
+            "id": 1782436998916
+          },
+          {
+            "key": "name2",
+            "value": "",
+            "id": 1782437007209
+          }
+        ],
+        "outputs": [
+          {
+            "key": "env",
+            "type": "object",
+            "children": [
+              {
+                "key": "name1",
+                "type": "any",
+                "children": []
+              },
+              {
+                "key": "name2",
+                "type": "any",
+                "children": []
+              }
+            ]
+          }
+        ]
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1782383055448_start-output:ab-node_1782383391455_irpbq4-property:prompt",
+      "source": "node_1782383055448_start",
+      "target": "node_1782383391455_irpbq4",
+      "sourceHandle": "output:ab",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782383391455_irpbq4-output:data.images-node_1782383055448_end-output:images",
+      "source": "node_1782383391455_irpbq4",
+      "target": "node_1782383055448_end",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "output:images"
+    }
+  ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782383411204,
+  "updatedAt": 1782437061124,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties"
