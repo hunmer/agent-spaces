@@ -412,6 +412,7 @@ export function useCanvasData({
       const targetNode = nodeById.get(e.target);
       const displaySourceHandle = getNormalizedSourceHandle(sourceNode, e.sourceHandle, nodeDisplayMode);
       const displayTargetHandle = getNormalizedTargetHandle(targetNode, e.targetHandle, nodeDisplayMode);
+      const shouldPreferDashedLine = nodeDisplayMode === 'properties';
       return {
         id: e.id,
         source: e.source,
@@ -432,7 +433,8 @@ export function useCanvasData({
           canDeleteEdge: !isCanvasLocked,
           edgePathType,
           edgeOwnLineStyle: e.edgeLineStyle,
-          edgeLineStyle: e.edgeLineStyle || edgeLineStyle,
+          edgeLineStyle: e.edgeLineStyle || (shouldPreferDashedLine ? 'dashed' : edgeLineStyle),
+          preferDashedLine: shouldPreferDashedLine,
         } as Record<string, unknown>,
       };
     });

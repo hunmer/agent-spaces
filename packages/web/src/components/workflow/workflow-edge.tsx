@@ -58,6 +58,7 @@ function WorkflowEdgeComponent({
   const edgePathType = (data as Record<string, unknown>)?.edgePathType as string || 'bezier';
   const edgeOwnLineStyle = (data as Record<string, unknown>)?.edgeOwnLineStyle;
   const edgeLineStyle = (data as Record<string, unknown>)?.edgeLineStyle === 'dashed' ? 'dashed' : 'solid';
+  const preferDashedLine = (data as Record<string, unknown>)?.preferDashedLine === true;
   const edgeColor = (data as Record<string, unknown>)?.edgeColor as string | undefined;
   const startLabel = resolveText((data as Record<string, unknown>)?.startLabel);
   const middleLabel = resolveText((data as Record<string, unknown>)?.middleLabel);
@@ -165,7 +166,7 @@ function WorkflowEdgeComponent({
         style={{
           stroke: isNodeDropTarget ? 'var(--foreground)' : selected ? 'var(--ring)' : (isLocked ? 'rgba(74, 144, 164, 0.9)' : edgeColor || 'var(--primary)'),
           strokeWidth: isNodeDropTarget ? 4 : selected ? 3.5 : (isGenerated ? 2 : 2.5),
-          strokeDasharray: isLocked && !isLoopBodyEdge ? '4 2' : edgeLineStyle === 'dashed' ? '6 4' : 'none',
+          strokeDasharray: isLocked && !isLoopBodyEdge ? '4 2' : (preferDashedLine || edgeLineStyle === 'dashed') ? '6 4' : 'none',
           filter: isNodeDropTarget || selected ? `drop-shadow(0 0 4px ${edgeColor || 'var(--primary)'})` : 'none',
           transition: 'stroke 0.2s ease, stroke-width 0.2s ease, stroke-dasharray 0.3s ease, filter 0.2s ease',
         }}
