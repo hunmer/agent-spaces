@@ -795,7 +795,7 @@
         }
       },
       "outputs": {
-        "items": "资源列表（图片/视频）"
+        "urls": "URL 地址数组"
       }
     },
     "music_player": {

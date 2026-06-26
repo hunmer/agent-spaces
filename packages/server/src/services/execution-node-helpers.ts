@@ -425,6 +425,32 @@ export function getStepInput(node: WorkflowNode, data: Record<string, any>): Rec
   return data;
 }
 
+export function applyNodeOutputMiddleware(output: any, data: Record<string, any>): any {
+  const middleware = data.outputMiddleware;
+  if (!middleware || typeof middleware !== 'object') return output;
+
+  if ((middleware as { type?: unknown }).type === 'arrayItemField') {
+    const { sourceKey, itemKey, targetKey } = middleware as {
+      sourceKey?: unknown;
+      itemKey?: unknown;
+      targetKey?: unknown;
+    };
+    if (typeof sourceKey !== 'string' || typeof itemKey !== 'string' || typeof targetKey !== 'string') {
+      return output;
+    }
+    const source = data[sourceKey];
+    return {
+      [targetKey]: Array.isArray(source)
+        ? source
+          .map((item: unknown) => item && typeof item === 'object' ? (item as Record<string, unknown>)[itemKey] : undefined)
+          .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+        : [],
+    };
+  }
+
+  return output;
+}
+
 export function buildOutputObject(outputs: OutputField[] | undefined): Record<string, any> | null {
   if (!Array.isArray(outputs) || outputs.length === 0) return null;
   const result: Record<string, any> = {};

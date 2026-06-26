@@ -53,6 +53,7 @@ import {
   buildOutputObject,
   getFirstObjectOutputKey,
   getStepInput,
+  applyNodeOutputMiddleware,
 } from './execution-node-helpers.js';
 import type {
   ExecutionManagerDeps,
@@ -825,7 +826,10 @@ export class ExecutionManager {
       if (dryRunOutput !== undefined) appendLog('info', 'Dry run output override used');
       const presetOutput = dryRunOutput === undefined ? this.getSelectedJsonPresetOutput(node) : undefined;
       if (presetOutput !== undefined) appendLog('info', 'JSON preset output used');
-      const result = dryRunOutput ?? presetOutput ?? await this.dispatchNode(session, node, resolvedData, appendLog);
+      const result = dryRunOutput ?? presetOutput ?? applyNodeOutputMiddleware(
+        await this.dispatchNode(session, node, resolvedData, appendLog),
+        resolvedData,
+      );
       if (session.stopRequested) return 'interrupted';
 
       step.finishedAt = Date.now();

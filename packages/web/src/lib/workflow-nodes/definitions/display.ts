@@ -26,6 +26,8 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'Image',
     description: 'nodes.gallery_preview.description',
+    readonlyOutputs: true,
+    outputMiddleware: { type: 'arrayItemField', sourceKey: 'items', itemKey: 'src', targetKey: 'urls' },
     customView: GalleryPreviewView,
     customViewMinSize: { width: 220, height: 180 },
     properties: [
@@ -54,7 +56,7 @@ export const displayNodes: NodeTypeDefinition[] = [
       },
     ],
     outputs: [
-      { key: 'items', type: 'array', description: 'nodes.gallery_preview.outputs.items' },
+      { key: 'urls', type: 'string[]', description: 'nodes.gallery_preview.outputs.urls' },
     ],
   },
   {
@@ -63,6 +65,7 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'Music',
     description: 'nodes.music_player.description',
+    readonlyOutputs: true,
     customView: MusicPlayerView,
     customViewMinSize: { width: 260, height: 150 },
     properties: [
@@ -102,6 +105,7 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'Table',
     description: 'nodes.table_display.description',
+    readonlyOutputs: true,
     customView: TableDisplayView,
     customViewMinSize: { width: 320, height: 200 },
     properties: [
@@ -164,6 +168,7 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'Code2',
     description: 'nodes.code_render.description',
+    readonlyOutputs: true,
     customView: CodeRenderView,
     customViewMinSize: { width: 280, height: 180 },
     properties: [
@@ -197,6 +202,7 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'StickyNote',
     description: 'nodes.sticky_note.description',
+    readonlyOutputs: true,
     customView: StickyNoteView,
     customViewMinSize: { width: 180, height: 120 },
     properties: [
@@ -211,6 +217,7 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'AlignLeft',
     description: 'nodes.markdown.description',
+    readonlyOutputs: true,
     customView: MarkdownNodeView,
     customViewMinSize: { width: 220, height: 150 },
     properties: [
@@ -225,6 +232,7 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'FileText',
     description: 'nodes.file_display.description',
+    readonlyOutputs: true,
     customView: FileDisplayView,
     customViewMinSize: { width: 260, height: 120 },
     properties: [

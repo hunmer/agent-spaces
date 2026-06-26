@@ -163,6 +163,7 @@ function createDefaultNodeData(definition: NodeTypeDefinition | undefined): Reco
     if (property.default !== undefined) data[property.key] = clone(property.default)
   }
   if (definition?.outputs?.length) data.outputs = clone(definition.outputs)
+  if (definition?.outputMiddleware) data.outputMiddleware = clone(definition.outputMiddleware)
   return data
 }
 

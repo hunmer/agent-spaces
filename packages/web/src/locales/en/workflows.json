@@ -795,7 +795,7 @@
         }
       },
       "outputs": {
-        "items": "Resource list (images/videos)"
+        "urls": "Resource URL list"
       }
     },
     "music_player": {

@@ -276,6 +276,13 @@ export interface NodeHandleConfig {
   }
 }
 
+export interface WorkflowNodeOutputMiddleware {
+  type: 'arrayItemField'
+  sourceKey: string
+  itemKey: string
+  targetKey: string
+}
+
 export interface NodeTypeDefinition {
   type: string
   label: string
@@ -288,6 +295,8 @@ export interface NodeTypeDefinition {
   /** 限制本节点「输入字段」允许的输出类型；未声明则允许全部 */
   allowedInputFieldTypes?: OutputField['type'][]
   outputs?: OutputField[]
+  readonlyOutputs?: boolean
+  outputMiddleware?: WorkflowNodeOutputMiddleware
   customView?: unknown
   customViewMinSize?: { width?: number; height?: number }
   manualCreate?: boolean

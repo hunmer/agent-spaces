@@ -104,7 +104,7 @@ export function WorkflowPropertiesPanel({
     : '';
   const selectedJsonPreset = jsonPresets.find(preset => preset.id === selectedJsonPresetId) ?? null;
   const canEditInputFields = Boolean(definition?.allowInputFields && node?.type !== 'end');
-  const canEditOutputFields = Boolean(node && node.type !== 'start');
+  const canEditOutputFields = Boolean(node && node.type !== 'start' && definition?.readonlyOutputs !== true);
   const canEditDelay = Boolean(node && node.type !== 'start' && node.type !== 'end');
   const canDebugSelectedNode = Boolean(node && definition?.debuggable !== false && node.type !== 'start' && node.type !== 'end');
   const isDebugging = Boolean(node && debugNodeId === node.id && debugStatus === 'running');

@@ -127,9 +127,9 @@
       "data": {
         "outputs": [
           {
-            "key": "items",
+            "key": "urls",
             "type": "array",
-            "description": "nodes.gallery_preview.outputs.items"
+            "description": "nodes.gallery_preview.outputs.urls"
           }
         ],
         "items": [
@@ -156,9 +156,9 @@
       "data": {
         "outputs": [
           {
-            "key": "items",
+            "key": "urls",
             "type": "array",
-            "description": "nodes.gallery_preview.outputs.items"
+            "description": "nodes.gallery_preview.outputs.urls"
           }
         ],
         "items": [
@@ -197,7 +197,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782457069572,
+  "updatedAt": 1782457584827,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
