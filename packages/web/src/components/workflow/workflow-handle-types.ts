@@ -41,6 +41,22 @@ function normalizeWorkflowHandleValueType(type: string | undefined): OutputField
   return type as OutputField['type'];
 }
 
+function getPropertyRootKey(key: string): string {
+  const dotIndex = key.indexOf('.');
+  const bracketIndex = key.indexOf('[');
+  const indexes = [dotIndex, bracketIndex].filter(index => index >= 0);
+  return indexes.length > 0 ? key.slice(0, Math.min(...indexes)) : key;
+}
+
+function getArrayItemFieldKey(key: string, rootKey: string): string | undefined {
+  const prefix = `${rootKey}[`;
+  if (!key.startsWith(prefix)) return undefined;
+  const closeIndex = key.indexOf(']');
+  if (closeIndex < prefix.length || key[closeIndex + 1] !== '.') return undefined;
+  const rest = key.slice(closeIndex + 2);
+  return rest.split('.')[0] || undefined;
+}
+
 function isArrayLikeWorkflowHandleType(type: string | undefined): boolean {
   return type === 'array'
     || type === 'string[]'
@@ -87,14 +103,23 @@ export function getWorkflowHandleValueType(
   }
 
   const definition = getNodeDefinition(node.type);
+  const propertyRootKey = getPropertyRootKey(parsed.key);
   const property = definition?.properties?.find(prop => {
-    if (prop.key !== parsed.key) return false;
+    if (prop.key !== propertyRootKey) return false;
     if (!prop.visibleWhen) return true;
     const actual = node.data?.[prop.visibleWhen.key];
     return 'equals' in prop.visibleWhen
       ? actual === prop.visibleWhen.equals
       : prop.visibleWhen.in?.includes(actual);
   });
+  const arrayItemFieldKey = property ? getArrayItemFieldKey(parsed.key, property.key) : undefined;
+  if (property?.type === 'array' && arrayItemFieldKey) {
+    const itemField = property.fields?.find(field => field.key === arrayItemFieldKey);
+    if (!itemField) return undefined;
+    if (itemField.dataType) return mapPropertyDataTypeToWorkflowHandleType(itemField.dataType);
+    if (Array.isArray(property.itemTemplate?.[itemField.key])) return 'any[]';
+    return mapPropertyDataTypeToWorkflowHandleType(itemField.type);
+  }
   return mapPropertyDataTypeToWorkflowHandleType(property ? getEffectiveDataType(property) : undefined);
 }
 

@@ -178,8 +178,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const inputFieldsSignature = useMemo(() => getWorkflowFieldsSignature(inputFields), [inputFields]);
   const outputFieldsSignature = useMemo(() => getWorkflowFieldsSignature(outputFields), [outputFields]);
   const propertyFieldsSignature = useMemo(
-    () => propertyFields.map((field, index) => `${index}:${field.key}:${getEffectiveDataType(field)}`).join('|'),
-    [propertyFields],
+    () => propertyFields.map((field, index) => {
+      const value = nodeData[field.key];
+      const itemCount = field.type === 'array' && Array.isArray(value) ? value.length : 0;
+      const childKeys = field.fields?.map(child => child.key).join(',') ?? '';
+      return `${index}:${field.key}:${getEffectiveDataType(field)}:${itemCount}:${childKeys}`;
+    }).join('|'),
+    [nodeData, propertyFields],
   );
   const collapsedOutputKeysSignature = useMemo(
     () => Object.entries(collapsedOutputKeys)

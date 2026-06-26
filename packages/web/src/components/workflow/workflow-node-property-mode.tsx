@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Handle, Position, type ConnectionState } from '@xyflow/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { WorkflowNode as SharedWorkflowNode, DataType } from '@agent-spaces/shared';
+import type { WorkflowNode as SharedWorkflowNode, DataType, ArrayFieldItem } from '@agent-spaces/shared';
 import type { OutputField } from '@agent-spaces/shared';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,8 @@ export interface PropertyModeField {
   tooltip?: string;
   type: string;
   dataType?: DataType;
+  fields?: ArrayFieldItem[];
+  itemTemplate?: Record<string, unknown>;
 }
 
 export interface UseWorkflowNodePropertyModeParams {
@@ -56,6 +58,20 @@ type VisualState = {
   isIncompatibleTarget: boolean;
   sourceType: OutputField['type'] | undefined;
 };
+
+function getPropertyArrayItems(data: unknown, key: string): Record<string, unknown>[] {
+  const record = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+  const value = record[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item))
+    : [];
+}
+
+function getArrayItemFieldValueType(field: ArrayFieldItem, template: Record<string, unknown> | undefined): OutputField['type'] | undefined {
+  if (field.dataType) return mapPropertyDataTypeToWorkflowHandleType(field.dataType);
+  if (Array.isArray(template?.[field.key])) return 'any[]';
+  return mapPropertyDataTypeToWorkflowHandleType(field.type);
+}
 
 /**
  * 属性模式（nodeDisplayMode === 'properties'）下的 handle 计算 + badge 渲染。
@@ -97,15 +113,42 @@ export function useWorkflowNodePropertyMode(params: UseWorkflowNodePropertyModeP
       valueType: field.type,
       tooltip: field.description,
     }));
-    const propertyHandles = propertyFields.map((field, index) => ({
-      id: getWorkflowFieldHandleId('property', field.key, index),
-      label: field.label || field.key,
-      side: 'left' as const,
-      type: 'target' as const,
-      color: '#8b5cf6',
-      valueType: mapPropertyDataTypeToWorkflowHandleType(getEffectiveDataType(field)),
-      tooltip: field.tooltip,
-    }));
+    const currentNode = workflowNodes.find(node => node.id === id);
+    const propertyHandles = propertyFields.flatMap<PropertyModeHandle>((field, index) => {
+      const items = field.type === 'array' ? getPropertyArrayItems(currentNode?.data, field.key) : [];
+      const hasArrayItemFields = items.length > 0 && Array.isArray(field.fields) && field.fields.length > 0;
+      const handles: PropertyModeHandle[] = [{
+        id: getWorkflowFieldHandleId('property', field.key, index),
+        label: field.label || field.key,
+        side: 'left' as const,
+        type: 'target' as const,
+        color: '#8b5cf6',
+        valueType: mapPropertyDataTypeToWorkflowHandleType(getEffectiveDataType(field)),
+        tooltip: field.tooltip,
+        depth: 0,
+        collapsible: hasArrayItemFields,
+        collapsedKey: hasArrayItemFields ? field.key : undefined,
+      }];
+
+      items.forEach((_, itemIndex) => {
+        field.fields?.forEach((itemField) => {
+          const compositeKey = `${field.key}[${itemIndex}].${itemField.key}`;
+          handles.push({
+            id: getWorkflowFieldHandleId('property', compositeKey),
+            label: `→ ${itemIndex + 1}.${itemField.label || itemField.key}`,
+            side: 'left' as const,
+            type: 'target' as const,
+            color: '#8b5cf6',
+            valueType: getArrayItemFieldValueType(itemField, field.itemTemplate),
+            tooltip: itemField.placeholder,
+            depth: 1,
+            parentCollapsedKey: field.key,
+          });
+        });
+      });
+
+      return handles;
+    });
     const outputHandles = outputFields.reduce<PropertyModeHandle[]>((acc, field, index) => {
       const appendOutputField = (current: OutputField, parentKey: string, depth: number, parentCollapsedKey?: string) => {
         const compositeKey = parentKey ? `${parentKey}.${current.key}` : current.key;
@@ -132,7 +175,7 @@ export function useWorkflowNodePropertyMode(params: UseWorkflowNodePropertyModeP
     }, []);
 
     return [...inputHandles, ...propertyHandles, ...outputHandles];
-  }, [canShowPropertyNodeView, inputFields, outputFields, propertyFields, workflowNodeType]);
+  }, [canShowPropertyNodeView, id, inputFields, outputFields, propertyFields, workflowNodeType, workflowNodes]);
 
   // output 子属性：若任一祖先被折叠则隐藏
   const isOutputHandleVisible = useCallback((handle: PropertyModeHandle) => {

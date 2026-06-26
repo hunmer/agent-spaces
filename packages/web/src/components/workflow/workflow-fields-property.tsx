@@ -25,14 +25,15 @@ export function PropertyField({
   prop,
   value,
   onChange,
-  onPreviewChange,
-  previewMode = false,
+  onPreviewChange: _onPreviewChange,
+  previewMode: _previewMode = false,
   variableContext,
   variableMode = false,
   variableValue = '',
   onInsertVariable,
   workspaceId,
   onFieldKeyChange,
+  dropTargetNodeId,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -45,6 +46,7 @@ export function PropertyField({
   onInsertVariable?: (path: string) => void;
   workspaceId?: string;
   onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
+  dropTargetNodeId?: string;
 }) {
   const disabled = Boolean(prop.readonly);
 
@@ -150,7 +152,7 @@ export function PropertyField({
       return <ConditionsEditor value={value} onChange={onChange} variableContext={variableContext} />;
 
     case 'array':
-      return <ArrayFieldEditor prop={prop} value={value} onChange={onChange} variableContext={variableContext} onFieldKeyChange={onFieldKeyChange} />;
+      return <ArrayFieldEditor prop={prop} value={value} onChange={onChange} variableContext={variableContext} onFieldKeyChange={onFieldKeyChange} dropTargetNodeId={dropTargetNodeId} />;
 
     case 'agent':
       return (

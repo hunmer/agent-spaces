@@ -227,6 +227,7 @@ const PropertyItem = memo(function PropertyItem({
             variableValue={variableValue}
             onInsertVariable={(path) => onInsertVariable(prop.key, path)}
             workspaceId={workspaceId}
+            dropTargetNodeId={dropTargetNodeId}
             onFieldKeyChange={(oldKey, newKey, newPath) => {
               if (!dropTargetNodeId) return;
               const params = {
@@ -297,6 +298,7 @@ function DynamicSelectField({
           variableValue={String(value ?? '')}
           onInsertVariable={(path) => onInsertVariable(prop.key, path)}
           workspaceId={workspaceId}
+          dropTargetNodeId={dropTargetNodeId}
           onFieldKeyChange={(oldKey, newKey, newPath) => {
             if (!dropTargetNodeId) return;
             const params = {

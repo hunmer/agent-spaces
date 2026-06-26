@@ -45,13 +45,21 @@ function collectReferencesFromValue(
   targetNodeId: string,
   targetHandle: string,
   seen = new Set<unknown>(),
+  path = '',
 ): ReferenceEdge[] {
+  const parsedTargetHandle = parseWorkflowFieldHandleId(targetHandle);
+  const getNestedTargetHandle = (nestedPath: string) => {
+    if (!nestedPath || parsedTargetHandle?.kind !== 'property') return targetHandle;
+    const rootPath = parsedTargetHandle.key;
+    return getWorkflowFieldHandleId('property', `${rootPath}${nestedPath.startsWith('[') ? '' : '.'}${nestedPath}`);
+  };
+
   if (typeof value === 'string') {
     return extractNodeScopedReferences(value).map((reference) => ({
       source: reference.nodeId,
       target: targetNodeId,
       sourceHandle: getWorkflowFieldHandleId(reference.scope === 'inputs' ? 'input' : 'output', reference.fieldPath),
-      targetHandle,
+      targetHandle: getNestedTargetHandle(path),
     }));
   }
 
@@ -59,11 +67,17 @@ function collectReferencesFromValue(
   seen.add(value);
 
   if (Array.isArray(value)) {
-    return value.flatMap(item => collectReferencesFromValue(item, targetNodeId, targetHandle, seen));
+    return value.flatMap((item, index) => collectReferencesFromValue(item, targetNodeId, targetHandle, seen, `${path}[${index}]`));
   }
 
-  return Object.values(value as Record<string, unknown>)
-    .flatMap(item => collectReferencesFromValue(item, targetNodeId, targetHandle, seen));
+  return Object.entries(value as Record<string, unknown>)
+    .flatMap(([key, item]) => collectReferencesFromValue(
+      item,
+      targetNodeId,
+      targetHandle,
+      seen,
+      path ? `${path}.${key}` : key,
+    ));
 }
 
 function collectWorkflowReferenceEdges(nodes: Workflow['nodes']): ReferenceEdge[] {

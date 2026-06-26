@@ -22,7 +22,7 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 1755,
+        "x": 1815,
         "y": 450
       },
       "data": {
@@ -40,7 +40,7 @@
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
       "position": {
-        "x": 1110,
+        "x": 1140,
         "y": 345
       },
       "data": {
@@ -82,7 +82,7 @@
           }
         ],
         "prompt": "{{ __data__[\"node_1782455127220_7p3l9h\"].env.prompt }}",
-        "images": ""
+        "images": "{{ __data__[\"node_1782458900764_haa7t9\"].result }}"
       }
     },
     {
@@ -121,8 +121,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": -69.96978351761669,
-        "y": 1019.911742575483
+        "x": -85.64975989725178,
+        "y": 1001.9917695701859
       },
       "data": {
         "outputs": [
@@ -197,11 +197,11 @@
       "data": {
         "arrays": [
           {
-            "array": "",
+            "array": "{{ __data__[\"node_1782458233136_nf1k8u\"].urls }}",
             "id": 1782459092846
           },
           {
-            "array": [],
+            "array": "{{ __data__[\"node_1782458248440_60mfkr\"].urls }}",
             "id": 1782459093806
           }
         ],
@@ -209,7 +209,7 @@
         "outputs": [
           {
             "key": "result",
-            "type": "any[]"
+            "type": "string[]"
           }
         ]
       }
@@ -234,10 +234,75 @@
         "hidden": false,
         "locked": false
       }
+    },
+    {
+      "id": "e-node_1782458248440_60mfkr-output:urls-node_1782458900764_haa7t9-property:arrays[1].array",
+      "source": "node_1782458248440_60mfkr",
+      "target": "node_1782458900764_haa7t9",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "property:arrays[1].array"
+    },
+    {
+      "id": "e-node_1782458248440_60mfkr-source-node_1782458900764_haa7t9-target--reference-runtime",
+      "source": "node_1782458248440_60mfkr",
+      "target": "node_1782458900764_haa7t9",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782458233136_nf1k8u-output:urls-node_1782458900764_haa7t9-property:arrays[0].array",
+      "source": "node_1782458233136_nf1k8u",
+      "target": "node_1782458900764_haa7t9",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "property:arrays[0].array"
+    },
+    {
+      "id": "e-node_1782458233136_nf1k8u-source-node_1782458900764_haa7t9-target--reference-runtime",
+      "source": "node_1782458233136_nf1k8u",
+      "target": "node_1782458900764_haa7t9",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782458900764_haa7t9-output:result-node_1782455101134_xvs0wx-property:images",
+      "source": "node_1782458900764_haa7t9",
+      "target": "node_1782455101134_xvs0wx",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:images"
+    },
+    {
+      "id": "e-node_1782458900764_haa7t9-source-node_1782455101134_xvs0wx-target--reference-runtime",
+      "source": "node_1782458900764_haa7t9",
+      "target": "node_1782455101134_xvs0wx",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782455101134_xvs0wx-output:data.images-node_1782383055448_end-output:images",
+      "source": "node_1782455101134_xvs0wx",
+      "target": "node_1782383055448_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "output:images"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782459104295,
+  "updatedAt": 1782459881323,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",

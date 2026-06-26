@@ -49,6 +49,38 @@ interface UseEdgeOperationsParams {
   selectedNodeIds?: string[];
 }
 
+function parsePropertyPath(path: string): Array<string | number> {
+  const segments: Array<string | number> = [];
+  for (const match of path.matchAll(/([^[.\]]+)|\[(\d+)\]/g)) {
+    if (match[1]) segments.push(match[1]);
+    else if (match[2]) segments.push(Number(match[2]));
+  }
+  return segments;
+}
+
+function getValueAtPath(value: unknown, path: Array<string | number>): unknown {
+  return path.reduce<unknown>((current, segment) => {
+    if (current == null) return undefined;
+    if (typeof segment === 'number') return Array.isArray(current) ? current[segment] : undefined;
+    return typeof current === 'object' ? (current as Record<string, unknown>)[segment] : undefined;
+  }, value);
+}
+
+function setValueAtPath(value: unknown, path: Array<string | number>, nextValue: unknown): unknown {
+  if (path.length === 0) return nextValue;
+  const [segment, ...rest] = path;
+  if (typeof segment === 'number') {
+    const next = Array.isArray(value) ? [...value] : [];
+    next[segment] = setValueAtPath(next[segment], rest, nextValue);
+    return next;
+  }
+  const current = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return {
+    ...current,
+    [segment]: setValueAtPath(current[segment], rest, nextValue),
+  };
+}
+
 export function useEdgeOperations({
   workflow, isReadOnly, setWorkflow, markDirty, pushUndo, selectedNodeId = null, selectedNodeIds = [],
 }: UseEdgeOperationsParams) {
@@ -115,8 +147,9 @@ export function useEdgeOperations({
       : makeDataReference(sourceNodeId, sourceKey);
 
     if (targetField.kind === 'property') {
-      if (node.data[targetField.key] === reference) return node;
-      return { ...node, data: { ...node.data, [targetField.key]: reference } };
+      const path = parsePropertyPath(targetField.key);
+      if (getValueAtPath(node.data, path) === reference) return node;
+      return { ...node, data: setValueAtPath(node.data, path, reference) as Workflow['nodes'][number]['data'] };
     }
 
     const inputFields = Array.isArray(node.data.inputFields) ? node.data.inputFields : [];
@@ -149,8 +182,9 @@ export function useEdgeOperations({
       : makeDataReference(sourceNodeId, sourceKey);
 
     if (targetField.kind === 'property') {
-      if (node.data[targetField.key] !== reference) return node;
-      return { ...node, data: { ...node.data, [targetField.key]: '' } };
+      const path = parsePropertyPath(targetField.key);
+      if (getValueAtPath(node.data, path) !== reference) return node;
+      return { ...node, data: setValueAtPath(node.data, path, '') as Workflow['nodes'][number]['data'] };
     }
 
     const inputFields = Array.isArray(node.data.inputFields) ? node.data.inputFields : [];

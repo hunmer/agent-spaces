@@ -15,6 +15,7 @@ import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
 import { OutputFieldsEditor } from './workflow-fields-output';
 import { useDeferredInputDraft } from './workflow-fields-debounced';
+import { getWorkflowFieldHandleId } from './workflow-field-handles';
 
 export function ArrayFieldEditor({
   prop,
@@ -22,12 +23,14 @@ export function ArrayFieldEditor({
   onChange,
   variableContext,
   onFieldKeyChange,
+  dropTargetNodeId,
 }: {
   prop: NodeProperty;
   value: unknown;
   onChange: (v: Record<string, unknown>[]) => void;
   variableContext?: WorkflowVariableContext;
   onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
+  dropTargetNodeId?: string;
 }) {
   const items = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const fields = prop.fields ?? [];
@@ -96,7 +99,13 @@ export function ArrayFieldEditor({
             <Trash2 className="h-3 w-3" />
           </button>
           {fields.map(field => (
-            <div key={field.key} className="space-y-0.5">
+            <div
+              key={field.key}
+              className="space-y-0.5"
+              data-workflow-node-id={dropTargetNodeId}
+              data-workflow-handle-id={dropTargetNodeId ? getWorkflowFieldHandleId('property', `${prop.key}[${index}].${field.key}`) : undefined}
+              data-workflow-handle-type={dropTargetNodeId ? 'target' : undefined}
+            >
               <div className="flex items-center gap-1 pr-5">
                 <Label className="flex-1 text-[10px] text-muted-foreground">{field.label}</Label>
                 <button
