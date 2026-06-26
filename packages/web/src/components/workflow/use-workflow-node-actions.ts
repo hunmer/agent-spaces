@@ -33,10 +33,20 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
     }));
   }, [id, isCanvasLocked]);
 
-  const handleDelete = useCallback(() => {
+  const dispatchDeleteNode = useCallback((reconnect?: boolean) => {
     if (isCanvasLocked || isDeleteDisabled) return;
-    window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
+    window.dispatchEvent(new CustomEvent('workflow:delete-node', {
+      detail: { nodeId: id, ...(typeof reconnect === 'boolean' ? { reconnect } : {}) },
+    }));
   }, [id, isCanvasLocked, isDeleteDisabled]);
+
+  const handleDelete = useCallback(() => {
+    dispatchDeleteNode();
+  }, [dispatchDeleteNode]);
+
+  const handleDeleteWithoutReconnect = useCallback(() => {
+    dispatchDeleteNode(false);
+  }, [dispatchDeleteNode]);
 
   const handleCopy = useCallback(() => {
     if (isCanvasLocked) return;
@@ -134,6 +144,7 @@ export function useWorkflowNodeActions(params: UseWorkflowNodeActionsParams) {
   return {
     dispatchNodeUpdate,
     handleDelete,
+    handleDeleteWithoutReconnect,
     handleCopy,
     handleClone,
     handleStage,

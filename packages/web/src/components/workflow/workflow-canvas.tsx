@@ -122,7 +122,7 @@ interface WorkflowCanvasProps {
   selectedNodeIds?: string[];
   onNodeAdd: (type: string, position: { x: number; y: number }, size?: { width: number; height: number }, data?: Record<string, unknown>) => void;
   onStagedNodeDrop?: (node: StagedNode, position: { x: number; y: number }) => void;
-  onNodeDelete: (id: string) => void;
+  onNodeDelete: (id: string, options?: { reconnect?: boolean }) => void;
   onNodeCopy?: (id: string) => void;
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;

@@ -116,7 +116,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   }, [collapsedOutputKeysValue]);
   const inputRef = useRef<HTMLInputElement>(null);
   const nodeBodyRef = useRef<HTMLDivElement>(null);
-  const propertyNodeViewRef = useRef<HTMLDivElement>(null);
   const propertyContentRef = useRef<HTMLDivElement | null>(null);
   const [measuredPropertyHeight, setMeasuredPropertyHeight] = useState<number>(0);
   const rafCleanupRef = useRef<(() => void) | null>(null);
@@ -719,13 +718,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       )}
 
       {canShowPropertyNodeView ? (
-        <div ref={propertyNodeViewRef} className="relative min-h-0 flex-1 overflow-visible rounded-md">
+        <div className="relative min-h-0 flex-1 overflow-visible rounded-md">
           {propertyModeLeftHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeLeftHandles.length))}
           {propertyModeRightHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeRightHandles.length))}
           {canShowNodeContent ? (
             <div
               ref={propertyContentRef}
-              className="self-start overflow-x-hidden bg-background"
+              className="w-full min-w-0 overflow-x-hidden bg-background"
               data-workflow-property-content="true"
               onWheelCapture={(event) => {
                 if (event.ctrlKey || event.metaKey) return;
@@ -834,9 +833,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         canDeleteNode={canDeleteNode}
         isDeleteDisabled={isDeleteDisabled}
         canContinueFromPreview={canContinueFromPreview}
+        anchorMode={canShowPropertyNodeView ? 'node-width' : 'center'}
+        nodeWidth={displayNodeWidth}
+        canvasZoom={canvasZoom || 1}
         onExecuteWorkflow={actions.handleExecuteWorkflow}
         onTestNode={actions.handleTestNode}
-        onDelete={actions.handleDelete}
+        onDelete={actions.handleDeleteWithoutReconnect}
         onContinueFromPreview={handleContinueFromPreview}
       />
       <WorkflowNodeContextMenu

@@ -51,6 +51,9 @@ interface UseNodeOperationsParams {
 }
 
 type NodeSize = { width: number; height: number };
+type DeleteNodeOptions = {
+  reconnect?: boolean;
+};
 
 export function useNodeOperations({
   workflow, isReadOnly, setWorkflow, markDirty, pushUndo,
@@ -265,7 +268,7 @@ export function useNodeOperations({
     markDirty();
   }, [workflow, nodeSelectContext, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 
-  const handleNodeDelete = useCallback((nodeId: string) => {
+  const handleNodeDelete = useCallback((nodeId: string, options?: DeleteNodeOptions) => {
     if (!workflow || isReadOnly) return;
     const deletePlan = getWorkflowNodeDeleteIds(workflow.nodes, nodeId);
     if (!deletePlan) return;
@@ -286,7 +289,7 @@ export function useNodeOperations({
         && !deleteNodeIds.has(edge.target)
         && (!rootId || edge.composite?.rootId !== rootId)
       );
-      const autoConnectAfterNodeDelete = w.layoutSnapshot?.autoConnectAfterNodeDelete !== false;
+      const autoConnectAfterNodeDelete = options?.reconnect ?? (w.layoutSnapshot?.autoConnectAfterNodeDelete !== false);
 
       return {
         ...w,

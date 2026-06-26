@@ -16,6 +16,9 @@ export interface WorkflowNodeToolbarProps {
   canDeleteNode: boolean;
   isDeleteDisabled: boolean;
   canContinueFromPreview: boolean;
+  anchorMode?: 'center' | 'node-width';
+  nodeWidth?: number;
+  canvasZoom?: number;
   onExecuteWorkflow: (event: React.MouseEvent) => void;
   onTestNode: (event: React.MouseEvent) => void;
   onDelete: (event: React.MouseEvent) => void;
@@ -40,6 +43,9 @@ export function WorkflowNodeToolbar(props: WorkflowNodeToolbarProps) {
     canDeleteNode,
     isDeleteDisabled,
     canContinueFromPreview,
+    anchorMode = 'center',
+    nodeWidth = 0,
+    canvasZoom = 1,
     onExecuteWorkflow,
     onTestNode,
     onDelete,
@@ -48,6 +54,8 @@ export function WorkflowNodeToolbar(props: WorkflowNodeToolbarProps) {
   const t = useTranslations('workflows');
   const [continueDialogOpen, setContinueDialogOpen] = useState(false);
   const [continuePresetId, setContinuePresetId] = useState('debug');
+  const useNodeWidthAnchor = anchorMode === 'node-width' && nodeWidth > 0;
+  const toolbarAnchorOffset = useNodeWidthAnchor ? (nodeWidth * canvasZoom) / 2 : 0;
 
   const handleContinueFromPreview = useCallback(() => {
     const presetId = continuePresetId.trim() || 'debug';
@@ -60,10 +68,14 @@ export function WorkflowNodeToolbar(props: WorkflowNodeToolbarProps) {
       {visible ? (
         <NodeToolbar
           position={Position.Top}
-          align={isNodeCollapsed ? 'start' : 'center'}
+          align={isNodeCollapsed || useNodeWidthAnchor ? 'start' : 'center'}
           offset={8}
-          className="nodrag nopan flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-md"
+          className="nodrag nopan flex items-center gap-1  p-1"
         >
+          <div
+            className="flex items-center gap-1"
+            style={useNodeWidthAnchor ? { marginLeft: toolbarAnchorOffset, transform: 'translateX(-50%)' } : undefined}
+          >
           {isStartNode ? (
             <button
               type="button"
@@ -114,6 +126,7 @@ export function WorkflowNodeToolbar(props: WorkflowNodeToolbarProps) {
               <X className="h-3.5 w-3.5" />
             </button>
           ) : null}
+          </div>
         </NodeToolbar>
       ) : null}
 

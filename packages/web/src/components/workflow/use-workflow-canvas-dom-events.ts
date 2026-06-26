@@ -7,7 +7,7 @@ interface UseCanvasDomEventsParams {
   workflowEdges: Workflow['edges'];
   onEdgesChange: (changes: EdgeChange[]) => void;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
-  onNodeDelete: (id: string) => void;
+  onNodeDelete: (id: string, options?: { reconnect?: boolean }) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
   onEdgeDataUpdate: (id: string, data: Record<string, unknown>) => void;
   onNodeCopy?: (id: string) => void;
@@ -88,8 +88,9 @@ export function useCanvasDomEvents({
 
   const handleNodeDelete = useCallback((e: Event) => {
     if (isCanvasLocked) return;
-    const detail = (e as CustomEvent).detail;
-    onNodeDelete(detail.nodeId);
+    const detail = (e as CustomEvent).detail as { nodeId?: string; reconnect?: boolean } | undefined;
+    if (!detail?.nodeId) return;
+    onNodeDelete(detail.nodeId, typeof detail.reconnect === 'boolean' ? { reconnect: detail.reconnect } : undefined);
   }, [isCanvasLocked, onNodeDelete]);
 
   const handleNodeDataUpdate = useCallback((e: Event) => {
