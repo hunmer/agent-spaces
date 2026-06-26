@@ -30,7 +30,7 @@ import type {
 import { createErrorShape, isRuntimeWorkflowEdge } from '@agent-spaces/shared';
 import * as workflowStore from '../storage/workflow-store.js';
 import * as pluginService from './plugin.js';
-import { getNestedValue, normalizeVariablePath } from './execution-value-access.js';
+import { getNestedValue, normalizeVariablePath, setNestedValue } from './execution-value-access.js';
 import {
   clone,
   normalizeNodeResult,
@@ -117,6 +117,18 @@ const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
 const DELAY_NODE_MIN_MS = 100;
 const DELAY_NODE_MAX_MS = 30_000;
+
+function parseExecutionFieldHandle(handleId: string | null | undefined): { kind: 'input' | 'property' | 'output'; key: string } | null {
+  if (!handleId) return null;
+  const separatorIndex = handleId.indexOf(':');
+  if (separatorIndex <= 0) return null;
+
+  const kind = handleId.slice(0, separatorIndex);
+  if (kind !== 'input' && kind !== 'property' && kind !== 'output') return null;
+
+  const key = handleId.slice(separatorIndex + 1).trim();
+  return key ? { kind, key } : null;
+}
 
 function getBranchComparableSourceHandle(edge: WorkflowEdge, edges: WorkflowEdge[]): string | null | undefined {
   if (edge.sourceHandle) return edge.sourceHandle;
@@ -884,7 +896,7 @@ export class ExecutionManager {
       case 'loop_break':
         return this.executeLoopBreak(session, appendLog);
       case 'end':
-        return buildOutputObject(resolvedData.outputs);
+        return this.buildEndNodeOutput(session, node, resolvedData);
       case 'gallery_preview':
         return { items: Array.isArray(resolvedData.items) ? resolvedData.items : [] };
       case 'table_display':
@@ -1177,6 +1189,40 @@ export class ExecutionManager {
       return { ...sourceOutput };
     }
     return sourceOutput === undefined ? {} : { input: sourceOutput };
+  }
+
+  private buildEndNodeOutput(
+    session: ExecutionSession,
+    node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): Record<string, any> | null {
+    const output = buildOutputObject(resolvedData.outputs) ?? {};
+    const incomingEdges = session.edges.filter((edge) => (
+      isRuntimeWorkflowEdge(edge)
+      && edge.target === node.id
+      && this.isActiveEdge(session, edge)
+    ));
+
+    for (const edge of incomingEdges) {
+      const targetField = parseExecutionFieldHandle(edge.targetHandle);
+      if (targetField?.kind !== 'output') continue;
+
+      const sourceField = parseExecutionFieldHandle(edge.sourceHandle);
+      const sourceValue = sourceField?.kind === 'output'
+        ? getNestedValue(this.getNodeExecutionData(session, edge.source), sourceField.key)
+        : sourceField?.kind === 'input'
+          ? getNestedValue(this.getNodeExecutionInput(session, edge.source), sourceField.key)
+          : this.getNodeExecutionData(session, edge.source);
+
+      if (sourceValue === undefined) continue;
+      setNestedValue(
+        output,
+        targetField.key,
+        sourceValue && typeof sourceValue === 'object' ? clone(sourceValue) : sourceValue,
+      );
+    }
+
+    return output;
   }
 
   // ---- Private: Loop execution ----

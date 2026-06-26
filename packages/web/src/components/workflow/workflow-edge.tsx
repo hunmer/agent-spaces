@@ -59,6 +59,7 @@ function WorkflowEdgeComponent({
   const edgeOwnLineStyle = (data as Record<string, unknown>)?.edgeOwnLineStyle;
   const edgeLineStyle = (data as Record<string, unknown>)?.edgeLineStyle === 'dashed' ? 'dashed' : 'solid';
   const preferDashedLine = (data as Record<string, unknown>)?.preferDashedLine === true;
+  const isFieldHandleEdge = (data as Record<string, unknown>)?.isFieldHandleEdge === true;
   const edgeColor = (data as Record<string, unknown>)?.edgeColor as string | undefined;
   const startLabel = resolveText((data as Record<string, unknown>)?.startLabel);
   const middleLabel = resolveText((data as Record<string, unknown>)?.middleLabel);
@@ -183,7 +184,7 @@ function WorkflowEdgeComponent({
         }}
         onContextMenu={openContextMenu}
       />
-      {isRunning && (
+      {isRunning && !isFieldHandleEdge && (
         <circle r="5" fill={edgeColor || 'var(--primary)'} style={{ pointerEvents: 'none' }}>
           <animateMotion dur="1.4s" repeatCount="indefinite" path={edgePath} />
         </circle>

@@ -94,13 +94,6 @@
   ],
   "edges": [
     {
-      "id": "e-node_1782383391455_irpbq4-output:data.images-node_1782383055448_end-output:images",
-      "source": "node_1782383391455_irpbq4",
-      "target": "node_1782383055448_end",
-      "sourceHandle": "output:data.images",
-      "targetHandle": "output:images"
-    },
-    {
       "id": "e-node_1782383055448_start-source-node_1782383391455_irpbq4-target--reference-runtime",
       "source": "node_1782383055448_start",
       "target": "node_1782383391455_irpbq4",
@@ -118,10 +111,26 @@
       "edgeKind": "reference",
       "sourceHandle": "output:prompt",
       "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782383391455_irpbq4-source-node_1782383055448_end-target",
+      "source": "node_1782383391455_irpbq4",
+      "target": "node_1782383055448_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782383391455_irpbq4-output:data.images-node_1782383055448_end-output:images",
+      "source": "node_1782383391455_irpbq4",
+      "target": "node_1782383055448_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "output:images"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782452258624,
+  "updatedAt": 1782453759138,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -134,5 +143,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782445623340
+  "lastRunAt": 1782453125623
 }

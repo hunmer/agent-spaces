@@ -412,7 +412,11 @@ export function useCanvasData({
       const targetNode = nodeById.get(e.target);
       const displaySourceHandle = getNormalizedSourceHandle(sourceNode, e.sourceHandle, nodeDisplayMode);
       const displayTargetHandle = getNormalizedTargetHandle(targetNode, e.targetHandle, nodeDisplayMode);
-      const shouldPreferDashedLine = nodeDisplayMode === 'properties';
+      const parsedSourceHandle = parseWorkflowFieldHandleId(e.sourceHandle);
+      const parsedTargetHandle = parseWorkflowFieldHandleId(e.targetHandle);
+      const isFieldHandleEdge = parsedSourceHandle?.kind !== undefined || parsedTargetHandle?.kind !== undefined;
+      const shouldPreferDashedLine = nodeDisplayMode === 'properties'
+        && isFieldHandleEdge;
       return {
         id: e.id,
         source: e.source,
@@ -435,6 +439,7 @@ export function useCanvasData({
           edgeOwnLineStyle: e.edgeLineStyle,
           edgeLineStyle: e.edgeLineStyle || (shouldPreferDashedLine ? 'dashed' : edgeLineStyle),
           preferDashedLine: shouldPreferDashedLine,
+          isFieldHandleEdge,
         } as Record<string, unknown>,
       };
     });
