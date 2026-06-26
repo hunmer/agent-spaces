@@ -121,7 +121,7 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 352.9666352820765,
+        "x": 351.96341607734774,
         "y": 1006.9098622675955
       },
       "data": {
@@ -140,7 +140,9 @@
             "type": "image",
             "caption": ""
           }
-        ]
+        ],
+        "nodeWidth": 250,
+        "nodeHeight": 290
       }
     },
     {
@@ -148,8 +150,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 719.903423858138,
-        "y": 1088.9806847716277
+        "x": 704.855135787207,
+        "y": 956.5557497474349
       },
       "data": {
         "outputs": [
@@ -167,7 +169,9 @@
             "type": "image",
             "caption": ""
           }
-        ]
+        ],
+        "nodeWidth": 254,
+        "nodeHeight": 405
       }
     }
   ],
@@ -193,7 +197,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782456926469,
+  "updatedAt": 1782457069572,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",

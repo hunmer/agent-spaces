@@ -674,7 +674,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         isNodeCollapsed={isNodeCollapsed}
         hasCustomView={hasCustomView}
         isLoopBody={isLoopBody}
-        canShowPropertyNodeView={canShowPropertyBadgeHandles}
+        canShowPropertyNodeView={canShowPropertyNodeView}
         onCustomViewDragPointerDown={handleCustomViewDragPointerDown}
         onResizePointerDown={handleResizePointerDown}
       />
