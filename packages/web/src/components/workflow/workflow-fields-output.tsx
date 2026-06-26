@@ -129,18 +129,22 @@ export function OutputFieldsEditor({
 	variableContext,
 	allowedFieldTypes,
 	depth = 0,
+	parentFieldPath = '',
 	showRequired = false,
 	outputPreviewEnabled: _outputPreviewEnabled,
 	onOutputPreviewEnabledChange: _onOutputPreviewEnabledChange,
+	onFieldKeyChange,
 }: {
 	value: OutputField[];
 	onChange: (v: OutputField[]) => void;
 	variableContext?: WorkflowVariableContext;
 	allowedFieldTypes?: OutputField['type'][];
 	depth?: number;
+	parentFieldPath?: string;
 	showRequired?: boolean;
 	outputPreviewEnabled?: boolean;
 	onOutputPreviewEnabledChange?: (enabled: boolean) => void;
+	onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
 }) {
 	const t = useTranslations('workflows.outputFields');
 	const fields = getOutputFields(value);
@@ -157,6 +161,7 @@ export function OutputFieldsEditor({
 
 	const updateField = (index: number, patch: Partial<OutputField>) => {
 		const next = [...fields];
+		const oldKey = next[index]?.key ?? '';
 		next[index] = patchOutputField(next[index], patch);
 		if (patch.type && !isStructuredOutputFieldType(patch.type)) {
 			next[index].children = undefined;
@@ -175,6 +180,9 @@ export function OutputFieldsEditor({
 			next[index].options = [];
 		}
 		onChange(next);
+		if (patch.key !== undefined && oldKey && patch.key && oldKey !== patch.key) {
+			onFieldKeyChange?.(oldKey, patch.key, parentFieldPath ? `${parentFieldPath}.${patch.key}` : patch.key);
+		}
 	};
 
 	const isFieldExpanded = (field: OutputField, index: number) => (
@@ -396,6 +404,8 @@ export function OutputFieldsEditor({
 														onChange={(children) => updateField(index, { children })}
 														variableContext={variableContext}
 														depth={depth + 1}
+														parentFieldPath={parentFieldPath ? `${parentFieldPath}.${field.key ?? ''}` : field.key ?? ''}
+														onFieldKeyChange={onFieldKeyChange}
 													/>
 												</div>
 											)}

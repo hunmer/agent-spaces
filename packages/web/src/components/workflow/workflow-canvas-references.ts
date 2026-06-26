@@ -4,14 +4,17 @@ import type { Workflow } from '@agent-spaces/shared';
 import {
   LOOP_NODE_TYPE,
   LOOP_NEXT_SOURCE_HANDLE,
-  getCompositeRootId,
 } from '@agent-spaces/shared';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import {
   cloneData,
-  createWorkflowNodeId,
   sanitizeFieldKey,
 } from './workflow-canvas-utils';
+import {
+  normalizeVariableFieldPath,
+  parseVariableExpression,
+  tokenizeVariableFieldPath,
+} from './workflow-variable-path';
 
 export function makeInputReference(nodeId: string, fieldPath: string): string {
   return `{{ __inputs__["${nodeId}"].${fieldPath} }}`;
@@ -207,4 +210,90 @@ export function remapSelectedWorkflowNodes(
     nodes: selectedNodes,
     edges: [...selectedEdges, ...entryEdges, ...exitEdges],
   };
+}
+
+export type WorkflowFieldKeyReferenceMatch = {
+  scope: 'data' | 'inputs' | 'env';
+  nodeId?: string;
+  oldPath: string;
+  newPath: string;
+};
+
+function isArrayIndexToken(token: string) {
+  return /^\[\d+\]$/.test(token);
+}
+
+function findMatchedTokenIndexes(tokens: string[], targetTokens: string[]): number[] | null {
+  if (!targetTokens.length) return null;
+
+  const matchedIndexes: number[] = [];
+  let targetIndex = 0;
+
+  for (let tokenIndex = 0; tokenIndex < tokens.length && targetIndex < targetTokens.length; tokenIndex += 1) {
+    const token = tokens[tokenIndex];
+    if (isArrayIndexToken(token)) continue;
+    if (token !== targetTokens[targetIndex]) return null;
+    matchedIndexes.push(tokenIndex);
+    targetIndex += 1;
+  }
+
+  return targetIndex === targetTokens.length ? matchedIndexes : null;
+}
+
+function replaceMatchedPath(fieldPath: string, oldPath: string, newPath: string): string | null {
+  const tokens = tokenizeVariableFieldPath(fieldPath);
+  const oldTokens = tokenizeVariableFieldPath(oldPath);
+  const newTokens = tokenizeVariableFieldPath(newPath);
+  const matchedIndexes = findMatchedTokenIndexes(tokens, oldTokens);
+
+  if (!tokens.length || !oldTokens.length || !newTokens.length || !matchedIndexes) return null;
+
+  if (newTokens.length !== oldTokens.length) return null;
+
+  const nextTokens = [...tokens];
+  matchedIndexes.forEach((tokenIndex, index) => {
+    nextTokens[tokenIndex] = newTokens[index];
+  });
+  return normalizeVariableFieldPath(nextTokens.join('.'));
+}
+
+function replaceExpressionReference(expression: string, matches: WorkflowFieldKeyReferenceMatch[]): string {
+  const parsed = parseVariableExpression(expression);
+  if (!parsed) return expression;
+
+  for (const match of matches) {
+    if (match.scope !== parsed.scope) continue;
+    if ((match.scope === 'data' || match.scope === 'inputs') && match.nodeId !== parsed.nodeId) continue;
+
+    const nextFieldPath = replaceMatchedPath(parsed.fieldPath, match.oldPath, match.newPath);
+    if (!nextFieldPath) continue;
+
+    if (parsed.scope === 'env') return `__env__.${nextFieldPath}`;
+    return `__${parsed.scope}__["${parsed.nodeId}"].${nextFieldPath}`;
+  }
+
+  return expression;
+}
+
+export function replaceFieldKeyReferences(value: unknown, matches: WorkflowFieldKeyReferenceMatch[]): unknown {
+  if (!matches.length) return value;
+
+  if (typeof value === 'string') {
+    return value.replace(/\{\{\s*([^{}]*?)\s*\}\}/g, (raw, expression: string) => {
+      const nextExpression = replaceExpressionReference(expression.trim(), matches);
+      return nextExpression === expression.trim() ? raw : `{{ ${nextExpression} }}`;
+    });
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => replaceFieldKeyReferences(item, matches));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, replaceFieldKeyReferences(item, matches)]),
+    );
+  }
+
+  return value;
 }

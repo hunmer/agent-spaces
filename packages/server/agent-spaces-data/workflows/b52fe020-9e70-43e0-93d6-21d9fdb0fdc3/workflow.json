@@ -108,18 +108,20 @@
         "generated": true,
         "hidden": false,
         "locked": false
-      }
+      },
+      "edgeKind": "runtime"
     },
     {
       "id": "e-node_1782383055448_start-output:prompt-node_1782383391455_irpbq4-property:prompt",
       "source": "node_1782383055448_start",
       "target": "node_1782383391455_irpbq4",
+      "edgeKind": "reference",
       "sourceHandle": "output:prompt",
       "targetHandle": "property:prompt"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782439112814,
+  "updatedAt": 1782440952159,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties"
@@ -128,5 +130,6 @@
     "workflow.ai-image"
   ],
   "groups": [],
-  "variables": []
+  "variables": [],
+  "lastRunAt": 1782440031573
 }

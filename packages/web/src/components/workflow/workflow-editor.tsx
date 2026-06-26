@@ -50,6 +50,8 @@ import {
   isPlainObject,
   type JsonPreset,
 } from './workflow-properties-utils';
+import { replaceFieldKeyReferences } from './workflow-canvas-references';
+import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 
 // ---- flexlayout-react default model ----
 
@@ -447,6 +449,24 @@ function WorkflowEditorInner({
     return referencedPluginIds.filter(id => !installedWorkflowPlugins.has(id) || !installedWorkflowPlugins.get(id) || !enabledSet.has(id));
   }, [installedWorkflowPlugins, pluginListLoaded, referencedPluginIds, state.workflow?.enabledPlugins]);
   const missingPluginSearch = missingPluginIds.find(id => !installedWorkflowPlugins.has(id)) || '';
+
+  const handleFieldKeyRename = useCallback((params: WorkflowFieldKeyRenameParams) => {
+    if (isWorkflowReadOnly) return;
+    setWorkflow((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        nodes: current.nodes.map(node => ({
+          ...node,
+          data: replaceFieldKeyReferences(node.data, [params]) as typeof node.data,
+        })),
+        variables: current.variables
+          ? replaceFieldKeyReferences(current.variables, [params]) as typeof current.variables
+          : current.variables,
+      };
+    });
+    markEditorDirty();
+  }, [isWorkflowReadOnly, markEditorDirty, setWorkflow]);
 
   // 复用：取画布视口中心（带兜底）
   const getViewportCenter = useCallback((): { x: number; y: number } =>
@@ -934,6 +954,7 @@ function WorkflowEditorInner({
             variables={workflow.variables || []}
             onUpdateData={canvas.handleNodeDataUpdate}
             onPreviewUpdateData={handlePreviewNodeDataUpdate}
+            onFieldKeyRename={handleFieldKeyRename}
             debugNodeId={execution.debugNodeId}
             debugStatus={execution.debugStatus}
             debugResult={execution.debugResult}
@@ -968,6 +989,7 @@ function WorkflowEditorInner({
             currentNodeId={state.selectedNodeId}
             enabledPlugins={workflow.enabledPlugins}
             variables={workflow.variables || []}
+            onFieldKeyRename={handleFieldKeyRename}
             onChange={(variables) => {
               if (isWorkflowReadOnly) return;
               state.pushUndo('update variables');
@@ -1083,6 +1105,7 @@ function WorkflowEditorInner({
     clipboard.clear,
     clipboard.count,
     exitExecutionPreview,
+    handleFieldKeyRename,
     handlePreviewNodeDataUpdate,
     markEditorDirty,
     moveClipboardNodesToStaging,

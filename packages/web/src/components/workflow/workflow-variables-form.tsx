@@ -4,6 +4,14 @@ import type { OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shar
 import { useTranslations } from 'next-intl';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { OutputFieldsEditor } from './workflow-properties-fields';
+import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
+
+function getOldFieldPath(oldKey: string, newKey: string, newPath: string) {
+  if (newPath === newKey) return oldKey;
+  const suffix = `.${newKey}`;
+  if (!newPath.endsWith(suffix)) return oldKey;
+  return `${newPath.slice(0, -suffix.length)}.${oldKey}`;
+}
 
 export function WorkflowVariablesForm({
   value,
@@ -13,6 +21,7 @@ export function WorkflowVariablesForm({
   currentNodeId,
   enabledPlugins,
   variables,
+  onFieldKeyRename,
 }: {
   value: OutputField[];
   onChange: (value: OutputField[]) => void;
@@ -21,6 +30,7 @@ export function WorkflowVariablesForm({
   currentNodeId?: string | null;
   enabledPlugins?: string[];
   variables?: OutputField[];
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
 }) {
   const t = useTranslations("workflows");
     return (
@@ -40,6 +50,11 @@ export function WorkflowVariablesForm({
             variables,
           } : undefined}
           showRequired
+          onFieldKeyChange={(oldKey, newKey, newPath) => onFieldKeyRename?.({
+            scope: 'env',
+            oldPath: getOldFieldPath(oldKey, newKey, newPath),
+            newPath,
+          })}
         />
       </div>
     </ScrollArea>

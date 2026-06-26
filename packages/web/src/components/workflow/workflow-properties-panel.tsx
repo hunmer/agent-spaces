@@ -27,7 +27,7 @@ import { ExecutionNodeDialog } from './workflow-execution-node-dialog';
 import { NodeHeader } from './workflow-properties-node-header';
 import { Toolbar } from './workflow-properties-toolbar';
 import { PropertiesList } from './workflow-properties-list';
-import { InputFieldsSection, OutputFieldsSection } from './workflow-properties-io-sections';
+import { InputFieldsSection, OutputFieldsSection, type WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 import { ImportDialog } from './workflow-properties-import-dialog';
 import { PresetDialog } from './workflow-properties-preset-dialog';
 import { createSetVariableOutputs } from '@/lib/workflow-nodes/definitions/flow-control';
@@ -47,6 +47,7 @@ interface PropertiesPanelProps {
   variables?: OutputField[];
   onUpdateData: (nodeId: string, data: Record<string, unknown>) => void;
   onPreviewUpdateData?: (nodeId: string, data: Record<string, unknown>) => void;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   debugResult?: DebugResult | null;
@@ -69,6 +70,7 @@ export function WorkflowPropertiesPanel({
   variables = [],
   onUpdateData,
   onPreviewUpdateData,
+  onFieldKeyRename,
   debugNodeId = null,
   debugStatus = 'idle',
   debugResult = null,
@@ -397,6 +399,7 @@ export function WorkflowPropertiesPanel({
                   data={data}
                   variableContext={variableContext}
                   onDataChange={handleDataChange}
+                  onFieldKeyRename={onFieldKeyRename}
                 />
               </CardContent>
             </Card>
@@ -438,6 +441,7 @@ export function WorkflowPropertiesPanel({
                     hasDebugOutput={hasDebugOutput}
                     onDataChange={isPreview ? handlePreviewDataChange : handleDataChange}
                     onOpenImport={() => setImportOpen(true)}
+                    onFieldKeyRename={onFieldKeyRename}
                   />
               </CardContent>
             </Card>

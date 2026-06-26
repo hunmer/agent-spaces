@@ -11,11 +11,19 @@ import { OutputFieldsEditor } from './workflow-properties-fields';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 
+export type WorkflowFieldKeyRenameParams = {
+  scope: 'data' | 'inputs' | 'env';
+  nodeId?: string;
+  oldPath: string;
+  newPath: string;
+};
+
 interface InputFieldsSectionProps {
   node: WorkflowNode;
   data: Record<string, unknown>;
   variableContext: WorkflowVariableContext | undefined;
   onDataChange: (key: string, value: unknown) => void;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
 }
 
 interface OutputFieldsSectionProps {
@@ -28,6 +36,14 @@ interface OutputFieldsSectionProps {
   hasDebugOutput: boolean;
   onDataChange: (key: string, value: unknown) => void;
   onOpenImport: () => void;
+  onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
+}
+
+function getOldFieldPath(oldKey: string, newKey: string, newPath: string) {
+  if (newPath === newKey) return oldKey;
+  const suffix = `.${newKey}`;
+  if (!newPath.endsWith(suffix)) return oldKey;
+  return `${newPath.slice(0, -suffix.length)}.${oldKey}`;
 }
 
 function getLoopResetOutputs(node: WorkflowNode, nodes: WorkflowNode[]): OutputField[] | null {
@@ -59,6 +75,7 @@ export function InputFieldsSection({
   data,
   variableContext,
   onDataChange,
+  onFieldKeyRename,
 }: InputFieldsSectionProps) {
   const t = useTranslations('workflows');
 
@@ -74,6 +91,12 @@ export function InputFieldsSection({
         variableContext={variableContext}
         allowedFieldTypes={getNodeDefinition(node.type)?.allowedInputFieldTypes}
         showRequired
+        onFieldKeyChange={(oldKey, newKey, newPath) => onFieldKeyRename?.({
+          scope: node.type === 'start' ? 'data' : 'inputs',
+          nodeId: node.id,
+          oldPath: getOldFieldPath(oldKey, newKey, newPath),
+          newPath,
+        })}
       />
     </section>
   );
@@ -89,6 +112,7 @@ export function OutputFieldsSection({
   hasDebugOutput,
   onDataChange,
   onOpenImport,
+  onFieldKeyRename,
 }: OutputFieldsSectionProps) {
   const t = useTranslations('workflows');
 
@@ -155,6 +179,12 @@ export function OutputFieldsSection({
         variableContext={variableContext}
         outputPreviewEnabled={data.outputPreviewEnabled !== false}
         onOutputPreviewEnabledChange={(enabled) => onDataChange('outputPreviewEnabled', enabled)}
+        onFieldKeyChange={(oldKey, newKey, newPath) => onFieldKeyRename?.({
+          scope: 'data',
+          nodeId: node.id,
+          oldPath: getOldFieldPath(oldKey, newKey, newPath),
+          newPath,
+        })}
       />
     </section>
   );

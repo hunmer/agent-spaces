@@ -17,16 +17,20 @@ export function unwrapExpressionPath(value: unknown): string {
 
 export function parseVariableExpression(value: unknown): ParsedVariableExpression | null {
   const expression = unwrapExpressionPath(value);
-  const nodeScoped = expression.match(/^__(data|inputs)__\["([^"]+)"\]\.(.+)$/);
+  const nodeScoped = expression.match(/^__(data|inputs)__\["([^"]+)"\]((?:\.|\[).+)$/);
   if (nodeScoped) {
+    const fieldPath = nodeScoped[3].startsWith('.') ? nodeScoped[3].slice(1) : nodeScoped[3];
     return {
       scope: nodeScoped[1] === 'data' ? 'data' : 'inputs',
       nodeId: nodeScoped[2],
-      fieldPath: nodeScoped[3],
+      fieldPath,
     };
   }
-  const envScoped = expression.match(/^__env__\.(.+)$/);
-  if (envScoped) return { scope: 'env', fieldPath: envScoped[1] };
+  const envScoped = expression.match(/^__env__((?:\.|\[).+)$/);
+  if (envScoped) {
+    const fieldPath = envScoped[1].startsWith('.') ? envScoped[1].slice(1) : envScoped[1];
+    return { scope: 'env', fieldPath };
+  }
   return null;
 }
 
