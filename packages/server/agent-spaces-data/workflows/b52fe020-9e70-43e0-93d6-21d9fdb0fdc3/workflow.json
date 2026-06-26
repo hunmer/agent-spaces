@@ -8,7 +8,7 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": -165,
+        "x": -225,
         "y": 210
       },
       "data": {
@@ -324,7 +324,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782460557324,
+  "updatedAt": 1782461132987,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",

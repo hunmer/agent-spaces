@@ -113,6 +113,8 @@ export function useWorkflowNodePropertyMode(params: UseWorkflowNodePropertyModeP
       valueType: field.type,
       tooltip: field.description,
     }));
+    if (isStartNode) return inputHandles;
+
     const currentNode = workflowNodes.find(node => node.id === id);
     const propertyHandles = propertyFields.flatMap<PropertyModeHandle>((field, index) => {
       const items = field.type === 'array' ? getPropertyArrayItems(currentNode?.data, field.key) : [];

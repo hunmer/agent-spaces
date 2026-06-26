@@ -10,7 +10,7 @@ export const DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR = '#f97316';
 export const SOURCE_HANDLE_KEY = 'source';
 
 // ---- Layout constants ----
-export const COMPACT_NODE_ZOOM_THRESHOLD = 0.65;
+export const COMPACT_NODE_ZOOM_THRESHOLD = 0.3;
 export const COLLAPSED_NODE_SIZE = 56;
 
 // 持久化折叠状态到 nodeData 的 key：记录被折叠的 output object 复合 key

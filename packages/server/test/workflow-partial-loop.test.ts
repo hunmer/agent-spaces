@@ -133,3 +133,38 @@ test('partial execution from loop node only continues through top-level downstre
   );
   assert.equal(rerunLoopChild, undefined);
 });
+
+test('partial reachable snapshot includes upstream data dependencies for reachable nodes', () => {
+  const manager = new ExecutionManager({
+    emit: () => {},
+    interactionManager: {} as never,
+    clientNodeManager: {} as never,
+  });
+
+  const snapshotNodes: WorkflowNode[] = [
+    { id: 'start', type: 'start', label: 'Start', position: { x: 0, y: 0 }, data: {} },
+    { id: 'set_prompt', type: 'set_variable', label: 'Prompt', position: { x: 0, y: 0 }, data: {} },
+    { id: 'image', type: 'jimeng_image_to_image', label: 'Image', position: { x: 0, y: 0 }, data: {} },
+    { id: 'gallery_a', type: 'gallery_preview', label: 'Gallery A', position: { x: 0, y: 0 }, data: {} },
+    { id: 'gallery_b', type: 'gallery_preview', label: 'Gallery B', position: { x: 0, y: 0 }, data: {} },
+    { id: 'merge', type: 'merge_arrays', label: 'Merge', position: { x: 0, y: 0 }, data: {} },
+    { id: 'unrelated', type: 'run_code', label: 'Unrelated', position: { x: 0, y: 0 }, data: {} },
+  ];
+  const snapshotEdges: WorkflowEdge[] = [
+    { id: 'start-set', source: 'start', target: 'set_prompt', edgeKind: 'runtime' },
+    { id: 'set-image', source: 'set_prompt', target: 'image', edgeKind: 'runtime' },
+    { id: 'merge-image', source: 'merge', target: 'image', edgeKind: 'runtime' },
+    { id: 'gallery-a-merge', source: 'gallery_a', target: 'merge', edgeKind: 'runtime' },
+    { id: 'gallery-b-merge', source: 'gallery_b', target: 'merge', edgeKind: 'runtime' },
+  ];
+
+  const snapshot = (manager as any).buildReachableSnapshot(snapshotNodes, snapshotEdges, [], [], 'start') as {
+    nodes: WorkflowNode[]
+    edges: WorkflowEdge[]
+  };
+  const nodeIds = snapshot.nodes.map(node => node.id);
+
+  assert.deepEqual(nodeIds, ['start', 'set_prompt', 'image', 'gallery_a', 'gallery_b', 'merge']);
+  assert.equal(snapshot.edges.some(edge => edge.id === 'merge-image'), true);
+  assert.equal(snapshot.edges.some(edge => edge.source === 'unrelated' || edge.target === 'unrelated'), false);
+});

@@ -399,6 +399,17 @@ export class ExecutionManager {
         queue.push(edge.target);
       }
     }
+
+    const dependencyQueue = [...reachableIds];
+    while (dependencyQueue.length > 0) {
+      const targetId = dependencyQueue.shift()!;
+      for (const edge of edges) {
+        if (!isRuntimeWorkflowEdge(edge) || edge.target !== targetId || reachableIds.has(edge.source)) continue;
+        reachableIds.add(edge.source);
+        dependencyQueue.push(edge.source);
+      }
+    }
+
     const partialNodes = nodes.filter(n => reachableIds.has(n.id));
     const first = partialNodes.find(n => n.id === firstNodeId);
     return {
@@ -544,6 +555,10 @@ export class ExecutionManager {
     try {
       const startNode = session.nodes.find(node => node.id === startNodeId);
       if (!startNode) throw new Error(`Start node not found: ${startNodeId}`);
+      if (startNode.type === 'start') {
+        await this.runFromIndex(session, 0);
+        return;
+      }
       const rootNodeIds = new Set(getNodesForExecutionScope(session.nodes, null).map(node => node.id));
       const completedNodeIds = new Set(
         session.steps
