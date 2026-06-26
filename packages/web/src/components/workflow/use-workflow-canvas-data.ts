@@ -16,7 +16,7 @@ import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode, type WorkflowPropertyModeBadgePosition } from './workflow-node-types';
 import { WORKFLOW_NODE_DRAG_HANDLE_CLASS } from './workflow-node-handles';
-import { getWorkflowFieldHandleId, parseWorkflowFieldHandleId } from './workflow-field-handles';
+import { parseWorkflowFieldHandleId } from './workflow-field-handles';
 import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
@@ -119,29 +119,11 @@ function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: s
   return typeof colorKey === 'string' ? NODE_COLOR_MAP[colorKey] : undefined;
 }
 
-function getWorkflowFields(value: unknown): Array<{ key: string }> {
-  return Array.isArray(value)
-    ? value.filter((field): field is { key: string } => !!field && typeof field === 'object' && typeof (field as { key?: unknown }).key === 'string')
-    : [];
-}
-
 function canShowPropertyNodeView(node: WorkflowNode, nodeDisplayMode: WorkflowNodeDisplayMode): boolean {
   if (nodeDisplayMode !== 'properties') return false;
   if (node.type === LOOP_BODY_NODE_TYPE) return false;
   const definition = getNodeDefinition(node.type);
   return !definition?.customView;
-}
-
-function getVisiblePropertyKeys(node: WorkflowNode): string[] {
-  const definition = getNodeDefinition(node.type);
-  if (!definition?.properties) return [];
-  return definition.properties
-    .filter(prop => !prop.visibleWhen || (
-      'equals' in prop.visibleWhen
-        ? node.data[prop.visibleWhen.key] === prop.visibleWhen.equals
-        : prop.visibleWhen.in?.includes(node.data[prop.visibleWhen.key])
-    ))
-    .map(prop => prop.key);
 }
 
 function getNormalizedTargetHandle(
@@ -159,16 +141,7 @@ function getNormalizedTargetHandle(
   const parsed = parseWorkflowFieldHandleId(targetHandle);
   if (parsed?.kind === 'input' || parsed?.kind === 'property') return targetHandle || undefined;
   if (targetHandle) return targetHandle;
-
-  const inputFields = getWorkflowFields(node.data.inputFields);
-  if (inputFields.length > 0) {
-    return getWorkflowFieldHandleId('input', inputFields[0].key, 0);
-  }
-  const propertyKeys = getVisiblePropertyKeys(node);
-  if (propertyKeys.length > 0) {
-    return getWorkflowFieldHandleId('property', propertyKeys[0], 0);
-  }
-  return targetHandle || 'target';
+  return 'target';
 }
 
 function getNormalizedSourceHandle(
@@ -186,12 +159,7 @@ function getNormalizedSourceHandle(
   const parsed = parseWorkflowFieldHandleId(sourceHandle);
   if (parsed?.kind === 'output') return sourceHandle || undefined;
   if (sourceHandle) return sourceHandle;
-
-  const outputFields = getWorkflowFields(node.data.outputs);
-  if (outputFields.length > 0) {
-    return getWorkflowFieldHandleId('output', outputFields[0].key, 0);
-  }
-  return sourceHandle || 'source';
+  return 'source';
 }
 
 interface UseCanvasDataParams {
