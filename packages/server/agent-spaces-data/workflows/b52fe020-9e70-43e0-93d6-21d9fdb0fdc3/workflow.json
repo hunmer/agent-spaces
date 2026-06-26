@@ -45,7 +45,7 @@
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
-        "model": "jimeng-4.5",
+        "model": "jimeng-5.0",
         "ratio": "1:1",
         "resolution": "2k",
         "sampleStrength": 0.7,
@@ -113,7 +113,10 @@
               }
             ]
           }
-        ]
+        ],
+        "__collapsedOutputHandles": {
+          "variables": false
+        }
       }
     },
     {
@@ -310,10 +313,18 @@
         "hidden": false,
         "locked": false
       }
+    },
+    {
+      "id": "e-node_1782383055448_start-source-node_1782455127220_7p3l9h-target",
+      "source": "node_1782383055448_start",
+      "target": "node_1782455127220_7p3l9h",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782460352736,
+  "updatedAt": 1782460557324,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",

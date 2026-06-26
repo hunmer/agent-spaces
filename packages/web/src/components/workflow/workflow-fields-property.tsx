@@ -106,7 +106,7 @@ export function PropertyField({
           <SelectTrigger className="h-7 text-xs w-full">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent portal={false}>
+          <SelectContent>
             {prop.options?.map(option => (
               <SelectItem key={option.value} value={option.value} className="text-xs">
                 {option.label}
