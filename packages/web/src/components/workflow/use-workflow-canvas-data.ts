@@ -122,8 +122,7 @@ function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: s
 function canShowPropertyNodeView(node: WorkflowNode, nodeDisplayMode: WorkflowNodeDisplayMode): boolean {
   if (nodeDisplayMode !== 'properties') return false;
   if (node.type === LOOP_BODY_NODE_TYPE) return false;
-  const definition = getNodeDefinition(node.type);
-  return !definition?.customView;
+  return true;
 }
 
 function getNormalizedTargetHandle(

@@ -189,7 +189,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       .join('|'),
     [collapsedOutputKeys],
   );
-  const canShowPropertyNodeView = nodeDisplayMode === 'properties' && !isLoopBody && !hasCustomView && !isNodeCollapsed;
+  const canShowPropertyBadgeHandles = nodeDisplayMode === 'properties' && !isLoopBody && !isNodeCollapsed;
+  const canShowPropertyNodeView = canShowPropertyBadgeHandles && !hasCustomView;
   const variableReferences = useMemo(
     () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
     [nodeData],
@@ -590,7 +591,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     renderBadgeHandle: renderPropertyModeBadgeHandle,
   } = useWorkflowNodePropertyMode({
     id,
-    canShowPropertyNodeView,
+    canShowPropertyNodeView: canShowPropertyBadgeHandles,
     inputFields,
     outputFields,
     propertyFields,
@@ -612,7 +613,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col overflow-visible
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
         ${floatingHandles ? 'workflow-node-has-floating-handles' : ''}
-        ${selected || canShowPropertyNodeView ? 'workflow-node-floating-handles-visible' : ''}
+        ${selected || canShowPropertyBadgeHandles ? 'workflow-node-floating-handles-visible' : ''}
         ${!showFullNode ? WORKFLOW_NODE_DRAG_HANDLE_CLASS : ''}
         ${stateBackgroundClass}`}
       style={{
@@ -655,7 +656,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       <NodeBodyTargetHandles
         showTargetHandle={showTargetHandle}
         isTargetConnectable={isTargetConnectable}
-        canShowPropertyNodeView={canShowPropertyNodeView}
+        canShowPropertyNodeView={canShowPropertyBadgeHandles}
         isStartNode={isStartNode}
         inputFields={inputFields}
         propertyFields={propertyFields}
@@ -673,7 +674,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         isNodeCollapsed={isNodeCollapsed}
         hasCustomView={hasCustomView}
         isLoopBody={isLoopBody}
-        canShowPropertyNodeView={canShowPropertyNodeView}
+        canShowPropertyNodeView={canShowPropertyBadgeHandles}
         onCustomViewDragPointerDown={handleCustomViewDragPointerDown}
         onResizePointerDown={handleResizePointerDown}
       />
@@ -717,10 +718,15 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         />
       )}
 
-      {canShowPropertyNodeView ? (
-        <div className="relative min-h-0 flex-1 overflow-visible rounded-md">
+      {canShowPropertyBadgeHandles ? (
+        <>
           {propertyModeLeftHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeLeftHandles.length))}
           {propertyModeRightHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeRightHandles.length))}
+        </>
+      ) : null}
+
+      {canShowPropertyNodeView ? (
+        <div className="relative min-h-0 flex-1 overflow-visible rounded-md">
           {canShowNodeContent ? (
             <div
               ref={propertyContentRef}
