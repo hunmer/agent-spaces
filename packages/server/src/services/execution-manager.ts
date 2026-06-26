@@ -27,7 +27,7 @@ import type {
   WorkflowExecuteRequest,
   WorkflowExecuteResponse,
 } from '@agent-spaces/shared';
-import { createErrorShape } from '@agent-spaces/shared';
+import { createErrorShape, isRuntimeWorkflowEdge } from '@agent-spaces/shared';
 import * as workflowStore from '../storage/workflow-store.js';
 import * as pluginService from './plugin.js';
 import { getNestedValue, normalizeVariablePath } from './execution-value-access.js';
@@ -553,8 +553,9 @@ export class ExecutionManager {
       }
       completedNodeIds.add(startNode.id);
 
+      const runtimeEdges = session.edges.filter(isRuntimeWorkflowEdge);
       const adjacency = new Map<string, WorkflowEdge[]>();
-      for (const edge of session.edges) {
+      for (const edge of runtimeEdges) {
         if (!rootNodeIds.has(edge.source) || !rootNodeIds.has(edge.target)) continue;
         const list = adjacency.get(edge.source) || [];
         list.push(edge);
@@ -568,7 +569,7 @@ export class ExecutionManager {
           session,
           nodeId,
           adjacency.get(nodeId) || [],
-          session.edges,
+          runtimeEdges,
           visited,
           completedNodeIds,
           id => nodeMap.get(id),
@@ -622,7 +623,7 @@ export class ExecutionManager {
       for (let i = startIndex; i < session.executionOrder.length; i++) {
         const node = session.executionOrder[i];
         if (!node || scheduledNodeIds.has(node.id) || runningNodeIds.has(node.id)) continue;
-        if (!this.areIncomingNodesCompleted(session, node.id, session.edges, completedNodeIds)) continue;
+        if (!this.areIncomingNodesCompleted(session, node.id, session.edges.filter(isRuntimeWorkflowEdge), completedNodeIds)) continue;
 
         scheduledNodeIds.add(node.id);
         runningNodeIds.add(node.id);
@@ -1168,7 +1169,7 @@ export class ExecutionManager {
 
     const sourceNodeId = typeof resolvedData.sourceNodeId === 'string' && resolvedData.sourceNodeId
       ? resolvedData.sourceNodeId
-      : session.edges.find(edge => edge.target === node.id && this.isActiveEdge(session, edge))?.source;
+      : session.edges.find(edge => isRuntimeWorkflowEdge(edge) && edge.target === node.id && this.isActiveEdge(session, edge))?.source;
     if (!sourceNodeId) return {};
 
     const sourceOutput = this.getNodeExecutionData(session, sourceNodeId);
@@ -1275,6 +1276,7 @@ export class ExecutionManager {
   ): Promise<unknown> {
     const scopeIds = new Set(scopeNodes.map(n => n.id));
     const bodyEdges = session.edges.filter(e => {
+      if (!isRuntimeWorkflowEdge(e)) return false;
       if (e.sourceHandle === 'loop_next') return false;
       const srcEntry = e.source === bodyNode.id && scopeIds.has(e.target);
       return srcEntry || (scopeIds.has(e.source) && scopeIds.has(e.target));
@@ -1332,7 +1334,8 @@ export class ExecutionManager {
   ): Promise<unknown> {
     const nodeMap = new Map(workflow.nodes.map(n => [n.id, n]));
     const adjacency = new Map<string, WorkflowEdge[]>();
-    for (const edge of workflow.edges) {
+    const runtimeEdges = workflow.edges.filter(isRuntimeWorkflowEdge);
+    for (const edge of runtimeEdges) {
       const arr = adjacency.get(edge.source) || [];
       arr.push(edge);
       adjacency.set(edge.source, arr);
@@ -1353,7 +1356,7 @@ export class ExecutionManager {
         session,
         nodeId,
         adjacency.get(nodeId) || [],
-        workflow.edges,
+        runtimeEdges,
         visited,
         completedNodeIds,
         id => nodeMap.get(id),
@@ -1580,12 +1583,13 @@ export class ExecutionManager {
     const seen = visited || new Set<string>();
     if (seen.has(nodeId)) return false;
     seen.add(nodeId);
-    const incoming = edges.filter(e => e.target === nodeId);
+    const runtimeEdges = edges.filter(isRuntimeWorkflowEdge);
+    const incoming = runtimeEdges.filter(e => e.target === nodeId);
     if (incoming.length === 0) return true;
     for (const edge of incoming) {
       const activeHandle = this.getActiveBranches(session).get(edge.source);
-      if (!isBranchActiveEdge(edge, edges, activeHandle)) continue;
-      if (this.isNodeReachable(session, edge.source, seen, edges)) return true;
+      if (!isBranchActiveEdge(edge, runtimeEdges, activeHandle)) continue;
+      if (this.isNodeReachable(session, edge.source, seen, runtimeEdges)) return true;
     }
     return false;
   }
@@ -1596,10 +1600,11 @@ export class ExecutionManager {
     edges: WorkflowEdge[],
     completedNodeIds?: Set<string>,
   ): boolean {
-    const incoming = edges.filter(edge => (
+    const runtimeEdges = edges.filter(isRuntimeWorkflowEdge);
+    const incoming = runtimeEdges.filter(edge => (
       edge.target === nodeId
       && this.isActiveEdge(session, edge)
-      && (this.getActiveBranches(session).size === 0 || this.isNodeReachable(session, edge.source, undefined, edges))
+      && (this.getActiveBranches(session).size === 0 || this.isNodeReachable(session, edge.source, undefined, runtimeEdges))
     ));
     if (incoming.length === 0) return true;
     return incoming.every(edge => this.isNodeCompleted(session, edge.source, completedNodeIds));
@@ -1607,7 +1612,7 @@ export class ExecutionManager {
 
   private isActiveEdge(session: ExecutionSession, edge: WorkflowEdge): boolean {
     const activeHandle = this.getActiveBranches(session).get(edge.source);
-    return isBranchActiveEdge(edge, session.edges, activeHandle);
+    return isRuntimeWorkflowEdge(edge) && isBranchActiveEdge(edge, session.edges.filter(isRuntimeWorkflowEdge), activeHandle);
   }
 
   private isNodeCompleted(

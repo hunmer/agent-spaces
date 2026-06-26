@@ -56,6 +56,14 @@ export function isLockedWorkflowEdge(edge: WorkflowEdge): boolean {
   return !!edge.composite?.locked
 }
 
+export function isReferenceWorkflowEdge(edge: WorkflowEdge): boolean {
+  return edge.edgeKind === 'reference'
+}
+
+export function isRuntimeWorkflowEdge(edge: WorkflowEdge): boolean {
+  return edge.edgeKind !== 'reference'
+}
+
 // ---- Composite Tree Traversal ----
 
 export function findCompositeChildren(nodes: WorkflowNode[], parentId: string): WorkflowNode[] {

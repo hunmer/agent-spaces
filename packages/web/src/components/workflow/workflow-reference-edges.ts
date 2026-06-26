@@ -105,6 +105,7 @@ function collectWorkflowReferenceEdges(nodes: Workflow['nodes']): ReferenceEdge[
 }
 
 function isFieldReferenceEdge(edge: WorkflowEdge): boolean {
+  if (edge.edgeKind === 'reference') return true;
   const sourceHandle = parseWorkflowFieldHandleId(edge.sourceHandle);
   const targetHandle = parseWorkflowFieldHandleId(edge.targetHandle);
   return sourceHandle?.kind !== undefined
@@ -128,6 +129,7 @@ function createRuntimeReferenceEdge(reference: ReferenceEdge): WorkflowEdge {
     })}${REFERENCE_RUNTIME_EDGE_ID_SUFFIX}`,
     source: reference.source,
     target: reference.target,
+    edgeKind: 'runtime',
     sourceHandle: undefined,
     targetHandle: undefined,
     composite: {
@@ -143,6 +145,7 @@ function createFieldReferenceEdge(reference: ReferenceEdge): WorkflowEdge {
     id: createWorkflowEdgeId(reference),
     source: reference.source,
     target: reference.target,
+    edgeKind: 'reference',
     sourceHandle: reference.sourceHandle,
     targetHandle: reference.targetHandle,
   };
@@ -162,6 +165,14 @@ export function syncWorkflowReferenceEdges<T extends Pick<Workflow, 'nodes' | 'e
     if (isFieldReferenceEdge(edge)) return desiredFieldKeys.has(getReferenceEdgeKey(edge));
     if (isGeneratedRuntimeReferenceEdge(edge)) return desiredRuntimeKeys.has(getReferenceEdgeKey(edge));
     return true;
+  }).map((edge) => {
+    if (isFieldReferenceEdge(edge) && edge.edgeKind !== 'reference') {
+      return { ...edge, edgeKind: 'reference' as const };
+    }
+    if (isGeneratedRuntimeReferenceEdge(edge) && edge.edgeKind !== 'runtime') {
+      return { ...edge, edgeKind: 'runtime' as const };
+    }
+    return edge;
   });
   const existingKeys = new Set(nextEdges.map(getReferenceEdgeKey));
 

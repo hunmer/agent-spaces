@@ -18,6 +18,10 @@
     "asc": "Ascending",
     "desc": "Descending",
     "selectMode": "Select",
+    "scheduleFilter": "Schedule",
+    "scheduleFilterAll": "All workflows",
+    "scheduleScheduled": "Scheduled",
+    "scheduleUnscheduled": "Not scheduled",
     "selectedCount": "{count} selected",
     "exportSelected": "Export",
     "deleteSelected": "Delete"

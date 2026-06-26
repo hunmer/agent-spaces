@@ -78,6 +78,7 @@ export interface WorkflowEdge {
   id: string
   source: string
   target: string
+  edgeKind?: 'runtime' | 'reference'
   sourceHandle?: string | null
   targetHandle?: string | null
   startLabel?: string

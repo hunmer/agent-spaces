@@ -10,6 +10,7 @@ import type {
   ConditionGroup,
   ExecutionLogEntry,
 } from '@agent-spaces/shared';
+import { isRuntimeWorkflowEdge } from '@agent-spaces/shared';
 import type { ExecutionSession, LoopIterations } from './execution-types.js';
 import { getNestedValue, setNestedValue, deleteNestedValue } from './execution-value-access.js';
 
@@ -392,9 +393,10 @@ export function initLoopSharedVars(vars: unknown): Record<string, unknown> {
 // ---- 执行图拓扑排序 ----
 
 export function buildExecutionOrder(nodes: WorkflowNode[], edges: WorkflowEdge[]): WorkflowNode[] {
+  const runtimeEdges = edges.filter(isRuntimeWorkflowEdge);
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   const inDegree = new Map(nodes.map(n => [n.id, 0]));
-  for (const edge of edges) {
+  for (const edge of runtimeEdges) {
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
   const queue: string[] = [];
@@ -406,7 +408,7 @@ export function buildExecutionOrder(nodes: WorkflowNode[], edges: WorkflowEdge[]
     const id = queue.shift()!;
     const node = nodeMap.get(id);
     if (node) order.push(node);
-    for (const edge of edges) {
+    for (const edge of runtimeEdges) {
       if (edge.source !== id) continue;
       const deg = (inDegree.get(edge.target) ?? 1) - 1;
       inDegree.set(edge.target, deg);

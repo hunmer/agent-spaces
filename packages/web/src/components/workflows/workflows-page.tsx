@@ -337,14 +337,14 @@ export function WorkflowsPage() {
         <Popover>
           <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
             <Clock className="h-3.5 w-3.5" />
-            {scheduleFilter === 'scheduled' ? '定时运行' : scheduleFilter === 'unscheduled' ? '未定时运行' : '定时筛选'}
+            {scheduleFilter === 'scheduled' ? t('page.scheduleScheduled') : scheduleFilter === 'unscheduled' ? t('page.scheduleUnscheduled') : t('page.scheduleFilter')}
           </PopoverTrigger>
           <PopoverContent align="start" className="w-44 p-2">
             <div className="flex flex-col gap-1">
               {[
-                ['all', '全部工作流'],
-                ['scheduled', '定时运行'],
-                ['unscheduled', '未定时运行'],
+                ['all', t('page.scheduleFilterAll')],
+                ['scheduled', t('page.scheduleScheduled')],
+                ['unscheduled', t('page.scheduleUnscheduled')],
               ].map(([value, label]) => (
                 <button
                   key={value}

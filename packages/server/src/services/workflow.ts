@@ -8,6 +8,7 @@ import type {
   WorkflowFolder, WorkflowVersion, ExecutionLog, StagedNode, OperationEntry,
   WorkflowTrigger, WorkflowAgentChatMessage,
 } from '@agent-spaces/shared';
+import { isRuntimeWorkflowEdge } from '@agent-spaces/shared';
 import * as store from '../storage/workflow-store.js';
 import { listTemplates } from './agent.js';
 
@@ -74,7 +75,7 @@ function hasDuplicateEdges(edges: WorkflowEdge[]): boolean {
   for (const e of edges) {
     const sourceHandle = e.sourceHandle ?? '';
     const targetHandle = e.targetHandle ?? '';
-    const key = `${e.source}:${sourceHandle}->${e.target}:${targetHandle}`;
+    const key = `${e.edgeKind ?? 'runtime'}:${e.source}:${sourceHandle}->${e.target}:${targetHandle}`;
     if (seen.has(key)) return true;
     seen.add(key);
   }
@@ -87,7 +88,8 @@ function hasSelfLoops(edges: WorkflowEdge[]): boolean {
 
 export function validateDAG(template: Pick<Workflow, 'nodes' | 'edges'>): string | null {
   if (template.nodes.length === 0) return 'Workflow must have at least one node';
-  if (hasSelfLoops(template.edges)) return 'Self-loops are not allowed';
+  const runtimeEdges = template.edges.filter(isRuntimeWorkflowEdge);
+  if (hasSelfLoops(runtimeEdges)) return 'Self-loops are not allowed';
   if (hasDuplicateEdges(template.edges)) return 'Duplicate edges are not allowed';
 
   const allNodeIds = new Set(template.nodes.map(n => n.id));
@@ -96,7 +98,7 @@ export function validateDAG(template: Pick<Workflow, 'nodes' | 'edges'>): string
     if (!allNodeIds.has(e.target)) return `Edge references unknown target node: ${e.target}`;
   }
 
-  if (topologicalSort(template.nodes, template.edges) === null) {
+  if (topologicalSort(template.nodes, runtimeEdges) === null) {
     return 'Workflow contains a cycle';
   }
 

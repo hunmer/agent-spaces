@@ -245,25 +245,30 @@ export function useEdgeOperations({
       .filter((node) => {
         return !wouldCreateCycle(node.id, connection.target!);
       })
-      .map((node): Workflow['edges'][number] => ({
-        id: isDefaultSourceHandle(node, sourceHandle)
-          ? createUniqueEdgeId({
+      .map((node): Workflow['edges'][number] => {
+        const parsedTargetHandle = parseWorkflowFieldHandleId(connection.targetHandle);
+        const isFieldTarget = parsedTargetHandle?.kind === 'input' || parsedTargetHandle?.kind === 'property';
+        return {
+          id: isDefaultSourceHandle(node, sourceHandle)
+            ? createUniqueEdgeId({
+              source: node.id,
+              target: connection.target,
+              sourceHandle,
+              targetHandle: connection.targetHandle,
+            })
+            : createWorkflowEdgeId({
             source: node.id,
             target: connection.target,
             sourceHandle,
             targetHandle: connection.targetHandle,
-          })
-          : createWorkflowEdgeId({
+          }),
           source: node.id,
-          target: connection.target,
+          target: connection.target!,
+          edgeKind: isFieldTarget ? 'reference' : 'runtime',
           sourceHandle,
-          targetHandle: connection.targetHandle,
-        }),
-        source: node.id,
-        target: connection.target!,
-        sourceHandle,
-        targetHandle,
-      }))
+          targetHandle,
+        };
+      })
       .filter(edge => {
         if (remainingTargetConnections === 0) return false;
         if (edgeIds.has(edge.id)) return false;
