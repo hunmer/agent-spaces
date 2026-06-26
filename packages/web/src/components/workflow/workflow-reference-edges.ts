@@ -126,6 +126,14 @@ function isFieldReferenceEdge(edge: WorkflowEdge): boolean {
     && (targetHandle?.kind === 'input' || targetHandle?.kind === 'property');
 }
 
+function needsRuntimeCompensation(edge: WorkflowEdge): boolean {
+  const sourceHandle = parseWorkflowFieldHandleId(edge.sourceHandle);
+  const targetHandle = parseWorkflowFieldHandleId(edge.targetHandle);
+  return edge.source !== edge.target
+    && sourceHandle?.kind !== undefined
+    && targetHandle?.kind !== undefined;
+}
+
 function isGeneratedRuntimeReferenceEdge(edge: WorkflowEdge): boolean {
   return edge.id.endsWith(REFERENCE_RUNTIME_EDGE_ID_SUFFIX)
     && edge.composite?.generated === true
@@ -174,6 +182,15 @@ export function syncWorkflowReferenceEdges<T extends Pick<Workflow, 'nodes' | 'e
     sourceHandle: undefined,
     targetHandle: undefined,
   })));
+  for (const edge of workflow.edges) {
+    if (!needsRuntimeCompensation(edge)) continue;
+    desiredRuntimeKeys.add(getReferenceEdgeKey({
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: undefined,
+      targetHandle: undefined,
+    }));
+  }
 
   const nextEdges = workflow.edges.filter((edge) => {
     if (isFieldReferenceEdge(edge)) return desiredFieldKeys.has(getReferenceEdgeKey(edge));
@@ -203,6 +220,20 @@ export function syncWorkflowReferenceEdges<T extends Pick<Workflow, 'nodes' | 'e
     if (!existingKeys.has(fieldKey)) {
       nextEdges.push(fieldEdge);
       existingKeys.add(fieldKey);
+    }
+  }
+  for (const edge of workflow.edges) {
+    if (!needsRuntimeCompensation(edge)) continue;
+    const runtimeEdge = createRuntimeReferenceEdge({
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: '',
+      targetHandle: '',
+    });
+    const runtimeKey = getReferenceEdgeKey(runtimeEdge);
+    if (!existingKeys.has(runtimeKey)) {
+      nextEdges.push(runtimeEdge);
+      existingKeys.add(runtimeKey);
     }
   }
 
