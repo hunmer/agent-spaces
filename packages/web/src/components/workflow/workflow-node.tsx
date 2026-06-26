@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { Handle, NodeToolbar, Position, useConnection, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import { Handle, useConnection, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import {
   ChevronDown,
@@ -13,14 +13,12 @@ import {
   MoveDiagonal,
   Play,
   Square,
-  X,
 } from 'lucide-react';
 import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import {
   type ExecutionStep,
   type WorkflowEdge,
   type WorkflowNode as SharedWorkflowNode,
-  type OutputField,
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
 } from '@agent-spaces/shared';
@@ -65,13 +63,13 @@ import {
   CompatibilityHandle,
 } from './workflow-node-handles-render';
 import { useWorkflowNodePropertyMode } from './workflow-node-property-mode';
+import { WorkflowNodeToolbar } from './workflow-node-toolbar';
 import {
   DEFAULT_SOURCE_HANDLE_COLOR,
   LOOP_BODY_SOURCE_HANDLE_COLOR,
   DEFAULT_DYNAMIC_HANDLE_COLOR,
   DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR,
   SOURCE_HANDLE_KEY,
-  COMPACT_NODE_ZOOM_THRESHOLD,
   COLLAPSED_NODE_SIZE,
   COLLAPSED_OUTPUT_HANDLES_KEY,
   showFullNodeSelector,
@@ -82,8 +80,6 @@ import {
   getRecordValue,
   type NodePreviewDragPhase,
 } from './workflow-node-utils';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 
 function getVariableContextNodeLabel(
   nodeType: string,
@@ -142,8 +138,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ? raw as Record<string, boolean>
       : {};
   }, [collapsedOutputKeysValue]);
-  const [continueDialogOpen, setContinueDialogOpen] = useState(false);
-  const [continuePresetId, setContinuePresetId] = useState('debug');
   const inputRef = useRef<HTMLInputElement>(null);
   const nodeBodyRef = useRef<HTMLDivElement>(null);
   const propertyNodeViewRef = useRef<HTMLDivElement>(null);
@@ -594,13 +588,11 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     document.addEventListener('pointercancel', handlePointerCancel);
   }, [dispatchNodePreviewDrag, isCanvasLocked]);
 
-  const handleContinueFromPreview = useCallback(() => {
-    const presetId = continuePresetId.trim() || 'debug';
+  const handleContinueFromPreview = useCallback((presetId: string) => {
     window.dispatchEvent(new CustomEvent('workflow:continue-from-preview-node', {
       detail: { nodeId: id, presetId },
     }));
-    setContinueDialogOpen(false);
-  }, [continuePresetId, id]);
+  }, [id]);
 
   const handlePropertyPanelDataChange = useCallback((nodeId: string, nextData: Record<string, unknown>) => {
     window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
@@ -1032,65 +1024,21 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   return (
     <>
-      {showFullNode && canShowNodeToolbar ? (
-        <NodeToolbar
-          position={Position.Top}
-          align={isNodeCollapsed ? 'start' : 'center'}
-          offset={8}
-          className="nodrag nopan flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-md"
-        >
-          {isStartNode ? (
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isExecutionBusy}
-              onClick={actions.handleExecuteWorkflow}
-              title={t('nodeUi.test.node')}
-              aria-label={t('nodeUi.test.node')}
-            >
-              {isExecutionBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-            </button>
-          ) : null}
-          {!isBoundaryNode ? (
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={actions.handleTestNode}
-              title={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
-              aria-label={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
-            >
-              {isCurrentNodeDebugging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-            </button>
-          ) : null}
-          {canContinueFromPreview ? (
-            <button
-              type="button"
-              className="inline-flex h-7 items-center justify-center gap-1 rounded-full bg-blue-500 px-2.5 text-[10px] font-medium text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={(event) => {
-                event.stopPropagation();
-                if (!isExecutionBusy) setContinueDialogOpen(true);
-              }}
-              disabled={isExecutionBusy}
-              title="从当前节点开始继续运行"
-              aria-label="从当前节点开始继续运行"
-            >
-              <Play className="h-3.5 w-3.5" />
-              继续运行
-            </button>
-          ) : null}
-          {canDeleteNode && !isDeleteDisabled ? (
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
-              onClick={actions.handleDelete}
-              title={t('nodeUi.delete')}
-              aria-label={t('nodeUi.delete')}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
-        </NodeToolbar>
-      ) : null}
+      <WorkflowNodeToolbar
+        visible={showFullNode && canShowNodeToolbar}
+        isNodeCollapsed={isNodeCollapsed}
+        isStartNode={isStartNode}
+        isBoundaryNode={isBoundaryNode}
+        isExecutionBusy={isExecutionBusy}
+        isCurrentNodeDebugging={isCurrentNodeDebugging}
+        canDeleteNode={canDeleteNode}
+        isDeleteDisabled={isDeleteDisabled}
+        canContinueFromPreview={canContinueFromPreview}
+        onExecuteWorkflow={actions.handleExecuteWorkflow}
+        onTestNode={actions.handleTestNode}
+        onDelete={actions.handleDelete}
+        onContinueFromPreview={handleContinueFromPreview}
+      />
       <WorkflowNodeContextMenu
         nodeId={id}
         selectedNodeIds={selectedNodeIds}
@@ -1112,42 +1060,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       >
         {nodeBody}
       </WorkflowNodeContextMenu>
-
-      <Dialog open={continueDialogOpen} onOpenChange={setContinueDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm">从当前节点开始继续运行</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1">
-            <div className="text-xs font-medium">统一的预设 ID</div>
-            <Input
-              value={continuePresetId}
-              onChange={(event) => setContinuePresetId(event.target.value)}
-              className="h-8 text-xs"
-              placeholder="debug"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') handleContinueFromPreview();
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <button
-              type="button"
-              className="inline-flex h-8 items-center justify-center rounded border border-border px-3 text-xs hover:bg-muted"
-              onClick={() => setContinueDialogOpen(false)}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-8 items-center justify-center rounded bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-              onClick={handleContinueFromPreview}
-            >
-              运行
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Collapsible execution log card below the node */}
       {!isNodeCollapsed && canShowExecutionLog && displayExecutionStep ? (

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Handle, Position, type ConnectionState } from '@xyflow/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { WorkflowNode as SharedWorkflowNode } from '@agent-spaces/shared';
+import type { WorkflowNode as SharedWorkflowNode, DataType } from '@agent-spaces/shared';
 import type { OutputField } from '@agent-spaces/shared';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ export interface PropertyModeField {
   label?: string;
   tooltip?: string;
   type: string;
-  dataType?: unknown;
+  dataType?: DataType;
 }
 
 export interface UseWorkflowNodePropertyModeParams {

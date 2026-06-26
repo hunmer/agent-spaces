@@ -29,8 +29,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 1710,
-        "y": 570
+        "x": 1755,
+        "y": 450
       },
       "data": {
         "outputs": [
@@ -47,8 +47,8 @@
       "type": "ai_image_generate",
       "label": "AI文生图",
       "position": {
-        "x": 990,
-        "y": 345
+        "x": 975,
+        "y": 240
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -121,7 +121,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782442516148,
+  "updatedAt": 1782445610472,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties"
@@ -131,5 +131,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782440031573
+  "lastRunAt": 1782445623340
 }
