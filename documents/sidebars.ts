@@ -59,6 +59,8 @@ const sidebars: SidebarsConfig = {
       label: 'Research',
       items: [
         'research/index',
+        'research/workflow-execution-system',
+        'research/workflow-editor-execution-sync',
       ],
     },
   ],

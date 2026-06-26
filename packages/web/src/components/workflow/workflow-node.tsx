@@ -2,29 +2,21 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { Handle, useConnection, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import { useConnection, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import {
   ChevronDown,
   ChevronUp,
-  Flag,
-  Grip,
-  Loader2,
-  MoveDiagonal,
-  Play,
-  Square,
 } from 'lucide-react';
-import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
+import { getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import {
   type ExecutionStep,
   type WorkflowEdge,
   type WorkflowNode as SharedWorkflowNode,
   LOOP_BODY_NODE_TYPE,
-  LOOP_BODY_SOURCE_HANDLE,
 } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
 import { cn } from '@/lib/utils';
-import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 import { getWorkflowNodeSize, getWorkflowNodeVariableReferences } from './workflow-node-size';
 import {
   isPluginWorkflowCustomViewDefinition,
@@ -40,7 +32,6 @@ import { WorkflowNodeContextMenu } from './workflow-node-context-menu';
 import { useWorkflowLogsCollapsed } from './workflow-logs-collapsed-context';
 import {
   HANDLE_POSITION_MAP,
-  getSourceLabelStyle,
   getTargetHandleStyle,
   WORKFLOW_NODE_DRAG_HANDLE_CLASS,
   type HandleContext,
@@ -52,24 +43,23 @@ import {
   EXECUTION_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
 import { getEffectiveDataType } from './workflow-properties-utils';
-import { getWorkflowFieldHandleId } from './workflow-field-handles';
 import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, getJsonPresets } from './workflow-properties-utils';
 import { VariableBadgeInput } from './workflow-variable-input';
 import { WorkflowPropertiesPanel } from './workflow-properties-panel';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
-import {
-  useWorkflowNodeHandles,
-  CompatibilityHandle,
-} from './workflow-node-handles-render';
+import { useWorkflowNodeHandles } from './workflow-node-handles-render';
 import { useWorkflowNodePropertyMode } from './workflow-node-property-mode';
 import { WorkflowNodeToolbar } from './workflow-node-toolbar';
 import {
-  DEFAULT_SOURCE_HANDLE_COLOR,
-  LOOP_BODY_SOURCE_HANDLE_COLOR,
-  DEFAULT_DYNAMIC_HANDLE_COLOR,
-  DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR,
-  SOURCE_HANDLE_KEY,
+  NodeBodyBadges,
+  NodeBodyCornerControls,
+  NodeBodyHeader,
+  NodeBodySourceHandles,
+  NodeBodyTargetHandles,
+  NodeBodyIcons,
+} from './workflow-node-body';
+import {
   COLLAPSED_NODE_SIZE,
   COLLAPSED_OUTPUT_HANDLES_KEY,
   showFullNodeSelector,
@@ -78,23 +68,9 @@ import {
   getWorkflowFields,
   getWorkflowFieldsSignature,
   getRecordValue,
+  getVariableContextNodeLabel,
   type NodePreviewDragPhase,
 } from './workflow-node-utils';
-
-function getVariableContextNodeLabel(
-  nodeType: string,
-  data: Record<string, unknown>,
-  fallbackLabel: unknown,
-  t: (key: string) => string,
-): string {
-  const resolveLabel = (value: unknown) => {
-    const label = String(value ?? '');
-    return label && !label.startsWith('nodes.') ? label : '';
-  };
-  const definition = getNodeDefinition(nodeType);
-  const label = resolveLabel(data.label) || resolveLabel(fallbackLabel) || definition?.label || nodeType;
-  return label.startsWith('nodes.') ? t(label) : label;
-}
 
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
@@ -677,181 +653,69 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </button>
       ) : null}
 
-      {/* Target handle */}
-      {showTargetHandle && (
-        <Handle
-          id="target" type="target" position={handlePositions.target}
-          isConnectable={isTargetConnectable}
-          className={cn('!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
-          style={getTargetHandleStyle(handlePositions.target, handleCtx)}
-        />
-      )}
-      {!canShowPropertyNodeView && inputFields.map((field, index) => (
-        <CompatibilityHandle
-          key={`input-${field.key}-${index}`}
-          handleId={getWorkflowFieldHandleId(isStartNode ? 'output' : 'input', field.key, index)}
-          handleType={isStartNode ? 'source' : 'target'}
-          position={isStartNode ? handlePositions.source : handlePositions.target}
-          index={index}
-          total={Math.max(1, inputFields.length + propertyFields.length)}
-          handleCtx={handleCtx}
-        />
-      ))}
-      {!canShowPropertyNodeView && propertyFields.map((field, index) => (
-        <CompatibilityHandle
-          key={`property-${field.key}-${index}`}
-          handleId={getWorkflowFieldHandleId('property', field.key, index)}
-          handleType="target"
-          position={handlePositions.target}
-          index={inputFields.length + index}
-          total={Math.max(1, inputFields.length + propertyFields.length)}
-          handleCtx={handleCtx}
-        />
-      ))}
-      {!canShowPropertyNodeView && outputFields.map((field, index) => (
-        <CompatibilityHandle
-          key={`output-${field.key}-${index}`}
-          handleId={getWorkflowFieldHandleId('output', field.key, index)}
-          handleType="source"
-          position={handlePositions.source}
-          index={index}
-          total={Math.max(1, outputFields.length)}
-          handleCtx={handleCtx}
-        />
-      ))}
-      <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
-        {showFullNode && hasCustomView && !isLoopBody && !isCanvasLocked ? (
-          <button
-            type="button"
-            className="nodrag nopan inline-flex h-5 w-5 cursor-grab items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground active:cursor-grabbing"
-            title={t('nodeUi.drag')}
-            aria-label={t('nodeUi.drag')}
-            onPointerDown={handleCustomViewDragPointerDown}
-          >
-            <Grip className="h-3 w-3" />
-          </button>
-        ) : null}
-      </div>
-      <div className="absolute -bottom-1 -right-1 z-30 flex items-center gap-1">
-        {showFullNode && selected && !isCanvasLocked && !isNodeCollapsed && !canShowPropertyNodeView ? (
-          <button
-            type="button"
-            className="nodrag nopan inline-flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
-            title={t('nodeUi.resize')}
-            aria-label={t('nodeUi.resize')}
-            onPointerDown={handleResizePointerDown}
-          >
-            <MoveDiagonal className="h-3 w-3" />
-          </button>
-        ) : null}
-      </div>
+      <NodeBodyTargetHandles
+        showTargetHandle={showTargetHandle}
+        isTargetConnectable={isTargetConnectable}
+        canShowPropertyNodeView={canShowPropertyNodeView}
+        isStartNode={isStartNode}
+        inputFields={inputFields}
+        propertyFields={propertyFields}
+        outputFields={outputFields}
+        handlePositions={handlePositions}
+        handleCtx={handleCtx}
+        floatingHandleClassName={floatingHandleClassName}
+        getTargetHandleStyle={getTargetHandleStyle}
+      />
 
-      {showFullNode && stateBadge ? (
-        <span
-          className={cn(
-            'absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full px-1.5 py-0 text-[10px] font-medium text-white',
-            currentNodeState === 'disabled' ? 'bg-red-500' : 'bg-yellow-500',
-          )}
-        >
-          {stateBadge}
-        </span>
-      ) : null}
+      <NodeBodyCornerControls
+        showFullNode={showFullNode}
+        selected={selected}
+        isCanvasLocked={!!isCanvasLocked}
+        isNodeCollapsed={isNodeCollapsed}
+        hasCustomView={hasCustomView}
+        isLoopBody={isLoopBody}
+        canShowPropertyNodeView={canShowPropertyNodeView}
+        onCustomViewDragPointerDown={handleCustomViewDragPointerDown}
+        onResizePointerDown={handleResizePointerDown}
+      />
 
-      {showFullNode && breakpointBadge ? (
-        <span
-          className={cn(
-            'absolute -bottom-2 left-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0 text-[10px] font-medium text-white',
-            currentBreakpoint === 'start' ? 'bg-blue-500' : 'bg-purple-500',
-          )}
-        >
-          <Flag className="h-2.5 w-2.5" />
-          {breakpointBadge}
-        </span>
-      ) : null}
+      <NodeBodyBadges
+        showFullNode={showFullNode}
+        stateBadge={stateBadge}
+        breakpointBadge={breakpointBadge}
+        currentNodeState={currentNodeState}
+        currentBreakpoint={currentBreakpoint}
+        isPausedAtThisNode={isPausedAtThisNode}
+        onResumeFromBreakpoint={actions.handleResumeFromBreakpoint}
+        onStopAtBreakpoint={actions.handleStopAtBreakpoint}
+      />
 
-      {showFullNode && isPausedAtThisNode ? (
-        <div className="nodrag nopan absolute left-2 right-2 -bottom-10 z-40 flex items-center gap-1 rounded border border-blue-500/40 bg-background/95 p-1 shadow-lg">
-          <button
-            type="button"
-            className="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded bg-blue-500 px-2 text-[10px] font-medium text-white hover:bg-blue-600"
-            onClick={actions.handleResumeFromBreakpoint}
-          >
-            <Play className="h-3 w-3" />
-            {t('nodeUi.resume')}
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded bg-destructive px-2 text-[10px] font-medium text-destructive-foreground hover:bg-destructive/90"
-            onClick={actions.handleStopAtBreakpoint}
-          >
-            <Square className="h-3 w-3" />
-            {t('nodeUi.abort')}
-          </button>
-        </div>
-      ) : null}
-
-      {!showFullNode ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-8 w-8 text-muted-foreground" />
-        </div>
-      ) : null}
-
-      {showFullNode && isNodeCollapsed ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="flex h-9 w-9 items-center justify-center rounded border border-border bg-muted/40">
-            <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-5 w-5 text-muted-foreground" />
-          </div>
-        </div>
-      ) : null}
+      <NodeBodyIcons
+        showFullNode={showFullNode}
+        isNodeCollapsed={isNodeCollapsed}
+        iconDefinition={iconDefinition}
+      />
 
       {/* Header */}
       {canShowNodeContent && !isLoopBody && !hasCustomView && !canShowPropertyNodeView && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
-          <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
-          {isEditing ? (
-            <input
-              ref={inputRef}
-              value={editLabel}
-              onChange={(e) => setEditLabel(e.target.value)}
-              onBlur={finishEdit}
-              onKeyDown={(e) => { if (e.key === 'Enter') finishEdit(); }}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="nodrag nopan flex-1 text-xs bg-transparent outline-none border-b border-primary min-w-0"
-              autoFocus
-            />
-          ) : (
-            <div
-              className={cn(
-                'text-xs truncate hover:bg-muted/50 rounded px-1 py-0.5 min-w-0 flex-1',
-                currentNodeState === 'disabled' && 'opacity-50 line-through',
-              )}
-              onDoubleClick={(e) => { e.stopPropagation(); startEdit(); }}
-            >
-              {displayLabel}
-            </div>
-          )}
-          {nodeData.isFirstConnectedNode && !isBoundaryNode && !nodeData.isPreview ? (
-            <button
-              type="button"
-              className="nodrag nopan shrink-0 inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isExecutionBusy}
-              title={t('nodeUi.test.partial')}
-              onClick={actions.handlePartialTest}
-            >
-              {isPartialTesting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Play className="h-2.5 w-2.5" />}
-              {t('nodeUi.test.partial')}
-            </button>
-          ) : null}
-          {selectedJsonPreset ? (
-            <span
-              className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-              title={`预设：${selectedJsonPreset.name}`}
-            >
-              {selectedJsonPreset.name}
-            </span>
-          ) : null}
-        </div>
+        <NodeBodyHeader
+          iconDefinition={iconDefinition}
+          isEditing={isEditing}
+          editLabel={editLabel}
+          displayLabel={displayLabel}
+          currentNodeState={currentNodeState}
+          inputRef={inputRef}
+          isFirstConnectedNode={!!nodeData.isFirstConnectedNode}
+          isBoundaryNode={isBoundaryNode}
+          isPreview={nodeData.isPreview === true}
+          isExecutionBusy={isExecutionBusy}
+          isPartialTesting={isPartialTesting}
+          selectedJsonPreset={selectedJsonPreset}
+          onEditLabelChange={setEditLabel}
+          onFinishEdit={finishEdit}
+          onStartEdit={startEdit}
+          onPartialTest={actions.handlePartialTest}
+        />
       )}
 
       {canShowPropertyNodeView ? (
@@ -942,83 +806,19 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
-      {/* Source handles (static) */}
-      {showSourceHandle && !dynamicHandles && (
-        staticSourceHandles.length === 0 ? (
-          renderHandleColorPopover(
-            SOURCE_HANDLE_KEY,
-            <Handle
-              id="source" type="source" position={handlePositions.source}
-              className={cn('!z-10 !w-3 !h-3 !border-2 handle-dot', floatingHandleClassName)}
-              style={getSourceHandleStyle(SOURCE_HANDLE_KEY, DEFAULT_SOURCE_HANDLE_COLOR, handlePositions.source, 0, 1)}
-              onContextMenu={(event) => openHandleColorMenu(event, SOURCE_HANDLE_KEY)}
-            />,
-          )
-        ) : (
-          <>
-            {staticSourceHandles.map((h, index) => (
-              <React.Fragment key={h.id}>
-                {canShowNodeContent ? (
-                  <div
-                    className={cn('source-handle-label', floatingLabelClassName)}
-                    style={getSourceLabelStyle(index, staticSourceHandles.length, handleCtx)}
-                  >
-                    <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label || h.id}</span>
-                  </div>
-                ) : null}
-                {renderHandleColorPopover(
-                  h.id,
-                  <Handle
-                    id={h.id} type="source" position={handlePositions.source}
-                    className={cn('!z-10 !w-2.5 !h-2.5 !border-2 handle-dot', floatingHandleClassName)}
-                    style={getSourceHandleStyle(
-                      h.id,
-                      h.id === LOOP_BODY_SOURCE_HANDLE ? LOOP_BODY_SOURCE_HANDLE_COLOR : DEFAULT_SOURCE_HANDLE_COLOR,
-                      handlePositions.source,
-                      index,
-                      staticSourceHandles.length,
-                    )}
-                    onContextMenu={(event) => openHandleColorMenu(event, h.id)}
-                  />,
-                )}
-              </React.Fragment>
-            ))}
-          </>
-        )
-      )}
-
-      {/* Dynamic source handles (switch) */}
-      {dynamicHandles && (
-        <>
-          {dynamicHandles.map(h => (
-            <React.Fragment key={h.id}>
-              {canShowNodeContent ? (
-                <div
-                  className={cn('source-handle-label', floatingLabelClassName)}
-                  style={getSourceLabelStyle(h.index, h.total, handleCtx)}
-                >
-                  <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label}</span>
-                </div>
-              ) : null}
-              {renderHandleColorPopover(
-                h.id,
-                <Handle
-                  id={h.id} type="source" position={handlePositions.source}
-                  className={cn('!z-10 !w-2.5 !h-2.5 !border-2 handle-dot', floatingHandleClassName)}
-                  style={getSourceHandleStyle(
-                    h.id,
-                    h.id === 'default' ? DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR : DEFAULT_DYNAMIC_HANDLE_COLOR,
-                    handlePositions.source,
-                    h.index,
-                    h.total,
-                  )}
-                  onContextMenu={(event) => openHandleColorMenu(event, h.id)}
-                />,
-              )}
-            </React.Fragment>
-          ))}
-        </>
-      )}
+      <NodeBodySourceHandles
+        showSourceHandle={showSourceHandle}
+        canShowNodeContent={canShowNodeContent}
+        dynamicHandles={dynamicHandles}
+        staticSourceHandles={staticSourceHandles}
+        handlePositions={handlePositions}
+        handleCtx={handleCtx}
+        floatingHandleClassName={floatingHandleClassName}
+        floatingLabelClassName={floatingLabelClassName}
+        getSourceHandleStyle={getSourceHandleStyle}
+        openHandleColorMenu={openHandleColorMenu}
+        renderHandleColorPopover={renderHandleColorPopover}
+      />
     </div>
   );
 

@@ -1,0 +1,215 @@
+---
+title: Workflow Editor Execution Sync
+---
+
+# Scope
+
+本文聚焦前端 Workflow 编辑器如何发起执行、接收执行事件、展示执行日志，以及当前执行事件作用域的设计缺口。范围覆盖：
+
+- `packages/web/src/components/workflow/use-workflow-editor-execution.ts`
+- `packages/web/src/components/workflow/workflow-editor.tsx`
+- `packages/web/src/stores/workflow-editor/`
+- `packages/web/src/lib/ws.ts`
+- `packages/web/src/app/workflows/share/page.tsx`
+
+不覆盖画布节点渲染细节与属性面板 UI。
+
+## Main Responsibilities
+
+- 选择当前 workflow 和执行入口。
+- 建立面向某个 `workspaceId` 的唯一 WS 连接。
+- 发送 `workflow:execute` / `pause` / `resume` / `stop` / `debug-node` / `interaction`。
+- 监听 `execution:log`、`workflow:paused`、`workflow:resumed`、`workflow:completed`、`workflow:error` 等事件更新本地状态。
+- 管理 execution history、log preview、debug 和交互弹窗。
+
+## Entry Points
+
+- 编辑器主入口：`packages/web/src/components/workflow/workflow-editor.tsx`
+  - `WorkflowEditorInner` 里调用 `useWorkflowEditorState(template)` 和 `useWorkflowEditorExecution(...)`
+- 执行状态 hook：`packages/web/src/components/workflow/use-workflow-editor-execution.ts`
+- Zustand store 版本：
+  - `packages/web/src/stores/workflow-editor/index.ts`
+  - `packages/web/src/stores/workflow-editor/execution.ts`
+  - `packages/web/src/stores/workflow-editor/execution-logs.ts`
+  - `packages/web/src/stores/workflow-editor/interaction.ts`
+- 分享页执行入口：`packages/web/src/app/workflows/share/page.tsx`
+
+## Execution Flow
+
+```text
+WorkflowEditorInner
+  -> useWorkflowEditorState(template)
+  -> useWorkflowEditorExecution({ workflow, workflowId, workspaceId })
+  -> getWorkflowWS() -> getWS(workspaceId)
+  -> ws.send('workflow:execute', { workflowId, input, env, context, startNodeId, snapshot })
+
+Server events
+  -> WorkspaceWS.onmessage()
+  -> handlers[event](data)
+  -> useWorkflowEditorExecution listeners
+  -> setExecutionLog / setExecutionLogs / setExecStatus / setPausedNodeId / setWorkflowErrorMessage
+
+Execution history preview
+  -> executionLogApi.list(workflowId)
+  -> user selects log
+  -> execution-logs.ts: enterPreview(log)
+  -> replace current workflow graph with log.snapshot
+```
+
+## WebSocket Model
+
+`packages/web/src/lib/ws.ts` 只维护一个全局 `WorkspaceWS` 实例：
+
+- `getWS(workspaceId)` 如果发现当前实例的 `workspaceId` 不同，会先断开旧连接，再创建新连接。
+- WS URL 固定带 `?workspaceId=<id>`。
+- 所有事件订阅都绑在这个唯一实例上。
+
+这意味着当前前端不是“多 workspace 多 socket”，而是“单例 socket + 动态切换 workspaceId”。
+
+## Editor Execution State
+
+`useWorkflowEditorExecution()` 自己维护一套本地执行态，而不是完全依赖 Zustand slice。
+
+核心状态：
+
+- `execStatus`
+- `executionLog`
+- `executionLogs`
+- `selectedExecutionLogId`
+- `currentExecutionId`
+- `workflowErrorMessage`
+- `pausedNodeId`
+- `pausedReason`
+- `partialExecutionStartNodeId`
+- `pendingInteraction`
+- `debugNodeId` / `debugStatus` / `debugResult`
+
+关键行为：
+
+- `handleExecute()`
+  - 发送 `workflow:execute`
+  - 请求中附带当前画布 `snapshot`
+  - 监听执行相关 WS 事件并实时更新本地状态
+- `handlePauseExecution()` / `handleResumeExecution()` / `handleStopExecution()`
+  - 通过当前 `executionId` 发送控制命令
+- `handleDebugNode()`
+  - 发送 `workflow:debug-node`
+  - 同时监听 `workflow:interaction` 和 `workflow:client-node`
+- `sendInteractionResponse()`
+  - 回传阻塞式交互结果
+- `handleClientNodeRequest()`
+  - 调 Electron preload 暴露的 `clientPlugins.executeNode()`
+
+## Snapshot Semantics On The Frontend
+
+前端执行时总是显式发送 snapshot：
+
+- `nodes`
+- `edges`
+- `groups`
+- `variables`
+
+并且会通过 `withOriginalIOFieldsSnapshot()` 把原始 `inputFields` / `outputs` 备份到 node.data 中，目的是：
+
+- debug 或 execution preview 时保留执行态字段
+- 退出 preview 后能恢复原始输入输出结构
+
+这解释了为什么编辑器能执行“尚未保存到服务器”的画布版本。
+
+## Execution Event Subscriptions
+
+`useWorkflowEditorExecution()` 实际依赖的服务端事件：
+
+- `workflow:execute:result`
+- `workflow:execute:error`
+- `execution:log`
+- `node:progress`
+- `workflow:paused`
+- `workflow:resumed`
+- `workflow:completed`
+- `workflow:error`
+- `workflow:interaction`
+- `workflow:client-node`
+
+其中：
+
+- `execution:log` 是主状态源，持续覆盖当前 log 和 `execStatus`
+- `workflow:paused` / `workflow:resumed` 维护暂停态
+- `workflow:completed` / `workflow:error` 负责最终收尾并刷新历史
+- `node:progress` 只写 console，不驱动 UI 主状态
+
+## Execution History And Preview
+
+执行历史来自 REST，不是 WS 回放：
+
+- `executionLogApi.list(workflowId)` 读取历史
+- `executionLogApi.delete()` / `clear()` 删除历史
+
+预览模式由 `execution-logs.ts` 管理：
+
+- `enterPreview(log)`
+  - 把当前 workflow 备份到 `prePreviewRef`
+  - 用 `log.snapshot` 替换当前画布
+- `exitPreview()`
+  - 恢复原 workflow
+
+这是一种“执行结果回放到编辑器”的轻量模式，不是独立 viewer。
+
+## Interaction Sync
+
+Zustand 版本和 hook 版本都各自实现了一套交互监听：
+
+- store 版：`stores/workflow-editor/interaction.ts`
+- hook 版：`useWorkflowEditorExecution.ts`
+
+两者都做同一件事：
+
+- 监听 `workflow:interaction`
+- 保存 `pendingInteraction`
+- 用户提交后发送 `interaction_response`
+
+这说明当前项目同时保留了两套 workflow execution state 管理路径，hook 版更像新主路径，store 版保留了旧能力和局部复用。
+
+## Proven Scope Mismatch
+
+已验证的事实：
+
+- 编辑器里，`WorkflowEditorInner` 用 `const workspaceId = workspaces[0]?.id;`
+- 分享页里，执行相关 WS 固定使用 `getWS('workflows')`
+- 服务端 WS 连接只按 `workspaceId` 字符串分组广播
+- 服务端全局 workflow emit 当前错误地把 `workflowId` 传给 `broadcastToWorkspace()`
+
+这几件事拼起来，得到的不是单点实现错误，而是一个稳定的架构缺口：
+
+> workflow execution event 到底应该广播到哪个 scope，目前没有统一模型。
+
+现状至少存在三种 scope 候选：
+
+- 真正业务 workspaceId
+- 固定字符串 `'workflows'`
+- workflowId
+
+当前代码三者都在使用，但没有统一契约。
+
+## Files To Read Next
+
+- `packages/web/src/components/workflow/use-workflow-editor-execution.ts`
+  - 执行态主逻辑和 WS 订阅都在这里
+- `packages/web/src/components/workflow/workflow-editor.tsx`
+  - 编辑器如何选择 `workspaceId`
+- `packages/web/src/lib/ws.ts`
+  - 单例 WS 连接模型
+- `packages/web/src/app/workflows/share/page.tsx`
+  - 分享页为什么使用 `getWS('workflows')`
+- `packages/server/src/ws/connection-manager.ts`
+  - 服务端广播实际按什么维度分发
+- `packages/server/src/app.ts`
+  - 全局 workflow 执行事件如何兜底发出
+
+## Open Questions
+
+- workflow 编辑器为什么默认绑定 `workspaces[0]`，而不是显式 workspace 选择或 workflow 自身归属字段？
+- 分享页使用 `'workflows'` 作为 workspaceId 是历史兼容约定，还是刻意设计的“全局 workflow 通道”？
+- 是否应该引入统一的 execution audience 概念，例如：
+  - `executionScope: { type: 'workspace' | 'workflow-channel' | 'direct-client', id: string }`
+- 如果未来支持多 workspace 并行打开，`getWS()` 的单例模型是否还成立？

@@ -1,5 +1,6 @@
 import type { ReactFlowState } from '@xyflow/react';
 import type { OutputField } from '@agent-spaces/shared';
+import { getNodeDefinition } from '@/lib/workflow-nodes';
 
 // ---- Handle colors ----
 export const DEFAULT_SOURCE_HANDLE_COLOR = '#10b981';
@@ -63,4 +64,19 @@ export function getRecordValue(value: unknown): Record<string, unknown> | undefi
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : undefined;
+}
+
+export function getVariableContextNodeLabel(
+  nodeType: string,
+  data: Record<string, unknown>,
+  fallbackLabel: unknown,
+  t: (key: string) => string,
+): string {
+  const resolveLabel = (value: unknown) => {
+    const label = String(value ?? '');
+    return label && !label.startsWith('nodes.') ? label : '';
+  };
+  const definition = getNodeDefinition(nodeType);
+  const label = resolveLabel(data.label) || resolveLabel(fallbackLabel) || definition?.label || nodeType;
+  return label.startsWith('nodes.') ? t(label) : label;
 }
