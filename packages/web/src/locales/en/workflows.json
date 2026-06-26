@@ -618,6 +618,25 @@
         }
       }
     },
+    "merge_arrays": {
+      "label": "Merge Multiple Arrays",
+      "description": "Merge multiple arrays into one result array, with optional deduplication",
+      "props": {
+        "arrays": {
+          "label": "Arrays",
+          "tooltip": "Add multiple array inputs to merge in order",
+          "fields": {
+            "array": {
+              "label": "Array"
+            }
+          }
+        },
+        "dedupe": {
+          "label": "Remove Duplicates",
+          "tooltip": "When enabled, duplicate values are removed while keeping the first occurrence"
+        }
+      }
+    },
     "parse_json": {
       "label": "Parse JSON",
       "description": "Parse a JSON string into an object and output as result object",

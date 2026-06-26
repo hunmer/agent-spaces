@@ -111,6 +111,41 @@ export const utilsNodes: NodeTypeDefinition[] = [
     outputs: [{ key: 'result', type: 'string[]' }],
   },
   {
+    type: 'merge_arrays',
+    label: 'nodes.merge_arrays.label',
+    category: 'nodes.categories.utilities',
+    icon: 'Combine',
+    description: 'nodes.merge_arrays.description',
+    properties: [
+      {
+        key: 'arrays',
+        label: 'nodes.merge_arrays.props.arrays.label',
+        type: 'array',
+        required: true,
+        tooltip: 'nodes.merge_arrays.props.arrays.tooltip',
+        default: [],
+        itemTemplate: { array: [] },
+        fields: [
+          {
+            key: 'array',
+            label: 'nodes.merge_arrays.props.arrays.fields.array.label',
+            type: 'text',
+            required: true,
+            placeholder: '{{ __data__["node_id"].result }}',
+          },
+        ],
+      },
+      {
+        key: 'dedupe',
+        label: 'nodes.merge_arrays.props.dedupe.label',
+        type: 'checkbox',
+        default: false,
+        tooltip: 'nodes.merge_arrays.props.dedupe.tooltip',
+      },
+    ],
+    outputs: [{ key: 'result', type: 'any[]' }],
+  },
+  {
     type: 'parse_json',
     label: 'nodes.parse_json.label',
     category: 'nodes.categories.utilities',

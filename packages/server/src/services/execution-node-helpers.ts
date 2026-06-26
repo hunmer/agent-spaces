@@ -100,6 +100,48 @@ export function executeFlattenArray(resolvedData: Record<string, any>): Record<s
   return { result };
 }
 
+export function executeMergeArrays(resolvedData: Record<string, any>): Record<string, unknown[]> {
+  const arrays = Array.isArray(resolvedData.arrays) ? resolvedData.arrays : [];
+  const result: unknown[] = [];
+
+  for (const item of arrays) {
+    const value = item && typeof item === 'object' && 'array' in item ? item.array : item;
+    if (Array.isArray(value)) {
+      result.push(...value);
+    }
+  }
+
+  if (!resolvedData.dedupe) return { result };
+
+  const seen = new Set<string>();
+  return {
+    result: result.filter((item) => {
+      const key = getStableDedupeKey(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  };
+}
+
+function getStableDedupeKey(value: unknown): string {
+  if (value === null) return 'null';
+  const type = typeof value;
+  if (type !== 'object') return `${type}:${String(value)}`;
+  return `${type}:${JSON.stringify(sortObjectKeys(value))}`;
+}
+
+function sortObjectKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortObjectKeys);
+  if (!value || typeof value !== 'object') return value;
+  return Object.keys(value as Record<string, unknown>)
+    .sort()
+    .reduce<Record<string, unknown>>((acc, key) => {
+      acc[key] = sortObjectKeys((value as Record<string, unknown>)[key]);
+      return acc;
+    }, {});
+}
+
 export function executeParseJson(resolvedData: Record<string, any>): Record<string, unknown> {
   const text = String(resolvedData.text ?? '').trim();
   if (!text) return { result: {} };

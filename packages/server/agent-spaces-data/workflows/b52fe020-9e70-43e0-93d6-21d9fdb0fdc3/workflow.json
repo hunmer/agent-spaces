@@ -40,7 +40,7 @@
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
       "position": {
-        "x": 1035,
+        "x": 1110,
         "y": 345
       },
       "data": {
@@ -117,61 +117,101 @@
       }
     },
     {
-      "id": "node_1782456857152_7dbsbb",
+      "id": "node_1782458233136_nf1k8u",
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 351.96341607734774,
-        "y": 1006.9098622675955
+        "x": -69.96978351761669,
+        "y": 1019.911742575483
       },
       "data": {
         "outputs": [
           {
             "key": "urls",
-            "type": "array",
+            "type": "string[]",
             "description": "nodes.gallery_preview.outputs.urls"
           }
         ],
+        "outputMiddleware": {
+          "type": "arrayItemField",
+          "sourceKey": "items",
+          "itemKey": "src",
+          "targetKey": "urls"
+        },
         "items": [
           {
-            "id": 1782456872013,
+            "id": 1782458238021,
             "src": "https://img1.baidu.com/it/u=3462306588,2909957402&fm=253&app=138&f=JPEG?w=500&h=653",
             "thumb": "",
             "type": "image",
             "caption": ""
           }
         ],
-        "nodeWidth": 250,
-        "nodeHeight": 290
+        "nodeWidth": 240,
+        "nodeHeight": 305
       }
     },
     {
-      "id": "node_1782456896121_q816e7",
+      "id": "node_1782458248440_60mfkr",
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 704.855135787207,
-        "y": 956.5557497474349
+        "x": 260.7175844954632,
+        "y": 1248.9218941096572
       },
       "data": {
         "outputs": [
           {
             "key": "urls",
-            "type": "array",
+            "type": "string[]",
             "description": "nodes.gallery_preview.outputs.urls"
           }
         ],
+        "outputMiddleware": {
+          "type": "arrayItemField",
+          "sourceKey": "items",
+          "itemKey": "src",
+          "targetKey": "urls"
+        },
         "items": [
           {
-            "id": 1782456906197,
+            "id": 1782458254678,
             "src": "https://img2.baidu.com/it/u=65824387,3382670591&fm=253&app=138&f=JPEG?w=800&h=1735",
             "thumb": "",
             "type": "image",
             "caption": ""
           }
         ],
-        "nodeWidth": 254,
-        "nodeHeight": 405
+        "nodeWidth": 236,
+        "nodeHeight": 369
+      }
+    },
+    {
+      "id": "node_1782458900764_haa7t9",
+      "type": "merge_arrays",
+      "label": "nodes.merge_arrays.label",
+      "position": {
+        "x": 615,
+        "y": 1035
+      },
+      "data": {
+        "arrays": [
+          {
+            "array": "",
+            "id": 1782459092846
+          },
+          {
+            "array": [],
+            "id": 1782459093806
+          }
+        ],
+        "dedupe": false,
+        "outputs": [
+          {
+            "key": "result",
+            "type": "any[]"
+          }
+        ]
       }
     }
   ],
@@ -197,7 +237,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782457584827,
+  "updatedAt": 1782459104295,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",

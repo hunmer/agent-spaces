@@ -38,6 +38,7 @@ import {
   getClientPluginId,
   executePluckArrayKey,
   executeFlattenArray,
+  executeMergeArrays,
   executeParseJson,
   executeStringConcat,
   executeStringSplit,
@@ -939,6 +940,8 @@ export class ExecutionManager {
       }
       case 'flatten_array':
         return executeFlattenArray(resolvedData);
+      case 'merge_arrays':
+        return executeMergeArrays(resolvedData);
       case 'pluck_array_key':
         return executePluckArrayKey(resolvedData);
       case 'array_text_replace':

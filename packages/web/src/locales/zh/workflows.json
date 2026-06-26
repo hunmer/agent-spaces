@@ -618,6 +618,25 @@
         }
       }
     },
+    "merge_arrays": {
+      "label": "多个数组合并和一个数组",
+      "description": "将多个数组按顺序合并为一个 result 数组，可选择是否去重",
+      "props": {
+        "arrays": {
+          "label": "数组列表",
+          "tooltip": "添加多个要按顺序合并的数组输入",
+          "fields": {
+            "array": {
+              "label": "数组"
+            }
+          }
+        },
+        "dedupe": {
+          "label": "是否去重",
+          "tooltip": "开启后移除重复值，并保留第一次出现的值"
+        }
+      }
+    },
     "parse_json": {
       "label": "解析 JSON",
       "description": "将 JSON 字符串解析为对象，输出 result 对象",
