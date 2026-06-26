@@ -1,0 +1,419 @@
+---
+title: Workflow Node System
+---
+
+# Scope
+
+本文单独研究当前项目的 workflow node 系统，不覆盖完整执行引擎和编辑器布局逻辑。关注点是：
+
+- node 的共享数据模型
+- 前端内建节点定义与注册
+- 节点在编辑器里的渲染与属性配置
+- 服务端如何把 `node.type` 分派到具体执行实现
+- 插件节点、客户端节点与 `agent_run` 这类特殊节点的扩展路径
+
+目标是让后续 AI agent 能在不重扫全仓的情况下新增节点、修改节点属性、接插件节点或排查节点执行问题。
+
+## Main Responsibilities
+
+- 用统一的 `WorkflowNode` 数据结构承载所有节点实例。
+- 用 `NodeTypeDefinition` 描述节点类型的编辑器元数据。
+- 前端根据 definition 决定：
+  - 节点分类与搜索
+  - icon / label / description
+  - 属性面板表单结构
+  - handles、动态 handles、默认 outputs
+  - 特殊渲染或 custom view
+- 服务端根据 `node.type` 和 `node.data` 决定：
+  - 内建节点执行函数
+  - 插件节点执行方式
+  - 是否要转给客户端执行
+
+## Core Data Model
+
+共享 node 实例定义位于 `packages/shared/src/types/workflow.ts`：
+
+```text
+WorkflowNode
+  - id
+  - type
+  - label
+  - position
+  - data: Record<string, unknown>
+  - inputFields?
+  - outputs?
+  - nodeState?
+  - breakpoint?
+  - nodeColor?
+  - composite?
+```
+
+关键结论：
+
+- `type` 是字符串，不是 enum。
+- 真正的节点业务参数基本都放在 `data`。
+- `inputFields` / `outputs` 既出现在 node 顶层，也可能在编辑器快照阶段复制到 `data` 中做执行态预览。
+- `composite` 用于 loop / sub workflow 这类复合节点的子节点关系、隐藏节点、scope boundary 等。
+
+这套设计本质上是：
+
+> 运行态实例 `WorkflowNode` 保持宽松，编辑器能力和执行能力再分别通过 definition 与 dispatch 补上。
+
+## Node Type Definition Model
+
+节点类型元数据同样定义在 `packages/shared/src/types/workflow.ts` 中，核心是 `NodeTypeDefinition` 相关字段族。
+
+可验证的能力包括：
+
+- `type`
+- `label`
+- `category`
+- `icon`
+- `description`
+- `properties`
+- `outputs`
+- `allowInputFields`
+- `allowedInputFieldTypes`
+- `handles`
+- `singleton`
+- `customView`
+
+`NodeProperty` 支撑的属性类型包括：
+
+- `text`
+- `textarea`
+- `number`
+- `select`
+- `checkbox`
+- `code`
+- `conditions`
+- `array`
+- `output_fields`
+- `agent`
+- `sqlite`
+- `knowledge-base`
+
+因此 node 系统的本质不是“每个节点写死一套表单”，而是：
+
+- `NodeTypeDefinition` 驱动编辑器生成大部分通用表单
+- 少数节点再用 custom view 或额外逻辑补足
+
+## Frontend Definition Registry
+
+前端 registry 位于 `packages/web/src/lib/workflow-nodes/registry.ts`。
+
+主流程：
+
+```text
+definitions/*
+  -> registry.ts: allNodeDefinitions
+  -> getAllNodeDefinitions()
+  -> getNodeDefinitionsByCategory()
+  -> getNodeDefinition(type)
+  -> i18n.ts 进行本地化包装
+  -> 组件侧使用 localized definitions
+```
+
+内建节点来源：
+
+- `flowControlNodes`
+- `aiNodes`
+- `interactionNodes`
+- `displayNodes`
+- `utilsNodes`
+- `stringNodes`
+- `sqliteNodes`
+- `knowledgeBaseNodes`
+- `LOCAL_BRIDGE_WORKFLOW_NODES`
+
+插件节点来源：
+
+- `registerPluginNodeDefinitions(nodes)`
+- 与内建定义合并后参与查找与渲染
+
+## Built-in Node Categories
+
+从 `definitions/*` 可以确认当前节点体系至少包含这些大类：
+
+- Flow Control
+  - `start`
+  - `end`
+  - `run_code`
+  - `run_python`
+  - `toast`
+  - `switch`
+  - `set_variable`
+  - `get_variable`
+  - `delete_variable`
+  - `loop`
+  - `loop_break`
+  - `sub_workflow`
+- AI
+  - `agent_run`
+- Interaction
+  - `alert`
+  - `prompt`
+  - `form`
+- Display
+  - `table_display`
+  - `gallery_preview`
+  - `code_render`
+  - `markdown`
+  - `sticky_note`
+- Utilities / String / SQLite / Knowledge Base
+
+这说明 node 分类主要是编辑器导航语义，不直接影响服务端 dispatch。
+
+## Definition Example
+
+`packages/web/src/lib/workflow-nodes/definitions/ai.ts` 中的 `agent_run` 很典型：
+
+- 用 `properties` 定义 agent、prompt、cwd、additionalDirectories、permissionMode
+- 用 `outputs` 定义 `result` 与 `usage`
+
+`packages/web/src/lib/workflow-nodes/definitions/flow-control.ts` 中的 `switch` 和 `loop` 更能体现 definition 的表达力：
+
+- `switch`
+  - `properties` 里有 `conditions`
+  - `handles.dynamicSource` 根据 `conditions` 动态生成 source handles
+- `set_variable`
+  - 属性变更后 outputs 会被派生更新
+- `loop`
+  - 使用共享常量定义 loop root/body/break 的复合关系
+
+## Frontend Rendering And Editing
+
+节点渲染主入口在 `packages/web/src/components/workflow/workflow-node.tsx`。
+
+关键机制：
+
+- 根据 `nodeData.nodeType || type` 找 definition
+- 使用 `useLocalizedNodeDefinition()` 得到翻译后的 label / category / properties
+- 根据 definition 决定：
+  - handles
+  - 动态 source handles
+  - custom view
+  - 日志展示方式
+  - property mode / variable input / preset 输出展示
+
+如果 definition 声明了插件 custom view：
+
+- `plugin-workflow-custom-view` 路径会接管一部分节点体渲染
+
+属性编辑主入口在 `packages/web/src/components/workflow/workflow-properties-panel.tsx`。
+
+关键点：
+
+- 面板本身依赖 `useLocalizedNodeDefinition(node.type)`
+- 大多数字段由 `properties` 描述驱动
+- 某些节点会有额外派生逻辑
+  - 例如 `set_variable` 的 outputs 由 `createSetVariableOutputs()` 根据变量路径生成
+  - JSON preset 会把执行结果回填为可复用输出模板
+
+## Dynamic Handles And Graph Semantics
+
+动态 handles 是 node 系统和画布系统的关键接缝。
+
+已验证的调用链：
+
+```text
+definition.handles.dynamicSource
+  -> use-workflow-edge-operations.ts
+  -> workflow-node-size.ts
+  -> workflow-node.tsx
+  -> use-workflow-editor-state.ts
+```
+
+用途：
+
+- 根据属性数组长度动态生成 source handles
+- 典型节点：`switch`
+- 同时影响：
+  - 连接数量和 handle id
+  - 画布尺寸估算
+  - legacy sourceHandle 兼容与归一化
+
+这意味着：
+
+> 修改 definition 的 handles 不是纯 UI 改动，会连带影响边连接语义和已有 workflow 兼容逻辑。
+
+## Localized Definition Layer
+
+前端并不直接把 `registry.ts` 中的原始定义丢给组件。
+
+`packages/web/src/lib/workflow-nodes/i18n.ts` 负责：
+
+- 翻译 `label`
+- 翻译 `category`
+- 翻译 `description`
+- 翻译 properties / array fields / options / handles 文本
+
+所以：
+
+- 原始 definitions 里可以存 i18n key
+- 组件里应优先消费 localized hooks，而不是直接读 raw registry
+
+## Plugin Node Path
+
+插件节点的服务端主入口在 `packages/server/src/services/plugin.ts`。
+
+已确认的能力：
+
+- 插件 manifest 可声明 `workflowNodes`
+- 可从 `workflow.js` / CommonJS workflow module 加载节点定义
+- 可为节点类型绑定 handler
+- `getWorkflowNodes(pluginId, locale?)` 返回节点定义给前端
+- `getWorkflowNodeDefinitionByType(nodeType)` 允许执行前做 definition 查询
+- `canExecuteWorkflowNode(nodeType)` 判断该 type 是否由插件运行时支持
+- `requiresClientExecution(nodeType)` 决定是否必须走客户端
+
+前端插件节点接入链：
+
+```text
+workflow-editor.tsx
+  -> 拉取插件节点定义
+  -> registerPluginNodeDefinitions(allNodes)
+  -> registry 合并
+  -> 画布/节点选择器/属性面板可见
+```
+
+所以插件节点要同时满足两件事：
+
+1. 前端拿到 definition，才能编辑和显示  
+2. 服务端拿到 handler 或执行声明，才能运行
+
+## Client Node Bridge
+
+客户端节点桥接由两部分组成：
+
+- 识别：`packages/server/src/services/execution-node-helpers.ts`
+  - `isClientPluginNode(node)`
+  - `getClientPluginId(node)`
+- 执行桥接：`packages/server/src/services/client-node-manager.ts`
+
+执行链：
+
+```text
+ExecutionManager.dispatchNode()
+  -> isClientPluginNode(node) / pluginService.requiresClientExecution(node.type)
+  -> executeClientNode()
+  -> clientNodeManager.request(...)
+  -> WS channel 'workflow:client-node'
+  -> web use-workflow-editor-execution.ts
+  -> electronAPI.clientPlugins.executeNode(...)
+  -> client_node_response
+  -> ClientNodeManager.handleResponse()
+```
+
+关键约束：
+
+- 这类节点必须依赖具体客户端连接
+- 有 5 分钟超时与 30 秒断线重连宽限
+- 如果客户端掉线且未恢复，节点执行直接失败
+
+## Server Dispatch Model
+
+服务端真正把 `node.type` 映射到实现的是 `packages/server/src/services/execution-manager.ts`。
+
+主流程：
+
+```text
+executeNode()
+  -> 解析变量 / dry-run / stepInput
+  -> dispatchNode()
+  -> switch(node.type)
+  -> 内建节点函数 or 插件节点 or client node
+  -> 写回 step.output / session.context / execution data
+```
+
+内建映射是显式 `switch`：
+
+- `start` / `end`
+- `sqlite_*`
+- `kb_*`
+- `run_code` / `run_python`
+- `switch`
+- `variable_aggregate`
+- `set_variable` / `get_variable` / `delete_variable`
+- `sub_workflow`
+- `loop`
+- `agent_run`
+- `alert` / `prompt` / `form`
+
+默认分支逻辑：
+
+```text
+if client plugin node
+  -> executeClientNode()
+else if pluginService.canExecuteWorkflowNode(node.type)
+  -> 插件执行 or 客户端插件执行
+else
+  -> throw Unsupported node type
+```
+
+这意味着当前 node 系统是“三段式执行模型”：
+
+- 内建 `switch`
+- 服务端插件 handler
+- 客户端插件桥接
+
+## Special Case: agent_run
+
+`agent_run` 是最特殊的内建节点之一。
+
+前端 definition：
+
+- 在 `ai.ts` 里声明属性和输出
+
+服务端执行：
+
+- `execution-manager.ts` -> `executeAgentRun()`
+- `packages/server/src/services/execution-agent-runner.ts`
+
+其特点：
+
+- 并不是普通 plugin node
+- 会解析 agent preset / runtime / permission mode / sandbox dirs
+- 最终调用 agent runtime 执行 prompt
+- 输出包含 `result`、`usage` 和 runtime 元信息
+
+已确认的风险：
+
+- `resolveWorkflowAgentWorkspaceId()` 当前直接取 `workspaceService.getAll()[0]?.id ?? 'default'`
+- 说明 `agent_run` 的 workspace 归属依然不是从 workflow session 明确传入，而是依赖全局第一个 workspace
+
+这和前面 execution scope 的研究结论是同一类设计缺口。
+
+## Files To Read Next
+
+- `packages/shared/src/types/workflow.ts`
+  - node 实例模型与 definition 类型
+- `packages/web/src/lib/workflow-nodes/registry.ts`
+  - 内建/插件 definition 合并入口
+- `packages/web/src/lib/workflow-nodes/definitions/*`
+  - 新增节点时首先参考
+- `packages/web/src/components/workflow/workflow-node.tsx`
+  - 节点渲染与 definition 消费方式
+- `packages/web/src/components/workflow/workflow-properties-panel.tsx`
+  - 属性面板与特殊派生逻辑
+- `packages/server/src/services/execution-manager.ts`
+  - `node.type` 到执行实现的最终 dispatch
+- `packages/server/src/services/plugin.ts`
+  - 插件节点定义加载与 handler 执行
+- `packages/server/src/services/client-node-manager.ts`
+  - 客户端节点请求/响应桥接
+- `packages/server/src/services/execution-agent-runner.ts`
+  - `agent_run` 的特殊执行路径
+
+## Open Questions / Risks
+
+- definition 与执行实现是分离维护的。
+  - 新增内建节点时，如果只加前端 definition 不加 `dispatchNode()`，运行时会直接 `Unsupported node type`。
+- 插件节点存在前后端双注册要求。
+  - 只注册前端 definition 会“能看到不能执行”。
+  - 只注册服务端 handler 会“能执行但编辑器不可见”。
+- 客户端节点依赖具体连接。
+  - 不适合无 UI 或纯后台调度场景。
+- `agent_run` 仍有 workspace 归属不严格的问题。
+- 动态 handles 与 composite 节点改动有较高兼容性风险。
+  - 会影响 edge id、画布尺寸、legacy handle 迁移和执行可达性。

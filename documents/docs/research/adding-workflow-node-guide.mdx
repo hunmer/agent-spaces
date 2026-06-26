@@ -1,0 +1,415 @@
+---
+title: Adding A Workflow Node Guide
+---
+
+# Scope
+
+本文是“如何新增一个 workflow node”的实施指南，面向当前仓库，不讲抽象原则，直接对应代码入口。
+
+适用两种场景：
+
+- 新增内建节点
+- 新增插件节点
+
+不覆盖复杂 UI 美化，只覆盖最小可运行链路。
+
+## Choose The Path First
+
+新增 workflow node 先选实现路径：
+
+1. 内建节点  
+   适合：
+   - 需要深度接入执行引擎
+   - 需要访问 server 内部能力
+   - 需要长期稳定维护
+
+2. 服务端插件节点  
+   适合：
+   - 希望通过插件独立分发
+   - 执行逻辑主要在 server
+
+3. 客户端插件节点  
+   适合：
+   - 依赖 Electron / 本地客户端能力
+   - 必须跑在用户机器上
+
+## Minimal End-to-End Chain
+
+一个新 node 真正可用，至少要打通这条链：
+
+```text
+NodeTypeDefinition
+  -> 前端 registry 可见
+  -> 节点选择器能创建
+  -> 属性面板能编辑
+  -> 节点渲染正常
+  -> 执行时 dispatchNode() 能识别
+  -> 结果能回写 output / execution log
+```
+
+如果少任何一环，会出现：
+
+- 能看到不能创建
+- 能创建不能编辑
+- 能编辑不能执行
+- 能执行但输出结构不稳定
+
+## Step 1: Define The Node Type
+
+共享定义类型在 `packages/shared/src/types/workflow.ts`。
+
+你不一定要改 shared 类型本身，但要理解 `NodeTypeDefinition` 可声明的关键字段：
+
+- `type`
+- `label`
+- `category`
+- `icon`
+- `description`
+- `properties`
+- `handles`
+- `allowInputFields`
+- `allowedInputFieldTypes`
+- `outputs`
+- `customView`
+- `manualCreate`
+- `singleton`
+- `debuggable`
+- `compound`
+
+普通节点最少只需要：
+
+- `type`
+- `label`
+- `category`
+- `icon`
+- `description`
+- `properties`
+
+## Step 2: Register Frontend Definition
+
+内建节点 definition 放在：
+
+- `packages/web/src/lib/workflow-nodes/definitions/*.ts`
+
+注册入口：
+
+- `packages/web/src/lib/workflow-nodes/registry.ts`
+
+做法：
+
+1. 把 node 加到合适的 definitions 文件  
+   例如：
+   - 流程类放 `flow-control.ts`
+   - 展示类放 `display.ts`
+   - AI 类放 `ai.ts`
+2. 确保该 definition 被 `registry.ts` 的 `allNodeDefinitions` 收进来
+
+最小例子：
+
+```ts
+{
+  type: 'my_node',
+  label: 'nodes.my_node.label',
+  category: 'nodes.categories.utilities',
+  icon: 'Wrench',
+  description: 'nodes.my_node.description',
+  properties: [
+    { key: 'text', label: 'nodes.my_node.props.text', type: 'text', required: true },
+  ],
+  outputs: [{ key: 'result', type: 'string' }],
+}
+```
+
+## Step 3: Add i18n Strings
+
+definition 使用的是 i18n key，不是直接文本。
+
+至少补到：
+
+- `packages/web/src/locales/zh/workflows.json`
+- `packages/web/src/locales/en/workflows.json`
+
+至少包含：
+
+- `nodes.my_node.label`
+- `nodes.my_node.description`
+- `nodes.my_node.props.*`
+
+如果少这一步：
+
+- 节点仍然可能工作
+- 但 UI 会出现裸 key，研究和调试成本会上升
+
+## Step 4: Verify Creation Path
+
+节点创建入口主要有两条：
+
+- 简单 store 版本：`packages/web/src/stores/workflow-editor/edit.ts`
+- 实际画布创建主路径：`packages/web/src/components/workflow/use-workflow-node-operations.ts`
+
+当前真正应关注的是后者：
+
+```text
+WorkflowNodeSelectDialog
+  -> use-workflow-node-operations.ts
+  -> createNodesForDefinition()
+  -> shared createWorkflowNodesForDefinition()
+```
+
+普通节点：
+
+- `createWorkflowNodesForDefinition()` 只生成一个 root node
+
+复合节点：
+
+- 需要 definition 里写 `compound`
+- factory 会自动生成 child nodes / generated edges
+
+相关约束：
+
+- `manualCreate === false` 的节点不会在选择器里出现
+- `singleton === true` 的节点一个 workflow 只能有一个
+
+## Step 5: Check Properties Panel Compatibility
+
+大部分节点不需要手写属性面板。
+
+只要 `properties` 使用现有字段类型，`packages/web/src/components/workflow/workflow-properties-panel.tsx` 就能直接生成表单。
+
+现成字段类型包括：
+
+- `text`
+- `textarea`
+- `number`
+- `select`
+- `checkbox`
+- `code`
+- `conditions`
+- `array`
+- `output_fields`
+- `agent`
+- `sqlite`
+- `knowledge-base`
+
+只有这几种情况才需要额外代码：
+
+- 输出字段需要根据属性动态派生
+  - 例：`set_variable`
+- 有特殊预设或执行结果回填
+- 需要 custom view
+
+## Step 6: Decide Whether Custom View Is Needed
+
+渲染主入口：
+
+- `packages/web/src/components/workflow/workflow-node.tsx`
+
+默认情况下：
+
+- 节点会按通用壳子渲染
+- definition 决定图标、标题、handles、日志面板等
+
+只有这些情况才需要 custom view：
+
+- 节点体需要特殊布局
+- 有复杂可视化内容
+- 需要与普通字段表单不同的交互
+
+如果要做 custom view：
+
+- 可使用 `customView`
+- 插件节点还能走 `plugin-workflow-custom-view`
+
+## Step 7: Implement Server Execution
+
+内建节点要在：
+
+- `packages/server/src/services/execution-manager.ts`
+
+里补 `dispatchNode()` 分支。
+
+最常见模式：
+
+```text
+case 'my_node':
+  return executeMyNode(resolvedData)
+```
+
+建议做法：
+
+1. 先把纯逻辑放到单独 helper 文件  
+   参考：
+   - `execution-node-helpers.ts`
+   - `execution-agent-runner.ts`
+2. `dispatchNode()` 只做分派
+3. 返回值尽量是对象，字段名与 `outputs` 对齐
+
+如果少这一步：
+
+- 前端可见
+- 运行时会 `Unsupported node type`
+
+## Step 8: Define Output Contract Clearly
+
+新增 node 时要同时想清楚：
+
+- `definition.outputs` 怎么写
+- server 返回值是什么结构
+
+最佳实践：
+
+- `outputs` 与执行结果 key 保持一致
+- 输出尽量稳定，不要一会儿返回标量、一会儿返回对象
+
+例如：
+
+- 好：`outputs: [{ key: 'result', type: 'string' }]`，执行返回 `{ result: '...' }`
+- 差：definition 声明 `result`，执行时有时返回字符串、有时返回数组
+
+## Step 9: Support Debugging If Needed
+
+默认 debug 路径走：
+
+- `workflow:debug-node`
+- `use-workflow-editor-execution.ts`
+- `ExecutionManager.debugNode()`
+
+如果你的 node：
+
+- 不适合单步执行
+- 依赖复合结构
+- 只是内部结构节点
+
+可以在 definition 里设置：
+
+- `debuggable: false`
+
+典型例子：
+
+- `loop_body`
+
+## Step 10: For Plugin Nodes
+
+如果是插件节点，不走内建 definition 文件，而是走 plugin API：
+
+- 前端拉取：`packages/web/src/components/workflow/workflow-editor.tsx`
+  - `pluginApi.getWorkflowNodes(plugin.id)`
+  - `registerPluginNodeDefinitions(allNodes)`
+- 服务端接口：`packages/server/src/routes/plugin.ts`
+  - `GET /:pluginId/workflow-nodes`
+- 服务端实现：`packages/server/src/services/plugin.ts`
+  - `getWorkflowNodes()`
+  - `canExecuteWorkflowNode()`
+  - `getWorkflowNodeDefinitionByType()`
+
+服务端插件节点要么：
+
+- 提供 server handler
+- 要么声明需要 client execution
+
+## Step 11: For Client Plugin Nodes
+
+如果节点必须在客户端执行，要满足：
+
+- node definition 已注册
+- `node.data.pluginType` 为 `client` 或 `both`
+- `node.data.pluginId` 可解析
+
+执行链：
+
+```text
+dispatchNode()
+  -> executeClientNode()
+  -> ClientNodeManager.request()
+  -> workflow:client-node
+  -> web use-workflow-editor-execution.ts
+  -> electronAPI.clientPlugins.executeNode()
+  -> client_node_response
+```
+
+因此这类节点不适合：
+
+- 无客户端连接
+- 纯后台调度
+- 服务器独立运行的场景
+
+## Step 12: If It Is A Composite Node
+
+如果新节点不是普通节点，而是 composite node：
+
+1. 在 definition 中声明 `compound`
+2. 明确：
+   - root role
+   - children
+   - generated edges
+   - 哪个 child 是 `scopeBoundary`
+3. 验证：
+   - 创建
+   - 拖拽
+   - 删除
+   - 插入新节点
+   - 边连接
+   - 执行 scope
+
+不要只停在“能创建出来”。
+
+## Recommended Minimal Checklist
+
+新增一个内建普通 node，至少检查：
+
+1. definition 已注册，节点选择器可见。  
+2. 中英文文案完整。  
+3. 能创建、保存、重新加载。  
+4. 属性面板能编辑并落到 `node.data`。  
+5. `dispatchNode()` 有分支。  
+6. 执行结果与 `outputs` 一致。  
+7. debug node 正常。  
+8. execution log 能展示结果。  
+
+## Recommended File Touch Map
+
+内建普通节点最小改动通常落在这些文件：
+
+- `packages/web/src/lib/workflow-nodes/definitions/*.ts`
+- `packages/web/src/locales/zh/workflows.json`
+- `packages/web/src/locales/en/workflows.json`
+- `packages/server/src/services/execution-manager.ts`
+- 可选：新的 server helper 文件
+
+插件节点最小改动通常落在：
+
+- 插件 `workflow.js`
+- 插件 server handler
+- 必要时插件 custom view / client bridge
+
+## Files To Read Next
+
+- `packages/shared/src/types/workflow.ts`
+  - definition 字段能力边界
+- `packages/shared/src/types/workflow-node-factory.ts`
+  - composite node 创建逻辑
+- `packages/web/src/lib/workflow-nodes/registry.ts`
+  - definition 注册入口
+- `packages/web/src/components/workflow/use-workflow-node-operations.ts`
+  - 节点创建真实入口
+- `packages/web/src/components/workflow/workflow-node.tsx`
+  - 节点渲染入口
+- `packages/web/src/components/workflow/workflow-properties-panel.tsx`
+  - 通用属性面板
+- `packages/server/src/services/execution-manager.ts`
+  - 执行分派入口
+- `packages/server/src/services/plugin.ts`
+  - 插件节点接入
+
+## Common Failure Modes
+
+- 只加 definition，忘了 server dispatch  
+  - 结果：`Unsupported node type`
+- 只加 server 执行，忘了 definition  
+  - 结果：编辑器不可见
+- 输出结构与 `outputs` 不一致  
+  - 结果：变量引用和执行预览混乱
+- 复合节点没处理 generated edges / scope  
+  - 结果：创建、删除或执行异常
+- 客户端节点当后台节点用  
+  - 结果：无连接时直接失败
