@@ -121,10 +121,11 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782445610472,
+  "updatedAt": 1782446475170,
   "published": false,
   "layoutSnapshot": {
-    "nodeDisplayMode": "properties"
+    "nodeDisplayMode": "properties",
+    "propertyModeBadgePosition": "top"
   },
   "enabledPlugins": [
     "workflow.ai-image"

@@ -177,7 +177,7 @@ Zustand 版本和 hook 版本都各自实现了一套交互监听：
 - 编辑器里，`WorkflowEditorInner` 用 `const workspaceId = workspaces[0]?.id;`
 - 分享页里，执行相关 WS 固定使用 `getWS('workflows')`
 - 服务端 WS 连接只按 `workspaceId` 字符串分组广播
-- 服务端全局 workflow emit 当前错误地把 `workflowId` 传给 `broadcastToWorkspace()`
+- 服务端全局 workflow emit 现已修正为使用执行会话携带的 `workspaceId`；若没有显式 scope，则不广播
 
 这几件事拼起来，得到的不是单点实现错误，而是一个稳定的架构缺口：
 

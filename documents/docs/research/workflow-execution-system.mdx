@@ -259,11 +259,14 @@ Hook 触发器本质上只是 `hookName -> {workflowId, triggerId}[]` 的内存�
 
 ## Open Questions / Risks
 
-- 已确认的设计缺口：`packages/server/src/app.ts` 中 `ExecutionManager` 的全局 `emit` 回调把 `payload.workflowId` 传给 `broadcastToWorkspace()`，而 `packages/server/src/ws/connection-manager.ts` 的 `broadcastToWorkspace()` 实际只按连接记录里的 `workspaceId` 过滤。
-  - 这不是命名误导，而是错参。
-  - 但当前不能直接机械修成 `session.workspaceId`，因为 workflow 模板本身没有 `workspaceId` 字段，Cron/Hook 触发也没有稳定工作区来源。
+- 已修复的问题：`ExecutionManager.emitEvent()` 现在会把 `session.workspaceId` 传给 `deps.emit()`，`packages/server/src/app.ts` 的全局广播只在存在显式 `workspaceId` 时才调用 `broadcastToWorkspace()`。
+  - 这修正了原先“把 `workflowId` 错传给 `broadcastToWorkspace()`”的问题。
+  - 结果是：来自 WS 的执行会按真实连接 scope 广播；Hook/SSE 执行继续走 `eventSink`，不依赖全局广播。
+- 仍然存在的设计缺口：系统依旧缺少统一的“workflow execution event scope”模型。
+  - workflow 模板本身没有 `workspaceId` 字段。
   - 前端同样存在两套归属约定：编辑器使用 `workspaces[0]?.id` 建立 WS，分享页固定使用 `getWS('workflows')`。
-  - 结论：当前系统缺少统一的“workflow execution event scope”模型。贸然修广播参数，极可能修好一条路径、打坏另一条路径。
+  - Cron 触发默认没有前端受众 scope，因此不会进入全局广播。
+  - 结论：这次修复解决了错参 bug，但没有解决 execution scope 的长期模型问题。
 - 当前恢复机制只保留内存态和最终 execution log，没有持久化 session checkpoint。
   - 进程重启后无法从中间节点继续跑，只能恢复展示或重新触发。
 - `WorkflowTriggerService` 的 hook/cron 注册状态是纯内存的。

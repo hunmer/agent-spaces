@@ -1777,7 +1777,7 @@ export class ExecutionManager {
     if (session.eventSink) {
       session.eventSink(channel as string, payload);
     } else {
-      this.deps.emit(channel, payload);
+      this.deps.emit(channel, payload, session.workspaceId);
     }
   }
 

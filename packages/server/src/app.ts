@@ -254,13 +254,11 @@ const clientNodeManager = new ClientNodeManager();
 const executionManager = new ExecutionManager({
   interactionManager,
   clientNodeManager,
-  emit: (channel, payload) => {
-    // Broadcast execution events to all workspace connections
-    const anyPayload = payload as Record<string, unknown>;
-    if (anyPayload.workflowId && typeof anyPayload.workflowId === 'string') {
-      // Use a global broadcast since we don't have workspaceId in the execution context
-      // The client will filter by executionId
-      broadcastToWorkspace(anyPayload.workflowId, channel, payload);
+  emit: (channel, payload, workspaceId) => {
+    // Only broadcast workflow execution events when the originating session
+    // has an explicit WS workspace scope. Hook/SSE executions use eventSink instead.
+    if (workspaceId) {
+      broadcastToWorkspace(workspaceId, channel, payload);
     }
   },
 });

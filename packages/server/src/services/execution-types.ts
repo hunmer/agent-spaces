@@ -20,7 +20,7 @@ import type { ClientNodeManager } from './client-node-manager.js';
 export interface ExecutionManagerDeps {
   interactionManager: InteractionManager
   clientNodeManager: ClientNodeManager
-  emit: (channel: string, payload: unknown) => void
+  emit: (channel: string, payload: unknown, workspaceId?: string) => void
 }
 
 export interface ExecutionSession {
