@@ -20,6 +20,7 @@ import {
 import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import {
   type ExecutionStep,
+  type WorkflowEdge,
   type WorkflowNode as SharedWorkflowNode,
   type OutputField,
   LOOP_BODY_NODE_TYPE,
@@ -341,11 +342,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const validatePropertyModeConnection = useCallback((handle: PropertyModeHandle) => (
     (connection: { source?: string | null; target?: string | null; sourceHandle?: string | null; targetHandle?: string | null }) => {
       if (!connection.source || !connection.target) {
-        console.debug('[DEBUG-badge-connect] badge validate pending', {
-          nodeId: id,
-          handle,
-          connection,
-        });
         return true;
       }
       const sourceType = handle.type === 'source'
@@ -354,18 +350,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       const targetType = handle.type === 'target'
         ? handle.valueType
         : getHandleValueType(connection.target, connection.targetHandle);
-      const valid = areWorkflowHandleValueTypesCompatible(sourceType, targetType);
-      console.debug('[DEBUG-badge-connect] badge validate', {
-        nodeId: id,
-        handle,
-        connection,
-        sourceType,
-        targetType,
-        valid,
-      });
-      return valid;
+      return areWorkflowHandleValueTypesCompatible(sourceType, targetType);
     }
-  ), [getHandleValueType, id]);
+  ), [getHandleValueType]);
   const getPropertyHandleVisualState = useCallback((handle: PropertyModeHandle) => {
     const fromHandle = connectionState.fromHandle;
     const inProgress = connectionState.inProgress;
@@ -404,8 +391,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         data: currentData,
       };
     }),
-    edges: [],
-  }), [workflowNodes, t]);
+    edges: Array.isArray(nodeData.workflowEdges) ? nodeData.workflowEdges as WorkflowEdge[] : [],
+  }), [nodeData.workflowEdges, workflowNodes, t]);
 
   // Dynamic handles for switch node
   const dynamicSource = definition?.handles?.dynamicSource;

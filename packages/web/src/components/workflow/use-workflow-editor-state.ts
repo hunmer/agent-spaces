@@ -16,6 +16,7 @@ import {
   ORIGINAL_OUTPUTS_KEY,
 } from './workflow-execution-snapshot-fields';
 import { JSON_PRESETS_KEY, SELECTED_JSON_PRESET_KEY, TEMP_DEBUG_PRESET_ID, getJsonPresets } from './workflow-properties-utils';
+import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
 
 function resolveApiError(err: unknown): string {
   if (err instanceof ApiError) {
@@ -218,7 +219,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     setLoadError(null);
     prePreviewWorkflowRef.current = null;
     setPrePreviewWorkflow(null);
-    const normalized = normalizeLegacySourceHandle(template);
+    const normalized = syncWorkflowReferenceEdges(normalizeLegacySourceHandle(template));
     setWorkflow({ ...template, nodes: normalized.nodes, edges: normalized.edges });
     setOperationLog([]);
     setIsPreview(false);
@@ -232,7 +233,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const cloneWorkflow = useCallback((value: Workflow): Workflow => JSON.parse(JSON.stringify(value)) as Workflow, []);
 
   const enterSnapshotPreview = useCallback((snapshot: WorkflowSnapshot) => {
-    const normalized = normalizeLegacySourceHandle(snapshot);
+    const normalized = syncWorkflowReferenceEdges(normalizeLegacySourceHandle(snapshot));
     const snapshotNodes = JSON.parse(JSON.stringify(normalized.nodes)) as Workflow['nodes'];
     const previewEdges = JSON.parse(JSON.stringify(normalized.edges)) as Workflow['edges'];
     const previewGroups = normalized.groups
@@ -284,7 +285,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   const savePreviewEdits = useCallback(async (options?: { createVersion?: boolean; versionName?: string }) => {
     if (!isPreview || !workflow) return;
-    const workflowToSave = stripExecutionSnapshotFields(stripTemporaryDebugPresets(cloneWorkflow(workflow)));
+    const workflowToSave = syncWorkflowReferenceEdges(stripExecutionSnapshotFields(stripTemporaryDebugPresets(cloneWorkflow(workflow))));
     if (options?.createVersion) {
       const name = options.versionName?.trim() || `Preview edit ${new Date().toLocaleString()}`;
       await workflowVersionApi.add(workflowToSave.id, name, workflowToSave.nodes, workflowToSave.edges);
@@ -360,7 +361,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       groups: workflow.groups || [],
     });
     const prevSnapshot = undoStack[undoStack.length - 1];
-    const prev = normalizeLegacySourceHandle(JSON.parse(prevSnapshot) as WorkflowSnapshot);
+    const prev = syncWorkflowReferenceEdges(normalizeLegacySourceHandle(JSON.parse(prevSnapshot) as WorkflowSnapshot));
     setUndoStack(s => s.slice(0, -1));
     setRedoStack(s => [...s, currentSnapshot]);
     setWorkflow(w => w ? { ...w, nodes: prev.nodes, edges: prev.edges, variables: prev.variables || [], groups: prev.groups || [] } : null);
@@ -376,7 +377,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       groups: workflow.groups || [],
     });
     const nextSnapshot = redoStack[redoStack.length - 1];
-    const next = normalizeLegacySourceHandle(JSON.parse(nextSnapshot) as WorkflowSnapshot);
+    const next = syncWorkflowReferenceEdges(normalizeLegacySourceHandle(JSON.parse(nextSnapshot) as WorkflowSnapshot));
     setUndoStack(s => [...s, currentSnapshot]);
     setRedoStack(s => s.slice(0, -1));
     setWorkflow(w => w ? { ...w, nodes: next.nodes, edges: next.edges, variables: next.variables || [], groups: next.groups || [] } : null);
@@ -388,7 +389,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     if (isPreview) return false;
     const nextWorkflow = workflowToSave ?? workflow;
     if (!nextWorkflow) return false;
-    const workflowForSave = stripExecutionSnapshotFields(stripTemporaryDebugPresets(cloneWorkflow(nextWorkflow)));
+    const workflowForSave = syncWorkflowReferenceEdges(stripExecutionSnapshotFields(stripTemporaryDebugPresets(cloneWorkflow(nextWorkflow))));
     setIsSaving(true);
     try {
       const saved = await workflowApi.update(workflowForSave.id, {
@@ -457,7 +458,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
         const text = await file.text();
         const data = JSON.parse(text) as Workflow;
         if (data.nodes && data.edges) {
-          setWorkflow(data);
+          setWorkflow(syncWorkflowReferenceEdges(data));
           setIsDirty(true);
         }
       } catch {}

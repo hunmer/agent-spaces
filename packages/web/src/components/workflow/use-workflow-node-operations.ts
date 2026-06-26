@@ -34,6 +34,7 @@ import {
   clearStartInputFieldValues,
   remapSelectedWorkflowNodes,
 } from './workflow-canvas-references';
+import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
 
 interface UseNodeOperationsParams {
   workflow: Workflow | null;
@@ -554,10 +555,10 @@ export function useNodeOperations({
         data: { ...n.data, ...nodeData },
       } : n);
       if (parentId) syncScopeBoundaryLayout(nextNodes, parentId);
-      return {
+      return syncWorkflowReferenceEdges({
         ...w,
         nodes: nextNodes,
-      };
+      });
     });
     markDirty();
   }, [isReadOnly, markDirty, setWorkflow]);

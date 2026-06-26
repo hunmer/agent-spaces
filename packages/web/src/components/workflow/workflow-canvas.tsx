@@ -327,49 +327,24 @@ export function WorkflowCanvas({
   }, [screenToFlowPosition]);
 
   const isValidConnection = useCallback((connection: Connection | Edge) => {
-    const reject = (reason?: string, details?: Record<string, unknown>) => {
-      console.debug('[DEBUG-badge-connect] canvas reject', {
-        reason,
-        connection,
-        ...details,
-      });
-      return false;
-    };
+    const reject = () => false;
 
-    if (!connection.source || !connection.target) return reject('missing-source-or-target');
-    if (connection.source === connection.target) return reject('same-source-and-target');
+    if (!connection.source || !connection.target) return reject();
+    if (connection.source === connection.target) return reject();
 
     const nodes = workflow.nodes;
     const edges = workflow.edges;
     const sourceNode = nodes.find(node => node.id === connection.source);
     const targetNode = nodes.find(node => node.id === connection.target);
-    if (!sourceNode || !targetNode) return reject('source-or-target-node-not-found', {
-      sourceFound: !!sourceNode,
-      targetFound: !!targetNode,
-    });
+    if (!sourceNode || !targetNode) return reject();
     const targetDefinition = getNodeDefinition(targetNode.type);
     const targetHandle = connection.targetHandle || undefined;
     const targetFieldHandle = parseWorkflowFieldHandleId(targetHandle);
     const sourceHandle = getNormalizedWorkflowSourceHandle(sourceNode, connection.sourceHandle || undefined);
     const sourceHandleType = getWorkflowHandleValueType(sourceNode, sourceHandle);
     const targetHandleType = getWorkflowHandleValueType(targetNode, targetHandle);
-    console.debug('[DEBUG-badge-connect] canvas validate', {
-      connection,
-      sourceNodeType: sourceNode.type,
-      targetNodeType: targetNode.type,
-      sourceHandle,
-      targetHandle,
-      targetFieldHandle,
-      sourceHandleType,
-      targetHandleType,
-    });
     if (!areWorkflowHandleValueTypesCompatible(sourceHandleType, targetHandleType)) {
-      return reject('incompatible-handle-types', {
-        sourceHandle,
-        targetHandle,
-        sourceHandleType,
-        targetHandleType,
-      });
+      return reject();
     }
     const targetConnectionCount = targetFieldHandle?.kind === 'input' || targetFieldHandle?.kind === 'property'
       ? 1
@@ -380,11 +355,7 @@ export function WorkflowCanvas({
       && edge.id !== ('id' in connection ? connection.id : undefined)
     ).length;
     if (existingTargetConnectionCount >= targetConnectionCount) {
-      return reject('target-handle-connection-limit-reached', {
-        targetHandle,
-        existingTargetConnectionCount,
-        targetConnectionCount,
-      });
+      return reject();
     }
 
     const hasCycle = (node: typeof targetNode, visited = new Set<string>()): boolean => {
@@ -399,7 +370,7 @@ export function WorkflowCanvas({
       return false;
     };
 
-    if (hasCycle(targetNode)) return reject('would-create-cycle');
+    if (hasCycle(targetNode)) return reject();
     return true;
   }, [workflow.edges, workflow.nodes]);
 

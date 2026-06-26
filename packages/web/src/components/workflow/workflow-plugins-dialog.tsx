@@ -16,6 +16,7 @@ import { toPinyinSearchKey } from '@/lib/utils';
 import {
   ArrowDownUp, PackagePlus, RefreshCw, Search, Store,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { LocalPluginCard, StorePluginCard } from './workflow-plugin-card';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 import { useLocale } from '@/components/layout/locale-provider';
@@ -78,6 +79,7 @@ export function WorkflowPluginsDialog({
   const successCountRef = useRef(0);
   const failCountRef = useRef(0);
   const { locale } = useLocale();
+  const t = useTranslations('workflows.pluginsDialog');
 
   const enabledPluginIds = useMemo(() => new Set(workflow?.enabledPlugins || []), [workflow?.enabledPlugins]);
   const installedPluginIds = useMemo(() => new Set(plugins.map(plugin => plugin.id)), [plugins]);
@@ -248,9 +250,9 @@ export function WorkflowPluginsDialog({
   async function uninstallPlugin(plugin: WorkflowPlugin) {
     try {
       await pluginApi.uninstall(plugin.id, plugin.type);
-      toast.success(`已卸载 ${plugin.name}`);
+      toast.success(t('uninstalled', { name: plugin.name }));
     } catch (error: any) {
-      toast.warning(error?.message || '插件卸载失败，已从本地列表移除');
+      toast.warning(error?.message || t('uninstallFailed'));
     }
     setPlugins(items => items.filter(item => item.id !== plugin.id));
     updateWorkflowPlugins(plugin.id, false);
@@ -266,9 +268,9 @@ export function WorkflowPluginsDialog({
         return idx >= 0 ? items.map((item, i) => i === idx ? { ...item, ...installed } : item) : [...items, installed];
       });
       updateWorkflowPlugins(installed.id, true);
-      toast.success(`已安装 ${installed.name}`);
+      toast.success(t('installed', { name: installed.name }));
     } catch (error: any) {
-      toast.error(error?.message || '插件安装失败');
+      toast.error(error?.message || t('installFailed'));
     } finally {
       setInstallingIds(prev => {
         const next = new Set(prev);
@@ -320,8 +322,8 @@ export function WorkflowPluginsDialog({
         successCountRef.current = 0;
         failCountRef.current = 0;
         if (s > 0 || f > 0) {
-          if (f > 0) toast.warning(`更新完成：成功 ${s} 个，失败 ${f} 个`);
-          else toast.success(`已更新 ${s} 个插件`);
+          if (f > 0) toast.warning(t('updateSummary', { success: s, fail: f }));
+          else toast.success(t('updated', { count: s }));
         }
       } else {
         pumpUpdate();
@@ -359,7 +361,7 @@ export function WorkflowPluginsDialog({
     if (cancelled === 0) return;
     pendingRef.current = [];
     syncUpdateState();
-    toast.info(`已取消 ${cancelled} 个等待更新的插件`);
+    toast.info(t('updateCancelled', { count: cancelled }));
   }
 
   function handleUpdatePlugin(plugin: WorkflowPlugin) {
@@ -432,7 +434,7 @@ export function WorkflowPluginsDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[80vw]">
           <DialogHeader className="flex-row items-center gap-2 border-b px-4 py-2 pr-10">
-            <DialogTitle className="text-sm font-semibold">插件管理</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">{t('title')}</DialogTitle>
             <div className="flex items-center gap-1 rounded-md bg-muted p-0.5">
               <Button
                 variant={activeTab === 'local' ? 'default' : 'ghost'}
@@ -441,7 +443,7 @@ export function WorkflowPluginsDialog({
                 onClick={() => switchTab('local')}
               >
                 <PackagePlus className="h-3.5 w-3.5" />
-                本地
+                {t('tabLocal')}
               </Button>
               <Button
                 variant={activeTab === 'store' ? 'default' : 'ghost'}
@@ -450,24 +452,24 @@ export function WorkflowPluginsDialog({
                 onClick={() => switchTab('store')}
               >
                 <Store className="h-3.5 w-3.5" />
-                插件商店
+                {t('tabStore')}
               </Button>
             </div>
             <div className="flex-1" />
             {updateInProgress ? (
               <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-600 border-orange-300 hover:bg-orange-50" onClick={cancelUpdateAll} disabled={pending.length === 0}>
                 <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                取消更新({pending.length})
+                {t('cancelUpdate', { count: pending.length })}
               </Button>
             ) : needsUpdateMap.size > 0 && (
               <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-600 border-orange-300 hover:bg-orange-50" disabled={installingIds.size > 0} onClick={handleUpdateAll}>
                 <RefreshCw className="h-3.5 w-3.5" />
-                一键更新({needsUpdateMap.size})
+                {t('updateAll', { count: needsUpdateMap.size })}
               </Button>
             )}
             <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={handleRefresh}>
               <RefreshCw className={`h-3.5 w-3.5 ${currentLoading ? 'animate-spin' : ''}`} />
-              刷新
+              {t('refresh')}
             </Button>
           </DialogHeader>
 
@@ -475,19 +477,19 @@ export function WorkflowPluginsDialog({
             {missingPluginIds.length > 0 && (
               <div className="mb-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-900">
                 <div className="flex items-center gap-2">
-                  <div className="font-medium">当前工作流缺少插件</div>
+                  <div className="font-medium">{t('missingTitle')}</div>
                   <div className="text-orange-700">
-                    待添加/开启 {missingInstalledPlugins.length} 个，未安装 {missingUninstalledPluginIds.length} 个
+                    {t('missingSummary', { added: missingInstalledPlugins.length, missing: missingUninstalledPluginIds.length })}
                   </div>
                   <div className="ml-auto flex items-center gap-1">
                     {missingInstalledPlugins.length > 0 && (
                       <Button size="sm" className="h-6 px-2 text-xs" onClick={enableMissingInstalledPlugins}>
-                        一键添加/开启
+                        {t('enableMissing')}
                       </Button>
                     )}
                     {missingUninstalledPluginIds.map(pluginId => (
                       <Button key={pluginId} variant="outline" size="sm" className="h-6 px-2 text-xs bg-white" onClick={() => searchStorePlugin(pluginId)}>
-                        搜索 {pluginId}
+                        {t('searchPlugin', { id: pluginId })}
                       </Button>
                     ))}
                   </div>
@@ -500,17 +502,17 @@ export function WorkflowPluginsDialog({
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="搜索插件名称或描述..."
+                  placeholder={t('searchPlaceholder')}
                   className="h-7 pl-8 text-xs"
                 />
               </div>
               {tags.length > 0 && (
                 <Select value={tag} onValueChange={(value) => setTag(value || '__all__')}>
                   <SelectTrigger className="h-7 w-[140px] text-xs">
-                    <SelectValue placeholder="按标签过滤" />
+                    <SelectValue placeholder={t('filterByTag')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">全部标签</SelectItem>
+                    <SelectItem value="__all__">{t('allTags')}</SelectItem>
                     {tags.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -518,12 +520,12 @@ export function WorkflowPluginsDialog({
               {activeTab === 'local' && (
                 <Select value={status} onValueChange={(value) => setStatus((value || 'all') as typeof status)}>
                   <SelectTrigger className="h-7 w-[120px] text-xs">
-                    <SelectValue placeholder="全部状态" />
+                    <SelectValue placeholder={t('statusAll')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">全部状态</SelectItem>
-                    <SelectItem value="enabled">已添加</SelectItem>
-                    <SelectItem value="disabled">未添加</SelectItem>
+                    <SelectItem value="all">{t('statusAll')}</SelectItem>
+                    <SelectItem value="enabled">{t('statusAdded')}</SelectItem>
+                    <SelectItem value="disabled">{t('statusNotAdded')}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -533,14 +535,14 @@ export function WorkflowPluginsDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">默认排序</SelectItem>
-                  <SelectItem value="name">按名称</SelectItem>
-                  <SelectItem value="status">{activeTab === 'local' ? '按添加状态' : '按安装状态'}</SelectItem>
-                  <SelectItem value="time">{activeTab === 'local' ? '按安装时间' : '按更新时间'}</SelectItem>
+                  <SelectItem value="default">{t('sortDefault')}</SelectItem>
+                  <SelectItem value="name">{t('sortName')}</SelectItem>
+                  <SelectItem value="status">{activeTab === 'local' ? t('sortStatusLocal') : t('sortStatusStore')}</SelectItem>
+                  <SelectItem value="time">{activeTab === 'local' ? t('sortTimeLocal') : t('sortTimeStore')}</SelectItem>
                 </SelectContent>
               </Select>
               {hasFilters && (
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={clearFilters}>清除</Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={clearFilters}>{t('clear')}</Button>
               )}
             </div>
           </div>
@@ -581,14 +583,14 @@ export function WorkflowPluginsDialog({
 
               {!currentLoading && filtered.length === 0 && (
                 <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground">
-                  <p className="text-sm">{activeTab === 'store' ? '插件商店暂无匹配插件' : '没有匹配的插件'}</p>
-                  <p className="mt-1 text-xs">{activeTab === 'store' ? '请检查商店配置或调整过滤条件' : '插件目录为空或当前过滤条件没有结果'}</p>
+                  <p className="text-sm">{activeTab === 'store' ? t('emptyStore') : t('emptyLocal')}</p>
+                  <p className="mt-1 text-xs">{activeTab === 'store' ? t('emptyHintStore') : t('emptyHintLocal')}</p>
                 </div>
               )}
               {currentLoading && (
                 <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                   <RefreshCw className="mb-2 h-6 w-6 animate-spin" />
-                  <p className="text-sm">{activeTab === 'store' ? '加载插件商店...' : '加载插件...'}</p>
+                  <p className="text-sm">{activeTab === 'store' ? t('loadingStore') : t('loadingLocal')}</p>
                 </div>
               )}
             </div>

@@ -37,6 +37,7 @@ import {
   getNormalizedWorkflowSourceHandle,
   getWorkflowHandleValueType,
 } from './workflow-handle-types';
+import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
 
 interface UseEdgeOperationsParams {
   workflow: Workflow | null;
@@ -198,20 +199,10 @@ export function useEdgeOperations({
   }, [workflow?.edges]);
 
   const handleConnect = useCallback((connection: Connection) => {
-    const log = (reason: string, details?: Record<string, unknown>) => {
-      console.debug('[DEBUG-badge-connect] edge connect reject', {
-        reason,
-        connection,
-        ...details,
-      });
-    };
-
     if (!workflow || isReadOnly) {
-      log('workflow-missing-or-readonly', { hasWorkflow: !!workflow, isReadOnly });
       return;
     }
     if (!connection.source || !connection.target) {
-      log('missing-source-or-target');
       return;
     }
 
@@ -227,25 +218,9 @@ export function useEdgeOperations({
     const sourceNode = workflow.nodes.find(node => node.id === connection.source);
     const targetNode = workflow.nodes.find(node => node.id === connection.target);
     if (!sourceNode || !targetNode) {
-      log('source-or-target-node-not-found', {
-        sourceFound: !!sourceNode,
-        targetFound: !!targetNode,
-      });
       return;
     }
     const sourceHandle = getNormalizedWorkflowSourceHandle(sourceNode, connection.sourceHandle);
-    const sourceHandleType = getWorkflowHandleValueType(sourceNode, sourceHandle);
-    const targetHandleType = getWorkflowHandleValueType(targetNode, connection.targetHandle);
-    console.debug('[DEBUG-badge-connect] edge connect start', {
-      connection,
-      sourceNodeType: sourceNode.type,
-      targetNodeType: targetNode.type,
-      sourceHandle,
-      targetHandle: connection.targetHandle || undefined,
-      sourceHandleType,
-      targetHandleType,
-      compatible: areWorkflowHandleValueTypesCompatible(sourceHandleType, targetHandleType),
-    });
     const targetConnectionCount = getFieldTargetConnectionCount(connection.targetHandle, targetNode);
     const targetHandle = connection.targetHandle || undefined;
     const existingTargetConnectionCount = workflow.edges.filter(edge =>
@@ -254,52 +229,21 @@ export function useEdgeOperations({
     ).length;
     let remainingTargetConnections = Math.max(0, targetConnectionCount - existingTargetConnectionCount);
     if (remainingTargetConnections === 0) {
-      log('target-handle-connection-limit-reached', {
-        targetHandle,
-        existingTargetConnectionCount,
-        targetConnectionCount,
-      });
       return;
     }
 
     const nextEdges = workflow.nodes
       .filter(node => sourceIdSet.has(node.id))
       .filter((node) => {
-        const canUse = canUseSourceHandle(node, sourceHandle);
-        if (!canUse) {
-          console.debug('[DEBUG-badge-connect] edge source handle rejected', {
-            nodeId: node.id,
-            nodeType: node.type,
-            sourceHandle,
-          });
-        }
-        return canUse;
+        return canUseSourceHandle(node, sourceHandle);
       })
       .filter((node) => {
         const nodeSourceType = getWorkflowHandleValueType(node, sourceHandle);
         const nodeTargetType = getWorkflowHandleValueType(targetNode, connection.targetHandle);
-        const compatible = areWorkflowHandleValueTypesCompatible(nodeSourceType, nodeTargetType);
-        if (!compatible) {
-          console.debug('[DEBUG-badge-connect] edge type rejected', {
-            nodeId: node.id,
-            nodeType: node.type,
-            sourceHandle,
-            targetHandle: connection.targetHandle || undefined,
-            sourceType: nodeSourceType,
-            targetType: nodeTargetType,
-          });
-        }
-        return compatible;
+        return areWorkflowHandleValueTypesCompatible(nodeSourceType, nodeTargetType);
       })
       .filter((node) => {
-        const createsCycle = wouldCreateCycle(node.id, connection.target!);
-        if (createsCycle) {
-          console.debug('[DEBUG-badge-connect] edge cycle rejected', {
-            nodeId: node.id,
-            target: connection.target,
-          });
-        }
-        return !createsCycle;
+        return !wouldCreateCycle(node.id, connection.target!);
       })
       .map((node): Workflow['edges'][number] => ({
         id: isDefaultSourceHandle(node, sourceHandle)
@@ -329,30 +273,17 @@ export function useEdgeOperations({
       });
 
     if (nextEdges.length === 0) {
-      log('no-next-edges', {
-        sourceHandle,
-        targetHandle,
-        sourceIdSet: [...sourceIdSet],
-      });
       return;
     }
-    console.debug('[DEBUG-badge-connect] edge connect nextEdges', {
-      connection,
-      nextEdges,
-    });
     pushUndo('connect');
     setWorkflow(w => {
       if (!w) return null;
-      console.debug('[DEBUG-badge-connect] edge connect apply', {
-        existingEdges: w.edges.length,
-        nextEdges,
-      });
       const nextNodes = w.nodes.map(node => {
         const matchingEdge = nextEdges.find(edge => edge.target === node.id);
         if (!matchingEdge) return node;
         return applyFieldConnectionValue(node, matchingEdge.source, matchingEdge.sourceHandle, matchingEdge.targetHandle);
       });
-      return { ...w, nodes: nextNodes, edges: [...w.edges, ...nextEdges] };
+      return syncWorkflowReferenceEdges({ ...w, nodes: nextNodes, edges: [...w.edges, ...nextEdges] });
     });
     markDirty();
   }, [applyFieldConnectionValue, canUseSourceHandle, createUniqueEdgeId, getFieldTargetConnectionCount, isDefaultSourceHandle, isReadOnly, markDirty, pushUndo, selectedNodeId, selectedNodeIds, setWorkflow, workflow, wouldCreateCycle]);
@@ -555,7 +486,11 @@ export function useEdgeOperations({
               node,
             );
           });
-      return { ...w, nodes: nextNodes, edges: w.edges.filter(e => remainingIds.has(e.id)) };
+      return syncWorkflowReferenceEdges({
+        ...w,
+        nodes: nextNodes,
+        edges: w.edges.filter(e => remainingIds.has(e.id)),
+      });
     });
     if (hasDelete) markDirty();
   }, [workflow, isReadOnly, pushUndo, markDirty, setWorkflow, clearFieldConnectionValue]);
