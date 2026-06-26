@@ -52,7 +52,7 @@ Hook 是 fire-and-forget 的：主要用于记录、通知、外部集成，**�
 - `Elicitation` — 引导交互
 - `ElicitationResult` — 引导交互结果
 
-> 注意：引擎支持上述全部事件键，但只有运行时实际发出的事件才会触发规则。某些上游 Claude Code 存在但当前后端未发出的事件，不在本地支持的类型联合中。完整说明参见 `docs/hook-engine.md`。
+> 注意：引擎支持上述全部事件键，但只有运行时实际发出的事件才会触发规则。某些上游 Claude Code 存在但当前后端未发出的事件，不在本地支持的类型联合中。
 
 ## 匹配器
 
@@ -163,3 +163,14 @@ Hook 引擎通过 `wrapOnEventWithHooks(onEvent, workspaceId, hooksEnabled)` 包
 6. 所有匹配规则通过 `Promise.allSettled` 并发执行
 
 Hook 的 command/webhook 错误会被记录并吞掉，不会阻塞或影响 Agent 运行结果。
+
+## 调试与限制
+
+调试 Hook 时，最实用的做法是在当前工作空间的 `hooks/` 目录放一个 `command` 类型规则，把关键环境变量追加写入日志文件，而不是覆盖写入。尤其是 `UserPromptSubmit` 事件，建议优先读取 `HOOK_EVENT_PAYLOAD.userMessage`，不要直接拿展开后的 `fullPrompt` 做业务判断。
+
+当前限制：
+
+- Hook 在一次 Agent 运行开始时只加载一次；中途改 JSON 只影响下一次运行。
+- `command` / `webhook` 都是 fire-and-forget，失败只记日志，不会中断 Agent。
+- `script` 类型目前仅通过 schema 校验，运行时不会执行。
+- 当前 Hook 不能拦截、阻塞或改写工具调用结果，只能做旁路通知、记录和外部集成。

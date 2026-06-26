@@ -56,6 +56,15 @@ Mini-app（迷你应用）是 Agent Spaces 提供的一种轻量应用形态。�
 
 React 模式下，宿主通过 `window.AgentSpacesUI` 注入一批 React 组件与 lucide-react 图标供应用解构使用；HTML 模式下则运行普通 HTML/CSS/JS，`window.AgentSpacesUI` 与 `window.AgentSpaces` 同样可用。
 
+### 渲染与模块兼容
+
+React 预览使用浏览器端 Babel 编译，再把模块转换后的代码放进 `new Function()` 沙箱执行，不依赖 Vite / Webpack 之类的构建链。当前稳定支持两类依赖：
+
+- **宿主注入能力**：`window.AgentSpacesUI`、`window.AgentSpaces`、`window.AgentSpacesAPI`。
+- **白名单模块**：`react`、`react-dom` / `react-dom/client`、`embla-carousel-react`、`@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities`、`@tiptap/react`、`@tiptap/starter-kit`、`@tiptap/extension-placeholder`、`@tiptap/extension-task-list`、`@tiptap/extension-task-item`、`@agent-spaces/ui`。
+
+本地相对导入支持自动补全 `.jsx` / `.js` / `.tsx` / `.ts`，也支持 `index.*` 目录入口。未进入白名单的 bare import 不应在项目内自行写 shim，应该先补宿主层映射。
+
 ## 沙箱服务编译机制
 
 Mini-app 允许在项目 `src/services/*.js` 中定义服务端可调用的服务处理函数。服务编译由 `packages/server/src/services/mini-app-services.ts` 的 `compileService()` 实现，机制是：
@@ -77,6 +86,15 @@ Mini-app 允许在项目 `src/services/*.js` 中定义服务端可调用的服�
 ## Agent 运行时与工具注入
 
 Mini-app 内置独立的 Agent 对话能力，运行链路封装在 `packages/server/src/services/mini-app-agent.ts` 的 `runMiniAppAgent()` 中。它自包含执行，不依赖 workspace 系统：读取 `agents.json` → 解析凭据 → 组装 functionTools → 注入 systemPrompt → 执行 → 落盘消息。
+
+### 两种对话入口
+
+Mini-app 当前有两条独立的 Agent 入口：
+
+- **预览页模式**：走 `GET /api/mini-apps/:id/agents`、`GET /api/mini-apps/:id/agents/chat`、`POST /api/mini-apps/:id/agents/:agentId/chat`，完全基于项目自己的 `agents.json` 与 `langchain` 运行时。
+- **编辑器模式**：编辑器右下角的 `MiniAppChat` 复用通用 `ChatPanel` 和 workspace channel，但会额外注入 `miniAppContext`（`projectId`、活动文件路径、项目类型、当前文件内容），让运行时把 `cwd` 切到该 Mini-app 的真实目录。
+
+编辑器模式更适合边写边改；预览页模式更适合项目内自包含助手。两者共用同一项目目录和文件系统，但消息存储与运行入口不同。
 
 ### 运行时选择
 
@@ -166,6 +184,24 @@ Mini-app 相关事件遵循 `domain.action` 命名约定：
 - `miniApp.taskSnapshot` — 客户端连入时推送当前任务快照（断线/刷新/新标签恢复视图用）。
 - `miniApp.configSnapshot` — 客户端连入时推送配置全量快照（UI 据此建立内存缓存，不再直接 readConfig）。
 
+## 配置与任务宿主 API
+
+预览侧宿主 API 在 `use-mini-app-host-api.tsx` 中挂到全局对象，核心能力分两层：
+
+- **推荐路径**：`invokeService()` + `getConfig()` + `onConfigChanged()`。这是多端同步场景下的主路径，配置由服务端单点写入，客户端只读内存快照和变更事件。
+- **兼容路径**：`readConfigJson()` / `writeConfigJson()`。仍可直接读写 `configs/`，但更适合简单场景，不适合作为多端并发写入模型。
+
+同一套宿主 API 还暴露 `callPluginTool()`、`onTaskEvent()`、`respondClientRequest()`、`getExecutorId()` 和 `db(name)`，分别对应插件调用、任务事件订阅、客户端 RPC 回包、当前标签页执行者标识以及具名 SQLite 句柄。
+
+## 样式限制与建议
+
+Mini-app 里的 JSX/HTML 会复用宿主站点已经编译好的样式资源；它不会为项目源码单独跑 Tailwind 扫描。因此：
+
+- 常见基础 utility class 往往可用，但这只是“碰巧命中宿主已编译样式”。
+- 任意值类（如 `w-[320px]`、`max-h-[calc(...)]`）和冷门组合类不应假定可用。
+- 需要稳定效果时，优先用内联 `style`，或者注入带项目私有前缀的 `<style>`。
+- 能复用 `window.AgentSpacesUI` / `@agent-spaces/ui` 组件时，优先复用宿主组件，少直接依赖项目内 Tailwind class 命中情况。
+
 ## 模板
 
 平台内置少量 Mini-app 模板（位于 `packages/templates/mini-app/`，含 `minimax_tts` 等），通过模板索引 `index.json` 注册。模板含 `manifest.json`、`src/index.jsx` 与可选 `avatar.png`，可用于快速创建带预设功能（如语音合成）的项目。
@@ -174,4 +210,3 @@ Mini-app 相关事件遵循 `domain.action` 命名约定：
 
 - 关于 Issue 自动化与 Workflow 调度：[议题管理](/docs/features/issue-management)、[Workflow 编辑器](/docs/features/workflow)
 - 关于插件系统与可注入的工具：[插件](/docs/features/plugins)
-- 设计与实现细节参见 `docs/mini-app-agent.md`、`docs/mini-app-preview-agent.md`、`docs/mini-app-renderer.md`、`docs/mini-app-state-sync-ws-plan.md`。

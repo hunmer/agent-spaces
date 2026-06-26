@@ -128,7 +128,7 @@ Mini-app preview 通过宿主注入的 `window.AgentSpaces.callPluginTool(plugin
 
 支持类型：`string` / `number` / `boolean` / `select`（带 `options`）/ `object`。配置值持久化在 `~/.agent-spaces-data/plugins/state.json` 的 `config[pluginId]` 字典中，`getPluginConfig` 会把清单默认值与用户值合并后返回。`select` 类型的 `options` 形如 `[{ label, value }]`。
 
-凭据（如 OSS AccessKey、COS SecretId、API Key）应通过 config 注入，**Workflow UI 表单不要收集或传递凭据**——`callPluginTool` 在执行时会自动合并 config，preview 代码应省略凭据参数（凭据由插件 config 自动注入，详见 `docs/plugin-faq.md`）。
+凭据（如 OSS AccessKey、COS SecretId、API Key）应通过 config 注入，**Workflow UI 表单不要收集或传递凭据**——`callPluginTool` 在执行时会自动合并 config，preview 代码应省略凭据参数。
 
 ### 工作流级配置方案（Plugin Schemes）
 
@@ -254,7 +254,7 @@ const result = await window.AgentSpaces.callPluginTool(
 const audioUrl = result?.data?.url;
 ```
 
-调用模式与字段约定参见 `docs/plugin-faq.md`：内置虚拟插件使用 `pluginId = '@agent-spaces/builtin'`；返回值通常包裹为 `{ success, message, data }`，业务侧读取 `data` 中的字段；带 `default` 的 schema 属性可省略参数；凭据由插件 config 自动注入，preview 代码不应收集或传递。
+内置虚拟插件使用 `pluginId = '@agent-spaces/builtin'`；返回值通常包裹为 `{ success, message, data }`，业务侧读取 `data` 中的字段；带 `default` 的 schema 属性可省略参数；凭据由插件 config 自动注入，preview 代码不应收集或传递。
 
 ## 安全约束
 
@@ -267,7 +267,17 @@ const audioUrl = result?.data?.url;
 
 ### 节点要求「公网 URL」，但只有本地文件
 
-很多三方生成 API（如阿里云扩图、视频编辑、数字人）只接受公网可访问的 `imageUrl` / `videoUrl` / `audioUrl`，不接受本地路径、`File`、base64 或内网 URL。正确数据流：`/api/upload` 落盘 → 调 OSS/COS 插件转存到公网 → 用对象存储公网 URL 调目标节点。详见 `docs/plugin-faq.md`。
+很多三方生成 API（如阿里云扩图、视频编辑、数字人）只接受公网可访问的 `imageUrl` / `videoUrl` / `audioUrl`，不接受本地路径、`File`、base64 或内网 URL。正确数据流：`/api/upload` 落盘 → 调 OSS/COS 插件转存到公网 → 用对象存储公网 URL 调目标节点。
+
+### 本地文件转公网 URL
+
+如果插件节点要求传 `imageUrl` / `videoUrl` / `audioUrl`，推荐按下面的固定链路处理：
+
+1. 在 Workflow UI 或 Mini-app 里先通过上传接口落盘，拿到服务端可读的 `path`。
+2. 再调用 `workflow.aliyun-oss` 或 `workflow.tencent-cos` 之类的对象存储插件，把本地文件转成公网 URL。
+3. 最后把这个公网 URL 传给目标生成插件。
+
+不要直接把浏览器侧的 `File.path`、相对路径、base64 或 `/static/uploads/...` 相对地址当成目标插件输入。对外部三方 API 而言，最稳妥的输入始终是对象存储上的公网可访问 URL。
 
 ### 不要把浏览器 `File.path` 当成本地绝对路径
 

@@ -39,7 +39,7 @@ Agent Spaces 内置基于 Monaco Editor 的代码编辑器，提供与 VS Code �
 - 同一 workspace 只启动一个 language client，编辑器卸载时自动停止
 - 对于 `@/foo/bar`、`./foo/bar`、`../foo/bar` 等 import alias，当 LSP 只返回 import 行时，前端会兜底解析常见扩展名（`.tsx/.ts/.jsx/.js/.mjs/.cjs/.json`）和目录入口（`index.*`）
 
-前提：workspace 必须有有效的绑定目录，后端进程能访问该目录，项目依赖与类型声明需实际存在于文件系统中。详见 [Monaco TypeScript LSP](https://github.com/hunmer/agent-spaces/blob/main/docs/monaco-typescript-lsp.md)。
+前提：workspace 必须有有效的绑定目录，后端进程能访问该目录，项目依赖与类型声明需实际存在于文件系统中。当前模型 URI 使用真实 `file://` 路径，后端通过独立 `GET /ws/lsp/typescript` WebSocket 拉起 `typescript-language-server --stdio`，并在常见 `@/` 与相对导入场景下补一层 import 解析兜底。
 
 ## 代码收藏
 
@@ -55,7 +55,7 @@ Monaco 编辑器支持代码位置/片段收藏：
 
 ## DOM Inspector
 
-基于 dom-inspector-hook 的元素源码定位功能，详见 [DOM Inspector 集成](https://github.com/hunmer/agent-spaces/blob/main/docs/dom-inspector-integration.md)：
+基于 `dom-inspector-hook` 的元素源码定位功能：
 
 1. 在被调试的网页中按 `Alt+Shift` 并点击页面元素（移动端可在被调试项目中开启 `showSwitch: true` 显示开关按钮，无需按键）
 2. dom-inspector-hook 通过 `POST /api/inspector/track` 静默上报 `{ path, line, column }`（免认证）
@@ -64,7 +64,7 @@ Monaco 编辑器支持代码位置/片段收藏：
 5. Inspector 历史记录面板（`inspector-action-dialog`）保存所有查看过的元素，支持从历史记录快速跳转
 6. 在 Flutter WebView 环境中，还会通过 `__flutterBridge` 激活承载该网页的浏览器 Tab
 
-需要在被调试项目中安装并配置 dom-inspector-hook 脚本。
+需要在被调试项目中安装并配置 `dom-inspector-hook` 脚本，并把上报地址指向 Agent Spaces 的 `POST /api/inspector/track`。后端收到后会广播 `inspector.jump`，前端再调用 `jumpToPosition()` 打开并定位源码。
 
 ## Send to Issue / Channel
 

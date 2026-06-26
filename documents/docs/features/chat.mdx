@@ -99,3 +99,27 @@ Agent 的回复消息采用结构化渲染，由后端 `runMentionedAgent()`（`
 ### 消息状态语义
 
 `Message.status` 当前语义：`pending`（已创建未产出） / `streaming`（Agent 运行中持续更新 parts） / `waiting_for_user`（Agent 调用 AskUserQuestion 等待回复） / `completed`（成功） / `error`（失败）。
+
+## 回复 AI 消息
+
+回复某条 AI 消息时，系统不是简单再发一条新消息，而是把这次用户回复挂到父消息下，并继续在父消息主体上追加新一轮 Agent 输出。
+
+### 交互方式
+
+- 用户在消息 hover 区点击回复按钮。
+- 输入框顶部进入“回复给某条消息”的状态。
+- 发送后，这条用户回复写进父消息的 `replies`，不会出现在主消息时间线里。
+- 父消息主体继续追加新的 `user_message`、reasoning、tool calls 和最终文本。
+
+### 服务端续跑
+
+当 `channel.message` 带 `replyToMessageId` 时，后端会先把回复追加到父消息，再以父消息的发送者作为续跑目标 Agent，继续调用 `runMentionedAgent()`，并把输出写回原父消息，而不是新建一条 AI 消息。
+
+### Runtime Session 续接
+
+若父消息 `metadata.runtimeSessionId` 存在，且底层 runtime 为 `claude-code` 或 `codex`，回复时会优先恢复原 session/thread：
+
+- `claude-code` 使用原 `session_id`
+- `codex` 使用原 `thread_id`
+
+这样可以复用原来的工具上下文和已读文件状态，避免每次回复都重新构造完整上下文。若 runtime 不支持续接，系统会退化为基于当前频道历史重新构造 prompt，但仍继续写回父消息。

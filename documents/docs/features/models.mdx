@@ -48,6 +48,13 @@ Provider 的 `name` 与 `apiBase` 由用户自定义，因此实际可对接的�
 
 > 「API 消息类型」（`modelProvider`，6 取值）与「Agent 运行时」（`runtimeKind`，6 种：Claude Code / Codex / Open Agent SDK / LangChain / Hermes / Oh-My-Pi）是两个正交维度：前者描述调用 LLM 时用什么协议，后者描述用什么框架编排 Agent。
 
+其中两种桥接型消息类型只服务于 `claude-code` 运行时：
+
+- `openai-responses-to-anthropic-messages`
+- `openai-chat-completions-to-anthropic-messages`
+
+它们会在本地启动一个临时 Anthropic 兼容桥，把 Claude Code SDK 发出的 Anthropic Messages 请求转成上游 OpenAI 协议，再把响应转回 Anthropic 兼容格式。因此这两种类型不适合与 `codex`、`open-agent-sdk`、`langchain` 等其他运行时组合使用。
+
 ## API Key 管理
 
 API Key 存储在 Provider 的 `apiKey` 字段中，与 Provider 配置一同以 JSON 文件形式持久化到本地数据目录 `~/.agent-spaces-data/llm/providers.json`，**明文存储、未加密**。前端录入使用 `type="password"` 输入框避免视觉泄漏，但落盘后不做加密处理。
@@ -78,6 +85,12 @@ API Key 存储在 Provider 的 `apiKey` 字段中，与 Provider 配置一同以
 ### 模型与 Provider 的关系
 
 模型通过 `provider` 字符串与 Provider 关联。Provider 列表会自动聚合其下所有 `provider === name` 的模型并显示数量与能力标签；点击 Provider 的「添加模型」会预填该 Provider 名。删除 Provider 时不会级联删除其下模型（二者解耦），但相关模型的 `provider` 将失去匹配项。
+
+## 用量与成本
+
+`LLMModel.cost` 不只是展示字段。Agent 运行完成后，后端会把本次 `inputTokens`、`outputTokens`、`cachedInputTokens`、`reasoningTokens` 和模型标识一起写入 usage 存储，再结合 `cost.inputPerMillion` / `cost.outputPerMillion` 计算成本估算，供首页用量面板和消息上下文统计展示。
+
+因此如果你希望 Dashboard 上的费用估算更接近真实值，需要为常用模型维护准确的单价。
 
 ## 与 Agent 预设运行时的关系
 
