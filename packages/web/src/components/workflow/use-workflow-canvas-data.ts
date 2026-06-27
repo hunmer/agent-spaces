@@ -129,11 +129,6 @@ function isGeneratedReferenceRuntimeEdge(edge: Workflow['edges'][number]): boole
     && !edge.targetHandle;
 }
 
-function isFieldHandleEdge(edge: Workflow['edges'][number]): boolean {
-  return parseWorkflowFieldHandleId(edge.sourceHandle)?.kind !== undefined
-    || parseWorkflowFieldHandleId(edge.targetHandle)?.kind !== undefined;
-}
-
 function canShowPropertyNodeView(node: WorkflowNode, nodeDisplayMode: WorkflowNodeDisplayMode): boolean {
   if (nodeDisplayMode !== 'properties') return false;
   if (node.type === LOOP_BODY_NODE_TYPE) return false;
@@ -391,14 +386,7 @@ export function useCanvasData({
     const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
     return workflow.edges.filter(edge => (
       !isHiddenWorkflowEdge(edge)
-      && (
-        nodeDisplayMode === 'properties'
-        || (
-          edge.edgeKind !== 'reference'
-          && !isGeneratedReferenceRuntimeEdge(edge)
-          && !isFieldHandleEdge(edge)
-        )
-      )
+      && (nodeDisplayMode === 'properties' || !isGeneratedReferenceRuntimeEdge(edge))
     )).map(e => {
       const sourceNode = nodeById.get(e.source);
       const targetNode = nodeById.get(e.target);

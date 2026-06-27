@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { useConnection, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import { Position, useConnection, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import {
   ChevronDown,
@@ -48,7 +48,7 @@ import { VariableBadgeInput } from './workflow-variable-input';
 import { WorkflowPropertiesPanel } from './workflow-properties-panel';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
-import { useWorkflowNodeHandles } from './workflow-node-handles-render';
+import { CompatibilityHandle, useWorkflowNodeHandles } from './workflow-node-handles-render';
 import { useWorkflowNodePropertyMode } from './workflow-node-property-mode';
 import { WorkflowNodeToolbar } from './workflow-node-toolbar';
 import {
@@ -96,6 +96,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     ? definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined
     : undefined;
   const hasCustomView = !!CustomView || !!pluginCustomView;
+  const customViewData = getRecordValue(nodeData[EXECUTION_DATA_KEY]) ?? nodeData;
 
   const { collapsed: logsCollapsed } = useWorkflowLogsCollapsed();
   const [isLogExpanded, setIsLogExpanded] = useState(false);
@@ -593,6 +594,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const {
     propertyModeLeftHandles,
     propertyModeRightHandles,
+    propertyModeHiddenHandles,
     renderBadgeHandle: renderPropertyModeBadgeHandle,
   } = useWorkflowNodePropertyMode({
     id,
@@ -725,6 +727,17 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
       {canShowPropertyBadgeHandles ? (
         <>
+          {propertyModeHiddenHandles.map((handle, index) => (
+            <CompatibilityHandle
+              key={`property-mode-hidden-${handle.id}`}
+              handleId={handle.id}
+              handleType={handle.type}
+              position={handle.side === 'left' ? Position.Left : Position.Right}
+              index={index}
+              total={Math.max(1, propertyModeHiddenHandles.length)}
+              handleCtx={handleCtx}
+            />
+          ))}
           {propertyModeLeftHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeLeftHandles.length))}
           {propertyModeRightHandles.map((handle, index) => renderPropertyModeBadgeHandle(handle, index, propertyModeRightHandles.length))}
         </>
@@ -803,7 +816,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
-          <CustomView nodeId={id} data={nodeData} />
+          <CustomView nodeId={id} data={customViewData} />
         </div>
       ) : null}
 
@@ -813,7 +826,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
-          <PluginWorkflowCustomView nodeId={id} data={nodeData} view={pluginCustomView} />
+          <PluginWorkflowCustomView nodeId={id} data={customViewData} view={pluginCustomView} />
         </div>
       ) : null}
 

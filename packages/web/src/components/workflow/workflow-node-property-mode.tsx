@@ -413,6 +413,10 @@ export function useWorkflowNodePropertyMode(params: UseWorkflowNodePropertyModeP
     () => propertyModeHandles.filter(handle => handle.side === 'right' && isOutputHandleVisible(handle)),
     [propertyModeHandles, isOutputHandleVisible],
   );
+  const propertyModeHiddenHandles = useMemo(
+    () => propertyModeHandles.filter(handle => !isOutputHandleVisible(handle)),
+    [propertyModeHandles, isOutputHandleVisible],
+  );
 
   const getHandleValueType = useCallback((nodeId: string, handleId: string | null | undefined): OutputField['type'] | undefined => {
     const node = workflowNodes.find(item => item.id === nodeId);
@@ -577,6 +581,7 @@ export function useWorkflowNodePropertyMode(params: UseWorkflowNodePropertyModeP
   return {
     propertyModeLeftHandles,
     propertyModeRightHandles,
+    propertyModeHiddenHandles,
     renderBadgeHandle,
   };
 }

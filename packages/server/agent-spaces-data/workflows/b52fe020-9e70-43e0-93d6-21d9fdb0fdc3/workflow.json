@@ -26,13 +26,7 @@
         "y": 645
       },
       "data": {
-        "outputs": [
-          {
-            "key": "images",
-            "type": "image[]",
-            "value": ""
-          }
-        ]
+        "outputs": []
       }
     },
     {
@@ -279,34 +273,12 @@
       "targetHandle": "property:prompt"
     },
     {
-      "id": "e-node_1782455127220_7p3l9h-source-node_1782455101134_xvs0wx-target--reference-runtime",
-      "source": "node_1782455127220_7p3l9h",
-      "target": "node_1782455101134_xvs0wx",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1782458248440_60mfkr-output:urls-node_1782458900764_haa7t9-property:arrays[1].array",
       "source": "node_1782458248440_60mfkr",
       "target": "node_1782458900764_haa7t9",
       "edgeKind": "reference",
       "sourceHandle": "output:urls",
       "targetHandle": "property:arrays[1].array"
-    },
-    {
-      "id": "e-node_1782458248440_60mfkr-source-node_1782458900764_haa7t9-target--reference-runtime",
-      "source": "node_1782458248440_60mfkr",
-      "target": "node_1782458900764_haa7t9",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
     },
     {
       "id": "e-node_1782458233136_nf1k8u-output:urls-node_1782458900764_haa7t9-property:arrays[0].array",
@@ -317,34 +289,12 @@
       "targetHandle": "property:arrays[0].array"
     },
     {
-      "id": "e-node_1782458233136_nf1k8u-source-node_1782458900764_haa7t9-target--reference-runtime",
-      "source": "node_1782458233136_nf1k8u",
-      "target": "node_1782458900764_haa7t9",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1782458900764_haa7t9-output:result-node_1782455101134_xvs0wx-property:images",
       "source": "node_1782458900764_haa7t9",
       "target": "node_1782455101134_xvs0wx",
       "edgeKind": "reference",
       "sourceHandle": "output:result",
       "targetHandle": "property:images"
-    },
-    {
-      "id": "e-node_1782458900764_haa7t9-source-node_1782455101134_xvs0wx-target--reference-runtime",
-      "source": "node_1782458900764_haa7t9",
-      "target": "node_1782455101134_xvs0wx",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
     },
     {
       "id": "e-node_1782383055448_start-source-node_1782455127220_7p3l9h-target",
@@ -363,6 +313,58 @@
       "targetHandle": "property:items"
     },
     {
+      "id": "e-node_1782553818772_ing721-source-node_1782383055448_end-target",
+      "source": "node_1782553818772_ing721",
+      "target": "node_1782383055448_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782455127220_7p3l9h-source-node_1782455101134_xvs0wx-target--reference-runtime",
+      "source": "node_1782455127220_7p3l9h",
+      "target": "node_1782455101134_xvs0wx",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782458900764_haa7t9-source-node_1782455101134_xvs0wx-target--reference-runtime",
+      "source": "node_1782458900764_haa7t9",
+      "target": "node_1782455101134_xvs0wx",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782458233136_nf1k8u-source-node_1782458900764_haa7t9-target--reference-runtime",
+      "source": "node_1782458233136_nf1k8u",
+      "target": "node_1782458900764_haa7t9",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782458248440_60mfkr-source-node_1782458900764_haa7t9-target--reference-runtime",
+      "source": "node_1782458248440_60mfkr",
+      "target": "node_1782458900764_haa7t9",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
       "id": "e-node_1782455101134_xvs0wx-source-node_1782553818772_ing721-target--reference-runtime",
       "source": "node_1782455101134_xvs0wx",
       "target": "node_1782553818772_ing721",
@@ -372,18 +374,10 @@
         "hidden": false,
         "locked": false
       }
-    },
-    {
-      "id": "e-node_1782553818772_ing721-source-node_1782383055448_end-target",
-      "source": "node_1782553818772_ing721",
-      "target": "node_1782383055448_end",
-      "edgeKind": "runtime",
-      "sourceHandle": "source",
-      "targetHandle": "target"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782554264008,
+  "updatedAt": 1782555253281,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -398,5 +392,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782554266231
+  "lastRunAt": 1782555269214
 }
