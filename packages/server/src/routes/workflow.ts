@@ -2,12 +2,18 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import * as ws from '../services/workflow.js';
 import type { WorkflowTriggerService } from '../services/workflow-trigger-service.js';
+import type { ExecutionManager } from '../services/execution-manager.js';
 
 const router = Router();
 let workflowTriggerService: WorkflowTriggerService | null = null;
+let workflowExecutionManager: ExecutionManager | null = null;
 
 export function setWorkflowTriggerService(service: WorkflowTriggerService): void {
   workflowTriggerService = service;
+}
+
+export function setWorkflowExecutionManager(manager: ExecutionManager): void {
+  workflowExecutionManager = manager;
 }
 
 function reloadWorkflowTriggers(workflowId: string): void {
@@ -386,6 +392,61 @@ router.delete('/:workflowId/plugin-schemes/:pluginId/:schemeName', (req: Request
     res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Workflow execution (SSE) ----
+// POST /api/workflows/:workflowId/execute
+// 补齐 SDK workflow.execute 的路由缺口：服务器原本只有 WS/hook 入口，无 REST 执行路由。
+// 走 SSE 流式（与 SDK 的 http.sse 对齐），eventSink 转 SSE event，最后发 workflow:completed。
+router.post('/:workflowId/execute', async (req: Request<{ workflowId: string }>, res: Response) => {
+  if (!workflowExecutionManager) {
+    res.status(503).json({ error: 'ExecutionManager 未初始化' });
+    return;
+  }
+
+  const workflowId = req.params.workflowId;
+  const body = (req.body || {}) as {
+    input?: Record<string, unknown>;
+    snapshot?: { nodes: unknown[]; edges: unknown[]; groups?: unknown[] };
+    startNodeId?: string;
+    env?: Record<string, unknown>;
+    context?: Record<string, unknown>;
+  };
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  let closed = false;
+  const sse = (event: string, payload: unknown) => {
+    if (closed) return;
+    res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+  };
+  res.on('close', () => { closed = true; });
+
+  try {
+    const result = await workflowExecutionManager.execute(
+      {
+        workflowId,
+        input: body.input || {},
+        ...(body.startNodeId ? { startNodeId: body.startNodeId } : {}),
+        ...(body.env ? { env: body.env } : {}),
+        ...(body.context ? { context: body.context } : {}),
+        ...(body.snapshot ? { snapshot: body.snapshot as any } : {}),
+      },
+      `sse:${req.ip || 'unknown'}`,         // ownerClientId（与 hook 的 '__hook__' 同性质）
+      (channel, payload) => sse(channel, payload),  // eventSink：流式进度
+    );
+    sse('workflow:completed', result);
+  } catch (err: any) {
+    sse('workflow:error', { error: err?.message || String(err) });
+  } finally {
+    sse('done', {});
+    if (!closed) { closed = true; res.end(); }
   }
 });
 

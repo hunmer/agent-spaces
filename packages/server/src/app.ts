@@ -16,7 +16,7 @@ import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
 import channelRouter from './routes/channel.js';
 import issueRouter from './routes/issue.js';
-import workflowRouter, { setWorkflowTriggerService } from './routes/workflow.js';
+import workflowRouter, { setWorkflowTriggerService, setWorkflowExecutionManager as setRouteWorkflowExecutionManager } from './routes/workflow.js';
 import pluginRouter from './routes/plugin.js';
 import agentRouter from './routes/agent.js';
 import taskRouter from './routes/task.js';
@@ -266,6 +266,8 @@ const triggerService = new WorkflowTriggerService(PORT);
 triggerService.setExecutionManager(executionManager);
 setWorkflowTriggerService(triggerService);
 setWorkflowExecutionManager(executionManager);
+// 注入给 workflow 路由，启用 POST /api/workflows/:id/execute（SSE 执行入口）
+setRouteWorkflowExecutionManager(executionManager);
 
 // Workflow webhook hook SSE endpoint (after auth middleware)
 app.use('/api/workflows', createWorkflowHookRouter(triggerService, executionManager));
