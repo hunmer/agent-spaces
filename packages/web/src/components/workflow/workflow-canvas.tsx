@@ -48,6 +48,7 @@ import {
 } from './workflow-handle-types';
 import type { HandlePositionMode } from './workflow-node-types';
 import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
+import type { WorkflowNodeSizeOverrides } from './workflow-canvas-groups';
 import { useTheme } from '@/components/layout/theme-provider';
 import { WorkflowSelectionConnectionLine } from './workflow-selection-connection-line';
 import { DragPreviewOverlay, RectangleOverlayRect } from './workflow-canvas-overlays';
@@ -226,7 +227,7 @@ interface WorkflowCanvasProps {
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;
   onMergeNodesToWorkflow?: (ids: string[]) => void;
-  onMergeNodesToGroup?: (ids: string[]) => void;
+  onMergeNodesToGroup?: (ids: string[], options?: { nodeSizes?: WorkflowNodeSizeOverrides }) => void;
   onBatchDeleteNodes?: (ids: string[]) => void;
   onGroupUpdate?: (groupId: string, updates: Partial<NonNullable<Workflow['groups']>[number]>) => void;
   onGroupDelete?: (groupId: string) => void;
@@ -306,7 +307,7 @@ export function WorkflowCanvas({
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
   const [lassoSelectionActive, setLassoSelectionActive] = useState(false);
   const [logsCollapsed, setLogsCollapsed] = useState(true);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
   const isCanvasLocked = isRunning;
@@ -476,6 +477,40 @@ export function WorkflowCanvas({
     return true;
   }, [workflow.edges, workflow.nodes]);
 
+  const runtimeNodeSizesRef = useRef<WorkflowNodeSizeOverrides>(new Map());
+  const getRuntimeNodeSizeOverrides = useCallback((nodeIds: string[]): WorkflowNodeSizeOverrides => {
+    const overrides: WorkflowNodeSizeOverrides = new Map();
+    const flowRoot = reactFlowWrapper.current;
+    const rootRect = reactFlowWrapper.current?.getBoundingClientRect();
+    const viewport = getViewport();
+    for (const nodeId of nodeIds) {
+      const element = Array.from(flowRoot?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [])
+        .find(nodeEl => nodeEl.dataset.id === nodeId);
+      const rect = element?.getBoundingClientRect();
+      if (rootRect && rect && rect.width > 0 && rect.height > 0 && viewport.zoom > 0) {
+        overrides.set(nodeId, {
+          x: (rect.left - rootRect.left - viewport.x) / viewport.zoom,
+          y: (rect.top - rootRect.top - viewport.y) / viewport.zoom,
+          width: rect.width / viewport.zoom,
+          height: rect.height / viewport.zoom,
+        });
+        continue;
+      }
+
+      const size = runtimeNodeSizesRef.current.get(nodeId);
+      if (size) overrides.set(nodeId, size);
+    }
+    return overrides;
+  }, [getViewport, reactFlowWrapper]);
+  const handleMergeNodesToGroup = useCallback((nodeIds: string[]) => {
+    const nodeSizes = getRuntimeNodeSizeOverrides(nodeIds);
+    console.debug('[WorkflowGroupBoundsDebug] merge request', {
+      nodeIds,
+      nodeSizes: Object.fromEntries(nodeSizes),
+    });
+    onMergeNodesToGroup?.(nodeIds, { nodeSizes });
+  }, [getRuntimeNodeSizeOverrides, onMergeNodesToGroup]);
+
   // --- Extracted hooks ---
   const { selectedEdgeId, selectEdge } = useCanvasDomEvents({
     isCanvasLocked,
@@ -489,7 +524,7 @@ export function WorkflowCanvas({
     onNodeClone,
     onNodeStage,
     onMergeNodesToWorkflow,
-    onMergeNodesToGroup,
+    onMergeNodesToGroup: handleMergeNodesToGroup,
     onBatchDeleteNodes,
     onNodeDebug,
     onCancelDebug,
@@ -537,7 +572,6 @@ export function WorkflowCanvas({
   const [canvasNodes, setCanvasNodes] = useState<Node[]>(rfNodes);
   const isNodeDraggingRef = useRef(false);
   const canvasNodesRef = useRef<Node[]>(rfNodes);
-  const runtimeNodeSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map());
   const draggedNodeIdsRef = useRef<Set<string>>(new Set());
   const loopBodyDragSessionRef = useRef<{
     nodeId: string;
@@ -676,6 +710,7 @@ export function WorkflowCanvas({
     const groups = workflow.groups || [];
     if (groups.length === 0) return [];
     const workflowNodeById = new Map(workflow.nodes.map(node => [node.id, node]));
+    const canvasNodeById = new Map(canvasNodes.map(node => [node.id, node]));
     const groupById = new Map(groups.map(group => [group.id, group]));
     const collectGroupNodeIds = (groupId: string, visited = new Set<string>()): string[] => {
       if (visited.has(groupId)) return [];
@@ -696,16 +731,23 @@ export function WorkflowCanvas({
         .map((node) => {
           const definition = getNodeDefinition(node.type);
           const size = getWorkflowNodeSize(definition, node.data);
+          const canvasNode = canvasNodeById.get(node.id);
+          const width = typeof canvasNode?.width === 'number'
+            ? canvasNode.width
+            : typeof canvasNode?.measured?.width === 'number' ? canvasNode.measured.width : size.width;
+          const height = typeof canvasNode?.height === 'number'
+            ? canvasNode.height
+            : typeof canvasNode?.measured?.height === 'number' ? canvasNode.measured.height : size.height;
           return {
             id: node.id,
-            position: node.position,
-            width: size.width,
-            height: size.height,
+            position: canvasNode?.position ?? node.position,
+            width,
+            height,
           };
         });
       return { group, childNodes };
     }).filter(({ childNodes }) => !isPreview || childNodes.length > 0);
-  }, [isPreview, visibleNodeIds, workflow.groups, workflow.nodes]);
+  }, [canvasNodes, isPreview, visibleNodeIds, workflow.groups, workflow.nodes]);
 
   const { minimapVisible, toggleMinimap, exportCanvas } = useCanvasExport(
     reactFlowWrapper,
@@ -1159,7 +1201,7 @@ export function WorkflowCanvas({
         <WorkflowSelectionMenu
           menu={selectionMenu}
           onMergeNodesToWorkflow={onMergeNodesToWorkflow}
-          onMergeNodesToGroup={onMergeNodesToGroup}
+          onMergeNodesToGroup={handleMergeNodesToGroup}
           onBatchDeleteNodes={onBatchDeleteNodes}
           onClose={closeSelectionMenu}
         />

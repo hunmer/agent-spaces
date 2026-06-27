@@ -12,6 +12,7 @@ import {
   collectWorkflowGroupNodeIds,
   collectWorkflowGroupIds,
   computeGroupBounds,
+  type WorkflowNodeSizeOverrides,
 } from './workflow-canvas-groups';
 
 interface UseGroupOperationsParams {
@@ -26,11 +27,15 @@ interface UseGroupOperationsParams {
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
+type MergeNodesToGroupOptions = {
+  nodeSizes?: WorkflowNodeSizeOverrides;
+};
+
 export function useGroupOperations({
   workflow, isReadOnly, setWorkflow, markDirty, pushUndo,
   selectedNodeId, setSelectedNodeId, selectedNodeIds, setSelectedNodeIds,
 }: UseGroupOperationsParams) {
-  const handleMergeNodesToGroup = useCallback((nodeIds: string[]) => {
+  const handleMergeNodesToGroup = useCallback((nodeIds: string[], options?: MergeNodesToGroupOptions) => {
     if (!workflow || isReadOnly) return;
     const childNodeIds = nodeIds.filter(id => canDeleteWorkflowNode(workflow.nodes, id));
     if (childNodeIds.length < 2) return;
@@ -59,7 +64,13 @@ export function useGroupOperations({
         childGroupIds: group.childGroupIds.filter(id => !childGroupIds.has(id)),
         savedNodeStates: { ...(group.savedNodeStates || {}) },
       }));
-      const bounds = computeGroupBounds(w.nodes, childNodeIds);
+      const bounds = computeGroupBounds(w.nodes, childNodeIds, options?.nodeSizes);
+      console.debug('[WorkflowGroupBoundsDebug] create group bounds', {
+        groupId,
+        childNodeIds,
+        nodeSizes: options?.nodeSizes ? Object.fromEntries(options.nodeSizes) : null,
+        bounds,
+      });
       return {
         ...w,
         groups: [
@@ -78,7 +89,7 @@ export function useGroupOperations({
       };
     });
     markDirty();
-  }, [workflow, isReadOnly, pushUndo, markDirty]);
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
 
   const handleRenameGroup = useCallback((groupId: string, name: string) => {
     const trimmed = name.trim();

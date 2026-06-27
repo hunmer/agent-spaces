@@ -74,6 +74,20 @@ export function WorkflowGroupOverlay({
     };
   }, [childNodes, collapsed, group.x, group.y, group.width, group.height]);
 
+  React.useEffect(() => {
+    console.debug('[WorkflowGroupBoundsDebug] render group bounds', {
+      groupId: group.id,
+      storedBounds: {
+        x: group.x,
+        y: group.y,
+        width: group.width,
+        height: group.height,
+      },
+      renderedBounds: bounds,
+      childNodes,
+    });
+  }, [bounds, childNodes, group.height, group.id, group.width, group.x, group.y]);
+
   const handleToggleCollapse = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setCollapsed(prev => !prev);

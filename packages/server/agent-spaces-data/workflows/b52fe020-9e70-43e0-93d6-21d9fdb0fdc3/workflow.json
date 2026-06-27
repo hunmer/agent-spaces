@@ -8,8 +8,8 @@
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
       "position": {
-        "x": 1435.3683833620205,
-        "y": 346.79623068799003
+        "x": 194.73174792268924,
+        "y": 49.4839008933576
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -58,8 +58,8 @@
       "type": "set_variable",
       "label": "nodes.set_variable.label",
       "position": {
-        "x": 523.2901961132632,
-        "y": 940.0462878097497
+        "x": -717.3464393260681,
+        "y": 642.7339580151173
       },
       "data": {
         "variables": [
@@ -103,8 +103,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 88.87777561113103,
-        "y": 1142.1096623899555
+        "x": -1151.7588598282002,
+        "y": 844.797332595323
       },
       "data": {
         "outputs": [
@@ -145,8 +145,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 2241.290196113263,
-        "y": 613.0462449163457
+        "x": 1000.6535606739317,
+        "y": 315.73391512171327
       },
       "data": {
         "carousel": false,
@@ -202,9 +202,36 @@
       "targetHandle": "property:items"
     },
     {
+      "id": "e-node_1782458233136_nf1k8u-output:urls-node_1782455127220_7p3l9h-property:variables[1].value",
+      "source": "node_1782458233136_nf1k8u",
+      "target": "node_1782455127220_7p3l9h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "property:variables[1].value"
+    },
+    {
+      "id": "e-node_1782455127220_7p3l9h-output:env.images-node_1782455101134_xvs0wx-property:images",
+      "source": "node_1782455127220_7p3l9h",
+      "target": "node_1782455101134_xvs0wx",
+      "edgeKind": "reference",
+      "sourceHandle": "output:env.images",
+      "targetHandle": "property:images"
+    },
+    {
       "id": "e-node_1782455127220_7p3l9h-source-node_1782455101134_xvs0wx-target--reference-runtime",
       "source": "node_1782455127220_7p3l9h",
       "target": "node_1782455101134_xvs0wx",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782458233136_nf1k8u-source-node_1782455127220_7p3l9h-target--reference-runtime",
+      "source": "node_1782458233136_nf1k8u",
+      "target": "node_1782455127220_7p3l9h",
       "edgeKind": "runtime",
       "composite": {
         "generated": true,
@@ -222,37 +249,10 @@
         "hidden": false,
         "locked": false
       }
-    },
-    {
-      "id": "e-node_1782458233136_nf1k8u-output:urls-node_1782455127220_7p3l9h-property:variables[1].value",
-      "source": "node_1782458233136_nf1k8u",
-      "target": "node_1782455127220_7p3l9h",
-      "edgeKind": "reference",
-      "sourceHandle": "output:urls",
-      "targetHandle": "property:variables[1].value"
-    },
-    {
-      "id": "e-node_1782458233136_nf1k8u-source-node_1782455127220_7p3l9h-target--reference-runtime",
-      "source": "node_1782458233136_nf1k8u",
-      "target": "node_1782455127220_7p3l9h",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
-      "id": "e-node_1782455127220_7p3l9h-output:env.images-node_1782455101134_xvs0wx-property:images",
-      "source": "node_1782455127220_7p3l9h",
-      "target": "node_1782455101134_xvs0wx",
-      "edgeKind": "reference",
-      "sourceHandle": "output:env.images",
-      "targetHandle": "property:images"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782560552637,
+  "updatedAt": 1782561820434,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -263,11 +263,12 @@
   },
   "enabledPlugins": [
     "workflow.ai-image",
-    "workflow.jimeng"
+    "workflow.jimeng",
+    "workflow.webview"
   ],
   "groups": [
     {
-      "id": "group_1782560530041_wqelag",
+      "id": "group_1782561814713_ecsw83",
       "name": "分组 1",
       "childNodeIds": [
         "node_1782455101134_xvs0wx",
@@ -279,10 +280,10 @@
       "locked": false,
       "disabled": false,
       "savedNodeStates": {},
-      "x": 64.87777561113103,
-      "y": 298.79623068799003,
-      "width": 2453.412420502132,
-      "height": 1172.3134317019653
+      "x": -1175.7589776437803,
+      "y": 1.4839010635243781,
+      "width": 2453.412686564346,
+      "height": 1552.2500500025023
     }
   ],
   "variables": [],

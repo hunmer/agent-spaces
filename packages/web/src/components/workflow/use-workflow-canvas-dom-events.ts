@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { type EdgeChange } from '@xyflow/react';
 import type { Workflow } from '@agent-spaces/shared';
+import type { WorkflowNodeSizeOverrides } from './workflow-canvas-groups';
 
 interface UseCanvasDomEventsParams {
   isCanvasLocked: boolean;
@@ -14,7 +15,7 @@ interface UseCanvasDomEventsParams {
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;
   onMergeNodesToWorkflow?: (ids: string[]) => void;
-  onMergeNodesToGroup?: (ids: string[]) => void;
+  onMergeNodesToGroup?: (ids: string[], options?: { nodeSizes?: WorkflowNodeSizeOverrides }) => void;
   onBatchDeleteNodes?: (ids: string[]) => void;
   onNodeDebug?: (id: string) => void;
   onCancelDebug?: () => void;

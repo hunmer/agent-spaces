@@ -3,6 +3,8 @@
 import type { Workflow } from '@agent-spaces/shared';
 import { getLayoutNodeSize } from './workflow-canvas-utils';
 
+export type WorkflowNodeSizeOverrides = Map<string, { x?: number; y?: number; width: number; height: number }>;
+
 export function cleanupGroupsOnNodeDelete(
   groups: Workflow['groups'] | undefined,
   deletedNodeIds: Set<string>,
@@ -21,20 +23,31 @@ export function cleanupGroupsOnNodeDelete(
 export function computeGroupBounds(
   nodes: Workflow['nodes'],
   childNodeIds: string[],
+  sizeOverrides?: WorkflowNodeSizeOverrides,
 ): Pick<NonNullable<Workflow['groups']>[0], 'x' | 'y' | 'width' | 'height'> | null {
   const childNodes = childNodeIds
     .map(id => nodes.find(node => node.id === id))
     .filter((node): node is Workflow['nodes'][0] => !!node);
   if (childNodes.length === 0) return null;
-  const minX = Math.min(...childNodes.map(node => node.position.x));
-  const minY = Math.min(...childNodes.map(node => node.position.y));
+  const getNodeBounds = (node: Workflow['nodes'][0]) => {
+    const override = sizeOverrides?.get(node.id);
+    const size = override ?? getLayoutNodeSize(node);
+    return {
+      x: override?.x ?? node.position.x,
+      y: override?.y ?? node.position.y,
+      width: size.width,
+      height: size.height,
+    };
+  };
+  const minX = Math.min(...childNodes.map(node => getNodeBounds(node).x));
+  const minY = Math.min(...childNodes.map(node => getNodeBounds(node).y));
   const maxX = Math.max(...childNodes.map((node) => {
-    const size = getLayoutNodeSize(node);
-    return node.position.x + size.width;
+    const bounds = getNodeBounds(node);
+    return bounds.x + bounds.width;
   }));
   const maxY = Math.max(...childNodes.map((node) => {
-    const size = getLayoutNodeSize(node);
-    return node.position.y + size.height;
+    const bounds = getNodeBounds(node);
+    return bounds.y + bounds.height;
   }));
   return {
     x: minX - 24,

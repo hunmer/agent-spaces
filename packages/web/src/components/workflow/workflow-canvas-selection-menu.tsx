@@ -2,11 +2,12 @@
 
 import { Group, Trash2, Workflow as WorkflowIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import type { WorkflowNodeSizeOverrides } from './workflow-canvas-groups';
 
 interface WorkflowSelectionMenuProps {
   menu: { x: number; y: number; nodeIds: string[] };
   onMergeNodesToWorkflow?: (ids: string[]) => void;
-  onMergeNodesToGroup?: (ids: string[]) => void;
+  onMergeNodesToGroup?: (ids: string[], options?: { nodeSizes?: WorkflowNodeSizeOverrides }) => void;
   onBatchDeleteNodes?: (ids: string[]) => void;
   onClose: () => void;
 }

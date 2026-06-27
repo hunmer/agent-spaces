@@ -210,6 +210,53 @@ definitions/*
   - 例如 `set_variable` 的 outputs 由 `createSetVariableOutputs()` 根据变量路径生成
   - JSON preset 会把执行结果回填为可复用输出模板
 
+## Property View Runtime Sizing
+
+property view 模式下，节点的真实显示高度不是只由持久化的 `WorkflowNode.data.nodeHeight` 决定。
+
+关键链路：
+
+```text
+workflow-canvas.tsx
+  -> useCanvasData()
+  -> rfNodes: width / height / initialWidth / initialHeight / measured / style
+  -> ReactFlow nodes
+  -> workflow-node.tsx: WorkflowNodeComponent()
+  -> measuredPropertyHeight
+  -> displayNodeHeight
+  -> workflow:update-node-runtime-size
+  -> workflow-canvas.tsx: runtimeNodeSizesRef + canvasNodes
+```
+
+要点：
+
+- `use-workflow-canvas-data.ts` 会基于 `getWorkflowNodeSize()` 生成 React Flow node 的初始 `width`、`height`、`initialWidth`、`initialHeight`、`measured` 和 `style`。
+- `workflow-node.tsx` 在 property view 下会测量属性面板真实内容高度，写入组件本地的 `measuredPropertyHeight`，并用它生成 `displayNodeHeight`。
+- 仅调用 `useUpdateNodeInternals()` 不足以让所有下游逻辑看到真实高度；minimap、导出、分组 overlay 等逻辑会读取 React Flow node dimensions 或本地 `canvasNodes`。
+- 因此 property view 的动态高度需要同步为运行时尺寸，而不是写回 workflow 持久数据。用户手动 resize 仍通过 `nodeWidth` / `nodeHeight` 持久化。
+
+已验证的风险点：
+
+- 画布导出：`use-workflow-canvas-export.ts` 需要使用 React Flow instance 的 `getNodesBounds()`，并合并实际 DOM bounds，避免只按静态 node size 裁剪图片。
+- minimap：React Flow minimap 读取节点 dimensions；如果 `canvasNodes` 没有运行时高度，minimap 会显示过小。
+- 合并成组：`use-workflow-group-operations.ts` 创建 group 时计算 bounds；`workflow-group-node.tsx` 渲染 overlay 时还会根据 `childNodes` 二次计算 bounds。两处都不能只依赖 `getWorkflowNodeSize()`。
+- 组 overlay 数据源在 `workflow-canvas.tsx` 的 `groupOverlayItems`。这里必须优先使用当前 `canvasNodes` 的 `width` / `height` / `measured`，否则 property view 高节点会超出蓝色组背景。
+
+调试点：
+
+```text
+[WorkflowGroupBoundsDebug] merge request
+  -> 合并点击瞬间从 DOM / runtime cache 得到的 node bounds
+
+[WorkflowGroupBoundsDebug] create group bounds
+  -> use-workflow-group-operations.ts 里创建 group 时算出的持久 bounds
+
+[WorkflowGroupBoundsDebug] render group bounds
+  -> workflow-group-node.tsx 最终渲染 overlay 时使用的 bounds 和 childNodes
+```
+
+排查时优先比较 `create group bounds.bounds` 与 `render group bounds.renderedBounds`。如果创建时正确但渲染时变小，问题通常在 `groupOverlayItems` 或 `WorkflowGroupOverlay` 二次计算；如果创建时就偏小，问题通常在合并事件传入的 DOM/runtime bounds。
+
 ## Dynamic Handles And Graph Semantics
 
 动态 handles 是 node 系统和画布系统的关键接缝。
