@@ -519,6 +519,25 @@ function WorkflowEditorInner({
     markEditorDirty();
   }, [clipboard, getViewportCenter, markEditorDirty, state]);
 
+  const addImageBlobsToCanvas = useCallback(async (imageBlobs: Blob[], center: { x: number; y: number }) => {
+    if (imageBlobs.length === 0) return false;
+    const sources = (await Promise.all(imageBlobs.map(readBlobAsDataUrl))).filter(Boolean);
+    if (sources.length === 0) return false;
+    const previewSize = getGalleryPreviewSize(await readImageSize(sources[0] || ''));
+    const position = getCenteredNodePosition(center, previewSize);
+    const createdAt = Date.now();
+    canvas.handleNodeAdd('gallery_preview', position, previewSize, {
+      items: sources.map((src, index) => ({
+        id: `clipboard_image_${createdAt}_${index}`,
+        src,
+        thumb: src,
+        type: 'image',
+        caption: '',
+      })),
+    });
+    return true;
+  }, [canvas]);
+
   const pasteClipboardNodes = useCallback(async () => {
     if (clipboardImagePasteEnabled && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
       try {
@@ -529,19 +548,7 @@ function WorkflowEditorInner({
           if (imageType) imageBlobs.push(await item.getType(imageType));
         }
         if (imageBlobs.length > 0) {
-          const sources = (await Promise.all(imageBlobs.map(readBlobAsDataUrl))).filter(Boolean);
-          const previewSize = getGalleryPreviewSize(await readImageSize(sources[0] || ''));
-          const position = getCenteredNodePosition(getViewportCenter(), previewSize);
-          canvas.handleNodeAdd('gallery_preview', position, previewSize, {
-            items: sources.filter(Boolean).map((src, index) => ({
-              id: `clipboard_image_${Date.now()}_${index}`,
-              src,
-              thumb: src,
-              type: 'image',
-              caption: '',
-            })),
-          });
-          return;
+          if (await addImageBlobsToCanvas(imageBlobs, getViewportCenter())) return;
         }
       } catch {
         // Browser clipboard image access is optional.
@@ -561,7 +568,7 @@ function WorkflowEditorInner({
     }
 
     pasteWorkflowNodes();
-  }, [canvas, clipboard, getViewportCenter, pasteWorkflowNodes, clipboardImagePasteEnabled]);
+  }, [addImageBlobsToCanvas, clipboard, getViewportCenter, pasteWorkflowNodes, clipboardImagePasteEnabled]);
 
   const moveClipboardNodesToStaging = useCallback(async (record?: ClipboardRecord) => {
     const copied = clipboard.getData(record);
@@ -918,6 +925,9 @@ function WorkflowEditorInner({
                 selectedNodeId={state.selectedNodeId}
                 selectedNodeIds={state.selectedNodeIds}
                 onNodeAdd={canvas.handleNodeAdd}
+                onImageFilesDrop={isWorkflowReadOnly ? undefined : (files, position) => {
+                  void addImageBlobsToCanvas(files, position);
+                }}
                 onStagedNodeDrop={addStagedNodeToCanvas}
                 onNodeDelete={canvas.handleNodeDelete}
                 onNodeCopy={canvas.handleNodeCopy}
@@ -1129,6 +1139,7 @@ function WorkflowEditorInner({
     canvas,
     isWorkflowRunning,
     isWorkflowReadOnly,
+    addImageBlobsToCanvas,
     addStagedNodeToCanvas,
     handleSelectNodeFromList,
     handleDeleteGroup,
@@ -1141,9 +1152,11 @@ function WorkflowEditorInner({
     handlePreviewNodeDataUpdate,
     markEditorDirty,
     moveClipboardNodesToStaging,
-    pasteClipboardNodes,
+    pasteWorkflowNodes,
     previewResult,
     saveWorkflow,
+    workspaceId,
+    clipboard.records,
   ]);
 
   // ---- Render ----

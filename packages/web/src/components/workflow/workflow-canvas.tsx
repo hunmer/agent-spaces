@@ -121,6 +121,7 @@ interface WorkflowCanvasProps {
   selectedNodeId?: string | null;
   selectedNodeIds?: string[];
   onNodeAdd: (type: string, position: { x: number; y: number }, size?: { width: number; height: number }, data?: Record<string, unknown>) => void;
+  onImageFilesDrop?: (files: File[], position: { x: number; y: number }) => void;
   onStagedNodeDrop?: (node: StagedNode, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string, options?: { reconnect?: boolean }) => void;
   onNodeCopy?: (id: string) => void;
@@ -175,7 +176,7 @@ interface WorkflowCanvasProps {
 export function WorkflowCanvas({
   workflow, isPreview, execStatus = 'idle', isRunning = false, executionLog, selectedNodeId,
   selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
-  onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
+  onImageFilesDrop, onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   copiedNodeCount = 0, copiedRecords = [], onPasteRecord, onMoveRecord, onClearCopiedNodes,
   onConnectionDrop,
@@ -622,7 +623,10 @@ export function WorkflowCanvas({
     if (isCanvasLocked) return;
     event.preventDefault();
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = Array.from(event.dataTransfer.types).includes(WORKFLOW_STAGED_NODE_DRAG_MIME)
+      const hasImageFiles = Array.from(event.dataTransfer.items ?? []).some(item =>
+        item.kind === 'file' && item.type.startsWith('image/'),
+      );
+      event.dataTransfer.dropEffect = hasImageFiles || Array.from(event.dataTransfer.types).includes(WORKFLOW_STAGED_NODE_DRAG_MIME)
         ? 'copy'
         : 'move';
     }
@@ -632,6 +636,12 @@ export function WorkflowCanvas({
     if (isCanvasLocked) return;
     event.preventDefault();
     const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const imageFiles = Array.from(event.dataTransfer.files ?? []).filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length > 0 && onImageFilesDrop) {
+      onImageFilesDrop(imageFiles, position);
+      return;
+    }
+
     const stagedPayload = event.dataTransfer.getData(WORKFLOW_STAGED_NODE_DRAG_MIME);
     if (stagedPayload && onStagedNodeDrop) {
       try {
@@ -646,7 +656,7 @@ export function WorkflowCanvas({
     if (!type) return;
 
     onNodeAdd(type, position);
-  }, [isCanvasLocked, onStagedNodeDrop, screenToFlowPosition, onNodeAdd]);
+  }, [isCanvasLocked, onImageFilesDrop, onStagedNodeDrop, screenToFlowPosition, onNodeAdd]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     const multi = event.shiftKey || event.metaKey || event.ctrlKey;
