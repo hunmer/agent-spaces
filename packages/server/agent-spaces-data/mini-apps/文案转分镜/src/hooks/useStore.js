@@ -44,6 +44,12 @@ export function useStore() {
     return res;
   }, []);
 
+  // 服务端代理下载媒体（绕过浏览器 CORS），返回 { base64, mime }
+  const fetchMedia = useCallback(async (url) => {
+    const res = await AS.invokeService('fetch_media', { url });
+    return res;
+  }, []);
+
   const actions = {
     newProject: (name) => {
       const proj = createEmptyProject(name);
@@ -61,8 +67,10 @@ export function useStore() {
     reorderScenes: (sceneIds) => call('reorder_scenes', { sceneIds }),
     addSceneMedia: (sceneId, kind, urls) => call('add_scene_media', { sceneId, kind, urls }),
     clearSceneMedia: (sceneId, kind) => call('clear_scene_media', { sceneId, kind }),
+    removeSceneMedia: (sceneId, kind, url) => call('remove_scene_media', { sceneId, kind, url }),
     importStoryboard: (payload) => call('import_storyboard', payload),
     saveSettings: (patch) => callRaw('save_settings', { settings: patch }),
+    fetchMedia,
   };
 
   return { data, projects, project, projectId, settings, actions };

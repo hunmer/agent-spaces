@@ -84,6 +84,11 @@ function Style() {
       .sb-media-block { display: flex; flex-direction: column; gap: 6px; }
       .sb-media-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #71717a; font-weight: 600; }
       .sb-video { width: 100%; max-height: 320px; border-radius: 6px; background: #000; cursor: pointer; }
+      .sb-video-star { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #e4e4e7; background: #fff; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #71717a; font-size: 12px; }
+      .sb-video-star:hover { background: #f4f4f5; }
+      .sb-video-star.is-selected { background: #111827; color: #fff; border-color: #111827; }
+      .sb-video-del { margin-top: 6px; align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #fecaca; background: #fff; color: #991b1b; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+      .sb-video-del:hover { background: #fef2f2; }
 
       .sb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
       .sb-chip { padding: 4px 10px; border: 1px solid #e4e4e7; border-radius: 999px; background: #fff; font-size: 12px; cursor: pointer; color: #52525b; }

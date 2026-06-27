@@ -16,8 +16,8 @@ function sameScene(a, b) {
     && (a.video || '') === (b.video || '');
 }
 
-function SceneCard({ scene, index, characters, settings, actions, onRemove, requestParams, bulkStatus }) {
-  const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser } = window.AgentSpacesUI;
+function SceneCard({ scene, index, characters, settings, actions, onRemove, requestParams, bulkStatus, selected, onToggleSelect, onRemoveMedia, exportBusy }) {
+  const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser, Star, Check } = window.AgentSpacesUI;
 
   const [draft, setDraft] = useState(() => ({ ...scene, characterIds: [...(scene.characterIds || [])] }));
   const [imgRunning, setImgRunning] = useState(false);
@@ -209,9 +209,30 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
                 </Button>
               </div>
               <div className="sb-img-grid">
-                {draft.images.map((url, i) => (
-                  <div key={i} className="sb-img-thumb"><img src={url} alt="" onClick={() => previewImages(i)} /></div>
-                ))}
+                {draft.images.map((url, i) => {
+                  const on = selected.has(url);
+                  return (
+                    <div key={`${url}-${i}`} className={`sb-img-thumb${on ? ' is-selected' : ''}`}>
+                      <img src={url} alt="" onClick={() => previewImages(i)} />
+                      <button
+                        type="button"
+                        className={`sb-img-star${on ? ' is-selected' : ''}`}
+                        onClick={() => onToggleSelect(url)}
+                        title={on ? '取消选中' : '加入导出选中'}
+                      >
+                        {on ? <Check className="sb-icon" /> : <Star className="sb-icon" />}
+                      </button>
+                      <button
+                        type="button"
+                        className="sb-img-del"
+                        onClick={() => onRemoveMedia(draft.id, 'image', url)}
+                        title="删除"
+                      >
+                        <Trash2 className="sb-icon" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -219,11 +240,29 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
             <div className="sb-media-block">
               <div className="sb-media-head">
                 <span>生成视频</span>
-                <Button size="icon" variant="ghost" onClick={() => actions.clearSceneMedia(draft.id, 'video')} title="清空视频">
-                  <Eraser className="sb-icon" />
-                </Button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    className={`sb-video-star${selected.has(draft.video) ? ' is-selected' : ''}`}
+                    onClick={() => onToggleSelect(draft.video)}
+                    title={selected.has(draft.video) ? '取消选中' : '加入导出选中'}
+                  >
+                    {selected.has(draft.video) ? <Check className="sb-icon" /> : <Star className="sb-icon" />}
+                  </button>
+                  <Button size="icon" variant="ghost" onClick={() => actions.clearSceneMedia(draft.id, 'video')} title="清空视频">
+                    <Eraser className="sb-icon" />
+                  </Button>
+                </div>
               </div>
               <video className="sb-video" src={draft.video} controls onClick={previewVideo} />
+              <button
+                type="button"
+                className="sb-video-del"
+                onClick={() => onRemoveMedia(draft.id, 'video', draft.video)}
+                title="删除视频"
+              >
+                <Trash2 className="sb-icon" />删除视频
+              </button>
             </div>
           )}
         </div>
@@ -233,11 +272,14 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
 }
 
 export default function ScenePanel({ project, settings, actions, requestParams }) {
-  const { Button, Badge, Plus, Film } = window.AgentSpacesUI;
+  const { Button, Badge, Plus, Film, Download, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, Loader2 } = window.AgentSpacesUI;
   const scenes = (project?.scenes || []).slice().sort((a, b) => a.index - b.index);
   const characters = project?.characters || [];
   const [bulkRunning, setBulkRunning] = useState('');
   const [bulkSceneStatus, setBulkSceneStatus] = useState({});
+  // 导出选中集合：Set<url>（图片可多选，视频可选）
+  const [selected, setSelected] = useState(() => new Set());
+  const [exporting, setExporting] = useState(false);
 
   const addScene = async () => {
     const s = {
@@ -257,6 +299,153 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     if (!window.confirm('删除该分镜？')) return;
     await actions.deleteScene(id);
   };
+
+  // 切换某 url 的选中态（图片多选、视频可选）
+  const toggleSelect = (url) => {
+    if (!url) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url);
+      else next.add(url);
+      return next;
+    });
+  };
+
+  // 删除单条媒体，并同步移除其选中
+  const removeMedia = async (sceneId, kind, url) => {
+    if (!window.confirm(kind === 'video' ? '删除该视频？' : '删除该图片？')) return;
+    setSelected((prev) => {
+      if (!prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.delete(url);
+      return next;
+    });
+    await actions.removeSceneMedia(sceneId, kind, url);
+  };
+
+  // 收集所有场景的全部媒体 [{ kind, url, sceneIndex }]
+  const collectAllMedia = () => {
+    const out = [];
+    scenes.forEach((scene, i) => {
+      (scene.images || []).forEach((url) => { if (url) out.push({ kind: 'image', url, sceneIndex: i + 1 }); });
+      if (scene.video) out.push({ kind: 'video', url: scene.video, sceneIndex: i + 1 });
+    });
+    return out;
+  };
+
+  // 从 url 推断扩展名
+  const extOf = (url, kind) => {
+    const m = String(url).split('?')[0].match(/\.([a-zA-Z0-9]{2,4})$/);
+    if (m) return m[1].toLowerCase();
+    return kind === 'video' ? 'mp4' : 'png';
+  };
+
+  const triggerDownload = (href, filename) => {
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // base64 -> Blob
+  const base64ToBlob = (base64, mime) => {
+    const bin = atob(base64);
+    const len = bin.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i += 1) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime || 'application/octet-stream' });
+  };
+
+  // 经服务端代理下载媒体（绕过浏览器 CORS），返回 Blob
+  const fetchMediaBlob = async (url) => {
+    const res = await actions.fetchMedia(url);
+    if (!res?.base64) throw new Error('代理下载无数据');
+    return base64ToBlob(res.base64, res.mime);
+  };
+
+  // 动态加载 JSZip（不可用时回退逐个下载）
+  const loadJsZip = () => new Promise((resolve) => {
+    if (window.JSZip) return resolve(window.JSZip);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+    s.onload = () => resolve(window.JSZip);
+    s.onerror = () => resolve(null);
+    document.head.appendChild(s);
+  });
+
+  // 打包导出 zip；onlySelected=true 时仅导出选中
+  const exportZip = async (onlySelected) => {
+    const all = collectAllMedia();
+    const targets = onlySelected ? all.filter((m) => selected.has(m.url)) : all;
+    if (!targets.length) {
+      window.alert?.(onlySelected ? '没有选中的图片/视频' : '当前项目没有可导出的图片/视频');
+      return;
+    }
+    setExporting(true);
+    // 同名去重：分镜N-kind-ext
+    const used = new Set();
+    const pickName = (m) => {
+      const ext = extOf(m.url, m.kind);
+      let name = `分镜${m.sceneIndex}-${m.kind}.${ext}`;
+      let n = 1;
+      while (used.has(name)) { name = `分镜${m.sceneIndex}-${m.kind}-${n}.${ext}`; n += 1; }
+      used.add(name);
+      return name;
+    };
+    try {
+      // 经服务端代理并发抓取（控制并发为 3，避免服务端 fetch 压力）
+      const concurrency = 3;
+      let cursor = 0;
+      const fetched = []; // { name, blob }
+      const workers = Array.from({ length: Math.min(concurrency, targets.length) }, async () => {
+        while (cursor < targets.length) {
+          const m = targets[cursor];
+          cursor += 1;
+          try {
+            const blob = await fetchMediaBlob(m.url);
+            fetched.push({ name: pickName(m), blob });
+          } catch (e) {
+            // 单个失败跳过，最终汇总
+            fetched.push({ name: pickName(m), error: e?.message || String(e) });
+          }
+        }
+      });
+      await Promise.all(workers);
+
+      const okItems = fetched.filter((x) => x.blob);
+      if (!okItems.length) throw new Error('所有文件抓取失败');
+
+      const JSZip = await loadJsZip();
+      if (JSZip) {
+        const zip = new JSZip();
+        okItems.forEach(({ name, blob }) => zip.file(name, blob));
+        const content = await zip.generateAsync({ type: 'blob' });
+        const objUrl = URL.createObjectURL(content);
+        const fname = `${project?.name || '分镜'}-${onlySelected ? '选中' : '全部'}-${Date.now()}.zip`;
+        triggerDownload(objUrl, fname);
+        setTimeout(() => URL.revokeObjectURL(objUrl), 15000);
+      } else {
+        // 无 JSZip：逐个用 Blob URL 下载
+        okItems.forEach(({ name, blob }) => {
+          const objUrl = URL.createObjectURL(blob);
+          triggerDownload(objUrl, name);
+          setTimeout(() => URL.revokeObjectURL(objUrl), 15000);
+        });
+      }
+      const failed = fetched.filter((x) => x.error);
+      if (failed.length) {
+        window.alert?.(`导出完成：成功 ${okItems.length}，失败 ${failed.length}\n失败文件:\n${failed.map((x) => x.name).join('\n')}`);
+      }
+    } catch (e) {
+      window.alert?.('导出失败：' + (e?.message || e));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const selectedCount = selected.size;
 
   const collectRefImagesForScene = (scene) => {
     const refs = [];
@@ -467,6 +656,22 @@ export default function ScenePanel({ project, settings, actions, requestParams }
           <Button size="sm" variant="outline" onClick={addScene}>
             <Plus className="sb-icon" />新增分镜
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" disabled={!scenes.length || exporting} title="导出图片/视频">
+                {exporting ? <Loader2 className="sb-icon sb-spin" /> : <Download className="sb-icon" />}
+                {exporting ? '导出中' : '导出'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" style={{ minWidth: '180px' }}>
+              <DropdownMenuItem disabled={!selectedCount || exporting} onClick={() => exportZip(true)}>
+                导出选中 {selectedCount ? `(${selectedCount})` : ''}
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={!scenes.length || exporting} onClick={() => exportZip(false)}>
+                导出全部到 zip
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <div className="sb-scene-list">
@@ -483,6 +688,10 @@ export default function ScenePanel({ project, settings, actions, requestParams }
             onRemove={removeScene}
             requestParams={requestParams}
             bulkStatus={bulkSceneStatus[s.id] || {}}
+            selected={selected}
+            onToggleSelect={toggleSelect}
+            onRemoveMedia={removeMedia}
+            exportBusy={exporting}
           />
         ))}
       </div>

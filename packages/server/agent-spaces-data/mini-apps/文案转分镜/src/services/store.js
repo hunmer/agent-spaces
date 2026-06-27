@@ -272,6 +272,35 @@ export default {
     return { ok: true, data };
   },
 
+  // 删除单条媒体：图片按 url 过滤；视频 url 匹配则清空
+  remove_scene_media: ({ projectId, sceneId, kind, url }, ctx) => {
+    const data = ctx.updateConfig(DATA_PATH, (prev) => {
+      const cur = normalizeData(prev);
+      const p = findProject(cur, projectId);
+      if (!p) return cur;
+      const s = (p.scenes || []).find((x) => x.id === sceneId);
+      if (!s) return cur;
+      if (kind === 'video') {
+        if (!url || s.video === url) s.video = '';
+      } else if (Array.isArray(s.images)) {
+        s.images = s.images.filter((u) => u !== url);
+      }
+      touch(p);
+      return cur;
+    });
+    return { ok: true, data };
+  },
+
+  // 服务端代理下载远程媒体：绕过浏览器 CORS，返回 base64
+  // 沙箱运行在全局作用域，可直接用全局 fetch / Buffer
+  fetch_media: async ({ url }) => {
+    if (!url || typeof url !== 'string') throw new Error('url is required');
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`download failed: ${resp.status}`);
+    const buf = Buffer.from(await resp.arrayBuffer());
+    return { ok: true, base64: buf.toString('base64'), mime: resp.headers.get('content-type') || '' };
+  },
+
   // Agent 文案导入：mode = replace | merge
   import_storyboard: ({ projectId, characters, scenes, mode }, ctx) => {
     const data = ctx.updateConfig(DATA_PATH, (prev) => {
