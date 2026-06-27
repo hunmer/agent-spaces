@@ -60,6 +60,7 @@ import {
   type DrawArea,
   type LocalRect,
   type NodePreviewDragEventDetail,
+  type WorkflowNodeRuntimeSizeEventDetail,
   type WorkflowNodeResizePreviewEventDetail,
 } from './workflow-canvas-types';
 import {
@@ -71,6 +72,50 @@ import {
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
+
+function applyRuntimeNodeSizes(nodes: Node[], sizes: Map<string, { width: number; height: number }>): Node[] {
+  if (sizes.size === 0) return nodes;
+
+  let changed = false;
+  const nextNodes = nodes.map((node) => {
+    const size = sizes.get(node.id);
+    const data = node.data as Record<string, unknown> | undefined;
+    if (!size || data?.nodeDisplayMode !== 'properties') return node;
+    if (
+      node.width === size.width
+      && node.height === size.height
+      && node.initialWidth === size.width
+      && node.initialHeight === size.height
+      && node.measured?.width === size.width
+      && node.measured?.height === size.height
+    ) {
+      return node;
+    }
+
+    changed = true;
+    return {
+      ...node,
+      width: size.width,
+      height: size.height,
+      initialWidth: size.width,
+      initialHeight: size.height,
+      measured: { width: size.width, height: size.height },
+      style: {
+        ...node.style,
+        width: size.width,
+        height: size.height,
+      },
+      data: {
+        ...data,
+        width: size.width,
+        height: size.height,
+      },
+    };
+  });
+
+  return changed ? nextNodes : nodes;
+}
+
 type WorkflowBadgeHandleTarget = {
   nodeId: string;
   handleId: string;
@@ -492,6 +537,7 @@ export function WorkflowCanvas({
   const [canvasNodes, setCanvasNodes] = useState<Node[]>(rfNodes);
   const isNodeDraggingRef = useRef(false);
   const canvasNodesRef = useRef<Node[]>(rfNodes);
+  const runtimeNodeSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map());
   const draggedNodeIdsRef = useRef<Set<string>>(new Set());
   const loopBodyDragSessionRef = useRef<{
     nodeId: string;
@@ -501,9 +547,40 @@ export function WorkflowCanvas({
 
   useEffect(() => {
     if (isNodeDraggingRef.current) return;
-    setCanvasNodes(rfNodes);
-    canvasNodesRef.current = rfNodes;
+    const nextNodes = applyRuntimeNodeSizes(rfNodes, runtimeNodeSizesRef.current);
+    setCanvasNodes(nextNodes);
+    canvasNodesRef.current = nextNodes;
   }, [rfNodes]);
+
+  useEffect(() => {
+    const handleNodeRuntimeSize = (event: Event) => {
+      const detail = (event as CustomEvent<WorkflowNodeRuntimeSizeEventDetail>).detail;
+      if (
+        !detail?.nodeId
+        || !Number.isFinite(detail.width)
+        || !Number.isFinite(detail.height)
+        || detail.width <= 0
+        || detail.height <= 0
+      ) {
+        return;
+      }
+
+      runtimeNodeSizesRef.current.set(detail.nodeId, {
+        width: Math.ceil(detail.width),
+        height: Math.ceil(detail.height),
+      });
+
+      if (isNodeDraggingRef.current) return;
+      setCanvasNodes((nodes) => {
+        const nextNodes = applyRuntimeNodeSizes(nodes, runtimeNodeSizesRef.current);
+        canvasNodesRef.current = nextNodes;
+        return nextNodes;
+      });
+    };
+
+    window.addEventListener('workflow:update-node-runtime-size', handleNodeRuntimeSize);
+    return () => window.removeEventListener('workflow:update-node-runtime-size', handleNodeRuntimeSize);
+  }, []);
 
   useEffect(() => {
     const handleNodePreviewDrag = (event: Event) => {

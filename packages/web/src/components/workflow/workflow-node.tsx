@@ -71,6 +71,7 @@ import {
   getVariableContextNodeLabel,
   type NodePreviewDragPhase,
 } from './workflow-node-utils';
+import type { WorkflowNodeRuntimeSizeEventDetail } from './workflow-canvas-types';
 
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
@@ -271,6 +272,17 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       cancelAnimationFrame(secondFrame);
     };
   }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, displayNodeHeight, handlePositions.target, handlePositions.source, workflowNodeType, nodeDisplayMode, propertyModeBadgePosition, inputFieldsSignature, outputFieldsSignature, propertyFieldsSignature, collapsedOutputKeysSignature]);
+
+  React.useEffect(() => {
+    if (!canShowPropertyNodeView || measuredPropertyHeight <= 0) return;
+    window.dispatchEvent(new CustomEvent<WorkflowNodeRuntimeSizeEventDetail>('workflow:update-node-runtime-size', {
+      detail: {
+        nodeId: id,
+        width: displayNodeWidth,
+        height: displayNodeHeight,
+      },
+    }));
+  }, [canShowPropertyNodeView, displayNodeHeight, displayNodeWidth, id, measuredPropertyHeight]);
 
   // 属性模式：测量面板实际内容高度，动态撑开节点
   // 依赖 canShowNodeContent：缩放到图标态会卸载 panel，放大回来需重新挂载测量/监听

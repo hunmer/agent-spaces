@@ -1,11 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import { toPng, toJpeg } from 'html-to-image';
-import { useReactFlow, getNodesBounds, getViewportForBounds } from '@xyflow/react';
+import { useReactFlow, getViewportForBounds, type Node, type Rect, type Viewport } from '@xyflow/react';
 
 const EXPORT_MIN_WIDTH = 1024;
 const EXPORT_MIN_HEIGHT = 768;
 const EXPORT_MAX_SIZE = 4096;
 const EXPORT_PADDING = 96;
+const EXPORT_MIN_ZOOM = 0.001;
+const EXPORT_MAX_ZOOM = 2;
+const EXPORT_VIEWPORT_PADDING = 0.12;
 
 function clampExportSize(value: number, min: number) {
   return Math.max(min, Math.min(EXPORT_MAX_SIZE, Math.ceil(value)));
@@ -13,6 +16,61 @@ function clampExportSize(value: number, min: number) {
 
 function nextFrame() {
   return new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+}
+
+function mergeBounds(a: Rect, b: Rect | null): Rect {
+  if (!b) return a;
+  const minX = Math.min(a.x, b.x);
+  const minY = Math.min(a.y, b.y);
+  const maxX = Math.max(a.x + a.width, b.x + b.width);
+  const maxY = Math.max(a.y + a.height, b.y + b.height);
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+}
+
+function getRenderedNodesBounds(root: HTMLElement, nodes: Node[], viewport: Viewport): Rect | null {
+  if (!Number.isFinite(viewport.zoom) || viewport.zoom <= 0) return null;
+
+  const rootRect = root.getBoundingClientRect();
+  const nodeIds = new Set(nodes.map(node => node.id));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const element of Array.from(root.querySelectorAll<HTMLElement>('.react-flow__node'))) {
+    const nodeId = element.dataset.id;
+    if (nodeId && !nodeIds.has(nodeId)) continue;
+
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) continue;
+
+    const left = (rect.left - rootRect.left - viewport.x) / viewport.zoom;
+    const top = (rect.top - rootRect.top - viewport.y) / viewport.zoom;
+    const right = (rect.right - rootRect.left - viewport.x) / viewport.zoom;
+    const bottom = (rect.bottom - rootRect.top - viewport.y) / viewport.zoom;
+
+    minX = Math.min(minX, left);
+    minY = Math.min(minY, top);
+    maxX = Math.max(maxX, right);
+    maxY = Math.max(maxY, bottom);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+    return null;
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
 }
 
 function inlineSvgComputedStyles(root: HTMLElement) {
@@ -49,7 +107,7 @@ export function useCanvasExport(
   reactFlowWrapper: React.RefObject<HTMLDivElement | null>,
   workflowName: string,
 ) {
-  const { getViewport, setViewport, getNodes } = useReactFlow();
+  const { getViewport, setViewport, getNodes, getNodesBounds } = useReactFlow();
   const [minimapVisible, setMinimapVisible] = useState(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('agent-spaces:workflow-minimap-visible') !== 'false';
@@ -65,8 +123,9 @@ export function useCanvasExport(
   }, []);
 
   const exportCanvas = useCallback(async (format: 'png' | 'jpeg') => {
-    const viewportEl = reactFlowWrapper.current?.querySelector<HTMLElement>('.react-flow__viewport');
-    if (!viewportEl || isExporting) return;
+    const flowRoot = reactFlowWrapper.current;
+    const viewportEl = flowRoot?.querySelector<HTMLElement>('.react-flow__viewport');
+    if (!flowRoot || !viewportEl || isExporting) return;
 
     setIsExporting(true);
     const viewport = getViewport();
@@ -75,10 +134,20 @@ export function useCanvasExport(
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const nodesBounds = getNodesBounds(nodes);
+      const nodesBounds = mergeBounds(
+        getNodesBounds(nodes),
+        getRenderedNodesBounds(flowRoot, nodes, viewport),
+      );
       const imageWidth = clampExportSize(nodesBounds.width + EXPORT_PADDING * 2, EXPORT_MIN_WIDTH);
       const imageHeight = clampExportSize(nodesBounds.height + EXPORT_PADDING * 2, EXPORT_MIN_HEIGHT);
-      const { x, y, zoom } = getViewportForBounds(nodesBounds, imageWidth, imageHeight, 0.05, 2, 0.12);
+      const { x, y, zoom } = getViewportForBounds(
+        nodesBounds,
+        imageWidth,
+        imageHeight,
+        EXPORT_MIN_ZOOM,
+        EXPORT_MAX_ZOOM,
+        EXPORT_VIEWPORT_PADDING,
+      );
 
       await setViewport({ x, y, zoom }, { duration: 0 });
       await nextFrame();
@@ -110,7 +179,7 @@ export function useCanvasExport(
       void setViewport(viewport, { duration: 0 });
       setIsExporting(false);
     }
-  }, [getNodes, getViewport, isExporting, setViewport, workflowName, reactFlowWrapper]);
+  }, [getNodes, getNodesBounds, getViewport, isExporting, setViewport, workflowName, reactFlowWrapper]);
 
   return { minimapVisible, isExporting, toggleMinimap, exportCanvas };
 }

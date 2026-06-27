@@ -8,8 +8,8 @@
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
       "position": {
-        "x": 1774.0781872487573,
-        "y": 378.74998577164433
+        "x": 1435.3683833620205,
+        "y": 346.79623068799003
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -58,8 +58,8 @@
       "type": "set_variable",
       "label": "nodes.set_variable.label",
       "position": {
-        "x": 862,
-        "y": 972.000042893404
+        "x": 523.2901961132632,
+        "y": 940.0462878097497
       },
       "data": {
         "variables": [
@@ -103,8 +103,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 427.58757949786786,
-        "y": 1174.0634174736097
+        "x": 88.87777561113103,
+        "y": 1142.1096623899555
       },
       "data": {
         "outputs": [
@@ -123,14 +123,14 @@
         "items": [
           {
             "id": 1782458238021,
-            "src": "https://img1.baidu.com/it/u=3462306588,2909957402&fm=253&app=138&f=JPEG?w=500&h=653",
+            "src": "https://img10.360buyimg.com/imgzone/jfs/t187/76/817152560/228146/1b2c5b/53996699Na37e36fb.jpg",
             "thumb": "",
             "type": "image",
             "caption": ""
           },
           {
             "id": 1782523276135,
-            "src": "https://img2.baidu.com/it/u=65824387,3382670591&fm=253&app=138&f=JPEG?w=800&h=1735",
+            "src": "https://pic.rmb.bdstatic.com/d2e095ac5f4955f1661cfd31bdf1f2c1.jpeg",
             "thumb": "",
             "type": "image",
             "caption": ""
@@ -145,8 +145,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 2580,
-        "y": 645
+        "x": 2241.290196113263,
+        "y": 613.0462449163457
       },
       "data": {
         "carousel": false,
@@ -252,7 +252,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782558741552,
+  "updatedAt": 1782560552637,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -265,7 +265,26 @@
     "workflow.ai-image",
     "workflow.jimeng"
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": "group_1782560530041_wqelag",
+      "name": "分组 1",
+      "childNodeIds": [
+        "node_1782455101134_xvs0wx",
+        "node_1782455127220_7p3l9h",
+        "node_1782458233136_nf1k8u",
+        "node_1782553818772_ing721"
+      ],
+      "childGroupIds": [],
+      "locked": false,
+      "disabled": false,
+      "savedNodeStates": {},
+      "x": 64.87777561113103,
+      "y": 298.79623068799003,
+      "width": 2453.412420502132,
+      "height": 1172.3134317019653
+    }
+  ],
   "variables": [],
   "lastRunAt": 1782557759884
 }

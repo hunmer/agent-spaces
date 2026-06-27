@@ -25,5 +25,10 @@ export type LocalRect = { left: number; top: number; width: number; height: numb
 export type WorkflowNodeResizePreviewEventDetail = {
   rect: { left: number; top: number; width: number; height: number } | null;
 };
+export type WorkflowNodeRuntimeSizeEventDetail = {
+  nodeId: string;
+  width: number;
+  height: number;
+};
 export const GROUP_DRAG_PREVIEW_BACKGROUND = 'rgba(59,130,246,0.06)';
 export const LOOP_BODY_DRAG_PREVIEW_BACKGROUND = 'rgba(6,182,212,0.06)';
