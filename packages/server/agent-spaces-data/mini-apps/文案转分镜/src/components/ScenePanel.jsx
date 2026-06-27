@@ -18,7 +18,7 @@ function sameScene(a, b) {
 }
 
 function SceneCard({ scene, index, characters, settings, actions, onRemove, requestParams, bulkStatus, selected, onToggleSelect, onRemoveMedia, exportBusy }) {
-  const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser, Star, Check, Audio: AudioIcon } = window.AgentSpacesUI;
+  const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser, Star, Check, Volume2 } = window.AgentSpacesUI;
 
   const [draft, setDraft] = useState(() => ({ ...scene, characterIds: [...(scene.characterIds || [])] }));
   const [imgRunning, setImgRunning] = useState(false);
@@ -183,7 +183,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
             disabled={!canGenerateVoice}
             title="基于旁白文本生成语音"
           >
-            {voiceBusy ? <Loader2 className="sb-icon sb-spin" /> : <AudioIcon className="sb-icon" />}
+            {voiceBusy ? <Loader2 className="sb-icon sb-spin" /> : <Volume2 className="sb-icon" />}
             {bulkStatus?.voice === 'retrying' ? '重试中' : voiceBusy ? '合成中' : '语音合成'}
           </Button>
           <Button size="icon" variant="ghost" onClick={() => onRemove(draft.id)} title="删除分镜">

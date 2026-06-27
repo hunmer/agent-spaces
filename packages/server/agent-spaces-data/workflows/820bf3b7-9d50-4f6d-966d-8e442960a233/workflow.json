@@ -492,7 +492,7 @@
         "pitch": 0,
         "emotion": "",
         "audioFormat": "mp3",
-        "sampleRate": "32000",
+        "sampleRate": 32000,
         "outputFormat": "url",
         "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
         "text": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
@@ -765,7 +765,7 @@
     }
   ],
   "createdAt": 1782530195481,
-  "updatedAt": 1782539039377,
+  "updatedAt": 1782540100663,
   "published": true,
   "enabledPlugins": [
     "workflow.openai",
@@ -777,7 +777,7 @@
     "workflow.minimax",
     "workflow.qianyin"
   ],
-  "lastRunAt": 1782540001965,
+  "lastRunAt": 1782540301368,
   "groups": [],
   "description": "文字生成语音",
   "variables": [],

@@ -6,7 +6,7 @@
       "id": "proj-mqrn3nyi-qtyq9g",
       "name": "项目 1",
       "createdAt": "2026-06-24T05:35:39.786Z",
-      "updatedAt": "2026-06-27T02:10:59.364Z",
+      "updatedAt": "2026-06-27T06:05:05.538Z",
       "characters": [
         {
           "id": "char-1782280615437-dgpedb",
@@ -48,7 +48,10 @@
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/d2/20260624/51613171/43e446a5-c933-4b44-aa3c-338864c3a454.png?Expires=1782903111&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=Cq0q6ZS7O5RmBCTeBaLobkuXChU%3D",
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ee/20260624/51613171/275ff8e5-d0ce-4350-87b2-914171bf7de6.png?Expires=1782908849&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=%2FcwKz2gv6v00FTT9mme9yGv83U4%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": [
+            "http://127.0.0.1:3100/static/uploads/1782540305094_wyojxm.mp3"
+          ]
         },
         {
           "id": "scene-1782280615437-2hp7s0",
@@ -61,7 +64,8 @@
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/b6/20260624/51613171/db347a89-6c5b-4653-84ef-196f28e1ba1f.png?Expires=1782903562&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=mWR%2BpvqfKX%2F%2BhTLPqxqikN7vXuM%3D",
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/8e/20260624/51613171/30cca489-f66a-4dbb-8f34-0a4949951bd3.png?Expires=1782908863&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=1m3RM%2F5APvkxJK5vWd%2B5dM4BL4U%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-kmdrdn",
@@ -77,7 +81,8 @@
             "https://storage.fonedis.cc/xezq/YWl7o6pXy1qAL5ZhsodUmn4537x6laDHQJoMUgaLdBP9mlsF/tmp_6ycml5a.png",
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/85/20260624/51613171/eb4e60fe-7f4e-4b07-ad7d-06a0f6ff2cf2.png?Expires=1782908874&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=xm4DhJ081TtGNqft1h%2BjCUJt0hE%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-payvts",
@@ -92,7 +97,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/31/20260624/51613171/43e2f71a-208a-45bf-84d2-53b3fdc79fab.png?Expires=1782908890&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=GfP9q3Dc0woUEgxD%2FLMAnfxJQ6k%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-d3v9fv",
@@ -106,7 +112,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/bb/20260624/51613171/8c8cd8d5-693e-41d4-acc3-ca7dd4714d59.png?Expires=1782909263&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=F2NF0lmMO26LqSmr1Fh0UgA%2BDEc%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-guifvi",
@@ -120,7 +127,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ba/20260624/51613171/2a5ca2e9-2c75-4f98-a38b-798d28867da0.png?Expires=1782909276&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=ANAWlJ9SDzkbZxJUsfid6ZHgaio%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-jdksso",
@@ -134,7 +142,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/ff/20260624/51613171/ed3764df-7786-472c-80bd-156f4d24de76.png?Expires=1782909479&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=xYTMUIC2sfZ9jvdPULJ8tFDeVeg%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-xi4u1x",
@@ -148,7 +157,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/6f/20260624/51613171/2a83f7e6-f9cb-4796-bedb-0fb6f591ecb4.png?Expires=1782909491&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=IStezvKNju8fqyLoMoZHEWWOj6Y%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-dj8yty",
@@ -163,7 +173,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/cc/20260624/51613171/5d7fd206-67c5-451a-bbc1-71e48f028923.png?Expires=1782909868&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=higuamUqEUmLqDKOTmYBgvN09G0%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-o19stl",
@@ -178,7 +189,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/6d/20260624/51613171/53d411c1-c52a-4689-a4c9-42f0ad89eb81.png?Expires=1782909881&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=WNONmRlr6qkCiwnZxRq3MM4tSSE%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-hny4xd",
@@ -193,7 +205,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/9c/20260624/51613171/f7c80485-53a4-486f-9399-dda0ad40192e.png?Expires=1782909896&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=7s4QEM5Wywx2ktfAfG0wVxMc%2BJI%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-bdhb20",
@@ -208,7 +221,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/11/20260624/51613171/a96be614-0d0b-483f-a466-9e496b21674f.png?Expires=1782909911&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=hwqotQo1P6qySX47ifVqcPF1ims%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         },
         {
           "id": "scene-1782280615437-lwhzbc",
@@ -223,7 +237,8 @@
           "images": [
             "https://dashscope-7c2c.oss-accelerate.aliyuncs.com/7d/16/20260624/51613171/513d49b0-4eb7-46e8-b912-990d669dee16.png?Expires=1782909977&OSSAccessKeyId=LTAI5tPxpiCM2hjmWrFXrym1&Signature=MEenDYa%2Ba2VFgOc%2FEOjgyoxsC8Q%3D"
           ],
-          "video": ""
+          "video": "",
+          "audios": []
         }
       ]
     }
@@ -237,6 +252,8 @@
     "editImageWorkflowName": "edit_image",
     "videoWorkflowId": "5130958f-a78e-4c36-8f03-1f2f733b87d7",
     "videoWorkflowName": "video_generator",
+    "voiceWorkflowId": "820bf3b7-9d50-4f6d-966d-8e442960a233",
+    "voiceWorkflowName": "text_to_voice",
     "provider": "qwen",
     "model": "qwen-image-2.0-pro",
     "aspect": "9:16",
@@ -244,6 +261,8 @@
     "quality": "720",
     "duration": "5",
     "batchLimit": "1",
+    "voiceModel": "fish-audio",
+    "voiceId": "",
     "generationMode": "text"
   }
 }
