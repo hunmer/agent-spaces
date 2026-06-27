@@ -811,7 +811,9 @@
             "caption": "标题",
             "caption_placeholder": "显示标题（可选）"
           }
-        }
+        },
+        "carousel": "轮播显示",
+        "carousel_tooltip": "开启后以轮播方式展示资源，可左右切换"
       },
       "outputs": {
         "urls": "URL 地址数组"

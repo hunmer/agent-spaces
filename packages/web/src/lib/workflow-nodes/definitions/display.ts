@@ -54,6 +54,13 @@ export const displayNodes: NodeTypeDefinition[] = [
           { key: 'caption', label: 'nodes.gallery_preview.props.items.fields.caption', type: 'text', placeholder: 'nodes.gallery_preview.props.items.fields.caption_placeholder' },
         ],
       },
+      {
+        key: 'carousel',
+        label: 'nodes.gallery_preview.props.carousel',
+        type: 'checkbox',
+        default: false,
+        tooltip: 'nodes.gallery_preview.props.carousel_tooltip',
+      },
     ],
     outputs: [
       { key: 'urls', type: 'string[]', description: 'nodes.gallery_preview.outputs.urls' },

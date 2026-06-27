@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Handle, Position, type ConnectionState } from '@xyflow/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { WorkflowNode as SharedWorkflowNode, DataType, ArrayFieldItem } from '@agent-spaces/shared';
+import { LOOP_BODY_NODE_TYPE, type WorkflowNode as SharedWorkflowNode, type DataType, type ArrayFieldItem, type NodeTypeDefinition } from '@agent-spaces/shared';
 import type { OutputField } from '@agent-spaces/shared';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,9 @@ import {
 } from './workflow-handle-types';
 import type { HandleContext } from './workflow-node-handles';
 import {
+  COLLAPSED_OUTPUT_HANDLES_KEY,
   DEFAULT_SOURCE_HANDLE_COLOR,
+  getWorkflowFields,
   type PropertyModeHandle,
 } from './workflow-node-utils';
 
@@ -24,6 +26,18 @@ type RenderHandleColorPopover = (handleId: string, trigger: React.ReactElement) 
 type OpenHandleColorMenu = (event: React.MouseEvent, handleId: string) => void;
 type ToggleOutputHandleCollapsed = (collapsedKey: string) => void;
 type PropertyModeBadgePosition = 'top' | 'center' | 'bottom';
+
+const PROPERTY_MODE_BADGE_DEPTH_OFFSET = 16;
+const PROPERTY_MODE_BADGE_X_PADDING = 16;
+const PROPERTY_MODE_BADGE_GAP = 4;
+const PROPERTY_MODE_BADGE_COLLAPSE_BUTTON_WIDTH = 12;
+const PROPERTY_MODE_BADGE_TYPE_X_PADDING = 8;
+const PROPERTY_MODE_BADGE_LABEL_CHAR_WIDTH = 6;
+const PROPERTY_MODE_BADGE_TYPE_CHAR_WIDTH = 5;
+const PROPERTY_MODE_BADGE_WIDTH_BUFFER = 8;
+const PROPERTY_MODE_BADGE_ROW_GAP = 28;
+const PROPERTY_MODE_BADGE_EDGE_OFFSET = 16;
+const PROPERTY_MODE_BADGE_HEIGHT = 28;
 
 export interface PropertyModeField {
   key: string;
@@ -71,6 +85,207 @@ function getArrayItemFieldValueType(field: ArrayFieldItem, template: Record<stri
   if (field.dataType) return mapPropertyDataTypeToWorkflowHandleType(field.dataType);
   if (Array.isArray(template?.[field.key])) return 'any[]';
   return mapPropertyDataTypeToWorkflowHandleType(field.type);
+}
+
+function getVisiblePropertyFields(
+  definition: NodeTypeDefinition | undefined,
+  data: Record<string, unknown>,
+): PropertyModeField[] {
+  return definition?.properties?.filter(prop => !prop.visibleWhen || (
+    'equals' in prop.visibleWhen
+      ? data[prop.visibleWhen.key] === prop.visibleWhen.equals
+      : prop.visibleWhen.in?.includes(data[prop.visibleWhen.key])
+  )) ?? [];
+}
+
+function getPropertyModeHandlesForLayout(
+  definition: NodeTypeDefinition | undefined,
+  data: Record<string, unknown>,
+): PropertyModeHandle[] {
+  if (
+    data.nodeDisplayMode !== 'properties'
+    || definition?.type === LOOP_BODY_NODE_TYPE
+    || !!definition?.customView
+  ) {
+    return [];
+  }
+
+  const inputFields = getWorkflowFields(data.inputFields);
+  const outputFields = getWorkflowFields(data.outputs);
+  const propertyFields = getVisiblePropertyFields(definition, data);
+  const isStartNode = definition?.type === 'start';
+  const isEndNode = definition?.type === 'end';
+
+  const inputHandles = inputFields.map((field, index) => ({
+    id: getWorkflowFieldHandleId(isStartNode ? 'output' : 'input', field.key, index),
+    label: field.key,
+    side: isStartNode ? 'right' as const : 'left' as const,
+    type: isStartNode ? 'source' as const : 'target' as const,
+    color: '#3b82f6',
+    valueType: field.type,
+  }));
+  if (isStartNode) return inputHandles;
+
+  const propertyHandles = propertyFields.flatMap<PropertyModeHandle>((field, index) => {
+    const items = field.type === 'array' ? getPropertyArrayItems(data, field.key) : [];
+    const hasArrayItemFields = items.length > 0 && Array.isArray(field.fields) && field.fields.length > 0;
+    const handles: PropertyModeHandle[] = [{
+      id: getWorkflowFieldHandleId('property', field.key, index),
+      label: field.label || field.key,
+      side: 'left',
+      type: 'target',
+      color: '#8b5cf6',
+      valueType: mapPropertyDataTypeToWorkflowHandleType(getEffectiveDataType(field)),
+      depth: 0,
+      collapsible: hasArrayItemFields,
+      collapsedKey: hasArrayItemFields ? field.key : undefined,
+    }];
+
+    items.forEach((_, itemIndex) => {
+      field.fields?.forEach((itemField) => {
+        const compositeKey = `${field.key}[${itemIndex}].${itemField.key}`;
+        handles.push({
+          id: getWorkflowFieldHandleId('property', compositeKey),
+          label: `-> ${itemIndex + 1}.${itemField.label || itemField.key}`,
+          side: 'left',
+          type: 'target',
+          color: '#8b5cf6',
+          valueType: getArrayItemFieldValueType(itemField, field.itemTemplate),
+          depth: 1,
+          parentCollapsedKey: field.key,
+        });
+      });
+    });
+
+    return handles;
+  });
+
+  const outputHandles = outputFields.reduce<PropertyModeHandle[]>((acc, field, index) => {
+    const appendOutputField = (current: OutputField, parentKey: string, depth: number, parentCollapsedKey?: string) => {
+      const compositeKey = parentKey ? `${parentKey}.${current.key}` : current.key;
+      const hasChildren = current.type === 'object' && Array.isArray(current.children) && current.children.length > 0;
+      acc.push({
+        id: getWorkflowFieldHandleId('output', compositeKey, index),
+        label: parentKey ? `-> ${current.key}` : current.key,
+        side: isEndNode ? 'left' : 'right',
+        type: isEndNode ? 'target' : 'source',
+        color: DEFAULT_SOURCE_HANDLE_COLOR,
+        valueType: current.type,
+        depth,
+        collapsible: hasChildren,
+        collapsedKey: compositeKey,
+        parentCollapsedKey,
+      });
+      if (hasChildren) {
+        current.children!.forEach((child) => appendOutputField(child, compositeKey, depth + 1, compositeKey));
+      }
+    };
+    appendOutputField(field, '', 0);
+    return acc;
+  }, []);
+
+  return [...inputHandles, ...propertyHandles, ...outputHandles];
+}
+
+function getVisiblePropertyModeHandlesForLayout(handles: PropertyModeHandle[], collapsedOutputKeys: Record<string, boolean>) {
+  return handles.filter((handle) => {
+    let ancestor = handle.parentCollapsedKey;
+    while (ancestor) {
+      if (collapsedOutputKeys[ancestor]) return false;
+      const ancestorHandle = handles.find(item => item.collapsedKey === ancestor);
+      ancestor = ancestorHandle?.parentCollapsedKey;
+    }
+    return true;
+  });
+}
+
+function estimatePropertyModeBadgeWidth(handle: PropertyModeHandle): number {
+  const labelWidth = handle.label.length * PROPERTY_MODE_BADGE_LABEL_CHAR_WIDTH;
+  const typeWidth = handle.valueType
+    ? handle.valueType.length * PROPERTY_MODE_BADGE_TYPE_CHAR_WIDTH + PROPERTY_MODE_BADGE_TYPE_X_PADDING
+    : 0;
+  const collapseButtonWidth = handle.collapsible ? PROPERTY_MODE_BADGE_COLLAPSE_BUTTON_WIDTH : 0;
+  const childCount = 1 + (handle.valueType ? 1 : 0) + (handle.collapsible ? 1 : 0);
+  const gapWidth = Math.max(0, childCount - 1) * PROPERTY_MODE_BADGE_GAP;
+  return PROPERTY_MODE_BADGE_X_PADDING
+    + collapseButtonWidth
+    + labelWidth
+    + typeWidth
+    + gapWidth
+    + PROPERTY_MODE_BADGE_WIDTH_BUFFER;
+}
+
+function getPropertyModeBadgeVerticalOverflow(
+  count: number,
+  nodeHeight: number,
+  badgePosition: PropertyModeBadgePosition,
+): { top: number; bottom: number } {
+  if (count <= 0) return { top: 0, bottom: 0 };
+
+  const halfBadgeHeight = PROPERTY_MODE_BADGE_HEIGHT / 2;
+  if (badgePosition === 'top') {
+    const lastCenter = PROPERTY_MODE_BADGE_EDGE_OFFSET + (count - 1) * PROPERTY_MODE_BADGE_ROW_GAP;
+    return {
+      top: Math.max(0, halfBadgeHeight - PROPERTY_MODE_BADGE_EDGE_OFFSET),
+      bottom: Math.max(0, lastCenter + halfBadgeHeight - nodeHeight),
+    };
+  }
+
+  if (badgePosition === 'bottom') {
+    const firstCenter = nodeHeight - PROPERTY_MODE_BADGE_EDGE_OFFSET - (count - 1) * PROPERTY_MODE_BADGE_ROW_GAP;
+    return {
+      top: Math.max(0, halfBadgeHeight - firstCenter),
+      bottom: Math.max(0, halfBadgeHeight - PROPERTY_MODE_BADGE_EDGE_OFFSET),
+    };
+  }
+
+  const firstCenter = nodeHeight / 2 - ((count - 1) / 2) * PROPERTY_MODE_BADGE_ROW_GAP;
+  const lastCenter = nodeHeight / 2 + ((count - 1) / 2) * PROPERTY_MODE_BADGE_ROW_GAP;
+  return {
+    top: Math.max(0, halfBadgeHeight - firstCenter),
+    bottom: Math.max(0, lastCenter + halfBadgeHeight - nodeHeight),
+  };
+}
+
+export function getPropertyModeBadgeLayoutOverflow(
+  definition: NodeTypeDefinition | undefined,
+  data: Record<string, unknown>,
+  nodeHeight = 0,
+): { left: number; right: number; top: number; bottom: number; width: number; height: number } {
+  const collapsedOutputKeys = data[COLLAPSED_OUTPUT_HANDLES_KEY];
+  const visibleHandles = getVisiblePropertyModeHandlesForLayout(
+    getPropertyModeHandlesForLayout(definition, data),
+    collapsedOutputKeys && typeof collapsedOutputKeys === 'object' && !Array.isArray(collapsedOutputKeys)
+      ? collapsedOutputKeys as Record<string, boolean>
+      : {},
+  );
+
+  let left = 0;
+  let right = 0;
+  let leftCount = 0;
+  let rightCount = 0;
+  for (const handle of visibleHandles) {
+    if (handle.side === 'left') leftCount += 1;
+    else rightCount += 1;
+
+    const badgeWidth = estimatePropertyModeBadgeWidth(handle);
+    const depthOffset = (handle.depth ?? 0) * PROPERTY_MODE_BADGE_DEPTH_OFFSET;
+    if (handle.side === 'left') {
+      left = Math.max(left, Math.max(0, badgeWidth - depthOffset));
+    } else {
+      right = Math.max(right, badgeWidth + depthOffset);
+    }
+  }
+
+  const badgePosition = data.propertyModeBadgePosition === 'top' || data.propertyModeBadgePosition === 'bottom'
+    ? data.propertyModeBadgePosition
+    : 'center';
+  const leftVerticalOverflow = getPropertyModeBadgeVerticalOverflow(leftCount, nodeHeight, badgePosition);
+  const rightVerticalOverflow = getPropertyModeBadgeVerticalOverflow(rightCount, nodeHeight, badgePosition);
+  const top = Math.max(leftVerticalOverflow.top, rightVerticalOverflow.top);
+  const bottom = Math.max(leftVerticalOverflow.bottom, rightVerticalOverflow.bottom);
+
+  return { left, right, top, bottom, width: left + right, height: top + bottom };
 }
 
 /**

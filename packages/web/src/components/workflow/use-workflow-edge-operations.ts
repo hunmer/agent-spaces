@@ -16,6 +16,7 @@ import {
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
+import { getPropertyModeBadgeLayoutOverflow } from './workflow-node-property-mode';
 import { makeDataReference, makeInputReference } from './workflow-canvas-references';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
 import {
@@ -47,6 +48,163 @@ interface UseEdgeOperationsParams {
   pushUndo: (description?: string) => void;
   selectedNodeId?: string | null;
   selectedNodeIds?: string[];
+}
+
+type AutoLayoutDebugBounds = {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  badgeLeft: number;
+  badgeRight: number;
+  badgeTop: number;
+  badgeBottom: number;
+  measuredWidth?: number;
+  measuredHeight?: number;
+};
+
+type AutoLayoutNodeDisplayMode = 'normal' | 'properties';
+type AutoLayoutPropertyModeBadgePosition = 'top' | 'center' | 'bottom';
+type AutoLayoutDisplayPrefs = {
+  nodeDisplayMode: AutoLayoutNodeDisplayMode;
+  propertyModeBadgePosition: AutoLayoutPropertyModeBadgePosition;
+};
+
+function roundLayoutDebugValue(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function escapeCssAttributeValue(value: string): string {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(value);
+  return value.replace(/["\\]/g, '\\$&');
+}
+
+function getReactFlowViewportZoom(): number {
+  if (typeof document === 'undefined') return 1;
+  const viewport = document.querySelector<HTMLElement>('.react-flow__viewport');
+  const transform = viewport ? window.getComputedStyle(viewport).transform : '';
+  if (!transform || transform === 'none') return 1;
+
+  const matrixMatch = transform.match(/^matrix\(([^,]+),/);
+  if (matrixMatch?.[1]) {
+    const scale = Number(matrixMatch[1]);
+    return Number.isFinite(scale) && scale > 0 ? scale : 1;
+  }
+
+  const matrix3dMatch = transform.match(/^matrix3d\(([^,]+),[^,]+,[^,]+,[^,]+,[^,]+,([^,]+),/);
+  if (matrix3dMatch?.[1]) {
+    const scale = Number(matrix3dMatch[1]);
+    return Number.isFinite(scale) && scale > 0 ? scale : 1;
+  }
+
+  return 1;
+}
+
+function getRenderedWorkflowNodeSize(nodeId: string): { width: number; height: number } | null {
+  if (typeof document === 'undefined') return null;
+  const nodeElement = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${escapeCssAttributeValue(nodeId)}"]`);
+  if (!nodeElement) return null;
+
+  const zoom = getReactFlowViewportZoom();
+  const rect = nodeElement.getBoundingClientRect();
+  const width = rect.width / zoom;
+  const height = rect.height / zoom;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return { width, height };
+}
+
+function getAutoLayoutNodeData(
+  node: Workflow['nodes'][number],
+  displayPrefs: AutoLayoutDisplayPrefs,
+): Workflow['nodes'][number]['data'] {
+  return displayPrefs.nodeDisplayMode === 'properties'
+    ? {
+        ...node.data,
+        nodeDisplayMode: displayPrefs.nodeDisplayMode,
+        propertyModeBadgePosition: displayPrefs.propertyModeBadgePosition,
+      }
+    : node.data;
+}
+
+function getAutoLayoutDebugBounds(
+  node: Workflow['nodes'][number],
+  displayPrefs: AutoLayoutDisplayPrefs,
+): AutoLayoutDebugBounds {
+  const definition = getNodeDefinition(node.type);
+  const data = getAutoLayoutNodeData(node, displayPrefs);
+  const nodeSize = getWorkflowNodeSize(definition, data);
+  const renderedSize = getRenderedWorkflowNodeSize(node.id);
+  const staticBodyWidth = typeof data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220);
+  const staticBodyHeight = typeof data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120);
+  const bodyWidth = renderedSize ? Math.max(staticBodyWidth, renderedSize.width) : staticBodyWidth;
+  const bodyHeight = renderedSize ? Math.max(staticBodyHeight, renderedSize.height) : staticBodyHeight;
+  const badgeOverflow = getPropertyModeBadgeLayoutOverflow(definition, data, bodyHeight);
+
+  return {
+    id: node.id,
+    type: node.type,
+    x: roundLayoutDebugValue(node.position.x - badgeOverflow.left),
+    y: roundLayoutDebugValue(node.position.y - badgeOverflow.top),
+    width: roundLayoutDebugValue(bodyWidth + badgeOverflow.width),
+    height: roundLayoutDebugValue(bodyHeight + badgeOverflow.height),
+    badgeLeft: roundLayoutDebugValue(badgeOverflow.left),
+    badgeRight: roundLayoutDebugValue(badgeOverflow.right),
+    badgeTop: roundLayoutDebugValue(badgeOverflow.top),
+    badgeBottom: roundLayoutDebugValue(badgeOverflow.bottom),
+    ...(renderedSize ? {
+      measuredWidth: roundLayoutDebugValue(renderedSize.width),
+      measuredHeight: roundLayoutDebugValue(renderedSize.height),
+    } : {}),
+  };
+}
+
+function doAutoLayoutBoundsOverlap(a: AutoLayoutDebugBounds, b: AutoLayoutDebugBounds): boolean {
+  return a.x < b.x + b.width
+    && a.x + a.width > b.x
+    && a.y < b.y + b.height
+    && a.y + a.height > b.y;
+}
+
+function logAutoLayoutOverlapDebug(params: {
+  direction: 'LR' | 'TB';
+  layoutEngine: string;
+  displayPrefs: AutoLayoutDisplayPrefs;
+  layouts: Array<{ parentId?: string; nodeIds: string[] }>;
+  nodes: Workflow['nodes'];
+}) {
+  const debugNodeIds = new Set(params.layouts.flatMap(layout => layout.nodeIds));
+  const bounds = params.nodes
+    .filter(node => debugNodeIds.has(node.id) && !isHiddenWorkflowNode(node))
+    .map(node => getAutoLayoutDebugBounds(node, params.displayPrefs));
+  const overlaps: Array<{ a: AutoLayoutDebugBounds; b: AutoLayoutDebugBounds }> = [];
+
+  for (let i = 0; i < bounds.length; i += 1) {
+    for (let j = i + 1; j < bounds.length; j += 1) {
+      const a = bounds[i];
+      const b = bounds[j];
+      if (a && b && doAutoLayoutBoundsOverlap(a, b)) overlaps.push({ a, b });
+    }
+  }
+
+  const payload = {
+    direction: params.direction,
+    layoutEngine: params.layoutEngine,
+    nodeDisplayMode: params.displayPrefs.nodeDisplayMode,
+    propertyModeBadgePosition: params.displayPrefs.propertyModeBadgePosition,
+    scopeCount: params.layouts.length,
+    nodeCount: bounds.length,
+    overlapCount: overlaps.length,
+    bounds,
+    overlaps,
+  };
+
+  if (overlaps.length > 0) {
+    console.warn('[workflow:auto-layout:overlap-check]', payload);
+  } else {
+    console.debug('[workflow:auto-layout:overlap-check]', payload);
+  }
 }
 
 function parsePropertyPath(path: string): Array<string | number> {
@@ -629,6 +787,12 @@ export function useEdgeOperations({
     const explicitNodeIds = optionNodeIds && optionNodeIds.length > 0 ? new Set(optionNodeIds) : null;
 
     const layoutEngine = options?.layoutEngine || (workflow.layoutSnapshot?.layoutEngine as string) || 'dagre';
+    const displayPrefs: AutoLayoutDisplayPrefs = {
+      nodeDisplayMode: workflow.layoutSnapshot?.nodeDisplayMode === 'properties' ? 'properties' : 'normal',
+      propertyModeBadgePosition: workflow.layoutSnapshot?.propertyModeBadgePosition === 'top' || workflow.layoutSnapshot?.propertyModeBadgePosition === 'bottom'
+        ? workflow.layoutSnapshot.propertyModeBadgePosition
+        : 'center',
+    };
     const computeLayout = async (scopeParentId?: string) => {
       const layoutNodes = workflow.nodes.filter(node =>
         !isHiddenWorkflowNode(node)
@@ -639,14 +803,23 @@ export function useEdgeOperations({
       if (layoutNodes.length === 0) return null;
 
       const layoutNodeIds = new Set(layoutNodes.map(node => node.id));
-      const nodeSizes = new Map<string, { width: number; height: number }>();
+      const nodeSizes = new Map<string, { width: number; height: number; badgeLeft: number; badgeTop: number }>();
 
       for (const node of layoutNodes) {
         const definition = getNodeDefinition(node.type);
-        const nodeSize = getWorkflowNodeSize(definition, node.data);
+        const data = getAutoLayoutNodeData(node, displayPrefs);
+        const nodeSize = getWorkflowNodeSize(definition, data);
+        const renderedSize = getRenderedWorkflowNodeSize(node.id);
+        const staticBodyWidth = typeof data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220);
+        const staticBodyHeight = typeof data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120);
+        const bodyWidth = renderedSize ? Math.max(staticBodyWidth, renderedSize.width) : staticBodyWidth;
+        const bodyHeight = renderedSize ? Math.max(staticBodyHeight, renderedSize.height) : staticBodyHeight;
+        const badgeOverflow = getPropertyModeBadgeLayoutOverflow(definition, data, bodyHeight);
         const size = {
-          width: typeof node.data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220),
-          height: typeof node.data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120),
+          width: bodyWidth + badgeOverflow.width,
+          height: bodyHeight + badgeOverflow.height,
+          badgeLeft: badgeOverflow.left,
+          badgeTop: badgeOverflow.top,
         };
         nodeSizes.set(node.id, size);
       }
@@ -685,7 +858,8 @@ export function useEdgeOperations({
         const result = await elk.layout(elkGraph);
         for (const child of result.children ?? []) {
           if (typeof child.x === 'number' && typeof child.y === 'number') {
-            layoutPositions.set(child.id, { x: child.x, y: child.y });
+            const size = nodeSizes.get(child.id);
+            layoutPositions.set(child.id, { x: child.x + (size?.badgeLeft ?? 0), y: child.y + (size?.badgeTop ?? 0) });
           }
         }
       } else {
@@ -706,8 +880,8 @@ export function useEdgeOperations({
           const size = nodeSizes.get(node.id);
           if (!layoutPosition) continue;
           layoutPositions.set(node.id, {
-            x: layoutPosition.x - (size?.width ?? 220) / 2,
-            y: layoutPosition.y - (size?.height ?? 120) / 2,
+            x: layoutPosition.x - (size?.width ?? 220) / 2 + (size?.badgeLeft ?? 0),
+            y: layoutPosition.y - (size?.height ?? 120) / 2 + (size?.badgeTop ?? 0),
           });
         }
       }
@@ -787,6 +961,14 @@ export function useEdgeOperations({
           syncScopeBoundaryLayout(nextNodes, scopeNodeId);
         }
       }
+
+      logAutoLayoutOverlapDebug({
+        direction,
+        layoutEngine,
+        displayPrefs,
+        layouts,
+        nodes: nextNodes,
+      });
 
       return { ...current, nodes: nextNodes, edges: nextEdges };
     });

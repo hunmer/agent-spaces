@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": -225,
-        "y": 210
+        "x": 1208.5,
+        "y": 120
       },
       "data": {
         "inputFields": [],
@@ -22,8 +22,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 1815,
-        "y": 450
+        "x": 779.5,
+        "y": 1729
       },
       "data": {
         "outputs": [
@@ -40,8 +40,8 @@
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
       "position": {
-        "x": 1140,
-        "y": 345
+        "x": 724.5,
+        "y": 1089
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -90,8 +90,8 @@
       "type": "set_variable",
       "label": "nodes.set_variable.label",
       "position": {
-        "x": 345,
-        "y": 315
+        "x": 1329,
+        "y": 449
       },
       "data": {
         "variables": [
@@ -124,8 +124,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": -85.64975989725178,
-        "y": 1001.9917695701859
+        "x": 184.5,
+        "y": 32
       },
       "data": {
         "outputs": [
@@ -148,6 +148,13 @@
             "thumb": "",
             "type": "image",
             "caption": ""
+          },
+          {
+            "id": 1782523276135,
+            "src": "",
+            "thumb": "",
+            "type": "image",
+            "caption": ""
           }
         ],
         "nodeWidth": 240,
@@ -159,8 +166,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 260.7175844954632,
-        "y": 1248.9218941096572
+        "x": 624,
+        "y": 0
       },
       "data": {
         "outputs": [
@@ -186,7 +193,8 @@
           }
         ],
         "nodeWidth": 236,
-        "nodeHeight": 369
+        "nodeHeight": 369,
+        "carousel": false
       }
     },
     {
@@ -194,8 +202,8 @@
       "type": "merge_arrays",
       "label": "nodes.merge_arrays.label",
       "position": {
-        "x": 615,
-        "y": 1035
+        "x": 375,
+        "y": 449
       },
       "data": {
         "arrays": [
@@ -324,13 +332,14 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782521745911,
+  "updatedAt": 1782524211562,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
     "propertyModeBadgePosition": "top",
     "bgVariant": "dots",
-    "edgePathType": "bezier"
+    "edgePathType": "bezier",
+    "canvasTheme": "default"
   },
   "enabledPlugins": [
     "workflow.ai-image",

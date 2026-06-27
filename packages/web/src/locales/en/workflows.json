@@ -811,7 +811,9 @@
             "caption": "Caption",
             "caption_placeholder": "Display caption (optional)"
           }
-        }
+        },
+        "carousel": "Carousel mode",
+        "carousel_tooltip": "Show resources in a carousel with prev/next navigation"
       },
       "outputs": {
         "urls": "Resource URL list"
