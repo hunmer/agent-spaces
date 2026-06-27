@@ -5,12 +5,12 @@ import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { Layout, Model, TabNode, IJsonModel, ITabRenderValues, Actions, Action } from 'flexlayout-react';
-import type { ExecutionStep, StagedNode, WorkflowTemplate, Workflow as WorkflowType } from '@agent-spaces/shared';
+import type { ExecutionStep, OutputField, StagedNode, WorkflowTemplate, Workflow as WorkflowType } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
 import { WorkflowPropertiesPanel } from './workflow-properties-panel';
-import { WorkflowExecutionBar } from './workflow-execution-bar';
+import { WorkflowExecutionBar, type WorkflowExecutionRunGroup } from './workflow-execution-bar';
 import { WorkflowVersionPanel } from './workflow-version-panel';
 import { WorkflowOperationHistory } from './workflow-operation-history';
 import { WorkflowStagingPanel } from './workflow-staging-panel';
@@ -39,7 +39,7 @@ import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflo
 import type { WorkflowAgentChatMessage, WorkflowToolCall } from './workflow-editor-agent-utils';
 import { WORKFLOW_LAYOUT_KEY, WORKFLOW_LAYOUT_TEMPLATES_KEY } from './workflow-editor-types';
 import type { DebugResult } from './workflow-editor-types';
-import { registerPluginNodeDefinitions } from '@/lib/workflow-nodes';
+import { getNodeDefinition, registerPluginNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { stagingApi } from '@/lib/workflow-api';
 import {
@@ -342,6 +342,88 @@ function collectReferencedPluginIds(workflow: WorkflowType | null, nodeTypePlugi
   return Array.from(ids);
 }
 
+function getConnectedComponents(workflow: WorkflowType): string[][] {
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    let cur = x;
+    while (parent.get(cur) !== cur) {
+      parent.set(cur, parent.get(parent.get(cur) as string) as string);
+      cur = parent.get(cur) as string;
+    }
+    return cur;
+  };
+  const union = (a: string, b: string) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent.set(rootA, rootB);
+  };
+
+  for (const node of workflow.nodes) parent.set(node.id, node.id);
+  for (const edge of workflow.edges) {
+    if (parent.has(edge.source) && parent.has(edge.target)) union(edge.source, edge.target);
+  }
+
+  const components = new Map<string, string[]>();
+  for (const node of workflow.nodes) {
+    const root = find(node.id);
+    const group = components.get(root);
+    if (group) group.push(node.id);
+    else components.set(root, [node.id]);
+  }
+  return [...components.values()];
+}
+
+function resolveWorkflowLabelText(value: string | undefined, t: ReturnType<typeof useTranslations>, fallback = ''): string {
+  if (!value) return fallback;
+  if (!value.startsWith('nodes.')) return value;
+  try {
+    return t(value as Parameters<typeof t>[0]);
+  } catch {
+    return fallback || value;
+  }
+}
+
+function getNodeDisplayName(
+  node: WorkflowType['nodes'][number] | undefined,
+  t: ReturnType<typeof useTranslations>,
+  fallback: string,
+): string {
+  const definition = node?.type ? getNodeDefinition(node.type) : undefined;
+  return resolveWorkflowLabelText(node?.label, t)
+    || resolveWorkflowLabelText(definition?.label, t)
+    || node?.type
+    || fallback;
+}
+
+function buildExecutionRunGroups(workflow: WorkflowType | null, t: ReturnType<typeof useTranslations>): WorkflowExecutionRunGroup[] {
+  if (!workflow) return [];
+  const nodeMap = new Map(workflow.nodes.map(node => [node.id, node]));
+  return getConnectedComponents(workflow)
+    .filter(group => group.length > 1)
+    .map((group) => {
+      const groupNodeIds = new Set(group);
+      const incomingCount = new Map(group.map(nodeId => [nodeId, 0]));
+      for (const edge of workflow.edges) {
+        if (groupNodeIds.has(edge.source) && groupNodeIds.has(edge.target)) {
+          incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+        }
+      }
+      const fallbackNodeId = group[0] ?? '';
+      const startNodeId = group.find(nodeId => (incomingCount.get(nodeId) ?? 0) === 0) ?? fallbackNodeId;
+      const startNode = nodeMap.get(startNodeId);
+      const inputFields = Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields as OutputField[] : [];
+      const startNodeLabel = getNodeDisplayName(startNode, t, startNodeId);
+      return {
+        id: group.join('|'),
+        label: startNodeLabel,
+        startNodeId,
+        startNodeLabel,
+        nodeCount: group.length,
+        inputFields,
+      };
+    });
+}
+
 function WorkflowEditorInner({
   template, onBack,
 }: {
@@ -370,6 +452,10 @@ function WorkflowEditorInner({
   const isWorkflowRunning = execution.execStatus === 'running' || execution.execStatus === 'paused';
   const isWorkflowReadOnly = isWorkflowRunning;
   const markEditorDirty = state.isPreview ? state.markPreviewDirty : state.markDirty;
+  const executionRunGroups = useMemo(
+    () => buildExecutionRunGroups(state.workflow, t),
+    [state.workflow, t],
+  );
 
   const canvas = useWorkflowEditorCanvas({
     workflow: state.workflow,
@@ -1120,6 +1206,7 @@ function WorkflowEditorInner({
             selectedLogId={execution.selectedExecutionLogId}
             workflowErrorMessage={execution.workflowErrorMessage}
             startNodes={execution.startNodes}
+            runGroups={executionRunGroups}
             variables={workflow.variables || []}
             validationError={execution.executionValidationError}
             workflowId={state.workflowId}
@@ -1153,6 +1240,7 @@ function WorkflowEditorInner({
     handleDeleteGroup,
     handleTestNodeFromList,
     handleExecuteWorkflowFromList,
+    executionRunGroups,
     clipboard.clear,
     clipboard.count,
     exitExecutionPreview,

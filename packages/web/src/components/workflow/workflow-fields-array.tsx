@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Braces, Plus, Trash2 } from 'lucide-react';
+import { Braces, Check, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { isPlainObject, getOutputFields } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
@@ -24,6 +26,7 @@ export function ArrayFieldEditor({
   variableContext,
   onFieldKeyChange,
   dropTargetNodeId,
+  usePopoverSelect = false,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -31,6 +34,7 @@ export function ArrayFieldEditor({
   variableContext?: WorkflowVariableContext;
   onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
   dropTargetNodeId?: string;
+  usePopoverSelect?: boolean;
 }) {
   const items = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const fields = prop.fields ?? [];
@@ -127,6 +131,7 @@ export function ArrayFieldEditor({
                 onInsertVariable={(path) => insertArrayVariable(index, field.key, path)}
                 parentFieldPath={`${prop.key}[${index}].${field.key}`}
                 onFieldKeyChange={onFieldKeyChange}
+                usePopoverSelect={usePopoverSelect}
               />
             </div>
           ))}
@@ -155,6 +160,7 @@ export function ArrayItemField({
   onInsertVariable,
   parentFieldPath,
   onFieldKeyChange,
+  usePopoverSelect = false,
 }: {
   field: ArrayFieldItem;
   value: unknown;
@@ -165,6 +171,7 @@ export function ArrayItemField({
   onInsertVariable?: (path: string) => void;
   parentFieldPath?: string;
   onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
+  usePopoverSelect?: boolean;
 }) {
   const { draft, inputProps } = useDeferredInputDraft(
     String(value ?? ''),
@@ -187,6 +194,16 @@ export function ArrayItemField({
   }
 
   if (field.type === 'select') {
+    if (usePopoverSelect) {
+      return (
+        <ArrayItemPopoverSelect
+          field={field}
+          value={value}
+          onChange={onChange}
+        />
+      );
+    }
+
     return (
       <Select value={String(value ?? field.default ?? '')} onValueChange={onChange}>
         <SelectTrigger className="h-7 text-xs w-full">
@@ -231,5 +248,67 @@ export function ArrayItemField({
       placeholder={field.placeholder}
       className="h-6 text-[11px]"
     />
+  );
+}
+
+function ArrayItemPopoverSelect({
+  field,
+  value,
+  onChange,
+}: {
+  field: ArrayFieldItem;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedValue = String(value ?? field.default ?? '');
+  const selectedOption = field.options?.find(option => option.value === selectedValue);
+  const selectedLabel = selectedOption?.label ?? selectedValue;
+
+  const selectValue = (nextValue: string) => {
+    onChange(nextValue);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            className={cn(
+              'flex h-7 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-left text-xs outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50',
+              !selectedLabel && 'text-muted-foreground',
+            )}
+          >
+            <span className="min-w-0 flex-1 truncate">{selectedLabel || field.label}</span>
+            <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        )}
+      />
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={4}
+        className="max-h-(--available-height) w-(--anchor-width) min-w-36 gap-0 overflow-y-auto p-1"
+      >
+        {field.options?.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            className={cn(
+              'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground',
+              selectedValue === option.value && 'bg-accent/70',
+            )}
+            onClick={() => selectValue(option.value)}
+          >
+            <span className="flex size-4 shrink-0 items-center justify-center">
+              {selectedValue === option.value ? <Check className="size-3" /> : null}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{option.label}</span>
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }

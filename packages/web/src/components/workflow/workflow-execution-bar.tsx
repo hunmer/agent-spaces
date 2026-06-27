@@ -24,6 +24,15 @@ import { SavePresetDialog } from './workflow-save-preset-dialog';
 
 type ExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'stopped' | string;
 
+export interface WorkflowExecutionRunGroup {
+  id: string;
+  label: string;
+  startNodeId: string;
+  startNodeLabel: string;
+  nodeCount: number;
+  inputFields: OutputField[];
+}
+
 interface ExecutionBarProps {
   status: ExecutionStatus;
   log: ExecutionLog | null;
@@ -31,6 +40,7 @@ interface ExecutionBarProps {
   selectedLogId: string | null;
   workflowErrorMessage?: string | null;
   startNodes: WorkflowNode[];
+  runGroups?: WorkflowExecutionRunGroup[];
   variables?: OutputField[];
   validationError?: string | null;
   workflowId: string | null;
@@ -59,7 +69,7 @@ function formatDuration(start: number, end?: number): string {
 }
 
 export function WorkflowExecutionBar({
-  status, log, logs, selectedLogId, workflowErrorMessage = null, startNodes, variables = [], validationError, workflowId,
+  status, log, logs, selectedLogId, workflowErrorMessage = null, startNodes, runGroups = [], variables = [], validationError, workflowId,
   isPreview = false,
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs,
   onUpdateNodeData,
@@ -91,17 +101,38 @@ export function WorkflowExecutionBar({
   const canResume = isPaused;
   const canStop = isRunning || isPaused;
 
-  const activeStartNode = useMemo(() => {
-    if (selectedStartNodeId) {
-      return startNodes.find(node => node.id === selectedStartNodeId) ?? startNodes[0] ?? null;
+  const executionTargets = useMemo(() => {
+    if (runGroups.length > 0) {
+      return runGroups.map(group => ({
+        id: `group:${group.id}`,
+        label: group.label,
+        startNodeId: group.startNodeId,
+        startNodeLabel: group.startNodeLabel,
+        inputFields: group.inputFields,
+        meta: t('execution.nodes', { count: group.nodeCount }),
+      }));
     }
-    return startNodes[0] ?? null;
-  }, [selectedStartNodeId, startNodes]);
+    return startNodes.map(node => ({
+      id: `node:${node.id}`,
+      label: node.label || t('execution.start'),
+      startNodeId: node.id,
+      startNodeLabel: node.label || t('execution.start'),
+      inputFields: Array.isArray(node.data?.inputFields) ? node.data.inputFields as OutputField[] : [],
+      meta: node.id.slice(0, 8),
+    }));
+  }, [runGroups, startNodes, t]);
+
+  const activeExecutionTarget = useMemo(() => {
+    if (selectedStartNodeId) {
+      return executionTargets.find(target => target.startNodeId === selectedStartNodeId) ?? executionTargets[0] ?? null;
+    }
+    return executionTargets[0] ?? null;
+  }, [executionTargets, selectedStartNodeId]);
 
   const inputFields = useMemo(() => {
-    const fields = activeStartNode?.data?.inputFields;
+    const fields = activeExecutionTarget?.inputFields;
     return Array.isArray(fields) ? fields as OutputField[] : [];
-  }, [activeStartNode]);
+  }, [activeExecutionTarget]);
   const variableFields = useMemo(() => Array.isArray(variables) ? variables : [], [variables]);
 
   const displayLog = log;
@@ -124,31 +155,31 @@ export function WorkflowExecutionBar({
     return map;
   }, [logs]);
 
-  const executeFromStartNode = useCallback((node?: WorkflowNode | null) => {
-    const startNode = node ?? startNodes[0] ?? null;
-    setSelectedStartNodeId(startNode?.id ?? null);
-    const fields = Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields as OutputField[] : [];
+  const executeFromTarget = useCallback((target?: (typeof executionTargets)[number] | null) => {
+    const executionTarget = target ?? executionTargets[0] ?? null;
+    setSelectedStartNodeId(executionTarget?.startNodeId ?? null);
+    const fields = Array.isArray(executionTarget?.inputFields) ? executionTarget.inputFields : [];
     if (fields.length > 0 || variableFields.length > 0) {
       setInputDialogOpen(true);
       return;
     }
-    onExecute(undefined, startNode?.id);
-  }, [onExecute, startNodes, variableFields.length]);
+    onExecute(undefined, executionTarget?.startNodeId);
+  }, [executionTargets, onExecute, variableFields.length]);
 
   useEffect(() => {
     const handleOpenExecutionInput = (event: Event) => {
       const detail = (event as CustomEvent).detail as { startNodeId?: string | null } | undefined;
-      const startNode = detail?.startNodeId
-        ? startNodes.find(node => node.id === detail.startNodeId)
+      const target = detail?.startNodeId
+        ? executionTargets.find(item => item.startNodeId === detail.startNodeId)
         : null;
-      executeFromStartNode(startNode);
+      executeFromTarget(target);
     };
     window.addEventListener('workflow:open-execution-input', handleOpenExecutionInput);
     return () => window.removeEventListener('workflow:open-execution-input', handleOpenExecutionInput);
-  }, [executeFromStartNode, startNodes]);
+  }, [executeFromTarget, executionTargets]);
 
   const submitInput = (values: Record<string, unknown>, env?: Record<string, unknown>) => {
-    onExecute(values, activeStartNode?.id, env);
+    onExecute(values, activeExecutionTarget?.startNodeId, env);
   };
 
   const copyText = async (key: string, text: string) => {
@@ -169,7 +200,7 @@ export function WorkflowExecutionBar({
           <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={onResume}>
             <Play className="h-3 w-3" /> {t('execution.resume')}
           </Button>
-        ) : startNodes.length > 1 ? (
+        ) : executionTargets.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canStart} />}
@@ -177,16 +208,16 @@ export function WorkflowExecutionBar({
               <Play className="h-3 w-3" /> {t('execution.execute')} <ChevronDown className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-              {startNodes.map(node => (
-                <DropdownMenuItem key={node.id} className="text-xs" onClick={() => executeFromStartNode(node)}>
-                  {node.label || t('execution.start')}
-                  <span className="ml-auto text-[10px] text-muted-foreground">{node.id.slice(0, 8)}</span>
+              {executionTargets.map(target => (
+                <DropdownMenuItem key={target.id} className="text-xs" onClick={() => executeFromTarget(target)}>
+                  {target.label}
+                  <span className="ml-auto text-[10px] text-muted-foreground">{target.meta}</span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canStart} onClick={() => executeFromStartNode()}>
+          <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canStart} onClick={() => executeFromTarget()}>
             <Play className="h-3 w-3" /> {t('execution.execute')}
           </Button>
         )}
@@ -377,7 +408,7 @@ export function WorkflowExecutionBar({
         open={inputDialogOpen}
         fields={inputFields}
         variableFields={variableFields}
-        startNodeLabel={activeStartNode?.label || t('execution.start')}
+        startNodeLabel={activeExecutionTarget?.startNodeLabel || t('execution.start')}
         workflowId={workflowId}
         onOpenChange={setInputDialogOpen}
         onSubmit={submitInput}

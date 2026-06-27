@@ -13,6 +13,8 @@ export interface WorkflowNodeToolbarProps {
   isBoundaryNode: boolean;
   isExecutionBusy: boolean;
   isCurrentNodeDebugging: boolean;
+  showPartialTest: boolean;
+  isPartialTesting: boolean;
   canDeleteNode: boolean;
   isDeleteDisabled: boolean;
   canContinueFromPreview: boolean;
@@ -21,6 +23,7 @@ export interface WorkflowNodeToolbarProps {
   canvasZoom?: number;
   onExecuteWorkflow: (event: React.MouseEvent) => void;
   onTestNode: (event: React.MouseEvent) => void;
+  onPartialTest: (event: React.MouseEvent) => void;
   onDelete: (event: React.MouseEvent) => void;
   /** 从当前节点继续运行（用于 preview 流程） */
   onContinueFromPreview: (presetId: string) => void;
@@ -40,6 +43,8 @@ export function WorkflowNodeToolbar(props: WorkflowNodeToolbarProps) {
     isBoundaryNode,
     isExecutionBusy,
     isCurrentNodeDebugging,
+    showPartialTest,
+    isPartialTesting,
     canDeleteNode,
     isDeleteDisabled,
     canContinueFromPreview,
@@ -48,6 +53,7 @@ export function WorkflowNodeToolbar(props: WorkflowNodeToolbarProps) {
     canvasZoom = 1,
     onExecuteWorkflow,
     onTestNode,
+    onPartialTest,
     onDelete,
     onContinueFromPreview,
   } = props;
@@ -76,6 +82,19 @@ export function WorkflowNodeToolbar(props: WorkflowNodeToolbarProps) {
             className="flex items-center gap-1"
             style={useNodeWidthAnchor ? { marginLeft: toolbarAnchorOffset, transform: 'translateX(-50%)' } : undefined}
           >
+          {showPartialTest ? (
+            <button
+              type="button"
+              className="inline-flex h-7 items-center justify-center gap-1 rounded-full border border-border bg-background px-2.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isExecutionBusy}
+              title={t('nodeUi.test.partial')}
+              aria-label={t('nodeUi.test.partial')}
+              onClick={onPartialTest}
+            >
+              {isPartialTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+              {t('nodeUi.test.partial')}
+            </button>
+          ) : null}
           {isStartNode ? (
             <button
               type="button"

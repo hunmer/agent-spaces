@@ -855,6 +855,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         isBoundaryNode={isBoundaryNode}
         isExecutionBusy={isExecutionBusy}
         isCurrentNodeDebugging={isCurrentNodeDebugging}
+        showPartialTest={canShowPropertyNodeView && !!nodeData.isFirstConnectedNode && !isBoundaryNode && nodeData.isPreview !== true}
+        isPartialTesting={isPartialTesting}
         canDeleteNode={canDeleteNode}
         isDeleteDisabled={isDeleteDisabled}
         canContinueFromPreview={canContinueFromPreview}
@@ -863,6 +865,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         canvasZoom={canvasZoom || 1}
         onExecuteWorkflow={actions.handleExecuteWorkflow}
         onTestNode={actions.handleTestNode}
+        onPartialTest={actions.handlePartialTest}
         onDelete={actions.handleDeleteWithoutReconnect}
         onContinueFromPreview={handleContinueFromPreview}
       />

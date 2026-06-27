@@ -169,7 +169,7 @@ export function PropertyField({
       return <ConditionsEditor value={value} onChange={onChange} variableContext={variableContext} />;
 
     case 'array':
-      return <ArrayFieldEditor prop={prop} value={value} onChange={onChange} variableContext={variableContext} onFieldKeyChange={onFieldKeyChange} dropTargetNodeId={dropTargetNodeId} />;
+      return <ArrayFieldEditor prop={prop} value={value} onChange={onChange} variableContext={variableContext} onFieldKeyChange={onFieldKeyChange} dropTargetNodeId={dropTargetNodeId} usePopoverSelect={usePopoverSelect} />;
 
     case 'agent':
       return (

@@ -103,8 +103,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 464.257148523143,
-        "y": 1214.2816544690727
+        "x": 427.58757949786786,
+        "y": 1174.0634174736097
       },
       "data": {
         "outputs": [
@@ -252,7 +252,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782557007558,
+  "updatedAt": 1782558741552,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -267,5 +267,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782554266231
+  "lastRunAt": 1782557759884
 }

@@ -467,9 +467,11 @@ export function useWorkflowEditorExecution({
 
   const executionValidationError = useMemo(() => {
     if (!workflow) return '未加载工作流';
-    if (startNodes.length === 0) return '缺少开始节点';
+    const nodeIds = new Set(workflow.nodes.map(node => node.id));
+    const hasConnectedNodes = workflow.edges.some(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target));
+    if (!hasConnectedNodes) return '请先连接节点';
     return null;
-  }, [workflow, startNodes]);
+  }, [workflow]);
 
   return {
     // Execution state

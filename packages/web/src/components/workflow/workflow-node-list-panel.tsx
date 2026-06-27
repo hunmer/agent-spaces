@@ -91,6 +91,36 @@ function connectedComponents(nodes: NodeLike[], edges: EdgeLike[]): string[][] {
   return [...buckets.values()];
 }
 
+function resolveNodeLabelText(value: string | undefined, t: ReturnType<typeof useTranslations>, fallback = ''): string {
+  if (!value) return fallback;
+  if (!value.startsWith('nodes.')) return value;
+  try {
+    return t(value as Parameters<typeof t>[0]);
+  } catch {
+    return fallback || value;
+  }
+}
+
+function getNodeDisplayName(node: NodeLike | undefined, t: ReturnType<typeof useTranslations>, fallback: string): string {
+  const definition = node?.type ? getNodeDefinition(node.type) : undefined;
+  return resolveNodeLabelText(node?.label, t)
+    || resolveNodeLabelText(definition?.label, t)
+    || node?.type
+    || fallback;
+}
+
+function getGroupStartNodeId(group: string[], edges: EdgeLike[]): string {
+  const fallbackNodeId = group[0] ?? '';
+  const groupNodeIds = new Set(group);
+  const incomingCount = new Map(group.map(nodeId => [nodeId, 0]));
+  for (const edge of edges) {
+    if (groupNodeIds.has(edge.source) && groupNodeIds.has(edge.target)) {
+      incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+    }
+  }
+  return group.find(nodeId => (incomingCount.get(nodeId) ?? 0) === 0) ?? fallbackNodeId;
+}
+
 export function WorkflowNodeListPanel({
   nodes,
   edges,
@@ -296,12 +326,15 @@ export function WorkflowNodeListPanel({
         <div className="min-h-0 flex-1 space-y-2 overflow-auto">
           {connectedGroups.map((group, index) => {
             const color = GROUP_PALETTE[index % GROUP_PALETTE.length];
+            const startNodeId = getGroupStartNodeId(group, edges);
+            const startNode = nodeMap.get(startNodeId);
+            const groupLabel = getNodeDisplayName(startNode, t, startNodeId);
             return (
               <div key={group.join('|')} className={cn('group rounded', color.bg)}>
                 <div className="flex items-center gap-2 px-2 py-1.5">
                   <span className={cn('h-3 w-1 rounded-full', color.bar)} />
                   <span className="text-xs font-medium">
-                    {t('editor.nodeList.group')} {index + 1}
+                    {groupLabel}
                   </span>
                   <span className="text-xs text-muted-foreground">({group.length})</span>
                   {(onExecuteWorkflow || onDeleteGroup) && (
@@ -325,7 +358,7 @@ export function WorkflowNodeListPanel({
                           onClick={() =>
                             setDeleteTarget({
                               nodeIds: group,
-                              label: `${t('editor.nodeList.group')} ${index + 1}`,
+                              label: groupLabel,
                             })
                           }
                         >
@@ -435,7 +468,7 @@ function NodeListItemRow({
 }: NodeListItemRowProps) {
   const t = useTranslations('workflows');
   const { id } = node;
-  const label = node.label || node.type || id;
+  const label = getNodeDisplayName(node, t, id);
   const definition = node.type ? getNodeDefinition(node.type) : null;
 
   // 颜色：节点 nodeColor -> NODE_COLORS，无则用默认
