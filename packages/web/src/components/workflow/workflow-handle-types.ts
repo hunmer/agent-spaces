@@ -57,6 +57,49 @@ function getArrayItemFieldKey(key: string, rootKey: string): string | undefined 
   return rest.split('.')[0] || undefined;
 }
 
+function getArrayItemIndex(key: string, rootKey: string): number | undefined {
+  const prefix = `${rootKey}[`;
+  if (!key.startsWith(prefix)) return undefined;
+  const closeIndex = key.indexOf(']');
+  if (closeIndex < prefix.length) return undefined;
+  const index = Number(key.slice(prefix.length, closeIndex));
+  return Number.isInteger(index) && index >= 0 ? index : undefined;
+}
+
+function isWorkflowHandleValueType(type: unknown): type is OutputField['type'] {
+  return type === 'string'
+    || type === 'number'
+    || type === 'boolean'
+    || type === 'object'
+    || type === 'array'
+    || type === 'file'
+    || type === 'image'
+    || type === 'audio'
+    || type === 'video'
+    || type === 'select'
+    || type === 'any'
+    || type === 'string[]'
+    || type === 'number[]'
+    || type === 'file[]'
+    || type === 'image[]'
+    || type === 'audio[]'
+    || type === 'video[]'
+    || type === 'any[]';
+}
+
+function getSetVariableValueType(node: WorkflowNode | Workflow['nodes'][number], key: string): OutputField['type'] | undefined {
+  if (node.type !== 'set_variable' || getPropertyRootKey(key) !== 'variables') return undefined;
+  if (getArrayItemFieldKey(key, 'variables') !== 'value') return undefined;
+  const itemIndex = getArrayItemIndex(key, 'variables');
+  if (itemIndex === undefined) return undefined;
+  const variables = node.data?.variables;
+  if (!Array.isArray(variables)) return undefined;
+  const item = variables[itemIndex];
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return 'string';
+  const type = (item as Record<string, unknown>).type;
+  return isWorkflowHandleValueType(type) ? type : 'string';
+}
+
 function isArrayLikeWorkflowHandleType(type: string | undefined): boolean {
   return type === 'array'
     || type === 'string[]'
@@ -112,6 +155,8 @@ export function getWorkflowHandleValueType(
       ? actual === prop.visibleWhen.equals
       : prop.visibleWhen.in?.includes(actual);
   });
+  const setVariableValueType = getSetVariableValueType(node, parsed.key);
+  if (setVariableValueType) return setVariableValueType;
   const arrayItemFieldKey = property ? getArrayItemFieldKey(parsed.key, property.key) : undefined;
   if (property?.type === 'array' && arrayItemFieldKey) {
     const itemField = property.fields?.find(field => field.key === arrayItemFieldKey);

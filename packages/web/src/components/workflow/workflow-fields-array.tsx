@@ -189,7 +189,7 @@ export function ArrayItemField({
   if (field.type === 'select') {
     return (
       <Select value={String(value ?? field.default ?? '')} onValueChange={onChange}>
-        <SelectTrigger className="h-7 text-xs">
+        <SelectTrigger className="h-7 text-xs w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

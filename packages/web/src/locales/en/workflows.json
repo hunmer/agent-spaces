@@ -682,6 +682,7 @@
           "fields": {
             "key": "Variable Name",
             "value": "Variable Value",
+            "type": "Variable Type",
             "value_placeholder": "Supports variable expressions, e.g.: name"
           }
         }

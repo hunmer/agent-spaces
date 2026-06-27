@@ -682,6 +682,7 @@
           "fields": {
             "key": "变量名",
             "value": "变量值",
+            "type": "变量类型",
             "value_placeholder": "支持变量表达式，如：name"
           }
         }

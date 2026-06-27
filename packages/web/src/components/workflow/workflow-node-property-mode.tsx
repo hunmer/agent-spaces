@@ -87,6 +87,37 @@ function getArrayItemFieldValueType(field: ArrayFieldItem, template: Record<stri
   return mapPropertyDataTypeToWorkflowHandleType(field.type);
 }
 
+function getSetVariableItemLabel(item: Record<string, unknown>, itemIndex: number): string {
+  const key = typeof item.key === 'string' ? item.key.trim() : '';
+  return `${itemIndex + 1}.${key || 'value'}`;
+}
+
+function getSetVariableItemType(item: Record<string, unknown>): OutputField['type'] {
+  const type = item.type;
+  if (
+    type === 'string'
+    || type === 'number'
+    || type === 'boolean'
+    || type === 'object'
+    || type === 'array'
+    || type === 'file'
+    || type === 'image'
+    || type === 'audio'
+    || type === 'video'
+    || type === 'any'
+    || type === 'string[]'
+    || type === 'number[]'
+    || type === 'file[]'
+    || type === 'image[]'
+    || type === 'audio[]'
+    || type === 'video[]'
+    || type === 'any[]'
+  ) {
+    return type;
+  }
+  return 'string';
+}
+
 function getVisiblePropertyFields(
   definition: NodeTypeDefinition | undefined,
   data: Record<string, unknown>,
@@ -140,6 +171,23 @@ function getPropertyModeHandlesForLayout(
       collapsible: hasArrayItemFields,
       collapsedKey: hasArrayItemFields ? field.key : undefined,
     }];
+
+    if (definition?.type === 'set_variable' && field.key === 'variables') {
+      items.forEach((item, itemIndex) => {
+        const compositeKey = `${field.key}[${itemIndex}].value`;
+        handles.push({
+          id: getWorkflowFieldHandleId('property', compositeKey),
+          label: getSetVariableItemLabel(item, itemIndex),
+          side: 'left',
+          type: 'target',
+          color: '#8b5cf6',
+          valueType: getSetVariableItemType(item),
+          depth: 1,
+          parentCollapsedKey: field.key,
+        });
+      });
+      return handles;
+    }
 
     items.forEach((_, itemIndex) => {
       field.fields?.forEach((itemField) => {
@@ -346,6 +394,24 @@ export function useWorkflowNodePropertyMode(params: UseWorkflowNodePropertyModeP
         collapsible: hasArrayItemFields,
         collapsedKey: hasArrayItemFields ? field.key : undefined,
       }];
+
+      if (workflowNodeType === 'set_variable' && field.key === 'variables') {
+        items.forEach((item, itemIndex) => {
+          const compositeKey = `${field.key}[${itemIndex}].value`;
+          handles.push({
+            id: getWorkflowFieldHandleId('property', compositeKey),
+            label: getSetVariableItemLabel(item, itemIndex),
+            side: 'left' as const,
+            type: 'target' as const,
+            color: '#8b5cf6',
+            valueType: getSetVariableItemType(item),
+            tooltip: field.tooltip,
+            depth: 1,
+            parentCollapsedKey: field.key,
+          });
+        });
+        return handles;
+      }
 
       items.forEach((_, itemIndex) => {
         field.fields?.forEach((itemField) => {

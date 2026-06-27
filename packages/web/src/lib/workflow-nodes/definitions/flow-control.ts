@@ -13,6 +13,26 @@ import { RUN_CODE_DEFAULT_CODE, RUN_PYTHON_DEFAULT_CODE } from '../constants';
 
 const UNLIMITED_CONNECTION_COUNT = Number.MAX_SAFE_INTEGER;
 
+const SET_VARIABLE_TYPE_OPTIONS: Array<{ label: string; value: OutputField['type'] }> = [
+  { label: 'string', value: 'string' },
+  { label: 'number', value: 'number' },
+  { label: 'boolean', value: 'boolean' },
+  { label: 'object', value: 'object' },
+  { label: 'array', value: 'array' },
+  { label: 'file', value: 'file' },
+  { label: 'image', value: 'image' },
+  { label: 'audio', value: 'audio' },
+  { label: 'video', value: 'video' },
+  { label: 'any', value: 'any' },
+  { label: 'string[]', value: 'string[]' },
+  { label: 'number[]', value: 'number[]' },
+  { label: 'file[]', value: 'file[]' },
+  { label: 'image[]', value: 'image[]' },
+  { label: 'audio[]', value: 'audio[]' },
+  { label: 'video[]', value: 'video[]' },
+  { label: 'any[]', value: 'any[]' },
+];
+
 function normalizeSetVariablePath(path: string): string {
   return path
     .trim()
@@ -35,6 +55,7 @@ function insertSetVariableOutputField(
   fields: OutputField[],
   path: string[],
   existingFields: OutputField[],
+  variableType: OutputField['type'],
 ): void {
   const [key, ...rest] = path;
   if (!key) return;
@@ -45,7 +66,7 @@ function insertSetVariableOutputField(
     field = {
       ...existing,
       key,
-      type: rest.length > 0 ? 'object' : existing?.type ?? 'any',
+      type: rest.length > 0 ? 'object' : variableType,
       children: rest.length > 0 ? [] : getOutputFieldChildren(existing),
     };
     fields.push(field);
@@ -54,8 +75,17 @@ function insertSetVariableOutputField(
   if (rest.length > 0) {
     field.type = 'object';
     field.children = getOutputFieldChildren(field);
-    insertSetVariableOutputField(field.children, rest, getOutputFieldChildren(existing));
+    insertSetVariableOutputField(field.children, rest, getOutputFieldChildren(existing), variableType);
+  } else {
+    field.type = variableType;
   }
+}
+
+function getSetVariableOutputType(item: Record<string, unknown>): OutputField['type'] {
+  const rawType = item.type;
+  return SET_VARIABLE_TYPE_OPTIONS.some(option => option.value === rawType)
+    ? rawType as OutputField['type']
+    : 'string';
 }
 
 export function createSetVariableOutputs(variables: unknown, currentOutputs?: unknown): OutputField[] {
@@ -68,10 +98,11 @@ export function createSetVariableOutputs(variables: unknown, currentOutputs?: un
 
   for (const item of items) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
-    const rawKey = (item as Record<string, unknown>).key;
+    const record = item as Record<string, unknown>;
+    const rawKey = record.key;
     const key = typeof rawKey === 'string' ? rawKey.trim() : '';
     const path = normalizeSetVariablePath(key).split('.').filter(Boolean);
-    insertSetVariableOutputField(envChildren, path, getOutputFieldChildren(currentEnv));
+    insertSetVariableOutputField(envChildren, path, getOutputFieldChildren(currentEnv), getSetVariableOutputType(record));
   }
 
   return [{
@@ -215,9 +246,10 @@ export const flowControlNodes: NodeTypeDefinition[] = [
         type: 'array',
         default: [],
         required: true,
-        itemTemplate: { key: '', value: '' },
+        itemTemplate: { key: '', value: '', type: 'string' },
         fields: [
           { key: 'key', label: 'nodes.set_variable.props.variables.fields.key', type: 'text', required: true, placeholder: 'name' },
+          { key: 'type', label: 'nodes.set_variable.props.variables.fields.type', type: 'select', default: 'string', options: SET_VARIABLE_TYPE_OPTIONS },
           { key: 'value', label: 'nodes.set_variable.props.variables.fields.value', type: 'text', placeholder: 'nodes.set_variable.props.variables.fields.value_placeholder' },
         ],
       },

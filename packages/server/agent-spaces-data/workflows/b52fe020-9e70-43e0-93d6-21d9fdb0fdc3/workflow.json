@@ -4,32 +4,6 @@
   "folderId": null,
   "nodes": [
     {
-      "id": "node_1782383055448_start",
-      "type": "start",
-      "label": "开始",
-      "position": {
-        "x": 0,
-        "y": 1306.0000209086986
-      },
-      "data": {
-        "inputFields": [],
-        "nodeWidth": 262,
-        "nodeHeight": 129
-      }
-    },
-    {
-      "id": "node_1782383055448_end",
-      "type": "end",
-      "label": "结束",
-      "position": {
-        "x": 3315,
-        "y": 645
-      },
-      "data": {
-        "outputs": []
-      }
-    },
-    {
       "id": "node_1782455101134_xvs0wx",
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
@@ -76,7 +50,7 @@
           }
         ],
         "prompt": "{{ __data__[\"node_1782455127220_7p3l9h\"].env.prompt }}",
-        "images": "{{ __data__[\"node_1782458900764_haa7t9\"].result }}"
+        "images": "{{ __data__[\"node_1782455127220_7p3l9h\"].env.images }}"
       }
     },
     {
@@ -93,6 +67,12 @@
             "key": "prompt",
             "value": "女人穿上旗袍",
             "id": 1782455205840
+          },
+          {
+            "key": "images",
+            "value": "{{ __data__[\"node_1782458233136_nf1k8u\"].urls }}",
+            "id": 1782556054682,
+            "type": "string[]"
           }
         ],
         "outputs": [
@@ -102,7 +82,12 @@
             "children": [
               {
                 "key": "prompt",
-                "type": "any",
+                "type": "string",
+                "children": []
+              },
+              {
+                "key": "images",
+                "type": "string[]",
                 "children": []
               }
             ]
@@ -118,8 +103,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 104.45310592242899,
-        "y": 105.00001906360205
+        "x": 464.257148523143,
+        "y": 1214.2816544690727
       },
       "data": {
         "outputs": [
@@ -145,7 +130,7 @@
           },
           {
             "id": 1782523276135,
-            "src": "",
+            "src": "https://img2.baidu.com/it/u=65824387,3382670591&fm=253&app=138&f=JPEG?w=800&h=1735",
             "thumb": "",
             "type": "image",
             "caption": ""
@@ -153,70 +138,6 @@
         ],
         "nodeWidth": 240,
         "nodeHeight": 305
-      }
-    },
-    {
-      "id": "node_1782458248440_60mfkr",
-      "type": "gallery_preview",
-      "label": "nodes.gallery_preview.label",
-      "position": {
-        "x": 106.45314086551468,
-        "y": 574.2500140284005
-      },
-      "data": {
-        "outputs": [
-          {
-            "key": "urls",
-            "type": "string[]",
-            "description": "nodes.gallery_preview.outputs.urls"
-          }
-        ],
-        "outputMiddleware": {
-          "type": "arrayItemField",
-          "sourceKey": "items",
-          "itemKey": "src",
-          "targetKey": "urls"
-        },
-        "items": [
-          {
-            "id": 1782458254678,
-            "src": "https://img2.baidu.com/it/u=65824387,3382670591&fm=253&app=138&f=JPEG?w=800&h=1735",
-            "thumb": "",
-            "type": "image",
-            "caption": ""
-          }
-        ],
-        "nodeWidth": 236,
-        "nodeHeight": 369,
-        "carousel": false
-      }
-    },
-    {
-      "id": "node_1782458900764_haa7t9",
-      "type": "merge_arrays",
-      "label": "nodes.merge_arrays.label",
-      "position": {
-        "x": 877.8047060954433,
-        "y": 0
-      },
-      "data": {
-        "arrays": [
-          {
-            "array": "{{ __data__[\"node_1782458233136_nf1k8u\"].urls }}",
-            "id": 1782459092846
-          },
-          {
-            "array": "{{ __data__[\"node_1782458248440_60mfkr\"].urls }}",
-            "id": 1782459093806
-          }
-        ],
-        "dedupe": false,
-        "outputs": [
-          {
-            "key": "result",
-            "type": "string[]"
-          }
-        ]
       }
     },
     {
@@ -273,38 +194,6 @@
       "targetHandle": "property:prompt"
     },
     {
-      "id": "e-node_1782458248440_60mfkr-output:urls-node_1782458900764_haa7t9-property:arrays[1].array",
-      "source": "node_1782458248440_60mfkr",
-      "target": "node_1782458900764_haa7t9",
-      "edgeKind": "reference",
-      "sourceHandle": "output:urls",
-      "targetHandle": "property:arrays[1].array"
-    },
-    {
-      "id": "e-node_1782458233136_nf1k8u-output:urls-node_1782458900764_haa7t9-property:arrays[0].array",
-      "source": "node_1782458233136_nf1k8u",
-      "target": "node_1782458900764_haa7t9",
-      "edgeKind": "reference",
-      "sourceHandle": "output:urls",
-      "targetHandle": "property:arrays[0].array"
-    },
-    {
-      "id": "e-node_1782458900764_haa7t9-output:result-node_1782455101134_xvs0wx-property:images",
-      "source": "node_1782458900764_haa7t9",
-      "target": "node_1782455101134_xvs0wx",
-      "edgeKind": "reference",
-      "sourceHandle": "output:result",
-      "targetHandle": "property:images"
-    },
-    {
-      "id": "e-node_1782383055448_start-source-node_1782455127220_7p3l9h-target",
-      "source": "node_1782383055448_start",
-      "target": "node_1782455127220_7p3l9h",
-      "edgeKind": "runtime",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
-    {
       "id": "e-node_1782455101134_xvs0wx-output:data.images-node_1782553818772_ing721-property:items",
       "source": "node_1782455101134_xvs0wx",
       "target": "node_1782553818772_ing721",
@@ -313,50 +202,9 @@
       "targetHandle": "property:items"
     },
     {
-      "id": "e-node_1782553818772_ing721-source-node_1782383055448_end-target",
-      "source": "node_1782553818772_ing721",
-      "target": "node_1782383055448_end",
-      "edgeKind": "runtime",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
-    {
       "id": "e-node_1782455127220_7p3l9h-source-node_1782455101134_xvs0wx-target--reference-runtime",
       "source": "node_1782455127220_7p3l9h",
       "target": "node_1782455101134_xvs0wx",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
-      "id": "e-node_1782458900764_haa7t9-source-node_1782455101134_xvs0wx-target--reference-runtime",
-      "source": "node_1782458900764_haa7t9",
-      "target": "node_1782455101134_xvs0wx",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
-      "id": "e-node_1782458233136_nf1k8u-source-node_1782458900764_haa7t9-target--reference-runtime",
-      "source": "node_1782458233136_nf1k8u",
-      "target": "node_1782458900764_haa7t9",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
-      "id": "e-node_1782458248440_60mfkr-source-node_1782458900764_haa7t9-target--reference-runtime",
-      "source": "node_1782458248440_60mfkr",
-      "target": "node_1782458900764_haa7t9",
       "edgeKind": "runtime",
       "composite": {
         "generated": true,
@@ -374,10 +222,37 @@
         "hidden": false,
         "locked": false
       }
+    },
+    {
+      "id": "e-node_1782458233136_nf1k8u-output:urls-node_1782455127220_7p3l9h-property:variables[1].value",
+      "source": "node_1782458233136_nf1k8u",
+      "target": "node_1782455127220_7p3l9h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "property:variables[1].value"
+    },
+    {
+      "id": "e-node_1782458233136_nf1k8u-source-node_1782455127220_7p3l9h-target--reference-runtime",
+      "source": "node_1782458233136_nf1k8u",
+      "target": "node_1782455127220_7p3l9h",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782455127220_7p3l9h-output:env.images-node_1782455101134_xvs0wx-property:images",
+      "source": "node_1782455127220_7p3l9h",
+      "target": "node_1782455101134_xvs0wx",
+      "edgeKind": "reference",
+      "sourceHandle": "output:env.images",
+      "targetHandle": "property:images"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782555253281,
+  "updatedAt": 1782557007558,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -392,5 +267,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782555269214
+  "lastRunAt": 1782554266231
 }
