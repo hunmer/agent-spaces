@@ -1,10 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import type { NodeProperty } from '@agent-spaces/shared';
+import { Check, ChevronDown } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 import { getOutputFields } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
@@ -34,6 +38,7 @@ export function PropertyField({
   workspaceId,
   onFieldKeyChange,
   dropTargetNodeId,
+  usePopoverSelect = false,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -47,6 +52,7 @@ export function PropertyField({
   workspaceId?: string;
   onFieldKeyChange?: (oldKey: string, newKey: string, fieldPath: string) => void;
   dropTargetNodeId?: string;
+  usePopoverSelect?: boolean;
 }) {
   const disabled = Boolean(prop.readonly);
 
@@ -97,6 +103,17 @@ export function PropertyField({
       );
 
     case 'select':
+      if (usePopoverSelect) {
+        return (
+          <PropertyInputPopoverSelect
+            prop={prop}
+            value={value}
+            disabled={disabled}
+            onChange={onChange}
+          />
+        );
+      }
+
       return (
         <Select
           value={String(value ?? prop.default ?? '')}
@@ -179,4 +196,69 @@ export function PropertyField({
         />
       );
   }
+}
+
+function PropertyInputPopoverSelect({
+  prop,
+  value,
+  disabled,
+  onChange,
+}: {
+  prop: NodeProperty;
+  value: unknown;
+  disabled: boolean;
+  onChange: (v: unknown) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedValue = String(value ?? prop.default ?? '');
+  const selectedOption = prop.options?.find(option => option.value === selectedValue);
+  const selectedLabel = selectedOption?.label ?? selectedValue;
+
+  const selectValue = (nextValue: string) => {
+    onChange(nextValue);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            disabled={disabled}
+            className={cn(
+              'flex h-7 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-left text-xs outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50',
+              !selectedLabel && 'text-muted-foreground',
+            )}
+          >
+            <span className="min-w-0 flex-1 truncate">{selectedLabel || prop.label}</span>
+            <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        )}
+      />
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={4}
+        className="max-h-(--available-height) w-(--anchor-width) min-w-36 gap-0 overflow-y-auto p-1"
+      >
+        {prop.options?.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            className={cn(
+              'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground',
+              selectedValue === option.value && 'bg-accent/70',
+            )}
+            onClick={() => selectValue(option.value)}
+          >
+            <span className="flex size-4 shrink-0 items-center justify-center">
+              {selectedValue === option.value ? <Check className="size-3" /> : null}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{option.label}</span>
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
 }

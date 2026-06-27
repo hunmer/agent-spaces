@@ -282,8 +282,8 @@
       "type": "run_code",
       "label": "nodes.run_code.label",
       "position": {
-        "x": 210,
-        "y": 795
+        "x": 315,
+        "y": 555
       },
       "data": {
         "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
@@ -766,7 +766,7 @@
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1782525528016,
+  "updatedAt": 1782551545312,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",

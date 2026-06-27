@@ -27,6 +27,7 @@ interface PropertiesListProps {
   onPreviewDataChange?: (key: string, value: unknown) => void;
   workspaceId?: string;
   dropTargetNodeId?: string;
+  usePopoverSelect?: boolean;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
 }
 
@@ -52,6 +53,7 @@ export function PropertiesList({
   onPreviewDataChange,
   workspaceId,
   dropTargetNodeId,
+  usePopoverSelect = false,
   onFieldKeyRename,
 }: PropertiesListProps) {
   // Cascade reset: when a dependency source (e.g. databaseId) changes, clear the
@@ -100,6 +102,7 @@ export function PropertiesList({
             onPreviewDataChange={onPreviewDataChange}
             workspaceId={workspaceId}
             dropTargetNodeId={dropTargetNodeId}
+            usePopoverSelect={usePopoverSelect}
             onFieldKeyRename={onFieldKeyRename}
           />
         );
@@ -125,6 +128,7 @@ const PropertyItem = memo(function PropertyItem({
   onPreviewDataChange,
   workspaceId,
   dropTargetNodeId,
+  usePopoverSelect,
   onFieldKeyRename,
 }: {
   prop: NodeProperty;
@@ -143,6 +147,7 @@ const PropertyItem = memo(function PropertyItem({
   onPreviewDataChange?: (key: string, value: unknown) => void;
   workspaceId?: string;
   dropTargetNodeId?: string;
+  usePopoverSelect: boolean;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
 }) {
   const variableValue = useMemo(() => toVariableInputValue(value), [toVariableInputValue, value]);
@@ -214,6 +219,7 @@ const PropertyItem = memo(function PropertyItem({
             workspaceId={workspaceId}
             onFieldKeyRename={onFieldKeyRename}
             dropTargetNodeId={dropTargetNodeId}
+            usePopoverSelect={usePopoverSelect}
           />
         ) : (
           <PropertyField
@@ -228,6 +234,7 @@ const PropertyItem = memo(function PropertyItem({
             onInsertVariable={(path) => onInsertVariable(prop.key, path)}
             workspaceId={workspaceId}
             dropTargetNodeId={dropTargetNodeId}
+            usePopoverSelect={usePopoverSelect}
             onFieldKeyChange={(oldKey, newKey, newPath) => {
               if (!dropTargetNodeId) return;
               const params = {
@@ -270,6 +277,7 @@ function DynamicSelectField({
   workspaceId,
   onFieldKeyRename,
   dropTargetNodeId,
+  usePopoverSelect,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -282,6 +290,7 @@ function DynamicSelectField({
   workspaceId?: string;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
   dropTargetNodeId?: string;
+  usePopoverSelect: boolean;
 }) {
   const { options, loading } = useDynamicOptions(prop.dynamicOptions, data);
   return (
@@ -299,6 +308,7 @@ function DynamicSelectField({
           onInsertVariable={(path) => onInsertVariable(prop.key, path)}
           workspaceId={workspaceId}
           dropTargetNodeId={dropTargetNodeId}
+          usePopoverSelect={usePopoverSelect}
           onFieldKeyChange={(oldKey, newKey, newPath) => {
             if (!dropTargetNodeId) return;
             const params = {

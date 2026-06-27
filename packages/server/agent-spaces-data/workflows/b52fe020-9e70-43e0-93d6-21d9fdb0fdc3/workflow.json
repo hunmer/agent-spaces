@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 1208.5,
-        "y": 120
+        "x": 0,
+        "y": 1306.0000209086986
       },
       "data": {
         "inputFields": [],
@@ -22,8 +22,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 779.5,
-        "y": 1729
+        "x": 2687.515762237181,
+        "y": 633.2500211777003
       },
       "data": {
         "outputs": [
@@ -40,13 +40,13 @@
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
       "position": {
-        "x": 724.5,
-        "y": 1089
+        "x": 1774.0781872487573,
+        "y": 378.74998577164433
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
         "model": "jimeng-5.0",
-        "ratio": "1:1",
+        "ratio": "9:16",
         "resolution": "2k",
         "sampleStrength": 0.7,
         "baseUrl": "{{ __config__[\"workflow.jimeng\"][\"baseUrl\"] }}",
@@ -90,8 +90,8 @@
       "type": "set_variable",
       "label": "nodes.set_variable.label",
       "position": {
-        "x": 1329,
-        "y": 449
+        "x": 862,
+        "y": 972.000042893404
       },
       "data": {
         "variables": [
@@ -124,8 +124,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 184.5,
-        "y": 32
+        "x": 104.45310592242899,
+        "y": 105.00001906360205
       },
       "data": {
         "outputs": [
@@ -166,8 +166,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 624,
-        "y": 0
+        "x": 106.45314086551468,
+        "y": 574.2500140284005
       },
       "data": {
         "outputs": [
@@ -202,8 +202,8 @@
       "type": "merge_arrays",
       "label": "nodes.merge_arrays.label",
       "position": {
-        "x": 375,
-        "y": 449
+        "x": 877.8047060954433,
+        "y": 0
       },
       "data": {
         "arrays": [
@@ -332,7 +332,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782529776550,
+  "updatedAt": 1782552647479,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -347,5 +347,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782453125623
+  "lastRunAt": 1782553451089
 }

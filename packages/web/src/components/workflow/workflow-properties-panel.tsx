@@ -58,6 +58,7 @@ interface PropertiesPanelProps {
   workspaceId?: string;
   dragHandleClassName?: string;
   contentScrollable?: boolean;
+  usePopoverSelect?: boolean;
 }
 
 export function WorkflowPropertiesPanel({
@@ -81,6 +82,7 @@ export function WorkflowPropertiesPanel({
   workspaceId,
   dragHandleClassName,
   contentScrollable = true,
+  usePopoverSelect = false,
 }: PropertiesPanelProps) {
   const t = useTranslations('workflows');
   const [importOpen, setImportOpen] = useState(false);
@@ -423,6 +425,7 @@ export function WorkflowPropertiesPanel({
                     onPreviewDataChange={handlePreviewDataChange}
                     workspaceId={workspaceId}
                     dropTargetNodeId={nodeId}
+                    usePopoverSelect={usePopoverSelect}
                     onFieldKeyRename={onFieldKeyRename}
                   />
               </CardContent>

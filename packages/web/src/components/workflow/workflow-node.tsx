@@ -773,6 +773,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                 onCancelDebug={handlePropertyPanelCancelDebug}
                 dragHandleClassName={WORKFLOW_NODE_DRAG_HANDLE_CLASS}
                 contentScrollable={false}
+                usePopoverSelect
               />
             </div>
           ) : null}
