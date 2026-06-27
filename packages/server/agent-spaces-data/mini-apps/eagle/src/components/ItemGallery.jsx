@@ -150,6 +150,20 @@ export default function ItemGallery({
     }
   }
 
+  function handleImageDragStart(e, item) {
+    const url = originalUrl(item, libraryPath) || thumbUrl(item, libraryPath);
+    if (!url) return;
+    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.setData("application/x-agent-spaces-image", JSON.stringify({
+      url,
+      name: item.name || "",
+      type: "image",
+    }));
+    e.dataTransfer.setData("text/uri-list", url);
+    e.dataTransfer.setData("text/plain", url);
+    e.dataTransfer.setData("text/html", `<img src="${escapeHtmlAttr(url)}" alt="${escapeHtmlAttr(item.name || "")}">`);
+  }
+
   return (
     <section className="flex flex-1 flex-col min-w-0">
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
@@ -209,7 +223,9 @@ export default function ItemGallery({
                       src={thumbUrl(item, libraryPath)}
                       alt={item.name || ""}
                       loading="lazy"
+                      draggable
                       className="h-full w-full cursor-pointer object-cover"
+                      onDragStart={(e) => handleImageDragStart(e, item)}
                       onClick={() => setSelectedId(item.id)}
                       onDoubleClick={() => openAt(index)}
                       onError={(e) => {
@@ -436,6 +452,14 @@ function fileToBase64(file) {
 // Eagle 资源库文件结构：{libraryPath}/images/{itemId}.info/{name}_thumbnail.png
 // 原图：{libraryPath}/images/{itemId}.info/{name}.{ext}
 // 缺少 libraryPath（尚未拿到 library_info）时回退到 item 自带的 thumbnail/fileSource。
+function escapeHtmlAttr(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 const localFileUrl = (absPath) =>
   absPath && window.AgentSpaces?.localFileUrl
     ? window.AgentSpaces.localFileUrl(absPath)

@@ -112,6 +112,58 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   );
 }
 
+function isLikelyDroppedImageUrl(value: string): boolean {
+  const text = value.trim();
+  if (!text) return false;
+  if (text.startsWith('data:image/') || text.startsWith('blob:')) return true;
+  try {
+    const url = new URL(text, window.location.href);
+    const lower = `${url.pathname}${url.search}`.toLowerCase();
+    return (
+      /\.(png|jpe?g|gif|webp|bmp|svg|avif)(?:$|[?&#])/i.test(lower)
+      || lower.includes('/local-file?')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractDroppedImageUrls(dataTransfer: DataTransfer): string[] {
+  const urls = new Set<string>();
+  const agentSpacesImage = dataTransfer.getData('application/x-agent-spaces-image');
+  if (agentSpacesImage) {
+    try {
+      const payload = JSON.parse(agentSpacesImage) as { url?: unknown; urls?: unknown };
+      const values = Array.isArray(payload.urls) ? payload.urls : [payload.url];
+      for (const value of values) {
+        if (typeof value === 'string' && isLikelyDroppedImageUrl(value)) urls.add(value);
+      }
+    } catch {
+      if (isLikelyDroppedImageUrl(agentSpacesImage)) urls.add(agentSpacesImage);
+    }
+  }
+
+  const uriList = dataTransfer.getData('text/uri-list');
+  for (const line of uriList.split(/\r?\n/)) {
+    const url = line.trim();
+    if (url && !url.startsWith('#') && isLikelyDroppedImageUrl(url)) urls.add(url);
+  }
+
+  const plain = dataTransfer.getData('text/plain').trim();
+  if (plain && isLikelyDroppedImageUrl(plain)) urls.add(plain);
+
+  const html = dataTransfer.getData('text/html');
+  if (html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    for (const image of Array.from(doc.images)) {
+      const src = image.getAttribute('src') || '';
+      if (src && isLikelyDroppedImageUrl(src)) urls.add(new URL(src, window.location.href).toString());
+    }
+  }
+
+  return Array.from(urls);
+}
+
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
@@ -122,6 +174,7 @@ interface WorkflowCanvasProps {
   selectedNodeIds?: string[];
   onNodeAdd: (type: string, position: { x: number; y: number }, size?: { width: number; height: number }, data?: Record<string, unknown>) => void;
   onImageFilesDrop?: (files: File[], position: { x: number; y: number }) => void;
+  onImageUrlsDrop?: (urls: string[], position: { x: number; y: number }) => void;
   onStagedNodeDrop?: (node: StagedNode, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string, options?: { reconnect?: boolean }) => void;
   onNodeCopy?: (id: string) => void;
@@ -176,7 +229,7 @@ interface WorkflowCanvasProps {
 export function WorkflowCanvas({
   workflow, isPreview, execStatus = 'idle', isRunning = false, executionLog, selectedNodeId,
   selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
-  onImageFilesDrop, onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
+  onImageFilesDrop, onImageUrlsDrop, onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   copiedNodeCount = 0, copiedRecords = [], onPasteRecord, onMoveRecord, onClearCopiedNodes,
   onConnectionDrop,
@@ -626,7 +679,11 @@ export function WorkflowCanvas({
       const hasImageFiles = Array.from(event.dataTransfer.items ?? []).some(item =>
         item.kind === 'file' && item.type.startsWith('image/'),
       );
-      event.dataTransfer.dropEffect = hasImageFiles || Array.from(event.dataTransfer.types).includes(WORKFLOW_STAGED_NODE_DRAG_MIME)
+      const types = Array.from(event.dataTransfer.types);
+      event.dataTransfer.dropEffect = hasImageFiles
+        || types.includes('text/uri-list')
+        || types.includes('text/html')
+        || types.includes(WORKFLOW_STAGED_NODE_DRAG_MIME)
         ? 'copy'
         : 'move';
     }
@@ -639,6 +696,12 @@ export function WorkflowCanvas({
     const imageFiles = Array.from(event.dataTransfer.files ?? []).filter(file => file.type.startsWith('image/'));
     if (imageFiles.length > 0 && onImageFilesDrop) {
       onImageFilesDrop(imageFiles, position);
+      return;
+    }
+
+    const imageUrls = extractDroppedImageUrls(event.dataTransfer);
+    if (imageUrls.length > 0 && onImageUrlsDrop) {
+      onImageUrlsDrop(imageUrls, position);
       return;
     }
 
@@ -656,7 +719,7 @@ export function WorkflowCanvas({
     if (!type) return;
 
     onNodeAdd(type, position);
-  }, [isCanvasLocked, onImageFilesDrop, onStagedNodeDrop, screenToFlowPosition, onNodeAdd]);
+  }, [isCanvasLocked, onImageFilesDrop, onImageUrlsDrop, onStagedNodeDrop, screenToFlowPosition, onNodeAdd]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     const multi = event.shiftKey || event.metaKey || event.ctrlKey;

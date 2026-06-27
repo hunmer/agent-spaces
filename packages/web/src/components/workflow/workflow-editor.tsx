@@ -519,16 +519,14 @@ function WorkflowEditorInner({
     markEditorDirty();
   }, [clipboard, getViewportCenter, markEditorDirty, state]);
 
-  const addImageBlobsToCanvas = useCallback(async (imageBlobs: Blob[], center: { x: number; y: number }) => {
-    if (imageBlobs.length === 0) return false;
-    const sources = (await Promise.all(imageBlobs.map(readBlobAsDataUrl))).filter(Boolean);
+  const addImageSourcesToCanvas = useCallback(async (sources: string[], center: { x: number; y: number }, idPrefix = 'clipboard_image') => {
     if (sources.length === 0) return false;
     const previewSize = getGalleryPreviewSize(await readImageSize(sources[0] || ''));
     const position = getCenteredNodePosition(center, previewSize);
     const createdAt = Date.now();
     canvas.handleNodeAdd('gallery_preview', position, previewSize, {
       items: sources.map((src, index) => ({
-        id: `clipboard_image_${createdAt}_${index}`,
+        id: `${idPrefix}_${createdAt}_${index}`,
         src,
         thumb: src,
         type: 'image',
@@ -537,6 +535,12 @@ function WorkflowEditorInner({
     });
     return true;
   }, [canvas]);
+
+  const addImageBlobsToCanvas = useCallback(async (imageBlobs: Blob[], center: { x: number; y: number }) => {
+    if (imageBlobs.length === 0) return false;
+    const sources = (await Promise.all(imageBlobs.map(readBlobAsDataUrl))).filter(Boolean);
+    return addImageSourcesToCanvas(sources, center);
+  }, [addImageSourcesToCanvas]);
 
   const pasteClipboardNodes = useCallback(async () => {
     if (clipboardImagePasteEnabled && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
@@ -928,6 +932,9 @@ function WorkflowEditorInner({
                 onImageFilesDrop={isWorkflowReadOnly ? undefined : (files, position) => {
                   void addImageBlobsToCanvas(files, position);
                 }}
+                onImageUrlsDrop={isWorkflowReadOnly ? undefined : (urls, position) => {
+                  void addImageSourcesToCanvas(urls, position, 'dropped_image');
+                }}
                 onStagedNodeDrop={addStagedNodeToCanvas}
                 onNodeDelete={canvas.handleNodeDelete}
                 onNodeCopy={canvas.handleNodeCopy}
@@ -1140,6 +1147,7 @@ function WorkflowEditorInner({
     isWorkflowRunning,
     isWorkflowReadOnly,
     addImageBlobsToCanvas,
+    addImageSourcesToCanvas,
     addStagedNodeToCanvas,
     handleSelectNodeFromList,
     handleDeleteGroup,

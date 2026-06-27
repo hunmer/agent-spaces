@@ -201,11 +201,83 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1782550664536_j1grc2",
+      "type": "gallery_preview",
+      "label": "nodes.gallery_preview.label",
+      "position": {
+        "x": 882.2649173624573,
+        "y": -83.52983472491456
+      },
+      "data": {
+        "carousel": false,
+        "outputs": [
+          {
+            "key": "urls",
+            "type": "string[]",
+            "description": "nodes.gallery_preview.outputs.urls"
+          }
+        ],
+        "outputMiddleware": {
+          "type": "arrayItemField",
+          "sourceKey": "items",
+          "itemKey": "src",
+          "targetKey": "urls"
+        },
+        "nodeWidth": 220,
+        "nodeHeight": 308,
+        "items": [
+          {
+            "id": "dropped_image_1782550664536_0",
+            "src": "http://127.0.0.1:3100/api/mini-apps/eagle/local-file?path=F%3A%5Ceagle.library%2Fimages%2FMQVZT0P9V8LVB.info%2FPrincess+Zelda+Concept+Art+-+The+Legend+of+Zelda_+Tears+of+the+Kingdom+Art+Gallery.webp&token=",
+            "thumb": "http://127.0.0.1:3100/api/mini-apps/eagle/local-file?path=F%3A%5Ceagle.library%2Fimages%2FMQVZT0P9V8LVB.info%2FPrincess+Zelda+Concept+Art+-+The+Legend+of+Zelda_+Tears+of+the+Kingdom+Art+Gallery.webp&token=",
+            "type": "image",
+            "caption": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782550666984_41tfb8",
+      "type": "gallery_preview",
+      "label": "nodes.gallery_preview.label",
+      "position": {
+        "x": 1195,
+        "y": -77.5
+      },
+      "data": {
+        "carousel": false,
+        "outputs": [
+          {
+            "key": "urls",
+            "type": "string[]",
+            "description": "nodes.gallery_preview.outputs.urls"
+          }
+        ],
+        "outputMiddleware": {
+          "type": "arrayItemField",
+          "sourceKey": "items",
+          "itemKey": "src",
+          "targetKey": "urls"
+        },
+        "nodeWidth": 220,
+        "nodeHeight": 245,
+        "items": [
+          {
+            "id": "dropped_image_1782550666984_0",
+            "src": "http://127.0.0.1:3100/api/mini-apps/eagle/local-file?path=F%3A%5Ceagle.library%2Fimages%2FMQVZT0P9VU9C3.info%2F%E4%B8%8B%E8%BD%BD.webp&token=",
+            "thumb": "http://127.0.0.1:3100/api/mini-apps/eagle/local-file?path=F%3A%5Ceagle.library%2Fimages%2FMQVZT0P9VU9C3.info%2F%E4%B8%8B%E8%BD%BD.webp&token=",
+            "type": "image",
+            "caption": ""
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1782542208311,
-  "updatedAt": 1782550178543,
+  "updatedAt": 1782550845822,
   "published": false,
   "enabledPlugins": [
     "workflow.eagle"
