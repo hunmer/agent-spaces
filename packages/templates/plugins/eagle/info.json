@@ -1,0 +1,47 @@
+{
+  "id": "workflow.eagle",
+  "name": "Eagle",
+  "name_zh": "Eagle 资源库",
+  "name_en": "Eagle",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "description": "通过本地 Eagle Web API v2 操作 Eagle 资源库：条目查询/搜索/添加/更新、文件夹与智能文件夹、标签与标签组、资源库切换，以及 AI 语义搜索",
+  "description_zh": "通过本地 Eagle Web API v2 操作 Eagle 资源库：条目查询/搜索/添加/更新、文件夹与智能文件夹、标签与标签组、资源库切换，以及 AI 语义搜索",
+  "description_en": "Operate Eagle library via local Eagle Web API v2: item list/query/add/update, folders & smart folders, tags & tag groups, library switch, and AI semantic search.",
+  "author": { "name": "workflow" },
+  "tags": ["Eagle", "素材管理", "图片", "API"],
+  "tags_zh": ["Eagle", "素材管理", "图片", "API"],
+  "tags_en": ["Eagle", "Asset", "Image", "API"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "baseUrl",
+      "label": "Base URL",
+      "desc": "Eagle API 地址，本地默认 http://localhost:41595",
+      "type": "string",
+      "value": "http://localhost:41595",
+      "placeholder": "http://localhost:41595"
+    },
+    {
+      "key": "token",
+      "label": "Token",
+      "desc": "仅远程（局域网）访问需要；本地访问留空即可",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "key": "timeout",
+      "label": "超时(ms)",
+      "desc": "单次请求超时时间",
+      "type": "number",
+      "value": "60000"
+    }
+  ]
+}

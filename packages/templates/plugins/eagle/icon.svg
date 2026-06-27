@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26C6DA"/>
+      <stop offset="1" stop-color="#0288D1"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="26" fill="url(#bg)"/>
+  <!-- stylized eagle head -->
+  <path d="M64 30 C42 30 28 46 28 66 C28 86 44 100 64 100 C78 100 90 92 96 80 L82 76 C78 84 72 88 64 88 C50 88 40 78 40 66 C40 52 50 42 64 42 C72 42 78 46 82 52 L92 44 C84 34 74 30 64 30 Z" fill="#FFFFFF" opacity="0.95"/>
+  <!-- beak -->
+  <path d="M88 56 L104 60 L92 68 Z" fill="#FFB300"/>
+  <!-- eye -->
+  <circle cx="80" cy="60" r="3.5" fill="#102A43"/>
+</svg>

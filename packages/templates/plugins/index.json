@@ -206,6 +206,52 @@
     ]
   },
   {
+    "id": "workflow.eagle",
+    "name": "Eagle",
+    "version": "1.0.0",
+    "description": "通过本地 Eagle Web API v2 操作 Eagle 资源库：条目查询/搜索/添加/更新、文件夹与智能文件夹、标签与标签组、资源库切换，以及 AI 语义搜索",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Eagle",
+      "素材管理",
+      "图片",
+      "API"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "eagle",
+    "iconUrl": "plugins/eagle/icon.svg",
+    "md5": "88a047228d699a0b3db877d71cef51a5",
+    "updatedAt": "2026-06-27T06:29:48.495Z",
+    "files": [
+      "actions/folder.js",
+      "actions/index.js",
+      "actions/item.js",
+      "actions/misc.js",
+      "actions/tag.js",
+      "docs/ai-search.md",
+      "docs/app.md",
+      "docs/folder.md",
+      "docs/item.md",
+      "docs/library.md",
+      "docs/readme.md",
+      "docs/smart-folder.md",
+      "docs/tag-group.md",
+      "docs/tag.md",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.epub-parser",
     "name": "EPUB解析器",
     "version": "1.0.0",
@@ -490,8 +536,8 @@
     "hasWorkflow": true,
     "path": "minimax",
     "iconUrl": "plugins/minimax/icon.svg",
-    "md5": "dfda2066b2cf679be59addb90a67d628",
-    "updatedAt": "2026-06-24T12:01:44.034Z",
+    "md5": "90eb83e2dde6f5198696c8d0f21b66ec",
+    "updatedAt": "2026-06-24T12:13:34.629Z",
     "files": [
       "actions.js",
       "icon.svg",
