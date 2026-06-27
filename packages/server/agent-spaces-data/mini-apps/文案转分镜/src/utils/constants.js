@@ -7,9 +7,18 @@ export const DATA_PATH = 'data.json';
 export const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID = 'd88dcb7c-7f5f-47c8-962c-89217a2c0ad6';
 export const DEFAULT_EDIT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
 export const DEFAULT_VIDEO_WORKFLOW_ID = '5130958f-a78e-4c36-8f03-1f2f733b87d7';
+export const DEFAULT_VOICE_WORKFLOW_ID = '820bf3b7-9d50-4f6d-966d-8e442960a233';
 export const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_NAME = 'text_to_image';
 export const DEFAULT_EDIT_IMAGE_WORKFLOW_NAME = 'edit_image';
 export const DEFAULT_VIDEO_WORKFLOW_NAME = 'video_generator';
+export const DEFAULT_VOICE_WORKFLOW_NAME = 'text_to_voice';
+
+// 语音合成模型（对应 text_to_voice 工作流开始节点的 model 选项）
+export const VOICE_MODEL_OPTIONS = [
+  { value: 'fish-audio', label: 'FishAudio' },
+  { value: 'minimax', label: 'MiniMax' },
+  { value: 'qianyin', label: '千音' },
+];
 
 // 图片模型选项（按最新 image_generator 工作流整理）
 export const PROVIDER_OPTIONS = [
@@ -80,6 +89,8 @@ export const DEFAULT_SETTINGS = {
   editImageWorkflowName: DEFAULT_EDIT_IMAGE_WORKFLOW_NAME,
   videoWorkflowId: DEFAULT_VIDEO_WORKFLOW_ID,
   videoWorkflowName: DEFAULT_VIDEO_WORKFLOW_NAME,
+  voiceWorkflowId: DEFAULT_VOICE_WORKFLOW_ID,
+  voiceWorkflowName: DEFAULT_VOICE_WORKFLOW_NAME,
   provider: 'keling',
   model: 'kling/kling-v3-image-generation',
   aspect: '16:9',
@@ -87,6 +98,8 @@ export const DEFAULT_SETTINGS = {
   quality: '720',
   duration: '5',
   batchLimit: '1',
+  voiceModel: 'fish-audio',
+  voiceId: '',
 };
 
 // 内置插件

@@ -4,7 +4,7 @@ import { useStore } from './hooks/useStore.js';
 import { DEFAULT_SETTINGS, SETTING_KEYS } from './utils/constants.js';
 import CharacterPanel from './components/CharacterPanel.jsx';
 import ScenePanel from './components/ScenePanel.jsx';
-import { ImportDialog, GenerateParamsDialog, AgentConfigButton, SettingsDialog } from './components/Dialogs.jsx';
+import { ImportDialog, GenerateParamsDialog, AgentConfigButton, SettingsDialog, ProjectPickerDialog } from './components/Dialogs.jsx';
 
 function Style() {
   return (
@@ -125,19 +125,34 @@ function Style() {
       .sb-slot-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #52525b; }
       .sb-slot-desc { font-size: 12px; color: #a1a1aa; margin-top: 6px; }
       .sb-floating-status { position: fixed; right: 18px; bottom: 18px; z-index: 80; background: #18181b; color: #fff; border-radius: 7px; padding: 8px 12px; font-size: 13px; }
+
+      .sb-pj-trigger { display: inline-flex; align-items: center; gap: 6px; max-width: 280px; min-width: 160px; padding: 6px 12px; border: 1px solid #e4e4e7; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; color: #18181b; }
+      .sb-pj-trigger:hover { background: #f4f4f5; }
+      .sb-pj-trigger-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; text-align: left; }
+      .sb-pj-list { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow: auto; }
+      .sb-pj-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px; gap: 4px; align-items: center; padding: 4px; border-radius: 6px; }
+      .sb-pj-row:hover { background: #f4f4f5; }
+      .sb-pj-row.is-active { background: #f4f4f5; }
+      .sb-pj-main { display: flex; align-items: center; gap: 8px; min-width: 0; border: 0; background: transparent; padding: 6px 8px; cursor: pointer; border-radius: 5px; text-align: left; }
+      .sb-pj-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+      .sb-pj-badge { flex: 0 0 auto; font-size: 11px; color: #fff; background: #18181b; border-radius: 999px; padding: 1px 8px; }
+      .sb-pj-act { display: grid; place-items: center; border: 0; background: transparent; padding: 6px; cursor: pointer; border-radius: 5px; color: #71717a; }
+      .sb-pj-act:hover { background: #e4e4e7; color: #18181b; }
+      .sb-pj-del:hover { color: #dc2626; }
     `}</style>
   );
 }
 
 function App() {
   const AS = window.AgentSpaces;
-  const { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Plus, Pencil, Trash2, FileText, Settings } = window.AgentSpacesUI;
+  const { Button, FileText, Settings, FolderKanban } = window.AgentSpacesUI;
 
   const { projects, project, projectId, settings, actions } = useStore();
 
   const [tab, setTab] = React.useState('characters');
   const [importOpen, setImportOpen] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [projectOpen, setProjectOpen] = React.useState(false);
   const [agentConfigId, setAgentConfigId] = React.useState(() => AS.getUserSetting?.(SETTING_KEYS.agentConfigId, '') || '');
   const [agentMeta, setAgentMeta] = React.useState(() => AS.getUserSetting?.(SETTING_KEYS.agentMeta, null) || null);
 
@@ -181,25 +196,6 @@ function App() {
     setSettingsOpen(false);
   };
 
-  const newProject = async () => {
-    const name = window.prompt('项目名称', `项目 ${projects.length + 1}`);
-    if (name === null) return;
-    await actions.newProject(name.trim() || `项目 ${projects.length + 1}`);
-  };
-
-  const renameProject = async () => {
-    if (!project) return;
-    const name = window.prompt('项目新名称', project.name);
-    if (name === null) return;
-    await actions.renameProject(project.id, name.trim() || project.name);
-  };
-
-  const deleteProject = async () => {
-    if (!project) return;
-    if (!window.confirm(`删除项目「${project.name}」？此操作不可撤销。`)) return;
-    await actions.deleteProject(project.id);
-  };
-
   const onAgentConfigured = (info) => {
     setAgentConfigId(info.id);
     const meta = { name: info.name, modelProvider: info.modelProvider };
@@ -213,15 +209,10 @@ function App() {
 
       <header className="sb-topbar">
         <div className="sb-topbar-left">
-          <Select value={projectId || undefined} onValueChange={(id) => actions.setActiveProject(id)}>
-            <SelectTrigger className="sb-project-select"><SelectValue placeholder="选择项目" /></SelectTrigger>
-            <SelectContent>
-              {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant="outline" onClick={newProject} title="新建项目"><Plus className="sb-icon" /></Button>
-          <Button size="sm" variant="outline" onClick={renameProject} disabled={!project} title="重命名"><Pencil className="sb-icon" /></Button>
-          <Button size="sm" variant="outline" onClick={deleteProject} disabled={!project} title="删除项目"><Trash2 className="sb-icon" /></Button>
+          <button type="button" className="sb-pj-trigger" onClick={() => setProjectOpen(true)} title="项目管理">
+            <FolderKanban className="sb-icon" />
+            <span className="sb-pj-trigger-name">{project ? project.name : '选择项目'}</span>
+          </button>
         </div>
         <div className="sb-topbar-right">
           <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} disabled={!project}>
@@ -246,7 +237,7 @@ function App() {
       <main className="sb-content">
         {!project ? (
           <div className="sb-edit-empty" style={{ height: 'calc(100vh - 180px)', border: '1px dashed #d4d4d8', borderRadius: 8 }}>
-            尚未选择项目，点击左上角「+」新建一个项目开始
+            尚未选择项目，点击左上角项目名打开「项目管理」新建一个项目开始
           </div>
         ) : tab === 'characters' ? (
           <CharacterPanel project={project} actions={actions} settings={cfg} requestParams={requestParams} />
@@ -255,6 +246,13 @@ function App() {
         )}
       </main>
 
+      <ProjectPickerDialog
+        open={projectOpen}
+        projects={projects}
+        currentId={projectId}
+        actions={actions}
+        onClose={() => setProjectOpen(false)}
+      />
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} actions={actions} agentConfigId={agentConfigId} />
       <GenerateParamsDialog
         open={genOpen}

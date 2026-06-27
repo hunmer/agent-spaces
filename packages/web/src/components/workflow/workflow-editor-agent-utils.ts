@@ -207,6 +207,18 @@ export function getWorkflowAgentTimeline(message: WorkflowAgentChatMessage): Wor
   return [thinking, ...timeline.filter((item) => item.id !== thinking.id)];
 }
 
+export function getWorkflowAgentMessageText(message: WorkflowAgentChatMessage): string {
+  const content = message.content.trim();
+  if (content) return content;
+
+  return getWorkflowAgentTimeline(message)
+    .filter((item): item is Extract<WorkflowTimelineItem, { type: 'message' }> => item.type === 'message')
+    .map((item) => item.content.trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
 // ---- Patch helpers ----
 
 export function readWorkflowPatch(result: unknown): { workflow_id: string; nodes: Workflow['nodes']; edges: Workflow['edges']; updatedAt?: number } | null {

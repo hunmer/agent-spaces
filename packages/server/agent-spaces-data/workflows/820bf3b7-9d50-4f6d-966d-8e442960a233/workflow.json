@@ -1,0 +1,787 @@
+{
+  "id": "820bf3b7-9d50-4f6d-966d-8e442960a233",
+  "name": "text_to_voice",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1781681576137_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 0,
+        "y": 270
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "prompt",
+            "type": "string",
+            "description": "要合成语音的文本内容",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "model",
+            "type": "select",
+            "description": "语音服务提供商",
+            "required": true,
+            "value": "",
+            "inputMode": "native",
+            "options": [
+              "fish-audio",
+              "minimax",
+              "qianyin"
+            ],
+            "children": []
+          },
+          {
+            "key": "voiceId",
+            "type": "string",
+            "description": "发音人ID（fish-audio传referenceId, minimax传voiceId, qianyin传speakerId）",
+            "required": false
+          }
+        ]
+      },
+      "inputFields": [
+        {
+          "key": "prompt",
+          "type": "string",
+          "description": "要合成语音的文本内容",
+          "required": true,
+          "children": []
+        },
+        {
+          "key": "model",
+          "type": "select",
+          "description": "语音服务提供商",
+          "required": true,
+          "value": "",
+          "inputMode": "native",
+          "options": [
+            "fish-audio",
+            "minimax",
+            "qianyin"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1781681576137_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 900,
+        "y": 540
+      },
+      "data": {
+        "outputPreviewEnabled": true,
+        "outputs": [
+          {
+            "key": "error",
+            "type": "string",
+            "value": "错误的提供商",
+            "children": []
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "error",
+          "type": "string",
+          "value": "错误的提供商",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1781686908308_6flfam",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 600,
+        "y": 270
+      },
+      "data": {
+        "sourceNodeId": "node_1782281779113_6rk17s",
+        "sourceHandle": "source",
+        "conditions": [
+          {
+            "id": "cond_1781686912427_7hb8",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1781686912427_7hb8",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-0"
+              }
+            ]
+          },
+          {
+            "id": "cond_1782273364173_chpi",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782273364173_chpi",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-1"
+              }
+            ]
+          },
+          {
+            "id": "cond_1782281410888_ywvg",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782281410888_ywvg",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-2"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782272119586_dim19h",
+      "type": "variable_aggregate",
+      "label": "nodes.variable_aggregate.label",
+      "position": {
+        "x": 1200,
+        "y": 180
+      },
+      "data": {
+        "strategy": "first_non_empty",
+        "groups": [
+          {
+            "key": "audio",
+            "variables": [
+              {
+                "key": "fish_audio",
+                "type": "any",
+                "value": "{{ __data__[\"node_1782531300924_kl04a8\"].data }}",
+                "inputMode": "variable",
+                "children": []
+              },
+              {
+                "key": "minimax",
+                "type": "any",
+                "value": "{{ __data__[\"node_1782531308248_s8kpvb\"].data }}",
+                "inputMode": "variable",
+                "children": []
+              },
+              {
+                "key": "qianyin",
+                "type": "any",
+                "value": "{{ __data__[\"node_1782531300926_85slp6\"].data }}",
+                "inputMode": "variable",
+                "children": []
+              }
+            ],
+            "id": 1782272122681
+          }
+        ],
+        "sourceNodeId": "node_1782531300924_kl04a8",
+        "sourceHandle": "source",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object",
+            "children": [
+              {
+                "key": "audio",
+                "type": "object",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "result",
+          "type": "object",
+          "children": [
+            {
+              "key": "audio",
+              "type": "object",
+              "value": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "node_1782272191524_rvv1lk",
+      "type": "end",
+      "label": "nodes.end.label",
+      "position": {
+        "x": 1500,
+        "y": 180
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object",
+            "value": "{{ __data__[\"node_1782272119586_dim19h\"].result.audio }}",
+            "children": []
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "result",
+          "type": "object",
+          "value": "{{ __data__[\"node_1782272119586_dim19h\"].result.audio }}",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1782281779113_6rk17s",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 300,
+        "y": 270
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model === 'fish-audio') {\n    target = 'case-0'\n  } else if (model === 'minimax') {\n    target = 'case-1'\n  } else if (model === 'qianyin') {\n    target = 'case-2'\n  }\n  return { target }\n}",
+        "sourceNodeId": "node_1781681576137_start",
+        "sourceHandle": "source",
+        "inputFields": [
+          {
+            "key": "model",
+            "type": "string",
+            "value": "{{ __data__[\"node_1781681576137_start\"].model }}",
+            "required": true,
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "target",
+            "type": "string"
+          }
+        ]
+      },
+      "nodeState": "normal",
+      "inputFields": [
+        {
+          "key": "model",
+          "type": "string",
+          "value": "{{ __data__[\"node_1781681576137_start\"].model }}",
+          "required": true,
+          "children": []
+        }
+      ],
+      "outputs": [
+        {
+          "key": "target",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "node_1782531300924_kl04a8",
+      "type": "fish_audio_tts",
+      "label": "FishAudio TTS",
+      "position": {
+        "x": 900,
+        "y": 360
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.fish-audio\"][\"apiKey\"]}}",
+        "referenceId": "{{ __data__[\"node_1781681576137_start\"].voiceId }}",
+        "model": "s2-pro",
+        "format": "mp3",
+        "sampleRate": "44100",
+        "speed": 1,
+        "volume": 0,
+        "temperature": 0.7,
+        "latency": "normal",
+        "baseUrl": "{{ __config__[\"workflow.fish-audio\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.fish-audio\"][\"httpProxy\"]}}",
+        "text": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-0",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "filePath",
+                "type": "string"
+              },
+              {
+                "key": "httpPath",
+                "type": "string"
+              },
+              {
+                "key": "format",
+                "type": "string"
+              },
+              {
+                "key": "size",
+                "type": "number"
+              },
+              {
+                "key": "mimeType",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "success",
+          "type": "boolean"
+        },
+        {
+          "key": "message",
+          "type": "string"
+        },
+        {
+          "key": "data",
+          "type": "object",
+          "children": [
+            {
+              "key": "filePath",
+              "type": "string"
+            },
+            {
+              "key": "httpPath",
+              "type": "string"
+            },
+            {
+              "key": "format",
+              "type": "string"
+            },
+            {
+              "key": "size",
+              "type": "number"
+            },
+            {
+              "key": "mimeType",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "node_1782531300926_85slp6",
+      "type": "qianyin_tts",
+      "label": "千音 TTS",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "data": {
+        "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"]}}",
+        "secret": "{{ __config__[\"workflow.qianyin\"][\"secret\"]}}",
+        "speakerId": "{{ __data__[\"node_1781681576137_start\"].voiceId }}",
+        "format": "mp3",
+        "speed": 1,
+        "volume": 100,
+        "pitch": 0,
+        "baseUrl": "{{ __config__[\"workflow.qianyin\"][\"baseUrl\"]}}",
+        "text": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-2",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "filePath",
+                "type": "string"
+              },
+              {
+                "key": "format",
+                "type": "string"
+              },
+              {
+                "key": "size",
+                "type": "number"
+              },
+              {
+                "key": "fileUrl",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "success",
+          "type": "boolean"
+        },
+        {
+          "key": "message",
+          "type": "string"
+        },
+        {
+          "key": "data",
+          "type": "object",
+          "children": [
+            {
+              "key": "filePath",
+              "type": "string"
+            },
+            {
+              "key": "format",
+              "type": "string"
+            },
+            {
+              "key": "size",
+              "type": "number"
+            },
+            {
+              "key": "fileUrl",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "node_1782531308248_s8kpvb",
+      "type": "minimax_tts",
+      "label": "MiniMax TTS",
+      "position": {
+        "x": 900,
+        "y": 180
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
+        "model": "speech-2.8-hd",
+        "voiceId": "{{ __data__[\"node_1781681576137_start\"].voiceId }}",
+        "speed": 1,
+        "vol": 1,
+        "pitch": 0,
+        "emotion": "",
+        "audioFormat": "mp3",
+        "sampleRate": "32000",
+        "outputFormat": "url",
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
+        "text": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-1",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "audioUrl",
+                "type": "audio"
+              },
+              {
+                "key": "audioHex",
+                "type": "string"
+              },
+              {
+                "key": "audioLength",
+                "type": "number"
+              },
+              {
+                "key": "audioFormat",
+                "type": "string"
+              },
+              {
+                "key": "traceId",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "key": "success",
+          "type": "boolean"
+        },
+        {
+          "key": "message",
+          "type": "string"
+        },
+        {
+          "key": "data",
+          "type": "object",
+          "children": [
+            {
+              "key": "audioUrl",
+              "type": "audio"
+            },
+            {
+              "key": "audioHex",
+              "type": "string"
+            },
+            {
+              "key": "audioLength",
+              "type": "number"
+            },
+            {
+              "key": "audioFormat",
+              "type": "string"
+            },
+            {
+              "key": "traceId",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1781686908308_6flfam-default-node_1781681576137_end-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1781681576137_end",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782272119586_dim19h-source-node_1782272191524_rvv1lk-target",
+      "source": "node_1782272119586_dim19h",
+      "target": "node_1782272191524_rvv1lk",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1782281779113_6rk17s-target",
+      "source": "node_1781681576137_start",
+      "target": "node_1782281779113_6rk17s",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-source-node_1781686908308_6flfam-target",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-node_1782531300924_kl04a8-mqvt4y3i",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1782531300924_kl04a8",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-node_1782531308248_s8kpvb-mqvt4y3i",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1782531308248_s8kpvb",
+      "sourceHandle": "case-1"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-node_1782531300926_85slp6-mqvt4y3i",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1782531300926_85slp6",
+      "sourceHandle": "case-2"
+    },
+    {
+      "id": "e-node_1782531300924_kl04a8-node_1782272119586_dim19h-mqvt4y3j",
+      "source": "node_1782531300924_kl04a8",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782531308248_s8kpvb-node_1782272119586_dim19h-mqvt4y3j",
+      "source": "node_1782531308248_s8kpvb",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782531300926_85slp6-node_1782272119586_dim19h-mqvt4y3j",
+      "source": "node_1782531300926_85slp6",
+      "target": "node_1782272119586_dim19h",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782531300924_kl04a8-output:data-node_1782272119586_dim19h-property:groups[0].variables[0].value",
+      "source": "node_1782531300924_kl04a8",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data",
+      "targetHandle": "property:groups[0].variables[0].value"
+    },
+    {
+      "id": "e-node_1782531308248_s8kpvb-output:data-node_1782272119586_dim19h-property:groups[0].variables[1].value",
+      "source": "node_1782531308248_s8kpvb",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data",
+      "targetHandle": "property:groups[0].variables[1].value"
+    },
+    {
+      "id": "e-node_1782531300926_85slp6-output:data-node_1782272119586_dim19h-property:groups[0].variables[2].value",
+      "source": "node_1782531300926_85slp6",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data",
+      "targetHandle": "property:groups[0].variables[2].value"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782281779113_6rk17s-input:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782281779113_6rk17s",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "input:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782531300924_kl04a8-property:text",
+      "source": "node_1781681576137_start",
+      "target": "node_1782531300924_kl04a8",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:text"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:voiceId-node_1782531300924_kl04a8-property:referenceId",
+      "source": "node_1781681576137_start",
+      "target": "node_1782531300924_kl04a8",
+      "edgeKind": "reference",
+      "sourceHandle": "output:voiceId",
+      "targetHandle": "property:referenceId"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782531300926_85slp6-property:text",
+      "source": "node_1781681576137_start",
+      "target": "node_1782531300926_85slp6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:text"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:voiceId-node_1782531300926_85slp6-property:speakerId",
+      "source": "node_1781681576137_start",
+      "target": "node_1782531300926_85slp6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:voiceId",
+      "targetHandle": "property:speakerId"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782531308248_s8kpvb-property:text",
+      "source": "node_1781681576137_start",
+      "target": "node_1782531308248_s8kpvb",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:text"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:voiceId-node_1782531308248_s8kpvb-property:voiceId",
+      "source": "node_1781681576137_start",
+      "target": "node_1782531308248_s8kpvb",
+      "edgeKind": "reference",
+      "sourceHandle": "output:voiceId",
+      "targetHandle": "property:voiceId"
+    }
+  ],
+  "createdAt": 1782530195481,
+  "updatedAt": 1782531672266,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.openai",
+    "workflow.tencent-cos",
+    "workflow.aliyun-ai",
+    "workflow.jimeng",
+    "workflow.ai-image",
+    "workflow.fish-audio",
+    "workflow.minimax",
+    "workflow.qianyin"
+  ],
+  "lastRunAt": 1782304163824,
+  "groups": [],
+  "description": "文字生成语音",
+  "variables": [],
+  "layoutSnapshot": {
+    "nodeDisplayMode": "normal"
+  }
+}

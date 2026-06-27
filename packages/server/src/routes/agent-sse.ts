@@ -11,6 +11,8 @@ import { wrapOnEventWithHooks } from '../services/hook-engine.js';
 import { buildWorkflowEditorSystemPrompt, createWorkflowEditorFunctionTools } from '../services/builtin-tools/workflow-editor-tools.js';
 
 const router = Router();
+const MAX_LANGCHAIN_STALL_RETRIES = 5;
+const LANGCHAIN_STALL_ERROR = 'LangChain stream stalled after tool results';
 
 type AgentSseMessage = Pick<Message, 'senderId' | 'senderRole' | 'content' | 'status' | 'parts'>;
 
@@ -99,7 +101,7 @@ router.post('/run', async (req: Request, res: Response) => {
   prepareSse(res);
   writeSse(res, 'session', { session, workspaceId });
 
-  const runtime = createAgentRuntime({
+  const createRuntime = () => createAgentRuntime({
     kind: runtimeKind,
     provider: preset.modelProvider,
     model: preset.modelId,
@@ -108,47 +110,64 @@ router.post('/run', async (req: Request, res: Response) => {
     adapterBaseURL: preset.apiBase,
     ...getThinkingRuntimeConfig(preset),
   });
+  let currentRuntime: ReturnType<typeof createAgentRuntime> | null = null;
 
   res.on('close', () => {
-    if (!completed && !res.writableEnded) runtime.stop();
+    if (!completed && !res.writableEnded) currentRuntime?.stop();
   });
 
   try {
     agentService.updateStatus(workspaceId, session.id, 'active');
     writeSse(res, 'status', { agentId: session.id, status: 'active' });
 
-    const result = await runtime.execute(
-      buildAgentPrompt(
-        workspaceId,
-        systemPrompt,
-        userPrompt,
-        history,
-        {
-          runtimeKind,
-          mcpServers: Object.keys(mcpServers ?? {}),
-          skills,
-          boundDirs: workspace?.boundDirs ?? [],
-          workingDir,
-          excludeNativeClaudeMd: runtimeKind === 'claude-code',
-          builtInTools: (functionTools ?? []).map((tool) => ({ name: tool.name, description: tool.description })),
-        },
-      ),
-      workingDir,
+    const agentPrompt = buildAgentPrompt(
+      workspaceId,
+      systemPrompt,
+      userPrompt,
+      history,
       {
-        maxTurns: normalizeMaxTurns(body.maxTurns),
-        mcpServers,
+        runtimeKind,
+        mcpServers: Object.keys(mcpServers ?? {}),
         skills,
-        functionTools: functionTools ?? [],
-        configDir,
-        sandboxDirs: preset.sandboxDirs,
-        userPrompt,
-        outputStyle: body.outputStyle ?? preset.outputStyle,
-        onEvent: wrapOnEventWithHooks((event) => {
-          if (event.type === 'output') output.push(event.line);
-          writeSse(res, event.type, serializeRuntimeEvent(event, functionTools?.getDraftWorkflow()));
-        }, workspaceId, workspace?.hooksEnabled),
+        boundDirs: workspace?.boundDirs ?? [],
+        workingDir,
+        excludeNativeClaudeMd: runtimeKind === 'claude-code',
+        builtInTools: (functionTools ?? []).map((tool) => ({ name: tool.name, description: tool.description })),
       },
     );
+    let result: Awaited<ReturnType<ReturnType<typeof createAgentRuntime>['execute']>>;
+    let retryCount = 0;
+    while (true) {
+      currentRuntime = createRuntime();
+      result = await currentRuntime.execute(
+        agentPrompt,
+        workingDir,
+        {
+          maxTurns: normalizeMaxTurns(body.maxTurns),
+          mcpServers,
+          skills,
+          functionTools: functionTools ?? [],
+          configDir,
+          sandboxDirs: preset.sandboxDirs,
+          userPrompt,
+          outputStyle: body.outputStyle ?? preset.outputStyle,
+          onEvent: wrapOnEventWithHooks((event) => {
+            if (event.type === 'output') output.push(event.line);
+            writeSse(res, event.type, serializeRuntimeEvent(event, functionTools?.getDraftWorkflow()));
+          }, workspaceId, workspace?.hooksEnabled),
+        },
+      );
+      currentRuntime = null;
+
+      if (!isRetryableLangChainStall(result.error) || retryCount >= MAX_LANGCHAIN_STALL_RETRIES) break;
+      retryCount += 1;
+      writeSse(res, 'retry', {
+        agentId: session.id,
+        attempt: retryCount + 1,
+        maxRetries: MAX_LANGCHAIN_STALL_RETRIES,
+        error: result.error,
+      });
+    }
 
     completed = true;
     const displayOutput = output.length ? output : result.output;
@@ -341,6 +360,10 @@ function normalizeSkills(input: AgentSseRequestBody['skills'] | AgentSseRequestB
 
 function normalizeMaxTurns(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 100;
+}
+
+function isRetryableLangChainStall(error: string | undefined): boolean {
+  return typeof error === 'string' && error.includes(LANGCHAIN_STALL_ERROR);
 }
 
 function normalizeWorkflowAgent(input: AgentSseRequestBody['workflowAgent']): {

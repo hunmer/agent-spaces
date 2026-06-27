@@ -13,11 +13,12 @@ import {
 } from '../utils/constants.js';
 import { parseStoryboardJson, resolveUploadItem } from '../utils/workflow.js';
 
-// 三个工作流槽位定义：label + settings 字段映射
+// 四个工作流槽位定义：label + settings 字段映射
 const WORKFLOW_SLOTS = [
   { key: 'textToImage', idKey: 'textToImageWorkflowId', nameKey: 'textToImageWorkflowName', label: '文生图工作流', desc: '纯文本生成图片（角色、分镜画面）' },
   { key: 'editImage', idKey: 'editImageWorkflowId', nameKey: 'editImageWorkflowName', label: '图生图工作流', desc: '参考图生成 / 图像编辑' },
   { key: 'video', idKey: 'videoWorkflowId', nameKey: 'videoWorkflowName', label: '视频生成工作流', desc: '分镜画面生成视频' },
+  { key: 'voice', idKey: 'voiceWorkflowId', nameKey: 'voiceWorkflowName', label: '语音合成工作流', desc: '分镜旁白文本生成语音' },
 ];
 
 // 工作流列表元素归一化为 WorkflowListDialog 期望的结构
@@ -438,6 +439,133 @@ export function SettingsDialog({ open, value, onClose, onSave }) {
         onClose={() => setPickingSlot(null)}
       />
       {pickingSlot && workflowLoading && <div className="sb-floating-status">工作流加载中...</div>}
+    </Modal>
+  );
+}
+
+// 项目管理对话框：选择 / 新建 / 重命名 / 删除当前项目（替代 Select + window.prompt）
+export function ProjectPickerDialog({ open, projects, currentId, onClose, actions }) {
+  const { Button, Input, Label, FolderKanban, Plus, Pencil, Trash2, Check, X, Loader2 } = window.AgentSpacesUI;
+
+  const [mode, setMode] = useState('select'); // select | new | rename
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setMode('select');
+    setName('');
+    setError('');
+    setBusy(false);
+  }, [open]);
+
+  const startNew = () => { setMode('new'); setName(''); setError(''); };
+  const startRename = () => {
+    const cur = projects.find((p) => p.id === currentId);
+    setMode('rename');
+    setName(cur?.name || '');
+    setError('');
+  };
+
+  const submit = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) { setError('名称不能为空'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      if (mode === 'new') {
+        await actions.newProject(trimmed);
+      } else {
+        await actions.renameProject(currentId, trimmed);
+      }
+      setMode('select');
+      setName('');
+    } catch (e) {
+      setError(e?.message || '操作失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id) => {
+    const p = projects.find((x) => x.id === id);
+    if (!p) return;
+    if (!window.confirm(`删除项目「${p.name}」？此操作不可撤销。`)) return;
+    setBusy(true);
+    try {
+      await actions.deleteProject(id);
+    } catch (e) {
+      setError(e?.message || '删除失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="项目管理"
+      width={560}
+      className="sm:max-w-[560px]"
+      bodyClassName="sb-modal-body sb-modal-body-scroll"
+    >
+      {mode === 'select' ? (
+        <>
+          <div className="sb-field" style={{ marginTop: 0 }}>
+            <Label>选择项目（当前项目高亮）</Label>
+          </div>
+          <div className="sb-pj-list">
+            {projects.length === 0 ? (
+              <div className="sb-list-empty">暂无项目，点击下方「新建项目」</div>
+            ) : projects.map((p) => {
+              const active = p.id === currentId;
+              return (
+                <div key={p.id} className={`sb-pj-row${active ? ' is-active' : ''}`}>
+                  <button type="button" className="sb-pj-main" onClick={() => { actions.setActiveProject(p.id); onClose(); }}>
+                    <FolderKanban className="sb-icon" />
+                    <span className="sb-pj-name">{p.name}</span>
+                    {active && <span className="sb-pj-badge">当前</span>}
+                  </button>
+                  <button type="button" className="sb-pj-act" onClick={() => { actions.setActiveProject(p.id); startRename(); }} title="重命名">
+                    <Pencil className="sb-icon" />
+                  </button>
+                  <button type="button" className="sb-pj-act sb-pj-del" onClick={() => remove(p.id)} title="删除">
+                    <Trash2 className="sb-icon" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {error && <div className="sb-error">{error}</div>}
+
+          <div className="sb-modal-foot">
+            <Button onClick={startNew}><Plus className="sb-icon" />新建项目</Button>
+            <Button variant="outline" onClick={onClose}>关闭</Button>
+          </div>
+        </>
+      ) : (
+        <div className="sb-field" style={{ marginTop: 0 }}>
+          <Label>{mode === 'new' ? '新项目名称' : '项目新名称'}</Label>
+          <Input
+            value={name}
+            autoFocus
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
+            placeholder="输入项目名称"
+          />
+          {error && <div className="sb-error">{error}</div>}
+          <div className="sb-modal-foot">
+            <Button variant="outline" onClick={() => { setMode('select'); setError(''); }} disabled={busy}>返回</Button>
+            <Button onClick={submit} disabled={busy || !name.trim()}>
+              {busy ? <Loader2 className="sb-icon sb-spin" /> : <Check className="sb-icon" />}
+              {busy ? '处理中' : '确定'}
+            </Button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

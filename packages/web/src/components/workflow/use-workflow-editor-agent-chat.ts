@@ -16,6 +16,7 @@ import {
   stripWorkflowPatchFields,
   resolveWorkflowAgentPreset,
   resolveWorkflowAgentSettingsDraft,
+  getWorkflowAgentMessageText,
   isSuccessfulToolResult,
   asRecord,
   findLastIndex,
@@ -151,6 +152,11 @@ export function useWorkflowEditorAgentChat({
     appendTimelineTextItem(messageId, 'message', content);
   }, [appendTimelineTextItem]);
 
+  const appendAssistantError = useCallback((messageId: string, error: string) => {
+    const text = error.trim() || 'Agent run failed';
+    appendTimelineMessage(messageId, text);
+  }, [appendTimelineMessage]);
+
   const completeLatestToolCall = useCallback((messageId: string, toolUseId: string, result: unknown) => {
     setAgentMessages((messages) => messages.map((message) => {
       if (message.id !== messageId || !message.timeline?.length) return message;
@@ -248,11 +254,15 @@ export function useWorkflowEditorAgentChat({
           prompt,
           maxTurns: 40,
           messages: agentMessages
-            .filter((message) => message.content.trim())
             .map((message) => ({
+              message,
+              content: getWorkflowAgentMessageText(message),
+            }))
+            .filter(({ content }) => content.trim())
+            .map(({ message, content }) => ({
               senderId: message.role === 'user' ? 'user' : preset.id,
               senderRole: message.role === 'agent' ? preset.role : undefined,
-              content: message.content,
+              content,
               status: 'completed',
             })),
           workflowAgent: {
@@ -265,7 +275,7 @@ export function useWorkflowEditorAgentChat({
 
       if (!response.ok || !response.body) {
         const text = await response.text().catch(() => '');
-        appendAssistantContent(assistantId, text || `请求失败：${response.status}`);
+        appendAssistantError(assistantId, text || `Request failed: ${response.status}`);
         return;
       }
 
@@ -313,17 +323,17 @@ export function useWorkflowEditorAgentChat({
         }
         if (event.event === 'done') {
           const data = asRecord(event.data);
-          if (data.error) appendAssistantContent(assistantId, String(data.error));
+          if (data.error) appendAssistantError(assistantId, String(data.error));
           return;
         }
         if (event.event === 'error') {
           const data = asRecord(event.data);
-          appendAssistantContent(assistantId, String(data.error ?? 'Agent 运行失败'));
+          appendAssistantError(assistantId, String(data.error ?? 'Agent run failed'));
         }
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
-      appendAssistantContent(assistantId, error instanceof Error ? error.message : String(error));
+      appendAssistantError(assistantId, error instanceof Error ? error.message : String(error));
     } finally {
       if (agentAbortControllerRef.current?.signal.aborted || agentAbortControllerRef.current) {
         agentAbortControllerRef.current = null;
@@ -334,15 +344,13 @@ export function useWorkflowEditorAgentChat({
     agentInput,
     agentSending,
     workflow,
-    setWorkflow,
-    markDirty,
-    pushUndo,
     selectedNodes,
     workspaceId,
     agentMessages,
     appendAssistantContent,
     appendTimelineTextItem,
     appendTimelineMessage,
+    appendAssistantError,
     appendToolCall,
     completeLatestToolCall,
     applyWorkflowPatch,

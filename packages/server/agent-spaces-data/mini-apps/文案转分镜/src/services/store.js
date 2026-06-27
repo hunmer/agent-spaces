@@ -7,6 +7,7 @@ const DATA_PATH = 'data.json';
 const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID = 'd88dcb7c-7f5f-47c8-962c-89217a2c0ad6';
 const DEFAULT_EDIT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
 const DEFAULT_VIDEO_WORKFLOW_ID = '5130958f-a78e-4c36-8f03-1f2f733b87d7';
+const DEFAULT_VOICE_WORKFLOW_ID = '820bf3b7-9d50-4f6d-966d-8e442960a233';
 
 function defaultData() {
   return {
@@ -22,6 +23,8 @@ function defaultData() {
       editImageWorkflowName: 'edit_image',
       videoWorkflowId: DEFAULT_VIDEO_WORKFLOW_ID,
       videoWorkflowName: 'video_generator',
+      voiceWorkflowId: DEFAULT_VOICE_WORKFLOW_ID,
+      voiceWorkflowName: 'text_to_voice',
       provider: 'keling',
       model: 'kling/kling-v3-image-generation',
       aspect: '16:9',
@@ -29,6 +32,8 @@ function defaultData() {
       quality: '720',
       duration: '5',
       batchLimit: '1',
+      voiceModel: 'fish-audio',
+      voiceId: '',
     },
   };
 }
@@ -75,6 +80,7 @@ function normalizeScene(s) {
     characterIds: Array.isArray(s?.characterIds) ? s.characterIds : [],
     images: Array.isArray(s?.images) ? s.images : [],
     video: typeof s?.video === 'string' ? s.video : '',
+    audios: Array.isArray(s?.audios) ? s.audios : [],
   };
 }
 
@@ -237,7 +243,7 @@ export default {
     return { ok: true, data };
   },
 
-  // 工作流结果回填：kind = image | video
+  // 工作流结果回填：kind = image | video | audio
   add_scene_media: ({ projectId, sceneId, kind, urls }, ctx) => {
     const data = ctx.updateConfig(DATA_PATH, (prev) => {
       const cur = normalizeData(prev);
@@ -248,6 +254,8 @@ export default {
       const list = Array.isArray(urls) ? urls.filter(Boolean) : [];
       if (kind === 'video') {
         s.video = list[list.length - 1] || s.video || '';
+      } else if (kind === 'audio') {
+        s.audios = [...(s.audios || []), ...list];
       } else {
         s.images = [...(s.images || []), ...list];
       }
@@ -265,6 +273,7 @@ export default {
       const s = (p.scenes || []).find((x) => x.id === sceneId);
       if (!s) return cur;
       if (kind === 'video') s.video = '';
+      else if (kind === 'audio') s.audios = [];
       else s.images = [];
       touch(p);
       return cur;
@@ -272,7 +281,7 @@ export default {
     return { ok: true, data };
   },
 
-  // 删除单条媒体：图片按 url 过滤；视频 url 匹配则清空
+  // 删除单条媒体：图片/语音按 url 过滤；视频 url 匹配则清空
   remove_scene_media: ({ projectId, sceneId, kind, url }, ctx) => {
     const data = ctx.updateConfig(DATA_PATH, (prev) => {
       const cur = normalizeData(prev);
@@ -282,6 +291,8 @@ export default {
       if (!s) return cur;
       if (kind === 'video') {
         if (!url || s.video === url) s.video = '';
+      } else if (kind === 'audio') {
+        if (Array.isArray(s.audios)) s.audios = s.audios.filter((u) => u !== url);
       } else if (Array.isArray(s.images)) {
         s.images = s.images.filter((u) => u !== url);
       }

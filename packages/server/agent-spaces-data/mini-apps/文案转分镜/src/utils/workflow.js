@@ -29,12 +29,22 @@ export function extractResultUrls(payload) {
   const raw = resultStep?.output?.result ?? resultStep?.output?.result_url ?? [];
   const list = Array.isArray(raw) ? raw : [raw];
   return list
-    .map((item) => {
-      if (typeof item === 'string') return item;
-      if (item?.url) return item.url;
-      return null;
-    })
+    .map((item) => urlOf(item))
     .filter(Boolean);
+}
+
+// 从单个结果项提取 url（兼容 string / {url} / {audioUrl} / {data:{...}} 等格式）
+export function urlOf(item) {
+  if (!item) return null;
+  if (typeof item === 'string') return item.trim() || null;
+  if (typeof item === 'object') {
+    return (
+      item.audioUrl || item.httpPath || item.fileUrl || item.url
+      || (typeof item.data === 'string' ? item.data : item.data?.audioUrl || item.data?.url || item.data?.httpPath)
+      || null
+    );
+  }
+  return null;
 }
 
 // 调用工作流生成（图片或视频共用）
@@ -60,6 +70,32 @@ export async function runGeneration({ kind, workflowId, input, label }) {
   }
   const urls = extractResultUrls(payload);
   if (!urls.length) throw new Error('工作流没有返回结果');
+  return urls;
+}
+
+// 调用 text_to_voice 工作流合成语音
+// input: { prompt, model, voiceId? }
+export async function runVoiceGeneration({ workflowId, input, label }) {
+  const taskId = `sb-voice-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const result = await AS().callPluginTool(
+    BUILTIN_PLUGIN,
+    'execute_workflow_sync',
+    {
+      workflow_id: workflowId,
+      input,
+      max_wait_ms: 600000,
+    },
+    {
+      taskId,
+      meta: { kind: 'voice', workflowId, label: label || '语音合成' },
+    },
+  );
+  const payload = unwrapWorkflowPayload(result);
+  if (payload?.status && payload.status !== 'completed' && payload.status !== 'success') {
+    throw new Error(payload.timedOut ? '工作流仍在运行，请稍后重试' : `工作流状态：${payload.status}`);
+  }
+  const urls = extractResultUrls(payload);
+  if (!urls.length) throw new Error('语音工作流没有返回音频');
   return urls;
 }
 
