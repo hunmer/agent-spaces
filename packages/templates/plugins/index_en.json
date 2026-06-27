@@ -224,7 +224,7 @@
     "hasWorkflow": true,
     "path": "eagle",
     "iconUrl": "plugins/eagle/icon.png",
-    "md5": "99ca617156e0cbd46a09ba7b52c374db",
+    "md5": "f716530e250d02da4f1dd11a81d6dea9",
     "updatedAt": "2026-06-27T06:38:59.955Z",
     "files": [
       "actions/folder.js",
@@ -232,86 +232,12 @@
       "actions/item.js",
       "actions/misc.js",
       "actions/tag.js",
-      "docs/ai-search.md",
-      "docs/app.md",
-      "docs/folder.md",
-      "docs/item.md",
-      "docs/library.md",
-      "docs/readme.md",
-      "docs/smart-folder.md",
-      "docs/tag-group.md",
-      "docs/tag.md",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
       "README.md",
       "shared.js",
-      "tools.js",
-      "workflow.js"
-    ]
-  },
-  {
-    "id": "workflow.notion",
-    "name": "Notion",
-    "version": "1.0.0",
-    "description": "Operate Notion pages & databases via Notion API: search, create/update/move/archive pages, create/update databases, query databases and retrieve page properties",
-    "author": {
-      "name": "workflow"
-    },
-    "tags": [
-      "Notion",
-      "Notes",
-      "Database",
-      "API"
-    ],
-    "type": "server",
-    "hasView": false,
-    "hasWorkflow": true,
-    "path": "notion",
-    "iconUrl": "plugins/notion/icon.png",
-    "md5": "",
-    "updatedAt": "2026-06-27T00:00:00.000Z",
-    "files": [
-      "README.md",
-      "actions.js",
-      "icon.png",
-      "info.json",
-      "lang.json",
-      "main.js",
-      "shared.js",
-      "tools.js",
-      "workflow.js"
-    ]
-  },
-  {
-    "id": "workflow.feishu",
-    "name": "Feishu",
-    "version": "1.0.0",
-    "description": "Send messages to chats/users via Feishu Open Platform Node SDK, supporting text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow types, rich text and message cards",
-    "author": {
-      "name": "workflow"
-    },
-    "tags": [
-      "notification",
-      "feishu",
-      "lark"
-    ],
-    "type": "server",
-    "hasView": false,
-    "hasWorkflow": true,
-    "path": "feishu",
-    "iconUrl": "plugins/feishu/icon.svg",
-    "md5": "feishu-1.0.0",
-    "updatedAt": "2026-06-27T07:00:00.000Z",
-    "files": [
-      "actions.js",
-      "icon.svg",
-      "info.json",
-      "lang.json",
-      "main.js",
-      "package.json",
-      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -343,6 +269,38 @@
       "lang.json",
       "main.js",
       "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.feishu",
+    "name": "Feishu",
+    "version": "1.0.0",
+    "description": "Send messages to chats/users via Feishu Open Platform Node SDK, supporting text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow types, rich text and message cards",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "notification",
+      "feishu",
+      "lark"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "feishu",
+    "iconUrl": "plugins/feishu/icon.png",
+    "md5": "66100664b8638da05a631ce58a6e070e",
+    "updatedAt": "2026-06-27T07:15:03.553Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
       "package.json",
       "README.md",
       "tools.js",
@@ -674,6 +632,39 @@
       "main.js",
       "Nano Banana image generation.md",
       "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.notion",
+    "name": "Notion",
+    "version": "1.0.0",
+    "description": "Operate Notion pages & databases via Notion API: search, create/update/move/archive pages, create/update databases, query databases and retrieve page properties",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Notion",
+      "Notes",
+      "Database",
+      "API"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "notion",
+    "iconUrl": "plugins/notion/icon.png",
+    "md5": "f49d80517e6aa8428fc6406371083e8e",
+    "updatedAt": "2026-06-27T07:14:18.423Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
       "tools.js",
       "workflow.js"
     ]

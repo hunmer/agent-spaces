@@ -205,11 +205,10 @@
   ],
   "edges": [],
   "createdAt": 1782542208311,
-  "updatedAt": 1782544436544,
+  "updatedAt": 1782544595186,
   "published": false,
   "enabledPlugins": [
-    "workflow.eagle",
-    "workflow.notion"
+    "workflow.eagle"
   ],
   "groups": []
 }
