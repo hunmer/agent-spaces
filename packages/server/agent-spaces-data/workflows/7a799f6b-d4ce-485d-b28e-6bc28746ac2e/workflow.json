@@ -34,15 +34,15 @@
     }
   ],
   "createdAt": 1782351366888,
-  "updatedAt": 1782351401671,
+  "updatedAt": 1782543779847,
   "published": false,
   "triggers": [
     {
       "id": "trigger_1782351394146",
       "type": "cron",
-      "enabled": true,
+      "enabled": false,
       "cron": "* * * * *"
     }
   ],
-  "lastRunAt": 1782542160026
+  "lastRunAt": 1782543720026
 }

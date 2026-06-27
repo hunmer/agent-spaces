@@ -1,0 +1,48 @@
+{
+  "id": "workflow.feishu",
+  "name": "Feishu",
+  "name_zh": "飞书",
+  "name_en": "Feishu",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "description": "通过飞书开放平台 Node SDK 向指定群聊/用户发送消息，支持 text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow 消息类型，以及富文本与消息卡片",
+  "description_zh": "通过飞书开放平台 Node SDK 向指定群聊/用户发送消息，支持 text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow 消息类型，以及富文本与消息卡片",
+  "description_en": "Send messages to chats/users via Feishu Open Platform Node SDK, supporting text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow types, rich text and message cards",
+  "author": { "name": "workflow" },
+  "tags": ["notification", "feishu", "飞书", "lark"],
+  "tags_zh": ["通知", "飞书", "消息推送"],
+  "tags_en": ["notification", "feishu", "lark"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "appId",
+      "label": "App ID",
+      "desc": "飞书企业自建应用 App ID（cli_ 开头）",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "appSecret",
+      "label": "App Secret",
+      "desc": "飞书企业自建应用 App Secret",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "domain",
+      "label": "Domain",
+      "desc": "feishu（国内）或 lark（海外），默认 feishu",
+      "type": "string",
+      "value": "feishu"
+    }
+  ]
+}

@@ -206,8 +206,40 @@
     ]
   },
   {
-    "id": "workflow.eagle",
-    "name": "Eagle 资源库",
+    "id": "workflow.feishu",
+    "name": "飞书",
+    "version": "1.0.0",
+    "description": "通过飞书开放平台 Node SDK 向指定群聊/用户发送消息，支持 text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow 消息类型，以及富文本与消息卡片",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "notification",
+      "feishu",
+      "飞书",
+      "lark"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "feishu",
+    "iconUrl": "plugins/feishu/icon.svg",
+    "md5": "feishu-1.0.0",
+    "updatedAt": "2026-06-27T07:00:00.000Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.epub-parser",
     "version": "1.0.0",
     "description": "通过本地 Eagle Web API v2 操作 Eagle 资源库：条目查询/搜索/添加/更新、文件夹与智能文件夹、标签与标签组、资源库切换，以及 AI 语义搜索",
     "author": {
@@ -223,9 +255,9 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "eagle",
-    "iconUrl": "plugins/eagle/icon.svg",
-    "md5": "88a047228d699a0b3db877d71cef51a5",
-    "updatedAt": "2026-06-27T06:29:48.495Z",
+    "iconUrl": "plugins/eagle/icon.png",
+    "md5": "99ca617156e0cbd46a09ba7b52c374db",
+    "updatedAt": "2026-06-27T06:38:59.955Z",
     "files": [
       "actions/folder.js",
       "actions/index.js",
@@ -241,7 +273,7 @@
       "docs/smart-folder.md",
       "docs/tag-group.md",
       "docs/tag.md",
-      "icon.svg",
+      "icon.png",
       "info.json",
       "lang.json",
       "main.js",
@@ -836,6 +868,39 @@
       "lang.json",
       "main.js",
       "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.notion",
+    "name": "Notion",
+    "version": "1.0.0",
+    "description": "通过 Notion API 操作页面与数据库：搜索、创建/更新/移动/归档页面，创建/更新数据库，查询数据库与获取页面属性",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Notion",
+      "笔记",
+      "数据库",
+      "API"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "notion",
+    "iconUrl": "plugins/notion/icon.png",
+    "md5": "",
+    "updatedAt": "2026-06-27T00:00:00.000Z",
+    "files": [
+      "README.md",
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "shared.js",
       "tools.js",
       "workflow.js"
     ]

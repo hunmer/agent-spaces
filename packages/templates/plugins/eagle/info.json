@@ -3,7 +3,7 @@
   "name": "Eagle",
   "name_zh": "Eagle 资源库",
   "name_en": "Eagle",
-  "icon": "icon.svg",
+  "icon": "icon.png",
   "version": "1.0.0",
   "description": "通过本地 Eagle Web API v2 操作 Eagle 资源库：条目查询/搜索/添加/更新、文件夹与智能文件夹、标签与标签组、资源库切换，以及 AI 语义搜索",
   "description_zh": "通过本地 Eagle Web API v2 操作 Eagle 资源库：条目查询/搜索/添加/更新、文件夹与智能文件夹、标签与标签组、资源库切换，以及 AI 语义搜索",

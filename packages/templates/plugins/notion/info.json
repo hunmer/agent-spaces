@@ -1,0 +1,48 @@
+{
+  "id": "workflow.notion",
+  "name": "Notion",
+  "name_zh": "Notion",
+  "name_en": "Notion",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "通过 Notion API 操作页面与数据库：搜索、创建/更新/移动/归档页面，创建/更新数据库，查询数据库与获取页面属性",
+  "description_zh": "通过 Notion API 操作页面与数据库：搜索、创建/更新/移动/归档页面，创建/更新数据库，查询数据库与获取页面属性",
+  "description_en": "Operate Notion pages & databases via Notion API: search, create/update/move/archive pages, create/update databases, query databases and retrieve page properties",
+  "author": { "name": "workflow" },
+  "tags": ["Notion", "笔记", "数据库", "API"],
+  "tags_zh": ["Notion", "笔记", "数据库", "API"],
+  "tags_en": ["Notion", "Notes", "Database", "API"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "token",
+      "label": "Integration Token",
+      "desc": "Notion Internal Integration Token（以 ntn_ 或 secret_ 开头）。需在 Notion 中创建 Integration 并分享给目标页面/数据库",
+      "type": "string",
+      "value": "",
+      "placeholder": "ntn_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "required": true
+    },
+    {
+      "key": "notionVersion",
+      "label": "Notion-Version",
+      "desc": "Notion API 版本号，默认 2022-06-28。move-page 需要 2026-03-11+",
+      "type": "string",
+      "value": "2022-06-28"
+    },
+    {
+      "key": "timeout",
+      "label": "超时(ms)",
+      "desc": "单次请求超时时间",
+      "type": "number",
+      "value": "60000"
+    }
+  ]
+}
