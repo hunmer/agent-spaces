@@ -4,7 +4,7 @@ import { useStore } from './hooks/useStore.js';
 import { DEFAULT_SETTINGS, SETTING_KEYS } from './utils/constants.js';
 import CharacterPanel from './components/CharacterPanel.jsx';
 import ScenePanel from './components/ScenePanel.jsx';
-import { ImportDialog, GenerateParamsDialog, AgentConfigButton } from './components/Dialogs.jsx';
+import { ImportDialog, GenerateParamsDialog, AgentConfigButton, SettingsDialog } from './components/Dialogs.jsx';
 
 function Style() {
   return (
@@ -113,18 +113,26 @@ function Style() {
         .sb-split { grid-template-columns: 1fr; }
         .sb-grid-2 { grid-template-columns: 1fr; }
       }
+
+      .sb-slot-row { display: flex; }
+      .sb-slot-btn { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #e4e4e7; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; color: #18181b; text-align: left; }
+      .sb-slot-btn:hover { background: #f4f4f5; }
+      .sb-slot-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #52525b; }
+      .sb-slot-desc { font-size: 12px; color: #a1a1aa; margin-top: 6px; }
+      .sb-floating-status { position: fixed; right: 18px; bottom: 18px; z-index: 80; background: #18181b; color: #fff; border-radius: 7px; padding: 8px 12px; font-size: 13px; }
     `}</style>
   );
 }
 
 function App() {
   const AS = window.AgentSpaces;
-  const { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Plus, Pencil, Trash2, FileText } = window.AgentSpacesUI;
+  const { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Plus, Pencil, Trash2, FileText, Settings } = window.AgentSpacesUI;
 
   const { projects, project, projectId, settings, actions } = useStore();
 
   const [tab, setTab] = React.useState('characters');
   const [importOpen, setImportOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [agentConfigId, setAgentConfigId] = React.useState(() => AS.getUserSetting?.(SETTING_KEYS.agentConfigId, '') || '');
   const [agentMeta, setAgentMeta] = React.useState(() => AS.getUserSetting?.(SETTING_KEYS.agentMeta, null) || null);
 
@@ -157,6 +165,15 @@ function App() {
     setGenOpen(false);
     resolverRef.current?.(null);
     resolverRef.current = null;
+  };
+
+  const onSettingsSave = (patch) => {
+    // 只保留工作流相关字段
+    const keys = ['textToImageWorkflowId', 'textToImageWorkflowName', 'editImageWorkflowId', 'editImageWorkflowName', 'videoWorkflowId', 'videoWorkflowName'];
+    const next = {};
+    keys.forEach((k) => { if (patch[k] != null) next[k] = patch[k]; });
+    actions.saveSettings(next);
+    setSettingsOpen(false);
   };
 
   const newProject = async () => {
@@ -205,6 +222,9 @@ function App() {
           <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} disabled={!project}>
             <FileText className="sb-icon" />导入文案
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)} disabled={!project} title="工作流设置">
+            <Settings className="sb-icon" />设置
+          </Button>
           <AgentConfigButton agentConfigId={agentConfigId} agentMeta={agentMeta} onConfigured={onAgentConfigured} />
         </div>
       </header>
@@ -238,6 +258,12 @@ function App() {
         variant={genVariant}
         onConfirm={onParamsConfirm}
         onCancel={onParamsCancel}
+      />
+      <SettingsDialog
+        open={settingsOpen}
+        value={cfg}
+        onClose={() => setSettingsOpen(false)}
+        onSave={onSettingsSave}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-// 文案转分镜 · 对话框（导入文案 / 生成参数 / Agent 配置）
+// 文案转分镜 · 对话框（导入文案 / 生成参数 / Agent 配置 / 工作流设置）
 import React, { useState, useEffect } from 'react';
 import {
   BUILTIN_PLUGIN,
@@ -12,6 +12,24 @@ import {
   AGENT_INIT_PROMPT,
 } from '../utils/constants.js';
 import { parseStoryboardJson, resolveUploadItem } from '../utils/workflow.js';
+
+// 三个工作流槽位定义：label + settings 字段映射
+const WORKFLOW_SLOTS = [
+  { key: 'textToImage', idKey: 'textToImageWorkflowId', nameKey: 'textToImageWorkflowName', label: '文生图工作流', desc: '纯文本生成图片（角色、分镜画面）' },
+  { key: 'editImage', idKey: 'editImageWorkflowId', nameKey: 'editImageWorkflowName', label: '图生图工作流', desc: '参考图生成 / 图像编辑' },
+  { key: 'video', idKey: 'videoWorkflowId', nameKey: 'videoWorkflowName', label: '视频生成工作流', desc: '分镜画面生成视频' },
+];
+
+// 工作流列表元素归一化为 WorkflowListDialog 期望的结构
+function normalizeWorkflow(workflow) {
+  return {
+    ...workflow,
+    id: workflow.id || workflow.workflow_id,
+    name: workflow.name || workflow.title || '未命名工作流',
+    updatedAt: workflow.updatedAt || 0,
+    nodes: workflow.nodes || [],
+  };
+}
 
 // 通用 dialog 外壳（使用 AgentSpacesUI 自带 Dialog，避免 Select 浮层层级异常）
 function Modal({ open, onClose, title, children, width, className = '', bodyClassName = '' }) {
@@ -328,6 +346,98 @@ export function ImportDialog({ open, onClose, actions, agentConfigId }) {
           {running ? '生成中' : '生成并导入'}
         </Button>
       </div>
+    </Modal>
+  );
+}
+
+// 工作流设置对话框：为三个用途分别指定工作流
+export function SettingsDialog({ open, value, onClose, onSave }) {
+  const { Button, Label, Workflow, WorkflowListDialog } = window.AgentSpacesUI;
+  const AS = window.AgentSpaces;
+
+  const [cfg, setCfg] = useState(value || {});
+  const [workflows, setWorkflows] = useState([]);
+  const [workflowLoading, setWorkflowLoading] = useState(false);
+  const [error, setError] = useState('');
+  // 当前正在挑选工作流的槽位 key（用于复用同一个 WorkflowListDialog）
+  const [pickingSlot, setPickingSlot] = useState(null);
+
+  useEffect(() => {
+    if (open) {
+      setCfg(value || {});
+      setError('');
+    }
+  }, [open, value]);
+
+  // 打开槽位选择：拉取工作流列表后弹出 WorkflowListDialog
+  const openPicker = async (slotKey) => {
+    setPickingSlot(slotKey);
+    setWorkflowLoading(true);
+    try {
+      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
+      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
+      setWorkflows(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setError(err?.message || String(err));
+    } finally {
+      setWorkflowLoading(false);
+    }
+  };
+
+  const onPickWorkflow = (workflow) => {
+    const slot = WORKFLOW_SLOTS.find((s) => s.key === pickingSlot);
+    if (!slot) return;
+    const id = workflow.workflow_id || workflow.id;
+    const name = workflow.title || workflow.name || '未命名工作流';
+    setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
+    setPickingSlot(null);
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="工作流设置"
+      width={520}
+      className="sm:max-w-[520px]"
+      bodyClassName="sb-modal-body sb-modal-body-scroll"
+    >
+      <div className="sb-field" style={{ marginTop: 0 }}>
+        <Label>为当前项目指定以下工作流</Label>
+      </div>
+
+      {WORKFLOW_SLOTS.map((slot) => {
+        const name = cfg[slot.nameKey] || '';
+        const id = cfg[slot.idKey] || '';
+        return (
+          <div className="sb-field" key={slot.key}>
+            <Label>{slot.label}</Label>
+            <div className="sb-slot-row">
+              <button type="button" className="sb-slot-btn" onClick={() => openPicker(slot.key)} title={id || '未设置'}>
+                <Workflow className="sb-icon" />
+                <span className="sb-slot-name">{name || id || '点击选择工作流'}</span>
+              </button>
+            </div>
+            <div className="sb-slot-desc">{slot.desc}</div>
+          </div>
+        );
+      })}
+
+      {error && <div className="sb-error">{error}</div>}
+
+      <div className="sb-modal-foot">
+        <Button variant="outline" onClick={onClose}>取消</Button>
+        <Button onClick={() => onSave(cfg)}>保存</Button>
+      </div>
+
+      <WorkflowListDialog
+        open={!!pickingSlot}
+        workflows={workflows.map(normalizeWorkflow)}
+        onSelect={onPickWorkflow}
+        onCreate={() => window.open('/workflows', '_blank')}
+        onClose={() => setPickingSlot(null)}
+      />
+      {pickingSlot && workflowLoading && <div className="sb-floating-status">工作流加载中...</div>}
     </Modal>
   );
 }
