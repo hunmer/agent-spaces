@@ -79,6 +79,7 @@
   "actionType": "Action Type",
   "selectMiniApp": "Select mini-app",
   "customActionOpenMiniAppFloating": "Open mini-app in floating panel",
+  "useFloatingBall": "Use floating ball",
   "noCustomShortcuts": "No custom shortcuts yet. Click \"Add Action\" to create one.",
   "cancel": "Cancel",
   "loading": "Loading...",

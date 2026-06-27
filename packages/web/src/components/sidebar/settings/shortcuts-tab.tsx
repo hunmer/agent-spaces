@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import type { MiniAppProject } from "@agent-spaces/sdk";
 import { sdk } from "@/lib/sdk";
 
@@ -297,10 +298,10 @@ function CustomShortcutDialog({
     return () => document.removeEventListener('keydown', handler, true);
   }, [recording]);
 
-  // 校验：name 非空、所有 schema 参数已填、keys 非空、keys 不与其它项冲突（编辑时排除自身）
+  // 校验：name 非空、必填类 schema 参数已填（switch 类可选）、keys 非空、keys 不与其它项冲突
   const canSubmit = useMemo(() => {
     if (!name.trim() || !keys) return false;
-    const required = actionDef?.paramsSchema.every((f) => params[f.key]) ?? true;
+    const required = actionDef?.paramsSchema.every((f) => f.type === 'switch' || params[f.key]) ?? true;
     if (!required) return false;
     const conflict = items.some((it) => it.keys === keys && it.id !== editing?.id);
     return !conflict;
@@ -359,27 +360,42 @@ function CustomShortcutDialog({
           </div>
 
           {/* 动态参数 */}
-          {actionDef?.paramsSchema.map((field) => (
-            <div key={field.key} className="space-y-1.5">
-              <Label>{field.labelKey ? t(field.labelKey) : field.key}</Label>
-              {field.source === 'miniApps' ? (
-                <Select
-                  value={params[field.key] ?? ''}
-                  onValueChange={(v) => setParams((p) => ({ ...p, [field.key]: v ?? '' }))}
-                  disabled={miniAppsLoading}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={miniAppsLoading ? t('loading') : t('selectMiniApp')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {miniApps.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
-            </div>
-          ))}
+          {actionDef?.paramsSchema.map((field) => {
+            if (field.type === 'switch') {
+              const checked = params[field.key] === 'true';
+              return (
+                <div key={field.key} className="flex items-center justify-between py-1">
+                  <Label>{field.labelKey ? t(field.labelKey) : field.key}</Label>
+                  <Switch
+                    checked={checked}
+                    onCheckedChange={(v) => setParams((p) => ({ ...p, [field.key]: String(v) }))}
+                  />
+                </div>
+              );
+            }
+            // select
+            return (
+              <div key={field.key} className="space-y-1.5">
+                <Label>{field.labelKey ? t(field.labelKey) : field.key}</Label>
+                {field.source === 'miniApps' ? (
+                  <Select
+                    value={params[field.key] ?? ''}
+                    onValueChange={(v) => setParams((p) => ({ ...p, [field.key]: v ?? '' }))}
+                    disabled={miniAppsLoading}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={miniAppsLoading ? t('loading') : t('selectMiniApp')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {miniApps.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+              </div>
+            );
+          })}
 
           {/* 快捷键 */}
           <div className="space-y-1.5">

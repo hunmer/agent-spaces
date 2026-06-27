@@ -5,14 +5,16 @@ const STORAGE_KEY = 'custom-shortcuts';
 /** 自定义动作类型 —— 预设清单，按需扩展 */
 export type CustomActionType = 'openMiniAppFloating';
 
-/** 动作参数字段 schema（仅支持 select，后续可扩展） */
+/** 动作参数字段 schema（支持 select / switch，后续可扩展） */
 export interface CustomActionParamField {
   key: string;
-  type: 'select';
+  type: 'select' | 'switch';
   /** 动态选项来源：miniApps 从 sdk.miniApp.list() 实时拉取 */
   source?: 'miniApps';
   /** 多语言 key */
   labelKey?: string;
+  /** switch 默认值 */
+  defaultValue?: boolean;
 }
 
 export interface CustomActionDef {
@@ -29,6 +31,7 @@ export const CUSTOM_ACTION_DEFS: CustomActionDef[] = [
     labelKey: 'customActionOpenMiniAppFloating',
     paramsSchema: [
       { key: 'miniAppId', type: 'select', source: 'miniApps', labelKey: 'selectMiniApp' },
+      { key: 'useFloatingBall', type: 'switch', labelKey: 'useFloatingBall', defaultValue: false },
     ],
   },
 ];

@@ -79,6 +79,7 @@
   "actionType": "动作类型",
   "selectMiniApp": "选择 mini-app",
   "customActionOpenMiniAppFloating": "悬浮窗打开 mini-app",
+  "useFloatingBall": "使用悬浮球",
   "noCustomShortcuts": "暂无自定义快捷键，点击「新建动作」创建",
   "cancel": "取消",
   "loading": "加载中...",

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCustomShortcuts } from "@/stores/custom-shortcuts";
 import { FloatingPanel } from "@/components/common/floating-panel";
+import { FloatingBall } from "@/components/common/floating-ball";
+import { Play } from "lucide-react";
 
 /** 单个悬浮窗实例 */
 interface FloatingInstance {
@@ -12,6 +14,10 @@ interface FloatingInstance {
   projectId: string;
   /** 用户给该快捷键起的名称，作为面板标题 fallback */
   name: string;
+  /** 是否启用悬浮球（最小化） */
+  useFloatingBall: boolean;
+  /** 当前是否处于最小化态（仅 useFloatingBall 时有效） */
+  minimized: boolean;
 }
 
 /** 全局自定义快捷键执行器：监听快捷键，按 action 渲染悬浮窗 */
@@ -28,14 +34,18 @@ export function CustomShortcutExecutor() {
     setInstances((prev) => prev.filter((it) => it.shortcutId !== shortcutId));
   }, []);
 
+  const updateInstance = useCallback((shortcutId: string, patch: Partial<FloatingInstance>) => {
+    setInstances((prev) => prev.map((it) => (it.shortcutId === shortcutId ? { ...it, ...patch } : it)));
+  }, []);
+
   const toggleInstance = useCallback(
-    (shortcutId: string, projectId: string, name: string) => {
+    (shortcutId: string, projectId: string, name: string, useFloatingBall: boolean) => {
       setInstances((prev) => {
         // 已存在则关闭（toggle）
         if (prev.some((it) => it.shortcutId === shortcutId)) {
           return prev.filter((it) => it.shortcutId !== shortcutId);
         }
-        return [...prev, { shortcutId, projectId, name }];
+        return [...prev, { shortcutId, projectId, name, useFloatingBall, minimized: false }];
       });
     },
     [],
@@ -56,7 +66,9 @@ export function CustomShortcutExecutor() {
       e.stopPropagation();
       if (item.actionType === 'openMiniAppFloating') {
         const projectId = item.params.miniAppId;
-        if (projectId) toggleInstance(item.id, projectId, item.name);
+        if (projectId) {
+          toggleInstance(item.id, projectId, item.name, item.params.useFloatingBall === 'true');
+        }
       }
     };
     document.addEventListener('keydown', handler);
@@ -71,35 +83,62 @@ export function CustomShortcutExecutor() {
 
   // 同步快捷键项名称变化（标题）
   useEffect(() => {
-    const map = new Map(items.map((it) => [it.id, it.name]));
+    const map = new Map(items.map((it) => [it.id, { name: it.name, useFloatingBall: it.params.useFloatingBall === 'true' }]));
     setInstances((prev) =>
       prev.map((it) => {
         const next = map.get(it.shortcutId);
-        return next && next !== it.name ? { ...it, name: next } : it;
+        if (!next) return it;
+        const patch: Partial<FloatingInstance> = {};
+        if (next.name !== it.name) patch.name = next.name;
+        if (next.useFloatingBall !== it.useFloatingBall) {
+          patch.useFloatingBall = next.useFloatingBall;
+          // 关闭悬浮球时，若处于最小化态则恢复
+          if (!next.useFloatingBall && it.minimized) patch.minimized = false;
+        }
+        return Object.keys(patch).length ? { ...it, ...patch } : it;
       }),
     );
   }, [items]);
 
   return (
     <>
-      {instances.map((inst) => (
-        <FloatingPanel
-          key={inst.shortcutId}
-          id={`custom-shortcut:${inst.shortcutId}`}
-          title={inst.name}
-          defaultWidth={420}
-          defaultHeight={560}
-          minWidth={320}
-          minHeight={300}
-          onClose={() => closeInstance(inst.shortcutId)}
-        >
-          <iframe
-            src={`/mini-apps-preview/?id=${encodeURIComponent(inst.projectId)}`}
-            title={inst.name}
-            className="h-full w-full border-0 bg-white"
-          />
-        </FloatingPanel>
-      ))}
+      {instances.map((inst) => {
+        const showBall = inst.useFloatingBall && inst.minimized;
+        return (
+          <div key={inst.shortcutId}>
+            {/* 悬浮面板：始终挂载（保活 iframe），最小化态用 CSS 隐藏而非卸载 */}
+            <div style={{ display: showBall ? 'none' : undefined }}>
+              <FloatingPanel
+                id={`custom-shortcut:${inst.shortcutId}`}
+                title={inst.name}
+                defaultWidth={420}
+                defaultHeight={560}
+                minWidth={320}
+                minHeight={300}
+                onClose={() => closeInstance(inst.shortcutId)}
+                onMinimize={inst.useFloatingBall ? () => updateInstance(inst.shortcutId, { minimized: true }) : undefined}
+              >
+                <iframe
+                  src={`/mini-apps-preview/?id=${encodeURIComponent(inst.projectId)}`}
+                  title={inst.name}
+                  className="h-full w-full border-0 bg-white"
+                />
+              </FloatingPanel>
+            </div>
+
+            {/* 悬浮球（仅 useFloatingBall 开启时存在；最小化态显示，否则隐藏但保留位置记忆） */}
+            {inst.useFloatingBall && (
+              <FloatingBall
+                lsKey={`custom-shortcut-ball:${inst.shortcutId}`}
+                visible={showBall}
+                onClick={() => updateInstance(inst.shortcutId, { minimized: false })}
+              >
+                <Play className="size-5" />
+              </FloatingBall>
+            )}
+          </div>
+        );
+      })}
     </>
   );
 }
