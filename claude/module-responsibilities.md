@@ -1,51 +1,82 @@
 # 模块职责
 
-## packages/shared
+## packages/web (`@agent-spaces/web`)
 
-前后端共享的 TypeScript 类型定义包。定义了所有核心数据模型（Workspace/Issue/Task/Agent/Channel/Message/Workflow/Kanban/DocNode/MiniApp 等）、WebSocket 事件契约、Agent 运行时类型等。29 个源文件，无运行时依赖。
+前端 SPA。基于 Next.js 16，提供：
+- 聊天界面（Chat）
+- 代码编辑器（Monaco Editor + LSP）
+- Workflow 可视化编辑器（ReactFlow）
+- Mini Apps 管理
+- 设置页面（Agent/Provider/MCP/Skill/Tool/Prompt/OutputStyle 等）
+- Workspace/Worktree 文件管理
+- 终端（xterm.js）
+- i18n 国际化
+- 命令面板（cmdk）
+- Zustand 状态管理（30+ stores）
 
-## packages/sdk
+## packages/server (`@agent-spaces/server`)
 
-前端 API 统一调用包（@agent-spaces/sdk）。HttpClient 封装 + Bearer Token 自动注入 + 39 个 API 模块适配器（250+ 方法）。web 包通过 `lib/sdk.ts` 单例消费。42 个源文件。
+后端服务。Express 5 + WebSocket，提供：
+- REST API（30+ 路由模块）
+- WebSocket 实时通信（聊天、终端、TypeScript LSP、Agent 执行流）
+- 多 AI Agent 运行时适配器（Claude Code/Codex/LangChain/Hermes/Oh-My-Pi/Open Agent SDK）
+- Workflow 执行引擎（可视化节点编排 + HTTP 回调 + Webhook + 定时调度）
+- SQLite 存储（agent/chat/command/issue/workflow/mini-app 等表）
+- 知识库 + 向量嵌入
+- Git 操作（simple-git）
+- PTY 终端管理（node-pty）
+- MCP 工具集成
+- 通知推送（微信/飞书/机器人）
+- 插件系统（运行时动态加载）
+- 语音识别
 
-## packages/server
+## packages/electron (`@agent-spaces/electron`)
 
-Express 5 后端服务（185+ 文件）。核心运行时包含：
-- **REST API**：37 个路由文件，按资源分组
-- **WebSocket**：10 个处理器（agent-runner/chat-handler/terminal/typescript-lsp 等）
-- **Agent 编排**：6 种运行时（Claude Code/Codex/Open Agent SDK/LangChain/Hermes/Oh-My-Pi）+ 10 个 agents 编排器
-- **Workflow 引擎**：DAG 执行 + 触发服务 + 命令运行器
-- **Mini-app 子系统**：5 文件架构（CRUD + 沙箱服务编译 + Agent 运行时 + 任务缓存 + 客户端 RPC）+ SQLite 数据库
-- **Plugin 系统**：插件运行时 + 沙箱 + 11 个内置工具
-- **通知中心**：飞书/企微/Native（14 文件）
-- **PTY 终端**：node-pty 会话管理 + 命令进程管理
-- **存储层**：22 个 store（JSON 文件 + SQLite）
+桌面壳。Electron 31，提供：
+- 窗口管理（拖拽/最大化/最小化）
+- `local://` 和 `app://` 自定义协议
+- 全局快捷键
+- IPC 通信（文件系统操作、插件管理）
+- 自动更新（electron-updater）
+- 本地 HTTP 服务（生产模式加载 Web 静态导出）
 
-## packages/web
+## packages/sdk (`@agent-spaces/sdk`)
 
-Next.js 16 前端 SPA（290+ 文件）。包含：
-- **页面**：29 个路由（login/workspaces/workspace/workflows/mini-apps/chat/settings）
-- **组件**：200+ 文件，按功能域分组（chat/sidebar/editor/git/database/workflow/kanban/worktree/issue/terminal/composer/home/timeline/layout/common/settings/ui）
-- **状态管理**：44 个 Zustand Store 文件（含 workflow-editor/ 12 子文件 + search-commands/ 7 子文件）
-- **工具库**：37 个 lib 文件（含 workflow-nodes/ 10 文件 + monaco-* 5 文件）
-- **i18n**：34 命名空间 x 中/英
+前端 API SDK。统一封装所有后端 HTTP 调用，提供：
+- `createSDK()` 工厂函数
+- 35+ API 模块（workspace/agent/channel/issue/workflow/...）
+- HTTP 客户端（Token 管理、错误处理、调试日志）
+
+## packages/shared (`@agent-spaces/shared`)
+
+共享类型。提供跨前后端的 TypeScript 类型定义：
+- Agent/Channel/Command/Issue/Workflow/Workspace 等 30+ 类型文件
+- 纯类型包，无运行时代码
+
+## packages/templates (`@agent-spaces/agents`)
+
+模板/插件/技能打包。提供：
+- 插件模板（plugins/）
+- 技能模板（skills/）
+- Workflow UI 组件（workflow-ui/）
+- Mini Apps 打包（pack-mini-apps.mjs）
+- 索引生成（generate-index.mjs）
+
+## packages/dom-inspector-hook (`dom-inspector-hook`)
+
+开发工具。捕获元素源码信息（code-inspector-plugin），POST 到自定义 URL 用于 DevInspector 跳转。
 
 ## packages/flutter
 
-Flutter 多平台原生壳应用（46 源 + 2 测试文件）。内嵌 InAppWebView 加载 Web 前端，提供 SSH 终端、多协议文件源（SFTP/FTP/Storage/WebDAV）、分屏布局、原生通知、书签管理、JS Bridge 双向通信。不包含业务逻辑。
+移动端壳。Flutter WebView 嵌入 Web 静态导出：
+- 多平台支持（Android/iOS/macOS/Windows）
+- 本地通知（awesome_notifications）
+- SSH 终端（dartssh2 + xterm）
+- 国际化（easy_localization）
 
-## packages/templates
+## documents
 
-模板库（@agent-spaces/agents，400+ 文件）。涵盖：
-- **Agent 预设**：184 个（15 分类）
-- **Chat Agent**：6 个
-- **MCP 服务器**：9 个
-- **Skills**：66+ 文件（caveman/grill-me/handoff/improve-codebase-architecture/planning-with-files/superpowers 14 子目录/tdd/to-prd）
-- **Plugins**：120+ 文件（aliyun-ai/aliyun_oss/tencent_cos/desktop-native/dingtalk/epub-parser/fetch/ffmpeg/file-system/fish-audio/jimeng/mail/minimax/mira-sdk/openai/test-plugin/window-manager）
-- **Workflow/Prompt/OutputStyle/Mini-app** 模板
-
-通过 `generate-index.mjs` 自动索引 + http-server 静态托管。
-
-## packages/dom-inspector-hook
-
-DOM Inspector 的浏览器端 Hook 库（2 文件）。捕获元素源码信息并通过 POST 发送到 Agent Spaces Server 或触发 IDE 跳转。支持 HTTP 上报 + 剪贴板复制两种模式。
+文档站点。Docusaurus 3：
+- 博客
+- API 文档
+- 部署在 port 3001

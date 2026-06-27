@@ -1,64 +1,64 @@
-# 编码约定
+# 开发约定
 
-## 通用约定
+## 包管理
 
-- TypeScript strict 模式，ESNext 模块
-- 后端使用 ESM（`"type": "module"`），导入路径带 `.js` 后缀
-- 前端使用 Next.js App Router + `"use client"` 指令
-- 状态管理统一使用 Zustand（`create` 函数式写法）
-- 组件使用函数式组件 + hooks
-- CSS 使用 TailwindCSS utility classes
-- UI 组件基于 shadcn/ui（base-nova 风格）
-- API 路由按资源分组，遵循 RESTful 规则
-- 前端 API 调用统一通过 @agent-spaces/sdk
-- 认证使用 Bearer Token
-- 时间戳使用 ISO 字符串（Workflow 子树用 Unix 毫秒）
-- 状态字段使用联合字面量类型（非 `enum`）
+- 使用 **pnpm** workspace monorepo。
+- 根目录 `pnpm-workspace.yaml` 定义 `packages/*` 和 `documents`。
+- 包间依赖使用 `workspace:*` 协议。
 
-## 后端约定
+## 常用命令
 
-- JSON body 限制 50MB
-- 路由文件放在 `src/routes/`
-- 服务层文件放在 `src/services/`
-- 存储层文件放在 `src/storage/`
-- 适配器文件放在 `src/adapters/`
-- WebSocket 事件命名：`domain.action`（如 `terminal.create`, `agent.status_changed`, `miniApp.configChanged`）
-- JSON 持久化使用 `json-store.ts` 通用工具（`readJsonFile` / `writeJsonFile` / `ensureDir` / `getDataDir`）
-- SQLite 使用 `better-sqlite3`（mini-app-db）+ `node:sqlite`（Agent Usage）
-- zod 用于后端请求校验
-- 越界保护：文件路径 `safeSrcPath`、SQL `checkSql` + `validateDbName`
+```bash
+# 安装依赖
+pnpm install
 
-## Mini-app 沙箱约定
+# 开发（Web + Server 并行）
+pnpm --filter @agent-spaces/web dev      # Web 前端 :3000
+pnpm --filter @agent-spaces/server dev    # Server :3100
 
-- 沙箱服务（`src/services/*.js`）和 API（`src/api.js`）不依赖外部模块
-- 编译时剥离 import 行，ESM `export default` 转 CJS `module.exports =`
-- `new Function('module', 'exports', code)` 在沙箱求值
-- 配置读写通过 `MiniAppServiceContext`（readConfig / writeConfig / updateConfig），写后自动广播 `miniApp.configChanged`
-- 客户端 RPC：服务端 `requestMiniAppClient` 广播 `miniApp.clientRequest`，客户端响应 `miniApp.clientResponse`
+# 构建
+pnpm --filter @agent-spaces/web build     # Next.js 构建
+pnpm --filter @agent-spaces/server build  # tsc 编译
+pnpm run copy-package                     # 为 Docker/发布准备 dist/package.json
+pnpm run copy-web                         # 复制 Web 静态输出到 Server/Electron/Flutter
 
-## 前端约定
+# Docker
+docker compose up                          # 启动 Server 容器
 
-- 页面放在 `src/app/` 下（Next.js App Router）
-- 组件放在 `src/components/` 下按功能域分组
-- Store 放在 `src/stores/`
-- 工具库放在 `src/lib/`
-- i18n 使用 next-intl，翻译文件按命名空间拆分（34 命名空间）
-- WebSocket 客户端使用 `lib/ws.ts` 中的 `WorkspaceWS` 类
-- 路径别名：`@/*` -> `./src/*`
+# 测试
+pnpm --filter @agent-spaces/server test    # 运行 Server 测试
 
-## 命名规范
+# 代码检查
+pnpm --filter @agent-spaces/web lint       # ESLint
+```
 
-- 文件名：kebab-case（`agent-runtime.ts`、`use-workflow-editor.ts`）
-- 组件文件名：kebab-case（`code-editor.tsx`、`git-panel.tsx`）
-- Store 文件名：kebab-case（`workflow-editor.ts`、`content-usage-report.ts`）
-- 目录名：kebab-case（`notification-hub/`、`code-favorites/`）
-- 路由目录名：kebab-case 或 `[dynamic]`
-- i18n 命名空间：camelCase（`commandPalette`、`outputStyles`、`mini-apps`）
+## 技术栈
 
-## 数据持久化
+| 层 | 技术 |
+|---|---|
+| 前端框架 | Next.js 16 + React 19 |
+| 状态管理 | Zustand |
+| UI 组件 | Radix UI + shadcn/ui + Tailwind CSS 4 |
+| 编辑器 | Monaco Editor |
+| 图表/流程图 | ReactFlow (xyflow) + Mermaid |
+| 后端框架 | Express 5 |
+| 数据库 | SQLite (better-sqlite3) |
+| AI SDK | LangChain, Claude Agent SDK, OpenAI Codex SDK, MCP SDK |
+| 实时通信 | WebSocket (ws) |
+| 桌面 | Electron 31 |
+| 移动 | Flutter (WebView 嵌入) |
+| 文档 | Docusaurus 3 |
+| 国际化 | next-intl (Web), easy_localization (Flutter) |
 
-- JSON 文件：Workspace/Issue/Task/Channel/Message/Workflow/Command/Subscription/MiniApp 等
-- SQLite：Agent Session/Usage + Kanban Board + DocNode Database + Mini-app DB
-- 存储根目录：`~/.agent-spaces-data/`
-- 工作空间元数据：项目目录下 `.agentspace/`
-- Mini-app 项目数据：`~/.agent-spaces-data/mini-apps/{projectId}/`
+## 代码风格
+
+- TypeScript strict mode。
+- ESM 优先 (`"type": "module"`)。
+- 组件目录按功能域划分（chat/editor/workflow/settings/...）。
+- Store 文件集中在 `src/stores/`。
+
+## 禁止事项
+
+- 不要在 `packages/web/` 中直接调用后端 API，必须通过 `@agent-spaces/sdk`。
+- 不要修改 `packages/server/agent-spaces-data/`（运行时数据目录，非源码）。
+- 不要在 AGENTS.md 或 CLAUDE.md 中写入大量详情，详情放 `claude/*.md`。

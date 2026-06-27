@@ -1,98 +1,51 @@
-# 常见问题 (FAQ)
+# FAQ
 
-## 开发环境
+## Q: 如何启动开发环境？
 
-**Q: 如何启动开发环境？**
-A: `pnpm install && pnpm dev`。server 运行在 3100 端口，web 运行在 3000 端口。
+需要同时启动 Web 和 Server：
 
-**Q: 构建顺序是什么？**
-A: shared -> sdk -> server -> web -> copy。`pnpm build` 已按正确顺序编排。
+```bash
+# 终端 1
+pnpm --filter @agent-spaces/server dev    # :3100
 
-**Q: node-pty 编译失败怎么办？**
-A: 运行 `npx node-gyp rebuild --directory=node_modules/node-pty`，需要编译工具链。pnpm 配置了 `onlyBuiltDependencies` 包含 node-pty。
+# 终端 2
+pnpm --filter @agent-spaces/web dev        # :3000
+```
 
-**Q: 如何部署 Docker？**
-A: `pnpm build:docker` 构建，`pnpm up` 启动 docker compose。
+Web 通过 `next.config.ts` 的 rewrites 将 `/api/*` 和 `/ws` 代理到 Server。
 
-## 认证
+## Q: Web 如何嵌入桌面/移动壳？
 
-**Q: Secret Key 在哪里设置？**
-A: 首次访问登录页时输入，存储在 `~/.agent-spaces-data/auth.json`。默认为空（无需认证）。
+1. `pnpm --filter @agent-spaces/web build`（需 `NEXT_STATIC_EXPORT=1`）
+2. `pnpm run copy-web` 将输出复制到 Electron/Flutter/Server
+3. Electron 通过本地 HTTP 服务加载；Flutter 通过 WebView 加载
 
-**Q: WebSocket 如何认证？**
-A: 连接时通过 `token` 查询参数验证。
+## Q: AI Agent 有哪些运行时？
 
-## Agent 运行时
+Server 在 `src/adapters/` 中适配多种 AI Agent SDK：
+- **Claude Code SDK** — Anthropic 官方
+- **OpenAI Codex SDK**
+- **LangChain** — 支持 Anthropic/OpenAI/Google
+- **Hermes** — 自研运行时
+- **Oh-My-Pi**
+- **Open Agent SDK** (@codeany)
 
-**Q: 有哪些 Agent 运行时？**
-A: 6 种 -- open-agent-sdk（默认）、claude-code、codex、langchain、hermes、oh-my-pi。
+## Q: 如何添加新的 API 端点？
 
-**Q: 如何选择运行时？**
-A: 在 Agent Preset 中设置 `runtimeKind` 字段。
+1. 在 `packages/server/src/routes/` 创建路由文件
+2. 在 `packages/server/src/app.ts` 注册路由
+3. 在 `packages/shared/src/types/` 添加类型
+4. 在 `packages/sdk/src/modules/` 添加 SDK 封装
+5. 在 `packages/sdk/src/index.ts` 注册模块
 
-**Q: Anthropic Bridge 是什么？**
-A: ClaudeCodeRuntime 内置的协议中转层，让 Claude Code SDK 调用 OpenAI API。详见 `docs/anthropic-bridge.md`。
+## Q: agent-spaces-data 目录是什么？
 
-**Q: thinking 模式如何配置？**
-A: `llm-model-config.ts` 的 `getThinkingRuntimeConfig` 根据 modelId 查找模型的 `thinkingEnabled` / `thinkingEffort`，默认 medium。
+`packages/server/agent-spaces-data/` 是运行时数据目录，存储插件、工作流、上传等。不应手动修改，不在版本控制中。
 
-**Q: 标题是如何自动生成的？**
-A: `title-generator-agent.ts` 将用户消息作为惰性源文本，生成场景标题（名词短语），不执行指令。`generated-title.ts` 调度频道/Issue 标题生成。
+## Q: Docker 部署流程？
 
-## Workflow
+```bash
+docker compose up
+```
 
-**Q: Workflow 如何与 Issue 关联？**
-A: Issue 的 `workflowId` 字段绑定 Workflow 模板。详见 `docs/workflow-system.md`。
-
-**Q: Workflow 执行引擎在哪？**
-A: `packages/server/src/services/execution-manager.ts`，支持 DAG 遍历/循环/分支/变量/断点/恢复。
-
-**Q: Workflow 编辑器 Store 为什么拆成 12 个文件？**
-A: `stores/workflow-editor/` 按 crud/edit/execution/execution-logs/groups/interaction/staging/undo-redo/validation/versions 拆分，降低单文件复杂度。
-
-## Mini-app
-
-**Q: Mini-app 是什么？**
-A: 用户可在平台内创建 React/HTML 沙箱项目，编写 UI + 服务 + API，通过 Agent 辅助开发。支持插件启用、SQLite 数据库、客户端 RPC。
-
-**Q: Mini-app 服务如何执行？**
-A: `mini-app-services.ts` 编译 `src/services/*.js`（剥离 import + ESM->CJS），在 `new Function` 沙箱求值。服务通过 `configs/` 读写配置，写后广播 `miniApp.configChanged`。
-
-**Q: Mini-app Agent 如何工作？**
-A: `mini-app-agent.ts` 创建 Agent 运行时，注入 mini-app 专属工具（`mini-app-tools.ts` 暴露 9 类 UI 组件清单），支持客户端 RPC（`requestMiniAppClient`）。
-
-**Q: Mini-app 数据库安全吗？**
-A: `mini-app-db.ts` 使用 better-sqlite3 连接池，`checkSql` 禁止 ATTACH/DETACH，`validateDbName` 限制 64 字符，`dbFilePath` 越界保护，`MAX_ROWS` 限制 10000 行。
-
-## 数据存储
-
-**Q: 数据存在哪里？**
-A: 默认 `~/.agent-spaces-data/`。Agent Session/Usage 和 Mini-app DB 使用 SQLite，其余为 JSON 文件。
-
-**Q: 如何修改数据目录？**
-A: 设置 `AGENT_SPACES_DATA_DIR` 环境变量。
-
-**Q: 启动时 running 任务怎么处理？**
-A: `issue-retry.ts` 的 `recoverRunningWorkOnStartup` 标记 running 任务为 failed（"Server restarted while task was running"），in_progress issue 标记为 error。
-
-## 前端
-
-**Q: Next.js 16 有什么不同？**
-A: 详见 `packages/web/AGENTS.md`，API 和文件结构可能有 Breaking Changes。
-
-**Q: API 请求为什么不需要完整 URL？**
-A: `next.config.ts` 中配置了 rewrites，将 `/api/*` 代理到后端。
-
-**Q: FlexLayout 布局如何自定义？**
-A: 修改 `workspace-shell.tsx` 中的默认配置，或使用 Layout Manager Dialog 保存/加载模板。
-
-**Q: Command Palette 如何扩展？**
-A: `stores/search-commands/` 下按类型添加搜索器（file-search/server-search/channel-search/issue-search/workspace-search/workflow-search），注册到 index.ts。
-
-## i18n
-
-**Q: 如何切换中英文？**
-A: Settings 对话框中选择 Language。翻译文件在 `src/locales/{en,zh}/`，按 34 个命名空间拆分。
-
-**Q: 如何添加新的翻译键？**
-A: 在对应命名空间的 JSON 文件中添加，组件通过 `useTranslations('namespace')` 获取。命名空间在 `locales/{en,zh}/index.ts` 注册。
+Server 镜像内置 Web 前端，单进程服务。CI 在 tag push 时自动构建推送到 ghcr.io。

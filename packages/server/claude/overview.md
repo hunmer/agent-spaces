@@ -1,26 +1,38 @@
-# @agent-spaces/server -- 总览
+# Server 模块 — 架构总览
 
-Express 5 后端服务，173 个 TypeScript 源文件。提供 REST API、WebSocket 实时通信、认证中间件、六运行时 Agent 编排引擎、Workflow DAG 执行引擎、Plugin 插件系统、通知中心、PTY 终端、Git 操作、SQLite Usage 统计等核心能力。
+## 架构分层
 
-## 核心架构
+```
+src/app.ts（入口）
+  ├── routes/（30+ REST 路由）
+  ├── services/（90+ 业务逻辑）
+  │   ├── builtin-tools/（内置 Agent 工具）
+  │   ├── notification-hub/（通知中心）
+  │   ├── speech-recognition/（语音识别）
+  │   └── subscription/（订阅）
+  ├── ws/（WebSocket 处理）
+  ├── agents/（Agent 运行时编排）
+  ├── adapters/（AI SDK 适配器）
+  ├── storage/（SQLite + JSON 存储）
+  ├── middleware/（auth 中间件）
+  └── hooks/（Hook 引擎）
+```
 
-- **Agent 运行时**：6 种（OpenAgentSdk/ClaudeCode/Codex/LangChain/Hermes/OhMyPi），通过 `createAgentRuntime()` 工厂切换
-- **Workflow 执行引擎**：execution-manager.ts（1757 行），支持 DAG 遍历/循环/分支/变量/断点/恢复
-- **持久化**：JSON 文件 + SQLite（node:sqlite），存储在 `~/.agent-spaces-data/`
-- **WebSocket**：ws 库，3 个端点（主连接/语音/LSP）
-- **认证**：Bearer Token + Secret Key
+## 运行时形态
 
-## 大文件
+1. **开发模式**: `tsx watch src/app.ts`，自动重载。
+2. **生产模式**: `node dist/app.js`，内置 Web 静态文件服务（SPA fallback）。
+3. **Docker**: 单容器，Server + Web 前端 + SQLite 数据卷。
 
-| 文件 | 行数 | 说明 |
-|------|------|------|
-| execution-manager.ts | 1757 | WorkFox DAG 执行引擎 |
-| agent.ts | 1091 | Agent 会话服务 |
-| agent-runner.ts | 1009 | @mention Agent 运行器 |
-| oh-my-pi-runtime.ts | 943 | OhMyPi 运行时 |
-| langchain-runtime.ts | 954 | LangChain 运行时 |
-| hermes-runtime.ts | 901 | Hermes 运行时 |
-| plugin.ts | 918 | Plugin 插件管理 |
-| issue-task-controller.ts | 851 | Issue 任务控制器 |
-| workflow-editor-tools.ts | 815 | Workflow 编辑工具 |
-| message-parts.ts | 832 | 消息 Parts 构建 |
+## 核心流程
+
+- **启动**: 加载 dotenv → 创建 Express → 注册路由 → 初始化 WebSocket → 启动监听 → 确保 Agent 模板 → 恢复运行中任务 → 启动通知/调度服务。
+- **WebSocket upgrade**: `/ws`（主连接）、`/ws/speech`（语音）、`/ws/lsp/typescript`（LSP）。
+- **Workflow 执行**: 触发（HTTP/Webhook/Cron）→ ExecutionManager → 节点执行 → InteractionManager → ClientNodeManager。
+
+## 设计取舍
+
+- 所有路由在 `app.ts` 中集中注册（非自动发现），便于看到完整 API 全貌。
+- SQLite 而非 PostgreSQL，降低部署复杂度，但限制并发写入。
+- 多运行时适配器模式增加灵活性，但适配器维护成本较高。
+- Server 在生产模式下直接服务 Web 静态文件，简化部署。

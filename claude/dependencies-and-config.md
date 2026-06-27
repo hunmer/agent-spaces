@@ -1,104 +1,78 @@
 # 依赖与配置
 
-## 依赖关系图
+## 关键依赖
 
-```
-shared (无依赖)
-  ^
-  |
-sdk --> shared
-  ^
-  |
-web --> sdk --> shared
-  |
-  +--> [API 代理] --> server --> shared
-  ^
-  |
-flutter --> [InAppWebView] --> web
-  |
-  +--> [HTTP/WS] --> server
+### packages/web
+- **Next.js 16.2.4** + React 19.2.4
+- **@agent-spaces/sdk** (workspace 依赖)
+- Monaco Editor 0.55.1 + monaco-languageclient
+- ReactFlow (xyflow) 12.10.2
+- Zustand 5.0.12
+- Radix UI + shadcn/ui + Tailwind CSS 4
+- xterm.js 6.0.0
+- next-intl 4.11.0
+- Dexie 4.4.3（IndexedDB）
+- Mermaid 11.15.0
+- recharts 3.8.0
 
-templates (无依赖，纯静态资源)
-dom-inspector-hook (无依赖，独立 npm 包)
-```
+### packages/server
+- **Express 5.1.0** + ws 8.18.2
+- **@agent-spaces/shared** (workspace 依赖)
+- better-sqlite3 12.10.0
+- LangChain 1.4.0 + @langchain/anthropic + @langchain/openai + @langchain/google-genai
+- @anthropic-ai/claude-agent-sdk 0.2.126
+- @openai/codex-sdk 0.128.0
+- @modelcontextprotocol/sdk 1.29.0
+- @codeany/open-agent-sdk 0.2.1
+- node-pty 1.1.0
+- simple-git 3.36.0
+- @larksuiteoapi/node-sdk 1.62.1
+- zod 4.0.0
+- node-cron 4.2.1
 
-## 根项目依赖
+### packages/electron
+- **Electron 31**
+- @electron-toolkit/utils
+- electron-store + electron-updater
+- @agent-spaces/shared (workspace 依赖)
 
-- `concurrently` -- 并行启动 server + web
-- `cross-env` -- 跨平台环境变量
-- `typescript` 5.8+ -- 编译
-
-## server 关键依赖
-
-| 依赖 | 用途 |
-|------|------|
-| express (v5) | HTTP 服务与路由 |
-| ws | WebSocket 服务 |
-| node-pty | PTY 终端管理 |
-| simple-git | Git 操作封装 |
-| zod (v4) | Schema 校验 |
-| better-sqlite3 | SQLite 存储（mini-app-db） |
-| node:sqlite | SQLite 存储（Agent Usage） |
-| yauzl | ZIP 解压（mini-app 导入） |
-| multer | 文件上传（mini-app 资源） |
-| uuid | ID 生成 |
-| @codeany/open-agent-sdk | OpenAgent 运行时 |
-| @anthropic-ai/claude-agent-sdk | Claude Code 运行时 |
-| @openai/codex-sdk | Codex 运行时 |
-| langchain + @langchain/* | LangChain 运行时 |
-| @larksuiteoapi/node-sdk | 飞书 Bot SDK |
-| @modelcontextprotocol/sdk | MCP SDK |
-| typescript-language-server | TypeScript LSP |
-| vscode-ws-jsonrpc | LSP WebSocket 桥接 |
-
-## web 关键依赖
-
-| 依赖 | 用途 |
-|------|------|
-| next (16.2) | React 全栈框架 |
-| react / react-dom (19.2) | UI 库 |
-| flexlayout-react | 可拖拽面板布局 |
-| @xyflow/react + @dagrejs/dagre | DAG 编辑器 |
-| zustand (5) | 状态管理 |
-| @monaco-editor/react + monaco-languageclient | 代码编辑器 + LSP |
-| @xterm/xterm | 终端模拟器 |
-| @tiptap/* | 富文本编辑器 |
-| next-intl | i18n |
-| cmdk | Command Palette |
-| shadcn + radix-ui | UI 组件 |
-| recharts | 图表（用量仪表盘） |
-
-## flutter 关键依赖
-
-| 依赖 | 用途 |
-|------|------|
-| flutter_inappwebview | WebView 引擎 |
-| flutter_riverpod | 状态管理 |
-| go_router | 路由 |
-| awesome_notifications | 本地通知 |
-| docking | 多窗口布局 |
-| dartssh2 | SSH 终端 |
-| easy_localization | i18n |
-| shared_preferences | 持久化 |
-
-## 构建顺序
-
-1. `shared` -- tsc 编译
-2. `sdk` -- tsc 编译（依赖 shared）
-3. `server` -- tsc 编译（依赖 shared）
-4. `web` -- next build（依赖 sdk -> shared）
-5. `copy-web.mjs` / `copy-package.mjs` -- 拷贝产物
+### packages/sdk
+- @agent-spaces/shared (workspace 依赖)
+- 无外部运行时依赖
 
 ## 配置文件
 
 | 文件 | 用途 |
-|------|------|
-| `package.json` | 根项目配置 + scripts（v0.2.6） |
+|---|---|
 | `pnpm-workspace.yaml` | pnpm workspace 定义 |
-| `.gitignore` | Git 忽略规则 |
-| `packages/*/tsconfig.json` | TypeScript 配置 |
+| `docker-compose.yml` | Server Docker 配置 |
+| `.github/workflows/docker-build.yml` | Docker 镜像构建 CI |
+| `.github/workflows/release.yml` | GitHub Release |
+| `.github/workflows/deploy-docs.yml` | 文档部署 |
+| `AGENTS.md` | AI Agent 工作指令 |
 | `packages/web/next.config.ts` | Next.js 配置 |
-| `packages/web/components.json` | shadcn/ui 配置 |
-| `packages/flutter/pubspec.yaml` | Flutter 依赖配置 |
-| `Dockerfile.server` | Docker 构建文件 |
-| `docker-compose.yml` | Docker Compose 配置 |
+| `packages/web/server.mjs` | Web dev server |
+| `packages/web/eslint.config.mjs` | Web ESLint |
+| `packages/electron/main.ts` | Electron 主进程入口 |
+| `packages/templates/pack-mini-apps.mjs` | Mini App 打包 |
+| `packages/templates/generate-index.mjs` | 索引生成 |
+| `documents/docusaurus.config.ts` | Docusaurus 配置 |
+
+## 环境变量
+
+### Server
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `PORT` | 3100 | 服务端口 |
+| `HOST` | 0.0.0.0 | 监听地址 |
+| `AGENT_SPACES_DATA_DIR` | ~/.agent-spaces-data | 数据目录 |
+| `CORS_ORIGIN` | * | CORS 允许源 |
+| `SERVER_URL` | http://localhost:3100 | Web 代理目标 |
+
+### Web
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `PORT` | 3000 | 开发端口 |
+| `HOSTNAME` | 0.0.0.0 | 监听地址 |
+| `NEXT_STATIC_EXPORT` | (未设置) | 设为 1 启用静态导出 |
+| `SERVER_URL` | http://localhost:3100 | API 代理目标 |

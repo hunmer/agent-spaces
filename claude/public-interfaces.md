@@ -1,77 +1,93 @@
-# 公共接口
+# 对外接口
 
-## REST API（server）
+## Web 页面路由
 
-所有路由挂载在 `/api/` 下，除健康检查/认证/Inspector/版本端点外均需 Bearer Token 认证。
-
-### 免认证端点
-
-- `GET /api/health` -- 健康检查
-- `POST /api/auth/login` -- 认证登录
-- `GET /api/auth/check` -- 检查认证状态
-- `POST /api/inspector/track` -- DOM Inspector 源码定位
-- `GET /api/version` / `GET /api/version/check` -- 版本信息
-
-### 核心资源路由
-
-- `/api/workspaces` -- 工作空间 CRUD + Prompt + Clone + 通知管理
-- `/api/workspaces/:id/channels` -- 频道与消息
-- `/api/workspaces/:id/issues` -- 议题管理（含 workflowId）
-- `/api/workspaces/:id/tasks` -- 任务管理
-- `/api/workspaces/:id/agents` -- Agent 会话 + 预设
-- `/api/workspaces/:id/git/*` -- Git 操作（status/diff/log/commit/push/pull/高级操作）
-- `/api/workspaces/:id/commands` -- 快捷命令 CRUD + run/stop
-- `/api/workspaces/:id/databases` -- 文档数据库 + 向量搜索
-- `/api/workspaces/:id/kanban` -- Kanban 看板
-- `/api/workspaces/:id/worktrees` -- Worktree 并行开发
-- `/api/workspaces/:id/code-favorites` -- 代码收藏
-- `/api/workspaces/:id/hooks` -- Hook 配置
-- `/api/workspaces/:id/notifications` -- 应用内通知
-- `/api/workspaces/:id/search` -- 代码搜索
-- `/api/workflows` -- Workflow 模板 CRUD + 触发
-- `/api/mini-apps` -- Mini-app 项目 CRUD + 文件 + Agent + 服务调用（**重构**：原 `/api/mini-app`）
-- `/api/models` / `/api/providers` -- LLM 模型与供应商管理
-- `/api/chat/agents` -- Chat Agent CRUD + SSE 流式执行
-- `/api/plugins` -- Plugin 插件管理
-- `/api/agent-sse/run` -- Agent SSE 流式调用（外部集成）
-- `/api/agents/usage/dashboard` -- Agent 用量 Dashboard
-- `/api/speech-recognition` -- 语音识别
-- `/api/robot-accounts` -- 机器人账号管理
-- `/api/subscription` -- 订阅管理
-
-### WebSocket 端点
-
-| 端点 | 说明 |
-|------|------|
-| `/ws?workspaceId=<id>&token=<token>` | 主 WebSocket 连接 |
-| `/ws/speech?token=<token>&configId=<id>` | 语音识别流式 WebSocket |
-| `/ws/lsp/typescript?workspaceId=<id>&token=<token>` | TypeScript LSP |
-
-### WebSocket 事件（客户端 -> 服务端）
-
-`terminal.create` / `terminal.input` / `terminal.resize` / `terminal.close` / `channel.message` / `channel.stop` / `channel.answer_question` / `agent.start` / `agent.stop` / `chat.message` / `chat.stop` / `miniApp.clientResponse`（RPC 响应）
-
-### WebSocket 事件（服务端 -> 客户端）
-
-`connected` / `terminal.*` / `channel.*` / `agent.*` / `issue.*` / `task.*` / `workflow.*` / `command.*` / `notification.*` / `inspector.jump` / `chat.*` / `miniApp.configChanged` / `miniApp.clientRequest` / `miniApp.taskUpdated`
-
-## 前端页面路由
-
-| 路由 | 说明 |
-|------|------|
+| 路由 | 用途 |
+|---|---|
+| `/` | 首页（工作区列表/仪表盘） |
 | `/login` | 登录页 |
-| `/` | 首页（Dashboard + 用量仪表盘 + 订阅面板） |
-| `/workspaces` | 工作空间列表 |
-| `/workflows` | Workflow 模板管理 |
-| `/workflows/[id]` | Workflow 编辑器 |
-| `/workflows/share` | Workflow 分享页 |
-| `/workspace/[id]` | 工作空间 IDE 页 |
-| `/chat` | Chat 独立对话页 |
-| `/settings/*` | 设置页（agents/skills/mcps/models/providers/prompts/output-styles/tools） |
-| `/mini-apps` | Mini-app 模板管理 |
-| `/mini-apps/[id]` | Mini-app 编辑器 |
-| `/mini-apps-preview/[id]` | Mini-app 预览页 |
+| `/chat` | 聊天界面 |
+| `/workspace/:id` | 工作区详情 |
+| `/workspaces` | 工作区列表 |
+| `/workflows` | 工作流列表 |
+| `/workflows/:id` | 工作流编辑器 |
+| `/workflows/share` | 工作流分享 |
+| `/mini-apps` | Mini Apps 列表 |
+| `/mini-apps/:id` | Mini App 详情 |
+| `/mini-apps-preview/:id` | Mini App 预览 |
+| `/settings` | 设置主页 |
+| `/settings/agents` | Agent 配置 |
+| `/settings/providers` | LLM 提供商 |
+| `/settings/mcps` | MCP 服务器 |
+| `/settings/skills` | 技能管理 |
+| `/settings/tools` | 工具管理 |
+| `/settings/prompts` | Prompt 模板 |
+| `/settings/output-styles` | 输出样式 |
+| `/settings/data-files` | 数据文件 |
+| `/settings/models` | 模型管理 |
 
-## SDK（packages/sdk）
+## Server REST API
 
-39 个 API 模块适配器，通过 `createSDK()` 工厂创建。HttpClient 自动注入 Bearer Token，401/403 触发 `onUnauthorized` 回调。模块包括：workspace/agent/channel/chat/workflow/workflowPlugin/miniApps/git/editor/database/issue/task/kanban/skills/mcps/prompts/agentCommands/data/search/llm/worktree/hooks/command/subscription/notification/speech/codeFavorites/outputStyles/tools/robotAccounts/auth/version/agentStore/font/inspector/avatar/npmSettings。
+所有 API 路由前缀 `/api/`，以下为主要路由模块：
+
+| 路由前缀 | 职责 |
+|---|---|
+| `/api/auth` | 认证（登录/Token） |
+| `/api/workspaces` | 工作区 CRUD |
+| `/api/workspaces/:id/files` | 文件管理 |
+| `/api/workspaces/:id/channels` | 频道管理 |
+| `/api/workspaces/:id/issues` | Issue 管理 |
+| `/api/workspaces/:id/commands` | 命令管理 |
+| `/api/workspaces/:id/agents` | Agent 管理 |
+| `/api/workspaces/:id/tasks` | 任务管理 |
+| `/api/workspaces/:id/git` | Git 操作 |
+| `/api/workspaces/:id/search` | 全文搜索 |
+| `/api/workspaces/:id/knowledge-bases` | 知识库 |
+| `/api/workspaces/:id/worktrees` | Worktree |
+| `/api/workspaces/:id/notifications` | 通知 |
+| `/api/workspaces/:id/hooks` | Webhook/Hook |
+| `/api/workspaces/:id/code-favorites` | 代码收藏 |
+| `/api/workflows` | Workflow CRUD + 执行 + Hook |
+| `/api/plugins` | 插件管理 |
+| `/api/mini-apps` | Mini App 管理 |
+| `/api/sqlite` | SQLite 查询 |
+| `/api/agent-sse` | Agent SSE 流 |
+| `/api/agents` | Agent 模板 |
+| `/api/chat` | 聊天会话 |
+| `/api/skills` | 技能 |
+| `/api/prompt-templates` | Prompt 模板 |
+| `/api/output-styles` | 输出样式 |
+| `/api/mcps` | MCP 服务器 |
+| `/api/npm-settings` | NPM 配置 |
+| `/api/subscriptions` | 订阅管理 |
+| `/api/speech-recognition` | 语音识别 |
+| `/api/agent-commands` | Agent 命令 |
+| `/api/robot-accounts` | 机器人账号 |
+| `/api/import` | 数据导入 |
+| `/api/data` | 数据管理 |
+| `/api/upload` | 文件上传 |
+| `/api/fonts` | 字体管理 |
+| `/api/health` | 健康检查 |
+| `/api/inspector/track` | Inspector 跳转（无认证） |
+
+## WebSocket 端点
+
+| 路径 | 用途 |
+|---|---|
+| `/ws` | 主 WebSocket（聊天/终端/Agent 执行流），需 workspaceId + token |
+| `/ws/speech` | 语音识别流，需 token + configId |
+| `/ws/lsp/typescript` | TypeScript LSP 代理，需 workspaceId + token |
+
+## SDK 接口
+
+`createSDK()` 返回 35+ API 模块，主要模块：
+
+```typescript
+sdk.workspace.list() / .get(id) / .create() / .update()
+sdk.agent.list() / .get(id) / .create() / .update()
+sdk.chat.sessions() / .messages() / .send()
+sdk.workflow.list() / .get(id) / .execute()
+sdk.git.status(wsId) / .commit() / .diff()
+sdk.llm.providers / .models / .chat()
+// ... 等 35+ 模块
+```

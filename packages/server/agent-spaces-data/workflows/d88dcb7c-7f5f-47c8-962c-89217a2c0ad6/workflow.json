@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 0,
-        "y": 492.5
+        "x": 775,
+        "y": 0
       },
       "data": {
         "inputFields": [
@@ -63,8 +63,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 990,
-        "y": 936
+        "x": 0,
+        "y": 712.5
       },
       "data": {
         "outputs": [
@@ -83,8 +83,8 @@
       "type": "switch",
       "label": "nodes.switch.label",
       "position": {
-        "x": 660,
-        "y": 453.5
+        "x": 702.5,
+        "y": 400
       },
       "data": {
         "sourceNodeId": "node_1782281779113_6rk17s",
@@ -126,8 +126,8 @@
       "type": "aliyun_kling_image_generation",
       "label": "可灵图像生成",
       "position": {
-        "x": 990,
-        "y": 690
+        "x": 1260,
+        "y": 688
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -172,8 +172,8 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 1335,
-        "y": 390
+        "x": 785,
+        "y": 947
       },
       "data": {
         "strategy": "first_non_empty",
@@ -235,8 +235,8 @@
       "type": "end",
       "label": "nodes.end.label",
       "position": {
-        "x": 1650,
-        "y": 378
+        "x": 785,
+        "y": 1176
       },
       "data": {
         "outputs": [
@@ -254,8 +254,8 @@
       "type": "run_code",
       "label": "nodes.run_code.label",
       "position": {
-        "x": 330,
-        "y": 492.5
+        "x": 785,
+        "y": 200
       },
       "data": {
         "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
@@ -294,8 +294,8 @@
       "type": "aliyun_text_to_image",
       "label": "阿里云AI文生图",
       "position": {
-        "x": 1005,
-        "y": 180
+        "x": 950,
+        "y": 698
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -338,8 +338,8 @@
       "type": "jimeng_text_to_image",
       "label": "即梦AI文生图",
       "position": {
-        "x": 990,
-        "y": 454.8914747238159
+        "x": 620,
+        "y": 678
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -384,8 +384,8 @@
       "type": "ai_image_generate",
       "label": "AI图片文生图",
       "position": {
-        "x": 990,
-        "y": -91.93601608276367
+        "x": 310,
+        "y": 688
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -510,10 +510,344 @@
       "target": "node_1782289859120_bm7co2",
       "sourceHandle": "case-3",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[3].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[3].field"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1782272004979_7i96r6-target--reference-runtime",
+      "source": "node_1781681576137_start",
+      "target": "node_1782272004979_7i96r6",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782272004979_7i96r6-property:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782272004979_7i96r6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "property:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:aspect-node_1782272004979_7i96r6-property:aspectRatio",
+      "source": "node_1781681576137_start",
+      "target": "node_1782272004979_7i96r6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:aspect",
+      "targetHandle": "property:aspectRatio"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:size-node_1782272004979_7i96r6-property:resolution",
+      "source": "node_1781681576137_start",
+      "target": "node_1782272004979_7i96r6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:size",
+      "targetHandle": "property:resolution"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782272004979_7i96r6-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782272004979_7i96r6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782272004979_7i96r6-source-node_1782272119586_dim19h-target--reference-runtime",
+      "source": "node_1782272004979_7i96r6",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782272004979_7i96r6-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[0].value",
+      "source": "node_1782272004979_7i96r6",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:groups[0].variables[0].value"
+    },
+    {
+      "id": "e-node_1782289859119_7p0xhr-source-node_1782272119586_dim19h-target--reference-runtime",
+      "source": "node_1782289859119_7p0xhr",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782289859119_7p0xhr-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[1].value",
+      "source": "node_1782289859119_7p0xhr",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:groups[0].variables[1].value"
+    },
+    {
+      "id": "e-node_1782289859120_g99w5q-source-node_1782272119586_dim19h-target--reference-runtime",
+      "source": "node_1782289859120_g99w5q",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782289859120_g99w5q-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[2].value",
+      "source": "node_1782289859120_g99w5q",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:groups[0].variables[2].value"
+    },
+    {
+      "id": "e-node_1782289859120_bm7co2-source-node_1782272119586_dim19h-target--reference-runtime",
+      "source": "node_1782289859120_bm7co2",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782289859120_bm7co2-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[3].value",
+      "source": "node_1782289859120_bm7co2",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:groups[0].variables[3].value"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1782281779113_6rk17s-target--reference-runtime",
+      "source": "node_1781681576137_start",
+      "target": "node_1782281779113_6rk17s",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782281779113_6rk17s-input:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782281779113_6rk17s",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "input:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:size-node_1782281779113_6rk17s-input:size",
+      "source": "node_1781681576137_start",
+      "target": "node_1782281779113_6rk17s",
+      "edgeKind": "reference",
+      "sourceHandle": "output:size",
+      "targetHandle": "input:size"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1782289859119_7p0xhr-target--reference-runtime",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859119_7p0xhr",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782289859119_7p0xhr-property:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859119_7p0xhr",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "property:model"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-source-node_1782289859119_7p0xhr-target--reference-runtime",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1782289859119_7p0xhr",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:size-node_1782289859119_7p0xhr-property:size",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1782289859119_7p0xhr",
+      "edgeKind": "reference",
+      "sourceHandle": "output:size",
+      "targetHandle": "property:size"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782289859119_7p0xhr-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859119_7p0xhr",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1782289859120_g99w5q-target--reference-runtime",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_g99w5q",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782289859120_g99w5q-property:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_g99w5q",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "property:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:aspect-node_1782289859120_g99w5q-property:ratio",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_g99w5q",
+      "edgeKind": "reference",
+      "sourceHandle": "output:aspect",
+      "targetHandle": "property:ratio"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:size-node_1782289859120_g99w5q-property:resolution",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_g99w5q",
+      "edgeKind": "reference",
+      "sourceHandle": "output:size",
+      "targetHandle": "property:resolution"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782289859120_g99w5q-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_g99w5q",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1782289859120_bm7co2-target--reference-runtime",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_bm7co2",
+      "edgeKind": "runtime",
+      "composite": {
+        "generated": true,
+        "hidden": false,
+        "locked": false
+      }
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782289859120_bm7co2-property:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_bm7co2",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "property:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:aspect-node_1782289859120_bm7co2-property:aspectRatio",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_bm7co2",
+      "edgeKind": "reference",
+      "sourceHandle": "output:aspect",
+      "targetHandle": "property:aspectRatio"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782289859120_bm7co2-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_bm7co2",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1782351160668,
+  "updatedAt": 1782522569850,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -525,5 +859,8 @@
   "lastRunAt": 1782304163824,
   "groups": [],
   "description": "文字生成图片",
-  "variables": []
+  "variables": [],
+  "layoutSnapshot": {
+    "nodeDisplayMode": "properties"
+  }
 }
