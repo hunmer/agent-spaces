@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Lock, Pencil, Play, Trash2, Unlock, X } from 'lucide-react';
-import type { WorkflowGroup } from '@agent-spaces/shared';
+import type { NodeBreakpoint, NodeRunState, WorkflowGroup } from '@agent-spaces/shared';
 import { cn } from '@/lib/utils';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,8 +12,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
+import { NODE_COLORS } from './workflow-node-types';
+import { WorkflowNodeContextMenu } from './workflow-node-context-menu';
+import { useWorkflowNodeActions } from './use-workflow-node-actions';
 
-type NodeLike = { id: string; type?: string; label?: string };
+type NodeLike = {
+  id: string;
+  type?: string;
+  label?: string;
+  nodeState?: NodeRunState;
+  breakpoint?: NodeBreakpoint;
+  nodeColor?: string | null;
+};
 type EdgeLike = { source: string; target: string };
 
 type GroupViewMode = 'connected' | 'named';
@@ -24,6 +34,7 @@ type WorkflowNodeListPanelProps = {
   groups?: WorkflowGroup[];
   selectedNodeId?: string | null;
   isReadOnly?: boolean;
+  isCanvasLocked?: boolean;
   onSelectNode: (nodeId: string) => void;
   onDeleteGroup?: (nodeIds: string[]) => void;
   onTestNode?: (nodeId: string) => void;
@@ -86,6 +97,7 @@ export function WorkflowNodeListPanel({
   groups,
   selectedNodeId,
   isReadOnly = false,
+  isCanvasLocked = false,
   onSelectNode,
   onDeleteGroup,
   onTestNode,
@@ -168,39 +180,18 @@ export function WorkflowNodeListPanel({
   const renderNode = (id: string) => {
     const node = nodeMap.get(id);
     if (!node) return null;
-    const label = node.label || node.type || id;
-    const definition = node.type ? getNodeDefinition(node.type) : null;
-    const active = selectedNodeId === id;
     return (
-      <div
+      <NodeListItemRow
         key={id}
-        className={cn(
-          'group/node flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/60',
-          active && 'bg-accent',
-        )}
-        onClick={() => onSelectNode(id)}
-      >
-        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted-foreground">
-          <WorkflowNodeDefinitionIcon definition={definition} className="h-3.5 w-3.5" />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-xs">{label}</span>
-        {node.type && (
-          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-            {node.type}
-          </span>
-        )}
-        {onTestNode && (
-          <button
-            type="button"
-            className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-green-600 disabled:opacity-30 group-hover/node:opacity-100"
-            title={t('editor.nodeList.run')}
-            disabled={isExecuting}
-            onClick={(event) => { event.stopPropagation(); onTestNode(id); }}
-          >
-            <Play className="h-3 w-3" />
-          </button>
-        )}
-      </div>
+        node={node}
+        active={selectedNodeId === id}
+        isReadOnly={isReadOnly}
+        isCanvasLocked={isCanvasLocked}
+        isExecuting={isExecuting}
+        canTest={!!onTestNode}
+        onSelectNode={onSelectNode}
+        onTestNode={onTestNode}
+      />
     );
   };
 
@@ -418,5 +409,139 @@ export function WorkflowNodeListPanel({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+type NodeListItemRowProps = {
+  node: NodeLike;
+  active: boolean;
+  isReadOnly: boolean;
+  isCanvasLocked: boolean;
+  isExecuting: boolean;
+  canTest: boolean;
+  onSelectNode: (nodeId: string) => void;
+  onTestNode?: (nodeId: string) => void;
+};
+
+function NodeListItemRow({
+  node,
+  active,
+  isReadOnly,
+  isCanvasLocked,
+  isExecuting,
+  canTest,
+  onSelectNode,
+  onTestNode,
+}: NodeListItemRowProps) {
+  const t = useTranslations('workflows');
+  const { id } = node;
+  const label = node.label || node.type || id;
+  const definition = node.type ? getNodeDefinition(node.type) : null;
+
+  // 颜色：节点 nodeColor -> NODE_COLORS，无则用默认
+  const nodeColor = NODE_COLORS.find(color => color.value === node.nodeColor);
+  // 状态徽章（disabled/skipped）
+  const stateBadge = node.nodeState === 'disabled'
+    ? t('nodeUi.stateBadge.disabled')
+    : node.nodeState === 'skipped' ? t('nodeUi.stateBadge.skipped') : '';
+  // 断点徽章
+  const breakpointBadge = node.breakpoint === 'start'
+    ? t('nodeUi.breakpointBadge.start')
+    : node.breakpoint === 'end' ? t('nodeUi.breakpointBadge.end') : '';
+
+  // 与画布节点共用同一套 window 事件，行为一致
+  const actions = useWorkflowNodeActions({
+    id,
+    isCanvasLocked,
+    isBoundaryNode: false,
+    isCurrentNodeDebugging: false,
+    isExecutionBusy: isExecuting,
+    isDeleteDisabled: isExecuting,
+    selectedNodeIds: [],
+    nodeMinWidth: 0,
+    nodeMinHeight: 0,
+  });
+
+  return (
+    <WorkflowNodeContextMenu
+      nodeId={id}
+      selectedNodeIds={[]}
+      isCanvasLocked={isCanvasLocked || isReadOnly}
+      isDeleteProtected={false}
+      style={{ width: '100%' }}
+      onSetColor={actions.setNodeColor}
+      onSetState={actions.setNodeState}
+      onSetBreakpoint={actions.setNodeBreakpoint}
+      onShowInfo={actions.handleShowInfo}
+      onCopy={actions.handleCopy}
+      onClone={actions.handleClone}
+      onStage={actions.handleStage}
+      onMoveToStage={actions.handleMoveToStage}
+      onDelete={actions.handleDelete}
+    >
+      <div
+        className={cn(
+          'group/node flex w-full cursor-pointer flex-col gap-1 rounded px-2 py-1.5 hover:bg-accent/60',
+          active && 'bg-accent',
+          node.nodeState === 'disabled' && 'opacity-60',
+          node.nodeState === 'skipped' && 'opacity-80',
+        )}
+        onClick={() => onSelectNode(id)}
+      >
+        {/* 第一行：图标 / 标签 / 类型 / 测试 */}
+        <div className="flex w-full items-center gap-2">
+          <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted-foreground">
+            <WorkflowNodeDefinitionIcon definition={definition} className="h-3.5 w-3.5" />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-xs">{label}</span>
+          {node.type && (
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              {node.type}
+            </span>
+          )}
+          {canTest && (
+            <button
+              type="button"
+              className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-green-600 disabled:opacity-30 group-hover/node:opacity-100"
+              title={t('editor.nodeList.run')}
+              disabled={isExecuting}
+              onClick={(event) => { event.stopPropagation(); onTestNode?.(id); }}
+            >
+              <Play className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+        {/* 第二行：颜色 / 状态 / 断点（仅有内容时显示） */}
+        {(node.nodeColor && nodeColor) || stateBadge || breakpointBadge ? (
+          <div className="flex w-full flex-wrap items-center gap-1 pl-[22px]">
+            {node.nodeColor && nodeColor && (
+              <span className={cn('shrink-0 rounded-sm', nodeColor.className, 'h-3 w-3 border border-border/50')} title={t(nodeColor.label)} />
+            )}
+            {stateBadge && (
+              <span
+                className={cn(
+                  'shrink-0 rounded px-1.5 py-0.5 text-[10px]',
+                  node.nodeState === 'disabled'
+                    ? 'bg-red-500/15 text-red-600'
+                    : 'bg-yellow-500/15 text-yellow-600',
+                )}
+              >
+                {stateBadge}
+              </span>
+            )}
+            {breakpointBadge && (
+              <span
+                className={cn(
+                  'shrink-0 rounded px-1.5 py-0.5 text-[10px]',
+                  node.breakpoint === 'start' ? 'bg-blue-500/15 text-blue-600' : 'bg-purple-500/15 text-purple-600',
+                )}
+              >
+                {breakpointBadge}
+              </span>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </WorkflowNodeContextMenu>
   );
 }

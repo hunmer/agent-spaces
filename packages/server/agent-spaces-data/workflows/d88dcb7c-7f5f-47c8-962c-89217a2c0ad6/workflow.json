@@ -9,7 +9,7 @@
       "label": "开始",
       "position": {
         "x": 0,
-        "y": 4835.371441781148
+        "y": 572.5000204439038
       },
       "data": {
         "inputFields": [
@@ -63,8 +63,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 5534.048386425518,
-        "y": 1.1368683772161603e-13
+        "x": 990,
+        "y": 0
       },
       "data": {
         "outputs": [
@@ -83,8 +83,8 @@
       "type": "switch",
       "label": "nodes.switch.label",
       "position": {
-        "x": 1973.734536760166,
-        "y": 3969.027165022965
+        "x": 660,
+        "y": 474.00002044390385
       },
       "data": {
         "sourceNodeId": "node_1782281779113_6rk17s",
@@ -154,8 +154,8 @@
       "type": "aliyun_kling_image_generation",
       "label": "可灵图像生成",
       "position": {
-        "x": 5437.970005211774,
-        "y": 6560.473580930338
+        "x": 990,
+        "y": 896.5000204439038
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -200,8 +200,8 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 9257.362079603054,
-        "y": 4441.769591433308
+        "x": 1320,
+        "y": 548.5000204439038
       },
       "data": {
         "strategy": "first_non_empty",
@@ -263,8 +263,8 @@
       "type": "end",
       "label": "nodes.end.label",
       "position": {
-        "x": 10151.065564749388,
-        "y": 4758.910696161012
+        "x": 1650,
+        "y": 563.0000204439038
       },
       "data": {
         "outputs": [
@@ -282,8 +282,8 @@
       "type": "run_code",
       "label": "nodes.run_code.label",
       "position": {
-        "x": 1003.1408606852349,
-        "y": 4641.480682111884
+        "x": 210,
+        "y": 795
       },
       "data": {
         "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
@@ -315,15 +315,16 @@
             "type": "string"
           }
         ]
-      }
+      },
+      "nodeState": "normal"
     },
     {
       "id": "node_1782289859119_7p0xhr",
       "type": "aliyun_text_to_image",
       "label": "阿里云AI文生图",
       "position": {
-        "x": 5426.970005211774,
-        "y": 5426.4731516264865
+        "x": 990,
+        "y": 687.5000204439038
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -366,8 +367,8 @@
       "type": "jimeng_text_to_image",
       "label": "即梦AI文生图",
       "position": {
-        "x": 5426.89200669207,
-        "y": 3858.0583490905537
+        "x": 990,
+        "y": 409.00000000000006
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -412,8 +413,8 @@
       "type": "ai_image_generate",
       "label": "AI图片文生图",
       "position": {
-        "x": 2781.734693247983,
-        "y": 758.5001310234911
+        "x": 990,
+        "y": 180
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -540,17 +541,6 @@
       "targetHandle": "target"
     },
     {
-      "id": "e-node_1781681576137_start-source-node_1782272004979_7i96r6-target--reference-runtime",
-      "source": "node_1781681576137_start",
-      "target": "node_1782272004979_7i96r6",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1781681576137_start-output:model-node_1782272004979_7i96r6-property:model",
       "source": "node_1781681576137_start",
       "target": "node_1782272004979_7i96r6",
@@ -583,34 +573,12 @@
       "targetHandle": "property:prompt"
     },
     {
-      "id": "e-node_1782272004979_7i96r6-source-node_1782272119586_dim19h-target--reference-runtime",
-      "source": "node_1782272004979_7i96r6",
-      "target": "node_1782272119586_dim19h",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1782272004979_7i96r6-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[0].value",
       "source": "node_1782272004979_7i96r6",
       "target": "node_1782272119586_dim19h",
       "edgeKind": "reference",
       "sourceHandle": "output:data.images",
       "targetHandle": "property:groups[0].variables[0].value"
-    },
-    {
-      "id": "e-node_1782289859119_7p0xhr-source-node_1782272119586_dim19h-target--reference-runtime",
-      "source": "node_1782289859119_7p0xhr",
-      "target": "node_1782272119586_dim19h",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
     },
     {
       "id": "e-node_1782289859119_7p0xhr-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[1].value",
@@ -621,17 +589,6 @@
       "targetHandle": "property:groups[0].variables[1].value"
     },
     {
-      "id": "e-node_1782289859120_g99w5q-source-node_1782272119586_dim19h-target--reference-runtime",
-      "source": "node_1782289859120_g99w5q",
-      "target": "node_1782272119586_dim19h",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1782289859120_g99w5q-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[2].value",
       "source": "node_1782289859120_g99w5q",
       "target": "node_1782272119586_dim19h",
@@ -640,34 +597,12 @@
       "targetHandle": "property:groups[0].variables[2].value"
     },
     {
-      "id": "e-node_1782289859120_bm7co2-source-node_1782272119586_dim19h-target--reference-runtime",
-      "source": "node_1782289859120_bm7co2",
-      "target": "node_1782272119586_dim19h",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1782289859120_bm7co2-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[3].value",
       "source": "node_1782289859120_bm7co2",
       "target": "node_1782272119586_dim19h",
       "edgeKind": "reference",
       "sourceHandle": "output:data.images",
       "targetHandle": "property:groups[0].variables[3].value"
-    },
-    {
-      "id": "e-node_1781681576137_start-source-node_1782281779113_6rk17s-target--reference-runtime",
-      "source": "node_1781681576137_start",
-      "target": "node_1782281779113_6rk17s",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
     },
     {
       "id": "e-node_1781681576137_start-output:model-node_1782281779113_6rk17s-input:model",
@@ -686,34 +621,12 @@
       "targetHandle": "input:size"
     },
     {
-      "id": "e-node_1781681576137_start-source-node_1782289859119_7p0xhr-target--reference-runtime",
-      "source": "node_1781681576137_start",
-      "target": "node_1782289859119_7p0xhr",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1781681576137_start-output:model-node_1782289859119_7p0xhr-property:model",
       "source": "node_1781681576137_start",
       "target": "node_1782289859119_7p0xhr",
       "edgeKind": "reference",
       "sourceHandle": "output:model",
       "targetHandle": "property:model"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-source-node_1782289859119_7p0xhr-target--reference-runtime",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1782289859119_7p0xhr",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
     },
     {
       "id": "e-node_1782281779113_6rk17s-output:size-node_1782289859119_7p0xhr-property:size",
@@ -730,17 +643,6 @@
       "edgeKind": "reference",
       "sourceHandle": "output:prompt",
       "targetHandle": "property:prompt"
-    },
-    {
-      "id": "e-node_1781681576137_start-source-node_1782289859120_g99w5q-target--reference-runtime",
-      "source": "node_1781681576137_start",
-      "target": "node_1782289859120_g99w5q",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
     },
     {
       "id": "e-node_1781681576137_start-output:model-node_1782289859120_g99w5q-property:model",
@@ -775,17 +677,6 @@
       "targetHandle": "property:prompt"
     },
     {
-      "id": "e-node_1781681576137_start-source-node_1782289859120_bm7co2-target--reference-runtime",
-      "source": "node_1781681576137_start",
-      "target": "node_1782289859120_bm7co2",
-      "edgeKind": "runtime",
-      "composite": {
-        "generated": true,
-        "hidden": false,
-        "locked": false
-      }
-    },
-    {
       "id": "e-node_1781681576137_start-output:model-node_1782289859120_bm7co2-property:model",
       "source": "node_1781681576137_start",
       "target": "node_1782289859120_bm7co2",
@@ -800,14 +691,6 @@
       "edgeKind": "reference",
       "sourceHandle": "output:aspect",
       "targetHandle": "property:aspectRatio"
-    },
-    {
-      "id": "e-node_1781681576137_start-output:prompt-node_1782289859120_bm7co2-property:prompt",
-      "source": "node_1781681576137_start",
-      "target": "node_1782289859120_bm7co2",
-      "edgeKind": "reference",
-      "sourceHandle": "output:prompt",
-      "targetHandle": "property:prompt"
     },
     {
       "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].variable",
@@ -872,10 +755,18 @@
       "edgeKind": "reference",
       "sourceHandle": "output:target",
       "targetHandle": "property:conditions[3].conditions[0].field"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782289859120_bm7co2-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782289859120_bm7co2",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1782524445411,
+  "updatedAt": 1782525528016,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -889,6 +780,6 @@
   "description": "文字生成图片",
   "variables": [],
   "layoutSnapshot": {
-    "nodeDisplayMode": "properties"
+    "nodeDisplayMode": "normal"
   }
 }

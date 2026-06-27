@@ -243,7 +243,7 @@
     "size": "1k",
     "quality": "720",
     "duration": "5",
-    "generationMode": "text",
-    "batchLimit": "1"
+    "batchLimit": "1",
+    "generationMode": "text"
   }
 }

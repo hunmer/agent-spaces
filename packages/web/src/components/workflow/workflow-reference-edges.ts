@@ -14,6 +14,11 @@ type ReferenceEdge = {
 };
 
 const REFERENCE_RUNTIME_EDGE_ID_SUFFIX = '--reference-runtime';
+type WorkflowWithDisplayMode = Pick<Workflow, 'nodes' | 'edges'> & {
+  layoutSnapshot?: {
+    nodeDisplayMode?: unknown;
+  };
+};
 
 function getReferenceEdgeKey(edge: Pick<WorkflowEdge, 'source' | 'target' | 'sourceHandle' | 'targetHandle'>): string {
   return [
@@ -134,6 +139,15 @@ function needsRuntimeCompensation(edge: WorkflowEdge): boolean {
     && targetHandle?.kind !== undefined;
 }
 
+function getRuntimeCompensationKey(edge: Pick<WorkflowEdge, 'source' | 'target'>): string {
+  return getReferenceEdgeKey({
+    source: edge.source,
+    target: edge.target,
+    sourceHandle: undefined,
+    targetHandle: undefined,
+  });
+}
+
 function isGeneratedRuntimeReferenceEdge(edge: WorkflowEdge): boolean {
   return edge.id.endsWith(REFERENCE_RUNTIME_EDGE_ID_SUFFIX)
     && edge.composite?.generated === true
@@ -141,6 +155,31 @@ function isGeneratedRuntimeReferenceEdge(edge: WorkflowEdge): boolean {
     && !edge.composite.locked
     && !edge.sourceHandle
     && !edge.targetHandle;
+}
+
+function hasNodeLevelRuntimePath(edges: WorkflowEdge[], source: string, target: string): boolean {
+  const adjacency = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.edgeKind === 'reference') continue;
+    if (isGeneratedRuntimeReferenceEdge(edge)) continue;
+    if (needsRuntimeCompensation(edge)) continue;
+    const targets = adjacency.get(edge.source);
+    if (targets) targets.push(edge.target);
+    else adjacency.set(edge.source, [edge.target]);
+  }
+
+  const visited = new Set<string>();
+  const stack = [source];
+  while (stack.length > 0) {
+    const nodeId = stack.pop();
+    if (!nodeId || visited.has(nodeId)) continue;
+    visited.add(nodeId);
+    for (const next of adjacency.get(nodeId) || []) {
+      if (next === target) return true;
+      if (!visited.has(next)) stack.push(next);
+    }
+  }
+  return false;
 }
 
 function createRuntimeReferenceEdge(reference: ReferenceEdge): WorkflowEdge {
@@ -174,22 +213,20 @@ function createFieldReferenceEdge(reference: ReferenceEdge): WorkflowEdge {
 }
 
 export function syncWorkflowReferenceEdges<T extends Pick<Workflow, 'nodes' | 'edges'>>(workflow: T): T {
+  const canSyncRuntimeCompensation = (workflow as WorkflowWithDisplayMode).layoutSnapshot?.nodeDisplayMode === 'properties';
   const references = collectWorkflowReferenceEdges(workflow.nodes);
   const desiredFieldKeys = new Set(references.map(getReferenceEdgeKey));
-  const desiredRuntimeKeys = new Set(references.map(reference => getReferenceEdgeKey({
-    source: reference.source,
-    target: reference.target,
-    sourceHandle: undefined,
-    targetHandle: undefined,
-  })));
-  for (const edge of workflow.edges) {
-    if (!needsRuntimeCompensation(edge)) continue;
-    desiredRuntimeKeys.add(getReferenceEdgeKey({
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: undefined,
-      targetHandle: undefined,
-    }));
+  const desiredRuntimeKeys = new Set<string>();
+  if (canSyncRuntimeCompensation) {
+    for (const reference of references) {
+      if (hasNodeLevelRuntimePath(workflow.edges, reference.source, reference.target)) continue;
+      desiredRuntimeKeys.add(getRuntimeCompensationKey(reference));
+    }
+    for (const edge of workflow.edges) {
+      if (!needsRuntimeCompensation(edge)) continue;
+      if (hasNodeLevelRuntimePath(workflow.edges, edge.source, edge.target)) continue;
+      desiredRuntimeKeys.add(getRuntimeCompensationKey(edge));
+    }
   }
 
   const nextEdges = workflow.edges.filter((edge) => {
@@ -210,7 +247,7 @@ export function syncWorkflowReferenceEdges<T extends Pick<Workflow, 'nodes' | 'e
   for (const reference of references) {
     const runtimeEdge = createRuntimeReferenceEdge(reference);
     const runtimeKey = getReferenceEdgeKey(runtimeEdge);
-    if (!existingKeys.has(runtimeKey)) {
+    if (desiredRuntimeKeys.has(runtimeKey) && !existingKeys.has(runtimeKey)) {
       nextEdges.push(runtimeEdge);
       existingKeys.add(runtimeKey);
     }
@@ -222,18 +259,20 @@ export function syncWorkflowReferenceEdges<T extends Pick<Workflow, 'nodes' | 'e
       existingKeys.add(fieldKey);
     }
   }
-  for (const edge of workflow.edges) {
-    if (!needsRuntimeCompensation(edge)) continue;
-    const runtimeEdge = createRuntimeReferenceEdge({
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: '',
-      targetHandle: '',
-    });
-    const runtimeKey = getReferenceEdgeKey(runtimeEdge);
-    if (!existingKeys.has(runtimeKey)) {
-      nextEdges.push(runtimeEdge);
-      existingKeys.add(runtimeKey);
+  if (canSyncRuntimeCompensation) {
+    for (const edge of workflow.edges) {
+      if (!needsRuntimeCompensation(edge)) continue;
+      const runtimeEdge = createRuntimeReferenceEdge({
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: '',
+        targetHandle: '',
+      });
+      const runtimeKey = getReferenceEdgeKey(runtimeEdge);
+      if (desiredRuntimeKeys.has(runtimeKey) && !existingKeys.has(runtimeKey)) {
+        nextEdges.push(runtimeEdge);
+        existingKeys.add(runtimeKey);
+      }
     }
   }
 

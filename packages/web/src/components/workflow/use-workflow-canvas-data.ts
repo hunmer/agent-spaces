@@ -24,6 +24,7 @@ const LOOP_BODY_NODE_Z_INDEX = -100;
 const DEFAULT_NODE_Z_INDEX = 1;
 const SCOPED_CHILD_NODE_Z_INDEX = 1000;
 const ACTIVE_NODE_Z_INDEX = 2000;
+const REFERENCE_RUNTIME_EDGE_ID_SUFFIX = '--reference-runtime';
 
 function getStepSortTime(step: ExecutionStep): number {
   return step.finishedAt ?? step.startedAt;
@@ -117,6 +118,20 @@ function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: s
   const handleId = sourceHandle || DEFAULT_SOURCE_HANDLE_ID;
   const colorKey = (handleColors as Record<string, unknown>)[handleId];
   return typeof colorKey === 'string' ? NODE_COLOR_MAP[colorKey] : undefined;
+}
+
+function isGeneratedReferenceRuntimeEdge(edge: Workflow['edges'][number]): boolean {
+  return edge.id.endsWith(REFERENCE_RUNTIME_EDGE_ID_SUFFIX)
+    && edge.composite?.generated === true
+    && !edge.composite.hidden
+    && !edge.composite.locked
+    && !edge.sourceHandle
+    && !edge.targetHandle;
+}
+
+function isFieldHandleEdge(edge: Workflow['edges'][number]): boolean {
+  return parseWorkflowFieldHandleId(edge.sourceHandle)?.kind !== undefined
+    || parseWorkflowFieldHandleId(edge.targetHandle)?.kind !== undefined;
 }
 
 function canShowPropertyNodeView(node: WorkflowNode, nodeDisplayMode: WorkflowNodeDisplayMode): boolean {
@@ -374,7 +389,17 @@ export function useCanvasData({
 
   const rfEdges: Edge[] = useMemo(() => {
     const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
-    return workflow.edges.filter(edge => !isHiddenWorkflowEdge(edge)).map(e => {
+    return workflow.edges.filter(edge => (
+      !isHiddenWorkflowEdge(edge)
+      && (
+        nodeDisplayMode === 'properties'
+        || (
+          edge.edgeKind !== 'reference'
+          && !isGeneratedReferenceRuntimeEdge(edge)
+          && !isFieldHandleEdge(edge)
+        )
+      )
+    )).map(e => {
       const sourceNode = nodeById.get(e.source);
       const targetNode = nodeById.get(e.target);
       const displaySourceHandle = getNormalizedSourceHandle(sourceNode, e.sourceHandle, nodeDisplayMode);

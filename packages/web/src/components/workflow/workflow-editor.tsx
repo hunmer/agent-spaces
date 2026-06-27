@@ -1075,6 +1075,7 @@ function WorkflowEditorInner({
             groups={workflow.groups || []}
             selectedNodeId={state.selectedNodeId}
             isReadOnly={isWorkflowReadOnly}
+            isCanvasLocked={isWorkflowReadOnly}
             onSelectNode={handleSelectNodeFromList}
             onDeleteGroup={isWorkflowReadOnly ? undefined : handleDeleteGroup}
             onTestNode={handleTestNodeFromList}
