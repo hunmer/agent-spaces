@@ -22,6 +22,7 @@ import { serveHttp } from './transport/http.js';
 interface CliArgs {
   baseUrl: string;
   token: string;
+  workspaceId: string;
   transport: 'stdio' | 'http';
   port: number;
   host: string;
@@ -37,12 +38,13 @@ function parseArgs(argv: string[]): CliArgs {
 
   const baseUrl = get('baseUrl', process.env.AGENT_SPACES_BASE_URL || 'http://localhost:3100')!;
   const token = get('token', process.env.AGENT_SPACES_TOKEN || '')!;
+  const workspaceId = get('workspaceId', process.env.AGENT_SPACES_WORKSPACE_ID || '')!;
   const transport = (get('transport', 'stdio') || 'stdio') as 'stdio' | 'http';
   const port = Number(get('port', '3101')) || 3101;
   const host = get('host', '127.0.0.1') || '127.0.0.1';
   const debug = flag('debug');
 
-  return { baseUrl, token, transport, port, host, debug };
+  return { baseUrl, token, workspaceId, transport, port, host, debug };
 }
 
 async function main() {
@@ -53,6 +55,7 @@ async function main() {
 
   --baseUrl <url>      Agent Spaces 服务器地址（默认 http://localhost:3100）
   --token <token>      鉴权 token（也可用 AGENT_SPACES_TOKEN 环境变量）
+  --workspaceId <id>   工作区 ID（也可用 AGENT_SPACES_WORKSPACE_ID；启用工作流真实执行）
   --transport <t>      stdio（默认）| http
   --port <n>           http 模式端口（默认 3101）
   --host <h>           http 模式监听地址（默认 127.0.0.1）
@@ -69,11 +72,16 @@ async function main() {
   };
 
   const sdk = createSDK(sdkConfig);
-  const { server, tools } = createMcpServer(sdk);
+  // 仅当配置了 workspaceId 时启用工作流真实执行适配（走 WS）
+  const wsConfig = args.workspaceId
+    ? { baseUrl: args.baseUrl, token: args.token, workspaceId: args.workspaceId }
+    : undefined;
+  const { server, tools } = createMcpServer(sdk, wsConfig);
 
   if (args.transport === 'stdio') {
     // stdio 模式：日志走 stderr，避免污染 stdout（MCP 消息通道）
-    console.error(`[mcp] stdio transport | tools=${tools.length} baseUrl=${args.baseUrl}`);
+    const wfNote = wsConfig ? ' | workflow_execute=WS(真实执行)' : ' | workflow_execute=SDK(未配置 workspaceId)';
+    console.error(`[mcp] stdio transport | tools=${tools.length} baseUrl=${args.baseUrl}${wfNote}`);
     await serveStdio(server);
   } else {
     const log = (msg: string) => console.error(`[mcp] ${msg}`);

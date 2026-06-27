@@ -101,12 +101,16 @@ async function rawToBase64(response: unknown): Promise<string> {
   return buf.toString('base64');
 }
 
+/** tool 名 → 自定义执行器（覆盖反射出的默认行为） */
+export type ToolOverride = (args: Record<string, unknown>) => Promise<unknown>;
+
 /**
  * 从 SDK 实例反射出全部 MCP tools。
  * @param sdk 已配置好的 SDK 实例
+ * @param overrides 按 tool 名覆盖执行逻辑（用于修补 SDK 与服务器契约不一致的方法）
  * @returns tool 定义数组
  */
-export function buildToolRegistry(sdk: SDK): McpToolDef[] {
+export function buildToolRegistry(sdk: SDK, overrides: Record<string, ToolOverride> = {}): McpToolDef[] {
   const tools: McpToolDef[] = [];
 
   for (const [moduleName, mod] of Object.entries(sdk)) {
@@ -153,6 +157,10 @@ export function buildToolRegistry(sdk: SDK): McpToolDef[] {
           required,
         },
         execute: async (args) => {
+          // ---- 优先使用 override（修补 SDK/服务器契约不一致的方法） ----
+          if (overrides[toolName]) {
+            return overrides[toolName](args);
+          }
           // ---- 按序提取位置参数 ----
           const positional: unknown[] = [];
           for (let i = 0; i < arity; i++) {

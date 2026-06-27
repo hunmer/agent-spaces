@@ -765,8 +765,8 @@
     }
   ],
   "createdAt": 1782530195481,
-  "updatedAt": 1782531672266,
-  "published": false,
+  "updatedAt": 1782539039377,
+  "published": true,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.tencent-cos",
@@ -777,7 +777,7 @@
     "workflow.minimax",
     "workflow.qianyin"
   ],
-  "lastRunAt": 1782304163824,
+  "lastRunAt": 1782540001965,
   "groups": [],
   "description": "文字生成语音",
   "variables": [],
