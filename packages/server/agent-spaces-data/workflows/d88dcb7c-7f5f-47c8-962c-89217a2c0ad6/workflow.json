@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 775,
-        "y": 0
+        "x": 0,
+        "y": 4835.371441781148
       },
       "data": {
         "inputFields": [
@@ -63,8 +63,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 0,
-        "y": 712.5
+        "x": 5534.048386425518,
+        "y": 1.1368683772161603e-13
       },
       "data": {
         "outputs": [
@@ -83,8 +83,8 @@
       "type": "switch",
       "label": "nodes.switch.label",
       "position": {
-        "x": 702.5,
-        "y": 400
+        "x": 1973.734536760166,
+        "y": 3969.027165022965
       },
       "data": {
         "sourceNodeId": "node_1782281779113_6rk17s",
@@ -92,31 +92,59 @@
         "conditions": [
           {
             "id": "cond_1781686912427_7hb8",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-0"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1781686912427_7hb8",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-0"
+              }
+            ]
           },
           {
             "id": "cond_1782273364173_chpi",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-1"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782273364173_chpi",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-1"
+              }
+            ]
           },
           {
             "id": "cond_1782281410888_ywvg",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-2"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782281410888_ywvg",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-2"
+              }
+            ]
           },
           {
             "id": "cond_1782282908847_d6nx",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-3"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782282908847_d6nx",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-3"
+              }
+            ]
           }
         ]
       }
@@ -126,8 +154,8 @@
       "type": "aliyun_kling_image_generation",
       "label": "可灵图像生成",
       "position": {
-        "x": 1260,
-        "y": 688
+        "x": 5437.970005211774,
+        "y": 6560.473580930338
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -172,8 +200,8 @@
       "type": "variable_aggregate",
       "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 785,
-        "y": 947
+        "x": 9257.362079603054,
+        "y": 4441.769591433308
       },
       "data": {
         "strategy": "first_non_empty",
@@ -235,8 +263,8 @@
       "type": "end",
       "label": "nodes.end.label",
       "position": {
-        "x": 785,
-        "y": 1176
+        "x": 10151.065564749388,
+        "y": 4758.910696161012
       },
       "data": {
         "outputs": [
@@ -254,8 +282,8 @@
       "type": "run_code",
       "label": "nodes.run_code.label",
       "position": {
-        "x": 785,
-        "y": 200
+        "x": 1003.1408606852349,
+        "y": 4641.480682111884
       },
       "data": {
         "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
@@ -294,8 +322,8 @@
       "type": "aliyun_text_to_image",
       "label": "阿里云AI文生图",
       "position": {
-        "x": 950,
-        "y": 698
+        "x": 5426.970005211774,
+        "y": 5426.4731516264865
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -338,8 +366,8 @@
       "type": "jimeng_text_to_image",
       "label": "即梦AI文生图",
       "position": {
-        "x": 620,
-        "y": 678
+        "x": 5426.89200669207,
+        "y": 3858.0583490905537
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -384,8 +412,8 @@
       "type": "ai_image_generate",
       "label": "AI图片文生图",
       "position": {
-        "x": 310,
-        "y": 688
+        "x": 2781.734693247983,
+        "y": 758.5001310234911
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -510,70 +538,6 @@
       "target": "node_1782289859120_bm7co2",
       "sourceHandle": "case-3",
       "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[0].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[0].field"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[1].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[1].field"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[2].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[2].field"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[3].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[3].field"
     },
     {
       "id": "e-node_1781681576137_start-source-node_1782272004979_7i96r6-target--reference-runtime",
@@ -844,10 +808,74 @@
       "edgeKind": "reference",
       "sourceHandle": "output:prompt",
       "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[3].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[3].conditions[0].field"
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1782522569850,
+  "updatedAt": 1782524445411,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",

@@ -72,6 +72,26 @@ type AutoLayoutDisplayPrefs = {
   propertyModeBadgePosition: AutoLayoutPropertyModeBadgePosition;
 };
 
+type RenderedWorkflowNodeVisualMetrics = {
+  bodyWidth: number;
+  bodyHeight: number;
+  overflowLeft: number;
+  overflowRight: number;
+  overflowTop: number;
+  overflowBottom: number;
+};
+
+type AutoLayoutNodeMetrics = {
+  bodyWidth: number;
+  bodyHeight: number;
+  overflowLeft: number;
+  overflowRight: number;
+  overflowTop: number;
+  overflowBottom: number;
+  measuredWidth?: number;
+  measuredHeight?: number;
+};
+
 function roundLayoutDebugValue(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -102,17 +122,38 @@ function getReactFlowViewportZoom(): number {
   return 1;
 }
 
-function getRenderedWorkflowNodeSize(nodeId: string): { width: number; height: number } | null {
+function getRenderedWorkflowNodeVisualMetrics(nodeId: string): RenderedWorkflowNodeVisualMetrics | null {
   if (typeof document === 'undefined') return null;
-  const nodeElement = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${escapeCssAttributeValue(nodeId)}"]`);
+  const escapedNodeId = escapeCssAttributeValue(nodeId);
+  const nodeElement = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${escapedNodeId}"]`);
   if (!nodeElement) return null;
 
   const zoom = getReactFlowViewportZoom();
-  const rect = nodeElement.getBoundingClientRect();
-  const width = rect.width / zoom;
-  const height = rect.height / zoom;
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
-  return { width, height };
+  const nodeRect = nodeElement.getBoundingClientRect();
+  if (nodeRect.width <= 0 || nodeRect.height <= 0) return null;
+
+  let left = nodeRect.left;
+  let top = nodeRect.top;
+  let right = nodeRect.right;
+  let bottom = nodeRect.bottom;
+  const badgeElements = document.querySelectorAll<HTMLElement>(`[data-workflow-node-id="${escapedNodeId}"]`);
+  badgeElements.forEach((element) => {
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    left = Math.min(left, rect.left);
+    top = Math.min(top, rect.top);
+    right = Math.max(right, rect.right);
+    bottom = Math.max(bottom, rect.bottom);
+  });
+
+  return {
+    bodyWidth: nodeRect.width / zoom,
+    bodyHeight: nodeRect.height / zoom,
+    overflowLeft: Math.max(0, (nodeRect.left - left) / zoom),
+    overflowRight: Math.max(0, (right - nodeRect.right) / zoom),
+    overflowTop: Math.max(0, (nodeRect.top - top) / zoom),
+    overflowBottom: Math.max(0, (bottom - nodeRect.bottom) / zoom),
+  };
 }
 
 function getAutoLayoutNodeData(
@@ -128,34 +169,54 @@ function getAutoLayoutNodeData(
     : node.data;
 }
 
+function getAutoLayoutNodeMetrics(
+  node: Workflow['nodes'][number],
+  displayPrefs: AutoLayoutDisplayPrefs,
+): AutoLayoutNodeMetrics {
+  const definition = getNodeDefinition(node.type);
+  const data = getAutoLayoutNodeData(node, displayPrefs);
+  const nodeSize = getWorkflowNodeSize(definition, data);
+  const renderedMetrics = getRenderedWorkflowNodeVisualMetrics(node.id);
+  const staticBodyWidth = typeof data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220);
+  const staticBodyHeight = typeof data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120);
+  const bodyWidth = renderedMetrics ? Math.max(staticBodyWidth, renderedMetrics.bodyWidth) : staticBodyWidth;
+  const bodyHeight = renderedMetrics ? Math.max(staticBodyHeight, renderedMetrics.bodyHeight) : staticBodyHeight;
+  const badgeOverflow = getPropertyModeBadgeLayoutOverflow(definition, data, bodyHeight);
+
+  return {
+    bodyWidth,
+    bodyHeight,
+    overflowLeft: Math.max(badgeOverflow.left, renderedMetrics?.overflowLeft ?? 0),
+    overflowRight: Math.max(badgeOverflow.right, renderedMetrics?.overflowRight ?? 0),
+    overflowTop: Math.max(badgeOverflow.top, renderedMetrics?.overflowTop ?? 0),
+    overflowBottom: Math.max(badgeOverflow.bottom, renderedMetrics?.overflowBottom ?? 0),
+    ...(renderedMetrics ? {
+      measuredWidth: renderedMetrics.bodyWidth,
+      measuredHeight: renderedMetrics.bodyHeight,
+    } : {}),
+  };
+}
+
 function getAutoLayoutDebugBounds(
   node: Workflow['nodes'][number],
   displayPrefs: AutoLayoutDisplayPrefs,
 ): AutoLayoutDebugBounds {
-  const definition = getNodeDefinition(node.type);
-  const data = getAutoLayoutNodeData(node, displayPrefs);
-  const nodeSize = getWorkflowNodeSize(definition, data);
-  const renderedSize = getRenderedWorkflowNodeSize(node.id);
-  const staticBodyWidth = typeof data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220);
-  const staticBodyHeight = typeof data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120);
-  const bodyWidth = renderedSize ? Math.max(staticBodyWidth, renderedSize.width) : staticBodyWidth;
-  const bodyHeight = renderedSize ? Math.max(staticBodyHeight, renderedSize.height) : staticBodyHeight;
-  const badgeOverflow = getPropertyModeBadgeLayoutOverflow(definition, data, bodyHeight);
+  const metrics = getAutoLayoutNodeMetrics(node, displayPrefs);
 
   return {
     id: node.id,
     type: node.type,
-    x: roundLayoutDebugValue(node.position.x - badgeOverflow.left),
-    y: roundLayoutDebugValue(node.position.y - badgeOverflow.top),
-    width: roundLayoutDebugValue(bodyWidth + badgeOverflow.width),
-    height: roundLayoutDebugValue(bodyHeight + badgeOverflow.height),
-    badgeLeft: roundLayoutDebugValue(badgeOverflow.left),
-    badgeRight: roundLayoutDebugValue(badgeOverflow.right),
-    badgeTop: roundLayoutDebugValue(badgeOverflow.top),
-    badgeBottom: roundLayoutDebugValue(badgeOverflow.bottom),
-    ...(renderedSize ? {
-      measuredWidth: roundLayoutDebugValue(renderedSize.width),
-      measuredHeight: roundLayoutDebugValue(renderedSize.height),
+    x: roundLayoutDebugValue(node.position.x - metrics.overflowLeft),
+    y: roundLayoutDebugValue(node.position.y - metrics.overflowTop),
+    width: roundLayoutDebugValue(metrics.bodyWidth + metrics.overflowLeft + metrics.overflowRight),
+    height: roundLayoutDebugValue(metrics.bodyHeight + metrics.overflowTop + metrics.overflowBottom),
+    badgeLeft: roundLayoutDebugValue(metrics.overflowLeft),
+    badgeRight: roundLayoutDebugValue(metrics.overflowRight),
+    badgeTop: roundLayoutDebugValue(metrics.overflowTop),
+    badgeBottom: roundLayoutDebugValue(metrics.overflowBottom),
+    ...(typeof metrics.measuredWidth === 'number' && typeof metrics.measuredHeight === 'number' ? {
+      measuredWidth: roundLayoutDebugValue(metrics.measuredWidth),
+      measuredHeight: roundLayoutDebugValue(metrics.measuredHeight),
     } : {}),
   };
 }
@@ -806,20 +867,12 @@ export function useEdgeOperations({
       const nodeSizes = new Map<string, { width: number; height: number; badgeLeft: number; badgeTop: number }>();
 
       for (const node of layoutNodes) {
-        const definition = getNodeDefinition(node.type);
-        const data = getAutoLayoutNodeData(node, displayPrefs);
-        const nodeSize = getWorkflowNodeSize(definition, data);
-        const renderedSize = getRenderedWorkflowNodeSize(node.id);
-        const staticBodyWidth = typeof data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220);
-        const staticBodyHeight = typeof data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120);
-        const bodyWidth = renderedSize ? Math.max(staticBodyWidth, renderedSize.width) : staticBodyWidth;
-        const bodyHeight = renderedSize ? Math.max(staticBodyHeight, renderedSize.height) : staticBodyHeight;
-        const badgeOverflow = getPropertyModeBadgeLayoutOverflow(definition, data, bodyHeight);
+        const metrics = getAutoLayoutNodeMetrics(node, displayPrefs);
         const size = {
-          width: bodyWidth + badgeOverflow.width,
-          height: bodyHeight + badgeOverflow.height,
-          badgeLeft: badgeOverflow.left,
-          badgeTop: badgeOverflow.top,
+          width: metrics.bodyWidth + metrics.overflowLeft + metrics.overflowRight,
+          height: metrics.bodyHeight + metrics.overflowTop + metrics.overflowBottom,
+          badgeLeft: metrics.overflowLeft,
+          badgeTop: metrics.overflowTop,
         };
         nodeSizes.set(node.id, size);
       }
