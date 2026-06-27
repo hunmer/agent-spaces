@@ -233,9 +233,9 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const cloneWorkflow = useCallback((value: Workflow): Workflow => JSON.parse(JSON.stringify(value)) as Workflow, []);
 
   const enterSnapshotPreview = useCallback((snapshot: WorkflowSnapshot) => {
-    const normalized = syncWorkflowReferenceEdges(normalizeLegacySourceHandle(snapshot));
+    const normalized = normalizeLegacySourceHandle(snapshot);
     const snapshotNodes = JSON.parse(JSON.stringify(normalized.nodes)) as Workflow['nodes'];
-    const previewEdges = JSON.parse(JSON.stringify(normalized.edges)) as Workflow['edges'];
+    const snapshotEdges = JSON.parse(JSON.stringify(normalized.edges)) as Workflow['edges'];
     const previewGroups = normalized.groups
       ? JSON.parse(JSON.stringify(normalized.groups)) as Workflow['groups']
       : [];
@@ -251,11 +251,17 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       }
 
       const previewNodes = restorePreviewIOFields(snapshotNodes, sourceNodes);
+      const previewWorkflow = syncWorkflowReferenceEdges({
+        ...current,
+        nodes: previewNodes,
+        edges: snapshotEdges,
+        groups: previewGroups,
+      });
 
       return {
         ...current,
-        nodes: previewNodes,
-        edges: previewEdges,
+        nodes: previewWorkflow.nodes,
+        edges: previewWorkflow.edges,
         groups: previewGroups,
       };
     });
