@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight, Terminal } from "lucide-react"
-import { Fragment, createContext, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
+import { createContext, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 import { useHeTree, type Stat } from "he-tree-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
@@ -14,6 +14,21 @@ import type { FileNode } from "@agent-spaces/shared"
 import { FileIconImg, FolderIconImg } from "./file-icon"
 import { useTerminalStore } from "@/stores/terminal"
 import { sdk } from '@/lib/sdk'
+// 通用嵌套树公共组件：类型与实现已抽取到 components/nested-tree.tsx
+// 对外保持原有导出兼容；内部 he-tree 渲染仍复用其类型，故单独 import type。
+import NestedTree, {
+  type NestedTreeProps,
+  type NestedTreeRenderState,
+  type NestedTreeRenderArgs,
+  type NestedTreeRowProps,
+} from "@/components/nested-tree"
+export {
+  NestedTree,
+  type NestedTreeProps,
+  type NestedTreeRenderState,
+  type NestedTreeRenderArgs,
+  type NestedTreeRowProps,
+}
 
 interface FileTreeContextType {
   expandedPaths: Set<string>
@@ -530,98 +545,6 @@ export const FileTreeActions = ({ className, children, ...props }: FileTreeActio
     {children}
   </div>
 )
-
-export type NestedTreeRenderState = {
-  level: number
-  hasChildren: boolean
-  isExpanded: boolean
-  isActive: boolean
-  isDraggedOver: boolean
-}
-
-export type NestedTreeRowProps = HTMLAttributes<HTMLDivElement> & {
-  draggable?: boolean
-  style?: CSSProperties
-}
-
-export type NestedTreeRenderArgs<TNode> = {
-  node: TNode
-  state: NestedTreeRenderState
-  rowProps: NestedTreeRowProps
-  children: ReactNode
-}
-
-export type NestedTreeProps<TNode> = {
-  nodes: TNode[]
-  getNodeId: (node: TNode) => string
-  getChildren: (node: TNode) => TNode[]
-  activeId?: string | null
-  expandedIds?: Record<string, boolean> | Set<string>
-  draggedOverId?: string | null
-  onDragStart?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
-  onDragOver?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
-  onDragLeave?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
-  onDrop?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
-  shouldRenderChildren?: (node: TNode, state: NestedTreeRenderState) => boolean
-  renderNode: (args: NestedTreeRenderArgs<TNode>) => ReactNode
-}
-
-const hasExpandedId = (expandedIds: NestedTreeProps<unknown>["expandedIds"], id: string) => {
-  if (!expandedIds) return false
-  if (expandedIds instanceof Set) return expandedIds.has(id)
-  return !!expandedIds[id]
-}
-
-export function NestedTree<TNode>({
-  nodes,
-  getNodeId,
-  getChildren,
-  activeId,
-  expandedIds,
-  draggedOverId,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  shouldRenderChildren,
-  renderNode,
-}: NestedTreeProps<TNode>) {
-  const renderBranch = (branchNodes: TNode[], level: number): ReactNode => (
-    branchNodes.map((node) => {
-      const id = getNodeId(node)
-      const childrenNodes = getChildren(node)
-      const state: NestedTreeRenderState = {
-        level,
-        hasChildren: childrenNodes.length > 0,
-        isExpanded: hasExpandedId(expandedIds, id),
-        isActive: activeId === id,
-        isDraggedOver: draggedOverId === id,
-      }
-      const showChildren = state.hasChildren && (shouldRenderChildren?.(node, state) ?? state.isExpanded)
-      const rowProps: NestedTreeRowProps = {
-        draggable: true,
-        style: { paddingLeft: level * 12 },
-        onDragStart: (event) => onDragStart?.(event, id),
-        onDragOver: (event) => onDragOver?.(event, id),
-        onDragLeave: (event) => onDragLeave?.(event, id),
-        onDrop: (event) => onDrop?.(event, id),
-      }
-
-      return (
-        <Fragment key={id}>
-          {renderNode({
-            node,
-            state,
-            rowProps,
-            children: showChildren ? renderBranch(childrenNodes, level + 1) : null,
-          })}
-        </Fragment>
-      )
-    })
-  )
-
-  return <>{renderBranch(nodes, 0)}</>
-}
 
 type HeTreeFileNode = FileNode & Record<string, unknown>
 type HeTreePlaceholder = {

@@ -224,8 +224,8 @@
     "hasWorkflow": true,
     "path": "eagle",
     "iconUrl": "plugins/eagle/icon.png",
-    "md5": "f716530e250d02da4f1dd11a81d6dea9",
-    "updatedAt": "2026-06-27T06:38:59.955Z",
+    "md5": "28efea66425c265c14a6e4f0200e500c",
+    "updatedAt": "2026-06-27T07:40:08.375Z",
     "files": [
       "actions/folder.js",
       "actions/index.js",

@@ -44,7 +44,7 @@ function buildUrl(args, path, query) {
 async function eagleGet(ctx, args, path, query) {
   const url = buildUrl(args, path, query)
   ctx.logger.info(`Eagle GET ${path}`)
-  const res = await ctx.api.fetchJson(url, { timeout: args.timeout || 60000 })
+  const res = await ctx.api.fetchJson(url, { timeout: Number(args.timeout) || 60000 })
   return unwrap(res, path)
 }
 
@@ -56,7 +56,7 @@ async function eaglePost(ctx, args, path, body) {
   ctx.logger.info(`Eagle POST ${path}`)
   const res = await ctx.api.postJson(url, {
     body: body || {},
-    timeout: args.timeout || 60000,
+    timeout: Number(args.timeout) || 60000,
   })
   return unwrap(res, path)
 }

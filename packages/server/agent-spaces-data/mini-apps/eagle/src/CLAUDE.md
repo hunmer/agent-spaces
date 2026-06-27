@@ -17,14 +17,15 @@
 
 - `index.jsx` — 入口；布局、文件夹/素材数据加载、面包屑、错误态
 - `hooks/useEagle.js` — Eagle 插件调用封装；统一解包 `{ success, result }` → `result`
-- `components/FolderTree.jsx` — 文件夹树侧边栏；按 `parent` 组装多级树，行内新建/重命名
+- `components/FolderTree.jsx` — 文件夹树侧边栏；基于宿主 `NestedTree` 公共组件渲染多级树，行内新建/重命名
 - `components/ItemGallery.jsx` — 素材瀑布流 + 上传弹层 + 删除
 
 ## Key Design Decisions
 
 - 所有插件调用走 `window.AgentSpaces.callPluginTool("workflow.eagle", toolName, args)`。
 - execute 路由固定返回 `{ success: true, result }`，`result` 内是 action run 的返回值 `{ success, message, data }`。`useEagle` 已统一解包到 `result`，业务代码直接读 `result.data`。
-- 文件夹按 `parent` 字段（`null`/`""` 为根）在前端组装成树。
+- `useEagle.call()` 强制注入 `timeout: 60000`（number）覆盖插件配置里被序列化成字符串的 timeout，避免 `fetchJson/postJson` 类型报错。插件侧 `shared.js` 也已做 `Number(args.timeout)` 兜底（需服务进程重启生效）。
+- 文件夹树用宿主 `NestedTree`（`window.AgentSpacesUI.NestedTree`，源码 `components/nested-tree.tsx`）。Eagle 返回扁平数组，`FolderTree` 先按 `parent` 组装成树再喂给 NestedTree。
 - 删除素材用 `eagle_item_update({ isDeleted: true })`（Eagle 软删除，可从回收站恢复）。
 - 上传本地文件用 `FileReader` 转 base64，再走 `eagle_item_add` 的 `base64` 字段。
 - 瀑布流用宿主 `Masonry`，`getMeta` 按素材 `width/height` 推导 `aspect`，无尺寸信息时回退 `1:1`。
