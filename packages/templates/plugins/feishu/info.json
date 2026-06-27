@@ -3,7 +3,7 @@
   "name": "Feishu",
   "name_zh": "飞书",
   "name_en": "Feishu",
-  "icon": "icon.svg",
+  "icon": "icon.png",
   "version": "1.0.0",
   "description": "通过飞书开放平台 Node SDK 向指定群聊/用户发送消息，支持 text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow 消息类型，以及富文本与消息卡片",
   "description_zh": "通过飞书开放平台 Node SDK 向指定群聊/用户发送消息，支持 text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow 消息类型，以及富文本与消息卡片",
