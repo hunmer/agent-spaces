@@ -283,6 +283,15 @@ export interface WorkflowNodeOutputMiddleware {
   targetKey: string
 }
 
+export interface WorkflowNodeInputMiddleware {
+  type: 'stringArrayToObjectArray'
+  sourceKey: string
+  targetKey: string
+  valueKey: string
+  copyValueToKeys?: string[]
+  defaults?: Record<string, unknown>
+}
+
 export interface NodeTypeDefinition {
   type: string
   label: string
@@ -296,6 +305,7 @@ export interface NodeTypeDefinition {
   allowedInputFieldTypes?: OutputField['type'][]
   outputs?: OutputField[]
   readonlyOutputs?: boolean
+  inputMiddleware?: WorkflowNodeInputMiddleware
   outputMiddleware?: WorkflowNodeOutputMiddleware
   customView?: unknown
   customViewMinSize?: { width?: number; height?: number }

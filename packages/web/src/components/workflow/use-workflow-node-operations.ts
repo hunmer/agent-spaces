@@ -35,6 +35,7 @@ import {
   remapSelectedWorkflowNodes,
 } from './workflow-canvas-references';
 import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
+import { parseWorkflowFieldHandleId } from './workflow-field-handles';
 
 interface UseNodeOperationsParams {
   workflow: Workflow | null;
@@ -54,6 +55,10 @@ type NodeSize = { width: number; height: number };
 type DeleteNodeOptions = {
   reconnect?: boolean;
 };
+
+function getNodeLevelSourceHandle(sourceHandle: string | null | undefined): string | undefined {
+  return parseWorkflowFieldHandleId(sourceHandle)?.kind ? undefined : sourceHandle || undefined;
+}
 
 export function useNodeOperations({
   workflow, isReadOnly, setWorkflow, markDirty, pushUndo,
@@ -152,6 +157,7 @@ export function useNodeOperations({
     if (nodeSelectContext.mode === 'connection-drop') {
       const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
       if (!sourceNode) return;
+      const sourceHandle = getNodeLevelSourceHandle(nodeSelectContext.sourceHandle);
       const position = nodeSelectContext.position ?? {
         x: sourceNode.position.x + 250,
         y: sourceNode.position.y,
@@ -163,18 +169,18 @@ export function useNodeOperations({
       );
       const created = createNodesForDefinition(type, position, {
         sourceNodeId: nodeSelectContext.sourceNodeId,
-        sourceHandle: nodeSelectContext.sourceHandle,
+        sourceHandle,
       }, scopeNode);
       if (!created) return;
       const newEdge: Workflow['edges'][0] = {
         id: createWorkflowEdgeId({
           source: nodeSelectContext.sourceNodeId,
           target: created.rootNode.id,
-          sourceHandle: nodeSelectContext.sourceHandle,
+          sourceHandle,
         }),
         source: nodeSelectContext.sourceNodeId,
         target: created.rootNode.id,
-        sourceHandle: nodeSelectContext.sourceHandle || undefined,
+        sourceHandle,
         targetHandle: undefined,
       };
 
@@ -208,9 +214,10 @@ export function useNodeOperations({
       nodeSelectContext.sourceNodeId,
       nodeSelectContext.sourceHandle,
     );
+    const sourceHandle = getNodeLevelSourceHandle(nodeSelectContext.sourceHandle);
     const created = createNodesForDefinition(type, position, {
       sourceNodeId: nodeSelectContext.sourceNodeId,
-      sourceHandle: nodeSelectContext.sourceHandle,
+      sourceHandle,
     }, scopeNode);
     if (!created) return;
     const outgoingSourceHandle = getOutgoingSourceHandle(type);
@@ -218,11 +225,11 @@ export function useNodeOperations({
       id: createWorkflowEdgeId({
         source: nodeSelectContext.sourceNodeId,
         target: created.rootNode.id,
-        sourceHandle: nodeSelectContext.sourceHandle,
+        sourceHandle,
       }),
       source: nodeSelectContext.sourceNodeId,
       target: created.rootNode.id,
-      sourceHandle: nodeSelectContext.sourceHandle || undefined,
+      sourceHandle,
       targetHandle: undefined,
     };
     const secondEdge: Workflow['edges'][0] = {

@@ -54,6 +54,7 @@ import {
   buildOutputObject,
   getFirstObjectOutputKey,
   getStepInput,
+  applyNodeInputMiddleware,
   applyNodeOutputMiddleware,
 } from './execution-node-helpers.js';
 import type {
@@ -806,10 +807,10 @@ export class ExecutionManager {
 
     const dryRunInput = this.getDryRunNodeValue(session, 'inputs', node.id);
     const strictDataReferences = node.type !== 'variable_aggregate';
-    const resolvedData = this.normalizeResolvedNodeDataTypes(node, this.applyDryRunInput(
+    const resolvedData = applyNodeInputMiddleware(this.normalizeResolvedNodeDataTypes(node, this.applyDryRunInput(
       this.resolveContextVariables(session, { ...node.data }, { strictDataReferences }),
       dryRunInput,
-    ));
+    )));
     const stepInput = dryRunInput ?? getStepInput(node, resolvedData);
     this.setNodeExecutionInput(session, node.id, dryRunInput ?? (node.type === 'end' ? {} : buildOutputObject(resolvedData.inputFields) ?? {}));
 

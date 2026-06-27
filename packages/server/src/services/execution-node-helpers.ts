@@ -467,6 +467,44 @@ export function getStepInput(node: WorkflowNode, data: Record<string, any>): Rec
   return data;
 }
 
+export function applyNodeInputMiddleware(data: Record<string, any>): Record<string, any> {
+  const middleware = data.inputMiddleware;
+  if (!middleware || typeof middleware !== 'object') return data;
+
+  if ((middleware as { type?: unknown }).type === 'stringArrayToObjectArray') {
+    const { sourceKey, targetKey, valueKey, copyValueToKeys, defaults } = middleware as {
+      sourceKey?: unknown;
+      targetKey?: unknown;
+      valueKey?: unknown;
+      copyValueToKeys?: unknown;
+      defaults?: unknown;
+    };
+    if (typeof sourceKey !== 'string' || typeof targetKey !== 'string' || typeof valueKey !== 'string') {
+      return data;
+    }
+    const source = data[sourceKey];
+    if (!Array.isArray(source) || !source.every((item) => typeof item === 'string')) return data;
+
+    const copyKeys = Array.isArray(copyValueToKeys)
+      ? copyValueToKeys.filter((key): key is string => typeof key === 'string')
+      : [];
+    const defaultValues = defaults && typeof defaults === 'object' && !Array.isArray(defaults)
+      ? defaults as Record<string, unknown>
+      : {};
+
+    return {
+      ...data,
+      [targetKey]: source.map((value, index) => {
+        const item: Record<string, unknown> = { id: `${targetKey}_${index}`, ...defaultValues, [valueKey]: value };
+        for (const key of copyKeys) item[key] = value;
+        return item;
+      }),
+    };
+  }
+
+  return data;
+}
+
 export function applyNodeOutputMiddleware(output: any, data: Record<string, any>): any {
   const middleware = data.outputMiddleware;
   if (!middleware || typeof middleware !== 'object') return output;

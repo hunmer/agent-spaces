@@ -22,8 +22,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 2687.515762237181,
-        "y": 633.2500211777003
+        "x": 3315,
+        "y": 645
       },
       "data": {
         "outputs": [
@@ -224,6 +224,49 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1782553818772_ing721",
+      "type": "gallery_preview",
+      "label": "nodes.gallery_preview.label",
+      "position": {
+        "x": 2580,
+        "y": 645
+      },
+      "data": {
+        "carousel": false,
+        "outputs": [
+          {
+            "key": "urls",
+            "type": "string[]",
+            "description": "nodes.gallery_preview.outputs.urls"
+          }
+        ],
+        "inputMiddleware": {
+          "type": "stringArrayToObjectArray",
+          "sourceKey": "items",
+          "targetKey": "items",
+          "valueKey": "src",
+          "copyValueToKeys": [
+            "thumb"
+          ],
+          "defaults": {
+            "type": "image",
+            "caption": ""
+          }
+        },
+        "outputMiddleware": {
+          "type": "arrayItemField",
+          "sourceKey": "items",
+          "itemKey": "src",
+          "targetKey": "urls"
+        },
+        "sourceNodeId": "node_1782455101134_xvs0wx",
+        "sourceHandle": "output:data.images",
+        "nodeWidth": 253,
+        "nodeHeight": 393,
+        "items": "{{ __data__[\"node_1782455101134_xvs0wx\"].data.images }}"
+      }
     }
   ],
   "edges": [
@@ -304,17 +347,25 @@
       }
     },
     {
-      "id": "e-node_1782455101134_xvs0wx-output:data.images-node_1782383055448_end-output:images",
-      "source": "node_1782455101134_xvs0wx",
-      "target": "node_1782383055448_end",
+      "id": "e-node_1782383055448_start-source-node_1782455127220_7p3l9h-target",
+      "source": "node_1782383055448_start",
+      "target": "node_1782455127220_7p3l9h",
       "edgeKind": "runtime",
-      "sourceHandle": "output:data.images",
-      "targetHandle": "output:images"
+      "sourceHandle": "source",
+      "targetHandle": "target"
     },
     {
-      "id": "e-node_1782455101134_xvs0wx-source-node_1782383055448_end-target--reference-runtime",
+      "id": "e-node_1782455101134_xvs0wx-output:data.images-node_1782553818772_ing721-property:items",
       "source": "node_1782455101134_xvs0wx",
-      "target": "node_1782383055448_end",
+      "target": "node_1782553818772_ing721",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:items"
+    },
+    {
+      "id": "e-node_1782455101134_xvs0wx-source-node_1782553818772_ing721-target--reference-runtime",
+      "source": "node_1782455101134_xvs0wx",
+      "target": "node_1782553818772_ing721",
       "edgeKind": "runtime",
       "composite": {
         "generated": true,
@@ -323,16 +374,16 @@
       }
     },
     {
-      "id": "e-node_1782383055448_start-source-node_1782455127220_7p3l9h-target",
-      "source": "node_1782383055448_start",
-      "target": "node_1782455127220_7p3l9h",
+      "id": "e-node_1782553818772_ing721-source-node_1782383055448_end-target",
+      "source": "node_1782553818772_ing721",
+      "target": "node_1782383055448_end",
       "edgeKind": "runtime",
       "sourceHandle": "source",
       "targetHandle": "target"
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782552647479,
+  "updatedAt": 1782554264008,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -347,5 +398,5 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782553451089
+  "lastRunAt": 1782554266231
 }

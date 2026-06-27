@@ -75,7 +75,18 @@ export function formatDuration(seconds: number | undefined): string {
 export function galleryItems(data: Record<string, unknown>): GalleryItem[] {
   const items = Array.isArray(data.items) ? data.items : [];
   return items
-    .map((item): GalleryItem | null => {
+    .map((item, index): GalleryItem | null => {
+      if (typeof item === 'string') {
+        const src = readString(item);
+        if (!src) return null;
+        return {
+          id: `items_${index}`,
+          src,
+          thumb: src,
+          type: 'image',
+          caption: '',
+        };
+      }
       const record = asRecord(item);
       const src = readString(record.src);
       if (!src) return null;
