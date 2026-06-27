@@ -23,6 +23,7 @@ export {
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getAllNodeDefinitions, getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
+import { getPropertyModeBadgeLayoutOverflow } from './workflow-node-property-mode';
 
 // ---- Type guards & helpers ----
 
@@ -184,6 +185,43 @@ export function getLayoutNodeSize(node: Workflow['nodes'][0]): { width: number; 
     height: typeof node.data?.nodeHeight === 'number'
       ? node.data.nodeHeight
       : typeof node.data?.height === 'number' ? node.data.height : DEFAULT_SCOPE_CHILD_SIZE.height,
+  };
+}
+
+export type WorkflowNodeVisualBounds = {
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  bodyWidth: number;
+  bodyHeight: number;
+  overflow: { left: number; right: number; top: number; bottom: number };
+};
+
+export function getWorkflowNodeVisualBounds(
+  node: Workflow['nodes'][0],
+  body?: {
+    position?: { x: number; y: number };
+    width?: number;
+    height?: number;
+  },
+): WorkflowNodeVisualBounds {
+  const layoutSize = getLayoutNodeSize(node);
+  const position = body?.position ?? node.position;
+  const bodyWidth = body?.width ?? layoutSize.width;
+  const bodyHeight = body?.height ?? layoutSize.height;
+  const definition = getNodeDefinition(node.type);
+  const overflow = getPropertyModeBadgeLayoutOverflow(definition, node.data, bodyHeight);
+
+  return {
+    position: {
+      x: position.x - overflow.left,
+      y: position.y - overflow.top,
+    },
+    width: bodyWidth + overflow.left + overflow.right,
+    height: bodyHeight + overflow.top + overflow.bottom,
+    bodyWidth,
+    bodyHeight,
+    overflow,
   };
 }
 

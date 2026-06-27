@@ -8,8 +8,8 @@
       "type": "jimeng_image_to_image",
       "label": "AI Image to Image",
       "position": {
-        "x": 194.73174792268924,
-        "y": 49.4839008933576
+        "x": -186.50123255446601,
+        "y": -40.02297278388767
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -58,8 +58,8 @@
       "type": "set_variable",
       "label": "nodes.set_variable.label",
       "position": {
-        "x": -717.3464393260681,
-        "y": 642.7339580151173
+        "x": -1098.5794198032233,
+        "y": 553.227084337872
       },
       "data": {
         "variables": [
@@ -103,8 +103,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": -1151.7588598282002,
-        "y": 844.797332595323
+        "x": -1532.9918403053555,
+        "y": 755.2904589180778
       },
       "data": {
         "outputs": [
@@ -145,8 +145,8 @@
       "type": "gallery_preview",
       "label": "nodes.gallery_preview.label",
       "position": {
-        "x": 1000.6535606739317,
-        "y": 315.73391512171327
+        "x": 619.4205801967764,
+        "y": 226.227041444468
       },
       "data": {
         "carousel": false,
@@ -252,7 +252,7 @@
     }
   ],
   "createdAt": 1782383055452,
-  "updatedAt": 1782561820434,
+  "updatedAt": 1782562366562,
   "published": false,
   "layoutSnapshot": {
     "nodeDisplayMode": "properties",
@@ -266,26 +266,7 @@
     "workflow.jimeng",
     "workflow.webview"
   ],
-  "groups": [
-    {
-      "id": "group_1782561814713_ecsw83",
-      "name": "分组 1",
-      "childNodeIds": [
-        "node_1782455101134_xvs0wx",
-        "node_1782455127220_7p3l9h",
-        "node_1782458233136_nf1k8u",
-        "node_1782553818772_ing721"
-      ],
-      "childGroupIds": [],
-      "locked": false,
-      "disabled": false,
-      "savedNodeStates": {},
-      "x": -1175.7589776437803,
-      "y": 1.4839010635243781,
-      "width": 2453.412686564346,
-      "height": 1552.2500500025023
-    }
-  ],
+  "groups": [],
   "variables": [],
   "lastRunAt": 1782557759884
 }

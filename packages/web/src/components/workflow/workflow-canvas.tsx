@@ -47,7 +47,7 @@ import {
   getWorkflowHandleValueType,
 } from './workflow-handle-types';
 import type { HandlePositionMode } from './workflow-node-types';
-import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
+import { getWorkflowNodeVisualBounds, isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
 import type { WorkflowNodeSizeOverrides } from './workflow-canvas-groups';
 import { useTheme } from '@/components/layout/theme-provider';
 import { WorkflowSelectionConnectionLine } from './workflow-selection-connection-line';
@@ -483,16 +483,33 @@ export function WorkflowCanvas({
     const flowRoot = reactFlowWrapper.current;
     const rootRect = reactFlowWrapper.current?.getBoundingClientRect();
     const viewport = getViewport();
+    const workflowNodeById = new Map(workflow.nodes.map(node => [node.id, node]));
     for (const nodeId of nodeIds) {
+      const workflowNode = workflowNodeById.get(nodeId);
       const element = Array.from(flowRoot?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [])
         .find(nodeEl => nodeEl.dataset.id === nodeId);
       const rect = element?.getBoundingClientRect();
       if (rootRect && rect && rect.width > 0 && rect.height > 0 && viewport.zoom > 0) {
+        const bodyWidth = rect.width / viewport.zoom;
+        const bodyHeight = rect.height / viewport.zoom;
+        const bodyX = (rect.left - rootRect.left - viewport.x) / viewport.zoom;
+        const bodyY = (rect.top - rootRect.top - viewport.y) / viewport.zoom;
+        const visualBounds = workflowNode
+          ? getWorkflowNodeVisualBounds(workflowNode, {
+              position: { x: bodyX, y: bodyY },
+              width: bodyWidth,
+              height: bodyHeight,
+            })
+          : {
+              position: { x: bodyX, y: bodyY },
+              width: bodyWidth,
+              height: bodyHeight,
+            };
         overrides.set(nodeId, {
-          x: (rect.left - rootRect.left - viewport.x) / viewport.zoom,
-          y: (rect.top - rootRect.top - viewport.y) / viewport.zoom,
-          width: rect.width / viewport.zoom,
-          height: rect.height / viewport.zoom,
+          x: visualBounds.position.x,
+          y: visualBounds.position.y,
+          width: visualBounds.width,
+          height: visualBounds.height,
         });
         continue;
       }
@@ -501,7 +518,7 @@ export function WorkflowCanvas({
       if (size) overrides.set(nodeId, size);
     }
     return overrides;
-  }, [getViewport, reactFlowWrapper]);
+  }, [getViewport, reactFlowWrapper, workflow.nodes]);
   const handleMergeNodesToGroup = useCallback((nodeIds: string[]) => {
     const nodeSizes = getRuntimeNodeSizeOverrides(nodeIds);
     console.debug('[WorkflowGroupBoundsDebug] merge request', {
@@ -738,11 +755,16 @@ export function WorkflowCanvas({
           const height = typeof canvasNode?.height === 'number'
             ? canvasNode.height
             : typeof canvasNode?.measured?.height === 'number' ? canvasNode.measured.height : size.height;
-          return {
-            id: node.id,
+          const visualBounds = getWorkflowNodeVisualBounds(node, {
             position: canvasNode?.position ?? node.position,
             width,
             height,
+          });
+          return {
+            id: node.id,
+            position: visualBounds.position,
+            width: visualBounds.width,
+            height: visualBounds.height,
           };
         });
       return { group, childNodes };
