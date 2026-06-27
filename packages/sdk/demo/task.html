@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Task · 任务管理</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>选择工作区</h2>
+      <p class="desc">Task 接口依赖 <code>workspaceId</code>，先选择一个工作区。</p>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>任务列表</h2>
+      <p class="desc"><code>sdk.task.list(workspaceId, issueId?)</code> · 可按 issue 过滤</p>
+      <div class="field">
+        <label>issueId（可选，留空列出全部）</label>
+        <input id="in-issue" type="text" placeholder="issue id（可空）" />
+      </div>
+      <div class="actions">
+        <button id="btn-list" class="btn">刷新列表</button>
+      </div>
+      <div id="task-table" style="margin-bottom:12px;"></div>
+      <pre id="out-list" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>创建任务</h2>
+      <p class="desc"><code>sdk.task.create(workspaceId, data)</code> · data 可含 issueId / title / prompt 等</p>
+      <div class="field">
+        <label>title</label>
+        <input id="in-title" type="text" placeholder="任务标题" />
+      </div>
+      <div class="field">
+        <label>prompt（任务内容）</label>
+        <textarea id="in-prompt" rows="3" placeholder="任务指令"></textarea>
+      </div>
+      <div class="field">
+        <label>issueId（可选）</label>
+        <input id="in-issue2" type="text" placeholder="关联的 issue id（可空）" />
+      </div>
+      <div class="actions">
+        <button id="btn-create" class="btn">创建</button>
+      </div>
+      <pre id="out-create" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>操作单个任务</h2>
+      <p class="desc">依赖 taskId：<code>get</code> · <code>retry</code> · <code>cancel</code> · <code>delete_</code></p>
+      <div class="field">
+        <label>task id</label>
+        <input id="in-id" type="text" placeholder="从列表复制 task id" />
+      </div>
+      <div class="actions">
+        <button id="btn-get" class="btn">get</button>
+        <button id="btn-retry" class="btn secondary">retry</button>
+        <button id="btn-cancel" class="btn secondary">cancel</button>
+        <button id="btn-delete" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-op" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>更新 / 重排</h2>
+      <p class="desc"><code>update(workspaceId, taskId, data)</code> · <code>reorder(workspaceId, data)</code></p>
+      <div class="field">
+        <label>taskId（用于 update）</label>
+        <input id="in-upd-id" type="text" placeholder="task id" />
+      </div>
+      <div class="field">
+        <label>update data（JSON 字符串）</label>
+        <textarea id="in-upd-data" rows="3" placeholder='{"status":"done"}'></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-update" class="btn">update</button>
+        <button id="btn-reorder" class="btn secondary">reorder（读取下方 JSON）</button>
+      </div>
+      <div class="field">
+        <label>reorder data（JSON 字符串）</label>
+        <textarea id="in-reorder" rows="3" placeholder='[{"id":"...","order":1}]'></textarea>
+      </div>
+      <pre id="out-upd" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/task.js"></script>
+</body>
+</html>

@@ -89,6 +89,15 @@ function Style() {
       .sb-video-star.is-selected { background: #111827; color: #fff; border-color: #111827; }
       .sb-video-del { margin-top: 6px; align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #fecaca; background: #fff; color: #991b1b; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
       .sb-video-del:hover { background: #fef2f2; }
+      .sb-audio-list { display: flex; flex-direction: column; gap: 8px; }
+      .sb-audio-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; }
+      .sb-audio-item.is-selected { border-color: #111827; background: #fafafa; }
+      .sb-audio { flex: 1; min-width: 0; height: 36px; }
+      .sb-audio-star { flex: 0 0 auto; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #e4e4e7; background: #fff; border-radius: 50%; cursor: pointer; color: #71717a; }
+      .sb-audio-star:hover { background: #f4f4f5; }
+      .sb-audio-star.is-selected { background: #111827; color: #fff; border-color: #111827; }
+      .sb-audio-del { flex: 0 0 auto; display: grid; place-items: center; width: 28px; height: 28px; border: 0; background: rgba(0,0,0,.55); color: #fff; border-radius: 50%; cursor: pointer; }
+      .sb-audio-del:hover { background: #000; }
 
       .sb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
       .sb-chip { padding: 4px 10px; border: 1px solid #e4e4e7; border-radius: 999px; background: #fff; font-size: 12px; cursor: pointer; color: #52525b; }
@@ -189,7 +198,7 @@ function App() {
 
   const onSettingsSave = (patch) => {
     // 只保留工作流相关字段
-    const keys = ['textToImageWorkflowId', 'textToImageWorkflowName', 'editImageWorkflowId', 'editImageWorkflowName', 'videoWorkflowId', 'videoWorkflowName'];
+    const keys = ['textToImageWorkflowId', 'textToImageWorkflowName', 'editImageWorkflowId', 'editImageWorkflowName', 'videoWorkflowId', 'videoWorkflowName', 'voiceWorkflowId', 'voiceWorkflowName'];
     const next = {};
     keys.forEach((k) => { if (patch[k] != null) next[k] = patch[k]; });
     actions.saveSettings(next);

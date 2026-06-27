@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM & 知识库 · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>LLM · 模型/供应商 & 知识库</h1>
+  </header>
+
+  <div class="container">
+    <!-- LLM 模型 -->
+    <div class="card">
+      <h2>模型列表</h2>
+      <p class="desc"><code>sdk.llm.listModels()</code> · <code>sdk.llm.listProviders()</code></p>
+      <div class="actions">
+        <button id="btn-models" class="btn">listModels</button>
+        <button id="btn-providers" class="btn secondary">listProviders</button>
+      </div>
+      <div id="model-table" style="margin-bottom:12px;"></div>
+      <pre id="out-llm" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>模型 CRUD</h2>
+      <p class="desc"><code>createModel(data)</code> · <code>updateModel(id, data)</code> · <code>deleteModel(id)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>model id（update / delete 用）</label>
+          <input id="in-model-id" type="text" placeholder="model id" />
+        </div>
+        <div class="field">
+          <label>data（JSON）</label>
+          <input id="in-model-data" type="text" placeholder='{"name":"...","providerId":"..."}' />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-model-create" class="btn">createModel</button>
+        <button id="btn-model-update" class="btn secondary">updateModel</button>
+        <button id="btn-model-delete" class="btn danger">deleteModel</button>
+      </div>
+      <pre id="out-model-crud" class="output">结果将显示于此</pre>
+    </div>
+
+    <hr style="border:none;border-top:1px dashed var(--border);margin:26px 0;" />
+
+    <!-- 知识库 -->
+    <div class="card">
+      <h2>选择工作区</h2>
+      <p class="desc">知识库接口依赖 <code>workspaceId</code>。</p>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>知识库列表 / 详情</h2>
+      <p class="desc"><code>sdk.knowledgeBase.list(workspaceId)</code></p>
+      <div class="actions">
+        <button id="btn-kb-list" class="btn">刷新列表</button>
+      </div>
+      <div id="kb-table" style="margin-bottom:12px;"></div>
+      <pre id="out-kb" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>知识库 CRUD</h2>
+      <p class="desc"><code>create(wsId, data)</code> · <code>stats(wsId, kbId)</code> · <code>bindEmbeddingModel(wsId, kbId, embeddingModelId)</code> · <code>delete_</code></p>
+      <div class="row">
+        <div class="field">
+          <label>知识库名称（create）</label>
+          <input id="in-kb-name" type="text" placeholder="知识库名称" />
+        </div>
+        <div class="field">
+          <label>kbId</label>
+          <input id="in-kb-id" type="text" placeholder="knowledge base id" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-kb-create" class="btn">create</button>
+        <button id="btn-kb-stats" class="btn secondary">stats</button>
+        <button id="btn-kb-del" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-kb-crud" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>知识库 · 文件 & 检索</h2>
+      <p class="desc"><code>listFiles</code> · <code>addFile(wsId, kbId, body)</code> · <code>reindexFile</code> · <code>query(wsId, kbId, body)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>kbId</label>
+          <input id="in-kb2-id" type="text" placeholder="kb id" />
+        </div>
+        <div class="field">
+          <label>fileId（reindex 用）</label>
+          <input id="in-kb-file" type="text" placeholder="file id" />
+        </div>
+      </div>
+      <div class="field">
+        <label>query body（JSON，如 {"query":"xxx","topK":5}）</label>
+        <input id="in-kb-query" type="text" placeholder='{"query":"搜索文本"}' />
+      </div>
+      <div class="actions">
+        <button id="btn-kb-files" class="btn">listFiles</button>
+        <button id="btn-kb-reindex" class="btn secondary">reindexFile</button>
+        <button id="btn-kb-query" class="btn">query</button>
+      </div>
+      <pre id="out-kb-files" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/llm.js"></script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   BUILTIN_PLUGIN,
   MODEL_OPTIONS,
+  VOICE_MODEL_OPTIONS,
   ASPECT_OPTIONS,
   SIZE_OPTIONS,
   QUALITY_OPTIONS,
@@ -83,7 +84,7 @@ export function AgentConfigButton({ agentConfigId, agentMeta, onConfigured }) {
 
 // 生成参数对话框：每次生成前弹出，默认填入上次参数
 export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, onCancel }) {
-  const { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FileUpload, Trash2, Loader2 } = window.AgentSpacesUI;
+  const { Button, Label, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FileUpload, Trash2, Loader2 } = window.AgentSpacesUI;
 
   const [cfg, setCfg] = useState(value || {});
   const [imageMode, setImageMode] = useState('text');
@@ -93,17 +94,23 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
   useEffect(() => {
     if (!open) return;
     const next = value || {};
-    const validModel = MODEL_OPTIONS.some((m) => m.value === next.model);
-    setCfg(validModel ? next : { ...next, model: MODEL_OPTIONS[0]?.value || '' });
+    if (mode === 'voice') {
+      const validVoiceModel = VOICE_MODEL_OPTIONS.some((m) => m.value === next.voiceModel);
+      setCfg(validVoiceModel ? next : { ...next, voiceModel: VOICE_MODEL_OPTIONS[0]?.value || '' });
+    } else {
+      const validModel = MODEL_OPTIONS.some((m) => m.value === next.model);
+      setCfg(validModel ? next : { ...next, model: MODEL_OPTIONS[0]?.value || '' });
+    }
     setImageMode(next.generationMode || 'text');
     setPendingFiles([]);
     setReferenceImages(Array.isArray(next.referenceImages) ? next.referenceImages : []);
     setUploading(false);
-  }, [open, value]);
+  }, [open, value, mode]);
 
   const patch = (p) => setCfg((prev) => ({ ...prev, ...p }));
   const enableImageTabs = mode === 'image' && variant === 'character';
   const enableBatchLimit = variant === 'bulk';
+  const isVoice = mode === 'voice';
 
   const onUploadStatus = (s) => {
     const isUploading = !!s?.uploading;
@@ -128,7 +135,30 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
       bodyClassName="sb-modal-body"
     >
       <div>
-        {enableImageTabs && (
+        {isVoice && (
+          <>
+            <div className="sb-field">
+              <Label>语音服务商</Label>
+              <Select value={cfg.voiceModel} onValueChange={(v) => patch({ voiceModel: v })}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="选择服务商" /></SelectTrigger>
+                <SelectContent>
+                  {VOICE_MODEL_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sb-field">
+              <Label>发音人 ID（可选）</Label>
+              <Input
+                value={cfg.voiceId || ''}
+                onChange={(e) => patch({ voiceId: e.target.value })}
+                placeholder="fish-audio 传 referenceId / minimax 传 voiceId / qianyin 传 speakerId"
+              />
+            </div>
+          </>
+        )}
+        {!isVoice && enableImageTabs && (
           <div className="sb-field">
             <Label>生成方式</Label>
             <div className="sb-tab-row">
@@ -141,6 +171,8 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
             </div>
           </div>
         )}
+        {!isVoice && (
+        <>
         <div className="sb-field">
           <Label>模型</Label>
           <Select value={cfg.model} onValueChange={(v) => patch({ model: v })}>
@@ -183,7 +215,7 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
             </Select>
           </div>
         )}
-        {enableBatchLimit && (
+        {enableBatchLimit && !isVoice && (
           <div className="sb-field">
             <Label>批量运行上限</Label>
             <Select value={cfg.batchLimit || '1'} onValueChange={(v) => patch({ batchLimit: v })}>
@@ -228,6 +260,8 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
             />
           </div>
         )}
+        </>
+        )}
       </div>
 
       <div className="sb-modal-foot">
@@ -235,6 +269,14 @@ export function GenerateParamsDialog({ open, value, mode, variant, onConfirm, on
         <Button
           disabled={uploading || (enableImageTabs && imageMode === 'reference' && referenceImages.length === 0)}
           onClick={() => {
+            if (isVoice) {
+              onConfirm({
+                ...cfg,
+                voiceModel: cfg.voiceModel || VOICE_MODEL_OPTIONS[0]?.value || '',
+                voiceId: cfg.voiceId || '',
+              });
+              return;
+            }
             const modelMeta = MODEL_OPTIONS.find((m) => m.value === cfg.model);
             onConfirm({
               ...cfg,

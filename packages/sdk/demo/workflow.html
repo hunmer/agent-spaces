@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workflow · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Workflow · 工作流 & 插件</h1>
+  </header>
+
+  <div class="container">
+    <div class="hint">
+      本页覆盖 <code>sdk.workflow</code>（工作流 + 文件夹 + 版本 + 执行日志 + 暂存/会话）
+      与 <code>sdk.workflowPlugin</code>（插件商店 + 配置 + 方案）。无需 workspaceId，按 workflowId 操作。
+    </div>
+
+    <!-- Workflow 列表 -->
+    <div class="card">
+      <h2>Workflow 列表</h2>
+      <p class="desc"><code>sdk.workflow.list(folderId?)</code> · <code>listFolders()</code></p>
+      <div class="actions">
+        <button id="btn-wf-list" class="btn">刷新列表</button>
+        <button id="btn-wf-folders" class="btn secondary">listFolders</button>
+      </div>
+      <div id="wf-table" style="margin-bottom:12px;"></div>
+      <pre id="out-wf-list" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <!-- Workflow CRUD -->
+    <div class="card">
+      <h2>创建 / 查看 / 复制 / 删除</h2>
+      <p class="desc"><code>create(data)</code> · <code>get(id)</code> · <code>duplicate(id)</code> · <code>delete_(id)</code></p>
+      <div class="field">
+        <label>name（create 用）</label>
+        <input id="in-wf-name" type="text" placeholder="新工作流名称" />
+      </div>
+      <div class="field">
+        <label>workflowId（get / duplicate / delete 用）</label>
+        <input id="in-wf-id" type="text" placeholder="workflow id" />
+      </div>
+      <div class="actions">
+        <button id="btn-wf-create" class="btn">create</button>
+        <button id="btn-wf-get" class="btn secondary">get</button>
+        <button id="btn-wf-dup" class="btn secondary">duplicate</button>
+        <button id="btn-wf-del" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-wf-crud" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 执行 & 日志 -->
+    <div class="card">
+      <h2>执行 & 执行日志</h2>
+      <p class="desc"><code>execute(workflowId, body?)</code> · <code>listExecutionLogs</code> · <code>listAllExecutionLogs(limit)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>workflowId</label>
+          <input id="in-ex-id" type="text" placeholder="workflow id" />
+        </div>
+        <div class="field">
+          <label>execute body（JSON，可空）</label>
+          <input id="in-ex-body" type="text" placeholder='{"input":"hello"}' />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-wf-execute" class="btn">execute</button>
+        <button id="btn-wf-logs" class="btn secondary">listExecutionLogs</button>
+        <button id="btn-wf-alllogs" class="btn secondary">listAllExecutionLogs</button>
+      </div>
+      <pre id="out-wf-ex" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 暂存 / 会话持久化 -->
+    <div class="card">
+      <h2>暂存 / 会话 / 历史</h2>
+      <p class="desc">load / clear 系列：<code>loadStaging</code> · <code>loadChat</code> · <code>loadOperationHistory</code></p>
+      <div class="field">
+        <label>workflowId</label>
+        <input id="in-load-id" type="text" placeholder="workflow id" />
+      </div>
+      <div class="actions">
+        <button id="btn-load-staging" class="btn">loadStaging</button>
+        <button id="btn-load-chat" class="btn secondary">loadChat</button>
+        <button id="btn-load-history" class="btn secondary">loadOperationHistory</button>
+      </div>
+      <pre id="out-wf-load" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 版本 -->
+    <div class="card">
+      <h2>版本管理</h2>
+      <p class="desc"><code>listVersions(workflowId)</code> · <code>addVersion(workflowId, data)</code> · <code>clearVersions(workflowId)</code></p>
+      <div class="field">
+        <label>workflowId</label>
+        <input id="in-ver-id" type="text" placeholder="workflow id" />
+      </div>
+      <div class="actions">
+        <button id="btn-ver-list" class="btn">listVersions</button>
+        <button id="btn-ver-clear" class="btn secondary">clearVersions</button>
+      </div>
+      <pre id="out-wf-ver" class="output">结果将显示于此</pre>
+    </div>
+
+    <hr style="border:none;border-top:1px dashed var(--border);margin:26px 0;" />
+
+    <!-- 插件 -->
+    <div class="card">
+      <h2>插件 · 列表 / 启用 / 卸载</h2>
+      <p class="desc"><code>sdk.workflowPlugin.listAll(query?)</code> · <code>enable(pluginId)</code> · <code>disable</code> · <code>uninstall</code></p>
+      <div class="actions">
+        <button id="btn-pl-list" class="btn">listAll</button>
+      </div>
+      <div class="field">
+        <label>pluginId</label>
+        <input id="in-pl-id" type="text" placeholder="plugin id" />
+      </div>
+      <div class="actions">
+        <button id="btn-pl-enable" class="btn secondary">enable</button>
+        <button id="btn-pl-disable" class="btn secondary">disable</button>
+        <button id="btn-pl-uninstall" class="btn danger">uninstall</button>
+      </div>
+      <pre id="out-pl" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>插件 · 配置 & 方案</h2>
+      <p class="desc"><code>getConfig(pluginId)</code> · <code>getWorkflowNodes(pluginId)</code> · <code>listSchemes(workflowId, pluginId)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>pluginId</label>
+          <input id="in-pl-cfg-id" type="text" placeholder="plugin id" />
+        </div>
+        <div class="field">
+          <label>workflowId（listSchemes 用）</label>
+          <input id="in-pl-wf-id" type="text" placeholder="workflow id" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-pl-config" class="btn">getConfig</button>
+        <button id="btn-pl-nodes" class="btn secondary">getWorkflowNodes</button>
+        <button id="btn-pl-schemes" class="btn secondary">listSchemes</button>
+      </div>
+      <pre id="out-pl-cfg" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/workflow.js"></script>
+</body>
+</html>

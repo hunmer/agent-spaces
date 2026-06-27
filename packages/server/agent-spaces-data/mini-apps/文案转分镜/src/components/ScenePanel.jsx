@@ -1,7 +1,7 @@
 // 文案转分镜 · 分镜管理
 import React, { useState, useEffect } from 'react';
 import { uid } from '../utils/constants.js';
-import { runGeneration, buildMediaGalleryItems, openMediaPreview } from '../utils/workflow.js';
+import { runGeneration, runVoiceGeneration, buildMediaGalleryItems, openMediaPreview } from '../utils/workflow.js';
 
 function sameScene(a, b) {
   if (!a || !b) return false;
@@ -13,15 +13,17 @@ function sameScene(a, b) {
     && a.animationPrompt === b.animationPrompt
     && aid === bid
     && JSON.stringify(a.images || []) === JSON.stringify(b.images || [])
-    && (a.video || '') === (b.video || '');
+    && (a.video || '') === (b.video || '')
+    && JSON.stringify(a.audios || []) === JSON.stringify(b.audios || []);
 }
 
 function SceneCard({ scene, index, characters, settings, actions, onRemove, requestParams, bulkStatus, selected, onToggleSelect, onRemoveMedia, exportBusy }) {
-  const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser, Star, Check } = window.AgentSpacesUI;
+  const { Button, Label, Textarea, Trash2, Loader2, Film: FilmIcon, Image: ImageIcon, Eraser, Star, Check, Audio: AudioIcon } = window.AgentSpacesUI;
 
   const [draft, setDraft] = useState(() => ({ ...scene, characterIds: [...(scene.characterIds || [])] }));
   const [imgRunning, setImgRunning] = useState(false);
   const [vidRunning, setVidRunning] = useState(false);
+  const [voiceRunning, setVoiceRunning] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -116,6 +118,31 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
     }
   };
 
+  const generateVoice = async () => {
+    if (!draft.narration?.trim()) { setError('请填写旁白文本'); return; }
+    const params = await requestParams('voice');
+    if (!params) return;
+    setError('');
+    setVoiceRunning(true);
+    try {
+      const input = {
+        prompt: draft.narration,
+        model: params.voiceModel || 'fish-audio',
+      };
+      if (params.voiceId) input.voiceId = params.voiceId;
+      const urls = await runVoiceGeneration({
+        workflowId: settings.voiceWorkflowId,
+        input,
+        label: `分镜 ${index} 语音合成`,
+      });
+      await actions.addSceneMedia(draft.id, 'audio', urls);
+    } catch (e) {
+      setError(e?.message || '语音合成失败');
+    } finally {
+      setVoiceRunning(false);
+    }
+  };
+
   const previewImages = (startIndex = 0) => {
     openMediaPreview(buildMediaGalleryItems(draft.images || [], 'image', `分镜 ${index}`), startIndex);
   };
@@ -126,7 +153,9 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
 
   const imageBusy = imgRunning || bulkStatus?.image === 'running' || bulkStatus?.image === 'retrying';
   const videoBusy = vidRunning || bulkStatus?.video === 'running' || bulkStatus?.video === 'retrying';
+  const voiceBusy = voiceRunning || bulkStatus?.voice === 'running' || bulkStatus?.voice === 'retrying';
   const canGenerateVideo = !!draft.images?.length && !imageBusy && !videoBusy;
+  const canGenerateVoice = !voiceBusy && !imageBusy && !videoBusy;
 
   return (
     <article className="sb-scene-card">
@@ -146,6 +175,16 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
           >
             {videoBusy ? <Loader2 className="sb-icon sb-spin" /> : <FilmIcon className="sb-icon" />}
             {bulkStatus?.video === 'retrying' ? '重试中' : videoBusy ? '生成中' : '生成视频'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={generateVoice}
+            disabled={!canGenerateVoice}
+            title="基于旁白文本生成语音"
+          >
+            {voiceBusy ? <Loader2 className="sb-icon sb-spin" /> : <AudioIcon className="sb-icon" />}
+            {bulkStatus?.voice === 'retrying' ? '重试中' : voiceBusy ? '合成中' : '语音合成'}
           </Button>
           <Button size="icon" variant="ghost" onClick={() => onRemove(draft.id)} title="删除分镜">
             <Trash2 className="sb-icon" />
@@ -198,7 +237,7 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
 
       {error && <div className="sb-error">{error}</div>}
 
-      {(draft.images?.length > 0 || draft.video) && (
+      {(draft.images?.length > 0 || draft.video || draft.audios?.length > 0) && (
         <div className="sb-scene-media">
           {draft.images?.length > 0 && (
             <div className="sb-media-block">
@@ -265,6 +304,42 @@ function SceneCard({ scene, index, characters, settings, actions, onRemove, requ
               </button>
             </div>
           )}
+          {draft.audios?.length > 0 && (
+            <div className="sb-media-block">
+              <div className="sb-media-head">
+                <span>合成语音 ({draft.audios.length})</span>
+                <Button size="icon" variant="ghost" onClick={() => actions.clearSceneMedia(draft.id, 'audio')} title="清空语音">
+                  <Eraser className="sb-icon" />
+                </Button>
+              </div>
+              <div className="sb-audio-list">
+                {draft.audios.map((url, i) => {
+                  const on = selected.has(url);
+                  return (
+                    <div key={`${url}-${i}`} className={`sb-audio-item${on ? ' is-selected' : ''}`}>
+                      <button
+                        type="button"
+                        className={`sb-audio-star${on ? ' is-selected' : ''}`}
+                        onClick={() => onToggleSelect(url)}
+                        title={on ? '取消选中' : '加入导出选中'}
+                      >
+                        {on ? <Check className="sb-icon" /> : <Star className="sb-icon" />}
+                      </button>
+                      <audio className="sb-audio" src={url} controls preload="metadata" />
+                      <button
+                        type="button"
+                        className="sb-audio-del"
+                        onClick={() => onRemoveMedia(draft.id, 'audio', url)}
+                        title="删除该语音"
+                      >
+                        <Trash2 className="sb-icon" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </article>
@@ -329,6 +404,7 @@ export default function ScenePanel({ project, settings, actions, requestParams }
     scenes.forEach((scene, i) => {
       (scene.images || []).forEach((url) => { if (url) out.push({ kind: 'image', url, sceneIndex: i + 1 }); });
       if (scene.video) out.push({ kind: 'video', url: scene.video, sceneIndex: i + 1 });
+      (scene.audios || []).forEach((url) => { if (url) out.push({ kind: 'audio', url, sceneIndex: i + 1 }); });
     });
     return out;
   };
@@ -337,7 +413,9 @@ export default function ScenePanel({ project, settings, actions, requestParams }
   const extOf = (url, kind) => {
     const m = String(url).split('?')[0].match(/\.([a-zA-Z0-9]{2,4})$/);
     if (m) return m[1].toLowerCase();
-    return kind === 'video' ? 'mp4' : 'png';
+    if (kind === 'video') return 'mp4';
+    if (kind === 'audio') return 'mp3';
+    return 'png';
   };
 
   const triggerDownload = (href, filename) => {
@@ -509,7 +587,8 @@ export default function ScenePanel({ project, settings, actions, requestParams }
         const next = { ...prev };
         if (!next[sceneId]) return prev;
         next[sceneId] = { ...next[sceneId], [kind]: '' };
-        if (!next[sceneId].image && !next[sceneId].video) delete next[sceneId];
+        const rest = next[sceneId];
+        if (!rest.image && !rest.video && !rest.voice) delete next[sceneId];
         return next;
       });
     }
@@ -628,6 +707,47 @@ export default function ScenePanel({ project, settings, actions, requestParams }
 
   const canBulkImage = scenes.some((scene) => scene?.visualPrompt?.trim() && !scene?.images?.length);
   const canBulkVideo = scenes.some((scene) => scene?.images?.length && !scene?.video);
+  const canBulkVoice = scenes.some((scene) => scene?.narration?.trim());
+
+  const generateAllVoices = async () => {
+    if (!scenes.length || bulkRunning) return;
+    const params = await requestParams({ mode: 'voice', variant: 'bulk' });
+    if (!params) return;
+    setBulkRunning('voice');
+    clearBulkSceneStatus();
+    const stats = { success: 0, skipped: 0, failed: 0, failedItems: [] };
+    try {
+      const pendingScenes = scenes.filter((scene) => scene?.narration?.trim());
+      const skippedCount = scenes.length - pendingScenes.length;
+      stats.skipped = skippedCount;
+      await runQueue(pendingScenes, params.batchLimit, async (scene) => {
+        try {
+          const input = {
+            prompt: scene.narration,
+            model: params.voiceModel || 'fish-audio',
+          };
+          if (params.voiceId) input.voiceId = params.voiceId;
+          const urls = await runWithRetry({
+            sceneId: scene.id,
+            kind: 'voice',
+            task: () => runVoiceGeneration({
+              workflowId: settings.voiceWorkflowId,
+              input,
+              label: `分镜 ${scene.index} 语音合成`,
+            }),
+          });
+          await actions.addSceneMedia(scene.id, 'audio', urls);
+          stats.success += 1;
+        } catch (e) {
+          stats.failed += 1;
+          stats.failedItems.push({ index: scene.index, message: e?.message || '语音合成失败' });
+        }
+      });
+    } finally {
+      setBulkRunning('');
+      showBulkSummary('批量语音合成', stats);
+    }
+  };
 
   return (
     <div className="sb-scenes">
@@ -653,12 +773,21 @@ export default function ScenePanel({ project, settings, actions, requestParams }
           >
             {bulkRunning === 'video' ? '生成中' : '一键生成视频'}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={generateAllVoices}
+            disabled={!canBulkVoice || !!bulkRunning}
+            title={canBulkVoice ? '基于旁白文本批量合成语音' : '没有需要合成语音的分镜'}
+          >
+            {bulkRunning === 'voice' ? '合成中' : '一键语音合成'}
+          </Button>
           <Button size="sm" variant="outline" onClick={addScene}>
             <Plus className="sb-icon" />新增分镜
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" disabled={!scenes.length || exporting} title="导出图片/视频">
+              <Button size="sm" variant="outline" disabled={!scenes.length || exporting} title="导出图片/视频/语音">
                 {exporting ? <Loader2 className="sb-icon sb-spin" /> : <Download className="sb-icon" />}
                 {exporting ? '导出中' : '导出'}
               </Button>

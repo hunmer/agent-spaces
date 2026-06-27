@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>系统设置 · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>系统设置 · npm/字体/头像/机器人/订阅/语音/通知/埋点</h1>
+  </header>
+
+  <div class="container">
+    <!-- npm-settings -->
+    <div class="card">
+      <h2>NPM Settings</h2>
+      <p class="desc"><code>sdk.npmSettings.get()</code> · <code>update(settings)</code></p>
+      <div class="field">
+        <label>settings（update 用，JSON）</label>
+        <textarea id="in-npm" rows="3" placeholder='{"registry":"https://..."}'></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-npm-get" class="btn">get</button>
+        <button id="btn-npm-update" class="btn secondary">update</button>
+      </div>
+      <pre id="out-npm" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- font -->
+    <div class="card">
+      <h2>Font · 字体</h2>
+      <p class="desc"><code>sdk.font.list()</code> · <code>delete_(id)</code> · <code>uploadByName(name, content)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>font name（uploadByName 用）</label>
+          <input id="in-font-name" type="text" placeholder="MyFont" />
+        </div>
+        <div class="field">
+          <label>font id（delete 用）</label>
+          <input id="in-font-id" type="text" placeholder="font id" />
+        </div>
+      </div>
+      <div class="field">
+        <label>content（uploadByName 用，base64 或 css 文本）</label>
+        <textarea id="in-font-content" rows="2" placeholder="字体内容"></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-font-list" class="btn">list</button>
+        <button id="btn-font-upload" class="btn secondary">uploadByName</button>
+        <button id="btn-font-del" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-font" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- avatar -->
+    <div class="card">
+      <h2>Avatar · 头像</h2>
+      <p class="desc"><code>sdk.avatar.get(userId)</code> · <code>upload(formData)</code></p>
+      <div class="field">
+        <label>userId</label>
+        <input id="in-avatar-user" type="text" placeholder="user id" />
+      </div>
+      <div class="field">
+        <label>上传图片（upload 用）</label>
+        <input id="in-avatar-file" type="file" />
+      </div>
+      <div class="actions">
+        <button id="btn-avatar-get" class="btn">get</button>
+        <button id="btn-avatar-upload" class="btn secondary">upload</button>
+      </div>
+      <pre id="out-avatar" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- robot-accounts -->
+    <div class="card">
+      <h2>Robot Accounts · 机器人账号</h2>
+      <p class="desc"><code>sdk.robotAccounts.list()</code> · <code>wechatQR()</code> · <code>delete_(id)</code></p>
+      <div class="field">
+        <label>robot id（delete 用）</label>
+        <input id="in-robot-id" type="text" placeholder="robot id" />
+      </div>
+      <div class="field">
+        <label>create data（JSON）</label>
+        <input id="in-robot-data" type="text" placeholder='{"name":"bot1","type":"wechat"}' />
+      </div>
+      <div class="actions">
+        <button id="btn-robot-list" class="btn">list</button>
+        <button id="btn-robot-create" class="btn secondary">create</button>
+        <button id="btn-robot-qr" class="btn secondary">wechatQR</button>
+        <button id="btn-robot-del" class="btn danger">delete_</button>
+      </div>
+      <div id="robot-table" style="margin-bottom:12px;"></div>
+      <pre id="out-robot" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- subscription -->
+    <div class="card">
+      <h2>Subscription · 订阅</h2>
+      <p class="desc"><code>sdk.subscription.list()</code> · <code>quota(id)</code></p>
+      <div class="field">
+        <label>subscription id（quota 用）</label>
+        <input id="in-sub-id" type="text" placeholder="subscription id" />
+      </div>
+      <div class="actions">
+        <button id="btn-sub-list" class="btn">list</button>
+        <button id="btn-sub-quota" class="btn secondary">quota</button>
+      </div>
+      <pre id="out-sub" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- speech -->
+    <div class="card">
+      <h2>Speech · 语音</h2>
+      <p class="desc"><code>sdk.speech.list()</code> · <code>delete_(id)</code></p>
+      <div class="field">
+        <label>speech id（delete 用）</label>
+        <input id="in-speech-id" type="text" placeholder="speech id" />
+      </div>
+      <div class="actions">
+        <button id="btn-speech-list" class="btn">list</button>
+        <button id="btn-speech-del" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-speech" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- notification -->
+    <div class="card">
+      <h2>Notification · 通知</h2>
+      <p class="desc"><code>sdk.notification.list()</code> · <code>markRead(id)</code> · <code>clearAll()</code></p>
+      <div class="field">
+        <label>notification id（markRead 用）</label>
+        <input id="in-notif-id" type="text" placeholder="notification id" />
+      </div>
+      <div class="actions">
+        <button id="btn-notif-list" class="btn">list</button>
+        <button id="btn-notif-read" class="btn secondary">markRead</button>
+        <button id="btn-notif-clear" class="btn danger">clearAll</button>
+      </div>
+      <pre id="out-notif" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- inspector -->
+    <div class="card">
+      <h2>Inspector · 埋点</h2>
+      <p class="desc"><code>sdk.inspector.track(data)</code> · 上报一条埋点事件</p>
+      <div class="field">
+        <label>data（JSON）</label>
+        <textarea id="in-inspector" rows="3" placeholder='{"event":"demo_click","page":"settings"}'></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-inspector" class="btn">track</button>
+      </div>
+      <pre id="out-inspector" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/settings.js"></script>
+</body>
+</html>

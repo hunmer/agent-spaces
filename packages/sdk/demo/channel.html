@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Channel · 对话频道</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>选择工作区</h2>
+      <p class="desc">Channel 接口依赖 <code>workspaceId</code>。</p>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>频道列表 / 详情</h2>
+      <p class="desc"><code>sdk.channel.list(workspaceId)</code></p>
+      <div class="actions">
+        <button id="btn-list" class="btn">刷新列表</button>
+      </div>
+      <div id="ch-table" style="margin-bottom:12px;"></div>
+      <pre id="out-list" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>创建频道</h2>
+      <p class="desc"><code>sdk.channel.create(workspaceId, data)</code></p>
+      <div class="field">
+        <label>name</label>
+        <input id="in-name" type="text" placeholder="频道名称" />
+      </div>
+      <div class="field">
+        <label>type（可选，如 chat/task）</label>
+        <input id="in-type" type="text" placeholder="channel type" />
+      </div>
+      <div class="actions">
+        <button id="btn-create" class="btn">创建</button>
+      </div>
+      <pre id="out-create" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>频道操作</h2>
+      <p class="desc">依赖 channelId：<code>get</code> · <code>getState</code> · <code>getMessages</code> · <code>clearMessages</code> · <code>delete_</code></p>
+      <div class="field">
+        <label>channelId</label>
+        <input id="in-ch" type="text" placeholder="从列表复制 channel id" />
+      </div>
+      <div class="actions">
+        <button id="btn-get" class="btn">get</button>
+        <button id="btn-state" class="btn secondary">getState</button>
+        <button id="btn-msgs" class="btn secondary">getMessages</button>
+        <button id="btn-clear" class="btn secondary">clearMessages</button>
+        <button id="btn-del" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-op" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>消息 & 工具详情</h2>
+      <p class="desc"><code>deleteMessage(wsId, chId, msgId)</code> · <code>getToolDetail(wsId, chId, msgId, toolName)</code> · <code>uploadAttachment(wsId, formData)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>messageId</label>
+          <input id="in-msg" type="text" placeholder="message id" />
+        </div>
+        <div class="field">
+          <label>toolName（getToolDetail 用）</label>
+          <input id="in-tool" type="text" placeholder="tool name" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-delmsg" class="btn danger">deleteMessage</button>
+        <button id="btn-tool" class="btn secondary">getToolDetail</button>
+      </div>
+      <div class="field">
+        <label>上传附件（uploadAttachment）</label>
+        <input id="in-file" type="file" />
+      </div>
+      <div class="actions">
+        <button id="btn-upload" class="btn">uploadAttachment</button>
+      </div>
+      <pre id="out-msg" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/channel.js"></script>
+</body>
+</html>

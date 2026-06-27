@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQLite · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>SQLite · 数据库适配器</h1>
+  </header>
+
+  <div class="container">
+    <div class="hint">
+      覆盖 <code>sdk.sqlite</code>：数据库 CRUD、表结构、SQL 查询/执行。可选按 <code>workflowId</code> 过滤。
+    </div>
+
+    <!-- 数据库列表 -->
+    <div class="card">
+      <h2>数据库列表</h2>
+      <p class="desc"><code>sdk.sqlite.listDatabases(workflowId?)</code></p>
+      <div class="field">
+        <label>workflowId（可选，按工作流过滤）</label>
+        <input id="in-wf-filter" type="text" placeholder="留空列出全部" />
+      </div>
+      <div class="actions">
+        <button id="btn-db-list" class="btn">刷新列表</button>
+      </div>
+      <div id="db-table" style="margin-bottom:12px;"></div>
+      <pre id="out-db" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <!-- 数据库 CRUD -->
+    <div class="card">
+      <h2>数据库 CRUD</h2>
+      <p class="desc"><code>createDatabase(input)</code> · <code>updateDatabase(id, updates)</code> · <code>deleteDatabase(id)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>db id（update / delete 用）</label>
+          <input id="in-db-id" type="text" placeholder="database id" />
+        </div>
+        <div class="field">
+          <label>create input / update（JSON）</label>
+          <input id="in-db-data" type="text" placeholder='{"name":"mydb","workflowId":"..."}' />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-db-create" class="btn">createDatabase</button>
+        <button id="btn-db-update" class="btn secondary">updateDatabase</button>
+        <button id="btn-db-delete" class="btn danger">deleteDatabase</button>
+      </div>
+      <pre id="out-crud" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 表结构 -->
+    <div class="card">
+      <h2>表 & 表结构</h2>
+      <p class="desc"><code>listTables(id)</code> · <code>describeTable(id, table)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>db id</label>
+          <input id="in-tbl-db" type="text" placeholder="database id" />
+        </div>
+        <div class="field">
+          <label>table（describeTable 用）</label>
+          <input id="in-tbl-name" type="text" placeholder="表名" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-tables" class="btn">listTables</button>
+        <button id="btn-describe" class="btn secondary">describeTable</button>
+      </div>
+      <pre id="out-tbl" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- SQL -->
+    <div class="card">
+      <h2>SQL 查询 / 执行</h2>
+      <p class="desc"><code>query(id, sql, params?)</code> · <code>exec(id, sql, params?)</code></p>
+      <div class="field">
+        <label>db id</label>
+        <input id="in-sql-db" type="text" placeholder="database id" />
+      </div>
+      <div class="field">
+        <label>SQL</label>
+        <textarea id="in-sql" rows="3" placeholder="SELECT * FROM users LIMIT 10"></textarea>
+      </div>
+      <div class="field">
+        <label>params（JSON 数组，可空）</label>
+        <input id="in-sql-params" type="text" placeholder='[1, "abc"]' />
+      </div>
+      <div class="actions">
+        <button id="btn-query" class="btn">query（只读）</button>
+        <button id="btn-exec" class="btn danger">exec（写操作）</button>
+      </div>
+      <pre id="out-sql" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/sqlite.js"></script>
+</body>
+</html>
