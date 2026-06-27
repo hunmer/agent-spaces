@@ -27,6 +27,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [folders, setFolders] = useState([]);
+  const [libraryPath, setLibraryPath] = useState(""); // Eagle 资源库根目录，用于拼本地图片路径
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState(null); // null = 全部素材
 
@@ -46,6 +47,9 @@ export default function App() {
     (async () => {
       try {
         await eagle.appInfo();
+        // 拿资源库根路径，用于拼接本地缩略图/原图绝对路径
+        const lib = await eagle.libraryInfo();
+        setLibraryPath((lib?.data?.path || "").replace(/[\\/]+$/, ""));
         await loadFolders();
         setReady(true);
       } catch (e) {
@@ -173,6 +177,7 @@ export default function App() {
         <ItemGallery
           folderId={activeFolderId}
           folders={folders}
+          libraryPath={libraryPath}
           onChange={loadFolders}
         />
       </div>

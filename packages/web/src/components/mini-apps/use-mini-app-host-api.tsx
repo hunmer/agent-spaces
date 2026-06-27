@@ -1,5 +1,5 @@
 import { createElement, useEffect, useRef, useState } from 'react';
-import { authHeaders, fetchWithAuth } from '@/lib/auth';
+import { authHeaders, fetchWithAuth, getToken } from '@/lib/auth';
 import { getActiveServerUrl } from '@/lib/server';
 import { sdk } from '@/lib/sdk';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -645,6 +645,19 @@ export function useMiniAppHostApi(projectId: string) {
       });
     };
 
+    // 把任意本地绝对路径转成可直接用于 <img>/<video> src 的 HTTP URL。
+    // 用于访问本地资源库文件（如 Eagle 缩略图/原图），浏览器无法直接读 file://。
+    // 鉴权通过 query token（见 middleware/auth.ts 与 routes/mini-apps.ts 的 local-file）。
+    const localFileUrl = (absPath: string, opts?: { download?: boolean }): string => {
+      const baseUrl = getActiveServerUrl();
+      const token = getToken() || '';
+      const params = new URLSearchParams();
+      params.set('path', absPath);
+      params.set('token', token);
+      if (opts?.download) params.set('download', 'true');
+      return `${baseUrl || ''}/api/mini-apps/${encodedProjectId}/local-file?${params.toString()}`;
+    };
+
     const pluginApi = {
       callPluginTool: executePluginTool,
       executePluginTool,
@@ -659,6 +672,7 @@ export function useMiniAppHostApi(projectId: string) {
       onConfigChanged,
       invokeService,
       openAgentEditor,
+      localFileUrl,
     };
 
     const fileApi = {

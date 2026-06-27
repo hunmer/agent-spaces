@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import multer from 'multer';
-import { existsSync, mkdirSync, writeFileSync, rmSync, createReadStream } from 'node:fs';
-import { join, basename, resolve } from 'node:path';
+import { existsSync, mkdirSync, writeFileSync, rmSync, createReadStream, statSync } from 'node:fs';
+import { join, basename, resolve, extname } from 'node:path';
 import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
@@ -491,6 +491,64 @@ router.put('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }
 
     const saved = upsertAgentConfig(req.params.id, agentId, entry);
     res.json(saved);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// 本地文件代理：mini-app 预览代码用 <img src> 访问任意本地绝对路径的图片/视频/音频。
+// Eagle 等本地资源库场景：缩略图/原图位于资源库目录下，浏览器无法直接读 file://。
+// 鉴权由 auth 中间件通过 query token 放行（见 middleware/auth.ts）。
+const LOCAL_FILE_MIME: Record<string, string> = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
+  '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac', '.aac': 'audio/aac',
+};
+
+router.get('/:id/local-file', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const rawPath = req.query.path as string;
+    if (!rawPath) { res.status(400).json({ error: 'path is required' }); return; }
+
+    // 统一为绝对路径；resolve 已会把相对路径锚到 cwd，这里显式拒绝相对路径以免误读项目内文件
+    const abs = resolve(rawPath);
+    if (abs !== resolve(rawPath) || !abs.match(/^[A-Za-z]:[\\/]|^\/|^\\\\/)) {
+      res.status(400).json({ error: 'path must be absolute' }); return;
+    }
+    if (!existsSync(abs)) { res.status(404).json({ error: 'File not found' }); return; }
+
+    const stat = statSync(abs);
+    if (stat.isDirectory()) { res.status(400).json({ error: 'Cannot serve a directory' }); return; }
+
+    const ext = extname(abs).toLowerCase();
+    const mime = LOCAL_FILE_MIME[ext];
+    if (!mime) { res.status(415).json({ error: `Unsupported file type: ${ext || '(none)'}` }); return; }
+
+    const download = req.query.download === 'true';
+
+    // Range 请求（视频/音频拖动）
+    const range = req.headers.range;
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10) || 0;
+      const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+      const chunkSize = end - start + 1;
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Length', chunkSize);
+      res.setHeader('Content-Type', mime);
+      createReadStream(abs, { start, end }).pipe(res);
+      return;
+    }
+
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Length', stat.size);
+    if (download) {
+      const fileName = basename(abs);
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    }
+    createReadStream(abs).pipe(res);
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

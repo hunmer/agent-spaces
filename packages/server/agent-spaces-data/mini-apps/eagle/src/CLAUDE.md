@@ -29,6 +29,8 @@
 - 删除素材用 `eagle_item_update({ isDeleted: true })`（Eagle 软删除，可从回收站恢复）。
 - 上传本地文件用 `FileReader` 转 base64，再走 `eagle_item_add` 的 `base64` 字段。
 - 瀑布流用宿主 `Masonry`，`getMeta` 按素材 `width/height` 推导 `aspect`，无尺寸信息时回退 `1:1`。
+- 本地图片访问：Eagle 缩略图/原图位于资源库目录下（`{libraryPath}/images/{itemId}.info/{name}[_thumbnail].{ext}`），浏览器无法读 `file://`。启动时调 `eagle_library_info` 拿 `libraryPath`，再用 `window.AgentSpaces.localFileUrl(absPath)` 把绝对路径转成经服务端 `GET /api/mini-apps/:id/local-file` 代理的 HTTP URL，直接用于 `<img src>`。缩略图加载失败时 `onError` 回退到原图。
+- 点击缩略图预览：用宿主 `openMediaGallery(items, startIndex)`（来自 `window.AgentSpacesUI`）打开全量图集，自动定位到点击项；视频素材按 video 类型传入。
 
 ## Dependencies
 

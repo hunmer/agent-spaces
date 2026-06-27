@@ -9,6 +9,7 @@ import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath, isWorkflowSharePath, isMiniAppPreviewPath } from "@/lib/routes";
 import { sdk } from "@/lib/sdk";
+import { CustomShortcutExecutor } from "@/components/layout/custom-shortcut-executor";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarInset>
       </SidebarProvider>
       <GlobalWorkspaceDialog />
+      <CustomShortcutExecutor />
     </>
   );
 }
