@@ -6,6 +6,7 @@
   "type": "react",
   "tags": [],
   "mainFile": "index.jsx",
+  "enabledPlugins": ["workflow.eagle"],
   "createdAt": "2026-06-27T07:18:55.665Z",
   "updatedAt": "2026-06-27T07:18:55.665Z"
 }
