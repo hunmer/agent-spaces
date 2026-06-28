@@ -142,7 +142,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     apiKey: "",
     workingDir: "",
     mcps: defaultMcpConfig([]),
-    skills: defaultSkills(["coding", "debugging", "testing"]),
+    skills: defaultSkills([]),
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是通用 Agent。根据 issue 和当前任务上下文完成被分配的工作，遵循项目规范，必要时修改代码、运行验证，并清晰汇报结果。",

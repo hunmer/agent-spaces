@@ -8,24 +8,250 @@
       "type": "start",
       "label": "Start",
       "position": {
-        "x": 250,
-        "y": 50
+        "x": 0,
+        "y": 0
       },
-      "data": {}
+      "data": {
+        "inputFields": [
+          {
+            "key": "task",
+            "type": "string",
+            "description": "用户输入的任务描述",
+            "required": true
+          }
+        ]
+      }
     },
     {
       "id": "node_1782638749165_end",
       "type": "end",
       "label": "End",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 1200,
+        "y": 0
       },
-      "data": {}
+      "data": {
+        "outputs": [
+          {
+            "key": "plan",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782639469916_bc3717\"].result }}",
+            "description": "计划者输出的执行计划",
+            "children": []
+          },
+          {
+            "key": "execution",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782639469916_30e6kw\"].result }}",
+            "description": "执行者的执行结果",
+            "children": []
+          },
+          {
+            "key": "verification",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782639469916_cl2ba1\"].result }}",
+            "description": "验证者的验证报告",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782639469916_bc3717",
+      "type": "agent_run",
+      "label": "计划者",
+      "position": {
+        "x": 315,
+        "y": 90
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "planner-agent",
+          "name": "计划者",
+          "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "claude-code",
+          "modelProvider": "anthropic-messages",
+          "providerId": "c98da215-b693-44d7-92d7-9e3683c446fd",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [],
+          "tools": [],
+          "systemPrompt": "你是一个专业的计划者。根据用户的任务需求，分析任务目标，制定详细的、可执行的步骤计划。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "请分析以下任务，制定详细的执行计划：\n{{ __data__[\"node_1782638749165_start\"].task }}"
+      }
+    },
+    {
+      "id": "node_1782639469916_30e6kw",
+      "type": "agent_run",
+      "label": "执行者",
+      "position": {
+        "x": 540,
+        "y": -75
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "executor-agent",
+          "name": "执行者",
+          "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "claude-code",
+          "modelProvider": "anthropic-messages",
+          "providerId": "c98da215-b693-44d7-92d7-9e3683c446fd",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [],
+          "tools": [],
+          "systemPrompt": "你是一个专业的执行者。严格按照计划者的计划，逐步执行每个步骤，确保高质量完成任务。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "请严格按照以下计划逐步执行：\n{{ __data__[\"node_1782639469916_bc3717\"].result }}"
+      }
+    },
+    {
+      "id": "node_1782639469916_cl2ba1",
+      "type": "agent_run",
+      "label": "验证者",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "verifier-agent",
+          "name": "验证者",
+          "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "claude-code",
+          "modelProvider": "anthropic-messages",
+          "providerId": "c98da215-b693-44d7-92d7-9e3683c446fd",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [],
+          "tools": [],
+          "systemPrompt": "你是一个专业的验证者。仔细检查执行结果是否符合计划要求，发现问题并提出改进建议。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "请验证以下执行结果，检查是否满足任务要求，并给出评估报告：\n{{ __data__[\"node_1782639469916_30e6kw\"].result }}"
+      }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1782638749165_start-node_1782639469916_bc3717-mqxlirhi",
+      "source": "node_1782638749165_start",
+      "target": "node_1782639469916_bc3717"
+    },
+    {
+      "id": "e-node_1782639469916_bc3717-node_1782639469916_30e6kw-mqxlirhi",
+      "source": "node_1782639469916_bc3717",
+      "target": "node_1782639469916_30e6kw"
+    },
+    {
+      "id": "e-node_1782639469916_30e6kw-node_1782639469916_cl2ba1-mqxlirhi",
+      "source": "node_1782639469916_30e6kw",
+      "target": "node_1782639469916_cl2ba1"
+    },
+    {
+      "id": "e-node_1782639469916_cl2ba1-node_1782638749165_end-mqxlirhi",
+      "source": "node_1782639469916_cl2ba1",
+      "target": "node_1782638749165_end"
+    },
+    {
+      "id": "e-node_1782638749165_start-output:task-node_1782639469916_bc3717-property:prompt",
+      "source": "node_1782638749165_start",
+      "target": "node_1782639469916_bc3717",
+      "edgeKind": "reference",
+      "sourceHandle": "output:task",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782639469916_bc3717-output:result-node_1782639469916_30e6kw-property:prompt",
+      "source": "node_1782639469916_bc3717",
+      "target": "node_1782639469916_30e6kw",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782639469916_30e6kw-output:result-node_1782639469916_cl2ba1-property:prompt",
+      "source": "node_1782639469916_30e6kw",
+      "target": "node_1782639469916_cl2ba1",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    }
+  ],
   "createdAt": 1782638749172,
-  "updatedAt": 1782638854391,
-  "published": false
+  "updatedAt": 1782639887205,
+  "published": false,
+  "lastRunAt": 1782639909289,
+  "layoutSnapshot": {
+    "nodeDisplayMode": "normal"
+  }
 }
