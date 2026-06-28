@@ -1,0 +1,7 @@
+{
+  "name": "comfyui-plugin",
+  "version": "1.0.0",
+  "description": "ComfyUI HTTP API plugin for workflow",
+  "main": "main.js",
+  "type": "commonjs"
+}

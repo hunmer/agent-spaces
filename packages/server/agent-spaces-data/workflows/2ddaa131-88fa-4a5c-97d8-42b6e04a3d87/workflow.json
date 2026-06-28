@@ -1,0 +1,117 @@
+{
+  "id": "2ddaa131-88fa-4a5c-97d8-42b6e04a3d87",
+  "name": "comfyui",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1782635071327_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782635071327_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782635092893_azk6d4",
+      "type": "comfy_system_stats",
+      "label": "系统状态",
+      "position": {
+        "x": 255,
+        "y": 255
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.comfyui\"][\"baseUrl\"]}}",
+        "timeout": "{{ __config__[\"workflow.comfyui\"][\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782635106511_hpul38",
+      "type": "comfy_run_workflow",
+      "label": "运行工作流",
+      "position": {
+        "x": 645,
+        "y": 210
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.comfyui\"][\"baseUrl\"]}}",
+        "timeout": "{{ __config__[\"workflow.comfyui\"][\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "promptId",
+                "type": "string"
+              },
+              {
+                "key": "files",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              },
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "status",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "prompt": "{\n  \"12\": {\n    \"inputs\": {\n      \"seed\": 266710761899056,\n      \"steps\": 30,\n      \"cfg\": 5,\n      \"sampler_name\": \"er_sde\",\n      \"scheduler\": \"normal\",\n      \"denoise\": 1,\n      \"model\": [\n        \"23\",\n        0\n      ],\n      \"positive\": [\n        \"14\",\n        0\n      ],\n      \"negative\": [\n        \"13\",\n        0\n      ],\n      \"latent_image\": [\n        \"15\",\n        0\n      ]\n    },\n    \"class_type\": \"KSampler\",\n    \"_meta\": {\n      \"title\": \"KSampler\"\n    }\n  },\n  \"13\": {\n    \"inputs\": {\n      \"text\": \"worst quality, low quality, score_1, score_2, score_3, artist name\",\n      \"clip\": [\n        \"21\",\n        0\n      ]\n    },\n    \"class_type\": \"CLIPTextEncode\",\n    \"_meta\": {\n      \"title\": \"CLIP Text Encode (Prompt)\"\n    }\n  },\n  \"14\": {\n    \"inputs\": {\n      \"text\": \"masterpiece, best quality, score_7, safe, 1girl, standing, white dress, red hair, a blue butterfly is on her finger, (glitch:2)\",\n      \"clip\": [\n        \"21\",\n        0\n      ]\n    },\n    \"class_type\": \"CLIPTextEncode\",\n    \"_meta\": {\n      \"title\": \"CLIP Text Encode (Prompt)\"\n    }\n  },\n  \"15\": {\n    \"inputs\": {\n      \"width\": 512,\n      \"height\": 512,\n      \"batch_size\": 1\n    },\n    \"class_type\": \"EmptyLatentImage\",\n    \"_meta\": {\n      \"title\": \"Empty Latent Image\"\n    }\n  },\n  \"16\": {\n    \"inputs\": {\n      \"samples\": [\n        \"12\",\n        0\n      ],\n      \"vae\": [\n        \"22\",\n        0\n      ]\n    },\n    \"class_type\": \"VAEDecode\",\n    \"_meta\": {\n      \"title\": \"VAE Decode\"\n    }\n  },\n  \"17\": {\n    \"inputs\": {\n      \"images\": [\n        \"16\",\n        0\n      ]\n    },\n    \"class_type\": \"PreviewImage\",\n    \"_meta\": {\n      \"title\": \"Preview Image\"\n    }\n  },\n  \"21\": {\n    \"inputs\": {\n      \"clip_name\": \"anima_baseV10_txt.safetensors\",\n      \"type\": \"qwen_image\",\n      \"device\": \"default\"\n    },\n    \"class_type\": \"CLIPLoader\",\n    \"_meta\": {\n      \"title\": \"Load CLIP\"\n    }\n  },\n  \"22\": {\n    \"inputs\": {\n      \"vae_name\": \"qwen_image_vae.safetensors\"\n    },\n    \"class_type\": \"VAELoader\",\n    \"_meta\": {\n      \"title\": \"Load VAE\"\n    }\n  },\n  \"23\": {\n    \"inputs\": {\n      \"ckpt_name\": \"anima_baseV10.safetensors\"\n    },\n    \"class_type\": \"CheckpointLoaderSimple\",\n    \"_meta\": {\n      \"title\": \"Load Checkpoint\"\n    }\n  }\n}"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1782635071336,
+  "updatedAt": 1782635362840,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.comfyui"
+  ],
+  "groups": []
+}

@@ -1,0 +1,41 @@
+{
+  "id": "workflow.comfyui",
+  "name": "ComfyUI",
+  "name_zh": "ComfyUI",
+  "name_en": "ComfyUI",
+  "version": "1.0.0",
+  "icon": "icon.png",
+  "description": "对接 ComfyUI HTTP API，支持提交工作流并轮询取图、上传图片、查询系统状态/队列/历史、列出模型、中断任务。",
+  "description_zh": "对接 ComfyUI HTTP API，支持提交工作流并轮询取图、上传图片、查询系统状态/队列/历史、列出模型、中断任务。",
+  "description_en": "Interact with ComfyUI HTTP API: submit & poll workflows, upload images, query system stats / queue / history, list models, interrupt tasks.",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "ComfyUI", "工作流", "图片生成"],
+  "tags_zh": ["AI", "ComfyUI", "工作流", "图片生成"],
+  "tags_en": ["AI", "ComfyUI", "Workflow", "Image Generation"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "baseUrl",
+      "label": "Server URL",
+      "desc": "ComfyUI 服务地址",
+      "type": "string",
+      "value": "http://127.0.0.1:8188",
+      "placeholder": "http://127.0.0.1:8188",
+      "required": true
+    },
+    {
+      "key": "timeout",
+      "label": "Timeout (ms)",
+      "desc": "单次任务最长轮询时间（毫秒）",
+      "type": "number",
+      "value": 600000
+    }
+  ]
+}

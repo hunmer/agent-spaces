@@ -390,7 +390,10 @@ module.exports = (t) => {
 
         ctx.logger.info(`Searching files in library ${args.libraryId}: ${JSON.stringify(filters)}`)
         const results = await request(args, client => client.files().getFiles(reqBody))
-        return { success: true, message: t('message.filesFound', 'Found {count} files').replace('{count}', String(Array.isArray(results) ? results.length : 0)), data: { files: results } }
+        // SDK getFiles 返回 { result: [...], total?, ... }，兼容纯数组返回
+        const files = Array.isArray(results) ? results : (Array.isArray(results?.result) ? results.result : [])
+        const count = files.length
+        return { success: true, message: t('message.filesFound', 'Found {count} files').replace('{count}', String(count)), data: { files: results } }
       },
     },
 

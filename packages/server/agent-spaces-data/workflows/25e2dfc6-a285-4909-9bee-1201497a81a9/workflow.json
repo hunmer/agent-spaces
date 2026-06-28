@@ -102,53 +102,11 @@
           }
         ]
       }
-    },
-    {
-      "id": "node_1782631531064_0ga9yz",
-      "type": "mira_file_search",
-      "label": "搜索文件",
-      "position": {
-        "x": 765,
-        "y": -15
-      },
-      "data": {
-        "baseUrl": "{{ __config__[\"workflow.mira-sdk\"][\"baseUrl\"]}}",
-        "username": "{{ __config__[\"workflow.mira-sdk\"][\"username\"]}}",
-        "password": "{{ __config__[\"workflow.mira-sdk\"][\"password\"]}}",
-        "token": "{{ __config__[\"workflow.mira-sdk\"][\"token\"]}}",
-        "timeout": "{{ __config__[\"workflow.mira-sdk\"][\"timeout\"]}}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "dataType": "object",
-            "children": [
-              {
-                "key": "files",
-                "type": "object",
-                "dataType": "object",
-                "children": []
-              }
-            ]
-          }
-        ],
-        "libraryId": "1779810479725",
-        "keyword": "jpg"
-      }
     }
   ],
   "edges": [],
   "createdAt": 1782268403696,
-  "updatedAt": 1782631568854,
+  "updatedAt": 1782635063720,
   "published": false,
   "enabledPlugins": [
     "workflow.mail",

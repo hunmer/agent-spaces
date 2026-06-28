@@ -118,6 +118,38 @@
     ]
   },
   {
+    "id": "workflow.comfyui",
+    "name": "ComfyUI",
+    "version": "1.0.0",
+    "description": "对接 ComfyUI HTTP API，支持提交工作流并轮询取图、上传图片、查询系统状态/队列/历史、列出模型、中断任务。",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "ComfyUI",
+      "工作流",
+      "图片生成"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "comfyui",
+    "md5": "495fb57a624ea39eff0681462bc4b8a0",
+    "updatedAt": "2026-06-28T08:22:51.953Z",
+    "files": [
+      "README.md",
+      "actions.js",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.custom-view-demo",
     "name": "Custom View Demo",
     "version": "1.0.0",
@@ -590,8 +622,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "mira-sdk",
-    "md5": "475febd411ae738b618ecd842a100aa5",
-    "updatedAt": "2026-06-28T07:17:12.943Z",
+    "md5": "7f0b78ead3b90eb0c7bf45c854b244c9",
+    "updatedAt": "2026-06-28T08:11:14.308Z",
     "files": [
       "README.md",
       "actions.js",
