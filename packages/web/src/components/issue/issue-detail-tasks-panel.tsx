@@ -1,5 +1,7 @@
 'use client';
 
+import { WorkflowPreview } from '@/components/workflow/workflow-preview';
+
 interface IssueDetailTasksPanelProps {
   issue: { workflowId?: string; title: string };
   t: (key: string, params?: Record<string, string | number | Date>) => string;
@@ -17,12 +19,8 @@ export function IssueDetailTasksPanel({
       {!issue.workflowId ? (
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-background">
-          <iframe
-            src={`/workflows/${issue.workflowId}?embedded=issue`}
-            title={`${issue.title} workflow`}
-            className="h-[720px] w-full border-0 bg-white"
-          />
+        <div className="overflow-hidden rounded-xl border bg-background h-[720px]">
+          <WorkflowPreview workflowId={issue.workflowId} />
         </div>
       )}
     </div>
