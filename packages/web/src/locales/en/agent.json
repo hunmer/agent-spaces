@@ -61,6 +61,7 @@
     "add": "Add",
     "addEmpty": "Empty",
     "syncTemplates": "Sync templates",
+    "smartCreate": "Smart Create",
     "noWorkspace": "No workspace selected",
     "loading": "Loading agent presets...",
     "tabLocal": "Local",

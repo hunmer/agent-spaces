@@ -147,7 +147,7 @@ export function CommonCodeEditor({
   const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const favoriteDecorationsRef = useRef<string[]>([]);
   const wheelZoomCleanupRef = useRef<(() => void) | null>(null);
-  const [isReadOnly, setIsReadOnly] = useState(true);
+  const [isReadOnly, setIsReadOnly] = useState(!isMobile);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem("editor-word-wrap") === "true");
   const [minimap, setMinimap] = useState(() => localStorage.getItem("editor-minimap") === "true");

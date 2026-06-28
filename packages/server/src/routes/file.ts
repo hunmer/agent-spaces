@@ -69,7 +69,15 @@ router.get('/content', async (req: Request<{ id: string }>, res: Response) => {
   }
 
   const result = await fileService.readFileContent(ws, path);
-  if (!result) { res.status(404).json({ error: 'File not found' }); return; }
+  if (!result) {
+    // .gitignore 等忽略配置文件不存在时返回空内容，由前端写入时自动创建
+    if (path === '.gitignore' || /\.(gitignore|dockerignore|eslintignore|npmignore|prettierignore)$/.test(path)) {
+      res.json({ content: '' });
+      return;
+    }
+    res.status(404).json({ error: 'File not found' });
+    return;
+  }
   res.json(result);
 });
 

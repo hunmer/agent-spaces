@@ -107,7 +107,7 @@ export function AgentDialogHeader({
   const smartCreateButton = (
     <Button variant="outline" size="sm" onClick={onAutoGenerate}>
       <WandSparkles className="size-3.5" />
-      智能创建
+      {t("dialog.smartCreate")}
     </Button>
   );
 
@@ -127,7 +127,7 @@ export function AgentDialogHeader({
   const generateButton = selectedAgent ? (
     <Button variant="outline" size="sm" onClick={() => editorRef.current?.openGenerate()}>
       <WandSparkles className="size-3.5" />
-      智能创建
+      {t("dialog.smartCreate")}
     </Button>
   ) : null;
 

@@ -109,12 +109,13 @@ export function ModelsDialog({
 
   const handleBack = () => { setSelected(null); setDraft(null); };
 
-  const handleAdd = () => {
+  const handleAdd = (provider?: string) => {
     setSelected(null);
+    const fallback = providerNames.length > 0 ? providerNames[0] : "Other";
     setDraft({
       modelId: "",
       name: "",
-      provider: providerNames.length > 0 ? providerNames[0] : "Other",
+      provider: provider || fallback,
       cost: { inputPerMillion: 0, outputPerMillion: 0 },
       maxContextTokens: 128_000,
       thinkingEnabled: true,
@@ -230,7 +231,7 @@ export function ModelsDialog({
         ) : draft ? (
           <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} />
         ) : (
-          <ModelList groups={groups} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} />
+          <ModelList groups={groups} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
         )}
       </div>
 
@@ -263,11 +264,13 @@ function ModelList({
   providerNames,
   onEdit,
   onDelete,
+  onAdd,
 }: {
   groups: Record<string, LLMModel[]>;
   providerNames: string[];
   onEdit: (m: LLMModel) => void;
   onDelete: (id: string) => void;
+  onAdd: (provider?: string) => void;
 }) {
   const t = useTranslations("models");
   const order = providerNames.length > 0 ? providerNames : ["Other"];
@@ -284,8 +287,19 @@ function ModelList({
     <div className="flex flex-col p-4 gap-4">
       {sorted.map(provider => (
         <div key={provider}>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">
-            {provider}
+          <div className="group flex items-center gap-2 mb-2 px-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {provider}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => onAdd(provider)}
+              title={t("dialog.add")}
+            >
+              <Plus className="size-3" />
+            </Button>
           </div>
           <div className="flex flex-col gap-0.5">
             {groups[provider].map(model => (
