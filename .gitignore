@@ -57,3 +57,4 @@ packages/server/agent-spaces-data/public/uploads/
 .openviking/data/bot
 .openviking/data/temp
 .openviking/data/_system
+.openviking/data/vectordb/context/store/*

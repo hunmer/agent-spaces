@@ -11,7 +11,8 @@
     "up": "docker compose up -d --build",
     "lint": "pnpm -r lint",
     "publish": "pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build && pnpm --filter @agent-spaces/shared publish && pnpm --filter @agent-spaces/server publish",
-    "clean": "rm -rf packages/*/dist packages/*/.next packages/server/web"
+    "clean": "rm -rf packages/*/dist packages/*/.next packages/server/web",
+    "openviking": "node scripts/run-openviking.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
