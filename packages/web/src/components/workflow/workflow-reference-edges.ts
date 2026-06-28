@@ -182,16 +182,6 @@ function hasNodeLevelRuntimePath(edges: WorkflowEdge[], source: string, target: 
   return false;
 }
 
-function hasDirectNodeLevelRuntimeEdge(edges: WorkflowEdge[], source: string, target: string): boolean {
-  return edges.some(edge => (
-    edge.source === source
-    && edge.target === target
-    && edge.edgeKind !== 'reference'
-    && !isGeneratedRuntimeReferenceEdge(edge)
-    && !needsRuntimeCompensation(edge)
-  ));
-}
-
 function createRuntimeReferenceEdge(reference: ReferenceEdge): WorkflowEdge {
   return {
     id: `${createWorkflowEdgeId({
@@ -225,11 +215,7 @@ function createFieldReferenceEdge(reference: ReferenceEdge): WorkflowEdge {
 export function syncWorkflowReferenceEdges<T extends Pick<Workflow, 'nodes' | 'edges'>>(workflow: T): T {
   const canSyncRuntimeCompensation = (workflow as WorkflowWithDisplayMode).layoutSnapshot?.nodeDisplayMode === 'properties';
   const references = collectWorkflowReferenceEdges(workflow.nodes);
-  const desiredFieldKeys = new Set(
-    references
-      .filter(reference => !hasDirectNodeLevelRuntimeEdge(workflow.edges, reference.source, reference.target))
-      .map(getReferenceEdgeKey),
-  );
+  const desiredFieldKeys = new Set(references.map(getReferenceEdgeKey));
   const desiredRuntimeKeys = new Set<string>();
   if (canSyncRuntimeCompensation) {
     for (const reference of references) {

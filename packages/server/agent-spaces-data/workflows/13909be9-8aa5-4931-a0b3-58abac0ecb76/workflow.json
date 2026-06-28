@@ -109,8 +109,8 @@
       "type": "agent_run",
       "label": "执行者",
       "position": {
-        "x": 540,
-        "y": -75
+        "x": 632.5,
+        "y": -30
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -157,7 +157,7 @@
       "type": "agent_run",
       "label": "验证者",
       "position": {
-        "x": 900,
+        "x": 912.5,
         "y": 0
       },
       "data": {
@@ -221,10 +221,34 @@
       "id": "e-node_1782639469916_cl2ba1-node_1782638749165_end-mqxlirhi",
       "source": "node_1782639469916_cl2ba1",
       "target": "node_1782638749165_end"
+    },
+    {
+      "id": "e-node_1782638749165_start-output:task-node_1782639469916_bc3717-property:prompt",
+      "source": "node_1782638749165_start",
+      "target": "node_1782639469916_bc3717",
+      "edgeKind": "reference",
+      "sourceHandle": "output:task",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782639469916_bc3717-output:result-node_1782639469916_30e6kw-property:prompt",
+      "source": "node_1782639469916_bc3717",
+      "target": "node_1782639469916_30e6kw",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782639469916_30e6kw-output:result-node_1782639469916_cl2ba1-property:prompt",
+      "source": "node_1782639469916_30e6kw",
+      "target": "node_1782639469916_cl2ba1",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
     }
   ],
   "createdAt": 1782638749172,
-  "updatedAt": 1782639887205,
+  "updatedAt": 1782640596137,
   "published": false,
   "lastRunAt": 1782640259574,
   "layoutSnapshot": {
