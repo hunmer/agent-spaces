@@ -24,7 +24,7 @@ interface WorkflowInfoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workflow: Workflow | null;
-  onSave: (updates: Partial<Workflow>) => void;
+  onSave: (updates: Partial<Workflow>) => void | Promise<void>;
 }
 
 function buildWorkflowFolderPath(
@@ -143,14 +143,14 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
     };
   }, [open, workflow]);
 
-  const handleSave = () => {
-    onSave({
+  const handleSave = async () => {
+    await Promise.resolve(onSave({
       name: name.trim() || t('untitled'),
       icon: icon || undefined,
       description: description.trim() || undefined,
       tags: tags.length > 0 ? tags : undefined,
       published,
-    });
+    }));
     onOpenChange(false);
   };
 
