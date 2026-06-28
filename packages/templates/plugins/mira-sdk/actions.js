@@ -1,4 +1,4 @@
-const { getClient, resetClient } = require('./shared')
+const { request } = require('./shared')
 
 const CONFIG_PREFIX = '{{ __config__["workflow.mira-sdk"]'
 
@@ -16,6 +16,9 @@ function createConfigProperties(t) {
     { key: 'timeout', label: 'Timeout (ms)', type: 'number', dataType: 'number', default: `${CONFIG_PREFIX}["timeout"]}}` },
   ]
 }
+
+// 认证说明：所有节点都通过 request() 发起请求，token 有效直接使用；
+// token 失效（401）会自动用配置里的账号密码重新登录并重试一次，无需手动登录节点。
 
 module.exports = (t) => {
   const configProperties = createConfigProperties(t)
@@ -38,37 +41,13 @@ module.exports = (t) => {
         ] },
       ],
       run: async (ctx, args) => {
-        const client = await getClient(args)
         ctx.logger.info('Checking system health')
-        const health = await client.system().getHealth()
+        const health = await request(args, client => client.system().getHealth())
         return { success: true, message: t('message.healthOk', 'Server is healthy'), data: health }
       },
     },
 
-    // ─── 2. 等待服务器就绪 ──────────────────────────────────
-    {
-      name: 'mira_system_wait_ready',
-      label: t('action.waitReady.label', 'Wait Server Ready'),
-      category: t('category', 'Mira SDK'),
-      icon: 'Loader',
-      description: t('action.waitReady.description', 'Wait until Mira server is ready.'),
-      properties: [
-        { key: 'timeout', label: 'Timeout (ms)', type: 'number', dataType: 'number', default: 30000, tooltip: t('field.timeout.tooltip', 'Max wait time in milliseconds.') },
-        { key: 'interval', label: 'Check Interval (ms)', type: 'number', dataType: 'number', default: 1000, tooltip: t('field.interval.tooltip', 'Check interval in milliseconds.') },
-      ],
-      configProperties,
-      outputs: commonOutputs,
-      run: async (ctx, args) => {
-        const client = await getClient(args)
-        const timeout = args.timeout || 30000
-        const interval = args.interval || 1000
-        ctx.logger.info(`Waiting for server ready: timeout=${timeout}ms, interval=${interval}ms`)
-        const ready = await client.system().waitForServer(timeout, interval)
-        return { success: ready, message: ready ? t('message.serverReady', 'Server is ready') : t('message.serverNotReady', 'Server not ready within timeout') }
-      },
-    },
-
-    // ─── 3. 获取系统信息 ────────────────────────────────────
+    // ─── 2. 获取系统信息 ────────────────────────────────────
     {
       name: 'mira_system_info',
       label: t('action.systemInfo.label', 'System Info'),
@@ -82,39 +61,13 @@ module.exports = (t) => {
         { key: 'data', type: 'object', dataType: 'object', children: [] },
       ],
       run: async (ctx, args) => {
-        const client = await getClient(args)
         ctx.logger.info('Fetching system info')
-        const info = await client.system().getSystemInfo()
+        const info = await request(args, client => client.system().getSystemInfo())
         return { success: true, message: t('message.infoFetched', 'System info fetched'), data: info }
       },
     },
 
-    // ─── 4. 用户登录 ────────────────────────────────────────
-    {
-      name: 'mira_auth_login',
-      label: t('action.login.label', 'Login'),
-      category: t('category', 'Mira SDK'),
-      icon: 'LogIn',
-      description: t('action.login.description', 'Login to Mira server with username and password.'),
-      properties: [
-        { key: 'username', label: 'Username', type: 'text', dataType: 'string', required: true },
-        { key: 'password', label: 'Password', type: 'text', dataType: 'string', required: true },
-      ],
-      configProperties,
-      outputs: commonOutputs,
-      run: async (ctx, args) => {
-        if (!args.username || !args.password) {
-          return { success: false, message: t('message.needCredentials', 'Username and password required.') }
-        }
-        resetClient()
-        const client = await getClient(args)
-        ctx.logger.info(`Logging in: ${args.username}`)
-        await client.auth().login(args.username, args.password)
-        return { success: true, message: t('message.loginOk', 'Login succeeded') }
-      },
-    },
-
-    // ─── 5. 获取用户信息 ────────────────────────────────────
+    // ─── 4. 获取用户信息 ────────────────────────────────────
     {
       name: 'mira_user_info',
       label: t('action.userInfo.label', 'Get User Info'),
@@ -131,14 +84,13 @@ module.exports = (t) => {
         ] },
       ],
       run: async (ctx, args) => {
-        const client = await getClient(args)
         ctx.logger.info('Fetching user info')
-        const info = await client.user().getInfo()
+        const info = await request(args, client => client.user().getInfo())
         return { success: true, message: t('message.userInfoOk', 'User info fetched'), data: info }
       },
     },
 
-    // ─── 6. 获取所有素材库 ──────────────────────────────────
+    // ─── 5. 获取所有素材库 ──────────────────────────────────
     {
       name: 'mira_libraries_list',
       label: t('action.librariesList.label', 'List Libraries'),
@@ -154,14 +106,13 @@ module.exports = (t) => {
         ] },
       ],
       run: async (ctx, args) => {
-        const client = await getClient(args)
         ctx.logger.info('Fetching libraries')
-        const libraries = await client.libraries().getAll()
+        const libraries = await request(args, client => client.libraries().getAll())
         return { success: true, message: t('message.librariesCount', 'Found {count} libraries').replace('{count}', String(Array.isArray(libraries) ? libraries.length : 0)), data: { libraries } }
       },
     },
 
-    // ─── 7. 创建本地素材库 ──────────────────────────────────
+    // ─── 6. 创建本地素材库 ──────────────────────────────────
     {
       name: 'mira_library_create_local',
       label: t('action.createLocalLib.label', 'Create Local Library'),
@@ -179,14 +130,13 @@ module.exports = (t) => {
         if (!args.name || !args.path) {
           return { success: false, message: t('message.needNameAndPath', 'Name and path required.') }
         }
-        const client = await getClient(args)
         ctx.logger.info(`Creating local library: ${args.name}`)
-        await client.libraries().createLocal(args.name, args.path, args.description || '')
+        await request(args, client => client.libraries().createLocal(args.name, args.path, args.description || ''))
         return { success: true, message: t('message.libCreated', 'Library created: {name}').replace('{name}', args.name) }
       },
     },
 
-    // ─── 8. 创建远程素材库 ──────────────────────────────────
+    // ─── 7. 创建远程素材库 ──────────────────────────────────
     {
       name: 'mira_library_create_remote',
       label: t('action.createRemoteLib.label', 'Create Remote Library'),
@@ -206,14 +156,13 @@ module.exports = (t) => {
         if (!args.name || !args.path || !args.host) {
           return { success: false, message: t('message.needNamePathHost', 'Name, path, and host required.') }
         }
-        const client = await getClient(args)
         ctx.logger.info(`Creating remote library: ${args.name}`)
-        await client.libraries().createRemote(args.name, args.path, args.host, args.port || 8080, args.description || '')
+        await request(args, client => client.libraries().createRemote(args.name, args.path, args.host, args.port || 8080, args.description || ''))
         return { success: true, message: t('message.libCreated', 'Library created: {name}').replace('{name}', args.name) }
       },
     },
 
-    // ─── 9. 启动/停止/重启素材库 ────────────────────────────
+    // ─── 8. 启动/停止/重启素材库 ────────────────────────────
     {
       name: 'mira_library_start',
       label: t('action.libStart.label', 'Start Library'),
@@ -227,9 +176,8 @@ module.exports = (t) => {
       outputs: commonOutputs,
       run: async (ctx, args) => {
         if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
-        const client = await getClient(args)
         ctx.logger.info(`Starting library: ${args.libraryId}`)
-        await client.libraries().start(args.libraryId)
+        await request(args, client => client.libraries().start(args.libraryId))
         return { success: true, message: t('message.libStarted', 'Library started.') }
       },
     },
@@ -247,9 +195,8 @@ module.exports = (t) => {
       tool: false,
       run: async (ctx, args) => {
         if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
-        const client = await getClient(args)
         ctx.logger.info(`Stopping library: ${args.libraryId}`)
-        await client.libraries().stop(args.libraryId)
+        await request(args, client => client.libraries().stop(args.libraryId))
         return { success: true, message: t('message.libStopped', 'Library stopped.') }
       },
     },
@@ -266,14 +213,13 @@ module.exports = (t) => {
       outputs: commonOutputs,
       run: async (ctx, args) => {
         if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
-        const client = await getClient(args)
         ctx.logger.info(`Restarting library: ${args.libraryId}`)
-        await client.libraries().restart(args.libraryId)
+        await request(args, client => client.libraries().restart(args.libraryId))
         return { success: true, message: t('message.libRestarted', 'Library restarted.') }
       },
     },
 
-    // ─── 10. 上传文件 ───────────────────────────────────────
+    // ─── 9. 上传文件 ───────────────────────────────────────
     {
       name: 'mira_file_upload',
       label: t('action.fileUpload.label', 'Upload File'),
@@ -304,29 +250,27 @@ module.exports = (t) => {
         if (!args.libraryId || !args.filePath) {
           return { success: false, message: t('message.needLibraryAndFile', 'Library ID and file path required.') }
         }
-        const client = await getClient(args)
-        const options = {}
-        if (args.tags) options.tags = args.tags.split(',').map(t => t.trim()).filter(Boolean)
-        if (args.folderId) options.folderId = args.folderId
 
         ctx.logger.info(`Uploading file: ${args.filePath} -> library ${args.libraryId}`)
 
-        // 使用 ctx.api 读取本地文件
+        // 使用 fs 读取本地文件并构造 File-like 对象供 SDK 使用
         const fs = require('fs')
         const path = require('path')
         const buffer = fs.readFileSync(args.filePath)
         const fileName = path.basename(args.filePath)
-
-        // 构造 File-like 对象供 SDK 使用
         const fileBlob = new Blob([buffer])
         const file = new File([fileBlob], fileName)
 
-        const result = await client.files().uploadFile(file, args.libraryId, options)
+        const options = {}
+        if (args.tags) options.tags = args.tags.split(',').map(s => s.trim()).filter(Boolean)
+        if (args.folderId) options.folderId = args.folderId
+
+        const result = await request(args, client => client.files().uploadFile(file, args.libraryId, options))
         return { success: true, message: t('message.fileUploaded', 'File uploaded: {name}').replace('{name}', fileName), data: result }
       },
     },
 
-    // ─── 11. 下载文件 ───────────────────────────────────────
+    // ─── 10. 下载文件 ───────────────────────────────────────
     {
       name: 'mira_file_download',
       label: t('action.fileDownload.label', 'Download File'),
@@ -350,21 +294,22 @@ module.exports = (t) => {
         if (!args.libraryId || !args.fileId) {
           return { success: false, message: t('message.needLibraryAndFileId', 'Library ID and file ID required.') }
         }
-        const client = await getClient(args)
         ctx.logger.info(`Downloading file: ${args.fileId} from library ${args.libraryId}`)
 
         if (args.savePath) {
-          await client.files().downloadAndSave(args.libraryId, args.fileId, args.savePath)
+          await request(args, client => client.files().downloadAndSave(args.libraryId, args.fileId, args.savePath))
           return { success: true, message: t('message.fileDownloaded', 'File downloaded.'), data: { filePath: args.savePath } }
         }
 
-        const blob = await client.files().download(args.libraryId, args.fileId)
-        const text = await blob.text()
+        const text = await request(args, async client => {
+          const blob = await client.files().download(args.libraryId, args.fileId)
+          return blob.text()
+        })
         return { success: true, message: t('message.fileDownloaded', 'File downloaded.'), data: { content: text, contentLength: text.length } }
       },
     },
 
-    // ─── 12. 删除文件 ───────────────────────────────────────
+    // ─── 11. 删除文件 ───────────────────────────────────────
     {
       name: 'mira_file_delete',
       label: t('action.fileDelete.label', 'Delete File'),
@@ -381,23 +326,36 @@ module.exports = (t) => {
         if (!args.libraryId || !args.fileId) {
           return { success: false, message: t('message.needLibraryAndFileId', 'Library ID and file ID required.') }
         }
-        const client = await getClient(args)
         ctx.logger.info(`Deleting file: ${args.fileId} from library ${args.libraryId}`)
-        await client.files().delete(args.libraryId, args.fileId)
+        await request(args, client => client.files().delete(args.libraryId, args.fileId))
         return { success: true, message: t('message.fileDeleted', 'File deleted.') }
       },
     },
 
-    // ─── 13. 搜索文件 ───────────────────────────────────────
+    // ─── 12. 搜索文件 ───────────────────────────────────────
     {
       name: 'mira_file_search',
       label: t('action.fileSearch.label', 'Search Files'),
       category: t('category', 'Mira SDK'),
       icon: 'Search',
-      description: t('action.fileSearch.description', 'Search files by title in a library.'),
+      description: t('action.fileSearch.description', 'Search / filter files in a library. All filters are optional and combined with AND.'),
       properties: [
         { key: 'libraryId', label: 'Library ID', type: 'text', dataType: 'string', required: true },
-        { key: 'keyword', label: 'Keyword', type: 'text', dataType: 'string', required: true, tooltip: t('field.keyword.tooltip', 'Search keyword.') },
+        { key: 'keyword', label: t('field.keyword.label', 'Keyword'), type: 'text', dataType: 'string', tooltip: t('field.keyword.tooltip', 'Fuzzy match on file title. Optional.') },
+        { key: 'folderId', label: t('field.folderId.label', 'Folder ID'), type: 'text', dataType: 'string', tooltip: t('field.folderId.tooltip', 'Filter by folder.') },
+        { key: 'tags', label: t('field.tags.label', 'Tags'), type: 'text', dataType: 'string', tooltip: t('field.tags.tooltip', 'Comma-separated tag names.') },
+        { key: 'extension', label: t('field.extension.label', 'Extension'), type: 'text', dataType: 'string', tooltip: t('field.extension.tooltip', 'File extension, e.g. png, mp4.') },
+        { key: 'isUrlFile', label: t('field.isUrlFile.label', 'Is URL File'), type: 'select', dataType: 'string', default: '', options: [
+          { label: t('field.isUrlFile.any', 'Any'), value: '' },
+          { label: t('field.isUrlFile.yes', 'URL only'), value: 'true' },
+          { label: t('field.isUrlFile.no', 'Local only'), value: 'false' },
+        ], tooltip: t('field.isUrlFile.tooltip', 'Filter URL/local files.') },
+        { key: 'minSize', label: t('field.minSize.label', 'Min Size (bytes)'), type: 'number', dataType: 'number', tooltip: t('field.minSize.tooltip', 'Minimum file size in bytes.') },
+        { key: 'maxSize', label: t('field.maxSize.label', 'Max Size (bytes)'), type: 'number', dataType: 'number', tooltip: t('field.maxSize.tooltip', 'Maximum file size in bytes.') },
+        { key: 'createdAfter', label: t('field.createdAfter.label', 'Created After'), type: 'text', dataType: 'string', tooltip: t('field.createdAfter.tooltip', 'ISO date, e.g. 2026-01-01.') },
+        { key: 'createdBefore', label: t('field.createdBefore.label', 'Created Before'), type: 'text', dataType: 'string', tooltip: t('field.createdBefore.tooltip', 'ISO date, e.g. 2026-12-31.') },
+        { key: 'page', label: t('field.page.label', 'Page'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.page.tooltip', 'Page number, starts at 1.') },
+        { key: 'pageSize', label: t('field.pageSize.label', 'Page Size'), type: 'number', dataType: 'number', default: 20, tooltip: t('field.pageSize.tooltip', 'Items per page.') },
       ],
       configProperties,
       outputs: [
@@ -407,17 +365,36 @@ module.exports = (t) => {
         ] },
       ],
       run: async (ctx, args) => {
-        if (!args.libraryId || !args.keyword) {
-          return { success: false, message: t('message.needLibraryAndKeyword', 'Library ID and keyword required.') }
+        if (!args.libraryId) {
+          return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
         }
-        const client = await getClient(args)
-        ctx.logger.info(`Searching files: "${args.keyword}" in library ${args.libraryId}`)
-        const results = await client.files().searchFilesByTitle(args.libraryId, args.keyword)
+
+        const filters = {}
+        if (args.keyword) filters.title = args.keyword
+        if (args.folderId) filters.folder_id = args.folderId
+        if (args.tags) filters.tags = args.tags.split(',').map(s => s.trim()).filter(Boolean)
+        if (args.extension) filters.extension = args.extension
+        if (args.minSize != null && args.minSize !== '') filters.size_min = Number(args.minSize)
+        if (args.maxSize != null && args.maxSize !== '') filters.size_max = Number(args.maxSize)
+        if (args.createdAfter) filters.created_after = args.createdAfter
+        if (args.createdBefore) filters.created_before = args.createdBefore
+
+        const page = Number(args.page) > 0 ? Number(args.page) : 1
+        const pageSize = Number(args.pageSize) > 0 ? Number(args.pageSize) : 20
+        filters.limit = pageSize
+        filters.offset = (page - 1) * pageSize
+
+        const reqBody = { libraryId: args.libraryId, filters }
+        if (args.isUrlFile === 'true') reqBody.isUrlFile = true
+        else if (args.isUrlFile === 'false') reqBody.isUrlFile = false
+
+        ctx.logger.info(`Searching files in library ${args.libraryId}: ${JSON.stringify(filters)}`)
+        const results = await request(args, client => client.files().getFiles(reqBody))
         return { success: true, message: t('message.filesFound', 'Found {count} files').replace('{count}', String(Array.isArray(results) ? results.length : 0)), data: { files: results } }
       },
     },
 
-    // ─── 14. 获取所有插件 ───────────────────────────────────
+    // ─── 13. 获取所有插件 ───────────────────────────────────
     {
       name: 'mira_plugins_list',
       label: t('action.pluginsList.label', 'List Plugins'),
@@ -433,14 +410,13 @@ module.exports = (t) => {
         ] },
       ],
       run: async (ctx, args) => {
-        const client = await getClient(args)
         ctx.logger.info('Fetching plugins')
-        const plugins = await client.plugins().getAll()
+        const plugins = await request(args, client => client.plugins().getAll())
         return { success: true, message: t('message.pluginsCount', 'Found {count} plugins').replace('{count}', String(Array.isArray(plugins) ? plugins.length : 0)), data: { plugins } }
       },
     },
 
-    // ─── 15. 启用/禁用插件 ──────────────────────────────────
+    // ─── 14. 启用/禁用插件 ──────────────────────────────────
     {
       name: 'mira_plugin_toggle',
       label: t('action.pluginToggle.label', 'Toggle Plugin'),
@@ -464,15 +440,14 @@ module.exports = (t) => {
         if (!args.pluginId || !args.action) {
           return { success: false, message: t('message.needPluginAndAction', 'Plugin ID and action required.') }
         }
-        const client = await getClient(args)
         const action = args.action === 'enable' ? 'enable' : 'disable'
         ctx.logger.info(`${action} plugin: ${args.pluginId}`)
-        await client.plugins()[action](args.pluginId)
+        await request(args, client => client.plugins()[action](args.pluginId))
         return { success: true, message: t('message.pluginToggled', 'Plugin {action}: {id}').replace('{action}', action).replace('{id}', args.pluginId) }
       },
     },
 
-    // ─── 16. 获取数据库表 ───────────────────────────────────
+    // ─── 15. 获取数据库表 ───────────────────────────────────
     {
       name: 'mira_database_tables',
       label: t('action.dbTables.label', 'List Database Tables'),
@@ -488,14 +463,13 @@ module.exports = (t) => {
         ] },
       ],
       run: async (ctx, args) => {
-        const client = await getClient(args)
         ctx.logger.info('Fetching database tables')
-        const tables = await client.database().getTables()
+        const tables = await request(args, client => client.database().getTables())
         return { success: true, message: t('message.tablesCount', 'Found {count} tables').replace('{count}', String(Array.isArray(tables) ? tables.length : 0)), data: { tables } }
       },
     },
 
-    // ─── 17. 查询数据库表数据 ───────────────────────────────
+    // ─── 16. 查询数据库表数据 ───────────────────────────────
     {
       name: 'mira_database_query',
       label: t('action.dbQuery.label', 'Query Table Data'),
@@ -516,14 +490,13 @@ module.exports = (t) => {
         if (!args.tableName) {
           return { success: false, message: t('message.needTableName', 'Table name required.') }
         }
-        const client = await getClient(args)
         ctx.logger.info(`Querying table: ${args.tableName}`)
-        const data = await client.database().getTableData(args.tableName)
+        const data = await request(args, client => client.database().getTableData(args.tableName))
         return { success: true, message: t('message.dataFetched', 'Table data fetched'), data: { rows: data } }
       },
     },
 
-    // ─── 18. 获取设备列表 ───────────────────────────────────
+    // ─── 17. 获取设备列表 ───────────────────────────────────
     {
       name: 'mira_devices_list',
       label: t('action.devicesList.label', 'List Devices'),
@@ -539,14 +512,13 @@ module.exports = (t) => {
         ] },
       ],
       run: async (ctx, args) => {
-        const client = await getClient(args)
         ctx.logger.info('Fetching devices')
-        const devices = await client.devices().getAll()
+        const devices = await request(args, client => client.devices().getAll())
         return { success: true, message: t('message.devicesCount', 'Found {count} devices').replace('{count}', String(Array.isArray(devices) ? devices.length : 0)), data: { devices } }
       },
     },
 
-    // ─── 19. 发送设备消息 ───────────────────────────────────
+    // ─── 18. 发送设备消息 ───────────────────────────────────
     {
       name: 'mira_device_send_message',
       label: t('action.deviceSend.label', 'Send Device Message'),
@@ -564,16 +536,15 @@ module.exports = (t) => {
         if (!args.clientId || !args.libraryId || !args.message) {
           return { success: false, message: t('message.needClientLibMsg', 'Client ID, Library ID, and message required.') }
         }
-        const client = await getClient(args)
         let msgData = args.message
         try { msgData = JSON.parse(args.message) } catch {}
         ctx.logger.info(`Sending message to device: ${args.clientId}`)
-        await client.devices().sendMessage(args.clientId, args.libraryId, msgData)
+        await request(args, client => client.devices().sendMessage(args.clientId, args.libraryId, msgData))
         return { success: true, message: t('message.messageSent', 'Message sent.') }
       },
     },
 
-    // ─── 20. 广播消息到素材库 ───────────────────────────────
+    // ─── 19. 广播消息到素材库 ───────────────────────────────
     {
       name: 'mira_device_broadcast',
       label: t('action.broadcast.label', 'Broadcast to Library'),
@@ -590,16 +561,15 @@ module.exports = (t) => {
         if (!args.libraryId || !args.message) {
           return { success: false, message: t('message.needLibraryAndMsg', 'Library ID and message required.') }
         }
-        const client = await getClient(args)
         let msgData = args.message
         try { msgData = JSON.parse(args.message) } catch {}
         ctx.logger.info(`Broadcasting to library: ${args.libraryId}`)
-        await client.devices().broadcastToLibrary(args.libraryId, msgData)
+        await request(args, client => client.devices().broadcastToLibrary(args.libraryId, msgData))
         return { success: true, message: t('message.broadcastOk', 'Broadcast sent.') }
       },
     },
 
-    // ─── 21. 获取标签列表 ───────────────────────────────────
+    // ─── 20. 获取标签列表 ───────────────────────────────────
     {
       name: 'mira_tags_list',
       label: t('action.tagsList.label', 'List Tags'),
@@ -618,14 +588,13 @@ module.exports = (t) => {
       ],
       run: async (ctx, args) => {
         if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
-        const client = await getClient(args)
         ctx.logger.info(`Fetching tags for library: ${args.libraryId}`)
-        const result = await client.tags().getAll(args.libraryId)
+        const result = await request(args, client => client.tags().getAll(args.libraryId))
         return { success: true, message: t('message.tagsFetched', 'Tags fetched'), data: { tags: result } }
       },
     },
 
-    // ─── 22. 获取文件夹列表 ─────────────────────────────────
+    // ─── 21. 获取文件夹列表 ─────────────────────────────────
     {
       name: 'mira_folders_list',
       label: t('action.foldersList.label', 'List Folders'),
@@ -644,14 +613,13 @@ module.exports = (t) => {
       ],
       run: async (ctx, args) => {
         if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
-        const client = await getClient(args)
         ctx.logger.info(`Fetching folders for library: ${args.libraryId}`)
-        const result = await client.folders().getAll(args.libraryId)
+        const result = await request(args, client => client.folders().getAll(args.libraryId))
         return { success: true, message: t('message.foldersFetched', 'Folders fetched'), data: { folders: result } }
       },
     },
 
-    // ─── 23. 创建文件夹 ─────────────────────────────────────
+    // ─── 22. 创建文件夹 ─────────────────────────────────────
     {
       name: 'mira_folder_create',
       label: t('action.folderCreate.label', 'Create Folder'),
@@ -669,9 +637,8 @@ module.exports = (t) => {
         if (!args.libraryId || !args.name) {
           return { success: false, message: t('message.needLibAndName', 'Library ID and folder name required.') }
         }
-        const client = await getClient(args)
         ctx.logger.info(`Creating folder: ${args.name} in library ${args.libraryId}`)
-        await client.folders().createFolder(args.libraryId, args.name, args.parentId || undefined)
+        await request(args, client => client.folders().createFolder(args.libraryId, args.name, args.parentId || undefined))
         return { success: true, message: t('message.folderCreated', 'Folder created: {name}').replace('{name}', args.name) }
       },
     },

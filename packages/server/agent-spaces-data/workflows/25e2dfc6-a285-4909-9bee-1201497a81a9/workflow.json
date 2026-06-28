@@ -62,15 +62,97 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1782629833857_2et5mf",
+      "type": "mira_plugins_list",
+      "label": "列出插件",
+      "position": {
+        "x": 1005,
+        "y": 255
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.mira-sdk\"][\"baseUrl\"]}}",
+        "username": "{{ __config__[\"workflow.mira-sdk\"][\"username\"]}}",
+        "password": "{{ __config__[\"workflow.mira-sdk\"][\"password\"]}}",
+        "token": "{{ __config__[\"workflow.mira-sdk\"][\"token\"]}}",
+        "timeout": "{{ __config__[\"workflow.mira-sdk\"][\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "plugins",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782631531064_0ga9yz",
+      "type": "mira_file_search",
+      "label": "搜索文件",
+      "position": {
+        "x": 765,
+        "y": -15
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.mira-sdk\"][\"baseUrl\"]}}",
+        "username": "{{ __config__[\"workflow.mira-sdk\"][\"username\"]}}",
+        "password": "{{ __config__[\"workflow.mira-sdk\"][\"password\"]}}",
+        "token": "{{ __config__[\"workflow.mira-sdk\"][\"token\"]}}",
+        "timeout": "{{ __config__[\"workflow.mira-sdk\"][\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "files",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "libraryId": "1779810479725",
+        "keyword": "jpg"
+      }
     }
   ],
   "edges": [],
   "createdAt": 1782268403696,
-  "updatedAt": 1782629269431,
+  "updatedAt": 1782631568854,
   "published": false,
   "enabledPlugins": [
-    "workflow.mira-sdk",
-    "workflow.mail"
+    "workflow.mail",
+    "workflow.mira-sdk"
   ],
   "groups": []
 }
