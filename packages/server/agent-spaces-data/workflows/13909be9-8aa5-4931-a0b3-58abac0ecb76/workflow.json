@@ -221,36 +221,12 @@
       "id": "e-node_1782639469916_cl2ba1-node_1782638749165_end-mqxlirhi",
       "source": "node_1782639469916_cl2ba1",
       "target": "node_1782638749165_end"
-    },
-    {
-      "id": "e-node_1782638749165_start-output:task-node_1782639469916_bc3717-property:prompt",
-      "source": "node_1782638749165_start",
-      "target": "node_1782639469916_bc3717",
-      "edgeKind": "reference",
-      "sourceHandle": "output:task",
-      "targetHandle": "property:prompt"
-    },
-    {
-      "id": "e-node_1782639469916_bc3717-output:result-node_1782639469916_30e6kw-property:prompt",
-      "source": "node_1782639469916_bc3717",
-      "target": "node_1782639469916_30e6kw",
-      "edgeKind": "reference",
-      "sourceHandle": "output:result",
-      "targetHandle": "property:prompt"
-    },
-    {
-      "id": "e-node_1782639469916_30e6kw-output:result-node_1782639469916_cl2ba1-property:prompt",
-      "source": "node_1782639469916_30e6kw",
-      "target": "node_1782639469916_cl2ba1",
-      "edgeKind": "reference",
-      "sourceHandle": "output:result",
-      "targetHandle": "property:prompt"
     }
   ],
   "createdAt": 1782638749172,
   "updatedAt": 1782639887205,
   "published": false,
-  "lastRunAt": 1782639909289,
+  "lastRunAt": 1782640259574,
   "layoutSnapshot": {
     "nodeDisplayMode": "normal"
   }
