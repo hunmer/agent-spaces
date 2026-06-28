@@ -373,29 +373,40 @@ function ModelForm({
   const nameEditedByUser = useRef(false);
   const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
   const options = providerNames.length > 0 ? [...providerNames, "Other"] : ["Other"];
+  // 当前模型是否支持 reasoning（不支持时禁用 thinking 开关）
+  const supportsReasoning = draft.reasoning === true;
 
   const catalogModels = catalog?.models ?? {};
-  const modelOptions = useMemo(
-    () => Object.values(catalogModels).map(m => ({ value: m.id, label: m.name || m.id })),
-    [catalogModels],
-  );
+  const catalogProviders = catalog?.providers ?? {};
 
-  // 从 catalog 中查找模型（按 id）
-  const findCatalogModel = useCallback((modelId: string): { model?: CatalogModel; providerName?: string } => {
-    const model = catalogModels[modelId];
-    if (!model) return {};
-    // 反查 provider：优先在 providers.models 里找
-    const providers = catalog?.providers ?? {};
-    let providerName: string | undefined;
-    for (const pid of Object.keys(providers)) {
-      const p = providers[pid];
-      if (p?.models && p.models[modelId]) {
-        providerName = p.name || pid;
-        break;
+  // 选项按 provider 分组：遍历 providers.models（含 cost），合并去重
+  const modelOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const opts: { value: string; label?: string; group?: string }[] = [];
+    for (const pid of Object.keys(catalogProviders)) {
+      const p = catalogProviders[pid];
+      const group = p.name || pid;
+      const pModels = p.models ?? {};
+      for (const mid of Object.keys(pModels)) {
+        if (seen.has(mid)) continue;
+        seen.add(mid);
+        const m = pModels[mid];
+        opts.push({ value: mid, label: m.name || mid, group });
       }
     }
-    return { model, providerName };
-  }, [catalogModels, catalog]);
+    return opts;
+  }, [catalogProviders]);
+
+  // 从 catalog 查模型：优先在 providers.models 里查（含 cost），其次顶层 models
+  const findCatalogModel = useCallback((modelId: string): { model?: CatalogModel; providerName?: string } => {
+    for (const pid of Object.keys(catalogProviders)) {
+      const p = catalogProviders[pid];
+      const m = p?.models?.[modelId];
+      if (m) return { model: m, providerName: p.name || pid };
+    }
+    const top = catalogModels[modelId];
+    return top ? { model: top } : {};
+  }, [catalogModels, catalogProviders]);
 
   // 选择 modelId（含自定义输入）后自动填充属性
   const handleModelIdChange = useCallback((value: string) => {
@@ -414,8 +425,12 @@ function ModelForm({
       });
     }
     const inputs = model.modalities?.input ?? [];
-    onChange("vision", model.attachment === true || inputs.includes("image"));
-    onChange("reasoning", model.reasoning === true);
+    const supportsVision = model.attachment === true || inputs.includes("image");
+    const supportsReasoning = model.reasoning === true;
+    onChange("vision", supportsVision);
+    onChange("reasoning", supportsReasoning);
+    // thinking 仅在模型支持 reasoning 时启用；不支持则关闭并禁用开关
+    onChange("thinkingEnabled", supportsReasoning);
     if (providerName) onChange("provider", providerName);
   }, [onChange, findCatalogModel, draft.cost]);
   return (
@@ -500,10 +515,13 @@ function ModelForm({
         <div className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2">
           <div className="min-w-0">
             <label className="text-sm font-medium">{t("form.enableThinking")}</label>
-            <p className="text-xs text-muted-foreground">{t("form.enableThinkingHelper")}</p>
+            <p className="text-xs text-muted-foreground">
+              {supportsReasoning ? t("form.enableThinkingHelper") : t("form.thinkingNotSupported")}
+            </p>
           </div>
           <Switch
-            checked={draft.thinkingEnabled ?? true}
+            checked={supportsReasoning ? (draft.thinkingEnabled ?? true) : false}
+            disabled={!supportsReasoning}
             onCheckedChange={(checked) => onChange("thinkingEnabled", checked)}
           />
         </div>
@@ -512,7 +530,7 @@ function ModelForm({
           <select
             value={draft.thinkingEffort || "medium"}
             onChange={e => onChange("thinkingEffort", e.target.value)}
-            disabled={!(draft.thinkingEnabled ?? true)}
+            disabled={!supportsReasoning || !(draft.thinkingEnabled ?? true)}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
           >
             {THINKING_EFFORT_OPTIONS.map(effort => (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,6 +9,8 @@ import { Check, ChevronDown, Plus } from "lucide-react";
 export interface SearchSelectOption {
   value: string;
   label?: string;
+  /** 分组名；同名的选项会被归到同一组下渲染。省略则归入无标题区（排在分组之前）。 */
+  group?: string;
 }
 
 export interface SearchSelectProps {
@@ -20,6 +22,33 @@ export interface SearchSelectProps {
   allowCustom?: boolean;
   className?: string;
   disabled?: boolean;
+}
+
+interface GroupedOptions {
+  /** 无分组选项（置顶） */
+  ungrouped: SearchSelectOption[];
+  /** 有分组选项，按出现顺序去重 */
+  groups: { name: string; items: SearchSelectOption[] }[];
+}
+
+function groupOptions(options: SearchSelectOption[]): GroupedOptions {
+  const ungrouped: SearchSelectOption[] = [];
+  const groups: { name: string; items: SearchSelectOption[] }[] = [];
+  const index = new Map<string, number>();
+  for (const o of options) {
+    if (!o.group) {
+      ungrouped.push(o);
+      continue;
+    }
+    let gi = index.get(o.group);
+    if (gi === undefined) {
+      gi = groups.length;
+      index.set(o.group, gi);
+      groups.push({ name: o.group, items: [] });
+    }
+    groups[gi].items.push(o);
+  }
+  return { ungrouped, groups };
 }
 
 export function SearchSelect({
@@ -35,9 +64,15 @@ export function SearchSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const filtered = options.filter((o) =>
-    (o.label ?? o.value).toLowerCase().includes(query.toLowerCase()),
-  );
+  const { ungrouped, groups } = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return groupOptions(options);
+    const filtered = options.filter((o) =>
+      (o.label ?? o.value).toLowerCase().includes(q),
+    );
+    return groupOptions(filtered);
+  }, [options, query]);
+
   const exactMatch = options.some(
     (o) => o.value.toLowerCase() === query.toLowerCase(),
   );
@@ -49,6 +84,30 @@ export function SearchSelect({
     setOpen(false);
     setQuery("");
   };
+
+  const hasGrouped = groups.length > 0;
+  const hasUngrouped = ungrouped.length > 0;
+  const noResults = !hasUngrouped && !hasGrouped && !query.trim();
+
+  const renderItem = (o: SearchSelectOption) => (
+    <button
+      key={o.value}
+      type="button"
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/50",
+        value === o.value && "bg-muted",
+      )}
+      onClick={() => select(o.value)}
+    >
+      <Check
+        className={cn(
+          "size-3 shrink-0",
+          value === o.value ? "opacity-100" : "opacity-0",
+        )}
+      />
+      <span className="truncate">{o.label ?? o.value}</span>
+    </button>
+  );
 
   return (
     <div className={className}>
@@ -94,26 +153,22 @@ export function SearchSelect({
             }}
             autoFocus
           />
-          <div className="mt-1 max-h-48 overflow-y-auto">
-            {filtered.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/50",
-                  value === o.value && "bg-muted",
-                )}
-                onClick={() => select(o.value)}
-              >
-                <Check
-                  className={cn(
-                    "size-3 shrink-0",
-                    value === o.value ? "opacity-100" : "opacity-0",
-                  )}
-                />
-                <span className="truncate">{o.label ?? o.value}</span>
-              </button>
+          <div className="mt-1 max-h-64 overflow-y-auto">
+            {hasUngrouped && ungrouped.map(renderItem)}
+
+            {hasGrouped && hasUngrouped && (
+              <div className="my-1 h-px bg-border" />
+            )}
+
+            {hasGrouped && groups.map((g) => (
+              <div key={g.name} className="mb-0.5">
+                <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {g.name}
+                </div>
+                {g.items.map(renderItem)}
+              </div>
             ))}
+
             {allowCustom && query.trim() && !exactMatch && (
               <button
                 type="button"
@@ -124,7 +179,7 @@ export function SearchSelect({
                 <span className="truncate">Use &quot;{query.trim()}&quot;</span>
               </button>
             )}
-            {!filtered.length && !query.trim() && (
+            {noResults && (
               <div className="px-2 py-1.5 text-xs text-muted-foreground">No results</div>
             )}
           </div>

@@ -9,10 +9,12 @@ import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath, isWorkflowSharePath, isMiniAppPreviewPath } from "@/lib/routes";
 import { sdk } from "@/lib/sdk";
+import { useLLMStore } from "@/stores/llm";
 import { CustomShortcutExecutor } from "@/components/layout/custom-shortcut-executor";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const loadCatalog = useLLMStore((s) => s.loadCatalog);
   const [showTabs, setShowTabs] = useState(() => {
     if (typeof window === "undefined") return false;
     const saved = localStorage.getItem("showWorkspaceTabs");
@@ -24,6 +26,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("workspace-tabs-visibility", handler);
     return () => window.removeEventListener("workspace-tabs-visibility", handler);
   }, []);
+
+  // 登录后预加载 catalog，用于 provider 图标按 id 统一显示
+  useEffect(() => {
+    if (!isLoginPath(pathname)) loadCatalog();
+  }, [pathname, loadCatalog]);
 
   if (isLoginPath(pathname)) {
     return <>{children}</>;

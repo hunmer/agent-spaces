@@ -19,6 +19,7 @@ const MAX_DEBUG_LOG_CHARS = 500;
 const STREAM_EVENT_THROTTLE_MS = 100;
 const STREAM_NO_PROGRESS_TIMEOUT_MS = 30_000;
 const EMPTY_AI_CHUNK_LOG_INTERVAL = 20;
+const TOOL_RESULT_FINAL_RESPONSE_RETRY_COUNT = 5;
 
 /**
  * Runtime backed by LangChain.js.
@@ -87,160 +88,172 @@ export class LangChainRuntime implements AgentRuntime {
       d(`final prompt | chars=${finalPrompt.length} skillCount=${skillPrompts.length} outputStyle=${runtimeOptions?.outputStyle ?? '-'} preview=${truncateForLog(finalPrompt, 1200)}`);
 
       const recursionLimit = runtimeOptions?.maxTurns ? Math.max(2, runtimeOptions.maxTurns * 2 + 1) : undefined;
-      d(`streaming agent | recursionLimit=${recursionLimit ?? '-'} aborted=${this.abortController?.signal.aborted ? 'yes' : 'no'}`);
-      const stream = await agent.stream(
-        { messages: [{ role: 'user', content: finalPrompt }] },
-        {
-          signal: this.abortController?.signal,
-          recursionLimit,
-          streamMode: ['messages', 'values', 'updates'],
-        },
-      );
+      const maxAttempts = TOOL_RESULT_FINAL_RESPONSE_RETRY_COUNT + 1;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        progress.reset();
+        d(`streaming agent | attempt=${attempt}/${maxAttempts} recursionLimit=${recursionLimit ?? '-'} aborted=${this.abortController?.signal.aborted ? 'yes' : 'no'}`);
+        const stream = await agent.stream(
+          { messages: [{ role: 'user', content: finalPrompt }] },
+          {
+            signal: this.abortController?.signal,
+            recursionLimit,
+            streamMode: ['messages', 'values', 'updates'],
+          },
+        );
 
-      const textParts: string[] = [];
-      let finalStateMessages: unknown[] = [];
-      let seenStateMessageCount = 0;
-      let usage: AgentRunResult['usage'];
-      let emptyAiChunkCount = 0;
-      let emptyAiChunkStart = 0;
-      let emptyAiChunkLastId = '';
-      const appendOutputText = (text: string) => {
-        if (!text) return;
-        progress.recordAiText();
-        textParts.push(text);
-        runtimeOptions?.onEvent?.({ type: 'output', line: text });
-      };
-      const appendStateOutputText = (text: string) => {
-        if (!text) return;
-        const currentText = textParts.join('');
-        if (currentText.endsWith(text)) return;
-        appendOutputText(text.startsWith(currentText) ? text.slice(currentText.length) : text);
-      };
-      for await (const chunk of stream) {
-        const streamChunk = splitLangChainStreamChunk(chunk);
-        if (streamChunk.mode === 'values' || streamChunk.mode === 'updates') {
-          const stateMessages = streamChunk.mode === 'values'
-            ? extractStateMessages(streamChunk.payload)
-            : extractUpdateMessages(streamChunk.payload);
-          if (streamChunk.mode === 'values') finalStateMessages = stateMessages;
-          const newMessages = streamChunk.mode === 'values'
-            ? stateMessages.slice(seenStateMessageCount)
-            : stateMessages;
-          if (streamChunk.mode === 'values') seenStateMessageCount = Math.max(seenStateMessageCount, stateMessages.length);
-          for (const message of newMessages) {
-            if (!isRecord(message)) continue;
-            const tokenUsage = extractUsageFromMessage(message);
-            if (tokenUsage) usage = tokenUsage;
-            if (!isAiStreamToken(message) || countToolCalls(message) > 0) continue;
-            appendStateOutputText(extractTextFromToken(message));
+        const textParts: string[] = [];
+        let finalStateMessages: unknown[] = [];
+        let seenStateMessageCount = 0;
+        let usage: AgentRunResult['usage'];
+        let emptyAiChunkCount = 0;
+        let emptyAiChunkStart = 0;
+        let emptyAiChunkLastId = '';
+        const appendOutputText = (text: string) => {
+          if (!text) return;
+          progress.recordAiText();
+          textParts.push(text);
+          runtimeOptions?.onEvent?.({ type: 'output', line: text });
+        };
+        const appendStateOutputText = (text: string) => {
+          if (!text) return;
+          const currentText = textParts.join('');
+          if (currentText.endsWith(text)) return;
+          appendOutputText(text.startsWith(currentText) ? text.slice(currentText.length) : text);
+        };
+        for await (const chunk of stream) {
+          const streamChunk = splitLangChainStreamChunk(chunk);
+          if (streamChunk.mode === 'values' || streamChunk.mode === 'updates') {
+            const stateMessages = streamChunk.mode === 'values'
+              ? extractStateMessages(streamChunk.payload)
+              : extractUpdateMessages(streamChunk.payload);
+            if (streamChunk.mode === 'values') finalStateMessages = stateMessages;
+            const newMessages = streamChunk.mode === 'values'
+              ? stateMessages.slice(seenStateMessageCount)
+              : stateMessages;
+            if (streamChunk.mode === 'values') seenStateMessageCount = Math.max(seenStateMessageCount, stateMessages.length);
+            for (const message of newMessages) {
+              if (!isRecord(message)) continue;
+              const tokenUsage = extractUsageFromMessage(message);
+              if (tokenUsage) usage = tokenUsage;
+              if (!isAiStreamToken(message) || countToolCalls(message) > 0) continue;
+              appendStateOutputText(extractTextFromToken(message));
+            }
+            continue;
           }
-          continue;
-        }
 
-        const token = Array.isArray(streamChunk.payload) ? streamChunk.payload[0] : streamChunk.payload;
-        if (!isRecord(token)) {
-          // d(`stream token skipped | type=${typeof token}`);
-          continue;
-        }
+          const token = Array.isArray(streamChunk.payload) ? streamChunk.payload[0] : streamChunk.payload;
+          if (!isRecord(token)) {
+            // d(`stream token skipped | type=${typeof token}`);
+            continue;
+          }
 
-        const tokenUsage = extractUsageFromMessage(token);
-        if (tokenUsage) usage = tokenUsage;
-        const text = extractTextFromToken(token);
-        const reasoning = extractReasoningFromToken(token);
-        const toolCallCount = countToolCalls(token);
-        const messageMeta = Array.isArray(streamChunk.payload) && isRecord(streamChunk.payload[1])
-          ? streamChunk.payload[1]
-          : undefined;
-        const isAiToken = isAiStreamToken(token);
-        const hasMeaningfulChunk = Boolean(text || reasoning || toolCallCount > 0);
-        if (isAiToken && !hasMeaningfulChunk) {
-          const tokenId = typeof token.id === 'string' ? token.id : '';
-          if (tokenId !== emptyAiChunkLastId) {
-            emptyAiChunkLastId = tokenId;
+          const tokenUsage = extractUsageFromMessage(token);
+          if (tokenUsage) usage = tokenUsage;
+          const text = extractTextFromToken(token);
+          const reasoning = extractReasoningFromToken(token);
+          const toolCallCount = countToolCalls(token);
+          const messageMeta = Array.isArray(streamChunk.payload) && isRecord(streamChunk.payload[1])
+            ? streamChunk.payload[1]
+            : undefined;
+          const isAiToken = isAiStreamToken(token);
+          const hasMeaningfulChunk = Boolean(text || reasoning || toolCallCount > 0);
+          if (isAiToken && !hasMeaningfulChunk) {
+            const tokenId = typeof token.id === 'string' ? token.id : '';
+            if (tokenId !== emptyAiChunkLastId) {
+              emptyAiChunkLastId = tokenId;
+              emptyAiChunkCount = 0;
+              emptyAiChunkStart = Date.now();
+            }
+            emptyAiChunkCount += 1;
+            const stalledMs = Date.now() - emptyAiChunkStart;
+            if (emptyAiChunkCount === 1 || emptyAiChunkCount % EMPTY_AI_CHUNK_LOG_INTERVAL === 0) {
+              d(`stream ai empty | count=${emptyAiChunkCount} stalledMs=${stalledMs} id=${tokenId || '-'} step=${messageMeta?.langgraph_step ?? '-'} node=${messageMeta?.langgraph_node ?? '-'}`);
+            }
+            if (progress.hasSeenToolResult() && stalledMs >= STREAM_NO_PROGRESS_TIMEOUT_MS) {
+              this.abortController?.abort();
+              throw new Error(`LangChain stream stalled after tool results: no assistant text/reasoning/tool calls for ${stalledMs}ms while receiving empty AI chunks.`);
+            }
+            continue;
+          }
+          if (hasMeaningfulChunk) {
             emptyAiChunkCount = 0;
-            emptyAiChunkStart = Date.now();
+            emptyAiChunkStart = 0;
+            emptyAiChunkLastId = '';
           }
-          emptyAiChunkCount += 1;
-          const stalledMs = Date.now() - emptyAiChunkStart;
-          if (emptyAiChunkCount === 1 || emptyAiChunkCount % EMPTY_AI_CHUNK_LOG_INTERVAL === 0) {
-            d(`stream ai empty | count=${emptyAiChunkCount} stalledMs=${stalledMs} id=${tokenId || '-'} step=${messageMeta?.langgraph_step ?? '-'} node=${messageMeta?.langgraph_node ?? '-'}`);
+          // if (isAiToken || toolCallCount > 0) {
+          //   d(`stream ai | ${summarizeStreamTokenForLog(token, text, reasoning, tokenUsage)} step=${messageMeta?.langgraph_step ?? '-'} node=${messageMeta?.langgraph_node ?? '-'}`);
+          // }
+          if (!isAiToken) {
+            // d(`stream token skipped | ${summarizeStreamTokenForLog(token, '', '', tokenUsage)}`);
+            continue;
           }
-          if (progress.hasSeenToolResult() && stalledMs >= STREAM_NO_PROGRESS_TIMEOUT_MS) {
-            this.abortController?.abort();
-            throw new Error(`LangChain stream stalled after tool results: no assistant text/reasoning/tool calls for ${stalledMs}ms while receiving empty AI chunks.`);
+
+          if (reasoning) {
+            runtimeOptions?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'streaming' });
           }
-          continue;
+          if (text) {
+            appendOutputText(text);
+          }
         }
-        if (hasMeaningfulChunk) {
-          emptyAiChunkCount = 0;
-          emptyAiChunkStart = 0;
-          emptyAiChunkLastId = '';
+        eventSink.flush();
+
+        const stateSummary = summarizeStateMessagesForLog(finalStateMessages);
+        if (stateSummary) d(`final state | attempt=${attempt}/${maxAttempts} ${stateSummary}`);
+        const fallbackText = extractFinalAssistantTextFromState(finalStateMessages);
+        if (fallbackText && !textParts.join('').endsWith(fallbackText)) {
+          d(`final state fallback text | chars=${fallbackText.length} preview=${truncateForLog(fallbackText, 1200)}`);
+          appendStateOutputText(fallbackText);
+          eventSink.flush();
         }
-        // if (isAiToken || toolCallCount > 0) {
-        //   d(`stream ai | ${summarizeStreamTokenForLog(token, text, reasoning, tokenUsage)} step=${messageMeta?.langgraph_step ?? '-'} node=${messageMeta?.langgraph_node ?? '-'}`);
-        // }
-        if (!isAiToken) {
-          // d(`stream token skipped | ${summarizeStreamTokenForLog(token, '', '', tokenUsage)}`);
-          continue;
+        const incompleteBeforeToolFallback = progress.getIncompleteReason();
+        const toolResultFallbackText = incompleteBeforeToolFallback?.includes('without a final assistant response')
+          ? progress.getToolResultFallbackText()
+          : undefined;
+        if (toolResultFallbackText) {
+          d(`tool result fallback text | chars=${toolResultFallbackText.length} preview=${truncateForLog(toolResultFallbackText, 1200)}`);
+          appendStateOutputText(toolResultFallbackText);
+          eventSink.flush();
         }
 
-        if (reasoning) {
-          runtimeOptions?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'streaming' });
+        const text = textParts.join('');
+        d(`final text | attempt=${attempt}/${maxAttempts} chars=${text.length} preview=${truncateForLog(text, 1200) || '-'}`);
+        d(`usage | attempt=${attempt}/${maxAttempts} ${usage ? summarizeForLog(usage, 500) : '-'}`);
+
+        const incompleteReason = progress.getIncompleteReason();
+        if (incompleteReason) {
+          d(`incomplete | attempt=${attempt}/${maxAttempts} ${incompleteReason}`);
+          if (isMissingFinalAssistantAfterToolResults(incompleteReason) && attempt < maxAttempts) {
+            d(`retrying incomplete stream | nextAttempt=${attempt + 1}/${maxAttempts}`);
+            continue;
+          }
+          if (text) output.push(text);
+          return {
+            success: false,
+            summary: 'LangChain execution ended before final response',
+            artifacts: [],
+            error: incompleteReason,
+            output,
+            usage,
+          };
         }
+
         if (text) {
-          appendOutputText(text);
+          output.push(text);
         }
-      }
-      eventSink.flush();
 
-      const stateSummary = summarizeStateMessagesForLog(finalStateMessages);
-      if (stateSummary) d(`final state | ${stateSummary}`);
-      const fallbackText = extractFinalAssistantTextFromState(finalStateMessages);
-      if (fallbackText && !textParts.join('').endsWith(fallbackText)) {
-        d(`final state fallback text | chars=${fallbackText.length} preview=${truncateForLog(fallbackText, 1200)}`);
-        appendStateOutputText(fallbackText);
-        eventSink.flush();
-      }
-      const incompleteBeforeToolFallback = progress.getIncompleteReason();
-      const toolResultFallbackText = incompleteBeforeToolFallback?.includes('without a final assistant response')
-        ? progress.getToolResultFallbackText()
-        : undefined;
-      if (toolResultFallbackText) {
-        d(`tool result fallback text | chars=${toolResultFallbackText.length} preview=${truncateForLog(toolResultFallbackText, 1200)}`);
-        appendStateOutputText(toolResultFallbackText);
-        eventSink.flush();
-      }
+        const elapsed = Date.now() - startTime;
+        d(`done ${elapsed}ms | attempts=${attempt} outputLines=${output.length} tokens=${usage?.totalTokens ?? 'unknown'}`);
 
-      const text = textParts.join('');
-      d(`final text | chars=${text.length} preview=${truncateForLog(text, 1200) || '-'}`);
-      d(`usage | ${usage ? summarizeForLog(usage, 500) : '-'}`);
-      if (text) {
-        output.push(text);
-      }
-
-      const incompleteReason = progress.getIncompleteReason();
-      if (incompleteReason) {
-        d(`incomplete | ${incompleteReason}`);
         return {
-          success: false,
-          summary: 'LangChain execution ended before final response',
+          success: true,
+          summary: summarizeResult(text),
           artifacts: [],
-          error: incompleteReason,
           output,
           usage,
         };
       }
 
-      const elapsed = Date.now() - startTime;
-      d(`done ${elapsed}ms | outputLines=${output.length} tokens=${usage?.totalTokens ?? 'unknown'}`);
-
-      return {
-        success: true,
-        summary: summarizeResult(text),
-        artifacts: [],
-        output,
-        usage,
-      };
+      throw new Error('LangChain retry loop exhausted unexpectedly.');
     } catch (err) {
       const elapsed = Date.now() - startTime;
       const message = err instanceof Error ? err.message : String(err);
@@ -275,6 +288,7 @@ interface SkillPrompt {
 }
 
 interface LangChainRunProgress {
+  reset: () => void;
   recordToolUse: () => void;
   recordToolResult: (result?: unknown) => void;
   recordAiText: () => void;
@@ -290,6 +304,12 @@ export function createLangChainRunProgress(): LangChainRunProgress {
   let toolResultFallbackText: string | undefined;
 
   return {
+    reset() {
+      toolUseCount = 0;
+      toolResultCount = 0;
+      aiTextAfterLastToolResult = true;
+      toolResultFallbackText = undefined;
+    },
     recordToolUse() {
       toolUseCount += 1;
       aiTextAfterLastToolResult = false;
@@ -319,6 +339,10 @@ export function createLangChainRunProgress(): LangChainRunProgress {
       return undefined;
     },
   };
+}
+
+function isMissingFinalAssistantAfterToolResults(reason: string): boolean {
+  return reason.includes('without a final assistant response');
 }
 
 export function summarizeToolResultForAssistant(result: unknown): string | undefined {

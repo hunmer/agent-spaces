@@ -53,10 +53,11 @@ export function ModelCatalogTab() {
       const result = await sdk.llm.refreshProviderIcons();
       const savedCount = result.saved?.length ?? 0;
       const failedCount = result.failed?.length ?? 0;
+      const removedCount = result.removed?.length ?? 0;
       if (failedCount > 0) {
-        toast.success(t("iconsUpdatedPartial", { saved: savedCount, failed: failedCount }));
+        toast.success(t("iconsUpdatedPartial", { saved: savedCount, failed: failedCount, removed: removedCount }));
       } else {
-        toast.success(t("iconsUpdated", { count: savedCount }));
+        toast.success(t("iconsUpdated", { count: savedCount, removed: removedCount }));
       }
     } catch {
       toast.error(t("iconsUpdateFailed"));

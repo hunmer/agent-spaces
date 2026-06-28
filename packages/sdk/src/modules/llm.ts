@@ -10,6 +10,7 @@ export interface ModelCatalogMeta {
 export interface ModelCatalogProviderIconsResult {
   saved: string[];
   failed: string[];
+  removed: string[];
   total: number;
 }
 

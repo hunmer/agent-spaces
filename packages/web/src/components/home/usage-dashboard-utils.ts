@@ -1,4 +1,5 @@
 import { resolveServerAssetUrl } from "@/lib/server"
+import { getProviderIdByModelId, getProviderIconUrlById } from "@/lib/provider-icon"
 
 // ── period types ──
 
@@ -11,28 +12,10 @@ export const PERIOD_KEYS: Array<{ key: PeriodKey; days: number }> = [
   { key: '1y', days: 365 },
 ]
 
-// ── model -> provider icon mapping ──
-
-const MODEL_ICON_MAP: Array<[RegExp, string]> = [
-  [/claude/i, 'anthropic'],
-  [/gpt|o1-|o3-|o4-|chatgpt/i, 'openai'],
-  [/gemini/i, 'gemini'],
-  [/deepseek/i, 'deepseek'],
-  [/qwen/i, 'alibaba'],
-  [/glm|chatglm/i, 'zhipu'],
-  [/moonshot|kimi/i, 'kimi'],
-  [/doubao/i, 'doubao'],
-  [/llama/i, 'meta'],
-  [/mistral/i, 'mistral'],
-  [/codestral/i, 'mistral'],
-]
-
+// model -> provider icon（基于 catalog 的 provider id 体系）
 export function getModelIconUrl(model?: string): string {
   if (!model) return ''
-  for (const [re, icon] of MODEL_ICON_MAP) {
-    if (re.test(model)) return resolveServerAssetUrl(`/static/provider-icons/${icon}.svg`)
-  }
-  return ''
+  return getProviderIconUrlById(getProviderIdByModelId(model))
 }
 
 // ── formatters ──

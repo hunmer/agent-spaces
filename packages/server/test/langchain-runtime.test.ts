@@ -37,6 +37,18 @@ test('LangChain run progress accepts final assistant text after tools', () => {
   assert.equal(progress.getIncompleteReason(), undefined);
 });
 
+test('LangChain run progress reset clears incomplete attempt state', () => {
+  const progress = createLangChainRunProgress();
+
+  progress.recordToolUse();
+  progress.recordToolResult();
+  assert.match(progress.getIncompleteReason() ?? '', /without a final assistant response/);
+
+  progress.reset();
+
+  assert.equal(progress.getIncompleteReason(), undefined);
+});
+
 test('LangChain run progress flags pending tool calls', () => {
   const progress = createLangChainRunProgress();
 

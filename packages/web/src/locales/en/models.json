@@ -38,6 +38,7 @@
     "thinking": "Thinking",
     "enableThinking": "Enable thinking",
     "enableThinkingHelper": "Send reasoning/thinking options with model requests.",
+    "thinkingNotSupported": "This model does not support thinking/reasoning.",
     "effort": "Effort",
     "cost": "Cost",
     "inputPerMillion": "Input / 1M tokens",

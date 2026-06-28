@@ -1,7 +1,7 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, statSync } from 'node:fs';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, readdir, unlink } from 'node:fs/promises';
 import { getDataDir, ensureDir, readJsonFile, writeJsonFile } from './json-store.js';
 
 /**
@@ -136,10 +136,12 @@ async function downloadIcon(providerId: string, publicDir: string): Promise<bool
 export async function refreshProviderIcons(): Promise<{
   saved: string[];
   failed: string[];
+  removed: string[];
   total: number;
 }> {
   const catalog = await getCatalog();
   const ids = catalog.providers ? Object.keys(catalog.providers) : [];
+  const validSet = new Set(ids.map(id => `${id}.svg`));
   const publicDir = resolvePublicDir();
 
   const saved: string[] = [];
@@ -158,5 +160,17 @@ export async function refreshProviderIcons(): Promise<{
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker));
 
-  return { saved, failed, total: ids.length };
+  // 清理目录中不属于当前 catalog 的旧图标（统一为 provider id 体系）
+  const removed: string[] = [];
+  const iconDir = join(publicDir, 'provider-icons');
+  if (existsSync(iconDir)) {
+    const files = await readdir(iconDir);
+    for (const f of files) {
+      if (!f.endsWith('.svg')) continue;
+      if (validSet.has(f)) continue;
+      try { await unlink(join(iconDir, f)); removed.push(f); } catch { /* ignore */ }
+    }
+  }
+
+  return { saved, failed, removed, total: ids.length };
 }

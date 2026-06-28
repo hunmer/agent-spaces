@@ -1,0 +1,31 @@
+{
+  "id": "13909be9-8aa5-4931-a0b3-58abac0ecb76",
+  "name": "agent_workflow",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1782638749165_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782638749165_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    }
+  ],
+  "edges": [],
+  "createdAt": 1782638749172,
+  "updatedAt": 1782638854391,
+  "published": false
+}

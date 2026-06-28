@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { LLMModel, LLMProvider } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
+import { setProviderCatalog } from '@/lib/provider-icon';
 
 export interface CatalogModel {
   id: string;
@@ -63,12 +64,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (get().catalogLoaded) return get().catalog;
     try {
       const catalog = await sdk.llm.getCatalog() as ModelCatalog;
+      setProviderCatalog(catalog);
       set({ catalog, catalogLoaded: true });
       return catalog;
     } catch { /* ignore */ }
     return null;
   },
-  setCatalog: (catalog) => set({ catalog, catalogLoaded: true }),
+  setCatalog: (catalog) => {
+    setProviderCatalog(catalog);
+    set({ catalog, catalogLoaded: true });
+  },
   addModel: (model) => set(s => ({ models: [...s.models, model] })),
   updateModel: (model) => set(s => ({ models: s.models.map(m => m.id === model.id ? model : m) })),
   removeModel: (id) => set(s => ({ models: s.models.filter(m => m.id !== id) })),

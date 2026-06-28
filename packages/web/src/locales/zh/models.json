@@ -38,6 +38,7 @@
     "thinking": "思考",
     "enableThinking": "启用思考",
     "enableThinkingHelper": "随模型请求发送推理/思考选项。",
+    "thinkingNotSupported": "该模型不支持思考/推理。",
     "effort": "投入度",
     "cost": "费用",
     "inputPerMillion": "输入 / 百万 Token",

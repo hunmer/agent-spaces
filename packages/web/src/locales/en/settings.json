@@ -136,8 +136,8 @@
   "catalogUpdateFailed": "Failed to update catalog",
   "updateCatalogIcons": "Update Provider Icons",
   "iconsUpdating": "Updating icons...",
-  "iconsUpdated": "Updated {count} provider icons",
-  "iconsUpdatedPartial": "Updated {saved} icons, {failed} failed",
+  "iconsUpdated": "Updated {count} provider icons, removed {removed} stale",
+  "iconsUpdatedPartial": "Updated {saved} icons, {failed} failed, removed {removed} stale",
   "iconsUpdateFailed": "Failed to update provider icons",
   "catalogLoading": "Loading catalog...",
   "catalogMeta": "{providers} providers, {models} models · updated {date}"

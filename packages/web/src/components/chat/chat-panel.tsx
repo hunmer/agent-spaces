@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
 import { AvatarGroup as CollapsibleAvatarGroup } from '@/components/ui/avatar-group';
-import { getProviderIconUrl } from '@/components/common/agent-icon';
+import { getProviderIconUrl } from '@/lib/provider-icon';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
