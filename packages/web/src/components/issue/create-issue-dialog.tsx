@@ -42,6 +42,8 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   const [workflowInfoOpen, setWorkflowInfoOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
   const [workflowPanel, setWorkflowPanel] = useState<{ id: string; title: string; src: string } | null>(null);
+  // 创建工作流后暂存面板信息，等频道（issue）创建完成后再弹出
+  const [pendingPanel, setPendingPanel] = useState<{ id: string; title: string; src: string } | null>(null);
   const { workflows, loadWorkflows, upsertWorkflow } = useWorkflowStore();
   const { models, providers, ensure: ensureLLM } = useLLMStore();
   const pendingDraftWorkflowIdRef = useRef<string | null>(null);
@@ -84,6 +86,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
       setSelectedWorkflowId('');
       setWorkflowInfoOpen(false);
       setEditingWorkflow(null);
+      setPendingPanel(null);
       if (pendingDraftWorkflowIdRef.current) {
         const draftId = pendingDraftWorkflowIdRef.current;
         pendingDraftWorkflowIdRef.current = null;
@@ -105,6 +108,11 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   const handleSubmit = () => {
     if (!title.trim() && !desc.trim()) return;
     onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId: selectedWorkflowId || undefined });
+    // 频道（issue）创建已发起：若之前已保存工作流草稿，此时再弹出面板
+    if (pendingPanel) {
+      setWorkflowPanel(pendingPanel);
+      setPendingPanel(null);
+    }
     handleClose(false);
   };
 
@@ -198,7 +206,8 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
     setSelectedWorkflowId(saved.id);
     setWorkflowInfoOpen(false);
     pendingDraftWorkflowIdRef.current = null;
-    setWorkflowPanel({
+    // 不立即弹 FloatingPanel，等频道创建完成（handleSubmit）后再弹
+    setPendingPanel({
       id: saved.id,
       title: saved.name,
       src: `http://127.0.0.1:3000/workflows/${saved.id}?prompt=${encodeURIComponent(buildWorkflowPrompt(saved.description || ''))}`,

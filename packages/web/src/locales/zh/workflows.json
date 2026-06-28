@@ -22,6 +22,8 @@
     "scheduleFilterAll": "全部工作流",
     "scheduleScheduled": "定时运行",
     "scheduleUnscheduled": "未定时运行",
+    "typeNormal": "普通工作流",
+    "typeWorkspace": "工作空间工作流",
     "selectedCount": "已选 {count} 项",
     "exportSelected": "导出选中",
     "deleteSelected": "删除选中"

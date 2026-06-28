@@ -1,11 +1,1 @@
-[
-  {
-    "id": "1781681416382-0",
-    "type": "image",
-    "url": "http://127.0.0.1:3100/static/uploads/1781681416362_fqhm37.png",
-    "mode": "image_to_image",
-    "provider": "openai",
-    "prompt": "参考图1风格，给图2制作同样风格的封面，封面文字为：\"刘震云：文学与哲学的量子纠缠\"",
-    "createdAt": "2026/6/17 15:30:16"
-  }
-]
+[]

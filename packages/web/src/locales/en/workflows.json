@@ -22,6 +22,8 @@
     "scheduleFilterAll": "All workflows",
     "scheduleScheduled": "Scheduled",
     "scheduleUnscheduled": "Not scheduled",
+    "typeNormal": "Normal",
+    "typeWorkspace": "Workspace",
     "selectedCount": "{count} selected",
     "exportSelected": "Export",
     "deleteSelected": "Delete"

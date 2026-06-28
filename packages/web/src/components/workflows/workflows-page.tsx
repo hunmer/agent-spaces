@@ -38,6 +38,7 @@ export function WorkflowsPage() {
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [scheduleFilter, setScheduleFilter] = useState<'all' | 'scheduled' | 'unscheduled'>('all');
+  const [typeFilter, setTypeFilter] = useState<'normal' | 'workspace'>('normal');
   const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'lastRunAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectionMode, setSelectionMode] = useState(false);
@@ -59,14 +60,16 @@ export function WorkflowsPage() {
         scheduleFilter === 'all'
         || (scheduleFilter === 'scheduled' && hasEnabledCronTrigger)
         || (scheduleFilter === 'unscheduled' && !hasEnabledCronTrigger);
-      return matchesSearch && matchesTags && matchesSchedule;
+      // 类型过滤：未声明 type 视为 normal
+      const matchesType = (wf.type ?? 'normal') === typeFilter;
+      return matchesSearch && matchesTags && matchesSchedule && matchesType;
     }).sort((a, b) => {
       // lastRunAt is undefined for workflows that have never run — treat as 0 (oldest).
       const av = a[sortField] ?? 0;
       const bv = b[sortField] ?? 0;
       return sortOrder === 'asc' ? av - bv : bv - av;
     });
-  }, [workflows, search, selectedTags, scheduleFilter, sortField, sortOrder]);
+  }, [workflows, search, selectedTags, scheduleFilter, typeFilter, sortField, sortOrder]);
 
   useEffect(() => {
     loadWorkflows();
@@ -278,6 +281,29 @@ export function WorkflowsPage() {
       </div>
 
       <div className="hidden md:flex items-center gap-2 mb-4">
+        <Popover>
+          <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
+            <Filter className="h-3.5 w-3.5" />
+            {typeFilter === 'workspace' ? t('page.typeWorkspace') : t('page.typeNormal')}
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-44 p-2">
+            <div className="flex flex-col gap-1">
+              {([
+                ['normal', t('page.typeNormal')],
+                ['workspace', t('page.typeWorkspace')],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${typeFilter === value ? 'font-medium' : ''}`}
+                  onClick={() => setTypeFilter(value)}
+                >
+                  {typeFilter === value && <span className="text-primary">✓</span>}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
