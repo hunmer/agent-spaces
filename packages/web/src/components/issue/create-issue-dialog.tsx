@@ -20,6 +20,7 @@ import { WorkflowInfoDialog } from '@/components/workflow/workflow-info-dialog';
 import { FloatingPanel } from '@/components/common/floating-panel';
 import { getMemberDisplayName } from '@/lib/agent-members';
 import { useWorkflowStore } from '@/stores/workflow';
+import { useLLMStore } from '@/stores/llm';
 import { workflowApi } from '@/lib/workflow-api';
 
 import type { AgentConfig, WorkflowTemplate } from '@agent-spaces/shared';
@@ -42,6 +43,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
   const [workflowPanel, setWorkflowPanel] = useState<{ id: string; title: string; src: string } | null>(null);
   const { workflows, loadWorkflows, upsertWorkflow } = useWorkflowStore();
+  const { models, providers, ensure: ensureLLM } = useLLMStore();
   const pendingDraftWorkflowIdRef = useRef<string | null>(null);
   const t = useTranslations('issue');
   const tc = useTranslations('common');
@@ -61,6 +63,10 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   useEffect(() => {
     if (open) loadWorkflows();
   }, [open, loadWorkflows]);
+
+  useEffect(() => {
+    if (open) ensureLLM();
+  }, [open, ensureLLM]);
 
   useEffect(() => {
     if (open && defaultDescription) setDesc(defaultDescription);
@@ -104,11 +110,63 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
 
   const buildWorkflowPrompt = (workflowDescription: string) => {
     const issuePrompt = desc.trim() || defaultDescription?.trim() || title.trim() || defaultTitle?.trim() || '';
+
+    // 关联供应商，得到每个模型可直接写入 agent_run 节点配置的字段（providerId/modelId/modelProvider）
+    const providerByName = new Map(providers.map((p) => [p.name, p]));
+    const modelOptions = models
+      .map((m) => {
+        const provider = providerByName.get(m.provider);
+        if (!provider) return null;
+        const tags: string[] = [];
+        if (m.reasoning) tags.push('推理');
+        if (m.vision) tags.push('视觉');
+        if (m.embedding) tags.push('向量');
+        if (m.thinkingEnabled) tags.push(`思考(${m.thinkingEffort})`);
+        const costInfo = m.cost ? `输入${m.cost.inputPerMillion}/输出${m.cost.outputPerMillion} 每百万tokens` : '价格未知';
+        const ctx = m.maxContextTokens ? `上下文${m.maxContextTokens}tokens` : '上下文未知';
+        return {
+          name: m.name,
+          modelId: m.modelId,
+          providerId: provider.id,
+          modelProvider: provider.modelProvider ?? '',
+          tags,
+          costInfo,
+          ctx,
+        };
+      })
+      .filter(Boolean) as Array<{
+        name: string;
+        modelId: string;
+        providerId: string;
+        modelProvider: string;
+        tags: string[];
+        costInfo: string;
+        ctx: string;
+      }>;
+
+    // 按能力粗分档：具备推理或高强度思考的归为核心/复杂任务模型，其余为常规/轻量任务模型
+    const heavy = modelOptions.filter((m) => m.tags.includes('推理') || m.tags.some((t) => t.startsWith('思考(high')));
+    const light = modelOptions.filter((m) => !heavy.includes(m));
+
+    const modelSection = modelOptions.length
+      ? [
+          '当前服务端可用的供应商与模型（每个模型均给出可直接写入 agent_run 节点配置的字段）：',
+          ...modelOptions.map(
+            (m) =>
+              `- ${m.name}：providerId="${m.providerId}"，modelId="${m.modelId}"，modelProvider="${m.modelProvider}"；能力[${m.tags.join('/') || '无'}]；${m.ctx}；${m.costInfo}`,
+          ),
+          heavy.length ? `适合核心/复杂 agent 的模型：${heavy.map((m) => m.name).join('、')}` : '',
+          light.length ? `适合常规/轻量 agent 的模型：${light.map((m) => m.name).join('、')}` : '',
+          '请根据每个 agent 节点承担任务的难度，从上面的列表里挑合适的 providerId/modelId/modelProvider 写入对应 agent_run 节点配置。',
+        ].filter(Boolean).join('\n')
+      : '当前服务端未配置任何模型，请在产出中提示用户先在「模型设置」中添加供应商和模型。';
+
     return [
       '请创建一个以多 agent 协同合作为主的 workspace workflow。',
       '要求：优先拆分为多个 agent 节点协作；为关键 agent 补充固定提示词；积极使用 channel、mcp、tool 来更新信息、同步状态和推进协作。',
       workflowDescription ? `工作流注释：${workflowDescription}` : '',
       issuePrompt ? `Issue 需求：${issuePrompt}` : '',
+      modelSection,
     ].filter(Boolean).join('\n');
   };
 
@@ -257,8 +315,8 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
         <FloatingPanel
           id={`issue-workflow-create:${workflowPanel.id}`}
           title={workflowPanel.title}
-          defaultWidth={1200}
-          defaultHeight={820}
+          defaultWidth={Math.round((typeof window !== 'undefined' ? window.innerWidth : 1500) * 0.8)}
+          defaultHeight={Math.round((typeof window !== 'undefined' ? window.innerHeight : 1025) * 0.8)}
           minWidth={720}
           minHeight={520}
           onClose={() => setWorkflowPanel(null)}

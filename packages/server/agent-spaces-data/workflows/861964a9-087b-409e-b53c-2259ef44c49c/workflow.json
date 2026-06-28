@@ -38,19 +38,22 @@
             "key": "final_copy",
             "type": "string",
             "value": "{{ __data__[\"node_1782644049320_0atk57\"].result }}",
-            "description": "最终定稿文案"
+            "description": "最终定稿文案",
+            "children": []
           },
           {
             "key": "planning",
             "type": "string",
             "value": "{{ __data__[\"node_1782644049319_uegi9q\"].result }}",
-            "description": "创意策划方案"
+            "description": "创意策划方案",
+            "children": []
           },
           {
             "key": "draft",
             "type": "string",
             "value": "{{ __data__[\"node_1782644049319_ufhehp\"].result }}",
-            "description": "文案初稿"
+            "description": "文案初稿",
+            "children": []
           }
         ]
       }
@@ -79,7 +82,25 @@
           "id": "creative-planner",
           "name": "创意策划师",
           "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "langchain",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
+          "modelId": "GLM-4.7",
+          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [],
+          "tools": [],
           "systemPrompt": "你是一位资深创意策划师。你的职责是：\n1. 深入分析用户给出的文案题目或主题\n2. 确定目标受众和传播渠道\n3. 构思创意方向和核心卖点\n4. 输出结构化的文案策划方案，包含：主题定位、目标受众、核心信息、内容结构（标题方向、段落大纲、结尾号召）\n5. 为后续文案创作提供清晰的写作指引\n\n请用中文输出，格式清晰。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
           "enabled": true
         },
         "prompt": "请根据以下题目进行文案创意策划：\n\n题目：{{ __data__[\"start_1782643855532\"].topic }}\n\n请输出详细的创意策划方案，包含主题定位、目标受众、核心卖点、内容大纲和写作风格建议。"
@@ -122,7 +143,25 @@
           "id": "copywriter",
           "name": "文案创作师",
           "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "langchain",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
+          "modelId": "GLM-4.7",
+          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [],
+          "tools": [],
           "systemPrompt": "你是一位才华横溢的文案创作师。你的职责是：\n1. 根据创意策划方案撰写完整、有感染力的文案\n2. 文案需要引人入胜、逻辑清晰、富有感染力\n3. 包含吸引人的标题、有料有力的正文、明确的行动号召\n4. 语言风格灵活适配目标受众\n5. 输出完整的文案正文\n\n请用中文撰写，确保内容专业且富有创意。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
           "enabled": true
         },
         "prompt": "请根据以下创意策划方案撰写完整文案：\n\n{{ __data__[\"node_1782644049319_uegi9q\"].result }}\n\n请撰写一篇完整、有感染力的文案作品。"
@@ -165,7 +204,25 @@
           "id": "reviewer",
           "name": "审稿编辑",
           "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "langchain",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
+          "modelId": "GLM-4.7",
+          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [],
+          "tools": [],
           "systemPrompt": "你是一位严谨专业的审稿编辑。你的职责是：\n1. 审核文案的创意性、逻辑性和感染力\n2. 修正文字表述、语法错误和逻辑漏洞\n3. 优化段落结构和行文节奏\n4. 确保文案符合传播目标\n5. 输出审核意见和润色后的终稿\n\n请用中文输出，先给出简要审核意见，然后输出最终定稿文案。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
           "enabled": true
         },
         "prompt": "请审核并润色以下文案：\n\n{{ __data__[\"node_1782644049319_ufhehp\"].result }}\n\n请先给出审核意见，然后输出润色后的最终定稿文案。"
@@ -247,7 +304,7 @@
     }
   ],
   "createdAt": 1782643855534,
-  "updatedAt": 1782644406914,
+  "updatedAt": 1782645485236,
   "published": false,
-  "lastRunAt": 1782644092938
+  "lastRunAt": 1782645488032
 }
