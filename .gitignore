@@ -53,3 +53,7 @@ packages/electron/release/
 packages/server/agent-spaces-data/workflows/*/chat.json
 packages/server/agent-spaces-data/knowledge-bases/
 packages/server/agent-spaces-data/public/uploads/
+.openviking/ov.conf
+.openviking/data/bot
+.openviking/data/temp
+.openviking/data/_system
