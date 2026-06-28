@@ -112,7 +112,7 @@ export function WorkflowPluginsDialog({
   const filteredLocal = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = plugins.filter((plugin) => {
-      if (q && !plugin.name.toLowerCase().includes(q) && !plugin.description.toLowerCase().includes(q) && !toPinyinSearchKey(plugin.name).includes(q) && !toPinyinSearchKey(plugin.description).includes(q)) return false;
+      if (q && !plugin.id.toLowerCase().includes(q) && !plugin.name.toLowerCase().includes(q) && !plugin.description.toLowerCase().includes(q) && !toPinyinSearchKey(plugin.name).includes(q) && !toPinyinSearchKey(plugin.description).includes(q)) return false;
       if (tag !== '__all__' && !(plugin.tags || []).includes(tag)) return false;
       const inWorkflow = enabledPluginIds.has(plugin.id);
       if (status === 'enabled' && !inWorkflow) return false;
@@ -135,7 +135,7 @@ export function WorkflowPluginsDialog({
   const filteredStore = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = workflowStorePlugins.filter((plugin) => {
-      if (q && !plugin.name.toLowerCase().includes(q) && !plugin.description.toLowerCase().includes(q) && !toPinyinSearchKey(plugin.name).includes(q) && !toPinyinSearchKey(plugin.description).includes(q)) return false;
+      if (q && !plugin.id.toLowerCase().includes(q) && !plugin.name.toLowerCase().includes(q) && !plugin.description.toLowerCase().includes(q) && !toPinyinSearchKey(plugin.name).includes(q) && !toPinyinSearchKey(plugin.description).includes(q)) return false;
       if (tag !== '__all__' && !(plugin.tags || []).includes(tag)) return false;
       return true;
     });

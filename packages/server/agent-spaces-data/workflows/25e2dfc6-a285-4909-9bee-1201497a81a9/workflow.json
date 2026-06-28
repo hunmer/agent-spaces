@@ -22,11 +22,51 @@
         "y": 400
       },
       "data": {}
+    },
+    {
+      "id": "node_1782629225223_62zf32",
+      "type": "mira_libraries_list",
+      "label": "List Libraries",
+      "position": {
+        "x": 480,
+        "y": 180
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.mira-sdk\"][\"baseUrl\"]}}",
+        "username": "{{ __config__[\"workflow.mira-sdk\"][\"username\"]}}",
+        "password": "{{ __config__[\"workflow.mira-sdk\"][\"password\"]}}",
+        "token": "{{ __config__[\"workflow.mira-sdk\"][\"token\"]}}",
+        "timeout": "{{ __config__[\"workflow.mira-sdk\"][\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "libraries",
+                "type": "object",
+                "dataType": "object",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1782268403696,
-  "updatedAt": 1782269570182,
+  "updatedAt": 1782629269431,
   "published": false,
   "enabledPlugins": [
     "workflow.mira-sdk",
