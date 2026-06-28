@@ -527,7 +527,7 @@ function WorkflowEditorInner({
 
   useEffect(() => {
     const prompt = initialAgentPrompt?.trim();
-    if (!prompt || !state.workflow?.id || chat.agentSending) return;
+    if (!prompt || !state.workflow?.id || chat.agentSending || !chat.agentChatReady) return;
     const key = `${state.workflow.id}:${prompt}`;
     if (initialAgentPromptSentRef.current === key) return;
     initialAgentPromptSentRef.current = key;

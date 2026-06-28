@@ -262,6 +262,9 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
           minWidth={720}
           minHeight={520}
           onClose={() => setWorkflowPanel(null)}
+          onOpenInNewWindow={() => {
+            window.open(workflowPanel.src, "_blank", "noopener,noreferrer");
+          }}
         >
           <iframe
             src={workflowPanel.src}

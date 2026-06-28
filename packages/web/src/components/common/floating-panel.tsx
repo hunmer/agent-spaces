@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { X, Minimize2 } from "lucide-react";
+import { X, Minimize2, SquareArrowOutUpRight } from "lucide-react";
 
 interface FloatingPanelProps {
   id: string;
@@ -13,6 +13,7 @@ interface FloatingPanelProps {
   minHeight?: number;
   onClose: () => void;
   onMinimize?: () => void;
+  onOpenInNewWindow?: () => void;
   children: ReactNode;
   className?: string;
   zIndex?: number;
@@ -59,6 +60,7 @@ export function FloatingPanel({
   minHeight = DEFAULT_MIN_H,
   onClose,
   onMinimize,
+  onOpenInNewWindow,
   children,
   className,
   zIndex = 99991,
@@ -223,6 +225,19 @@ export function FloatingPanel({
             <div onPointerDown={(e) => e.stopPropagation()} className="flex items-center">
               {headerActions}
             </div>
+          )}
+          {onOpenInNewWindow && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => {
+                onClose();
+                onOpenInNewWindow();
+              }}
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400 cursor-pointer"
+              title="新窗口打开"
+            >
+              <SquareArrowOutUpRight size={13} />
+            </button>
           )}
           {onMinimize && (
             <button

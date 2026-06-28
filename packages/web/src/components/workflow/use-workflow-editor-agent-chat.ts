@@ -47,6 +47,7 @@ export function useWorkflowEditorAgentChat({
   const [agentSettingsOpen, setAgentSettingsOpen] = useState(false);
   const [agentSettingsDraft, setAgentSettingsDraft] = useState<AgentPreset | null>(null);
   const [agentSettingsLoading, setAgentSettingsLoading] = useState(false);
+  const agentChatReady = !workflow?.id || loadedAgentChatWorkflowId === workflow.id;
 
   // ---- Load messages on workflow change ----
   useEffect(() => {
@@ -429,6 +430,7 @@ export function useWorkflowEditorAgentChat({
     agentOpen,
     setAgentOpen,
     agentMessages,
+    agentChatReady,
     agentInput,
     setAgentInput,
     agentSending,
