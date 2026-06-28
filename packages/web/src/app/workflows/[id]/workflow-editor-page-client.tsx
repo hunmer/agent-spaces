@@ -13,10 +13,20 @@ export default function WorkflowEditorPageClient() {
   const router = useRouter();
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [initialPrompt, setInitialPrompt] = useState(() => searchParams.get("prompt") || "");
 
   const id = searchParams.get("workflowId") || params.id;
-  const initialPrompt = searchParams.get("prompt") || "";
   const embeddedMode = searchParams.get("embedded") === "issue" ? "issue" : null;
+
+  useEffect(() => {
+    const prompt = searchParams.get("prompt");
+    if (!prompt) return;
+    setInitialPrompt((current) => current || prompt);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("prompt");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `/workflows/${id}?${nextQuery}` : `/workflows/${id}`);
+  }, [id, router, searchParams]);
 
   useEffect(() => {
     if (!id || id === "_") return;

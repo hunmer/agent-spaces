@@ -1,0 +1,253 @@
+{
+  "id": "861964a9-087b-409e-b53c-2259ef44c49c",
+  "name": "文案创作",
+  "type": "workspace",
+  "folderId": null,
+  "description": "文案创作工作流，根据用户输入的题目进行文案创作，并交给下个agent审批",
+  "nodes": [
+    {
+      "id": "start_1782643855532",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "topic",
+            "type": "string",
+            "description": "文案创作的题目或主题",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "end_1782643855532",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "final_copy",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782644049320_0atk57\"].result }}",
+            "description": "最终定稿文案"
+          },
+          {
+            "key": "planning",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782644049319_uegi9q\"].result }}",
+            "description": "创意策划方案"
+          },
+          {
+            "key": "draft",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782644049319_ufhehp\"].result }}",
+            "description": "文案初稿"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782644049319_uegi9q",
+      "type": "agent_run",
+      "label": "创意策划师",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "creative-planner",
+          "name": "创意策划师",
+          "role": "agent",
+          "systemPrompt": "你是一位资深创意策划师。你的职责是：\n1. 深入分析用户给出的文案题目或主题\n2. 确定目标受众和传播渠道\n3. 构思创意方向和核心卖点\n4. 输出结构化的文案策划方案，包含：主题定位、目标受众、核心信息、内容结构（标题方向、段落大纲、结尾号召）\n5. 为后续文案创作提供清晰的写作指引\n\n请用中文输出，格式清晰。",
+          "enabled": true
+        },
+        "prompt": "请根据以下题目进行文案创意策划：\n\n题目：{{ __data__[\"start_1782643855532\"].topic }}\n\n请输出详细的创意策划方案，包含主题定位、目标受众、核心卖点、内容大纲和写作风格建议。"
+      }
+    },
+    {
+      "id": "node_1782644049319_ym642i",
+      "type": "toast",
+      "label": "策划完成通知",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "data": {
+        "type": "success",
+        "message": "✅ 创意策划已完成，正在交给文案创作师撰写初稿..."
+      }
+    },
+    {
+      "id": "node_1782644049319_ufhehp",
+      "type": "agent_run",
+      "label": "文案创作师",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "copywriter",
+          "name": "文案创作师",
+          "role": "agent",
+          "systemPrompt": "你是一位才华横溢的文案创作师。你的职责是：\n1. 根据创意策划方案撰写完整、有感染力的文案\n2. 文案需要引人入胜、逻辑清晰、富有感染力\n3. 包含吸引人的标题、有料有力的正文、明确的行动号召\n4. 语言风格灵活适配目标受众\n5. 输出完整的文案正文\n\n请用中文撰写，确保内容专业且富有创意。",
+          "enabled": true
+        },
+        "prompt": "请根据以下创意策划方案撰写完整文案：\n\n{{ __data__[\"node_1782644049319_uegi9q\"].result }}\n\n请撰写一篇完整、有感染力的文案作品。"
+      }
+    },
+    {
+      "id": "node_1782644049319_h0gfig",
+      "type": "toast",
+      "label": "初稿完成通知",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "data": {
+        "type": "success",
+        "message": "✅ 文案初稿已完成，正在交给审稿编辑审核润色..."
+      }
+    },
+    {
+      "id": "node_1782644049320_0atk57",
+      "type": "agent_run",
+      "label": "审稿编辑",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "reviewer",
+          "name": "审稿编辑",
+          "role": "agent",
+          "systemPrompt": "你是一位严谨专业的审稿编辑。你的职责是：\n1. 审核文案的创意性、逻辑性和感染力\n2. 修正文字表述、语法错误和逻辑漏洞\n3. 优化段落结构和行文节奏\n4. 确保文案符合传播目标\n5. 输出审核意见和润色后的终稿\n\n请用中文输出，先给出简要审核意见，然后输出最终定稿文案。",
+          "enabled": true
+        },
+        "prompt": "请审核并润色以下文案：\n\n{{ __data__[\"node_1782644049319_ufhehp\"].result }}\n\n请先给出审核意见，然后输出润色后的最终定稿文案。"
+      }
+    },
+    {
+      "id": "node_1782644049320_1upezz",
+      "type": "toast",
+      "label": "审核完成通知",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "data": {
+        "type": "success",
+        "message": "✅ 文案审核润色已完成，终稿即将输出！"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-start_1782643855532-node_1782644049319_uegi9q-mqxo97cc",
+      "source": "start_1782643855532",
+      "target": "node_1782644049319_uegi9q"
+    },
+    {
+      "id": "e-node_1782644049319_uegi9q-node_1782644049319_ym642i-mqxo97cc",
+      "source": "node_1782644049319_uegi9q",
+      "target": "node_1782644049319_ym642i"
+    },
+    {
+      "id": "e-node_1782644049319_ym642i-node_1782644049319_ufhehp-mqxo97cd",
+      "source": "node_1782644049319_ym642i",
+      "target": "node_1782644049319_ufhehp"
+    },
+    {
+      "id": "e-node_1782644049319_ufhehp-node_1782644049319_h0gfig-mqxo97cd",
+      "source": "node_1782644049319_ufhehp",
+      "target": "node_1782644049319_h0gfig"
+    },
+    {
+      "id": "e-node_1782644049319_h0gfig-node_1782644049320_0atk57-mqxo97cd",
+      "source": "node_1782644049319_h0gfig",
+      "target": "node_1782644049320_0atk57"
+    },
+    {
+      "id": "e-node_1782644049320_0atk57-node_1782644049320_1upezz-mqxo97cd",
+      "source": "node_1782644049320_0atk57",
+      "target": "node_1782644049320_1upezz"
+    },
+    {
+      "id": "e-node_1782644049320_1upezz-end_1782643855532-mqxo97cd",
+      "source": "node_1782644049320_1upezz",
+      "target": "end_1782643855532"
+    },
+    {
+      "id": "e-start_1782643855532-output:topic-node_1782644049319_uegi9q-property:prompt",
+      "source": "start_1782643855532",
+      "target": "node_1782644049319_uegi9q",
+      "edgeKind": "reference",
+      "sourceHandle": "output:topic",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782644049319_ufhehp-output:result-node_1782644049320_0atk57-property:prompt",
+      "source": "node_1782644049319_ufhehp",
+      "target": "node_1782644049320_0atk57",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782644049319_uegi9q-output:result-node_1782644049319_ufhehp-property:prompt",
+      "source": "node_1782644049319_uegi9q",
+      "target": "node_1782644049319_ufhehp",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    }
+  ],
+  "createdAt": 1782643855534,
+  "updatedAt": 1782644406914,
+  "published": false,
+  "lastRunAt": 1782644092938
+}
