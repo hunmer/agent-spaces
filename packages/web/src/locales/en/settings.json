@@ -126,5 +126,19 @@
   "dataImportResultOk": "Restored",
   "dataImportResultSkipped": "Skipped",
   "dataImportResultError": "Error",
-  "dataImportComplete": "Import complete"
+  "dataImportComplete": "Import complete",
+  "modelCatalogTab": "Models",
+  "modelCatalog": "Model Catalog",
+  "modelCatalogDesc": "Sync the model catalog and provider icons from models.dev. Models fetched here can be selected when adding a model, and their attributes (context, cost, capabilities) will auto-fill.",
+  "updateCatalog": "Update Catalog",
+  "catalogUpdating": "Updating...",
+  "catalogUpdated": "Catalog updated ({providers} providers, {models} models)",
+  "catalogUpdateFailed": "Failed to update catalog",
+  "updateCatalogIcons": "Update Provider Icons",
+  "iconsUpdating": "Updating icons...",
+  "iconsUpdated": "Updated {count} provider icons",
+  "iconsUpdatedPartial": "Updated {saved} icons, {failed} failed",
+  "iconsUpdateFailed": "Failed to update provider icons",
+  "catalogLoading": "Loading catalog...",
+  "catalogMeta": "{providers} providers, {models} models · updated {date}"
 }

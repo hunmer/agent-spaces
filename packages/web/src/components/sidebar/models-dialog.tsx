@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { LLMModel } from "@agent-spaces/shared";
 import {
@@ -22,7 +22,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
+import type { CatalogModel } from "@/stores/llm";
 import { sdk } from "@/lib/sdk";
+import { SearchSelect } from "@/components/ui/search-select";
 
 const CAP_CLS: Record<string, string> = {
   vision: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -65,7 +67,7 @@ export function ModelsDialog({
 }) {
   const t = useTranslations("models");
   const tc = useTranslations("common");
-  const { models, providers, ensure, addModel, updateModel, removeModel } = useLLMStore();
+  const { models, providers, ensure, addModel, updateModel, removeModel, catalog, loadCatalog } = useLLMStore();
   const providerNames = providers.map(p => p.name);
   const [selected, setSelected] = useState<LLMModel | null>(null);
   const [draft, setDraft] = useState<Partial<LLMModel> | null>(null);
@@ -84,7 +86,8 @@ export function ModelsDialog({
       setError(null);
     });
     ensure().finally(() => setLoading(false));
-  }, [open, ensure]);
+    loadCatalog();
+  }, [open, ensure, loadCatalog]);
 
   useEffect(() => {
     if (open && initialProvider && !draft && !initialProviderHandled.current) {
@@ -229,7 +232,7 @@ export function ModelsDialog({
         {loading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">{t("dialog.loading")}</div>
         ) : draft ? (
-          <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} />
+          <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} catalog={catalog} />
         ) : (
           <ModelList groups={groups} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
         )}
@@ -359,26 +362,84 @@ function ModelForm({
   draft,
   providerNames,
   onChange,
+  catalog,
 }: {
   draft: Partial<LLMModel>;
   providerNames: string[];
   onChange: (key: string, value: unknown) => void;
+  catalog: ReturnType<typeof useLLMStore.getState>["catalog"];
 }) {
   const t = useTranslations("models");
   const nameEditedByUser = useRef(false);
   const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
   const options = providerNames.length > 0 ? [...providerNames, "Other"] : ["Other"];
+
+  const catalogModels = catalog?.models ?? {};
+  const modelOptions = useMemo(
+    () => Object.values(catalogModels).map(m => ({ value: m.id, label: m.name || m.id })),
+    [catalogModels],
+  );
+
+  // 从 catalog 中查找模型（按 id）
+  const findCatalogModel = useCallback((modelId: string): { model?: CatalogModel; providerName?: string } => {
+    const model = catalogModels[modelId];
+    if (!model) return {};
+    // 反查 provider：优先在 providers.models 里找
+    const providers = catalog?.providers ?? {};
+    let providerName: string | undefined;
+    for (const pid of Object.keys(providers)) {
+      const p = providers[pid];
+      if (p?.models && p.models[modelId]) {
+        providerName = p.name || pid;
+        break;
+      }
+    }
+    return { model, providerName };
+  }, [catalogModels, catalog]);
+
+  // 选择 modelId（含自定义输入）后自动填充属性
+  const handleModelIdChange = useCallback((value: string) => {
+    onChange("modelId", value);
+    const { model, providerName } = findCatalogModel(value);
+    if (!model) return;
+    if (!nameEditedByUser.current) onChange("name", model.name || value);
+    if (typeof model.limit?.context === "number" && model.limit.context > 0) {
+      onChange("maxContextTokens", model.limit.context);
+      setContextIdx(getContextSliderIndex(model.limit.context));
+    }
+    if (model.cost) {
+      onChange("cost", {
+        inputPerMillion: typeof model.cost.input === "number" ? model.cost.input : (draft.cost?.inputPerMillion ?? 0),
+        outputPerMillion: typeof model.cost.output === "number" ? model.cost.output : (draft.cost?.outputPerMillion ?? 0),
+      });
+    }
+    const inputs = model.modalities?.input ?? [];
+    onChange("vision", model.attachment === true || inputs.includes("image"));
+    onChange("reasoning", model.reasoning === true);
+    if (providerName) onChange("provider", providerName);
+  }, [onChange, findCatalogModel, draft.cost]);
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.details")}</div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">{t("form.modelId")}</label>
-          <Input value={draft.modelId || ""} onChange={e => {
-            const val = e.target.value;
-            onChange("modelId", val);
-            if (!nameEditedByUser.current) onChange("name", val);
-          }} placeholder={t("form.modelIdPlaceholder")} />
+          {modelOptions.length > 0 ? (
+            <SearchSelect
+              value={draft.modelId || ""}
+              onChange={handleModelIdChange}
+              options={modelOptions}
+              placeholder={t("form.modelIdPlaceholder")}
+              searchPlaceholder={t("form.modelIdSearch")}
+              allowCustom
+            />
+          ) : (
+            <Input value={draft.modelId || ""} onChange={e => {
+              const val = e.target.value;
+              onChange("modelId", val);
+              if (!nameEditedByUser.current) onChange("name", val);
+            }} placeholder={t("form.modelIdPlaceholder")} />
+          )}
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">{t("form.displayName")}</label>

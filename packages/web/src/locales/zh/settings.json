@@ -126,5 +126,19 @@
   "dataImportResultOk": "已恢复",
   "dataImportResultSkipped": "已跳过",
   "dataImportResultError": "出错",
-  "dataImportComplete": "导入完成"
+  "dataImportComplete": "导入完成",
+  "modelCatalogTab": "模型",
+  "modelCatalog": "模型目录",
+  "modelCatalogDesc": "从 models.dev 同步模型目录与提供商图标。同步后的模型可在新增模型时直接选择，并自动填入上下文、价格、能力等属性。",
+  "updateCatalog": "更新目录",
+  "catalogUpdating": "更新中...",
+  "catalogUpdated": "目录已更新（{providers} 个提供商，{models} 个模型）",
+  "catalogUpdateFailed": "更新目录失败",
+  "updateCatalogIcons": "更新提供商图标",
+  "iconsUpdating": "更新图标中...",
+  "iconsUpdated": "已更新 {count} 个提供商图标",
+  "iconsUpdatedPartial": "已更新 {saved} 个，{failed} 个失败",
+  "iconsUpdateFailed": "更新提供商图标失败",
+  "catalogLoading": "加载目录中...",
+  "catalogMeta": "{providers} 个提供商，{models} 个模型 · 更新于 {date}"
 }
