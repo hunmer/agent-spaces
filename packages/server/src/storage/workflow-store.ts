@@ -102,6 +102,7 @@ function migrateLegacyWorkflow(raw: any): Workflow {
   return {
     id: raw.id,
     name: raw.name,
+    type: raw.type === 'workspace' ? 'workspace' : 'normal',
     folderId: raw.folderId ?? null,
     description: raw.description,
     nodes: Array.isArray(raw.nodes) ? raw.nodes.map(migrateLegacyNode) : [],

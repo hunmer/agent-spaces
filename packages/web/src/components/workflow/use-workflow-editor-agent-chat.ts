@@ -207,8 +207,8 @@ export function useWorkflowEditorAgentChat({
     }
   }, []);
 
-  const sendWorkflowAgentMessage = useCallback(async () => {
-    const prompt = agentInput.trim();
+  const sendWorkflowAgentMessage = useCallback(async (promptOverride?: string) => {
+    const prompt = (promptOverride ?? agentInput).trim();
     if (!prompt || agentSending || !workflow) return;
 
     const userMessage: WorkflowAgentChatMessage = {
@@ -227,7 +227,9 @@ export function useWorkflowEditorAgentChat({
     };
 
     setAgentMessages((messages) => [...messages, userMessage, assistantMessage]);
-    setAgentInput('');
+    if (!promptOverride) {
+      setAgentInput('');
+    }
     setAgentSending(true);
 
     try {

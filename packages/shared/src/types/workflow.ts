@@ -153,6 +153,7 @@ export type WorkflowTrigger =
 export interface Workflow {
   id: string
   name: string
+  type?: 'normal' | 'workspace'
   folderId: string | null
   icon?: string
   description?: string

@@ -15,6 +15,8 @@ export default function WorkflowEditorPageClient() {
   const [error, setError] = useState<string | null>(null);
 
   const id = searchParams.get("workflowId") || params.id;
+  const initialPrompt = searchParams.get("prompt") || "";
+  const embeddedMode = searchParams.get("embedded") === "issue" ? "issue" : null;
 
   useEffect(() => {
     if (!id || id === "_") return;
@@ -50,6 +52,8 @@ export default function WorkflowEditorPageClient() {
   return (
     <WorkflowEditor
       template={workflow}
+      initialAgentPrompt={initialPrompt}
+      embeddedMode={embeddedMode}
       onBack={() => nativeNavigate(router, "/workflows")}
     />
   );

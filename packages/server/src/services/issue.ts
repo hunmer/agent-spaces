@@ -78,6 +78,8 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     tasks: [],
     members: input.members || [],
     workflowId: input.workflowId,
+    workflowExecutionId: undefined,
+    workflowExecutionStatus: undefined,
     continuousRun: true,
     retryCount: 0,
     maxRetries: 3,
@@ -108,6 +110,8 @@ export function createForChannel(
     status: input.status ?? 'draft',
     tasks: [],
     members: [...issueMembers],
+    workflowExecutionId: undefined,
+    workflowExecutionStatus: undefined,
     continuousRun: true,
     retryCount: 0,
     maxRetries: 3,
@@ -175,6 +179,7 @@ export function prepareRetry(
 
   issue.status = 'in_progress';
   issue.lastError = undefined;
+  issue.workflowExecutionStatus = undefined;
   issue.updatedAt = new Date().toISOString();
   updateIssue(issue);
   return issue;

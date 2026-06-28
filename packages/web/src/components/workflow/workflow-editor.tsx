@@ -425,10 +425,12 @@ function buildExecutionRunGroups(workflow: WorkflowType | null, t: ReturnType<ty
 }
 
 function WorkflowEditorInner({
-  template, onBack,
+  template, onBack, initialAgentPrompt, embeddedMode,
 }: {
   template: WorkflowTemplate | null;
   onBack: () => void;
+  initialAgentPrompt?: string;
+  embeddedMode?: 'issue' | null;
 }) {
   const t = useTranslations('workflows');
   const canvasExportRef = useRef<WorkflowCanvasViewportRef | null>(null);
@@ -451,6 +453,7 @@ function WorkflowEditorInner({
 
   const isWorkflowRunning = execution.execStatus === 'running' || execution.execStatus === 'paused';
   const isWorkflowReadOnly = isWorkflowRunning;
+  const isIssueEmbedded = embeddedMode === 'issue';
   const markEditorDirty = state.isPreview ? state.markPreviewDirty : state.markDirty;
   const executionRunGroups = useMemo(
     () => buildExecutionRunGroups(state.workflow, t),
@@ -520,6 +523,17 @@ function WorkflowEditorInner({
     selectedNodes: workflowAgentSelectionActive ? selectedWorkflowAgentNodes : [],
     workspaceId,
   });
+  const initialAgentPromptSentRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const prompt = initialAgentPrompt?.trim();
+    if (!prompt || !state.workflow?.id || chat.agentSending) return;
+    const key = `${state.workflow.id}:${prompt}`;
+    if (initialAgentPromptSentRef.current === key) return;
+    initialAgentPromptSentRef.current = key;
+    chat.setAgentOpen(true);
+    void chat.sendWorkflowAgentMessage(prompt);
+  }, [chat, initialAgentPrompt, state.workflow?.id]);
 
   const clipboardImagePasteEnabled = state.workflow?.layoutSnapshot?.pasteClipboardImagesAsGallery !== false;
   const previewResult = useMemo(() => {
@@ -1287,6 +1301,93 @@ function WorkflowEditorInner({
 
   const workflow = state.workflow;
 
+  if (isIssueEmbedded) {
+    return (
+      <div className="flex h-full flex-col bg-background" tabIndex={0}>
+        <div className="border-b">
+          <WorkflowExecutionBar
+            status={execution.execStatus}
+            log={execution.executionLog}
+            logs={execution.executionLogs}
+            selectedLogId={execution.selectedExecutionLogId}
+            workflowErrorMessage={execution.workflowErrorMessage}
+            startNodes={execution.startNodes}
+            runGroups={executionRunGroups}
+            variables={workflow.variables || []}
+            validationError={execution.executionValidationError}
+            workflowId={state.workflowId}
+            isPreview={state.isPreview}
+            onExecute={execution.handleExecute}
+            onPause={execution.handlePauseExecution}
+            onResume={execution.handleResumeExecution}
+            onStop={execution.handleStopExecution}
+            onSelectLog={execution.handleSelectExecutionLog}
+            onDeleteLog={execution.handleDeleteExecutionLog}
+            onClearLogs={execution.handleClearExecutionLogs}
+            onUpdateNodeData={canvas.handleNodeDataUpdate}
+          />
+        </div>
+        <div className="flex-1 min-h-0">
+          <WorkflowCanvas
+            workflow={workflow}
+            isPreview={state.isPreview}
+            execStatus={execution.execStatus}
+            isRunning={isWorkflowRunning}
+            executionLog={execution.executionLog}
+            selectedNodeId={state.selectedNodeId}
+            selectedNodeIds={state.selectedNodeIds}
+            onNodeAdd={() => {}}
+            onNodeDelete={() => {}}
+            onNodeCopy={() => {}}
+            onNodeClone={() => {}}
+            onNodeStage={() => {}}
+            onMergeNodesToWorkflow={() => {}}
+            onMergeNodesToGroup={() => {}}
+            onBatchDeleteNodes={() => {}}
+            onGroupUpdate={() => {}}
+            onGroupDelete={() => {}}
+            onGroupMove={() => {}}
+            debugNodeId={execution.debugNodeId}
+            debugStatus={execution.debugStatus}
+            pausedNodeId={execution.pausedNodeId}
+            pausedReason={execution.pausedReason}
+            partialExecutionStartNodeId={execution.partialExecutionStartNodeId}
+            onNodeDebug={execution.handleDebugNode}
+            onCancelDebug={execution.handleCancelDebug}
+            onExecuteFromNode={(nodeId) => execution.handleExecute(undefined, nodeId)}
+            onResumeExecution={execution.handleResumeExecution}
+            onStopExecution={execution.handleStopExecution}
+            onNodeSelect={canvas.handleNodeSelect}
+            onNodesSelect={canvas.handleNodesSelect}
+            onNodeDataUpdate={() => {}}
+            onFieldKeyRename={handleFieldKeyRename}
+            onEdgeDataUpdate={() => {}}
+            onNodesChange={() => {}}
+            onNodeDragStateChange={() => {}}
+            onEdgesChange={() => {}}
+            onConnect={() => {}}
+            onConnectionDrop={() => {}}
+            onRectangleDrawNodeSelect={canvas.handleRectangleDrawNodeSelect}
+            onInsertExistingNodeOnEdge={() => {}}
+            canUndo={false}
+            canRedo={false}
+            onExitPreview={exitExecutionPreview}
+            onAutoLayout={canvas.handleAutoLayout}
+            copiedNodeCount={0}
+            copiedRecords={[]}
+            onClearCopiedNodes={() => {}}
+            canvasExportRef={canvasExportRef}
+          />
+        </div>
+        <WorkflowInteractionDialog
+          request={execution.pendingInteraction}
+          onResolve={execution.handleResolveInteraction}
+          onCancel={execution.handleCancelInteraction}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-muted/30 p-1.5 gap-1.5" tabIndex={0}>
       <WorkflowEditorToolbar
@@ -1534,14 +1635,16 @@ function WorkflowEditorInner({
 // ---- Main export (with ReactFlowProvider) ----
 
 export function WorkflowEditor({
-  template, onBack,
+  template, onBack, initialAgentPrompt, embeddedMode = null,
 }: {
   template: WorkflowTemplate | null;
   onBack: () => void;
+  initialAgentPrompt?: string;
+  embeddedMode?: 'issue' | null;
 }) {
   return (
     <ReactFlowProvider>
-      <WorkflowEditorInner template={template} onBack={onBack} />
+      <WorkflowEditorInner template={template} onBack={onBack} initialAgentPrompt={initialAgentPrompt} embeddedMode={embeddedMode} />
     </ReactFlowProvider>
   );
 }

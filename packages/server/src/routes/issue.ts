@@ -10,10 +10,10 @@ import { stopChannelRuns } from '../ws/agent-runner.js';
 import * as agentService from '../services/agent.js';
 import * as taskService from '../services/task.js';
 import { retryIssue } from '../services/issue-retry.js';
-import { hasActiveIssueAutomation, runIssueAutomation } from '../agents/issue-agent-runner.js';
-import { continueIssueTaskScheduling, stopIssueAutomation } from '../agents/issue-task-controller.js';
+import { hasActiveIssueAutomation, runIssueAutomation, startIssueWorkflowExecution } from '../agents/issue-agent-runner.js';
 import * as workflowService from '../services/workflow.js';
 import { scheduleIssueTitleGeneration } from '../services/generated-title.js';
+import { getWorkflowExecutionManager } from '../services/builtin-tools/workflow-exec-tools.js';
 
 const router = Router({ mergeParams: true });
 
@@ -113,14 +113,16 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
     res.status(404).json({ error: 'issue not found' });
     return;
   }
-  // Pre-check: must have workflow or existing tasks
-  const hasWorkflow = Boolean(before.workflowId);
-  const existingTasks = taskService.list(workspaceId, issueId);
-  if (!hasWorkflow && existingTasks.length === 0) {
-    res.status(400).json({ error: 'No workflow or tasks configured for this issue' });
+  if (!before.workflowId) {
+    res.status(400).json({ error: 'No workflow configured for this issue' });
     return;
   }
-  const issue = issueService.updateStatus(workspaceId, issueId, 'planned');
+  const issue = issueService.save(workspaceId, {
+    ...before,
+    status: 'planned',
+    workflowExecutionStatus: 'running',
+    lastError: undefined,
+  });
   if (!issue) {
     res.status(404).json({ error: 'issue not found' });
     return;
@@ -159,12 +161,37 @@ router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: strin
       agentService.updateStatus(workspaceId, sessionId, status, extra),
   };
 
-  const result = await retryIssue(workspaceId, issueId, ctx, { manual: true });
-  if (!result.issue) {
+  const manager = getWorkflowExecutionManager();
+  if (!manager) {
+    res.status(500).json({ error: 'workflow execution manager is not initialized' });
+    return;
+  }
+
+  if (issue.workflowExecutionId && issue.workflowExecutionStatus === 'paused') {
+    await manager.resume(issue.workflowExecutionId);
+    const updated = issueService.save(workspaceId, {
+      ...issue,
+      status: 'in_progress',
+      workflowExecutionStatus: 'running',
+      lastError: undefined,
+      retryPaused: false,
+    });
+    broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: issue.status, to: 'in_progress' });
+    broadcastToWorkspace(workspaceId, 'issue.updated', updated);
+    res.json(updated);
+    return;
+  }
+
+  const updated = issueService.prepareRetry(workspaceId, issueId, { manual: true });
+  if (!updated) {
     res.status(404).json({ error: 'issue not found' });
     return;
   }
-  res.json(result.issue);
+  broadcastToWorkspace(workspaceId, 'issue.updated', updated);
+  res.json(updated);
+  startIssueWorkflowExecution(workspaceId, issueId, ctx).catch((err) => {
+    console.error(`[issue-resume] workflow error for issue ${issueId}:`, err);
+  });
 });
 
 router.post('/:issueId/continue', (req: Request<{ id: string; issueId: string }>, res: Response) => {
@@ -176,8 +203,13 @@ router.post('/:issueId/continue', (req: Request<{ id: string; issueId: string }>
     return;
   }
 
-  const issue = before.status === 'draft' || before.status === 'planned'
-    ? issueService.updateStatus(workspaceId, issueId, 'in_progress')
+  const issue = before.status === 'draft' || before.status === 'planned' || before.status === 'error'
+    ? issueService.save(workspaceId, {
+      ...before,
+      status: 'in_progress',
+      workflowExecutionStatus: 'running',
+      lastError: undefined,
+    })
     : before;
   if (!issue) {
     res.status(404).json({ error: 'issue not found' });
@@ -196,8 +228,15 @@ router.post('/:issueId/continue', (req: Request<{ id: string; issueId: string }>
     updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
       agentService.updateStatus(workspaceId, sessionId, status, extra),
   };
-  continueIssueTaskScheduling(workspaceId, issueId, ctx).catch((err) => {
-    console.error(`[issue-continue] scheduling error for issue ${issueId}:`, err);
+  const manager = getWorkflowExecutionManager();
+  if (before.workflowExecutionId && before.workflowExecutionStatus === 'paused' && manager) {
+    manager.resume(before.workflowExecutionId).catch((err) => {
+      console.error(`[issue-continue] resume error for issue ${issueId}:`, err);
+    });
+    return;
+  }
+  startIssueWorkflowExecution(workspaceId, issueId, ctx).catch((err) => {
+    console.error(`[issue-continue] workflow error for issue ${issueId}:`, err);
   });
 });
 
@@ -211,10 +250,13 @@ router.post('/:issueId/interrupt', (req: Request<{ id: string; issueId: string }
   }
 
   const reason = 'Interrupted by user';
-  const failedTasks = stopIssueAutomation(workspaceId, issueId, reason);
-  for (const { task, from } of failedTasks) {
-    broadcastToWorkspace(workspaceId, 'task.status_changed', { taskId: task.id, from, to: task.status });
-    broadcastToWorkspace(workspaceId, 'task.updated', task);
+  const manager = getWorkflowExecutionManager();
+  if (manager && before.workflowExecutionId) {
+    try {
+      manager.stop(before.workflowExecutionId);
+    } catch {
+      // best effort
+    }
   }
   if (before.channelId) stopChannelRuns(workspaceId, before.channelId);
 
@@ -223,6 +265,8 @@ router.post('/:issueId/interrupt', (req: Request<{ id: string; issueId: string }
     res.status(404).json({ error: 'issue not found' });
     return;
   }
+  issue.workflowExecutionStatus = 'error';
+  issueService.save(workspaceId, issue);
   broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before.status, to: 'error' });
   broadcastToWorkspace(workspaceId, 'issue.updated', issue);
   res.json(issue);

@@ -1,17 +1,16 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import type { Task, IssueComment } from '@agent-spaces/shared';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import type { IssueComment } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import {
   MessageSquare, X, MoreHorizontal, Users, Calendar, Paperclip, Plus,
   ArrowRight, Pencil, Info, MessagesSquare, Play, StepForward, Ban,
-  RotateCcw, Check, ArrowLeft, GitBranch,
+  RotateCcw, ArrowLeft, GitBranch,
 } from 'lucide-react';
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
-import { useTaskStore } from '@/stores/task';
 import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
@@ -19,7 +18,6 @@ import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { normalizeChannelMembersToAgentIds, getMemberDisplayName } from '@/lib/agent-members';
 import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
-import { cn } from '@/lib/utils';
 import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
 import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
@@ -29,9 +27,6 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { ISSUE_STATUS_COLOR } from './issue-status-colors';
 
@@ -66,7 +61,6 @@ interface IssueDetailProps {
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue, resumeIssue, continueIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
-  const { tasks, loading: tasksLoading, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask, reorderTasks } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -77,17 +71,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [composerOpen, setComposerOpen] = useState(false);
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-
-  // Task dialog state (moved from IssueDetailHeader)
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDesc, setNewTaskDesc] = useState('');
-  const [selectedAgentId, setSelectedAgentId] = useState('');
-
   const t = useTranslations('issue');
-  const tTask = useTranslations('task');
-  const tc = useTranslations('common');
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
@@ -103,10 +87,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   useEffect(() => {
     if (issue) {
-      loadTasks(workspaceId, issue.id);
       void Promise.resolve().then(() => loadComments(issue.id));
     }
-  }, [issue, workspaceId, loadTasks, loadComments]);
+  }, [issue, workspaceId, loadComments]);
 
   useEffect(() => {
     ensureAgents();
@@ -176,66 +159,16 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     commentRefs.current.get(comment.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [comments]);
 
-  // Task dialog handlers (moved from IssueDetailHeader)
-  const handleOpenTaskDialog = useCallback(() => {
-    setEditingTask(null);
-    setNewTaskTitle('');
-    setNewTaskDesc('');
-    setSelectedAgentId('');
-    setTaskDialogOpen(true);
-  }, []);
-
-  const handleCreateTask = useCallback(async () => {
-    if (!issue || !newTaskTitle.trim() || !selectedAgentId) return;
-    if (editingTask) {
-      await updateTask(workspaceId, editingTask.id, {
-        title: newTaskTitle.trim(),
-        description: newTaskDesc.trim(),
-        agentConfigId: selectedAgentId,
-      });
-    } else {
-      await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim(), selectedAgentId);
-    }
-    setNewTaskTitle('');
-    setNewTaskDesc('');
-    setSelectedAgentId('');
-    setEditingTask(null);
-    setTaskDialogOpen(false);
-  }, [issue, editingTask, newTaskTitle, newTaskDesc, selectedAgentId, workspaceId, updateTask, createTask]);
-
-  const handleEditTask = useCallback((task: Task) => {
-    setEditingTask(task);
-    setNewTaskTitle(task.title);
-    setNewTaskDesc(task.description);
-    setSelectedAgentId(task.agentConfigId ?? '');
-    setTaskDialogOpen(true);
-  }, []);
-
-  const issueTasks = useMemo(() => {
-    if (!issue) return [];
-    const filtered = tasks.filter((t) => t.issueId === issue.id);
-    const seen = new Set<string>();
-    const uniqueTasks = filtered.filter((task) => {
-      if (seen.has(task.id)) return false;
-      seen.add(task.id);
-      return true;
-    });
-    const taskOrder = issue.tasks ?? [];
-    const orderMap = new Map(taskOrder.map((id, idx) => [id, idx]));
-    const fallback = taskOrder.length;
-    return uniqueTasks.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
-  }, [tasks, issue]);
-
   const members = Array.from(new Set(issue?.members ?? []));
   const normalizedIssue = issue ? { ...issue, members } : undefined;
-  const enabledAgents = useMemo(() => {
+  const enabledAgents = (() => {
     const seen = new Set<string>();
     return agents.filter((agent) => {
       if (agent.enabled === false || seen.has(agent.id)) return false;
       seen.add(agent.id);
       return true;
     });
-  }, [agents]);
+  })();
 
   if (!issue || !normalizedIssue) {
     return (
@@ -245,17 +178,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     );
   }
 
-  // Command availability
-  const activeTaskStatuses = new Set(['running', 'reviewing', 'retrying', 'waiting_review']);
-  const hasActiveTask = issueTasks.some((task) => activeTaskStatuses.has(task.status));
-  const hasRunnableTask = issueTasks.some((task) => {
-    if (task.status !== 'pending') return false;
-    const doneIds = new Set(issueTasks.filter((item) => item.status === 'done').map((item) => item.id));
-    return (task.dependsOnTaskIds ?? []).every((id) => doneIds.has(id));
-  });
   const canStart = issue.status === 'draft' || issue.status === 'planned';
-  const canContinue = !hasActiveTask && hasRunnableTask && issue.status !== 'error' && issue.status !== 'completed' && issue.status !== 'archived';
-  const canInterrupt = hasActiveTask || issue.status === 'planned' || issue.status === 'in_progress';
+  const canContinue = Boolean(issue.workflowId) && issue.status !== 'completed' && issue.status !== 'archived';
+  const canInterrupt = issue.status === 'planned' || issue.status === 'in_progress';
 
   const statusDotColor = issue.status === 'completed' ? 'bg-green-500'
     : issue.status === 'in_progress' ? 'bg-blue-500'
@@ -396,43 +321,12 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 )}
               </motion.div>
 
-              {/* Tasks Section */}
-              {tasksLoading ? (
-                <motion.div variants={itemVariants}>
-                  <div className="flex items-center justify-between mb-2">
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="size-6 rounded" />
-                  </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {Array.from({ length: 3 }, (_, i) => (
-                      <div key={i} className="rounded-md border px-3 py-2 min-w-[140px] space-y-1.5">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-3 w-16" />
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div variants={itemVariants}>
-                  <IssueDetailTasksPanel
-                    issue={normalizedIssue}
-                    workspaceId={workspaceId}
-                    issueTasks={issueTasks}
-                    t={t}
-                    tTask={tTask}
-                    retryTask={retryTask}
-                    cancelTask={cancelTask}
-                    reorderTasks={reorderTasks}
-                    deleteTask={deleteTask}
-                    onEditTask={handleEditTask}
-                    headerAction={
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-                </motion.div>
-              )}
+              <motion.div variants={itemVariants}>
+                <IssueDetailTasksPanel
+                  issue={normalizedIssue}
+                  t={t}
+                />
+              </motion.div>
 
               {/* Attachments Placeholder — project-detail-view style */}
               <motion.div variants={itemVariants} className="space-y-3">
@@ -537,7 +431,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         workspaceId={workspaceId}
         open={infoOpen}
         onOpenChange={setInfoOpen}
-        issueTasks={issueTasks}
+        issueTasks={[]}
         members={members}
         enabledAgents={enabledAgents}
         onAddMembers={handleAddMembers}
@@ -557,53 +451,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         />
       )}
 
-      {/* Task Dialog — moved from IssueDetailHeader */}
-      <Dialog open={taskDialogOpen} onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingTask ? t('detail.editTask') : t('detail.addTask')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Input
-              placeholder={t('detail.taskTitlePlaceholder') as string}
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-            />
-            <Textarea
-              placeholder={t('detail.taskDescriptionPlaceholder') as string}
-              value={newTaskDesc}
-              onChange={(e) => setNewTaskDesc(e.target.value)}
-              rows={3}
-            />
-            {enabledAgents.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Agent</label>
-                <div className="flex flex-wrap gap-1">
-                  {enabledAgents.map((agent) => (
-                    <button
-                      key={agent.id}
-                      type="button"
-                      onClick={() => setSelectedAgentId(agent.id)}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors border',
-                        selectedAgentId === agent.id ? 'border-primary bg-primary/10 text-primary' : 'border-transparent hover:bg-muted',
-                      )}
-                    >
-                      <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} apiBase={agent.apiBase} className="size-4 rounded-full" />
-                      <span className="truncate max-w-[80px]">{agent.name}</span>
-                      {selectedAgentId === agent.id && <Check className="size-3 shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim() || !selectedAgentId} size="sm">
-              {editingTask ? tc('save') : t('detail.addTask')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

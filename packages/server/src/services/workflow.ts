@@ -187,7 +187,7 @@ export function getWorkflow(workflowId: string): Workflow | null {
 }
 
 export function createWorkflow(
-  input: { name: string; description?: string; folderId?: string | null; icon?: string; tags?: string[]; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; triggers?: WorkflowTrigger[]; groups?: any[]; published?: boolean }
+  input: { name: string; type?: 'normal' | 'workspace'; description?: string; folderId?: string | null; icon?: string; tags?: string[]; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; triggers?: WorkflowTrigger[]; groups?: any[]; published?: boolean }
 ): Workflow {
   const now = Date.now();
   const nodes = input.nodes ?? [];
@@ -202,6 +202,7 @@ export function createWorkflow(
   const workflow: Workflow = {
     id: uuid(),
     name: input.name,
+    type: input.type ?? 'normal',
     folderId: input.folderId ?? null,
     icon: input.icon,
     description: input.description,
@@ -225,7 +226,7 @@ export function createWorkflow(
 
 export function updateWorkflow(
   workflowId: string,
-  updates: Partial<Pick<Workflow, 'name' | 'description' | 'folderId' | 'icon' | 'tags' | 'nodes' | 'edges' | 'triggers' | 'groups' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentConfig' | 'layoutSnapshot' | 'published'>>
+  updates: Partial<Pick<Workflow, 'name' | 'type' | 'description' | 'folderId' | 'icon' | 'tags' | 'nodes' | 'edges' | 'triggers' | 'groups' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentConfig' | 'layoutSnapshot' | 'published'>>
 ): Workflow {
   const existing = store.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');

@@ -107,6 +107,87 @@ export function useWorkflowEditorExecution({
     void loadExecutionLogs();
   }, [workflowId, loadExecutionLogs]);
 
+  useEffect(() => {
+    if (!workflowId) return undefined;
+    const ws = getWorkflowWS();
+    if (!ws) return undefined;
+
+    const offLog = ws.on('execution:log', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId || !event.log) return;
+      setCurrentExecutionId(event.executionId || event.log.id);
+      setExecutionLog(event.log);
+      setSelectedExecutionLogId((current) => current ?? event.log!.id);
+      setExecutionLogs((prev) => [event.log!, ...prev.filter((item) => item.id !== event.log!.id)]);
+      setExecStatus(event.log.status);
+    });
+
+    const offPaused = ws.on('workflow:paused', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; currentNodeId?: string; reason?: string };
+      if (event.workflowId !== workflowId) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      setPausedNodeId(event.currentNodeId ?? null);
+      setPausedReason(event.reason ?? null);
+      setExecStatus('paused');
+    });
+
+    const offResumed = ws.on('workflow:resumed', (data) => {
+      const event = data as { workflowId?: string; executionId?: string };
+      if (event.workflowId !== workflowId) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      setPausedNodeId(null);
+      setPausedReason(null);
+      setExecStatus('running');
+    });
+
+    const offCompleted = ws.on('workflow:completed', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      if (event.log) {
+        setExecutionLog(event.log);
+        setSelectedExecutionLogId(event.log.id);
+        setExecutionLogs((prev) => [event.log!, ...prev.filter((item) => item.id !== event.log!.id)]);
+      }
+      setPausedNodeId(null);
+      setPausedReason(null);
+      setPartialExecutionStartNodeId(null);
+      setWorkflowErrorMessage(null);
+      setExecStatus('completed');
+      void loadExecutionLogs();
+    });
+
+    const offFailed = ws.on('workflow:error', (data) => {
+      const event = data as {
+        workflowId?: string;
+        executionId?: string;
+        log?: ExecutionLog;
+        error?: { message?: string };
+      };
+      if (event.workflowId !== workflowId) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      if (event.log) {
+        setExecutionLog(event.log);
+        setSelectedExecutionLogId(event.log.id);
+        setExecutionLogs((prev) => [event.log!, ...prev.filter((item) => item.id !== event.log!.id)]);
+      }
+      setWorkflowErrorMessage(typeof event.error?.message === 'string' ? event.error.message : null);
+      setPausedNodeId(null);
+      setPausedReason(null);
+      setPartialExecutionStartNodeId(null);
+      setExecStatus('error');
+      void loadExecutionLogs();
+    });
+
+    return () => {
+      offLog();
+      offPaused();
+      offResumed();
+      offCompleted();
+      offFailed();
+    };
+  }, [getWorkflowWS, loadExecutionLogs, workflowId]);
+
   // ---- Debug ----
   const cleanupDebugListeners = useCallback(() => {
     for (const cleanup of debugCleanupRef.current) cleanup();
