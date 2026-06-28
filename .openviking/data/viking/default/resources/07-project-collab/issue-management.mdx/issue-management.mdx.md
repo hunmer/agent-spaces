@@ -1,0 +1,105 @@
+
+# 议题管理
+
+议题（Issue）是你与 Agent 协作的核心入口。通过创建议题并绑定 `workspace` 类型 Workflow，你可以把需求直接交给 Workflow 执行引擎处理。
+
+## 议题生命周期
+
+一个议题（Issue）有 9 种状态，遵循以下状态机：
+
+| 状态 | 说明 |
+|------|------|
+| `draft` | 刚创建（草稿），等待启动自动化 |
+| `planned` | 已规划，准备启动 Workflow 执行 |
+| `in_progress` | 进行中，Workflow 正在执行 |
+| `review_pending` | 待审查，等待 reviewer 评审 |
+| `changes_requested` | 要求修改，人工或 reviewer 反馈后回到 `planned` 重新处理 |
+| `approved` | 已通过审查 |
+| `completed` | 已完成，Workflow 执行完毕 |
+| `archived` | 已归档 |
+| `error` | 错误，未绑定 Workflow、模板缺失、执行失败、被中断，或重试超过上限 |
+
+典型成功路径：
+
+```text
+draft -> planned -> in_progress -> completed
+```
+
+异常或人工反馈路径：
+
+```text
+changes_requested -> planned -> in_progress -> completed
+planned -> error
+in_progress -> changes_requested
+```
+
+Issue 完成由 Workflow 执行事件驱动：当目标 Workflow 发出 `workflow:completed` 事件时，Issue 会被标记为 `completed`。
+
+## 创建议题
+
+1. 在工作空间中打开议题面板
+2. 点击「新建议题」
+3. 填写标题和描述
+4. 选择 `workspace` Workflow（必选，否则 Issue 无法自动执行）
+5. 如无合适 Workflow，可直接新建，系统会打开 Workflow 编辑器并自动给 Agent 发送建流提示
+
+**写好描述的技巧：**
+- 明确说明需求目标和期望结果
+- 提供必要的上下文信息
+- 如果涉及特定文件或模块，直接说明
+- 如果有参考代码或设计稿，附上链接
+
+## Workflow 驱动执行
+
+议题启动自动化后，系统会：
+
+1. 加载选定的 Workflow 模板
+2. 将 Issue 标题、描述、成员和频道上下文注入 Workflow 输入/上下文
+3. 直接调用 Workflow 执行引擎启动一次 execution
+4. 前端在 Issue 详情中嵌入 Workflow 实时执行视图
+5. Workflow 成功完成后，Issue 自动切换为 `completed`
+
+### 执行状态来源
+
+- `workflow:started` / `workflow:resumed`：Issue 进入 `in_progress`
+- `workflow:paused`：Issue 保持 `in_progress`，但当前 execution 进入暂停
+- `workflow:completed`：Issue 标记为 `completed`
+- `workflow:error`：Issue 标记为 `error`
+
+详见 [Workflow 编辑器](/docs/features/workflow)。
+
+## 议题评论
+
+在议题详情页可以添加评论，支持富文本格式。评论用于：
+
+- 补充需求信息
+- 与 Agent 交互讨论
+- 记录决策和变更
+
+## 失败重试与恢复
+
+Issue 级别保留 `retryCount` / `maxRetries` / `retryPaused`。
+
+### Issue 错误与自动重试
+
+Issue 进入 `error` 后，可重新发起一次 Workflow execution：
+
+- `retryCount < maxRetries`：Issue 清理错误态并重新执行绑定 Workflow
+- `retryCount >= maxRetries`：设置 `retryPaused = true`，停止自动重试
+
+### 手动恢复
+
+- 后端：`POST /api/workspaces/:workspaceId/issues/:issueId/resume`
+- 前端：Issue 详情页在 `error` 状态显示恢复按钮
+- 如果当前 execution 只是 `paused`，恢复会直接继续原 execution；否则会重新发起一次新的 Workflow execution
+
+### 服务器启动恢复
+
+服务器启动时会执行恢复流程（`issue-retry.ts`）：
+
+2. 所有状态为 `in_progress` 的 Issue 被切换为 `error`
+3. 后续由 error issue retry service 继续自动恢复，超过最大重试次数后暂停
+
+## 替代方式：频道聊天
+
+除了通过 Issue + Workflow 自动编排外，你也可以在频道聊天中 @mention Agent 直接触发执行，适合快速下达指令。

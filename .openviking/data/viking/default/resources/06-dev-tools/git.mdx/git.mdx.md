@@ -1,0 +1,92 @@
+
+# Git 操作
+
+Agent Spaces 内置 Git 操作面板，提供可视化的版本管理功能。
+
+## 功能概览
+
+Git 面板分为左右两个可拖拽调整大小的子面板（变更列表 / 提交历史），布局持久化在 localStorage，移动端与桌面端分别记忆：
+
+- **变更状态查看** — 查看当前工作区的文件变更状态（新增/修改/删除/未跟踪）
+- **变更暂存** — 选择文件变更进入暂存区，支持文件级右键菜单
+- **提交** — 填写提交信息并提交，提交对话框支持 `git-prompt`（基于变更生成 commit message 建议）
+- **提交记录** — 查看完整的提交历史、单次提交详情（`commit-diff-viewer`）和提交级 Diff
+- **Diff 查看** — 查看文件/提交的具体变更内容（`diff-viewer`，支持暂存/工作区/历史对比）
+- **丢弃变更** — 通过 `git-discard-dialog` 丢弃工作区改动
+- **.gitignore 管理** — `git-gitignore-dialog` 直接编辑项目的 `.gitignore` 模板
+- **远程仓库设置** — `git-remote-dialog` 管理远程仓库地址
+- **Git 配置** — `git-settings-form` 配置用户名/邮箱等本地 Git 参数
+- **初始化检测** — 工作区未初始化 Git 时显示引导（`git-not-initialized`）
+- **Worktree 并行开发** — 独立分支并行开发，Diff 查看、PR 创建/合并，详见 [Worktree 并行开发](/docs/features/worktree)
+- **Git 操作日志** — 操作审计记录（`git-op-log-dialog`）
+
+## Agent 自动提交
+
+当配置了提交者 Agent 时，Agent 完成代码修改后会：
+
+1. 自动分析所有变更内容
+2. 生成符合 conventional commit 规范的提交信息
+3. 提交代码并推送
+
+提交信息格式示例：
+```
+feat(auth): add user login with email verification
+fix(api): handle null response from user endpoint
+docs(readme): update installation instructions
+```
+
+## Worktree 并行开发
+
+Worktree 基于 Git worktree 机制，允许在同一工作空间内同时开发多个分支：
+
+### 创建 Worktree
+
+1. 在 Worktree 面板点击「创建 Worktree」
+2. 输入分支名称，系统自动创建独立的工作树
+3. 每个 Worktree 关联独立分支，互不干扰
+
+### Diff 查看
+
+选择任意 Worktree，查看与主分支或指定分支的代码差异。
+
+### PR 创建
+
+1. 选择 Worktree 点击「创建 PR」
+2. 系统通过 Pull Request Agent 自动生成 PR 描述
+3. AI 分析代码变更，生成标题和详细描述
+
+### PR 合并
+
+在 Worktree 面板中直接合并 PR 到目标分支。
+
+### WebSocket 事件
+
+- `worktree.created` — Worktree 创建
+- `worktree.deleted` — Worktree 删除
+- `worktree.pr_created` — PR 创建
+- `worktree.merged` — PR 合并
+
+详见 [Worktree 并行开发](/docs/features/worktree)。
+
+## Git 操作日志
+
+系统内置 Git 操作审计日志，记录每次 Git 操作的：
+
+- 操作类型（clone/pull/push/commit/checkout 等）
+- 输入参数和输出结果
+- 操作耗时
+- 操作时间
+
+日志存储在内存中，按工作空间隔离，最多保留 1000 条。
+
+## 工作流建议
+
+推荐的工作方式：
+
+1. Agent 在主分支上创建功能分支
+2. 在功能分支上完成任务
+3. 审核者检查代码变更
+4. 提交者生成 commit 并提交
+5. 合并功能分支回主分支
+
+所有 Git 操作都通过 simple-git 在本地执行，不会直接推送到远程仓库，除非你明确配置了推送行为。

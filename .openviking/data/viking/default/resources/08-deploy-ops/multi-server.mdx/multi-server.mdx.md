@@ -1,0 +1,52 @@
+
+# 多服务器管理
+
+Agent Spaces 前端支持同时配置多个后端服务器实例，并在它们之间快速切换，方便管理不同环境的 Agent 服务。
+
+## 使用场景
+
+- **开发 / 生产隔离** — 开发环境和生产环境使用不同的服务器
+- **团队协作** — 连接团队共享的 Agent Spaces 服务器
+- **多项目管理** — 不同项目使用独立的服务器实例
+- **内网 / 公网切换** — 在本地局域网服务器和远程服务器之间切换
+
+## 工作机制
+
+服务器列表与当前激活服务器存储在浏览器 `localStorage` 中：
+
+| Key | 说明 |
+|-----|------|
+| `agent-spaces-servers` | 服务器配置数组（`id` / `name` / `url` / `secret`） |
+| `agent-spaces-active-server` | 当前激活的服务器 ID |
+| `active-server`（Cookie） | 服务端渲染时读取的激活服务器 URL |
+
+前端所有 API 调用统一通过 `@agent-spaces/sdk` 单例（`packages/web/src/lib/sdk.ts`）。SDK 在**每次调用前**都会通过 `getActiveServerUrl()` 同步 `baseUrl`，因此切换服务器后无需重新加载页面即可生效。
+
+### 默认服务器
+
+未配置任何服务器时，使用一个 `id=default` 的内置服务器，其 URL 按以下优先级解析：
+
+1. 环境变量 `NEXT_PUBLIC_SERVER_URL`
+2. 本地开发场景（`localhost:3000`）→ `http://localhost:3100`
+3. 其他场景 → 当前 `window.location.origin`（与前端同源部署）
+
+可通过构建期设置 `NEXT_PUBLIC_SERVER_URL` 把默认服务器指向固定的后端地址。
+
+## 配置方式
+
+在登录页或服务器切换入口中：
+
+1. 打开服务器选择器
+2. 添加新服务器（输入名称、地址，可选填 Secret Key）
+3. 在多个服务器之间切换；激活状态会写入 `localStorage` 和 Cookie
+
+每个服务器使用独立的 Secret Key 认证（Bearer Token / `x-agent-spaces-key`），切换服务器时如果当前 Token 对目标服务器无效，会触发 `onUnauthorized` 跳回登录页重新认证。
+
+## 数据隔离
+
+不同服务器的工作空间、议题、任务、Agent 配置、聊天频道等数据完全独立，互不影响。服务器列表本身仅保存在当前浏览器，不会跨设备同步。
+
+## 相关文档
+
+- [Docker 部署](/docs/advanced/docker-deployment) — 部署多个独立 Server 实例
+- [Agent SSE API](/docs/advanced/agent-sse-api) — 直连后端的 API 认证方式

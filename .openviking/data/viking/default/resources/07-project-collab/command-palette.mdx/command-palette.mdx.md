@@ -1,0 +1,46 @@
+
+# Command Palette
+
+Command Palette 是 Agent Spaces 的全局快捷面板，通过 `Ctrl+K` 快捷键唤起，支持快速搜索和导航。
+
+## 功能概览
+
+按 `Ctrl+K` 打开 Command Palette，输入关键词即可：
+
+- 搜索工作空间
+- 搜索频道
+- 搜索议题（Issue）
+- 搜索文件
+- 搜索服务器
+- 搜索工作流（Workflow）
+- 执行注册的自定义命令
+
+## 搜索提供者
+
+Command Palette 内置 6 个搜索提供者（`stores/search-commands/` 目录下共 7 个文件：6 个 provider + `types.ts` + `index.ts` 聚合导出），覆盖主要数据类型：
+
+| 搜索类型 | 实现文件 | 说明 |
+|----------|----------|------|
+| 工作空间搜索 | `workspace-search.ts` | 按名称搜索已创建的工作空间 |
+| 频道搜索 | `channel-search.ts` | 搜索当前工作空间下的频道 |
+| 议题搜索 | `issue-search.ts` | 按标题搜索议题 |
+| 文件搜索 | `file-search.ts` | 搜索当前工作空间的文件 |
+| 服务器搜索 | `server-search.ts` | 搜索已配置的后端服务器 |
+| 工作流搜索 | `workflow-search.ts` | 搜索工作流 |
+
+每个 provider 有 `prefix` 和 `aliases`，`matchProvider(input)` 通过 `prefix + ' '` 或 `alias + ' '` 匹配输入，匹配到的 provider 负责返回该类型的结果。搜索结果实时显示，点击即可跳转到对应页面。
+
+## 自定义命令
+
+除了搜索功能外，Command Palette 还支持注册自定义命令：
+
+- 其他组件可以通过 `useCommandPalette` store 注册命令
+- 命令可以绑定快捷键或操作
+- 命令按分组展示
+
+## 技术实现
+
+- 基于 [cmdk](https://cmdk.paco.me/) 组件库
+- 使用 `useCommandPalette` Zustand store 管理状态
+- 搜索提供者在 `stores/search-commands/` 目录下实现
+- 通过 shadcn/ui 的 `Command` 组件渲染界面

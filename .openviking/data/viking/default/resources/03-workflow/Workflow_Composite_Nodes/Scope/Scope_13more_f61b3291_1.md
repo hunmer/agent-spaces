@@ -1,0 +1,283 @@
+# Scope
+
+本文单独研究 workflow 里的 composite node，重点是：
+
+- `loop`
+- `loop_body`
+- `sub_workflow`
+
+关注它们如何在 shared 类型层描述、如何在前端创建和布局、以及如何在服务端执行时形成独立 scope 或嵌套 workflow。
+
+## Main Responsibilities
+
+- 用 `compound` / `composite` 元数据表达复合节点结构。
+- 在创建节点时自动生成隐藏子节点、锁定边和 scope boundary。
+- 在画布中维护复合节点的布局、连接与删除语义。
+- 在执行时把 loop body 或 sub workflow 变成局部执行图。
+
+## Composite Model
+
+shared 类型定义在 `packages/shared/src/types/workflow.ts`：
+
+- `WorkflowNode.composite`
+  - `rootId`
+  - `parentId`
+  - `role`
+  - `generated`
+  - `hidden`
+  - `scopeBoundary`
+- `WorkflowEdge.composite`
+  - `rootId`
+  - `parentId`
+  - `generated`
+  - `hidden`
+  - `locked`
+- `NodeTypeDefinition.compound`
+  - `rootRole`
+  - `children`
+  - `edges`
+
+这说明 composite node 不是“一个 node 内嵌一份 JSON”这么简单，而是：
+
+> 创建时会展开成多节点、多边，再依赖 `composite` 元数据维持它们属于同一复合结构。
+
+## Shared Utilities
+
+shared 层核心文件：
+
+- `packages/shared/src/types/workflow-composite.ts`
+- `packages/shared/src/types/workflow-node-factory.ts`
+
+`workflow-composite.ts` 提供稳定语义：
+
+- loop 常量
+  - `LOOP_NODE_TYPE`
+  - `LOOP_BODY_NODE_TYPE`
+  - `LOOP_BREAK_NODE_TYPE`
+  - `LOOP_ROOT_ROLE`
+  - `LOOP_BODY_ROLE`
+  - `LOOP_BODY_SOURCE_HANDLE`
+  - `LOOP_NEXT_SOURCE_HANDLE`
+- 复合树遍历
+  - `getCompositeRootId()`
+  - `getCompositeParentId()`
+  - `findCompositeChildren()`
+  - `findCompositeChildByRole()`
+  - `getNearestScopeAnchorId()`
+  - `getNodesForExecutionScope()`
+- embedded workflow 默认边界
+  - `createDefaultEmbeddedWorkflow()`
+  - `normalizeEmbeddedWorkflow()`
+
+## Node Factory Expansion
+
+`packages/shared/src/types/workflow-node-factory.ts` 是 composite node 的真正创建入口。
+
+执行逻辑：
+
+```text
+createWorkflowNodesForDefinition()
+  -> 读取 NodeTypeDefinition
+  -> 如果没有 compound
+     -> 只创建 root node
+  -> 如果有 compound
+     -> 按 children 生成 root + child nodes
+     -> 写入 composite.role / rootId / parentId
+     -> 按 edges 生成 generated edges
+     -> 如果存在 loop_body
+        -> 额外生成隐藏/锁定的边界 start/end 节点
+        -> 同步 scope boundary 布局
+```
+
+对 loop 而言，这个工厂会额外做两件事：
+
+- 在 `loop_body` 内部自动生成 start/end 边界节点
+- 自动生成隐藏且锁定的 entry edge
+
+因此 loop 的运行图不是用户肉眼看到的单一节点，而是一套展开后的局部子图。
+
+## Frontend Definition: Loop
+
+`packages/web/src/lib/workflow-nodes/definitions/flow-control.ts` 中的 `loop` definition 使用了 `compound`：
+
+- root role：`loop`
+- child：
+  - `loop`
+  - `loop_body`
+- child edge：
+  - `loop -> loop_body`
+- `loop_body` 被标记为 `scopeBoundary: true`
+
+这决定了：
+
+- loop 创建时自动带 body 容器
+- body 作为一个真正的 scope anchor 出现在执行模型中
+- body 内部节点与外部节点的连接语义必须特殊处理
+
+另外：
+
+- `loop_body` 本身 `manualCreate: false`
+- `debuggable: false`
+
+说明它不是面向用户直接创建的普通节点，而是复合节点内部的结构节点。
+
+## Frontend Creation And Layout
+
+前端创建 composite node 的实际入口不在简单 Zustand `addNode()`，而在：
+
+- `packages/web/src/components/workflow/workflow-canvas-utils.ts`
+- `packages/web/src/components/workflow/use-workflow-node-operations.ts`
+
+调用链：
+
+```text
+node select / edge insert / connection drop
+  -> use-workflow-node-operations.ts
+  -> createNodesForDefinition(...)
+  -> shared createWorkflowNodesForDefinition(...)
+  -> 返回 rootNode + generated child nodes + generated edges
+  -> 写入 workflow.nodes / workflow.edges
+```
+
+如果当前插入位置位于 scope 内：
+
+- `getInsertScopeNode()` 会决定把新节点挂到哪个 scope 下
+- `syncScopeBoundaryLayout()` 会重新计算 boundary 容器尺寸
+
+这解释了为什么 loop body 会随着内部节点变化自动扩缩。
+
+## Canvas Rules For Composite Nodes
+
+前端画布相关逻辑分散在：
+
+- `workflow-canvas-utils.ts`
+- `use-workflow-edge-operations.ts`
+- `use-workflow-canvas-data.ts`
+
+已验证的规则：
+
+- generated / hidden / locked edge 不按普通 edge 对待
+- scope boundary 节点不能当普通节点处理
+- 删除 root node 时要连带清理整个 composite 结构
+- loop body 内部节点的 rootId / parentId 需要持续归一化
+- loop 的 `loop_next` handle 影响后继边走向
+- 执行日志展示时 loop 节点需要按 iteration 聚合显示
+
+结论：
+
+> composite node 改动会同时影响创建、拖拽、连接、删除、日志和预览，不能只改 definition。
+
+## Loop Execution Model
+
+服务端执行入口在 `packages/server/src/services/execution-manager.ts`。
+
+主链：
+
+```text
+dispatchNode()
+  -> case 'loop'
+  -> executeLoopNode()
+  -> resolveLoopIterations()
+  -> executeLoopIteration()
+  -> executeLoopBody()
+  -> executeScopedBody() or executeEmbeddedWorkflow()
+```
+
+`executeLoopNode()` 的关键点：
+
+- 支持 `count` / item list / infinite 等多种迭代来源
+- 支持 `concurrency`
+- 初始化 shared vars
+- 每轮都会创建 `LoopExecutionFrame`
+  - `loopNodeId`
+  - `bodyAnchorId`
+  - `variables`
+  - `metadata.index/count/item/isFirst/isLast`
+- 用并发窗口调度迭代
+- 迭代结果最终合成为 `items`
+
+这说明 loop 不是简单 `for` 循环，而是带上下文帧与并发窗口的局部执行器。
+
+## Scoped Body Execution
+
+`executeLoopBody()` 有两条路径：
+
+1. 优先取 `getNodesForExecutionScope(session.nodes, bodyNode.id)`  
+   - 如果 body scope 内有节点，走 `executeScopedBody()`
+2. 如果 bodyNode.data 里带 `bodyWorkflow`  
+   - 走 `executeEmbeddedWorkflow()`
+
+`executeScopedBody()` 做的事：
+
+- 只保留 body scope 内的 runtime edges
+- 过滤掉 `loop_next` 边
+- 建局部 adjacency
+- 从 bodyNode 向下执行分支
+- 如果找到已产生输出的 `end` 节点，返回它的输出
+
+这意味着 loop body 可以有两种表达：
+
+- scope 内直接摆节点
+- 用 embedded workflow 数据驱动
+
+## Sub Workflow Execution
+
+`sub_workflow` 的执行实现比 loop 简单，但也是真正的嵌套执行。
+
+调用链：
+
+```text
+dispatchNode()
+  -> case 'sub_workflow'
+  -> executeSubWorkflow()
+  -> workflowStore.getWorkflow(workflowId)
+  -> executeEmbeddedWorkflow()
+```
+
+已验证的约束：
+
+- `workflowId` 必填
+- 不允许调用自己
+- 目标 workflow 不存在直接报错
+- 输入来自 `inputFields`
+
+`executeEmbeddedWorkflow()` 的特点：
+
+- 克隆目标 workflow 的 nodes / edges
+- 找 `start` 节点作为入口
+- 把传入 input 写入 start 节点的执行数据
+- 复用当前大 session 的 `executeNode()` / `executeDownstreamBranches()`
+
+关键结论：
+
+> sub_workflow 不是新开一个独立 session，而是在当前 session 里临时执行一张嵌套图。
+
+## Embedded Editor Path
+
+前端 `sub_workflow` 还有一条编辑路径：
+
+- `packages/web/src/components/workflow/workflow-embedded-editor.tsx`
+
+行为：
+
+- `subWorkflowId` 为空时直接创建一个新 workflow 实体
+- 默认只塞 start/end 两个边界节点
+- 在弹窗里用独立 ReactFlow 编辑
+- 保存后把返回的 workflow id 回填给父节点
+
+因此 `sub_workflow` 不是把子图内联在当前节点的 `data` 里，而是引用另一份独立 workflow 实体。
+
+## Files To Read Next
+
+- `packages/shared/src/types/workflow-node-factory.ts`
+  - composite node 展开与 loop boundary 自动生成
+- `packages/shared/src/types/workflow-composite.ts`
+  - 复合树遍历和 scope 语义
+- `packages/web/src/lib/workflow-nodes/definitions/flow-control.ts`
+  - loop / loop_body 的定义
+- `packages/web/src/components/workflow/workflow-canvas-utils.ts`
+  - scope 布局和 composite 修正
+- `packages/server/src/services/execution-manager.ts`
+  - loop/sub_workflow 的真实执行路径
+- `packages/web/src/components/workflow/workflow-embedded-editor.tsx`
+  - sub workflow 编辑模式

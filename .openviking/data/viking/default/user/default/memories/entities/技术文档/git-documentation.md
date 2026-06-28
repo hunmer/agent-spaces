@@ -1,0 +1,10 @@
+该目录包含Agent Spaces内置Git操作面板的参考文档，主要介绍其功能与使用方式。文档涵盖功能概览（变更状态查看、暂存、提交、历史记录等）、Agent自动提交（自动分析变更并生成规范commit信息）、Worktree并行开发（多分支独立开发与PR管理）、Git操作日志（审计记录）及推荐工作流。核心内容包括可视化版本管理、Agent自动提交、Worktree机制、操作审计及本地Git操作面板。
+
+<!-- MEMORY_FIELDS
+{
+  "category": "技术文档",
+  "name": "git-documentation",
+  "user_id": "default",
+  "memory_type": "entities"
+}
+-->

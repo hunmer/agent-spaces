@@ -1,0 +1,101 @@
+
+# 用量统计与订阅管理
+
+Agent Spaces 内置用量统计仪表盘和订阅余额面板，帮助你了解 Agent 的 Token 消耗、费用情况和服务余额。
+
+## 首页仪表盘
+
+登录后首页通过顶部 `ExpandableTabs` 切换两个 Tab：
+
+- **Agent** — 用量仪表盘（`UsageDashboard`），包含用量统计与订阅余额面板
+- **Workflow** — Workflow 执行面板（`WorkflowExecutionPanel`），查看工作流执行情况
+
+用量仪表盘通过 `sdk.agent.usageDashboard(days)` 拉取数据，支持周期选择（7d / 30d / 自定义范围）。
+
+### 趋势图表
+
+- **Token 消耗趋势** — 按天/周/月查看 Token 使用量变化
+- **费用趋势** — 估算费用随时间的变化曲线
+- **Agent 活跃度** — 各 Agent 的执行频率统计
+
+### 模型统计
+
+按 AI 模型分类展示：
+
+- 每个模型的 Token 消耗量
+- 每个模型的估算费用
+- 调用次数统计
+- 模型图标和名称展示
+
+### 数据表格
+
+详细的用量数据表格，支持：
+
+- 按日期范围筛选（默认 30 天）
+- 按模型分组查看
+- 导出数据
+
+## 费用估算
+
+系统根据各模型的定价自动估算费用。费用计算基于：
+
+- 输入 Token 数量
+- 输出 Token 数量
+- 模型的单位价格（可在 LLM 管理中配置 `LLMModelCost`）
+
+费用来源优先级：
+
+1. 运行时提供的原始 `costUsd`
+2. LLM 模型配置中的 `LLMModelCost`
+3. 内置模型族估算表
+4. 默认估算值
+
+## 订阅余额面板
+
+首页展示各 AI 服务供应商的余额和配额信息。后端在 `services/subscription/` 下实现三个 provider，统一通过 `fetchQuota(config)` 查询：
+
+### 支持的供应商
+
+| 供应商 | 查询内容 |
+|--------|----------|
+| 智谱（ZhiPu） | API 配额使用情况（limits 数组，含 usage / remaining / percentage / nextResetTime / 按模型 usageDetails） |
+| MiniMax | Coding Plan 配额（按模型 `MiniMax-M*`、`coding-plan-vlm`、`coding-plan-search` 的剩余次数和重置时间） |
+| AI Code | 账户余额（balance + bonusBalance，通过 Cookie 认证访问 aicodemirror.com 钱包接口） |
+
+### 配置订阅
+
+1. 在首页订阅面板点击编辑按钮
+2. 选择供应商类型
+3. 填写认证信息（Headers / Cookie 等）
+4. 保存后通过 `sdk.subscription.list()` 拉取配置，并并发调用各 provider 的 `fetchQuota` 查询余额
+
+### 配额信息展示
+
+每个供应商展示：
+
+- 当前使用量和剩余额度
+- 使用百分比进度条
+- 下次重置时间（如有）
+- 详细使用明细（智谱按模型拆分）
+
+## 数据来源
+
+每次 Agent 执行任务时，系统自动记录：
+
+- 执行的 Agent 名称和角色
+- 使用的模型
+- 输入/输出 Token 数
+- 执行时间
+- 估算费用
+
+这些数据存储在本地 SQLite 数据库（`~/.agent-spaces-data/agents/agents.sqlite`）中，不会上传到外部服务。
+
+## API 参考
+
+获取 Dashboard 数据：
+
+```
+GET /api/agents/usage/dashboard?days=30
+```
+
+返回聚合数据包括：总量统计、按天趋势、按模型分布、最近记录。

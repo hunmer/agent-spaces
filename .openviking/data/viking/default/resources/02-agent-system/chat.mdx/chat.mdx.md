@@ -1,0 +1,122 @@
+
+# 频道聊天
+
+频道是工作空间内的沟通中心，你可以在这里与 Agent 进行对话。频道类型包括 `general` / `issue` / `agent` / `mini-apps`，issue 类型的频道会关联到具体议题（`issueId`）。
+
+## Chat 独立页
+
+除了工作空间内的聊天侧边栏，Agent Spaces 还提供独立的 Chat 页面，路由为 `/chat`（`packages/web/src/app/chat/page.tsx`），适合全屏沉浸式对话场景。
+
+## 频道与消息
+
+每个工作空间包含多个频道，频道内可以发送消息、@mention Agent。频道支持 `pinnedMentionId`、草稿（`draft`）、待办列表（`todos`）以及 `notifyOnComplete`（控制 Agent 回复完成是否触发通知）等能力。
+
+### 富文本编辑
+
+消息编辑器基于 TipTap 富文本引擎，支持：
+
+- **Markdown 格式** — 代码块、加粗、列表等
+- **@mention** — 输入 `@` 触发 Agent 选择器，mention Agent 后会触发其执行
+- **代码块** — 插入代码片段，支持语法高亮
+
+### 语音识别输入
+
+消息编辑器集成语音识别功能，支持通过语音输入消息内容：
+
+1. 点击输入框旁的麦克风按钮
+2. 开始说话，系统通过 WebSocket 实时传输音频到后端
+3. 识别结果实时回显到输入框
+4. 再次点击停止录音
+
+语音识别基于腾讯语音实时识别服务，通过 `useSpeechRecognition` Hook 集成。需在设置页配置腾讯语音凭证后使用。
+
+### 消息类型
+
+频道中的消息包含多种类型：
+
+- 用户发送的文本消息
+- Agent 的回复消息
+- Agent 执行任务的进度更新
+- 系统通知
+
+## @mention 触发 Agent
+
+在消息中输入 `@` 即可触发 Agent 选择器。选择 Agent 后：
+
+1. 发送消息，被 mention 的 Agent 自动唤醒
+2. Agent 根据消息内容执行相应操作
+3. 执行结果在频道中实时展示
+
+这种方式适合快速给 Agent 下达指令，不需要创建正式的议题。
+
+### Agent 提问交互
+
+Agent 在执行过程中可以向你提问（AskUserQuestion）：
+
+- Agent 发送包含选项的问题
+- 你选择答案后，Agent 继续执行
+- 适用于需要确认操作或选择方案的场景
+
+## AI 消息渲染
+
+Agent 的回复消息采用结构化渲染，由后端 `runMentionedAgent()`（`packages/server/src/ws/handler.ts`）通过 `buildAgentMessageParts()` 把 runtime 实时输出累加为 `parts`，并通过 `channel.message.updated` 事件节流广播（约 120ms）：
+
+- **工具调用链（chain）** — 统一 chain 容器，按 runtime 输出顺序包含 AI 中间消息 step（`kind: "message"`）和工具调用 step（`kind: "tool"`）
+- **工具详情懒加载** — chain item 只保存 `detailId`，展开时再查询 `GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:detailId`。详情包含 `input` / `output` / `raw`，Edit/MultiEdit 用 `diff-viewer.tsx` 渲染 diff，JSON 详情用只读 Monaco 渲染
+- **中间输出** — chain 内的 AI message step 展示推理和中间结论
+- **思考过程（reasoning）** — 初始化/兼容用思考状态，可带 `streaming` / `completed` 状态
+- **子 Agent（subagent）** — 仅当 Agent 内部主动调用 Task/subagent 工具时生成；普通用户 `@` 触发的主 Agent 不生成 subagent part
+- **Token 使用量（context）** — 每条消息的 input/output Token 统计（`MessageTokenUsage`）
+- **权限确认（confirmation）** — 工具权限确认请求
+- **终端输出（terminal）** — Bash / 命令输出
+- **Agent 提问（ask_user_question）** — Agent 向用户提问，回复后 Agent 继续
+- **最终结论（text）** — 最后一段连续的非工具 AI 输出合并为最终 Markdown
+
+### MessagePart 类型
+
+消息渲染通过 `MessagePart` 系统实现（`packages/shared/src/types/channel.ts`），共 10 种类型：
+
+| type | 说明 |
+|------|------|
+| `text` | 最终结论文本 |
+| `user_message` | 用户消息（带 senderName） |
+| `reasoning` | 思考过程 |
+| `chain` | 统一 chain 容器（含 chains 数组） |
+| `terminal` | 命令和终端输出 |
+| `error` | 错误消息 |
+| `confirmation` | 工具权限确认请求 |
+| `context` | 上下文窗口和 token 使用 |
+| `subagent` | Agent 自主调用的子 agent |
+| `ask_user_question` | Agent 向用户提问 |
+
+### @agent 上下文历史
+
+`runMentionedAgent()` 会从当前频道读取最近 20 条消息作为历史上下文。历史只包含用户消息文本和 Agent 消息的 final message（`parts` 中 `type: "text"` 的内容），不传入完整结构化 transcript、原始 tool call / tool result。
+
+### 消息状态语义
+
+`Message.status` 当前语义：`pending`（已创建未产出） / `streaming`（Agent 运行中持续更新 parts） / `waiting_for_user`（Agent 调用 AskUserQuestion 等待回复） / `completed`（成功） / `error`（失败）。
+
+## 回复 AI 消息
+
+回复某条 AI 消息时，系统不是简单再发一条新消息，而是把这次用户回复挂到父消息下，并继续在父消息主体上追加新一轮 Agent 输出。
+
+### 交互方式
+
+- 用户在消息 hover 区点击回复按钮。
+- 输入框顶部进入“回复给某条消息”的状态。
+- 发送后，这条用户回复写进父消息的 `replies`，不会出现在主消息时间线里。
+- 父消息主体继续追加新的 `user_message`、reasoning、tool calls 和最终文本。
+
+### 服务端续跑
+
+当 `channel.message` 带 `replyToMessageId` 时，后端会先把回复追加到父消息，再以父消息的发送者作为续跑目标 Agent，继续调用 `runMentionedAgent()`，并把输出写回原父消息，而不是新建一条 AI 消息。
+
+### Runtime Session 续接
+
+若父消息 `metadata.runtimeSessionId` 存在，且底层 runtime 为 `claude-code` 或 `codex`，回复时会优先恢复原 session/thread：
+
+- `claude-code` 使用原 `session_id`
+- `codex` 使用原 `thread_id`
+
+这样可以复用原来的工具上下文和已读文件状态，避免每次回复都重新构造完整上下文。若 runtime 不支持续接，系统会退化为基于当前频道历史重新构造 prompt，但仍继续写回父消息。

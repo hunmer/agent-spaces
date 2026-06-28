@@ -1,0 +1,10 @@
+这是一个关于Agent SSE API的参考文档资源，主要介绍如何通过HTTP Server-Sent Events接口触发Agent执行。文档详细说明了接口地址、认证方式、请求参数、响应格式和使用示例，适用于外部集成、CI/CD管道和API测试场景。该API支持实时流式输出，允许开发者构建自动化工具和集成解决方案。目标受众为需要集成Agent功能的开发者，需具备HTTP API和SSE基础知识。
+
+<!-- MEMORY_FIELDS
+{
+  "category": "技术文档",
+  "name": "agent-sse-api.mdx",
+  "user_id": "default",
+  "memory_type": "entities"
+}
+-->

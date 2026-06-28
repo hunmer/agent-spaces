@@ -1,0 +1,172 @@
+
+# 项目设置与独立设置页
+
+Agent Spaces 提供工作空间级别的项目设置和全局独立设置页，用于配置各类参数。
+
+## 项目设置（工作空间级）
+
+每个工作空间都有独立的项目设置面板：
+
+### Prompt 配置
+
+为工作空间设置自定义系统提示词，影响该工作空间下所有 Agent 的行为：
+
+- **工作空间描述** — 介绍项目的基本信息、技术栈、目录结构
+- **编码规范** — 指定代码风格、命名规则等
+- **特殊指令** — Agent 需要遵守的额外规则
+
+这些提示词会自动注入到 Agent 的上下文中（通过 `persistent-agent-context.ts` 自动加载 CLAUDE.md/AGENTS.md），指导 Agent 更好地理解和修改代码。
+
+### 通知配置
+
+配置工作空间级别的通知服务：
+
+- 选择通知渠道（飞书/企业微信/Native）
+- 填写应用凭证或引用 Robot Account
+- 测试连通性
+- 选择需要通知的事件类型
+- 配置 Bot Agent 绑定
+
+详见 [通知中心](/docs/features/notifications)。
+
+### Agent 配置
+
+管理工作空间下的 Agent 预设：
+
+- 添加、编辑、删除 Agent 预设
+- 配置角色（agent / scheduler / task_creator / bot + 自定义）
+- 选择运行时（Claude Code / Codex / Open Agent SDK / LangChain / Hermes / Oh-My-Pi，共 6 种）
+- 设置模型和 API Key
+- 自定义系统提示词
+- 配置权限模式（自动批准、需确认等）
+- 设置 MCP 工具和技能
+- 配置输出风格（OutputStyle）
+- 导入/导出预设配置
+
+### LLM 管理
+
+配置可用的 AI 模型：
+
+- 添加自定义模型端点
+- 设置模型名称和 API 地址
+- 配置模型单价（用于费用估算）
+- 测试模型连通性
+- 配置模型成本（inputPerMillion / outputPerMillion）
+
+### 语音识别配置
+
+配置语音识别服务：
+
+- 选择供应商（当前支持腾讯语音）
+- 填写 API 凭证（AppId、SecretId、SecretKey）
+- 保存后即可在聊天输入中使用语音识别
+
+### Git 配置
+
+配置工作空间级别的 Git 设置：
+
+- Git 用户名和邮箱
+- 推送行为配置
+
+### Robot Accounts Tab
+
+管理工作空间的 Robot Account 凭证引用：
+
+- 引用已创建的 Robot Account
+- 查看凭证状态
+- 企微 QR Code 扫码创建新凭证
+
+### 语言设置
+
+在设置面板中切换界面语言：
+
+- **中文（简体）** — 默认语言
+- **English** — 英文界面
+
+切换语言即时生效，影响所有界面文本。i18n 基于 next-intl，按 34 个命名空间拆分（中/英各一份，位于 `src/locales/{en,zh}/*.json`）。
+
+## 独立设置页
+
+除了工作空间内的项目设置外，Agent Spaces 还提供全局独立设置页，可通过 `/settings` 路由访问：
+
+### Agent 预设管理（/settings/agents）
+
+管理工作空间级别的 Agent 预设列表，支持创建、编辑、删除和测试连接。
+
+### 技能管理（/settings/skills）
+
+全局技能的 CRUD 管理：
+
+- 查看所有已注册的技能
+- 导入新技能文件
+- 同步技能状态
+- 编辑或删除已有技能
+
+### MCP 配置（/settings/mcps）
+
+全局 MCP（Model Context Protocol）配置管理：
+
+- 查看所有已注册的 MCP 配置
+- 导入新 MCP 配置
+- 编辑或删除已有配置
+
+### LLM 模型管理（/settings/models）
+
+全局 LLM 模型配置：
+
+- 添加和管理模型
+- 配置模型成本
+- 设置模型参数
+
+### LLM 供应商管理（/settings/providers）
+
+全局 LLM 供应商配置：
+
+- 添加和管理供应商
+- 配置 API 端点和凭证
+- 测试连接
+
+### Prompt 模板管理（/settings/prompts）
+
+Prompt 模板的 CRUD 管理：
+
+- 创建、编辑、删除 Prompt 模板
+- 每个模板包含名称和内容
+- 批量应用到多个 Agent 预设
+
+### 输出风格管理（/settings/output-styles）
+
+输出风格模板的管理：
+
+- 创建、编辑、删除输出风格模板（Markdown 格式）
+- 按工作空间持久化存储
+- Agent 运行时自动注入到 systemPrompt
+
+详见 [输出风格管理](/docs/features/output-styles)。
+
+### Hook 管理（/settings/hooks）
+
+Hook 的 CRUD 管理：
+
+- 创建、编辑、删除 Hook
+- 支持 `command` / `webhook` / `script` 三种动作类型（`HookRule.type`）
+- 配置触发事件（`ClaudeHookEventName`，共 24 种，如 `PreToolUse` / `PostToolUse` / `SessionStart` / `Stop` / `Notification` / `SubagentStart` 等）
+- 上传 `.hook.json` 文件
+- Monaco 编辑器编辑 Hook 配置
+
+详见 [Hook 系统](/docs/features/hooks)。
+
+### 工具管理（/settings/tools）
+
+Agent Function Call 工具的管理页面。
+
+## 全局 Git 配置
+
+通过 API 设置全局 Git 配置（用户名、邮箱等），所有工作空间共享。
+
+```
+GET /api/git-config    # 获取当前配置
+POST /api/git-config   # 更新配置
+```
+
+详见 [安装部署](/docs/getting-started/installation) 了解项目的技术栈详情。

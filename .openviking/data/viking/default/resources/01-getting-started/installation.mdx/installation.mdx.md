@@ -1,0 +1,107 @@
+
+# 安装部署
+
+## 桌面/移动客户端
+
+基于 Flutter 构建的原生多平台客户端（桌面端 + 移动端），核心定位是 WebView 壳 + 原生能力桥接（SSH 终端、多协议文件源 SFTP/FTP/WebDAV、原生通知、内网服务器发现等）。前往 [GitHub Release](https://github.com/hunmer/agent-spaces/releases) 下载对应平台的安装包。
+
+## 自部署
+
+### 环境要求
+
+在开始之前，确保你的系统已安装：
+
+- **Node.js** >= 20
+- **pnpm** >= 9
+- **Git**
+
+### 快速安装（推荐）
+
+一行命令安装并启动：
+
+```bash
+npm i @agent-spaces/server -g -registry https://registry.npmmirror.com
+agent-spaces-server
+```
+
+启动后访问 http://localhost:3100 ，使用你设置的 Secret Key 登录。
+
+## 从源码安装
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/hunmer/agent-spaces.git
+cd agent-spaces
+```
+
+### 2. 安装依赖
+
+```bash
+pnpm install
+```
+
+### 3. 启动服务
+
+```bash
+pnpm dev
+```
+
+启动后：
+
+- **后端服务**：http://localhost:3100
+- **前端页面**：http://localhost:3000
+
+打开浏览器访问 `http://localhost:3000` ，使用你设置的 Secret Key 登录。
+
+### 4. 生产包部署
+
+```bash
+# 本机或 CI 构建
+pnpm build
+
+# 将 packages/server/dist 上传到服务器后，在 dist 目录内执行
+npm run setup
+npm run start
+```
+
+生产包会在 `npm run setup` 时安装运行依赖；`npm run start` 会在 `PORT` 指定端口启动 API、WebSocket 和已打包的前端页面。
+
+## 环境变量参考
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `PORT` | `3100` | 后端服务端口 |
+| `HOST` | `0.0.0.0` | 后端监听地址 |
+| `AGENT_SPACES_DATA_DIR` | `~/.agent-spaces-data` | 数据存储目录 |
+| `ANTHROPIC_API_KEY` | - | ClaudeCodeRuntime 使用的 API Key |
+| `ANTHROPIC_BASE_URL` | - | ClaudeCodeRuntime 使用的 API Base URL |
+| `CLAUDE_CODE_MODEL` | - | Claude Code SDK 覆盖模型名（仅 Anthropic Bridge 模式） |
+| `NEXT_PUBLIC_WS_PORT` | `3100` | WebSocket 连接端口 |
+| `CODEX_API_KEY` / `OPENAI_API_KEY` | - | CodexRuntime 使用的 API Key |
+| `CODEX_HOME` | - | Codex 配置目录 |
+| `SERVER_URL` | `http://localhost:3100` | 前端 SSR 时连接后端的 URL |
+
+## Docker 部署
+
+```bash
+pnpm build:docker
+```
+
+## 常见问题
+
+### 端口被占用
+
+修改 `PORT` 环境变量指定其他端口，同时设置 `NEXT_PUBLIC_WS_PORT` 为相同值。
+
+### pnpm install 失败
+
+确保 Node.js 版本 >= 20，pnpm 版本 >= 9。可以用 `node -v` 和 `pnpm -v` 检查版本。
+
+### 登录失败
+
+检查 `~/.agent-spaces-data/auth.json` 中的 `secretKey` 是否与登录时输入的一致。
+
+### Claude Code 部署注意
+
+由于 Claude Code 对 root/sudo 权限和 `/root` 目录有安全限制，工程目录尽量不要放在 `/root` 下。建议部署到普通用户可读写的目录，例如 `/home/agent-spaces/app` 或 `/opt/agent-spaces` 并将目录 owner 设置为运行用户。

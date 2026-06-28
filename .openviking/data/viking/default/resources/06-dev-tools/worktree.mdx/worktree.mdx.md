@@ -1,0 +1,89 @@
+
+# Worktree 并行开发
+
+Worktree 基于 Git worktree 机制，允许你在一个工作空间内同时开发多个功能分支，互不干扰。
+
+## 核心概念
+
+Worktree 将一个 Git 仓库的多个分支 checkout 到不同的目录，每个目录都是独立的工作区。Agent Spaces 为每个 Worktree 创建独立的子工作空间。
+
+每个 Worktree 携带以下信息：
+
+- `id` / `workspaceId`（父 workspace）/ `name` / `branch` / `path`
+- 可选关联：`agentId`（Agent preset）、`issueId`、`taskId`
+- `prUrl`（创建 PR 后填充）
+- `status`：`active` | `merged` | `deleted`
+
+## 创建 Worktree
+
+1. 在工作空间底部 Worktree 面板点击「创建 Worktree」
+2. 输入分支名称（可选关联 Agent preset、Issue、Task）
+3. 系统执行 `git worktree add`，并自动解决分支名冲突（`test` → `test-2` → `test-3`）
+4. 同时为 Worktree 写入虚拟 workspace.json，使其拥有独立的文件状态、Git 状态、频道、Agent 等
+
+创建后，Worktree 会以卡片形式出现在面板中，显示分支名称、状态徽标和操作按钮。切换 Worktree 即跳转到 `/workspace/{wtId}`。
+
+## Diff 查看
+
+选择任意 Worktree，查看与主分支或其他分支的代码差异：
+
+- 文件级别的变更列表
+- 行级别的 diff 对比
+- 支持选择对比基准分支
+
+## PR 创建
+
+1. 选择 Worktree 点击「创建 PR」（要求该分支相对默认分支已有提交）
+2. 系统执行 `git push -u origin <branch>`，再通过 `gh pr create --base <默认分支> --head <分支>` 创建
+3. Pull Request Agent 自动分析代码变更，生成 PR 标题和详细描述
+4. 创建成功后 PR 链接回写到 Worktree 信息，卡片切换到「有 PR」状态
+
+## PR 合并
+
+在 Worktree 面板中直接合并 PR：
+
+- 点击「合并」执行 `gh pr merge <url> --merge`
+- 合并后自动清理：`git worktree remove`、`git branch -d <branch>`、删除虚拟 workspace.json
+- Worktree 状态置为 `merged`
+- 自动跳回父工作空间
+
+## 删除 Worktree
+
+不再需要的 Worktree 可以删除：
+
+1. 在卡片点击删除按钮
+2. 确认删除操作
+3. 系统清理 Worktree 物理目录、关联分支与虚拟 workspace 数据；存在未提交变更时使用 `git worktree remove --force`
+
+## WebSocket 事件
+
+Worktree 相关事件通过 WebSocket 实时推送：
+
+- `worktree.created` — Worktree 创建成功
+- `worktree.deleted` — Worktree 删除
+- `worktree.pr_created` — PR 创建成功
+- `worktree.merged` — PR 合并完成
+
+## 子工作空间
+
+Worktree 创建后会作为父工作空间的子工作空间存在（虚拟 Workspace，`isWorktree: true`）：
+
+- `isWorktree` 标识为 Worktree 子空间
+- `parentWorkspaceId` 指向父工作空间
+- 拥有独立的文件状态、Git 状态、分支、频道与 Agent
+- 在侧边栏 workspace 列表和 Tab 中通过 `ws.isWorktree` 过滤隐藏，避免污染导航
+
+> Worktree 不是独立 workspace 实体，而是父 workspace 的子资源。在 Worktree 内部打开底部面板时，会自动解析到父 workspace 加载同一份 Worktree 列表，保证主空间与子空间看到的数据一致。
+
+## API 参考
+
+```
+GET  /api/workspaces/:id/worktrees           # 列出 Worktree
+POST /api/workspaces/:id/worktrees           # 创建 Worktree
+DELETE /api/workspaces/:id/worktrees/:wtId   # 删除 Worktree
+GET  /api/workspaces/:id/worktrees/:wtId/diff # 查看 Diff
+GET  /api/workspaces/:id/worktrees/:wtId/pr   # 查看 PR 信息
+POST /api/workspaces/:id/worktrees/:wtId/pr   # 创建 PR
+GET  /api/workspaces/:id/worktrees/:wtId/pr-draft # AI PR 草稿
+POST /api/workspaces/:id/worktrees/:wtId/merge    # 合并 PR
+```

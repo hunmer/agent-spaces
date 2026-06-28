@@ -1,0 +1,132 @@
+
+# Workflow 编辑器
+
+Workflow 是 Agent Spaces 的核心编排机制。通过可视化 DAG 编辑器（基于 @xyflow/react），你可以拖拽节点、连线定义执行依赖，灵活编排 Agent 与各类操作的执行流程。
+
+## 什么是 Workflow？
+
+Workflow 是一个有向无环图（DAG）模板，定义了节点之间的执行顺序和依赖关系。每个节点可以是一个 Agent 执行单元（绑定具体 Agent 预设），也可以是流程控制、AI、展示、交互、字符串处理、SQL 数据库等内置功能节点。节点之间的连线定义了执行依赖——上游节点完成后，下游节点才会开始执行。
+
+## 创建 Workflow 模板
+
+### 1. 进入 Workflow 页面
+
+在左侧导航点击「Workflows」，进入 Workflow 列表页面。
+
+### 2. 创建新模板
+
+点击「创建 Workflow」按钮，进入 DAG 编辑器。
+
+### 3. 添加节点
+
+Workflow 编辑器内置了一组功能节点，按分类组织在左侧节点面板中，涵盖流程控制、AI 调用、展示渲染、交互、字符串处理、工具类以及 SQL 数据库操作。
+
+#### Agent 节点
+
+从左侧 Agent 面板拖拽 Agent 预设到画布中。每个 Agent 节点代表一个 Agent 执行单元，绑定具体的 Agent 预设配置。Agent 节点支持自定义任务标题模板（`taskTitleTemplate`）和描述模板（`taskDescriptionTemplate`），用于覆盖自动生成的 Task 标题与描述。
+
+#### 流程控制节点
+
+用于组织 DAG 的执行流程，例如条件分支、循环、合并等。具体可用节点以编辑器节点面板为准。
+
+#### AI 节点
+
+封装大模型调用能力，可直接在工作流中进行文本生成、补全等 AI 操作，无需绑定完整的 Agent 预设。
+
+#### 展示与渲染节点（UI 渲染节点）
+
+用于在工作流执行过程中渲染输出内容（例如表格展示 `table_display` 等）。这类节点面向可视化结果输出，不执行 Agent 任务。
+
+#### 交互节点
+
+提供人工介入能力，例如在工作流中等待用户输入、确认或选择，从而支持半自动化流程。
+
+#### 字符串与工具节点
+
+提供字符串拼接、格式化等通用工具能力，便于在节点之间传递和加工数据。
+
+#### SQL 数据库节点（数据库分类）
+
+用于对工作空间级 SQLite 数据库执行结构化数据操作。包含 5 个内置节点：
+
+- **查询数据（`sqlite_query`）** — 按表、列、`where`、`orderBy`、`limit` 查询，输出 `rows` 和 `rowCount`
+- **新增数据（`sqlite_insert`）** — 向指定表插入字段，输出 `insertedId` 和 `changes`
+- **更新数据（`sqlite_update`）** — 按条件更新字段，输出 `changes`
+- **删除数据（`sqlite_delete`）** — 按条件删除数据，输出 `changes`
+- **SQL 自定义（`sqlite_raw`）** — 直接执行原生 SQL（`query` 或 `exec` 模式），输出 `rows` 或 `execResult`
+
+数据库节点的「数据库」属性选择工作空间中的 SQLite 数据库资源（多对多关联到工作流），表名与列名提供动态下拉（依赖已选数据库自动拉取）。所有用户 SQL 经安全校验（禁用 `ATTACH`/`DETACH` 等，表/列名经白名单校验，值用 `?` 参数绑定，结果行数受上限保护），可在工作流中安全使用。
+
+> 设计与实现细节参见 `docs/superpowers/specs/2026-06-13-workflow-sqlite-nodes-design.md`。
+
+### 4. 连线定义依赖
+
+从一个节点的输出端口拖拽到另一个节点的输入端口，建立执行依赖关系。系统使用 @dagrejs/dagre 自动布局，保持图形清晰。
+
+### 5. 保存模板
+
+为 Workflow 设置名称和描述，保存后即可在创建 Issue 时选择使用。
+
+## DAG 校验
+
+保存 Workflow 时，系统会自动校验：
+
+- **至少一个节点** — Workflow 必须包含节点
+- **环检测** — DAG 不能包含环路
+- **重复边** — 两个节点之间不能有多条边
+- **自环** — 节点不能连接到自身
+- **边引用** — 边的 source/target 必须引用已存在的节点
+- **Agent 节点有效性** — 每个 Agent 节点绑定的 `agentConfigId` 必须存在于当前工作空间的 Agent 列表中（保存时会重新解析节点的 role/avatarUrl/modelId，避免 Agent 预设改名或改角色后节点过期）
+
+注意：保存时只校验 Agent 是否存在，不校验是否启用、也不校验是否属于某个 Issue 频道成员——这些条件在运行时才会校验。
+
+## Issue 与 Workflow
+
+创建 Issue 时，可以选择一个 Workflow 模板（`workflowId` 字段）。Issue 启动自动化后：
+
+1. 系统加载选定的 Workflow 模板
+2. 将 Workflow 中的 Agent 节点映射为可执行的 Task（每个节点 → 一个 Task）
+3. 节点的入边作为 Task 的 `dependsOnTaskIds` 依赖
+4. 按依赖关系调度执行：只有当某个 Task 的所有前置 Task 都为 `done` 时才会启动
+5. 所有 Task 完成后，Issue 标记为 `completed`
+
+> 注意：当前同一轮可运行的 Task **按数组顺序串行启动**，DAG 表达的是依赖关系，但同一层并不会真正并行运行多个 Agent。
+
+如果没有选择 Workflow 模板，或模板不存在、运行前校验失败，Issue 将无法自动执行并进入 `error` 状态（旧的 planner/task_creator 硬编码链路已不再作为 fallback）。
+
+## 迷你预览
+
+在 Issue 列表中，绑定了 Workflow 的 Issue 会显示迷你 DAG 预览，直观展示执行进度。
+
+## Workflow 列表管理
+
+Workflow 列表页面展示所有已创建的模板：
+
+- 查看模板名称、描述、节点数量
+- 编辑已有模板
+- 删除不需要的模板
+- 查看使用该模板的 Issue 数量
+
+## 运行时校验与执行
+
+Workflow 模板运行前会进行校验：
+
+1. 每个节点绑定的 Agent 仍然存在
+2. 每个 Agent 处于启用状态
+3. 每个 Agent 都在当前 Issue 的频道成员（channel members）中
+
+这意味着 Workflow 模板可以跨 Issue 复用，但实际运行某个 Issue 时，其频道里必须包含 Workflow 用到的所有 Agent。
+
+Workflow 中的每个 Agent 节点在执行时是一个普通 Task，因此同样享有 Task 的失败重试机制（`retryCount` / `maxRetries`）：Agent 运行失败会重置为 `pending` 并重新调度，超过最大重试次数后 Issue 进入 `error`。
+
+> 详见议题重试恢复机制：[议题管理](/docs/features/issue-management)。
+
+## WebSocket 事件
+
+Workflow 的变更通过 WebSocket 实时通知前端：
+
+- `workflow.created` — 新模板创建
+- `workflow.updated` — 模板更新
+- `workflow.deleted` — 模板删除
+
+运行时 Issue 与 Task 的状态变化会广播 `issue.status_changed`、`issue.updated`、`task.created`、`task.status_changed`、`task.updated`、`task.output` 以及 `agent.started/status_changed/output/completed` 等事件。

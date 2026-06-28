@@ -1,0 +1,143 @@
+
+# Flutter 多平台客户端
+
+Agent Spaces 提供 Flutter 多平台客户端，支持 Android、iOS、macOS、Windows 和 Web 平台。Flutter 客户端的定位是**原生壳应用**：内嵌 Web 前端（WebView Tab 浏览器），同时提供原生能力桥接层、SSH 终端与多协议文件管理器。业务逻辑全部在 Web 前端（`packages/web`）与服务端（`packages/server`），客户端通过 HTTP / WebSocket 连接后端，不依赖 `packages/shared` 或 `packages/server`。
+
+## 平台支持
+
+| 平台 | 支持状态 |
+|------|---------|
+| Android | ✅ 完整支持 |
+| iOS | ✅ 完整支持 |
+| macOS | ✅ 完整支持 |
+| Windows | ✅ 完整支持 |
+| Web | ✅ 完整支持 |
+
+## 核心特性
+
+### 内嵌 WebView
+
+- 使用 `flutter_inappwebview` 加载 Web 前端
+- 通过 `window.isFlutterEnvironment()` 检测运行环境
+- Web 前端自动适配 Flutter 环境
+
+### JS Bridge 双向通信
+
+Flutter 与 WebView 之间的双向通信桥梁：
+
+- **事件通信** — Flutter 和 WebView 之间的事件收发
+- **RPC 调用** — 支持 Promise 回调的远程过程调用
+- **控制台日志** — WebView 的 console.log 自动捕获到 Flutter 端
+
+### 原生通知
+
+- 使用 `awesome_notifications` 实现原生推送通知
+- 支持 Android 和 iOS 的通知渠道配置
+
+### 设备模拟
+
+- Phone / Tablet / Desktop 三种设备模式
+- 模拟不同屏幕尺寸的显示效果
+
+### 内网服务器发现
+
+启动后自动扫描内网发现 Agent Spaces 服务器：
+
+- 通过 `/api/health` 端点探测
+- 自动列出可用的服务器实例
+- 一键连接，无需手动输入地址
+
+### i18n 与主题
+
+- 国际化支持中文 / 英文（与 Web 端 next-intl 命名空间对齐）
+- 主题切换：明亮 / 暗黑 / 跟随系统
+- 桌面端额外的窗口状态管理（位置、尺寸记忆）
+
+## 终端功能
+
+Flutter 客户端提供完整的终端体验：
+
+- 内嵌终端组件（基于 InAppWebView 中的 xterm.js）
+- 终端工具栏（常用操作按钮）
+- 虚拟键盘（移动端特殊字符输入）
+- SSH/SFTP 远程终端登录
+
+### SSH 远程连接
+
+支持通过 SSH 连接远程服务器：
+
+- SSH 凭证管理（CRUD）
+- SFTP 文件浏览
+- FTP/WebDAV 连接支持
+- 远程文件浏览器（FileSourceTree 组件）
+
+### 文件源管理
+
+支持四种文件源：
+
+| 文件源 | 协议 | 说明 |
+|--------|------|------|
+| SFTP | SSH | 通过 SSH 协议传输文件 |
+| FTP | FTP | 传统文件传输协议 |
+| WebDAV | HTTP | 基于 HTTP 的文件管理 |
+| 本地存储 | 本地 | 设备本地文件系统 |
+
+## 书签管理
+
+- 保存常用服务器地址为书签
+- 快速连接已保存的服务器
+- 书签的增删改查
+
+## Tab 与分屏管理
+
+基于 Docking 库的多 WebView Tab 浏览器：
+
+- 可拖拽的多窗口布局
+- Tab 的创建、切换、关闭
+- Split Layout 分屏（同一屏幕并列多个 WebView）
+- 每个独立的 Tab 加载独立的 Web 前端实例
+
+## 安装与运行
+
+```bash
+cd packages/flutter
+
+# 获取依赖
+flutter pub get
+
+# 运行（需连接设备或模拟器）
+flutter run
+
+# 构建 APK
+flutter build apk
+
+# 构建 iOS
+flutter build ios
+
+# 构建 macOS
+flutter build macos
+```
+
+## 测试
+
+```bash
+cd packages/flutter
+flutter test
+```
+
+包含 `widget_test.dart`（App 构建冒烟测试）和 `webdav_url_test.dart`（WebDAV URL 规范化单元测试）。
+
+## 技术栈
+
+| 技术 | 说明 |
+|------|------|
+| Flutter SDK | ^3.10.1 |
+| flutter_riverpod | 2.x（StateNotifierProvider 模式） |
+| flutter_inappwebview | ^6.1.5 |
+| go_router | ^14.8.1（7 条路由） |
+| awesome_notifications | ^0.11.0 |
+| docking | 分屏 / 多 Tab 布局 |
+| SharedPreferences | 持久化（JSON 序列化） |
+| flutter_lints | 代码检查 |
+
+更多架构、路由、JS Bridge API 与文件地图细节参见 `packages/flutter/claude/` 子目录文档。

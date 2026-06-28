@@ -1,0 +1,65 @@
+
+# Agent Spaces
+
+Agent Spaces 是一个**本地多 Agent 协同编程平台**。通过可视化 Workflow 编辑器编排 Agent 执行流程，或在频道聊天中 @mention Agent 直接触发执行，实现任务的自动分发、代码修改、审核与提交。
+
+## 为什么选择 Agent Spaces？
+
+- **完全本地运行** — 代码不离开你的机器，数据存储在本地，安全可控
+- **可视化 Workflow 编排** — DAG 拓扑编辑器，支持 Agent 节点、Command 节点和 UI 渲染节点，拖拽连线定义依赖
+- **多 Agent 协同** — agent、scheduler、task_creator、bot 四种内置角色 + 自定义角色，各司其职
+- **IDE 级别体验** — 集成代码编辑器（含 TypeScript LSP）、终端、Git 操作、议题管理，一站式开发
+- **六种运行时支持** — Claude Code、Codex、Open Agent SDK、LangChain、Hermes、Oh-My-Pi 六种 Agent 运行时
+- **Mini-app 沙箱** — React/HTML 项目 + 沙箱服务编译 + Agent 运行时 + 客户端 RPC + SQLite，构建可交互的小应用
+- **Plugin 插件系统** — 120+ 插件模板（阿里云 OSS、腾讯云 COS、MiniMax、ffmpeg、mail 等），扩展 Agent 工具能力
+- **Skill 系统** — 66+ 技能模板（superpowers、tdd、planning-with-files 等），为 Agent 注入方法论
+- **Worktree 并行开发** — Git Worktree 隔离分支，支持 Diff 查看、AI 生成 PR 描述、PR 合并
+- **Kanban 看板** — 拖拽式看板管理，支持多列排序、优先级筛选、水平/垂直布局
+- **文档数据库** — Notion 风格的树形文档系统，支持向量搜索和版本历史
+- **Hook 系统** — Agent 工具调用前后自定义钩子（24 种事件），支持 shell/webhook/script 三种动作
+- **输出风格管理** — 自定义 Agent 输出格式模板，按工作空间持久化
+- **实时通知** — 通过飞书、企业微信、Native 通知接收 Agent 状态变更，Robot Account 集中管理凭证
+- **国际化** — 中英文自由切换（34 个命名空间），本地化体验
+- **Agent SSE API** — HTTP 流式调用 Agent，支持外部集成和 CI/CD
+- **订阅管理** — 智谱、MiniMax、AI Code 余额和配额查询
+- **多平台客户端** — Web + Flutter 桌面端/移动端，随时随地访问
+
+## 核心能力
+
+| 功能 | 说明 |
+|------|------|
+| 工作空间管理 | 绑定本地代码目录，支持文件夹浏览和 Git Clone |
+| Workflow 编辑器 | DAG 可视化编排，支持 Agent 节点、Command 节点和 UI 渲染节点，@dagrejs/dagre 自动布局 |
+| 代码编辑器 | Monaco Editor + TypeScript LSP（定义跳转/引用/诊断），代码收藏，代码搜索 |
+| 终端 | 集成终端，支持快捷命令（自定义命令 + 自动重启） |
+| 议题管理 | 创建 Issue 并选择 Workflow 模板，自动编排 Task 执行 |
+| 频道聊天 | @mention Agent 触发对话和任务执行，TipTap 富文本，语音识别输入 |
+| Git 操作 | 可视化分支管理、提交、合并，Worktree 并行开发，Git 操作日志 |
+| Agent 编排 | 四种内置角色 + 自定义角色，六种运行时，Workflow 驱动自动化协作 |
+| Hook 系统 | Agent 工具调用前后自定义钩子（24 种事件），per-tool-call 粒度，shell/webhook/script 动作 |
+| 输出风格 | 自定义 Markdown 输出格式模板，注入 Agent systemPrompt |
+| 通知中心 | 飞书/企微/Native/应用内消息推送，Robot Account 集中凭证管理 |
+| Kanban 看板 | @dnd-kit 拖拽排序，多列管理，优先级筛选，水平/垂直布局切换 |
+| 文档数据库 | Notion 风格树形文档，Notion/Markdown 双编辑器，向量搜索，版本历史 |
+| Worktree | Git Worktree 并行开发，Diff 查看，AI PR 描述生成，PR 合并 |
+| Mini-app 沙箱 | React/HTML 项目 + 沙箱编译 + Agent 运行时 + 客户端 RPC + SQLite |
+| Plugin 系统 | 120+ 插件模板，扩展 Agent 工具能力（云存储/多媒体/邮件等） |
+| Skill 系统 | 66+ 技能模板，为 Agent 注入方法论（superpowers/tdd/planning 等） |
+| 用量统计 | Token 消耗、费用估算、趋势图表、按模型统计 |
+| 订阅管理 | 智谱/MiniMax/AICode 余额和配额查询 |
+| 代码搜索 | ripgrep 优先 + Node.js 回退，支持正则/文件模式/大小写 |
+| 快捷命令 | 自定义命令 CRUD + 运行/停止/自动重启，终端集成 |
+| 语音识别 | 腾讯语音实时识别，WebSocket 流式传输 |
+| LLM 管理 | 多模型配置、Anthropic Bridge 协议中转 |
+| Agent SSE API | HTTP POST 流式调用 Agent，支持外部集成 |
+| Command Palette | Ctrl+K 快捷面板，全局搜索工作空间/频道/Issue/文件/服务器 |
+| Skill/MCP 管理 | 全局技能和 MCP 配置的 CRUD、导入、同步 |
+| DOM Inspector | Alt+Shift 点击网页元素，自动在编辑器中打开对应源文件 |
+| Prompt 模板 | Prompt 模板管理，批量应用到多个 Agent 预设 |
+| 字体管理 | 自定义字体上传/删除/列表（支持 ttf/otf/woff/woff2） |
+| TypeScript LSP | 内置 TypeScript Language Server，Monaco 编辑器提供定义跳转/引用/诊断 |
+| 认证系统 | Secret Key + Bearer Token 认证 |
+
+## 下一步
+
+准备好开始了吗？前往 [安装部署](/docs/getting-started/installation) 搭建你的 Agent Spaces 环境。

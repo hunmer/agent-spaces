@@ -1,0 +1,130 @@
+
+# 代码编辑器
+
+Agent Spaces 内置基于 Monaco Editor 的代码编辑器，提供与 VS Code 一致的编辑体验。
+
+## 核心功能
+
+- **语法高亮** — 支持主流编程语言的语法着色
+- **智能提示** — 代码自动补全和参数提示
+- **多标签编辑** — 同时打开多个文件，标签页切换
+- **文件树浏览** — 左侧面板浏览项目文件结构，支持文件图标
+- **搜索替换** — 全局搜索和替换，支持正则表达式
+- **Diff 查看** — Agent 修改代码后，可直接查看变更对比
+- **Minimap** — 右侧缩略图，快速导航大文件
+- **Model 缓存** — Monaco TextModel 预加载，切换文件无需重新解析
+- **右键菜单** — 丰富的上下文菜单操作
+
+## TypeScript LSP
+
+内置 TypeScript Language Server，提供 IDE 级别的语义能力。前端 Monaco 不再使用内置 TypeScript worker，而是通过 `monaco-languageclient` 经独立 WebSocket 连接后端 `typescript-language-server` 子进程，所有语义能力由真实的 TypeScript Language Server 基于项目 `tsconfig`、`node_modules` 和 `@types` 提供。
+
+### 语义能力
+
+- **自动补全** — 基于真实项目类型信息的智能补全和参数提示
+- **定义跳转** — 右键「Go to Definition」跳转到符号定义处，跨文件时会打开应用内新标签页并定位
+- **Peek 定义/引用** — 右键「Show Definition」「Show References」通过 peek 面板就地展示
+- **引用查找** — 查看符号的所有引用
+- **诊断** — 实时显示 TypeScript 编译错误和警告
+- **Hover 信息** — 鼠标悬停查看类型信息和文档
+
+### 工作原理
+
+- 前端 Monaco model 使用真实 `file://` URI（`file://{workspaceRoot}/{relativeFilePath}`），让后端 Language Server 能正确关联打开的文档与项目文件
+- 后端 WebSocket 端点 `GET /ws/lsp/typescript?workspaceId=...&token=...`，与业务 WebSocket 分离，避免协议混用
+- Language Server 的 `cwd` 优先选择能找到 `tsconfig.json`/`jsconfig.json` 的目录（项目根或 `packages/web`），否则回退到 workspace 绑定目录
+- 同一 workspace 只启动一个 language client，编辑器卸载时自动停止
+- 对于 `@/foo/bar`、`./foo/bar`、`../foo/bar` 等 import alias，当 LSP 只返回 import 行时，前端会兜底解析常见扩展名（`.tsx/.ts/.jsx/.js/.mjs/.cjs/.json`）和目录入口（`index.*`）
+
+前提：workspace 必须有有效的绑定目录，后端进程能访问该目录，项目依赖与类型声明需实际存在于文件系统中。当前模型 URI 使用真实 `file://` 路径，后端通过独立 `GET /ws/lsp/typescript` WebSocket 拉起 `typescript-language-server --stdio`，并在常见 `@/` 与相对导入场景下补一层 import 解析兜底。
+
+## 代码收藏
+
+Monaco 编辑器支持代码位置/片段收藏：
+
+1. 在编辑器中右键选择「添加到代码收藏」
+2. 填写标签名和可选的代码片段
+3. 在侧边栏的代码收藏面板查看所有收藏
+4. 点击收藏项直接跳转到对应位置
+5. 支持删除不需要的收藏
+
+代码收藏按工作空间持久化存储。
+
+## DOM Inspector
+
+基于 `dom-inspector-hook` 的元素源码定位功能：
+
+1. 在被调试的网页中按 `Alt+Shift` 并点击页面元素（移动端可在被调试项目中开启 `showSwitch: true` 显示开关按钮，无需按键）
+2. dom-inspector-hook 通过 `POST /api/inspector/track` 静默上报 `{ path, line, column }`（免认证）
+3. 后端通过 `inspector.jump` WebSocket 事件广播
+4. Agent Spaces 自动在编辑器中打开对应的源文件并定位到行
+5. Inspector 历史记录面板（`inspector-action-dialog`）保存所有查看过的元素，支持从历史记录快速跳转
+6. 在 Flutter WebView 环境中，还会通过 `__flutterBridge` 激活承载该网页的浏览器 Tab
+
+需要在被调试项目中安装并配置 `dom-inspector-hook` 脚本，并把上报地址指向 Agent Spaces 的 `POST /api/inspector/track`。后端收到后会广播 `inspector.jump`，前端再调用 `jumpToPosition()` 打开并定位源码。
+
+## Send to Issue / Channel
+
+编辑器内支持将代码片段快速发送到 Issue 或频道：
+
+- **Send to Issue** — 右键选中的代码，直接创建新 Issue 或添加到已有 Issue 的评论
+- **Send to Channel** — 右键选中的代码，发送到指定频道进行讨论
+
+## 文件操作
+
+- 通过文件树双击打开文件
+- 支持新建、重命名、删除文件和文件夹
+- 文件修改后自动标记为未保存状态
+- `Ctrl+S` / `Cmd+S` 保存文件
+- 文件上下文菜单提供更多操作
+
+## 代码搜索
+
+内置代码搜索面板，基于 ripgrep（优先）+ Node.js（回退）实现：
+
+- **正则搜索** — 支持正则表达式匹配
+- **文件模式过滤** — 按文件名模式过滤搜索范围
+- **大小写选项** — 区分/不区分大小写
+- **文件名搜索** — 快速查找文件
+
+搜索面板位于编辑器区域，可通过工具栏按钮或快捷键打开。
+
+## Monaco Model 缓存
+
+系统在打开工作空间时自动预加载目录下的 TypeScript/JavaScript 文件到 Monaco TextModel：
+
+- 自动检测文件语言类型（TS/JS/JSON/CSS/HTML/YAML/Python/Rust/Go/SQL/Shell）
+- 切换文件标签时无需重新解析，提升编辑体验
+- 文件内容变更后自动同步更新 Model
+
+## 移动端适配
+
+编辑器针对移动端 / 触摸设备做了专门适配（`code-editor-mobile.ts`、`code-editor-mobile-overlay.tsx`、`useMobileReadonlyOverlay.ts`）：
+
+- 长按选词与移动端右键菜单
+- 选区度量与触控命中校正
+- 移动端只读浮层与导航菜单（仅显示「Go to Definition」「Find All References」等语义操作）
+
+## 导入文件
+
+支持从本地或其他位置导入文件到当前工作空间：
+
+- 点击「导入文件」按钮打开对话框
+- 选择本地文件导入到指定目录
+- 支持拖拽上传
+
+## Agent 代码变更
+
+当 Agent 执行任务修改代码时，你可以：
+
+1. 实时看到编辑器中的文件变更
+2. 在工具详情面板查看完整的 diff 对比
+3. 通过 Git 面板查看所有未提交的变更
+
+## 布局调整
+
+代码编辑器作为 IDE 布局的一部分，支持：
+
+- 拖拽调整面板大小
+- 在不同区域之间移动面板
+- 根据需要显示或隐藏面板

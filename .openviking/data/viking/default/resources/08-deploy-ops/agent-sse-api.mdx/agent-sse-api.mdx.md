@@ -1,0 +1,156 @@
+
+# Agent SSE API
+
+Agent SSE API 提供 HTTP Server-Sent Events 流式调用接口，无需 WebSocket 即可触发 Agent 执行。适用于外部集成、CI/CD 管道和 API 测试场景。
+
+## 接口地址
+
+```
+POST /api/agent-sse/run
+```
+
+## 认证方式
+
+支持三种认证方式（任选其一）：
+
+| 方式 | 参数 |
+|------|------|
+| Bearer Token | `Authorization: Bearer <token>` Header |
+| 自定义 Header | `x-agent-spaces-key: <secret-key>` |
+| Body 参数 | `{ "key": "<secret-key>" }` |
+
+## 请求体
+
+```json
+{
+  "agentId": "string",           // 必填：Agent 预设 ID（也接受别名 agentid）
+  "workspaceId": "string",       // 可选：工作空间 ID（缺省取第一个 workspace）
+  "message": "string",           // 方式一：单条消息
+  "prompt": "string",            // 方式二：Prompt（同 message）
+  "messages": [...],             // 方式三：消息数组（取最后一条 senderId 为 user 的内容）
+  "systemPrompt": "string",      // 可选：覆盖系统提示词
+  "outputStyle": "string",       // 可选：输出风格（覆盖预设）
+  "maxTurns": 10,                // 可选：最大轮次（缺省 100）
+  "skills": ["skill-name"],      // 可选：技能列表（也接受单值 skill 字段）
+  "mcps": {...},                 // 可选：MCP 配置（也接受别名 mcp）
+  "workflowAgent": {             // 可选：触发 Workflow 编辑器 Agent（强制使用 langchain 运行时）
+    "workflow": {...},
+    "nodeDefinitions": [...],
+    "selectedNodes": [...]
+  }
+}
+```
+
+## 响应格式
+
+响应为 SSE 流（`Content-Type: text/event-stream`），事件类型：
+
+| 事件 | 说明 |
+|------|------|
+| `session` | 会话创建信息 |
+| `status` | Agent 状态变更 |
+| `output` | Agent 输出内容 |
+| `tool_use` | 工具调用开始 |
+| `tool_result` | 工具调用结果 |
+| `done` | 执行完成 |
+| `error` | 执行错误 |
+
+### 响应示例
+
+```
+event: session
+data: {"session":{"id":"abc-123","role":"agent","presetId":"agent-1"},"workspaceId":"ws-1"}
+
+event: status
+data: {"agentId":"abc-123","status":"active"}
+
+event: output
+data: {"type":"output","line":"正在分析代码..."}
+
+event: tool_use
+data: {"type":"tool_use","id":"tool-1","name":"Read","input":{"file_path":"/src/main.ts"},"line":"读取文件..."}
+
+event: tool_result
+data: {"type":"tool_result","toolUseId":"tool-1","result":"文件内容..."}
+
+event: done
+data: {"agentId":"abc-123","success":true,"summary":"分析完成","artifacts":[],"error":null,"output":["正在分析代码..."],"usage":{"inputTokens":1500,"outputTokens":800,"totalTokens":2300},"costUsd":0.012,"durationMs":5234}
+```
+
+## 使用示例
+
+### curl
+
+```bash
+curl -N -X POST http://localhost:3100/api/agent-sse/run \
+  -H "Content-Type: application/json" \
+  -H "x-agent-spaces-key: your-secret-key" \
+  -d '{"agentId": "agent-1", "workspaceId": "ws-1", "message": "分析项目结构"}'
+```
+
+### Python
+
+```python
+import requests
+
+url = "http://localhost:3100/api/agent-sse/run"
+headers = {"x-agent-spaces-key": "your-secret-key"}
+data = {"agentId": "agent-1", "workspaceId": "ws-1", "message": "修复 Bug"}
+
+with requests.post(url, json=data, headers=headers, stream=True) as resp:
+    for line in resp.iter_lines():
+        if line:
+            print(line.decode())
+```
+
+### Node.js
+
+```javascript
+const response = await fetch('http://localhost:3100/api/agent-sse/run', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-agent-spaces-key': 'your-secret-key',
+  },
+  body: JSON.stringify({
+    agentId: 'agent-1',
+    workspaceId: 'ws-1',
+    message: '重构模块 A',
+  }),
+});
+
+const reader = response.body.getReader();
+// 读取 SSE 流...
+```
+
+## 适用场景
+
+- **CI/CD 集成** — 在构建管道中调用 Agent 执行代码审查或自动修复
+- **外部工具集成** — 从 IDE 插件、CLI 工具或其他应用触发 Agent
+- **API 测试** — 快速测试 Agent 的响应和行为
+- **自动化脚本** — 编写脚本批量调用 Agent 处理任务
+
+## 流式行为
+
+Agent Spaces 共有 6 种运行时（Claude Code / Codex / LangChain / Hermes / Oh-My-Pi / Open Agent SDK），它们在 SSE 事件流上的行为不同：
+
+| 运行时 | 实时流式 | 说明 |
+|--------|---------|------|
+| `claude-code` | ✅ | 工具调用、思考、输出均实时推送 |
+| `codex` | ✅ | 实时推送事件 |
+| `langchain` | ✅ | 通过节流的事件 sink 实时推送（节流间隔 100ms） |
+| `hermes` | ✅ | 按行解析 Hermes CLI 的 stdout/stderr，逐行推送 `output` |
+| `oh-my-pi` | ✅ | 解析 OMP CLI 的 JSON 事件流，实时推送 `output`/`tool_use`/`tool_result`/`reasoning` |
+| `open-agent-sdk`（默认） | ❌ | SDK `prompt()` 为阻塞调用，所有事件在执行结束后一次性推送 |
+
+:::caution
+`open-agent-sdk` 运行时执行期间不会发送 `output`/`tool_use`/`tool_result` 事件，仅在执行结束后发送单条 `output` 事件和 `done` 事件。如需实时流式输出，请使用 `claude-code`、`codex`、`langchain`、`hermes` 或 `oh-my-pi` 运行时。
+:::
+
+## 注意事项
+
+- **请求方法**：必须使用 `POST`（不支持 `GET`，因此不能使用浏览器 `EventSource` API）
+- **直接连接后端**：SSE 流请直接连接后端 `http://localhost:3100`，避免经过 Next.js 代理可能导致的响应缓冲
+- **curl 测试**：使用 `-N` 参数禁用缓冲：`curl -N -X POST ...`
+- **超时**：Agent 执行可能耗时较长，客户端应设置足够的超时时间（建议 5 分钟以上）
+- **断开处理**：客户端断开连接后，后端会自动停止 Agent 执行

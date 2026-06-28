@@ -1,0 +1,16 @@
+
+# Research
+
+This section stores code architecture research notes for AI agents.
+
+Research notes focus on stable implementation details:
+
+- subsystem responsibilities
+- entry points
+- execution flow
+- state and data flow
+- persistence and external boundaries
+- extension points
+- failure and recovery paths
+
+Use this section for implementation research that should be reused by future agents.

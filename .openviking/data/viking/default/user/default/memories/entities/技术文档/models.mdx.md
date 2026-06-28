@@ -1,0 +1,10 @@
+这是一个关于Agent Spaces中模型管理功能的核心文档集合，主要聚焦于模型管理的集中配置入口。内容涵盖模型供应商（Provider）配置、API密钥管理及模型元数据管理，核心实体包括Provider（供应商，含API连接配置）和Model（模型，记录元数据），二者通过名称实现软关联。文档类型为参考指南，适合需要配置大模型的管理员或开发者，强调"一处配置、多处复用"的优势。
+
+<!-- MEMORY_FIELDS
+{
+  "category": "技术文档",
+  "name": "models.mdx",
+  "user_id": "default",
+  "memory_type": "entities"
+}
+-->
