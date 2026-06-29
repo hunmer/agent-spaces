@@ -1,11 +1,14 @@
 {
   "id": "stickerGenerator",
-  "name": "stickerGenerator",
-  "description": "贴图生成器",
+  "name": "贴图工坊",
+  "description": "AI 贴图生成器：文生图 / 图生图工作流 + agent_run 提示词助手，支持风格、文字、背景、布局",
   "version": "1.0.0",
   "type": "react",
-  "tags": [],
+  "tags": ["贴图", "贴纸", "图片生成", "工作流"],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-29T09:33:37.099Z",
-  "updatedAt": "2026-06-29T09:33:37.099Z"
+  "updatedAt": "2026-06-29T09:33:37.099Z",
+  "enabledPlugins": ["@agent-spaces/builtin"],
+  "enableAgents": true,
+  "icon": "🎨"
 }
