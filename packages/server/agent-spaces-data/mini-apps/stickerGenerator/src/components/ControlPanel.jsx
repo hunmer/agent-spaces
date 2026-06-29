@@ -3,7 +3,7 @@
 import StylePicker from './StylePicker';
 import PromptAgentPanel from './PromptAgentPanel';
 import {
-  ASPECT_RATIOS, SIZES, BACKGROUND_COLORS, FONTS, PRESET_PROMPTS,
+  ASPECT_RATIOS, SIZES, BACKGROUND_COLORS, FONTS, TEXT_LANGUAGES, PRESET_PROMPTS,
   LAYOUT_MODES, COLLECTION_COUNT_PRESETS, getStyle,
 } from '../utils/styles';
 import { MODEL_OPTIONS } from '../utils/settings';
@@ -307,7 +307,19 @@ export default function ControlPanel({
               placeholder="文字内容（留空由 AI 决定）"
               disabled={running}
             />
+            <div className="sg-text-lang-row">
+              <span className="sg-field-label">语言</span>
+              <Select value={form.textLanguage} onValueChange={(v) => update({ textLanguage: v })} disabled={running}>
+                <SelectTrigger className="sg-text-lang-trigger"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TEXT_LANGUAGES.map((l) => (
+                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="sg-font-row">
+              <span className="sg-field-label">字体</span>
               {FONTS.map((f) => (
                 <button
                   type="button"

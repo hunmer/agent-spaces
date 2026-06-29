@@ -43,7 +43,11 @@ export default function StylePicker({ value, customStyles = [], onChange, onSave
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={<Button variant="outline" className="sg-style-trigger" disabled={disabled} />}>
-        <span className="sg-style-dot" style={{ background: active?.dot || '#a8a29e' }} />
+        {active?.previewImage ? (
+          <img className="sg-style-trigger-thumb" src={active.previewImage} alt={label} />
+        ) : (
+          <span className="sg-style-dot" style={{ background: active?.dot || '#a8a29e' }} />
+        )}
         <span className="sg-style-trigger-label">{label}</span>
         {customStyles.length > 0 && (
           <span className="sg-style-custom-count">+{customStyles.length} 自定义</span>
@@ -62,10 +66,14 @@ export default function StylePicker({ value, customStyles = [], onChange, onSave
                   onClick={() => { onChange(style.id); setOpen(false); }}
                   title={style.promptModifier}
                 >
-                  <span className="sg-style-dot" style={{ background: style.dot || '#a8a29e' }} />
-                  <span className="sg-style-item-name">{name}</span>
+                  {style.previewImage ? (
+                    <img className="sg-style-preview" src={style.previewImage} alt={name} loading="lazy" />
+                  ) : (
+                    <span className="sg-style-dot" style={{ background: style.dot || '#a8a29e' }} />
+                  )}
                   {selected && <Check className="sg-style-check" />}
                   {style.isCustom && <span className="sg-style-custom-tag">自定义</span>}
+                  <span className="sg-style-item-name">{name}</span>
                 </button>
                 {style.isCustom && (
                   <button type="button" className="sg-style-del" title="删除" onClick={(e) => { e.stopPropagation(); removeCustom(style.id); }}>

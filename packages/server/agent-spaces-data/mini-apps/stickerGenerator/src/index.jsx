@@ -91,17 +91,19 @@ function Style() {
 
       /* style picker */
       .sg-style-trigger { width: 100%; justify-content: flex-start; gap: 8px; }
+      .sg-style-trigger-thumb { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; flex: 0 0 auto; border: 1px solid var(--sg-border); }
       .sg-style-trigger-label { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .sg-style-custom-count { font-size: 11px; color: var(--sg-muted); }
       .sg-style-dot { width: 14px; height: 14px; border-radius: 999px; flex: 0 0 auto; border: 1px solid rgba(0,0,0,.1); }
-      .sg-style-popover { width: 320px; }
-      .sg-style-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 360px; overflow: auto; padding: 4px; }
-      .sg-style-item { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--sg-border); background: var(--sg-card); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--sg-fg); text-align: left; }
+      .sg-style-popover { width: 360px; }
+      .sg-style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 420px; overflow: auto; padding: 4px; }
+      .sg-style-item { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 1px solid var(--sg-border); background: var(--sg-card); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--sg-fg); text-align: center; overflow: hidden; }
       .sg-style-item:hover { border-color: var(--sg-accent); }
-      .sg-style-item.is-selected { border-color: var(--sg-accent); background: var(--sg-accent-soft); }
-      .sg-style-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .sg-style-check { width: 14px; height: 14px; color: var(--sg-accent); }
-      .sg-style-custom-tag { font-size: 9px; font-weight: 700; color: var(--sg-muted); border: 1px solid var(--sg-border); padding: 1px 4px; border-radius: 4px; }
+      .sg-style-item.is-selected { border-color: var(--sg-accent); box-shadow: 0 0 0 2px rgba(249,115,22,.25); }
+      .sg-style-preview { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--sg-soft); }
+      .sg-style-item-name { padding: 4px 6px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sg-style-check { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; color: #fff; background: var(--sg-accent); border-radius: 999px; padding: 2px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+      .sg-style-custom-tag { position: absolute; top: 5px; left: 5px; font-size: 9px; font-weight: 700; color: var(--sg-fg); background: rgba(255,255,255,.9); border: 1px solid var(--sg-border); padding: 1px 5px; border-radius: 4px; }
       .sg-style-hint { font-size: 11px; color: var(--sg-muted); line-height: 1.5; }
 
       /* style picker: custom create / delete */
@@ -123,7 +125,9 @@ function Style() {
       .sg-toggle-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
       .sg-divider { height: 1px; background: var(--sg-border); margin: 4px 0; }
       .sg-sub-block { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--sg-soft); border: 1px solid var(--sg-border); border-radius: 8px; }
-      .sg-font-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .sg-font-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .sg-text-lang-row { display: flex; align-items: center; gap: 8px; }
+      .sg-text-lang-trigger { flex: 1; height: 32px; }
       .sg-font-btn { padding: 6px; border: 1px solid var(--sg-border); background: var(--sg-card); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--sg-fg); }
       .sg-font-btn.is-selected { border-color: var(--sg-accent); background: var(--sg-accent-soft); color: var(--sg-accent); }
       .sg-color-row { display: flex; flex-wrap: wrap; gap: 8px; }
