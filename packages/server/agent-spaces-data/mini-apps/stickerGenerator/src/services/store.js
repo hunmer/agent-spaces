@@ -96,5 +96,3 @@ export default {
     return { ok: true };
   },
 };
-
-export { HISTORY_PATH, CUSTOM_STYLES_PATH, SETTINGS_PATH };

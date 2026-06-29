@@ -1,6 +1,6 @@
 // 统一管理 configs 内存快照与变更订阅
 // 历史记录 / 自定义风格 / 设置 都走 getConfig + onConfigChanged
-import { HISTORY_PATH, CUSTOM_STYLES_PATH, SETTINGS_PATH } from '../services/store';
+import { HISTORY_PATH, CUSTOM_STYLES_PATH, SETTINGS_PATH } from '../utils/paths';
 import { DEFAULT_SETTINGS } from '../utils/settings';
 
 function mergeSettings(value) {
