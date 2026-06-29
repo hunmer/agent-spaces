@@ -269,5 +269,16 @@
     ],
     "createdAt": "2026-06-27T07:18:55.665Z",
     "updatedAt": "2026-06-27T07:18:55.665Z"
+  },
+  {
+    "id": "stickerGenerator",
+    "name": "stickerGenerator",
+    "description": "贴图生成器",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-06-29T09:33:37.099Z",
+    "updatedAt": "2026-06-29T09:33:37.099Z"
   }
 ]
