@@ -1,12 +1,11 @@
 // 工作流 ID 与结果解析工具
 
-// 文生图工作流：开始节点需要 { prompt, model, aspect, size }
-export const TEXT_TO_IMAGE_WORKFLOW_ID = 'd88dcb7c-7f5f-47c8-962c-89217a2c0ad6';
-
-// 图生图（编辑图片）工作流：开始节点需要 { images, prompt, model, aspect, size }
-export const EDIT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
+// 默认工作流 ID（设置对话框未配置时的兜底）
+export const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID = 'd88dcb7c-7f5f-47c8-962c-89217a2c0ad6';
+export const DEFAULT_EDIT_IMAGE_WORKFLOW_ID = '19f5f8a9-305d-43a6-9b05-584597213a8f';
 
 // 调用工作流的统一入口：根据是否有参考图自动选择文生图 / 图生图工作流
+// workflowIds: { textToImage, editImage } 来自设置，缺省用默认 ID
 // 返回 { workflowId, kind, images: [{ url }] }
 export async function runStickerWorkflow({
   AS,
@@ -15,16 +14,17 @@ export async function runStickerWorkflow({
   aspect,
   size,
   references = [],
-  customStyles = [],
-  form,
+  workflowIds = {},
 }) {
-  const finalPrompt = prompt || buildPromptForWorkflow(form, customStyles);
-  const modelId = model || form?.model || '';
+  const finalPrompt = prompt;
+  const modelId = model;
   if (!finalPrompt) throw new Error('请输入贴图描述');
   if (!modelId) throw new Error('请选择模型');
 
   const hasRefs = Array.isArray(references) && references.length > 0;
-  const workflowId = hasRefs ? EDIT_IMAGE_WORKFLOW_ID : TEXT_TO_IMAGE_WORKFLOW_ID;
+  const workflowId = hasRefs
+    ? (workflowIds.editImage || DEFAULT_EDIT_IMAGE_WORKFLOW_ID)
+    : (workflowIds.textToImage || DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID);
   const kind = hasRefs ? 'edit_image' : 'text_to_image';
 
   // 图生图需要把参考图解析成 { name, path, url }
@@ -33,8 +33,8 @@ export async function runStickerWorkflow({
   const input = {
     prompt: finalPrompt,
     model: modelId,
-    aspect: aspect || form?.aspect || '1:1',
-    size: size || form?.size || '1k',
+    aspect: aspect || '1:1',
+    size: size || '1k',
   };
   if (hasRefs) input.images = images;
 
@@ -53,11 +53,6 @@ export async function runStickerWorkflow({
   const imagesOut = extractImages(payload);
   if (!imagesOut.length) throw new Error('工作流没有返回图片结果');
   return { workflowId, kind, prompt: finalPrompt, images: imagesOut };
-}
-
-function buildPromptForWorkflow(form, customStyles) {
-  // 与 styles.js 的 buildPrompt 保持一致；这里 import 会循环，改为按需加载
-  return form?.prompt ? form.prompt : '';
 }
 
 // 解析 FileUpload 上传项为 { name, path, url }（与 cover-generator 一致）

@@ -3,16 +3,20 @@
 
 const HISTORY_PATH = 'generation-history.json';
 const CUSTOM_STYLES_PATH = 'custom-styles.json';
-const SHARED_CONFIG_PATH = 'shared-config.json';
+const SETTINGS_PATH = 'settings.json';
+
+function asArray(v) {
+  return Array.isArray(v) ? v : [];
+}
 
 export default {
   // 新增生成结果（去重 + 倒序 + 限长 200）
   add_results: ({ items, prompt, model, styleId, styleName, aspect, size, kind, workflowId }, ctx) => {
     ctx.updateConfig(HISTORY_PATH, (prev) => {
-      const list = Array.isArray(prev) ? prev : [];
+      const list = asArray(prev);
       const existing = new Set(list.map((item) => item.url));
       const now = Date.now();
-      const fresh = (Array.isArray(items) ? items : [])
+      const fresh = asArray(items)
         .filter((item) => item?.url && !existing.has(item.url))
         .map((item, index) => ({
           id: `${now}-${index}`,
@@ -33,9 +37,7 @@ export default {
   },
 
   remove_result: ({ id }, ctx) => {
-    ctx.updateConfig(HISTORY_PATH, (prev) =>
-      (Array.isArray(prev) ? prev : []).filter((item) => item.id !== id),
-    );
+    ctx.updateConfig(HISTORY_PATH, (prev) => asArray(prev).filter((item) => item.id !== id));
     return { ok: true };
   },
 
@@ -48,7 +50,7 @@ export default {
   save_custom_style: ({ style }, ctx) => {
     if (!style?.id) return { ok: false };
     ctx.updateConfig(CUSTOM_STYLES_PATH, (prev) => {
-      const list = Array.isArray(prev) ? prev : [];
+      const list = asArray(prev);
       const filtered = list.filter((s) => s.id !== style.id);
       return [style, ...filtered].slice(0, 50);
     });
@@ -56,19 +58,19 @@ export default {
   },
 
   remove_custom_style: ({ id }, ctx) => {
-    ctx.updateConfig(CUSTOM_STYLES_PATH, (prev) =>
-      (Array.isArray(prev) ? prev : []).filter((s) => s.id !== id),
-    );
+    ctx.updateConfig(CUSTOM_STYLES_PATH, (prev) => asArray(prev).filter((s) => s.id !== id));
     return { ok: true };
   },
 
-  save_shared_config: (payload, ctx) => {
-    ctx.writeConfig(SHARED_CONFIG_PATH, {
-      defaultModel: typeof payload?.defaultModel === 'string' ? payload.defaultModel : '',
-      defaultAgentPresetId: typeof payload?.defaultAgentPresetId === 'string' ? payload.defaultAgentPresetId : '',
-    });
+  // 保存设置：工作流 / 默认模型 / agent。整体合并写入，广播给所有客户端。
+  save_settings: ({ settings }, ctx) => {
+    if (!settings || typeof settings !== 'object') return { ok: false };
+    ctx.updateConfig(SETTINGS_PATH, (prev) => ({
+      ...(prev && typeof prev === 'object' ? prev : {}),
+      ...settings,
+    }));
     return { ok: true };
   },
 };
 
-export { HISTORY_PATH, CUSTOM_STYLES_PATH, SHARED_CONFIG_PATH };
+export { HISTORY_PATH, CUSTOM_STYLES_PATH, SETTINGS_PATH };

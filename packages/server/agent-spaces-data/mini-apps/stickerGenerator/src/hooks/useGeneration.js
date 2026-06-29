@@ -4,7 +4,7 @@ import { buildPrompt } from '../utils/styles';
 
 // 监听 miniApp.taskSnapshot / taskStarted / taskFinished / taskFailed，
 // 让本标签发起的生成在 running 时显示，结束时落库
-export function useGeneration({ form, customStyles, onComplete }) {
+export function useGeneration({ form, customStyles, settings, onComplete }) {
   const AS = window.AgentSpaces;
   const executorId = AS.getExecutorId?.();
 
@@ -15,9 +15,10 @@ export function useGeneration({ form, customStyles, onComplete }) {
 
   const generate = React.useCallback(async () => {
     setError('');
-    const prompt = String(form.prompt || '').trim();
-    if (!prompt) { setError('请输入贴图描述'); return; }
-    if (!form.model) { setError('请选择模型'); return; }
+    const userPrompt = String(form.prompt || '').trim();
+    if (!userPrompt) { setError('请输入贴图描述'); return; }
+    const model = form.model || settings?.defaultModel || '';
+    if (!model) { setError('请先在设置中选择模型'); return; }
 
     const finalPrompt = buildPrompt(form, customStyles);
     setRunning(true);
@@ -27,21 +28,22 @@ export function useGeneration({ form, customStyles, onComplete }) {
       const out = await runStickerWorkflow({
         AS,
         prompt: finalPrompt,
-        model: form.model,
+        model,
         aspect: form.aspect,
         size: form.size,
         references: form.references,
-        form,
-        customStyles,
+        workflowIds: {
+          textToImage: settings?.textToImageWorkflowId,
+          editImage: settings?.editImageWorkflowId,
+        },
       });
 
-      const styleName = (customStyles.find((s) => s.id === form.styleId)?.name)
-        || (customStyles.find((s) => s.id === form.styleId)?.label_zh)
-        || '';
+      const matched = [...customStyles].find((s) => s.id === form.styleId);
+      const styleName = matched?.label_zh || matched?.name || '';
       await AS.invokeService('add_results', {
         items: out.images,
-        prompt: form.prompt,
-        model: form.model,
+        prompt: userPrompt,
+        model,
         styleId: form.styleId,
         styleName,
         aspect: form.aspect,
@@ -58,7 +60,7 @@ export function useGeneration({ form, customStyles, onComplete }) {
     } finally {
       setRunning(false);
     }
-  }, [form, customStyles, onComplete]);
+  }, [form, customStyles, settings, onComplete]);
 
   // 订阅任务事件：仅在当前标签发起时显示全局态
   React.useEffect(() => {

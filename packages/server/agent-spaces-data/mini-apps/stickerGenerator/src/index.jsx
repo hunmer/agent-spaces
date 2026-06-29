@@ -3,19 +3,19 @@ import Header from './components/Header';
 import ControlPanel from './components/ControlPanel';
 import Gallery from './components/Gallery';
 import PreviewDialog from './components/PreviewDialog';
+import SettingsDialog from './components/SettingsDialog';
 import { useConfigData } from './hooks/useConfigData';
 import { useGeneration } from './hooks/useGeneration';
-import { useAgentPresets } from './hooks/useAgentPresets';
+import { usePromptAgent } from './hooks/usePromptAgent';
 import { DEFAULT_FORM } from './utils/styles';
 import { persistableReferences } from './utils/workflow';
+import { SETTING_KEYS } from './utils/settings';
 
 const {
-  Popover, PopoverTrigger, PopoverContent, Button, Badge, Loader2, Check, X,
-  Bot, Wand2, AlertCircle,
+  Button, Check, AlertCircle,
 } = window.AgentSpacesUI;
 
 const DRAFT_KEY = 'stickerGeneratorDraft';
-const MODEL_KEY = 'stickerGeneratorModel';
 
 function Style() {
   return (
@@ -89,6 +89,20 @@ function Style() {
       .sg-style-custom-tag { font-size: 9px; font-weight: 700; color: var(--sg-muted); border: 1px solid var(--sg-border); padding: 1px 4px; border-radius: 4px; }
       .sg-style-hint { font-size: 11px; color: var(--sg-muted); line-height: 1.5; }
 
+      /* style picker: custom create / delete */
+      .sg-style-item-wrap { position: relative; }
+      .sg-style-del { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 4px; border: 0; background: transparent; color: var(--sg-muted); cursor: pointer; display: none; align-items: center; justify-content: center; }
+      .sg-style-item-wrap:hover .sg-style-del { display: flex; }
+      .sg-style-del:hover { background: #fee2e2; color: #dc2626; }
+      .sg-style-create { border-top: 1px solid var(--sg-border); padding: 8px; }
+      .sg-style-create-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 1px dashed var(--sg-border); background: transparent; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--sg-accent); }
+      .sg-style-create-btn:hover { background: var(--sg-accent-soft); border-color: var(--sg-accent); }
+      .sg-style-create-form { display: flex; flex-direction: column; gap: 8px; }
+      .sg-style-create-head { display: flex; align-items: center; justify-content: space-between; }
+      .sg-style-create-close { border: 0; background: transparent; cursor: pointer; color: var(--sg-muted); }
+      .sg-style-input { padding: 7px 9px; border: 1px solid var(--sg-border); border-radius: 6px; font-size: 13px; background: var(--sg-card); color: var(--sg-fg); }
+      .sg-style-textarea { min-height: 60px; resize: vertical; padding: 7px 9px; border: 1px solid var(--sg-border); border-radius: 6px; font-size: 12px; background: var(--sg-card); color: var(--sg-fg); }
+
       /* toggles */
       .sg-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
       .sg-toggle-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
@@ -142,14 +156,24 @@ function Style() {
       .sg-preview-time { font-family: ui-monospace, monospace; font-size: 12px; }
       .sg-preview-dl { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: linear-gradient(135deg, #f97316, #f43f5e); color: #fff; border-radius: 8px; font-weight: 700; text-decoration: none; }
 
-      /* floating agent helper */
-      .sg-agent-fab { position: fixed; right: 20px; bottom: 20px; z-index: 50; width: 48px; height: 48px; border-radius: 999px; background: linear-gradient(135deg, #f97316, #f43f5e); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(249,115,22,.4); cursor: pointer; border: 0; }
-      .sg-agent-fab:hover { filter: brightness(1.08); }
-      .sg-agent-panel { width: 340px; }
-      .sg-agent-head { display: flex; align-items: center; gap: 8px; padding: 4px 0 8px; border-bottom: 1px solid var(--sg-border); margin-bottom: 10px; font-weight: 700; }
-      .sg-agent-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-      .sg-agent-status { font-size: 12px; color: var(--sg-muted); display: flex; align-items: center; gap: 6px; }
-      .sg-agent-result { font-size: 13px; line-height: 1.5; background: var(--sg-soft); border: 1px solid var(--sg-border); border-radius: 8px; padding: 10px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+      /* prompt agent: 内嵌在提示词输入框右下角 */
+      .sg-prompt-wrap { position: relative; }
+      .sg-textarea-with-agent { padding-bottom: 38px; }
+      .sg-pa-trigger { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #f97316, #f43f5e); border: 0; border-radius: 7px; padding: 5px 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(249,115,22,.35); }
+      .sg-pa-trigger:hover { filter: brightness(1.08); }
+      .sg-pa-trigger:disabled { opacity: .5; cursor: not-allowed; }
+      .sg-pa-panel { margin-top: 8px; background: var(--sg-soft); border: 1px solid var(--sg-border); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+      .sg-pa-head { display: flex; align-items: center; justify-content: space-between; }
+      .sg-pa-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--sg-fg); }
+      .sg-pa-close { border: 0; background: transparent; cursor: pointer; color: var(--sg-muted); padding: 2px; border-radius: 4px; }
+      .sg-pa-close:hover { background: var(--sg-card); color: var(--sg-fg); }
+      .sg-pa-row { display: flex; flex-direction: column; gap: 4px; }
+      .sg-pa-input { padding: 7px 9px; border: 1px solid var(--sg-border); border-radius: 6px; font-size: 13px; background: var(--sg-card); color: var(--sg-fg); }
+      .sg-pa-status { font-size: 12px; color: var(--sg-muted); display: flex; align-items: center; gap: 6px; }
+      .sg-pa-warn { color: #b45309; }
+      .sg-pa-run { width: 100%; }
+      .sg-pa-result { font-size: 13px; line-height: 1.5; background: var(--sg-card); border: 1px solid var(--sg-border); border-radius: 8px; padding: 9px; max-height: 160px; overflow: auto; white-space: pre-wrap; }
+      .sg-pa-actions { display: flex; justify-content: flex-end; gap: 6px; }
 
       .sg-floating-status { position: fixed; right: 18px; bottom: 80px; z-index: 80; background: var(--sg-fg); color: var(--sg-bg); border-radius: 7px; padding: 8px 12px; font-size: 13px; }
       .sg-error-bar { margin: 0 0 8px; padding: 9px 12px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
@@ -160,6 +184,32 @@ function Style() {
       .sg-icon-lg { width: 36px; height: 36px; opacity: .5; }
       .sg-spin { animation: sg-spin 1s linear infinite; }
       @keyframes sg-spin { to { transform: rotate(360deg); } }
+
+      /* header settings button */
+      .sg-header-settings { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sg-fg); background: var(--sg-card); border: 1px solid var(--sg-border); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+      .sg-header-settings:hover { background: var(--sg-soft); border-color: var(--sg-accent); color: var(--sg-accent); }
+
+      /* settings dialog */
+      .sg-set-dialog { max-width: 520px; }
+      .sg-set-body { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; max-height: 60vh; overflow: auto; }
+      .sg-set-section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--sg-muted); padding-top: 8px; border-top: 1px solid var(--sg-border); margin-top: 4px; }
+      .sg-set-section-title:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+      .sg-set-field { display: flex; flex-direction: column; gap: 6px; }
+      .sg-set-label { font-size: 13px; font-weight: 700; color: var(--sg-fg); }
+      .sg-set-slot-wrap { position: relative; }
+      .sg-set-reset { position: absolute; right: 0; top: 0; font-size: 11px; height: 24px; padding: 0 8px; }
+      .sg-set-slot { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--sg-border); background: var(--sg-card); border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--sg-fg); text-align: left; }
+      .sg-set-slot:hover { border-color: var(--sg-accent); background: var(--sg-soft); }
+      .sg-set-slot-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sg-set-tag { font-size: 10px; font-weight: 700; color: var(--sg-muted); border: 1px solid var(--sg-border); padding: 1px 6px; border-radius: 4px; }
+      .sg-set-desc { font-size: 11px; color: var(--sg-muted); line-height: 1.5; }
+      .sg-set-agent-row { display: flex; align-items: center; gap: 8px; }
+      .sg-set-ok { color: #10b981; }
+      .sg-set-error { font-size: 12px; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px; }
+      .sg-set-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--sg-border); margin-top: 4px; }
+
+      /* control panel model custom input */
+      .sg-model-custom { margin-top: 6px; }
 
       @media (max-width: 900px) {
         .sg-main { grid-template-columns: 1fr; }
@@ -173,64 +223,50 @@ function Style() {
 
 function App() {
   const AS = window.AgentSpaces;
-  const { history, customStyles, sharedConfig } = useConfigData();
+  const { history, customStyles, settings, saveSettings } = useConfigData();
   const [form, setForm] = React.useState(() => ({
     ...DEFAULT_FORM,
     ...(AS.getUserSetting?.(DRAFT_KEY, {}) || {}),
-    model: AS.getUserSetting?.(MODEL_KEY, '') || sharedConfig.defaultModel || '',
+    model: AS.getUserSetting?.(SETTING_KEYS.draftModel, '') || settings.defaultModel || '',
   }));
   const [preview, setPreview] = React.useState(null);
-  const [agentOpen, setAgentOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+
+  // settings 里的默认模型变化时，若用户未单独选过模型，则同步填入
+  React.useEffect(() => {
+    const draftModel = AS.getUserSetting?.(SETTING_KEYS.draftModel, '');
+    if (!draftModel && settings.defaultModel) {
+      setForm((prev) => (prev.model ? prev : { ...prev, model: settings.defaultModel }));
+    }
+  }, [settings.defaultModel]);
 
   // 草稿持久化（不含 File 对象）
   React.useEffect(() => {
     AS.saveUserSettings?.({
       [DRAFT_KEY]: { ...form, references: persistableReferences(form.references) },
-      [MODEL_KEY]: form.model,
+      [SETTING_KEYS.draftModel]: form.model,
     });
   }, [form]);
 
-  const { running, status, error, generate } = useGeneration({ form, customStyles });
+  const { running, status, error, generate } = useGeneration({ form, customStyles, settings });
 
-  // agent_run 提示词助手
-  const { presets, loading: presetsLoading } = useAgentPresets(true);
-  const [agentBusy, setAgentBusy] = React.useState(false);
-  const [agentResult, setAgentResult] = React.useState('');
-  const [agentTopic, setAgentTopic] = React.useState('');
+  // 提示词 AI 助手：内嵌在提示词输入框右下角（由 ControlPanel 渲染）
+  const promptAgent = usePromptAgent({ settings, currentPrompt: form.prompt });
 
-  const optimizePrompt = async () => {
-    const topic = String(agentTopic || form.prompt || '').trim();
-    if (!topic) { setAgentResult('请先输入主题或提示词'); return; }
-    const presetId = sharedConfig.defaultAgentPresetId || presets[0]?.id;
-    if (!presetId) { setAgentResult('未找到可用的 Agent preset，请先在设置中配置。'); return; }
-    setAgentBusy(true);
-    setAgentResult('正在生成贴图提示词...');
-    try {
-      const resp = await AS.callPluginTool('@agent-spaces/builtin', 'agent_run', {
-        prompt: `你是贴图提示词专家。请根据以下主题，生成 3 条适合制作贴纸(sticker)的英文提示词，每条一行，简洁有画面感，强调主体、风格、表情和构图。主题：「${topic}」`,
-        agentConfigId: presetId,
-        permissionMode: 'dontAsk',
-      });
-      const text = resp?.result?.result || resp?.result || '';
-      setAgentResult(typeof text === 'string' ? text : JSON.stringify(text));
-    } catch (err) {
-      setAgentResult(`生成失败：${err?.message || err}`);
-    } finally {
-      setAgentBusy(false);
-    }
-  };
-
-  const applyAgentResult = () => {
-    const text = String(agentResult || '').trim();
-    if (!text) return;
-    setForm((prev) => ({ ...prev, prompt: prev.prompt.trim() ? `${prev.prompt.trim()}\n${text}` : text }));
-    setAgentOpen(false);
+  // 保存设置：写入 settings.json + 本地兜底 agent id
+  const onSaveSettings = (next) => {
+    saveSettings(next);
+    AS.saveUserSettings?.({
+      [SETTING_KEYS.agentConfigId]: next.agentConfigId || '',
+      [SETTING_KEYS.agentMeta]: { name: next.agentName, modelProvider: next.agentModelProvider },
+    });
+    setSettingsOpen(false);
   };
 
   return (
     <div className="sg-root">
       <Style />
-      <Header count={history.length} />
+      <Header count={history.length} onOpenSettings={() => setSettingsOpen(true)} />
       {error && <div className="sg-error-bar"><AlertCircle className="sg-icon-sm" />{error}</div>}
       {status && !running && <div className="sg-success-bar"><Check className="sg-icon-sm" />{status}</div>}
 
@@ -242,7 +278,10 @@ function App() {
             customStyles={customStyles}
             running={running}
             onGenerate={generate}
-            onUploadRefs={(files) => {
+            promptAgent={promptAgent}
+            onSaveCustomStyle={() => {}}
+            onDeleteCustomStyle={() => {}}
+            onUploadRefs={() => {
               // 上传完成后把可持久化结构回写，避免 File 对象残留
               Promise.resolve()
                 .then(() => setForm((prev) => ({ ...prev, references: persistableReferences(prev.references) })))
@@ -263,46 +302,13 @@ function App() {
 
       <PreviewDialog item={preview} onClose={() => setPreview(null)} onDelete={(id) => AS.invokeService('remove_result', { id })} />
 
-      {/* agent_run 提示词助手浮层 */}
-      <button type="button" className="sg-agent-fab" title="AI 提示词助手" onClick={() => setAgentOpen((v) => !v)}>
-        <Wand2 className="sg-icon-sm" />
-      </button>
-      {agentOpen && (
-        <div className="sg-agent-panel" style={{ position: 'fixed', right: 20, bottom: 80, zIndex: 60, background: 'var(--sg-card)', border: '1px solid var(--sg-border)', borderRadius: 12, padding: 14, boxShadow: '0 12px 40px rgba(0,0,0,.18)' }}>
-          <div className="sg-agent-head">
-            <Bot className="sg-icon-sm" />
-            <span>AI 提示词助手</span>
-            <Button size="icon" variant="ghost" style={{ marginLeft: 'auto' }} onClick={() => setAgentOpen(false)}>
-              <X className="sg-icon-sm" />
-            </Button>
-          </div>
-          <div className="sg-agent-row">
-            <span className="sg-field-label">主题 / 关键词</span>
-            <input
-              style={{ padding: '8px', borderRadius: 6, border: '1px solid var(--sg-border)', background: 'var(--sg-card)', color: 'var(--sg-fg)', fontSize: 13, width: '100%' }}
-              value={agentTopic}
-              onChange={(e) => setAgentTopic(e.target.value)}
-              placeholder={form.prompt || '例如：戴墨镜的猫'}
-            />
-          </div>
-          {presetsLoading && <div className="sg-agent-status"><Loader2 className="sg-icon-xs sg-spin" /> 加载 Agent preset...</div>}
-          {!presetsLoading && presets.length === 0 && (
-            <div className="sg-agent-status">未发现 Agent preset，请先在「设置 → Agent」里配置一个 agent。</div>
-          )}
-          <Button onClick={optimizePrompt} disabled={agentBusy || presets.length === 0} style={{ width: '100%', marginBottom: 10 }}>
-            {agentBusy ? <Loader2 className="sg-icon-sm sg-spin" /> : <Wand2 className="sg-icon-sm" />}
-            {agentBusy ? '生成中...' : '生成提示词'}
-          </Button>
-          {agentResult && (
-            <>
-              <div className="sg-agent-result">{agentResult}</div>
-              <Button variant="outline" onClick={applyAgentResult} style={{ width: '100%', marginTop: 8 }}>
-                <Check className="sg-icon-sm" /> 应用到提示词框
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+      {/* 设置对话框 */}
+      <SettingsDialog
+        open={settingsOpen}
+        value={settings}
+        onClose={() => setSettingsOpen(false)}
+        onSave={onSaveSettings}
+      />
 
       {running && <div className="sg-floating-status">正在生成贴图，请稍候...</div>}
     </div>

@@ -1,10 +1,12 @@
 // 左侧控制面板：提示词 / 风格 / 参考图 / 输出设置 / 高级选项 / 生成按钮
 // 所有可选项最终都拼进 prompt 提交给工作流（见 styles.js#buildPrompt）
 import StylePicker from './StylePicker';
+import PromptAgentPanel from './PromptAgentPanel';
 import {
   ASPECT_RATIOS, SIZES, BACKGROUND_COLORS, FONTS, PRESET_PROMPTS,
   LAYOUT_MODES, COLLECTION_COUNT_PRESETS, getStyle,
 } from '../utils/styles';
+import { MODEL_OPTIONS } from '../utils/settings';
 
 const {
   Button, Textarea, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -42,7 +44,8 @@ function Field({ label, children }) {
 }
 
 export default function ControlPanel({
-  form, onChange, customStyles, running, onGenerate, onUploadRefs,
+  form, onChange, customStyles, running, onGenerate, onUploadRefs, onSaveCustomStyle, onDeleteCustomStyle,
+  promptAgent,
 }) {
   const update = (patch) => onChange({ ...form, ...patch });
   const style = getStyle(form.styleId, customStyles);
@@ -101,13 +104,22 @@ export default function ControlPanel({
 
       <Section title="提示词" icon={Sparkles}>
         <Field label="贴图描述">
-          <Textarea
-            value={form.prompt}
-            onChange={(e) => update({ prompt: e.target.value })}
-            placeholder={'每行一个提示词可批量生成...\n例如：\n一只快乐的小狐狸\n一支潜艇舰队'}
-            className="sg-textarea"
-            disabled={running}
-          />
+          <div className="sg-prompt-wrap">
+            <Textarea
+              value={form.prompt}
+              onChange={(e) => update({ prompt: e.target.value })}
+              placeholder={'每行一个提示词可批量生成...\n例如：\n一只快乐的小狐狸\n一支潜艇舰队'}
+              className="sg-textarea sg-textarea-with-agent"
+              disabled={running}
+            />
+            {promptAgent && (
+              <PromptAgentPanel
+                agent={promptAgent}
+                disabled={running}
+                onApply={(text) => update({ prompt: form.prompt.trim() ? `${form.prompt.trim()}\n${text}` : text })}
+              />
+            )}
+          </div>
         </Field>
         <div className="sg-presets">
           <span className="sg-mini-label"><Sparkles className="sg-icon-xs" /> 试试这些</span>
@@ -124,6 +136,8 @@ export default function ControlPanel({
           value={form.styleId}
           customStyles={customStyles}
           onChange={(id) => update({ styleId: id })}
+          onSaveCustom={onSaveCustomStyle}
+          onDeleteCustom={onDeleteCustomStyle}
           disabled={running}
         />
         <div className="sg-style-hint">{style?.promptModifier}</div>
@@ -160,12 +174,28 @@ export default function ControlPanel({
           </Field>
         </div>
         <Field label="模型">
-          <Input
-            value={form.model}
-            onChange={(e) => update({ model: e.target.value })}
-            placeholder="例如：gpt-image-1 / seedream-4.0 / nano-banana-2"
+          <Select
+            value={MODEL_OPTIONS.some((m) => m.value === form.model) ? form.model : '__custom__'}
+            onValueChange={(v) => update({ model: v === '__custom__' ? form.model : v })}
             disabled={running}
-          />
+          >
+            <SelectTrigger><SelectValue placeholder="选择模型" /></SelectTrigger>
+            <SelectContent>
+              {MODEL_OPTIONS.map((m) => (
+                <SelectItem key={m.value} value={m.value}>{m.label} · {m.providerLabel}</SelectItem>
+              ))}
+              <SelectItem value="__custom__">自定义（手动填写）</SelectItem>
+            </SelectContent>
+          </Select>
+          {(!MODEL_OPTIONS.some((m) => m.value === form.model)) && (
+            <Input
+              value={form.model}
+              onChange={(e) => update({ model: e.target.value })}
+              placeholder="输入自定义模型名称"
+              disabled={running}
+              className="sg-model-custom"
+            />
+          )}
         </Field>
       </Section>
 
