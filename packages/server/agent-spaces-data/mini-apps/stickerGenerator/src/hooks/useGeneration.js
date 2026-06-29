@@ -50,6 +50,8 @@ export function useGeneration({ form, customStyles, settings, onComplete }) {
         size: form.size,
         kind: out.kind,
         workflowId: out.workflowId,
+        layoutMode: form.layoutMode,
+        collectionCount: form.layoutMode === 'collection' ? form.collectionCount : 0,
       });
       setStatus(`已生成 ${out.images.length} 张贴图`);
       onComplete?.(out);

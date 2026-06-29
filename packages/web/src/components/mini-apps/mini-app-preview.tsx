@@ -537,15 +537,16 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
           {error}
         </div>
       )}
-      <MiniAppRenderer
-        type={type}
-        sourceCode={sourceCode}
-        onError={handleRendererError}
-        className="flex-1"
-        taskEvents={taskEvents}
-        files={files}
-        mainFile={mainFile}
-      />
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <MiniAppRenderer
+          type={type}
+          sourceCode={sourceCode}
+          onError={handleRendererError}
+          taskEvents={taskEvents}
+          files={files}
+          mainFile={mainFile}
+        />
+      </div>
       <WorkflowPluginConfigDialog
         open={Boolean(configPlugin)}
         onOpenChange={(o) => { if (!o) setConfigPlugin(null); }}

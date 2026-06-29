@@ -1,0 +1,10 @@
+{
+  "textToImageWorkflowId": "d88dcb7c-7f5f-47c8-962c-89217a2c0ad6",
+  "textToImageWorkflowName": "text_to_image",
+  "editImageWorkflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
+  "editImageWorkflowName": "edit_image",
+  "defaultModel": "",
+  "agentConfigId": "6bbc4f61-eece-4843-82ea-ff1d4bc63830",
+  "agentName": "贴图助手",
+  "agentModelProvider": "openai-chat-completions"
+}

@@ -3,6 +3,8 @@ import Header from './components/Header';
 import ControlPanel from './components/ControlPanel';
 import Gallery from './components/Gallery';
 import PreviewDialog from './components/PreviewDialog';
+import SplitResultDialog from './components/SplitResultDialog';
+import SplitConfirmDialog from './components/SplitConfirmDialog';
 import SettingsDialog from './components/SettingsDialog';
 import { useConfigData } from './hooks/useConfigData';
 import { useGeneration } from './hooks/useGeneration';
@@ -31,7 +33,7 @@ function Style() {
         --sg-accent: var(--primary, #f97316);
         --sg-accent-soft: var(--accent, #fff7ed);
       }
-      .sg-root { height: 100vh; display: flex; flex-direction: column; background: var(--sg-bg); color: var(--sg-fg); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .sg-root { height: 100%; min-height: 0; overflow: hidden; display: flex; flex-direction: column; background: var(--sg-bg); color: var(--sg-fg); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
       .sg-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 380px minmax(0, 1fr); }
       .sg-left { min-height: 0; overflow: auto; border-right: 1px solid var(--sg-border); background: var(--sg-card); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
       .sg-right { min-height: 0; overflow: auto; padding: 16px; }
@@ -74,6 +76,18 @@ function Style() {
       .sg-count-btn { width: 30px; height: 30px; border: 1px solid var(--sg-border); background: var(--sg-card); border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--sg-fg); }
       .sg-count-btn.is-selected { border-color: var(--sg-accent); background: var(--sg-accent); color: #fff; }
       .sg-count-input { width: 56px; }
+
+      /* collection 子贴纸内容列表 */
+      .sg-collection-box { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--sg-border); margin-top: 8px; }
+      .sg-items-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .sg-items-gen { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #f97316, #f43f5e); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+      .sg-items-gen:hover:not(:disabled) { filter: brightness(1.08); }
+      .sg-items-gen:disabled { opacity: .5; cursor: not-allowed; }
+      .sg-items-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; padding-right: 2px; }
+      .sg-item-row { display: flex; align-items: center; gap: 8px; }
+      .sg-item-idx { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 999px; background: var(--sg-accent-soft); color: var(--sg-accent); font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+      .sg-item-input { flex: 1; min-width: 0; padding: 6px 9px; border: 1px solid var(--sg-border); border-radius: 6px; font-size: 12px; background: var(--sg-card); color: var(--sg-fg); }
+      .sg-item-input:focus { outline: none; border-color: var(--sg-accent); }
 
       /* style picker */
       .sg-style-trigger { width: 100%; justify-content: flex-start; gap: 8px; }
@@ -156,7 +170,39 @@ function Style() {
       .sg-preview-block label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--sg-muted); margin-bottom: 4px; }
       .sg-preview-block p { font-size: 13px; line-height: 1.5; margin: 0; }
       .sg-preview-time { font-family: ui-monospace, monospace; font-size: 12px; }
-      .sg-preview-dl { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: linear-gradient(135deg, #f97316, #f43f5e); color: #fff; border-radius: 8px; font-weight: 700; text-decoration: none; }
+      .sg-preview-dl { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: linear-gradient(135deg, #f97316, #f43f5e); color: #fff; border-radius: 8px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; width: 100%; }
+
+      /* split result dialog */
+      .sg-split-dialog { max-width: 760px; }
+      .sg-split-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+      .sg-split-selectall { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sg-fg); background: transparent; border: 1px solid var(--sg-border); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+      .sg-split-selectall:hover { background: var(--sg-soft); }
+      .sg-split-zip { margin-left: auto; background: linear-gradient(135deg, #f97316, #f43f5e); color: #fff; border: 0; }
+      .sg-split-prompt { font-size: 12px; color: var(--sg-muted); margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sg-split-error { font-size: 12px; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
+      .sg-split-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; max-height: 56vh; overflow: auto; padding: 2px; }
+      .sg-split-cell { position: relative; aspect-ratio: 1; border: 2px solid var(--sg-border); border-radius: 8px; overflow: hidden; cursor: pointer; background: var(--sg-soft); padding: 0; transition: border-color .15s, transform .1s; }
+      .sg-split-cell:hover { transform: scale(1.02); }
+      .sg-split-cell.is-selected { border-color: var(--sg-accent); box-shadow: 0 0 0 2px rgba(249,115,22,.2); }
+      .sg-split-cell img { width: 100%; height: 100%; object-fit: contain; }
+      .sg-split-check { position: absolute; top: 5px; left: 5px; width: 22px; height: 22px; border-radius: 5px; background: rgba(255,255,255,.85); display: grid; place-items: center; color: var(--sg-accent); }
+      .sg-split-check.is-on { background: var(--sg-accent); color: #fff; }
+      .sg-split-idx { position: absolute; bottom: 5px; right: 5px; font-size: 10px; font-weight: 800; color: #fff; background: rgba(0,0,0,.5); border-radius: 999px; padding: 1px 7px; }
+
+      /* split confirm dialog */
+      .sg-split-confirm { max-width: 420px; }
+      .sg-split-confirm-thumb { margin: 0 0 12px; max-height: 200px; overflow: hidden; border-radius: 8px; border: 1px solid var(--sg-border); display: grid; place-items: center; background: var(--sg-soft); }
+      .sg-split-confirm-thumb img { max-width: 100%; max-height: 200px; object-fit: contain; }
+      .sg-split-confirm-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+      .sg-split-confirm-presets { display: flex; align-items: center; gap: 6px; }
+
+      /* split cell: image + alone-download button */
+      .sg-split-cell-img { position: relative; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; display: block; }
+      .sg-split-cell-img img { width: 100%; height: 100%; object-fit: contain; }
+      .sg-split-dl-one { position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; border-radius: 5px; background: rgba(255,255,255,.9); border: 0; cursor: pointer; display: grid; place-items: center; color: var(--sg-accent); opacity: 0; transition: opacity .15s; }
+      .sg-split-cell:hover .sg-split-dl-one { opacity: 1; }
+      .sg-split-dl-one:hover { background: var(--sg-accent); color: #fff; }
+      .sg-split-dl-one:disabled { opacity: .7; cursor: wait; }
 
       /* prompt agent: 内嵌在提示词输入框右下角 */
       .sg-prompt-wrap { position: relative; }
@@ -233,6 +279,7 @@ function App() {
   }));
   const [preview, setPreview] = React.useState(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [splitTarget, setSplitTarget] = React.useState(null); // 待拆分项（打开数量确认对话框）
 
   // settings 里的默认模型变化时，若用户未单独选过模型，则同步填入
   React.useEffect(() => {
@@ -255,12 +302,9 @@ function App() {
   // 提示词 AI 助手：内嵌在提示词输入框右下角（由 ControlPanel 渲染）
   const promptAgent = usePromptAgent({ settings, currentPrompt: form.prompt });
 
-  // 一键拆分：贴纸集合图 → 多张子贴纸
+  // 一键拆分：贴纸集合图 → 弹出 SplitResultDialog 展示结果（不落库）
   const stickerSplit = useStickerSplit();
   const splitError = stickerSplit.error;
-  const splitStatus = stickerSplit.lastResult
-    ? `已拆分出 ${stickerSplit.lastResult.count} 张子贴纸`
-    : '';
 
   // 保存设置：写入 settings.json + 本地兜底 agent id
   const onSaveSettings = (next) => {
@@ -279,7 +323,6 @@ function App() {
       {error && <div className="sg-error-bar"><AlertCircle className="sg-icon-sm" />{error}</div>}
       {splitError && <div className="sg-error-bar"><AlertCircle className="sg-icon-sm" />{splitError}</div>}
       {status && !running && <div className="sg-success-bar"><Check className="sg-icon-sm" />{status}</div>}
-      {splitStatus && <div className="sg-success-bar"><Check className="sg-icon-sm" />{splitStatus}</div>}
 
       <main className="sg-main">
         <div className="sg-left">
@@ -307,13 +350,34 @@ function App() {
             onPreview={setPreview}
             onDelete={(id) => AS.invokeService('remove_result', { id })}
             onClear={() => { if (window.confirm('确定清空所有贴图？')) AS.invokeService('clear_results'); }}
-            onSplit={stickerSplit.split}
+            onSplit={setSplitTarget}
             splittingIds={stickerSplit.splittingIds}
           />
         </div>
       </main>
 
       <PreviewDialog item={preview} onClose={() => setPreview(null)} onDelete={(id) => AS.invokeService('remove_result', { id })} />
+
+      {/* 拆分结果对话框 */}
+      <SplitResultDialog
+        open={!!stickerSplit.result}
+        pieces={stickerSplit.result?.pieces || []}
+        sourcePrompt={stickerSplit.result?.sourcePrompt || ''}
+        onClose={stickerSplit.clearResult}
+      />
+
+      {/* 拆分前数量确认对话框 */}
+      <SplitConfirmDialog
+        open={!!splitTarget}
+        item={splitTarget}
+        defaultCount={splitTarget?.collectionCount || 6}
+        onClose={() => setSplitTarget(null)}
+        onConfirm={(count) => {
+          const target = splitTarget;
+          setSplitTarget(null);
+          if (target) stickerSplit.split(target, count);
+        }}
+      />
 
       {/* 设置对话框 */}
       <SettingsDialog

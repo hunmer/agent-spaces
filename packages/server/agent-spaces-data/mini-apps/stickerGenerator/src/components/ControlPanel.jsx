@@ -49,6 +49,33 @@ export default function ControlPanel({
 }) {
   const update = (patch) => onChange({ ...form, ...patch });
   const style = getStyle(form.styleId, customStyles);
+  const itemsBusy = !!promptAgent?.itemsBusy;
+
+  // 子贴纸数量变化时同步 collectionItems 长度（补齐空串/截断）
+  React.useEffect(() => {
+    const items = Array.isArray(form.collectionItems) ? form.collectionItems : [];
+    const target = Array.from({ length: form.collectionCount }, (_, i) => items[i] || '');
+    const same = target.length === items.length && target.every((v, i) => v === items[i]);
+    if (!same) update({ collectionItems: target });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.collectionCount]);
+
+  const updateCollectionItem = (index, value) => {
+    const next = Array.from({ length: form.collectionCount }, (_, i) =>
+      (i === index ? value : (form.collectionItems[i] || '')),
+    );
+    update({ collectionItems: next });
+  };
+
+  // 一键生成：调用 promptAgent.generateCollectionItems，回填到 collectionItems
+  const handleGenerateItems = async () => {
+    if (!promptAgent?.generateCollectionItems) return;
+    const generated = await promptAgent.generateCollectionItems(form.prompt, form.collectionCount);
+    if (generated.length) {
+      const next = Array.from({ length: form.collectionCount }, (_, i) => generated[i] || '');
+      update({ collectionItems: next });
+    }
+  };
 
   const addPreset = (preset) => {
     update({ prompt: form.prompt.trim() ? `${form.prompt.trim()}\n${preset}` : preset });
@@ -76,28 +103,60 @@ export default function ControlPanel({
           })}
         </div>
         {form.layoutMode === 'collection' && (
-          <div className="sg-collection-count">
-            <span className="sg-mini-label">子贴纸数量</span>
-            <div className="sg-collection-presets">
-              {COLLECTION_COUNT_PRESETS.map((n) => (
-                <button
-                  type="button"
-                  key={n}
-                  className={`sg-count-btn${form.collectionCount === n ? ' is-selected' : ''}`}
+          <div className="sg-collection-box">
+            <div className="sg-collection-count">
+              <span className="sg-mini-label">子贴纸数量</span>
+              <div className="sg-collection-presets">
+                {COLLECTION_COUNT_PRESETS.map((n) => (
+                  <button
+                    type="button"
+                    key={n}
+                    className={`sg-count-btn${form.collectionCount === n ? ' is-selected' : ''}`}
+                    disabled={running}
+                    onClick={() => update({ collectionCount: n })}
+                  >{n}</button>
+                ))}
+                <Input
+                  type="number"
+                  min={2}
+                  max={12}
+                  value={form.collectionCount}
                   disabled={running}
-                  onClick={() => update({ collectionCount: n })}
-                >{n}</button>
-              ))}
-              <Input
-                type="number"
-                min={2}
-                max={12}
-                value={form.collectionCount}
-                disabled={running}
-                onChange={(e) => update({ collectionCount: Math.max(2, Math.min(12, Number(e.target.value) || 2)) })}
-                className="sg-count-input"
-              />
+                  onChange={(e) => update({ collectionCount: Math.max(2, Math.min(12, Number(e.target.value) || 2)) })}
+                  className="sg-count-input"
+                />
+              </div>
             </div>
+
+            <div className="sg-items-head">
+              <span className="sg-mini-label">每张子贴纸内容</span>
+              <button
+                type="button"
+                className="sg-items-gen"
+                disabled={running || itemsBusy || !form.prompt.trim() || !promptAgent?.hasAgent}
+                title={!promptAgent?.hasAgent ? '未配置 Agent，请到设置中配置' : '根据上方主提示词一键生成'}
+                onClick={handleGenerateItems}
+              >
+                {itemsBusy ? <Loader2 className="sg-icon-xs sg-spin" /> : <Wand2 className="sg-icon-xs" />}
+                {itemsBusy ? '生成中' : '一键生成'}
+              </button>
+            </div>
+            <div className="sg-items-list">
+              {Array.from({ length: form.collectionCount }, (_, i) => (
+                <label key={i} className="sg-item-row">
+                  <span className="sg-item-idx">{i + 1}</span>
+                  <input
+                    type="text"
+                    className="sg-item-input"
+                    value={form.collectionItems[i] || ''}
+                    disabled={running}
+                    onChange={(e) => updateCollectionItem(i, e.target.value)}
+                    placeholder={`第 ${i + 1} 张贴纸内容`}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="sg-style-hint">可手动填写，或点击「一键生成」由 AI 根据主提示词拆出多个不同主体。</div>
           </div>
         )}
       </Section>

@@ -11,7 +11,7 @@ function asArray(v) {
 
 export default {
   // 新增生成结果（去重 + 倒序 + 限长 200）
-  add_results: ({ items, prompt, model, styleId, styleName, aspect, size, kind, workflowId }, ctx) => {
+  add_results: ({ items, prompt, model, styleId, styleName, aspect, size, kind, workflowId, layoutMode, collectionCount }, ctx) => {
     ctx.updateConfig(HISTORY_PATH, (prev) => {
       const list = asArray(prev);
       const existing = new Set(list.map((item) => item.url));
@@ -29,6 +29,8 @@ export default {
           size,
           kind,
           workflowId,
+          layoutMode: layoutMode || '',
+          collectionCount: typeof collectionCount === 'number' ? collectionCount : 0,
           createdAt: new Date().toLocaleString('zh-CN'),
         }));
       return fresh.length ? [...fresh, ...list].slice(0, 200) : list;
@@ -69,30 +71,6 @@ export default {
       ...(prev && typeof prev === 'object' ? prev : {}),
       ...settings,
     }));
-    return { ok: true };
-  },
-
-  // 批量添加拆分子贴纸：dataUrl 直接作为 url 落库（浏览器端 Canvas 处理结果）
-  // { items: [{ url }], sourceId, prompt, model, styleName }
-  add_split_pieces: ({ items, sourceId, prompt, model, styleName }, ctx) => {
-    ctx.updateConfig(HISTORY_PATH, (prev) => {
-      const list = asArray(prev);
-      const now = Date.now();
-      const fresh = asArray(items)
-        .filter((item) => item?.url)
-        .map((item, index) => ({
-          id: `${now}-split-${index}`,
-          url: item.url,
-          prompt: prompt || '',
-          model: model || '',
-          styleName: styleName || '',
-          kind: 'split',
-          sourceId: sourceId || '',
-          isSplitPiece: true,
-          createdAt: new Date().toLocaleString('zh-CN'),
-        }));
-      return fresh.length ? [...fresh, ...list].slice(0, 200) : list;
-    });
     return { ok: true };
   },
 };

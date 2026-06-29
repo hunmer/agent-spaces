@@ -76,6 +76,7 @@ export const DEFAULT_FORM = {
   references: [],
   layoutMode: 'single',
   collectionCount: 6,
+  collectionItems: [],
   useStickerBorder: true,
   useFacialFeatures: true,
   textEnabled: false,
@@ -102,6 +103,13 @@ export function buildPrompt(form, customStyles = []) {
   if (form.layoutMode === 'threeViews') extras.push('three-view character sheet design (front, side, back)');
   if (form.layoutMode === 'collection') {
     extras.push(`a cohesive sticker collection sheet with ${form.collectionCount} small stickers arranged together on one image`);
+    // 把每个子贴纸的内容描述拼进去，让 AI 在同一张图里分别画出
+    const items = Array.isArray(form.collectionItems)
+      ? form.collectionItems.map((s) => String(s || '').trim()).filter(Boolean)
+      : [];
+    if (items.length) {
+      extras.push(`each sticker depicts a different subject: ${items.join('; ')}`);
+    }
   }
   if (form.useStickerBorder) extras.push('thick white die-cut sticker border outline');
   if (form.useFacialFeatures) extras.push('expressive facial features');
