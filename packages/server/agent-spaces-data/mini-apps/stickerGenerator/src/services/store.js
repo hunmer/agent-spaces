@@ -71,6 +71,30 @@ export default {
     }));
     return { ok: true };
   },
+
+  // 批量添加拆分子贴纸：dataUrl 直接作为 url 落库（浏览器端 Canvas 处理结果）
+  // { items: [{ url }], sourceId, prompt, model, styleName }
+  add_split_pieces: ({ items, sourceId, prompt, model, styleName }, ctx) => {
+    ctx.updateConfig(HISTORY_PATH, (prev) => {
+      const list = asArray(prev);
+      const now = Date.now();
+      const fresh = asArray(items)
+        .filter((item) => item?.url)
+        .map((item, index) => ({
+          id: `${now}-split-${index}`,
+          url: item.url,
+          prompt: prompt || '',
+          model: model || '',
+          styleName: styleName || '',
+          kind: 'split',
+          sourceId: sourceId || '',
+          isSplitPiece: true,
+          createdAt: new Date().toLocaleString('zh-CN'),
+        }));
+      return fresh.length ? [...fresh, ...list].slice(0, 200) : list;
+    });
+    return { ok: true };
+  },
 };
 
 export { HISTORY_PATH, CUSTOM_STYLES_PATH, SETTINGS_PATH };

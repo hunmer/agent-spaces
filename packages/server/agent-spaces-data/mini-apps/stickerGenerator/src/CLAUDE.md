@@ -19,16 +19,18 @@ AI 贴图生成器：用户输入提示词 + 选择风格/比例/分辨率/布�
 - `components/PromptAgentPanel.jsx` — 提示词 AI 助手面板（内嵌在提示词输入框右下角）
 - `components/StylePicker.jsx` — 风格选择（Popover 网格，内置 16 种 + 自定义创建/删除）
 - `components/Gallery.jsx` — 右侧图库（网格 + 空状态 + 清空）
-- `components/StickerCard.jsx` — 单张贴图卡片
+- `components/StickerCard.jsx` — 单张贴图卡片（含一键拆分按钮）
 - `components/PreviewDialog.jsx` — 贴图预览大图弹窗
 - `hooks/useConfigData.js` — configs 内存快照与变更订阅（历史/自定义风格/设置），暴露 saveSettings
 - `hooks/useGeneration.js` — 生成 + 任务事件订阅（miniApp.task*），从 settings 读取工作流 ID
 - `hooks/usePromptAgent.js` — 提示词 AI 助手状态（agent_run 生成 + 结果/主题/open 状态）
+- `hooks/useStickerSplit.js` — 一键拆分：调用 imageSplit 算法 → 子贴纸落库
 - `hooks/useAgentPresets.js` — 拉取 agent_run 可用 preset（仅未配置 agent 时作兜底）
 - `utils/styles.js` — 风格/比例/分辨率/字体/背景/预设常量 + buildPrompt
 - `utils/settings.js` — DEFAULT_SETTINGS / MODEL_OPTIONS / WORKFLOW_SLOTS / AGENT 预设 / SETTING_KEYS
 - `utils/workflow.js` — 工作流调用入口（ID 由参数传入）+ 结果解析 + 上传项解析
-- `services/store.js` — 服务端 configs 单一写入方（add_results/remove/clear/save_custom_style/save_settings）
+- `utils/imageSplit.js` — 贴纸集合拆分算法（连通域检测 + 透明沟谷切分，移植自 StickerCraft）
+- `services/store.js` — 服务端 configs 单一写入方（add_results/add_split_pieces/remove/clear/save_custom_style/save_settings）
 
 ## Key Design Decisions
 
@@ -41,6 +43,7 @@ AI 贴图生成器：用户输入提示词 + 选择风格/比例/分辨率/布�
 6. **任务事件**：生成调用带 `{taskId, meta}`，通过 `onTaskEvent` 订阅 `miniApp.taskStarted/Finished/Failed` 同步 running 状态。
 7. **草稿持久化**：表单草稿走 `getUserSetting/saveUserSettings`（浏览器本地），参考图用 `persistableReferences` 序列化掉 File 对象。
 8. **模型选择**：ControlPanel 模型字段改为下拉（MODEL_OPTIONS），选「自定义」时回退文本框；默认值来自 settings.defaultModel。
+9. **一键拆分**：贴纸集合图可在卡片上点「剪刀」按钮，`imageSplit.js` 在浏览器端用 Canvas 跑连通域检测 + 透明沟谷切分，拆出多张子贴纸，dataURL 直接作为 url 落库（`add_split_pieces`），子贴纸带 `isSplitPiece` 标记。
 
 ## Dependencies
 

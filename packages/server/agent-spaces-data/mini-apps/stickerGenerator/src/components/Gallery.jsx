@@ -3,7 +3,7 @@ import StickerCard from './StickerCard';
 
 const { Button, Badge, History, Trash2, ImageOff } = window.AgentSpacesUI;
 
-export default function Gallery({ history, running, onPreview, onDelete, onClear }) {
+export default function Gallery({ history, running, onPreview, onDelete, onClear, onSplit, splittingIds }) {
   return (
     <section className="sg-gallery">
       <div className="sg-gallery-head">
@@ -26,7 +26,14 @@ export default function Gallery({ history, running, onPreview, onDelete, onClear
       ) : (
         <div className="sg-grid">
           {history.map((item) => (
-            <StickerCard key={item.id} item={item} onPreview={onPreview} onDelete={onDelete} />
+            <StickerCard
+              key={item.id}
+              item={item}
+              onPreview={onPreview}
+              onDelete={onDelete}
+              onSplit={onSplit}
+              splitting={onSplit && splittingIds?.has(item.id)}
+            />
           ))}
         </div>
       )}

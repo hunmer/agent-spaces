@@ -7,6 +7,7 @@ import SettingsDialog from './components/SettingsDialog';
 import { useConfigData } from './hooks/useConfigData';
 import { useGeneration } from './hooks/useGeneration';
 import { usePromptAgent } from './hooks/usePromptAgent';
+import { useStickerSplit } from './hooks/useStickerSplit';
 import { DEFAULT_FORM } from './utils/styles';
 import { persistableReferences } from './utils/workflow';
 import { SETTING_KEYS } from './utils/settings';
@@ -135,6 +136,7 @@ function Style() {
       .sg-card-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
       .sg-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
       .sg-card-time { font-size: 11px; color: var(--sg-muted); }
+      .sg-card-split-tag { position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 800; color: #fff; background: rgba(249,115,22,.92); padding: 2px 8px; border-radius: 999px; }
       .sg-card-prompt { font-size: 12px; line-height: 1.45; color: var(--sg-fg); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
       .sg-card-actions { display: flex; align-items: center; gap: 6px; }
       .sg-card-dl { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 8px; border: 1px solid var(--sg-border); border-radius: 6px; color: var(--sg-fg); text-decoration: none; }
@@ -253,6 +255,13 @@ function App() {
   // 提示词 AI 助手：内嵌在提示词输入框右下角（由 ControlPanel 渲染）
   const promptAgent = usePromptAgent({ settings, currentPrompt: form.prompt });
 
+  // 一键拆分：贴纸集合图 → 多张子贴纸
+  const stickerSplit = useStickerSplit();
+  const splitError = stickerSplit.error;
+  const splitStatus = stickerSplit.lastResult
+    ? `已拆分出 ${stickerSplit.lastResult.count} 张子贴纸`
+    : '';
+
   // 保存设置：写入 settings.json + 本地兜底 agent id
   const onSaveSettings = (next) => {
     saveSettings(next);
@@ -268,7 +277,9 @@ function App() {
       <Style />
       <Header count={history.length} onOpenSettings={() => setSettingsOpen(true)} />
       {error && <div className="sg-error-bar"><AlertCircle className="sg-icon-sm" />{error}</div>}
+      {splitError && <div className="sg-error-bar"><AlertCircle className="sg-icon-sm" />{splitError}</div>}
       {status && !running && <div className="sg-success-bar"><Check className="sg-icon-sm" />{status}</div>}
+      {splitStatus && <div className="sg-success-bar"><Check className="sg-icon-sm" />{splitStatus}</div>}
 
       <main className="sg-main">
         <div className="sg-left">
@@ -296,6 +307,8 @@ function App() {
             onPreview={setPreview}
             onDelete={(id) => AS.invokeService('remove_result', { id })}
             onClear={() => { if (window.confirm('确定清空所有贴图？')) AS.invokeService('clear_results'); }}
+            onSplit={stickerSplit.split}
+            splittingIds={stickerSplit.splittingIds}
           />
         </div>
       </main>
