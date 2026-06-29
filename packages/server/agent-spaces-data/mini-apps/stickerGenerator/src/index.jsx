@@ -144,6 +144,26 @@ function Style() {
       .sg-gallery { height: 100%; display: flex; flex-direction: column; gap: 14px; }
       .sg-gallery-head { display: flex; align-items: center; justify-content: space-between; }
       .sg-gallery-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; }
+
+      /* gallery filter bar */
+      .sg-filter-bar { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--sg-card); border: 1px solid var(--sg-border); border-radius: 10px; }
+      .sg-filter-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+      .sg-filter-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+      .sg-filter-selects { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+      .sg-filter-select { width: 110px; height: 30px; min-width: 0; }
+      .sg-filter-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--sg-fg); background: var(--sg-soft); border: 1px solid var(--sg-border); padding: 4px 10px; border-radius: 999px; cursor: pointer; transition: all .15s; }
+      .sg-filter-chip:hover:not(:disabled) { border-color: var(--sg-accent); color: var(--sg-accent); }
+      .sg-filter-chip.is-active { background: var(--sg-accent); color: #fff; border-color: var(--sg-accent); }
+      .sg-filter-chip:disabled { opacity: .4; cursor: not-allowed; }
+      .sg-filter-count { font-size: 10px; font-weight: 700; opacity: .7; }
+      .sg-filter-chip.is-active .sg-filter-count { opacity: .9; }
+      .sg-filter-search { position: relative; display: flex; align-items: center; }
+      .sg-filter-search-icon { position: absolute; left: 10px; color: var(--sg-muted); pointer-events: none; }
+      .sg-filter-input { flex: 1; width: 100%; padding: 7px 32px 7px 30px; border: 1px solid var(--sg-border); border-radius: 8px; font-size: 13px; background: var(--sg-card); color: var(--sg-fg); }
+      .sg-filter-input:focus { outline: none; border-color: var(--sg-accent); }
+      .sg-filter-clear { position: absolute; right: 8px; border: 0; background: transparent; cursor: pointer; color: var(--sg-muted); padding: 2px; border-radius: 4px; display: grid; place-items: center; }
+      .sg-filter-clear:hover { color: var(--sg-fg); background: var(--sg-soft); }
+
       .sg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
       .sg-card { background: var(--sg-card); border: 1px solid var(--sg-border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s; }
       .sg-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
