@@ -1,16 +1,16 @@
 // 单张贴图卡片：缩略图 + 风格标签 + 时间 + 操作按钮（纯图标）
-// 下载走宿主 downloadFile 落到 data 目录
+// 下载触发浏览器原生下载（fetch→blob→a.click）
+import { downloadToBrowser } from '../utils/download';
 const { Button, Badge, Download, Trash2, ExternalLink, Maximize2, Scissors, Loader2 } = window.AgentSpacesUI;
 
 export default function StickerCard({ item, onPreview, onDelete, onSplit, splitting }) {
-  const AS = window.AgentSpaces;
   const isSplitting = !!splitting;
   const [downloading, setDownloading] = React.useState(false);
 
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      await AS.downloadFile(item.url, `stickers/sticker-${item.id}.png`);
+      await downloadToBrowser(item.url, `sticker-${item.id}.png`);
     } catch (err) {
       window.alert?.('下载失败：' + (err?.message || err));
     } finally {

@@ -1,16 +1,16 @@
 // 贴图预览大图弹窗：左图右信息（关闭用 Dialog 自带按钮）
-// 下载走宿主 downloadFile
+// 下载触发浏览器原生下载
+import { downloadToBrowser } from '../utils/download';
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, Badge, Button, Download, Trash2,
 } = window.AgentSpacesUI;
 
 export default function PreviewDialog({ item, onClose, onDelete }) {
   if (!item) return null;
-  const AS = window.AgentSpaces;
 
   const handleDownload = async () => {
     try {
-      await AS.downloadFile(item.url, `stickers/sticker-${item.id}.png`);
+      await downloadToBrowser(item.url, `sticker-${item.id}.png`);
     } catch (err) {
       window.alert?.('下载失败：' + (err?.message || err));
     }

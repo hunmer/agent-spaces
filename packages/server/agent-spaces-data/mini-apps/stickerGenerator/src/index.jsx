@@ -335,12 +335,6 @@ function App() {
             promptAgent={promptAgent}
             onSaveCustomStyle={() => {}}
             onDeleteCustomStyle={() => {}}
-            onUploadRefs={() => {
-              // 上传完成后把可持久化结构回写，避免 File 对象残留
-              Promise.resolve()
-                .then(() => setForm((prev) => ({ ...prev, references: persistableReferences(prev.references) })))
-                .catch(() => {});
-            }}
           />
         </div>
         <div className="sg-right">

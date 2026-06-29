@@ -7,6 +7,7 @@ import {
   LAYOUT_MODES, COLLECTION_COUNT_PRESETS, getStyle,
 } from '../utils/styles';
 import { MODEL_OPTIONS } from '../utils/settings';
+import { persistableReferences } from '../utils/workflow';
 
 const {
   Button, Textarea, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -44,7 +45,7 @@ function Field({ label, children }) {
 }
 
 export default function ControlPanel({
-  form, onChange, customStyles, running, onGenerate, onUploadRefs, onSaveCustomStyle, onDeleteCustomStyle,
+  form, onChange, customStyles, running, onGenerate, onSaveCustomStyle, onDeleteCustomStyle,
   promptAgent,
 }) {
   const update = (patch) => onChange({ ...form, ...patch });
@@ -205,7 +206,23 @@ export default function ControlPanel({
       <Section title="参考图（图生图）" icon={ImagePlus} defaultOpen={form.references?.length > 0}>
         <FileUpload
           value={form.references}
-          onChange={(files) => { update({ references: files }); onUploadRefs?.(files); }}
+          onChange={(files) => {
+            update({ references: files });
+            // 等所有文件上传完成（uploadPromise resolve）后回写持久化结构，去掉 File 对象
+            Promise.all((files || []).map((f) => {
+              const file = f?.file || f;
+              return file?.uploadPromise ? file.uploadPromise.then(() => file).catch(() => null) : file;
+            }))
+              .then(() => {
+                onChange((prev) => ({ ...prev, references: persistableReferences(prev.references) }));
+              })
+              .catch(() => {});
+          }}
+          onUploadStatusChange={(uploadStatus) => {
+            if (!uploadStatus?.uploading) {
+              onChange((prev) => ({ ...prev, references: persistableReferences(prev.references) }));
+            }
+          }}
           accept="image/*"
           multiple
           autoUpload

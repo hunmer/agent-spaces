@@ -1,4 +1,5 @@
 // 拆分结果对话框：展示子贴纸网格，默认全选，可单独取消，一键下载 zip / 单独下载
+import { downloadToBrowser } from '../utils/download';
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, Button, Badge,
   Check, Download, Loader2, CheckSquare, Square,
@@ -38,13 +39,13 @@ export default function SplitResultDialog({ open, pieces = [], sourcePrompt = ''
     }
   };
 
-  // 单独下载某一张
+  // 单独下载某一张（触发浏览器原生下载）
   const downloadOne = async (i) => {
     setDownloadingIdx(i);
     setError('');
     try {
       const url = pieces[i].dataUrl || pieces[i].url;
-      await AS.downloadFile(url, `stickers/sticker-${String(i + 1).padStart(2, '0')}.png`);
+      await downloadToBrowser(url, `sticker-${String(i + 1).padStart(2, '0')}.png`);
     } catch (err) {
       setError('下载失败：' + (err?.message || err));
     } finally {
