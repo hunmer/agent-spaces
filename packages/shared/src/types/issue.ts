@@ -22,7 +22,6 @@ export interface Issue {
   workflowId?: string;
   workflowExecutionId?: string;
   workflowExecutionStatus?: 'running' | 'paused' | 'completed' | 'error';
-  continuousRun?: boolean;
   retryCount: number;
   maxRetries: number;
   retryPaused?: boolean;

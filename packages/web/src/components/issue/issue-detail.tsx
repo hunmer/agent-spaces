@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import {
   MessageSquare, X, MoreHorizontal, Users, Calendar, Paperclip, Plus,
-  ArrowRight, Pencil, Info, MessagesSquare, Play, StepForward, Ban,
+  ArrowRight, Pencil, Info, MessagesSquare, Play, Pause, Square,
   RotateCcw, ArrowLeft, GitBranch,
 } from 'lucide-react';
 import { useIssueStore } from '@/stores/issue';
@@ -29,7 +29,6 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Switch } from '@/components/ui/switch';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { ISSUE_STATUS_COLOR } from './issue-status-colors';
 
@@ -63,7 +62,7 @@ interface IssueDetailProps {
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
-  const { issues, activeIssueId, startIssue, resumeIssue, continueIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
+  const { issues, activeIssueId, startIssue, pauseIssue, resumeIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -77,6 +76,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const t = useTranslations('issue');
+  const tw = useTranslations('workflows');
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
@@ -200,8 +200,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }
 
   const canStart = issue.status === 'draft' || issue.status === 'planned';
-  const canContinue = Boolean(issue.workflowId) && issue.status !== 'completed' && issue.status !== 'archived';
-  const canInterrupt = issue.status === 'planned' || issue.status === 'in_progress';
+  const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
+  const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
+  const canPause = isWorkflowRunning;
+  const canStop = isWorkflowRunning || isWorkflowPaused;
 
   const statusDotColor = issue.status === 'completed' ? 'bg-green-500'
     : issue.status === 'in_progress' ? 'bg-blue-500'
@@ -236,29 +238,27 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Switch
-                      size="sm"
-                      checked={issue.continuousRun !== false}
-                      onCheckedChange={(checked) => updateIssue(workspaceId, issue.id, { continuousRun: checked })}
-                    />
-                    <span>{t('detail.continuousRun')}</span>
-                  </div>
                   {canStart && (
                     <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setStartInputOpen(true)}>
                       <Play className="h-3 w-3 mr-1" />
                       {t('detail.start')}
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={!canContinue} onClick={() => continueIssue(workspaceId, issue.id)}>
-                    <StepForward className="h-3 w-3 mr-1" />
-                    {t('detail.continue')}
+                  {isWorkflowPaused && (
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
+                      <Play className="h-3 w-3 mr-1" />
+                      {tw('execution.resume')}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={!canPause} onClick={() => pauseIssue(workspaceId, issue.id)}>
+                    <Pause className="h-3 w-3 mr-1" />
+                    {tw('execution.pause')}
                   </Button>
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" disabled={!canInterrupt} onClick={() => interruptIssue(workspaceId, issue.id)}>
-                    <Ban className="h-3 w-3 mr-1" />
-                    {t('detail.interrupt')}
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" disabled={!canStop} onClick={() => interruptIssue(workspaceId, issue.id)}>
+                    <Square className="h-3 w-3 mr-1" />
+                    {tw('execution.stop')}
                   </Button>
-                  {issue.status === 'error' && (
+                  {issue.status === 'error' && issue.workflowExecutionStatus !== 'paused' && (
                     <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
                       <RotateCcw className="h-3 w-3 mr-1" />
                       {t('detail.resumeFailed')}

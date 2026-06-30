@@ -1,6 +1,7 @@
 import type { NodeProperty, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { createWorkflowNodesForDefinition } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../../adapters/agent-runtime-types.js';
+import { listAvailableAgentCapabilities } from '../../agent-capability-catalog.js';
 import * as agentService from '../../agent.js';
 import * as workflowService from '../../workflow.js';
 import { getWorkflowExecutionManager } from '../workflow-exec-tools.js';
@@ -401,6 +402,16 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
   };
 
   const tools: AgentFunctionTool[] = [
+    {
+      name: 'list_available_agent_capabilities',
+      description: '列出当前环境里可用的 MCP、skills、内置 tools 清单。设计多 agent workflow 前先调用它，再决定哪些能力可以分配。',
+      inputSchema: schema({}),
+      annotations: { readOnly: true },
+      execute: async () => ({
+        success: true,
+        data: listAvailableAgentCapabilities(),
+      }),
+    },
     {
       name: 'list_agent_capabilities',
       description: '列出当前可用的 agent preset，以及它们配置的 mcps、skills、tools 和模型字段。设计多 agent workflow 前先调用它，再按职责分配能力。',

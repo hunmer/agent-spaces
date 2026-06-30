@@ -120,6 +120,11 @@ export const BUILT_IN_AGENT_TOOLS = [
     description: 'Move or rename a workspace file or directory.',
   },
   {
+    name: 'list_available_agent_capabilities',
+    label: 'List Available Agent Capabilities',
+    description: 'List all available MCP servers, skills, and built-in tools in the current environment.',
+  },
+  {
     name: 'list_agent_capabilities',
     label: 'List Agent Capabilities',
     description: 'List available agent presets and their configured MCPs, skills, and tools.',

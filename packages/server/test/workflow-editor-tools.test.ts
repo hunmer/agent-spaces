@@ -279,6 +279,27 @@ test('get_node_property_type_definition returns agent value shape', async () => 
   assert.deepEqual(result.definition.required, ['id', 'name', 'role', 'enabled']);
 });
 
+test('list_available_agent_capabilities returns MCP, skill, and tool catalogs', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const listCapabilities = tools.find((tool) => tool.name === 'list_available_agent_capabilities');
+  assert.ok(listCapabilities);
+
+  const result = await listCapabilities.execute({}) as {
+    success: boolean;
+    data: {
+      mcps: Array<{ name: string }>;
+      skills: Array<{ name: string }>;
+      tools: Array<{ name: string }>;
+    };
+  };
+
+  assert.equal(result.success, true);
+  assert.ok(Array.isArray(result.data.mcps));
+  assert.ok(Array.isArray(result.data.skills));
+  assert.ok(Array.isArray(result.data.tools));
+  assert.ok(result.data.tools.some((tool) => tool.name === 'ReadWorkspaceFile'));
+});
+
 test('get_node_property_type_definition returns conditions value shape', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const getTypeDefinition = tools.find((tool) => tool.name === 'get_node_property_type_definition');
@@ -515,6 +536,66 @@ test('update_node accepts agent JSON string and normalizes it to object', async 
       name: 'Agent Three',
       role: 'agent',
       enabled: true,
+    },
+  );
+});
+
+test('create_node accepts agent object and normalizes common scalar and array wrappers', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  assert.ok(createNode);
+
+  const result = await createNode.execute({
+    type: 'agent_run',
+    data: {
+      agent: {
+        id: 'topic_agent',
+        name: 'Topic Agent',
+        role: 'agent',
+        enabled: 'true',
+        modelProvider: 'anthropic-messages',
+        providerId: 'provider-1',
+        modelId: 'model-1',
+        mcps: {
+          mcpServers: {
+            filesystem: '',
+          },
+        },
+        skills: {
+          item: ['research', 'brainstorming'],
+        },
+        tools: {
+          item: ['ReadWorkspaceFile', 'SearchWorkspaceFiles'],
+        },
+        temperature: '0.7',
+      },
+      prompt: 'hello',
+    },
+  }) as {
+    success: boolean;
+    workflow: Workflow;
+    created_node_id: string;
+  };
+
+  assert.equal(result.success, true);
+  assert.deepEqual(
+    result.workflow.nodes.find((node) => node.id === result.created_node_id)?.data.agent,
+    {
+      id: 'topic_agent',
+      name: 'Topic Agent',
+      role: 'agent',
+      enabled: true,
+      modelProvider: 'anthropic-messages',
+      providerId: 'provider-1',
+      modelId: 'model-1',
+      mcps: {
+        mcpServers: {
+          filesystem: {},
+        },
+      },
+      skills: ['research', 'brainstorming'],
+      tools: ['ReadWorkspaceFile', 'SearchWorkspaceFiles'],
+      temperature: 0.7,
     },
   );
 });

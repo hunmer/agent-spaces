@@ -99,7 +99,6 @@ export function CanvasToolbar({
   const openWorkflowInNewWindow = () => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams();
-    if (embeddedMode) params.set('embedded', embeddedMode);
     if (workspaceId) params.set('returnWorkspaceId', workspaceId);
     if (issueId) params.set('returnIssueId', issueId);
     const qs = params.toString();

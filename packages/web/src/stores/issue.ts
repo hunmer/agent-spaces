@@ -11,7 +11,6 @@ interface UpdateIssueInput {
   status?: IssueStatus;
   members?: string[];
   workflowId?: string | null;
-  continuousRun?: boolean;
 }
 
 interface IssueStore {
@@ -30,8 +29,8 @@ interface IssueStore {
   updateIssue: (workspaceId: string, issueId: string, input: UpdateIssueInput) => Promise<void>;
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
   startIssue: (workspaceId: string, issueId: string, values?: Record<string, unknown>, env?: Record<string, unknown>) => Promise<void>;
+  pauseIssue: (workspaceId: string, issueId: string) => Promise<void>;
   resumeIssue: (workspaceId: string, issueId: string) => Promise<void>;
-  continueIssue: (workspaceId: string, issueId: string) => Promise<void>;
   interruptIssue: (workspaceId: string, issueId: string) => Promise<void>;
   deleteIssue: (workspaceId: string, issueId: string) => Promise<void>;
 
@@ -106,16 +105,16 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     }
   },
 
-  resumeIssue: async (workspaceId, issueId) => {
+  pauseIssue: async (workspaceId, issueId) => {
     try {
-      const issue = await sdk.issue.resume(workspaceId, issueId);
+      const issue = await sdk.issue.pause(workspaceId, issueId);
       get().upsertIssue(issue);
     } catch { /* ignore */ }
   },
 
-  continueIssue: async (workspaceId, issueId) => {
+  resumeIssue: async (workspaceId, issueId) => {
     try {
-      const issue = await sdk.issue.continue(workspaceId, issueId);
+      const issue = await sdk.issue.resume(workspaceId, issueId);
       get().upsertIssue(issue);
     } catch { /* ignore */ }
   },

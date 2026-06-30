@@ -42,8 +42,11 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 
 export function buildWorkflowEditorSystemPrompt(workflow: Workflow): string {
   const summary = summarizeWorkflow(workflow, true);
+  const capabilityRule = '新增规则：涉及 multi-agent 设计时，必须先调用 list_available_agent_capabilities 查询当前环境可用的 mcps、skills、tools 全量清单，再调用 list_agent_capabilities 查询当前可用 agent preset 及其已配置能力，然后才能给 agent_run.data.agent 分配 mcps/skills/tools；禁止跳过查询直接臆测能力名。';
 
   return `${WORKFLOW_AGENT_SYSTEM_PROMPT}
+
+${capabilityRule}
 
 ---
 

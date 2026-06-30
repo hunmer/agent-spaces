@@ -190,13 +190,56 @@ export function validateNodeDataPatch(
 }
 
 function normalizeAgentValue(value: unknown): unknown {
+  if (isPlainRecord(value)) return normalizeAgentRecord(value);
   if (typeof value !== 'string' || !value.trim()) return value;
   try {
     const parsed = JSON.parse(value);
-    return isPlainRecord(parsed) ? parsed : value;
+    return isPlainRecord(parsed) ? normalizeAgentRecord(parsed) : value;
   } catch {
     return value;
   }
+}
+
+function normalizeAgentRecord(value: JsonRecord): JsonRecord {
+  const record: JsonRecord = { ...value };
+  if (typeof record.enabled === 'string') {
+    const normalized = record.enabled.trim().toLowerCase();
+    if (normalized === 'true') record.enabled = true;
+    if (normalized === 'false') record.enabled = false;
+  }
+
+  for (const key of ['temperature', 'maxTokens']) {
+    const current = record[key];
+    if (typeof current === 'string' && current.trim()) {
+      const parsed = Number(current);
+      if (Number.isFinite(parsed)) record[key] = parsed;
+    }
+  }
+
+  for (const key of ['skills', 'tools', 'sandboxDirs']) {
+    record[key] = normalizeStringArrayLike(record[key]);
+  }
+
+  if (isPlainRecord(record.mcps)) {
+    const mcps = { ...(record.mcps as JsonRecord) };
+    const servers = mcps.mcpServers;
+    if (isPlainRecord(servers)) {
+      mcps.mcpServers = Object.fromEntries(
+        Object.entries(servers).map(([name, config]) => [name, isPlainRecord(config) ? config : {}]),
+      );
+    }
+    record.mcps = mcps;
+  }
+
+  return record;
+}
+
+function normalizeStringArrayLike(value: unknown): unknown {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  if (!isPlainRecord(value)) return value;
+  if (Array.isArray(value.item)) return normalizeStringArrayLike(value.item);
+  if (isPlainRecord(value.items) && Array.isArray(value.items.item)) return normalizeStringArrayLike(value.items.item);
+  return value;
 }
 
 export function validateNodePropertyValue(

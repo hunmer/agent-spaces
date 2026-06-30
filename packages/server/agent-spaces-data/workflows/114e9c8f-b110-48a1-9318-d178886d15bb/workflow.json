@@ -8,8 +8,8 @@
       "type": "start",
       "label": "Start",
       "position": {
-        "x": 240,
-        "y": 80
+        "x": 0,
+        "y": 0
       },
       "data": {
         "inputFields": [
@@ -39,18 +39,45 @@
       "type": "end",
       "label": "End",
       "position": {
-        "x": 240,
-        "y": 360
+        "x": 1200,
+        "y": 0
       },
-      "data": {}
+      "data": {
+        "outputs": [
+          {
+            "key": "topic",
+            "type": "string",
+            "value": "{{ __data__[\"start_1782815018956\"].topic }}",
+            "description": "原始公众号主题"
+          },
+          {
+            "key": "topicReport",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782815693251_u96noi\"].result }}",
+            "description": "选题 Agent 产出的选题报告"
+          },
+          {
+            "key": "article",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782815702374_v472u0\"].result }}",
+            "description": "编辑 Agent 产出的完整公众号文章"
+          },
+          {
+            "key": "reviewReport",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782815702375_38k06l\"].result }}",
+            "description": "审批 Agent 产出的最终审批报告与可发布稿件"
+          }
+        ]
+      }
     },
     {
-      "id": "node_1782815229879_cu8rld",
+      "id": "node_1782815693251_u96noi",
       "type": "agent_run",
-      "label": "测试节点A",
+      "label": "选题 Agent",
       "position": {
-        "x": 500,
-        "y": 220
+        "x": 300,
+        "y": 0
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -64,20 +91,331 @@
             "type": "object"
           }
         ],
-        "inputFields": [
+        "agent": {
+          "id": "topic_agent",
+          "name": "Topic Agent",
+          "role": "agent",
+          "description": "围绕公众号主题生成多角度选题和大纲",
+          "runtimeKind": "claude-code",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {
+              "filesystem": {}
+            }
+          },
+          "tools": [
+            "CreateCurrentChannelIssue",
+            "ViewCurrentChannelIssue",
+            "AddCurrentChannelComment",
+            "SearchWorkspaceFiles",
+            "ReadWorkspaceFile"
+          ],
+          "systemPrompt": "你是公众号选题策划 Agent。任务：接收上游传入的 topic、style、targetAudience，输出一份结构化的选题报告，并通过 channel 向编辑 Agent 同步进展。\n要求：\n1. 基于 topic 生成 3 个差异化的切入角度（例如：技能重塑、行业洗牌、心理建设、政策与机遇等），并给出每个角度的吸引力打分（1-10）。\n2. 选择其中得分最高的 1 个角度，撰写完整大纲：包含 5-7 个一级章节，每个章节用一句话概括要点。\n3. 收集 5 条可引用的事实/数据/案例线索（标注来源类型，例如行业报告/新闻/人物访谈）。\n4. 将最终选题报告通过 channel 同步给下游编辑 Agent，明确告知大纲与事实线索已就绪，请基于此撰写全文。\n输出格式（Markdown）：\n# 选题报告\n## 切入选角\n- 角度A: 描述 (打分)\n- 角度B: 描述 (打分)\n- 角度C: 描述 (打分)\n## 推荐大纲\n1. ...\n## 事实线索\n1. ...\n## 同步说明\n已通过 channel 通知编辑 Agent。",
+          "outputStyle": "",
+          "temperature": 0.7,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "请基于以下输入完成公众号选题策划任务：\n\n- 主题（topic）：{{ __data__[\"start_1782815018956\"].topic }}\n- 风格偏好（style，可选）：{{ __data__[\"start_1782815018956\"].style }}\n- 目标读者（targetAudience，可选）：{{ __data__[\"start_1782815018956\"].targetAudience }}\n\n请你按照系统提示中规定的 Markdown 格式输出选题报告，并按要求通过 channel 把进度和结论同步给下游编辑 Agent。"
+      }
+    },
+    {
+      "id": "node_1782815702374_v472u0",
+      "type": "agent_run",
+      "label": "编辑 Agent",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
           {
-            "key": "input",
-            "type": "string",
-            "description": "上游传入输入"
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
           }
-        ]
+        ],
+        "agent": {
+          "id": "editor_agent",
+          "name": "Editor Agent",
+          "role": "agent",
+          "description": "基于选题大纲撰写完整公众号文章",
+          "runtimeKind": "claude-code",
+          "modelProvider": "openai-responses",
+          "providerId": "aeeef273-a29a-4e8e-bc1a-c36ebe568df3",
+          "modelId": "gpt-5.5",
+          "apiBase": "https://api.claudecode.net.cn/api/codex/backend-api/codex",
+          "apiKey": "sk-ant-api03-WlYCqe47YdpWulGXC2f8aZc6ic6Yz8XUgkRWoImDyx5tcAKYsK_zq2NH7Cw-B5in1jDmff2D7Jfb8svRXl16NA",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {
+              "filesystem": {}
+            }
+          },
+          "tools": [
+            "CreateCurrentChannelIssue",
+            "ViewCurrentChannelIssue",
+            "AddCurrentChannelComment",
+            "SearchWorkspaceFiles",
+            "ReadWorkspaceFile"
+          ],
+          "systemPrompt": "你是公众号主编 Agent。任务：基于上游选题 Agent 的选题报告，撰写一篇完整的公众号文章，并通过 channel 把稿件同步给审批 Agent。\n\n上游输入变量（必须使用，不可编造）：\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 风格偏好：{{ __data__[\"start_1782815018956\"].style }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告（来自选题 Agent）：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n\n要求：\n1. 严格按照选题报告中的推荐大纲展开写作，不可偏离主线；事实线索需要自然融入正文。\n2. 风格：若 style 未提供，默认采用深度长文；面向 targetAudience 调整用词。\n3. 字数 1800-2500 字，使用 Markdown。\n4. 结尾给出 1 个引导互动的开放问题。\n5. 完成后必须通过 channel 同步给审批 Agent：明确告知稿件已就绪，标题为《...》，请审批。\n\n输出格式（Markdown）：\n---\n标题：《...》\n字数：xxx\n摘要：一句话总结\n正文：\n（完整正文）\n引导问题：...\n---\n同步状态：已通过 channel 通知审批 Agent。",
+          "outputStyle": "",
+          "temperature": 0.8,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "请基于上游选题 Agent 的选题报告完成公众号长文撰写：\n\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 风格偏好：{{ __data__[\"start_1782815018956\"].style }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告（来自选题 Agent）：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n\n请你严格按照系统提示中的 Markdown 模板输出 1800-2500 字的完整稿件，并在完成后通过 channel 通知下游审批 Agent。"
+      }
+    },
+    {
+      "id": "node_1782815702375_38k06l",
+      "type": "agent_run",
+      "label": "审批 Agent",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "reviewer_agent",
+          "name": "Reviewer Agent",
+          "role": "agent",
+          "description": "对编辑 Agent 产出的文章进行质量审批",
+          "runtimeKind": "claude-code",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "575f5fea-467e-4aa2-8b17-f4522dc74429",
+          "modelId": "GLM-5.2",
+          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {
+              "filesystem": {}
+            }
+          },
+          "tools": [
+            "CreateCurrentChannelIssue",
+            "ViewCurrentChannelIssue",
+            "AddCurrentChannelComment",
+            "SearchWorkspaceFiles",
+            "ReadWorkspaceFile"
+          ],
+          "systemPrompt": "你是公众号质量审批 Agent。任务：基于上游编辑 Agent 的稿件进行结构化审批，并通过 channel 把审批结论同步给上游和下游。\n\n上游输入变量（必须使用，不可编造）：\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n- 编辑稿件：{{ __data__[\"node_1782815702374_v472u0\"].result }}\n\n审批维度（每项 1-10 分）：\n1. 主题契合度：是否紧扣 topic。\n2. 大纲遵循度：是否严格按推荐大纲展开。\n3. 事实可靠度：数据/案例是否合理可信。\n4. 表达流畅度：语言是否通顺、有无病句。\n5. 读者价值：对 targetAudience 的启发与帮助。\n6. 字数合规：是否在 1800-2500 字之间。\n\n结论规则：\n- 任意一项 < 6：结论为需修改，列出 3-5 条具体修改建议。\n- 全部 >= 6：结论为通过，并给出 1 句话的发布建议。\n- 最终保留可发布的稿件全文（在通过分支下，对稿件做轻度润色后输出；需修改分支下输出原稿 + 修改建议清单）。\n\n输出格式（Markdown）：\n# 审批报告\n## 评分\n- 主题契合度: x/10\n- 大纲遵循度: x/10\n- ...\n- 总分: xx/60\n## 结论\n通过 / 需修改\n## 修改建议（如需）\n1. ...\n## 最终稿件\n（通过分支：润色后稿件；需修改分支：原稿+建议清单）\n## 同步说明\n已通过 channel 把审批结论同步给编辑 Agent 与上游调用方。",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "请基于上游编辑 Agent 的稿件完成质量审批：\n\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n- 编辑稿件：{{ __data__[\"node_1782815702374_v472u0\"].result }}\n\n请按系统提示中规定的 6 个维度评分，给出结论（通过/需修改），并按要求保留最终可发布稿件，最后通过 channel 同步给上游与编辑 Agent。"
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-start_1782815018956-node_1782815693251_u96noi-mr0ig4cp",
+      "source": "start_1782815018956",
+      "target": "node_1782815693251_u96noi"
+    },
+    {
+      "id": "e-node_1782815693251_u96noi-node_1782815702374_v472u0-mr0ig4cq",
+      "source": "node_1782815693251_u96noi",
+      "target": "node_1782815702374_v472u0"
+    },
+    {
+      "id": "e-node_1782815702374_v472u0-node_1782815702375_38k06l-mr0ig4cq",
+      "source": "node_1782815702374_v472u0",
+      "target": "node_1782815702375_38k06l"
+    },
+    {
+      "id": "e-node_1782815702375_38k06l-end_1782815018956-mr0ig4cr",
+      "source": "node_1782815702375_38k06l",
+      "target": "end_1782815018956"
+    },
+    {
+      "id": "e-start_1782815018956-output:topic-node_1782815693251_u96noi-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815693251_u96noi",
+      "edgeKind": "reference",
+      "sourceHandle": "output:topic",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:style-node_1782815693251_u96noi-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815693251_u96noi",
+      "edgeKind": "reference",
+      "sourceHandle": "output:style",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:targetAudience-node_1782815693251_u96noi-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815693251_u96noi",
+      "edgeKind": "reference",
+      "sourceHandle": "output:targetAudience",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:topic-node_1782815702374_v472u0-property:agent.systemPrompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:topic",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:style-node_1782815702374_v472u0-property:agent.systemPrompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:style",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:targetAudience-node_1782815702374_v472u0-property:agent.systemPrompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:targetAudience",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-node_1782815693251_u96noi-output:result-node_1782815702374_v472u0-property:agent.systemPrompt",
+      "source": "node_1782815693251_u96noi",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:topic-node_1782815702374_v472u0-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:topic",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:style-node_1782815702374_v472u0-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:style",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:targetAudience-node_1782815702374_v472u0-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:targetAudience",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782815693251_u96noi-output:result-node_1782815702374_v472u0-property:prompt",
+      "source": "node_1782815693251_u96noi",
+      "target": "node_1782815702374_v472u0",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:topic-node_1782815702375_38k06l-property:agent.systemPrompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:topic",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:targetAudience-node_1782815702375_38k06l-property:agent.systemPrompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:targetAudience",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-node_1782815693251_u96noi-output:result-node_1782815702375_38k06l-property:agent.systemPrompt",
+      "source": "node_1782815693251_u96noi",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-node_1782815702374_v472u0-output:result-node_1782815702375_38k06l-property:agent.systemPrompt",
+      "source": "node_1782815702374_v472u0",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:agent.systemPrompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:topic-node_1782815702375_38k06l-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:topic",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782815018956-output:targetAudience-node_1782815702375_38k06l-property:prompt",
+      "source": "start_1782815018956",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:targetAudience",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782815693251_u96noi-output:result-node_1782815702375_38k06l-property:prompt",
+      "source": "node_1782815693251_u96noi",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782815702374_v472u0-output:result-node_1782815702375_38k06l-property:prompt",
+      "source": "node_1782815702374_v472u0",
+      "target": "node_1782815702375_38k06l",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    }
+  ],
   "createdAt": 1782815018975,
-  "updatedAt": 1782815258707,
+  "updatedAt": 1782816172655,
   "published": false,
   "name": "公众号编写",
-  "description": "选题agent->编辑agent->审批agent"
+  "description": "选题agent->编辑agent->审批agent",
+  "groups": [],
+  "lastRunAt": 1782816864336
 }

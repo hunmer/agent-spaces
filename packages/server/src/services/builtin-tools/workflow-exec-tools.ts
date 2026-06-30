@@ -1,6 +1,7 @@
 import { BUILT_IN_AGENT_TOOLS, getNodesForExecutionScope, type BuiltInAgentToolName, type ExecutionLog, type Workflow } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import type { ExecutionManager } from '../execution-manager.js';
+import { listAvailableAgentCapabilities } from '../agent-capability-catalog.js';
 import * as agentService from '../agent.js';
 import * as workflowService from '../workflow.js';
 
@@ -45,6 +46,16 @@ export function setWorkflowExecutionManager(manager: ExecutionManager): void {
 export function createWorkflowExecutionFunctionTools(workspaceId = '', allowedTools?: BuiltInAgentToolName[]): AgentFunctionTool[] {
   const allowedToolNames = getAllowedWorkflowToolNames(allowedTools);
   const tools: AgentFunctionTool[] = [
+    {
+      name: 'list_available_agent_capabilities',
+      description: 'List all available MCP servers, skills, and built-in tools in the current environment. Use this before assigning mcps/tools/skills to agent nodes.',
+      inputSchema: schema({}),
+      annotations: { readOnly: true, openWorld: false },
+      execute: async () => ({
+        success: true,
+        data: listAvailableAgentCapabilities(),
+      }),
+    },
     {
       name: 'list_agent_capabilities',
       description: 'List agent presets with their configured MCP servers, skills, tools, model fields, and descriptions. Use this before designing multi-agent workflows so you can assign capabilities by role.',
@@ -358,6 +369,7 @@ function getAllowedWorkflowToolNames(allowedTools?: BuiltInAgentToolName[]): Set
   const names = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const hasWorkflowTools = Array.from(names).some((name) => isWorkflowExecutionToolName(name));
   if (hasWorkflowTools) {
+    names.add('list_available_agent_capabilities');
     names.add('list_agent_capabilities');
     names.add('list_workflows');
     names.add('search_workflow');
@@ -369,6 +381,7 @@ function getAllowedWorkflowToolNames(allowedTools?: BuiltInAgentToolName[]): Set
 
 function isWorkflowExecutionToolName(name: string): boolean {
   return name === 'list_agent_capabilities'
+    || name === 'list_available_agent_capabilities'
     || name === 'list_workflows'
     || name === 'search_workflow'
     || name === 'execute_workflow_sync'

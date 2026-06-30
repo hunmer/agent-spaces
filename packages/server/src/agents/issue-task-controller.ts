@@ -170,8 +170,7 @@ export async function scheduleRunnableIssueTasks(
     return;
   }
 
-  const tasksToRun = issue.continuousRun === false ? runnable.slice(0, 1) : runnable;
-  for (const task of tasksToRun) {
+  for (const task of runnable) {
     await runIssueTask(workspaceId, issueId, task.id, ctx);
   }
 }
@@ -346,9 +345,7 @@ export async function runIssueTask(
 
   const completedTask = taskService.complete(workspaceId, taskId, result);
   broadcastTaskUpdate(ctx, completedTask, 'running');
-  if (issueService.getById(workspaceId, issueId)?.continuousRun !== false) {
-    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
-  }
+  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
 }
 
 async function runCommandTask(
@@ -402,9 +399,7 @@ async function runCommandTask(
   });
   broadcastTaskUpdate(ctx, completedTask, 'running');
 
-  if (issueService.getById(workspaceId, issueId)?.continuousRun !== false) {
-    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
-  }
+  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
 }
 
 export async function continueIssueTaskScheduling(

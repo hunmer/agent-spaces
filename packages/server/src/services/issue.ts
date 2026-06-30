@@ -39,10 +39,6 @@ function ensureRetryDefaults(workspaceId: string, issue: Issue): void {
     issue.maxRetries = 3;
     changed = true;
   }
-  if (issue.continuousRun === undefined) {
-    issue.continuousRun = true;
-    changed = true;
-  }
   if (changed) updateIssue({ ...issue, workspaceId });
 }
 
@@ -80,7 +76,6 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     workflowId: input.workflowId,
     workflowExecutionId: undefined,
     workflowExecutionStatus: undefined,
-    continuousRun: true,
     retryCount: 0,
     maxRetries: 3,
     createdAt: now,
@@ -112,7 +107,6 @@ export function createForChannel(
     members: [...issueMembers],
     workflowExecutionId: undefined,
     workflowExecutionStatus: undefined,
-    continuousRun: true,
     retryCount: 0,
     maxRetries: 3,
     createdAt: now,

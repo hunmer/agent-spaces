@@ -75,11 +75,10 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
     return;
   }
   const previousStatus = issue.status;
-  const { title, description, status, members, workflowId, continuousRun } = req.body;
+  const { title, description, status, members, workflowId } = req.body;
   if (title) issue.title = title;
   if (description !== undefined) issue.description = description;
   if (workflowId !== undefined) issue.workflowId = workflowId || undefined;
-  if (continuousRun !== undefined) issue.continuousRun = continuousRun !== false;
   if (members !== undefined) {
     issue.members = normalizeIssueMembers(req.params.id, mergeWorkflowMembers(members, issue.workflowId));
   } else if (workflowId !== undefined) {
@@ -152,6 +151,29 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
   });
 });
 
+router.post('/:issueId/pause', (req: Request<{ id: string; issueId: string }>, res: Response) => {
+  const workspaceId = req.params.id;
+  const { issueId } = req.params;
+  const issue = issueService.getById(workspaceId, issueId);
+  if (!issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+
+  const manager = getWorkflowExecutionManager();
+  if (!manager) {
+    res.status(500).json({ error: 'workflow execution manager is not initialized' });
+    return;
+  }
+  if (!issue.workflowExecutionId) {
+    res.status(400).json({ error: 'workflow execution is not running' });
+    return;
+  }
+
+  manager.pause(issue.workflowExecutionId);
+  res.json(issueService.getById(workspaceId, issueId) ?? issue);
+});
+
 router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: string }>, res: Response) => {
   const workspaceId = req.params.id;
   const { issueId } = req.params;
@@ -199,52 +221,6 @@ router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: strin
   res.json(updated);
   startIssueWorkflowExecution(workspaceId, issueId, ctx).catch((err) => {
     console.error(`[issue-resume] workflow error for issue ${issueId}:`, err);
-  });
-});
-
-router.post('/:issueId/continue', (req: Request<{ id: string; issueId: string }>, res: Response) => {
-  const workspaceId = req.params.id;
-  const { issueId } = req.params;
-  const before = issueService.getById(workspaceId, issueId);
-  if (!before) {
-    res.status(404).json({ error: 'issue not found' });
-    return;
-  }
-
-  const issue = before.status === 'draft' || before.status === 'planned' || before.status === 'error'
-    ? issueService.save(workspaceId, {
-      ...before,
-      status: 'in_progress',
-      workflowExecutionStatus: 'running',
-      lastError: undefined,
-    })
-    : before;
-  if (!issue) {
-    res.status(404).json({ error: 'issue not found' });
-    return;
-  }
-  if (issue.status !== before.status) {
-    broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before.status, to: issue.status });
-  }
-  broadcastToWorkspace(workspaceId, 'issue.updated', issue);
-  res.json(issue);
-
-  const ctx = {
-    workspaceId,
-    broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
-    getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
-    updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
-      agentService.updateStatus(workspaceId, sessionId, status, extra),
-  };
-  const manager = getWorkflowExecutionManager();
-  if (before.workflowExecutionId && before.workflowExecutionStatus === 'paused' && manager) {
-    manager.resume(before.workflowExecutionId).catch((err) => {
-      console.error(`[issue-continue] resume error for issue ${issueId}:`, err);
-    });
-    return;
-  }
-  startIssueWorkflowExecution(workspaceId, issueId, ctx).catch((err) => {
-    console.error(`[issue-continue] workflow error for issue ${issueId}:`, err);
   });
 });
 
