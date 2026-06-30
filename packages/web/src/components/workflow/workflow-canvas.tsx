@@ -74,6 +74,9 @@ import {
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
 
+// 模块级常量：用作未传入时的稳定默认值，避免每次渲染产生新数组引用触发下游 useMemo/useEffect 无限更新
+const EMPTY_STRING_ARRAY: string[] = [];
+
 function applyRuntimeNodeSizes(nodes: Node[], sizes: Map<string, { width: number; height: number }>): Node[] {
   if (sizes.size === 0) return nodes;
 
@@ -274,7 +277,7 @@ interface WorkflowCanvasProps {
 
 export function WorkflowCanvas({
   workflow, isPreview, execStatus = 'idle', isRunning = false, executionLog, selectedNodeId,
-  selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
+  selectedNodeIds = EMPTY_STRING_ARRAY, onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
   onImageFilesDrop, onImageUrlsDrop, onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   copiedNodeCount = 0, copiedRecords = [], onPasteRecord, onMoveRecord, onClearCopiedNodes,

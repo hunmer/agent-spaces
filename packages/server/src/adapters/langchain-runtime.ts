@@ -44,6 +44,7 @@ export class LangChainRuntime implements AgentRuntime {
     const runtimeOptions = options ? { ...options, onEvent: eventSink.emit } : undefined;
     let mcpClient: MultiServerMCPClient | undefined;
     const progress = createLangChainRunProgress();
+    let sessionId = runtimeOptions?.resumeSessionId;
 
     const skillPrompts = loadConfiguredSkillPrompts(runtimeOptions?.configDir, runtimeOptions?.skills);
     d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} apiKey=${this.config.apiKey ? 'set' : 'unset'} maxTurns=${runtimeOptions?.maxTurns ?? '∞'} tools=${runtimeOptions?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(runtimeOptions?.mcpServers ?? {}).join(',') || '-'} skills=${skillPrompts.map((skill) => skill.name).join(',') || '-'} sandboxDirs=${runtimeOptions?.sandboxDirs?.join(',') ?? '-'}`);
@@ -78,6 +79,7 @@ export class LangChainRuntime implements AgentRuntime {
           ...mcpTools,
         ],
         systemPrompt: runtimeOptions?.systemPrompt,
+        checkpointer: true,
       });
       d(`agent created | type=${getObjectTypeName(agent)}`);
 
@@ -89,15 +91,27 @@ export class LangChainRuntime implements AgentRuntime {
 
       const recursionLimit = runtimeOptions?.maxTurns ? Math.max(2, runtimeOptions.maxTurns * 2 + 1) : undefined;
       const maxAttempts = TOOL_RESULT_FINAL_RESPONSE_RETRY_COUNT + 1;
+      sessionId = sessionId ?? `langchain-${runId}`;
+      runtimeOptions?.onEvent?.({ type: 'session', sessionId });
+      d(`session | id=${sessionId} source=${runtimeOptions?.resumeSessionId ? 'resume' : 'generated'}`);
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         progress.reset();
         d(`streaming agent | attempt=${attempt}/${maxAttempts} recursionLimit=${recursionLimit ?? '-'} aborted=${this.abortController?.signal.aborted ? 'yes' : 'no'}`);
+        const attemptPrompt = attempt === 1 ? finalPrompt : [
+          'The previous stream ended after tool results without a final assistant response.',
+          'Use the existing conversation and tool results in this session to provide the final answer now.',
+          'Do not repeat tool calls unless the existing tool results are insufficient.',
+        ].join('\n');
         const stream = await agent.stream(
-          { messages: [{ role: 'user', content: finalPrompt }] },
+          { messages: [{ role: 'user', content: attemptPrompt }] },
           {
             signal: this.abortController?.signal,
             recursionLimit,
             streamMode: ['messages', 'values', 'updates'],
+            configurable: {
+              sessionId,
+              thread_id: sessionId,
+            },
           },
         );
 
@@ -234,6 +248,7 @@ export class LangChainRuntime implements AgentRuntime {
             error: incompleteReason,
             output,
             usage,
+            sessionId,
           };
         }
 
@@ -250,6 +265,7 @@ export class LangChainRuntime implements AgentRuntime {
           artifacts: [],
           output,
           usage,
+          sessionId,
         };
       }
 
@@ -260,7 +276,7 @@ export class LangChainRuntime implements AgentRuntime {
       d(`failed ${elapsed}ms | name=${err instanceof Error ? err.name : typeof err} message=${truncateForLog(message, 1000)} outputLines=${output.length}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
 
-      return { success: false, summary: 'LangChain execution failed', artifacts: [], error: message, output };
+      return { success: false, summary: 'LangChain execution failed', artifacts: [], error: message, output, sessionId };
     } finally {
       eventSink.flush();
       if (mcpClient) {

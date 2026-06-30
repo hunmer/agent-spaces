@@ -346,7 +346,10 @@ export async function runMentionedAgent(
         ],
         excludeReplyIds: options.excludeHistoryReplyIds,
       });
-    const isRuntimeSessionResume = Boolean(options.resumeSessionId && (preset.runtimeKind === 'claude-code' || preset.runtimeKind === 'codex'));
+    const isRuntimeSessionResume = Boolean(
+      options.resumeSessionId
+      && (preset.runtimeKind === 'claude-code' || preset.runtimeKind === 'codex' || preset.runtimeKind === 'langchain')
+    );
     runtimeUserPrompt = expandAgentSlashCommandPrompt(prompt, configDir);
     agentPrompt = isRuntimeSessionResume
       ? runtimeUserPrompt
