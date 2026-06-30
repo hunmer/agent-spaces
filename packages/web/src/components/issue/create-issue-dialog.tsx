@@ -175,6 +175,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
     return [
       '请创建一个以多 agent 协同合作为主的 workspace workflow。',
       '要求：优先拆分为多个 agent 节点协作；为关键 agent 补充固定提示词；积极使用 channel、mcp、tool 来更新信息、同步状态和推进协作。',
+      '编写后续 agent 的提示词时，必须明确引用上一个 agent 的输出结果变量，使用 {{xx}} 这种变量占位格式，并替换为实际可用的上游输出变量名。',
       workflowDescription ? `工作流注释：${workflowDescription}` : '',
       issuePrompt ? `Issue 需求：${issuePrompt}` : '',
       modelSection,
@@ -183,8 +184,6 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
 
   const handleCreateWorkflow = async () => {
     const created = await workflowApi.create({
-      name: title.trim() || t('create.title'),
-      description: desc.trim() || undefined,
       type: 'workspace',
       nodes: [
         { id: `start_${Date.now()}`, type: 'start', label: 'Start', position: { x: 240, y: 80 }, data: {} },
