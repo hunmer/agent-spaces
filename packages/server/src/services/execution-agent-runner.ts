@@ -193,16 +193,69 @@ function resolveAgentConfigId(resolvedData: Record<string, any>): string {
   return '';
 }
 
+function getAgentOverrideFields(resolvedData: Record<string, any>): Record<string, unknown> {
+  const overrideKeys = [
+    'name',
+    'description',
+    'runtimeKind',
+    'modelProvider',
+    'providerId',
+    'modelId',
+    'apiBase',
+    'apiKey',
+    'workingDir',
+    'mcps',
+    'skills',
+    'tools',
+    'systemPrompt',
+    'outputStyle',
+    'temperature',
+    'maxTokens',
+    'sandboxDirs',
+    'avatarUrl',
+    'icon',
+    'enabled',
+  ] as const;
+
+  const overrides: Record<string, unknown> = {};
+  for (const key of overrideKeys) {
+    if (resolvedData[key] !== undefined) overrides[key] = resolvedData[key];
+  }
+  return overrides;
+}
+
+function findPresetByNodeConfig(resolvedData: Record<string, any>, presets: any[]): any | null {
+  const modelProvider = typeof resolvedData.modelProvider === 'string' ? resolvedData.modelProvider.trim() : '';
+  const providerId = typeof resolvedData.providerId === 'string' ? resolvedData.providerId.trim() : '';
+  const modelId = typeof resolvedData.modelId === 'string' ? resolvedData.modelId.trim() : '';
+  if (!modelProvider && !providerId && !modelId) return null;
+
+  return presets.find((preset) => (
+    (!modelProvider || preset.modelProvider === modelProvider)
+    && (!providerId || preset.providerId === providerId)
+    && (!modelId || preset.modelId === modelId)
+  )) ?? null;
+}
+
 function resolveAgentPreset(resolvedData: Record<string, any>, presets: any[]): any | null {
   const agent = resolvedData.agent;
   if (agent && typeof agent === 'object' && !Array.isArray(agent)) {
     const agentRecord = agent as Record<string, unknown>;
     const id = typeof agentRecord.id === 'string' ? agentRecord.id.trim() : '';
     const storedPreset = id ? presets.find(p => p.id === id) : null;
-    const basePreset = storedPreset ?? presets[0];
+    const basePreset = storedPreset ?? findPresetByNodeConfig(agentRecord as Record<string, any>, presets) ?? presets[0];
     return basePreset ? { ...basePreset, ...agentRecord } : agent;
   }
 
+  const localOverrides = getAgentOverrideFields(resolvedData);
   const agentConfigId = resolveAgentConfigId(resolvedData);
-  return agentConfigId ? presets.find(p => p.id === agentConfigId) ?? null : presets[0] ?? null;
+  const basePreset = agentConfigId
+    ? presets.find(p => p.id === agentConfigId) ?? null
+    : findPresetByNodeConfig(resolvedData, presets) ?? presets[0] ?? null;
+  if (basePreset) return { ...basePreset, ...localOverrides };
+  return Object.keys(localOverrides).length > 0 ? localOverrides : null;
+}
+
+export function __resolveAgentPresetForTest(resolvedData: Record<string, any>, presets: any[]): any | null {
+  return resolveAgentPreset(resolvedData, presets);
 }

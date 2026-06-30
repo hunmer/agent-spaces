@@ -2,8 +2,8 @@
 
 import { useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FieldLabel } from '@/components/ui/field';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -195,22 +195,18 @@ export function WorkflowCanvasStylePanel({
       {sections.map(section => (
         <div key={section.id} className="space-y-2">
           <h3 className="text-xs font-medium text-muted-foreground">{section.title}</h3>
-          <RadioGroup
-            value={section.value}
-            onValueChange={section.onChange}
-            className="flex flex-wrap gap-1.5"
-          >
-            {section.options.map(option => (
-              <FieldLabel
-                key={option.value}
-                htmlFor={`${section.id}-${option.value}`}
-                className="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary/10"
-              >
-                <RadioGroupItem value={option.value} id={`${section.id}-${option.value}`} />
-                {option.label}
-              </FieldLabel>
-            ))}
-          </RadioGroup>
+          <Select value={section.value} onValueChange={section.onChange}>
+            <SelectTrigger className="h-8 w-full text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {section.options.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       ))}
 

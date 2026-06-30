@@ -13,6 +13,9 @@ type ClaudeQueryOptions = Options & {
   outputStyle?: string;
 };
 
+const isSourceRuntime = /[\\/]src[\\/]adapters[\\/]claude-code-runtime$/.test(import.meta.dirname);
+const isDev = process.env.NODE_ENV === 'development' || (!process.env.NODE_ENV && isSourceRuntime);
+
 export class ClaudeCodeRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
   private activeQuery: Query | null = null;
@@ -92,7 +95,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         managedSettings: {
           strictPluginOnlyCustomization: ['mcp'],
         },
-        settingSources: ['user', 'project', 'local'],
+        settingSources: isDev ? ['user', 'local'] : ['user', 'project', 'local'],
         strictMcpConfig: true,
         additionalDirectories,
         permissionMode,

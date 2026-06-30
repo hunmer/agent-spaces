@@ -8,8 +8,8 @@
       "type": "start",
       "label": "Start",
       "position": {
-        "x": 240,
-        "y": 80
+        "x": 0,
+        "y": 0
       },
       "data": {
         "inputFields": [
@@ -43,8 +43,8 @@
       "type": "end",
       "label": "End",
       "position": {
-        "x": 240,
-        "y": 360
+        "x": 0,
+        "y": 1747.8584485849988
       },
       "data": {
         "outputs": [
@@ -80,8 +80,8 @@
       "type": "agent_run",
       "label": "Agent1-选题策划",
       "position": {
-        "x": 500,
-        "y": 220
+        "x": 457.4503237466007,
+        "y": 200
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -107,8 +107,8 @@
       "type": "agent_run",
       "label": "Agent2-大纲架构",
       "position": {
-        "x": 760,
-        "y": 220
+        "x": 302.4503237466007,
+        "y": 609
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -134,8 +134,8 @@
       "type": "agent_run",
       "label": "Agent3-内容撰写",
       "position": {
-        "x": 1020,
-        "y": 220
+        "x": 0,
+        "y": 1138.8584485849988
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -161,8 +161,8 @@
       "type": "agent_run",
       "label": "Agent4-编辑审校",
       "position": {
-        "x": 1280,
-        "y": 220
+        "x": 0,
+        "y": 1547.8584485849988
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -188,8 +188,8 @@
       "type": "toast",
       "label": "通知-选题完成",
       "position": {
-        "x": 1540,
-        "y": 220
+        "x": 539.9503237466007,
+        "y": 409
       },
       "data": {
         "type": "success",
@@ -201,8 +201,8 @@
       "type": "toast",
       "label": "通知-大纲完成",
       "position": {
-        "x": 1800,
-        "y": 220
+        "x": 165,
+        "y": 938.8584485849987
       },
       "data": {
         "type": "info",
@@ -214,8 +214,8 @@
       "type": "toast",
       "label": "通知-初稿完成",
       "position": {
-        "x": 2060,
-        "y": 220
+        "x": 165,
+        "y": 1347.8584485849988
       },
       "data": {
         "type": "info",
@@ -362,9 +362,12 @@
     }
   ],
   "createdAt": 1782808345147,
-  "updatedAt": 1782808735814,
+  "updatedAt": 1782809490996,
   "published": false,
   "name": "文章编写",
   "description": "选题->撰写",
-  "lastRunAt": 1782808892471
+  "lastRunAt": 1782809510828,
+  "layoutSnapshot": {
+    "nodeDisplayMode": "normal"
+  }
 }

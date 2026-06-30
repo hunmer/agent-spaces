@@ -134,6 +134,37 @@ function parseExecutionFieldHandle(handleId: string | null | undefined): { kind:
   return key ? { kind, key } : null;
 }
 
+function buildReferenceEdgeTemplate(edge: WorkflowEdge): string | null {
+  const sourceField = parseExecutionFieldHandle(edge.sourceHandle);
+  if (!sourceField) return null;
+  if (sourceField.kind === 'output') return `{{ __data__["${edge.source}"].${sourceField.key} }}`;
+  if (sourceField.kind === 'input') return `{{ __inputs__["${edge.source}"].${sourceField.key} }}`;
+  return null;
+}
+
+function appendReferenceTemplate(currentValue: unknown, template: string): string {
+  if (typeof currentValue !== 'string' || !currentValue.trim()) return template;
+  if (currentValue.includes(template)) return currentValue;
+  return `${currentValue}\n${template}`;
+}
+
+function applyReferenceTemplateToInputField(
+  inputFields: unknown,
+  key: string,
+  template: string,
+): unknown {
+  if (!Array.isArray(inputFields)) return inputFields;
+  return inputFields.map((field) => {
+    if (!field || typeof field !== 'object' || Array.isArray(field)) return field;
+    const fieldRecord = field as Record<string, unknown>;
+    if (fieldRecord.key !== key) return field;
+    return {
+      ...fieldRecord,
+      value: appendReferenceTemplate(fieldRecord.value, template),
+    };
+  });
+}
+
 function getBranchComparableSourceHandle(edge: WorkflowEdge, edges: WorkflowEdge[]): string | null | undefined {
   if (edge.sourceHandle) return edge.sourceHandle;
   const caseEdges = edges.filter(candidate => (
@@ -832,8 +863,9 @@ export class ExecutionManager {
 
     try {
       const strictDataReferences = node.type !== 'variable_aggregate';
+      const nodeDataWithReferences = this.applyReferenceEdgeBindings(session, node);
       const resolvedData = applyNodeInputMiddleware(this.normalizeResolvedNodeDataTypes(node, this.applyDryRunInput(
-        this.resolveContextVariables(session, { ...node.data }, { strictDataReferences }),
+        this.resolveContextVariables(session, nodeDataWithReferences, { strictDataReferences }),
         dryRunInput,
       )));
       const stepInput = dryRunInput ?? getStepInput(node, resolvedData);
@@ -1260,6 +1292,36 @@ export class ExecutionManager {
     }
 
     return output;
+  }
+
+  private applyReferenceEdgeBindings(
+    session: ExecutionSession,
+    node: WorkflowNode,
+  ): Record<string, any> {
+    const nodeData = clone({ ...node.data });
+    const incomingReferenceEdges = session.edges.filter((edge) => (
+      edge.edgeKind === 'reference'
+      && edge.target === node.id
+      && isBranchActiveEdge(edge, session.edges, this.getActiveBranches(session).get(edge.source))
+    ));
+
+    for (const edge of incomingReferenceEdges) {
+      const template = buildReferenceEdgeTemplate(edge);
+      const targetField = parseExecutionFieldHandle(edge.targetHandle);
+      if (!template || !targetField) continue;
+
+      if (targetField.kind === 'property') {
+        const currentValue = getNestedValue(nodeData, targetField.key);
+        setNestedValue(nodeData, targetField.key, appendReferenceTemplate(currentValue, template));
+        continue;
+      }
+
+      if (targetField.kind === 'input') {
+        nodeData.inputFields = applyReferenceTemplateToInputField(nodeData.inputFields, targetField.key, template);
+      }
+    }
+
+    return nodeData;
   }
 
   // ---- Private: Loop execution ----
