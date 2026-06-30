@@ -101,7 +101,6 @@
           "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
           "modelId": "MiniMax-M2.7",
           "apiBase": "https://api.minimaxi.com/anthropic",
-          "apiKey": "sk-api-IHtvp2cJWp81PA4Xw0PfnNpOZhKCzJB4SYTvhJeHXp3F7mCpVOqJqZ88zH6fOKePhL79YhQUPEl_bWcNwesH625rxQ-T6s3w9sMuPy57-TV_8nVuGz1UZv8",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -156,7 +155,6 @@
           "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
           "modelId": "MiniMax-M2.7",
           "apiBase": "https://api.minimaxi.com/anthropic",
-          "apiKey": "sk-api-IHtvp2cJWp81PA4Xw0PfnNpOZhKCzJB4SYTvhJeHXp3F7mCpVOqJqZ88zH6fOKePhL79YhQUPEl_bWcNwesH625rxQ-T6s3w9sMuPy57-TV_8nVuGz1UZv8",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -211,7 +209,6 @@
           "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
           "modelId": "MiniMax-M2.7",
           "apiBase": "https://api.minimaxi.com/anthropic",
-          "apiKey": "sk-api-IHtvp2cJWp81PA4Xw0PfnNpOZhKCzJB4SYTvhJeHXp3F7mCpVOqJqZ88zH6fOKePhL79YhQUPEl_bWcNwesH625rxQ-T6s3w9sMuPy57-TV_8nVuGz1UZv8",
           "workingDir": "",
           "mcps": {
             "mcpServers": {

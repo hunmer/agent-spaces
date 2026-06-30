@@ -160,7 +160,6 @@ function sanitizeWorkflowAgentValue(value: unknown): unknown {
     providerId: agent.providerId,
     modelId: agent.modelId,
     apiBase: agent.apiBase,
-    apiKey: agent.apiKey,
     workingDir: agent.workingDir,
     mcps: sanitizeWorkflowAgentMcps(agent.mcps, allowedMcpServers),
     skills: sanitizeWorkflowAgentSkills(agent.skills, allowedSkills),

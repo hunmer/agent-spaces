@@ -46,7 +46,6 @@ test('createWorkflow sanitizes agent_run agent JSON string into object', (t) => 
     providerId: undefined,
     modelId: undefined,
     apiBase: undefined,
-    apiKey: undefined,
     workingDir: undefined,
     mcps: undefined,
     skills: undefined,
@@ -60,6 +59,7 @@ test('createWorkflow sanitizes agent_run agent JSON string into object', (t) => 
     icon: undefined,
     enabled: true,
   });
+  assert.equal(Object.prototype.hasOwnProperty.call(workflow.nodes[0].data.agent as object, 'apiKey'), false);
 });
 
 test('createWorkflow filters unsupported mcps, skills, and tools from agent_run agent config by preset', (t) => {
@@ -126,7 +126,6 @@ test('createWorkflow filters unsupported mcps, skills, and tools from agent_run 
     providerId: undefined,
     modelId: undefined,
     apiBase: undefined,
-    apiKey: undefined,
     workingDir: undefined,
     mcps: {
       mcpServers: {
@@ -144,4 +143,5 @@ test('createWorkflow filters unsupported mcps, skills, and tools from agent_run 
     icon: undefined,
     enabled: true,
   });
+  assert.equal(Object.prototype.hasOwnProperty.call(workflow.nodes[0].data.agent as object, 'apiKey'), false);
 });
