@@ -467,8 +467,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                             <p className="text-muted-foreground">{t('detail.created')}</p>
                             <p className="mt-1 flex items-center gap-2 text-xs font-medium">
                               {new Date(issue.createdAt).toLocaleDateString()}
-                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                              {new Date(issue.updatedAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>

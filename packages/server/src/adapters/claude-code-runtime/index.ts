@@ -47,6 +47,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const startupTimeoutMs = readPositiveIntegerEnv('AGENT_SPACES_CLAUDE_STARTUP_TIMEOUT_MS') ?? 60_000;
 
     d(`starting | cwd=${cwd} model=${model ?? 'default'} targetModel=${this.config.model ?? 'default'} provider=${this.config.provider ?? 'default'} baseURL=${baseURL ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${additionalDirectories.join(',') || '-'} claudeExecutable=${claudeExecutable ?? 'sdk-default'}`);
+    d(`apikey: ${apiKey}`)
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
     d(`sdk mcp servers | ${sdkMcpServerNames.join(',') || '-'}`);
 

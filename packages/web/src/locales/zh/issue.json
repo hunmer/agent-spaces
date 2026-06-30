@@ -39,6 +39,8 @@
     "resumeFailed": "重试失败任务",
     "retryPaused": "自动重试已在 {failed}/{total} 次尝试后暂停。",
     "tasks": "任务 ({count})",
+    "viewWorkflow": "工作流视图",
+    "viewAgents": "Agents 视图",
     "editTask": "编辑任务",
     "addTask": "添加任务",
     "taskTitlePlaceholder": "任务标题",

@@ -39,6 +39,8 @@
     "resumeFailed": "Resume failed tasks",
     "retryPaused": "Automatic retry paused after {failed}/{total} attempts.",
     "tasks": "Tasks ({count})",
+    "viewWorkflow": "Workflow view",
+    "viewAgents": "Agents view",
     "editTask": "Edit Task",
     "addTask": "Add Task",
     "taskTitlePlaceholder": "Task title",

@@ -98,10 +98,10 @@
           "description": "围绕公众号主题生成多角度选题和大纲",
           "runtimeKind": "claude-code",
           "modelProvider": "anthropic-messages",
-          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
-          "modelId": "GLM-5.1",
-          "apiBase": "https://open.bigmodel.cn/api/anthropic",
-          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O",
+          "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+          "modelId": "MiniMax-M2.7",
+          "apiBase": "https://api.minimaxi.com/anthropic",
+          "apiKey": "sk-api-IHtvp2cJWp81PA4Xw0PfnNpOZhKCzJB4SYTvhJeHXp3F7mCpVOqJqZ88zH6fOKePhL79YhQUPEl_bWcNwesH625rxQ-T6s3w9sMuPy57-TV_8nVuGz1UZv8",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -153,10 +153,10 @@
           "description": "基于选题大纲撰写完整公众号文章",
           "runtimeKind": "claude-code",
           "modelProvider": "anthropic-messages",
-          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
-          "modelId": "GLM-5.1",
-          "apiBase": "https://open.bigmodel.cn/api/anthropic",
-          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O",
+          "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+          "modelId": "MiniMax-M2.7",
+          "apiBase": "https://api.minimaxi.com/anthropic",
+          "apiKey": "sk-api-IHtvp2cJWp81PA4Xw0PfnNpOZhKCzJB4SYTvhJeHXp3F7mCpVOqJqZ88zH6fOKePhL79YhQUPEl_bWcNwesH625rxQ-T6s3w9sMuPy57-TV_8nVuGz1UZv8",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -208,10 +208,10 @@
           "description": "对编辑 Agent 产出的文章进行质量审批",
           "runtimeKind": "claude-code",
           "modelProvider": "anthropic-messages",
-          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
-          "modelId": "GLM-5.1",
-          "apiBase": "https://open.bigmodel.cn/api/anthropic",
-          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O",
+          "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+          "modelId": "MiniMax-M2.7",
+          "apiBase": "https://api.minimaxi.com/anthropic",
+          "apiKey": "sk-api-IHtvp2cJWp81PA4Xw0PfnNpOZhKCzJB4SYTvhJeHXp3F7mCpVOqJqZ88zH6fOKePhL79YhQUPEl_bWcNwesH625rxQ-T6s3w9sMuPy57-TV_8nVuGz1UZv8",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -412,10 +412,10 @@
     }
   ],
   "createdAt": 1782815018975,
-  "updatedAt": 1782818589728,
+  "updatedAt": 1782819466267,
   "published": false,
   "name": "公众号编写",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
-  "lastRunAt": 1782818269883
+  "lastRunAt": 1782819756941
 }

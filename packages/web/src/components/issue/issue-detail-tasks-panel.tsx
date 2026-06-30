@@ -6,7 +6,7 @@ import type { ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent
 import { Agent, AgentContent } from '@/components/chat/subagent';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WorkflowPreview } from '@/components/workflow/workflow-preview';
 import { executionLogApi, workflowApi } from '@/lib/workflow-api';
 import { getWS } from '@/lib/ws';
@@ -219,26 +219,19 @@ export function IssueDetailTasksPanel({
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">{t('detail.tasks', { count: issue.workflowId ? 1 : 0 })}</h3>
         {issue.workflowId ? (
-          <Tabs value={view} onValueChange={(value) => setView(value as TaskPanelView)}>
-            <TabsList variant="line" className="h-8 gap-0.5 rounded-md border bg-muted/30 p-1">
-              <TabsTrigger
-                value="workflow"
-                className="size-7 px-0 data-[active]:rounded-sm"
-                aria-label="工作流视图"
-                title="工作流视图"
-              >
-                <WorkflowIcon className="size-4" />
-              </TabsTrigger>
-              <TabsTrigger
-                value="agents"
-                className="size-7 px-0 data-[active]:rounded-sm"
-                aria-label="agents视图"
-                title="agents视图"
-              >
-                <Bot className="size-4" />
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ToggleGroup
+            value={[view]}
+            onValueChange={(value) => {
+              if (value.length > 0) setView(value[0] as TaskPanelView);
+            }}
+          >
+            <ToggleGroupItem value="workflow" aria-label={t('detail.viewWorkflow')} title={t('detail.viewWorkflow')}>
+              <WorkflowIcon className="size-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="agents" aria-label={t('detail.viewAgents')} title={t('detail.viewAgents')}>
+              <Bot className="size-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
         ) : null}
       </div>
       {!issue.workflowId ? (
