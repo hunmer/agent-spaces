@@ -178,12 +178,22 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const versionNumber = versions ? Math.min(versions.index + 1, versions.count) : 1;
 
     const content = (
-      <div className={cn("flex gap-3 group/message", msg.role === "user" && "flex-row-reverse self-end", messageClassName)}>
-        <div className={cn("flex min-w-0 max-w-[85%] flex-col gap-1", msg.role === "user" && "items-end")}>
+      <div
+        className={cn(
+          "group/message flex w-full min-w-0 max-w-full gap-3",
+          messageClassName,
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-w-0 max-w-[85%] flex-col gap-1",
+            msg.role === "user" ? "ml-auto items-end" : "mr-auto",
+          )}
+        >
           {hasMessageBody ? (
             <div
               className={cn(
-                "border border-border/20 px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+                "min-w-0 max-w-full overflow-hidden border border-border/20 px-4 py-2.5 text-sm leading-relaxed shadow-sm",
                 msg.role === "user"
                   ? "rounded-2xl rounded-tr-none bg-primary text-primary-foreground"
                   : "rounded-2xl rounded-tl-none bg-muted/50 backdrop-blur-sm",

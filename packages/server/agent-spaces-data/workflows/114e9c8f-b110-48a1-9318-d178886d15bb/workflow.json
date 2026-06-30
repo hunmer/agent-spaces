@@ -1,0 +1,83 @@
+{
+  "id": "114e9c8f-b110-48a1-9318-d178886d15bb",
+  "type": "workspace",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "start_1782815018956",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 240,
+        "y": 80
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "topic",
+            "type": "string",
+            "description": "公众号文章主题，由上游调用方传入",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "string",
+            "description": "文章风格偏好，可选，例如：深度长文/快讯/观点",
+            "required": false
+          },
+          {
+            "key": "targetAudience",
+            "type": "string",
+            "description": "目标读者画像，可选",
+            "required": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "end_1782815018956",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 240,
+        "y": 360
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782815229879_cu8rld",
+      "type": "agent_run",
+      "label": "测试节点A",
+      "position": {
+        "x": 500,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "inputFields": [
+          {
+            "key": "input",
+            "type": "string",
+            "description": "上游传入输入"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1782815018975,
+  "updatedAt": 1782815258707,
+  "published": false,
+  "name": "公众号编写",
+  "description": "选题agent->编辑agent->审批agent"
+}

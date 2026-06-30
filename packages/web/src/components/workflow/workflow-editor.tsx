@@ -425,13 +425,14 @@ function buildExecutionRunGroups(workflow: WorkflowType | null, t: ReturnType<ty
 }
 
 function WorkflowEditorInner({
-  template, onBack, initialAgentPrompt, embeddedMode, returnToChannel,
+  template, onBack, initialAgentPrompt, embeddedMode, returnToChannel, returnToIssue,
 }: {
   template: WorkflowTemplate | null;
   onBack: () => void;
   initialAgentPrompt?: string;
   embeddedMode?: 'issue' | null;
   returnToChannel?: { workspaceId: string; channelId: string } | null;
+  returnToIssue?: { workspaceId: string; issueId: string } | null;
 }) {
   const t = useTranslations('workflows');
   const canvasExportRef = useRef<WorkflowCanvasViewportRef | null>(null);
@@ -1399,6 +1400,7 @@ function WorkflowEditorInner({
         isPreviewDirty={state.isPreviewDirty}
         onBack={onBack}
         returnToChannel={returnToChannel}
+        returnToIssue={returnToIssue}
         onExitPreview={exitExecutionPreview}
         onSave={isWorkflowReadOnly || state.isPreview ? () => {} : state.saveWorkflow}
         canRunTest={canRunWorkflowTest}
@@ -1638,13 +1640,14 @@ function WorkflowEditorInner({
 // ---- Main export (with ReactFlowProvider) ----
 
 export function WorkflowEditor({
-  template, onBack, initialAgentPrompt, embeddedMode = null, returnToChannel = null,
+  template, onBack, initialAgentPrompt, embeddedMode = null, returnToChannel = null, returnToIssue = null,
 }: {
   template: WorkflowTemplate | null;
   onBack: () => void;
   initialAgentPrompt?: string;
   embeddedMode?: 'issue' | null;
   returnToChannel?: { workspaceId: string; channelId: string } | null;
+  returnToIssue?: { workspaceId: string; issueId: string } | null;
 }) {
   return (
     <ReactFlowProvider>
@@ -1654,6 +1657,7 @@ export function WorkflowEditor({
         initialAgentPrompt={initialAgentPrompt}
         embeddedMode={embeddedMode}
         returnToChannel={returnToChannel}
+        returnToIssue={returnToIssue}
       />
     </ReactFlowProvider>
   );

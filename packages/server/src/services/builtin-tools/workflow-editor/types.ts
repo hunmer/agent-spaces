@@ -4,6 +4,7 @@ import type { AgentFunctionTool } from '../../../adapters/agent-runtime-types.js
 export type JsonRecord = Record<string, unknown>;
 
 export interface WorkflowEditorToolContext {
+  workspaceId?: string;
   workflow: Workflow;
   nodeDefinitions: NodeTypeDefinition[];
 }

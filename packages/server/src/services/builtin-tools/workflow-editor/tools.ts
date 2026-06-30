@@ -1,6 +1,7 @@
 import type { NodeProperty, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { createWorkflowNodesForDefinition } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../../adapters/agent-runtime-types.js';
+import * as agentService from '../../agent.js';
 import * as workflowService from '../../workflow.js';
 import { getWorkflowExecutionManager } from '../workflow-exec-tools.js';
 import {
@@ -172,6 +173,13 @@ function stringInputObject(input: JsonRecord, key: string): JsonRecord {
 
 function compactObject(value: JsonRecord): JsonRecord {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+function getMcpServerNames(value: unknown): string[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const servers = (value as { mcpServers?: unknown }).mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return [];
+  return Object.keys(servers as Record<string, unknown>);
 }
 
 function getOutputFieldKey(field: unknown): string | undefined {
@@ -393,6 +401,53 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
   };
 
   const tools: AgentFunctionTool[] = [
+    {
+      name: 'list_agent_capabilities',
+      description: '列出当前可用的 agent preset，以及它们配置的 mcps、skills、tools 和模型字段。设计多 agent workflow 前先调用它，再按职责分配能力。',
+      inputSchema: schema({
+        agent_ids: {
+          type: 'array',
+          description: '可选，只返回这些 agent preset ID。',
+          items: { type: 'string' },
+        },
+        include_disabled: {
+          type: 'boolean',
+          description: '是否包含 disabled 的 agent preset，默认 false。',
+        },
+      }),
+      annotations: { readOnly: true },
+      execute: async (input) => {
+        const record = asRecord(input);
+        const includeDisabled = booleanInput(record, 'include_disabled', false);
+        const requestedIds = new Set(arrayStringInput(record.agent_ids));
+        const presets = agentService.listPresets(ctx.workspaceId ?? '')
+          .filter((agent) => (includeDisabled || agent.enabled !== false) && (!requestedIds.size || requestedIds.has(agent.id)))
+          .map((agent) => {
+            const configDir = ctx.workspaceId ? agentService.getAgentConfigDir(ctx.workspaceId, agent) : undefined;
+            const resolvedMcpServers = agentService.getMcpServers(agent.mcps);
+            const resolvedSkills = agentService.getAvailableSkillNames(configDir, agent.skills);
+            const configuredSkills = arrayStringInput(agent.skills);
+            return {
+              id: agent.id,
+              name: agent.name,
+              role: agent.role,
+              description: agent.description ?? '',
+              enabled: agent.enabled,
+              providerId: agent.providerId ?? '',
+              modelId: agent.modelId ?? '',
+              modelProvider: agent.modelProvider ?? '',
+              mcp_servers: Object.keys(resolvedMcpServers ?? {}).length ? Object.keys(resolvedMcpServers ?? {}) : getMcpServerNames(agent.mcps),
+              skills: resolvedSkills.length ? resolvedSkills : configuredSkills,
+              tools: Array.isArray(agent.tools) ? [...agent.tools] : [],
+            };
+          });
+        return {
+          success: true,
+          total: presets.length,
+          agents: presets,
+        };
+      },
+    },
     {
       name: 'get_workflow',
       description: '按 workflow_id 读取指定工作流的最新已保存文件数据。默认返回摘要，summarize=false 返回完整数据。',

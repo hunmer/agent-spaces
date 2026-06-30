@@ -39,6 +39,7 @@ interface AgentSseRequestBody {
 }
 
 interface WorkflowToolRunRequestBody {
+  workspaceId?: string;
   workflowAgent?: AgentSseRequestBody['workflowAgent'];
   toolName?: string;
   input?: unknown;
@@ -82,6 +83,7 @@ router.post('/run', async (req: Request, res: Response) => {
   const workflowAgent = normalizeWorkflowAgent(body.workflowAgent);
   const functionTools = workflowAgent
     ? createWorkflowEditorFunctionTools({
+        workspaceId,
         workflow: workflowAgent.workflow,
         nodeDefinitions: workflowAgent.nodeDefinitions,
       })
@@ -228,6 +230,7 @@ router.post('/workflow-tool/run', async (req: Request, res: Response) => {
   }
 
   const tools = createWorkflowEditorFunctionTools({
+    workspaceId: body.workspaceId,
     workflow: workflowAgent.workflow,
     nodeDefinitions: workflowAgent.nodeDefinitions,
   });

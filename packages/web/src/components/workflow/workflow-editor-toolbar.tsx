@@ -7,7 +7,7 @@ import {
   Save, ArrowLeft, Loader2,
   Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play, Download,
   RotateCcw, RotateCw, CheckSquare, FlipHorizontal2, ArrowRightLeft, ArrowDownUp,
-  AlertTriangle, Clock, MessagesSquare,
+  AlertTriangle, Clock, MessagesSquare, CircleDot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ interface EditorToolbarProps {
   isPreviewDirty: boolean;
   onBack: () => void;
   returnToChannel?: { workspaceId: string; channelId: string } | null;
+  returnToIssue?: { workspaceId: string; issueId: string } | null;
   onExitPreview: () => void;
   onSave: () => void;
   canRunTest: boolean;
@@ -79,7 +80,7 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 
 export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview, isPreviewDirty,
-  onBack, returnToChannel, onExitPreview, onSave, canRunTest, onRunTest, onSavePreviewEdits,
+  onBack, returnToChannel, returnToIssue, onExitPreview, onSave, canRunTest, onRunTest, onSavePreviewEdits,
   onExport, isExporting,
   canUndo, canRedo, onUndo, onRedo, onAutoLayout, onSelectAll, onInvertSelection,
   onExportWorkflow, onImport,
@@ -113,6 +114,20 @@ export function WorkflowEditorToolbar({
       <ToolBtn tooltip={t('editor.backToList')} variant="ghost" size="icon" className="h-7 w-7" onClick={onBack}>
         <ArrowLeft className="h-4 w-4" />
       </ToolBtn>
+      {returnToIssue && (
+        <ToolBtn
+          tooltip="返回对应议题"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => {
+            const params = new URLSearchParams({ issueId: returnToIssue.issueId });
+            router.push(`/workspace/${returnToIssue.workspaceId}?${params.toString()}`);
+          }}
+        >
+          <CircleDot className="h-4 w-4" />
+        </ToolBtn>
+      )}
       {returnToChannel && (
         <ToolBtn
           tooltip="返回对应频道"

@@ -511,60 +511,74 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <ResizableHandle withHandle />
 
             <ResizablePanel id="issue-detail-comments" defaultSize="28%" minSize="20%" maxSize="50%" className="min-w-0 overflow-hidden">
-              <div className="h-full border-l">
-                {commentsLoading && comments.length === 0 ? (
-                  <div className="flex h-full flex-col">
-                    <div className="px-5 pt-6">
-                      <Skeleton className="mb-3 h-4 w-20" />
-                    </div>
-                    <div className="space-y-4 px-5">
-                      {Array.from({ length: 3 }, (_, i) => (
-                        <div key={i} className="flex gap-3">
-                          <Skeleton className="mt-0.5 size-6 shrink-0 rounded-full" />
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Skeleton className="h-4 w-20" />
-                              <Skeleton className="h-3 w-12" />
+              <div className="flex h-full flex-col border-l">
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  {commentsLoading && comments.length === 0 ? (
+                    <div className="flex h-full flex-col">
+                      <div className="px-5 pt-6">
+                        <Skeleton className="mb-3 h-4 w-20" />
+                      </div>
+                      <div className="space-y-4 px-5">
+                        {Array.from({ length: 3 }, (_, i) => (
+                          <div key={i} className="flex gap-3">
+                            <Skeleton className="mt-0.5 size-6 shrink-0 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Skeleton className="h-4 w-20" />
+                                <Skeleton className="h-3 w-12" />
+                              </div>
+                              <Skeleton className="h-4 w-full" />
+                              <Skeleton className="h-4 w-3/4" />
                             </div>
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <IssueDetailComments
-                    issue={normalizedIssue}
+                  ) : (
+                    <IssueDetailComments
+                      issue={normalizedIssue}
+                      workspaceId={workspaceId}
+                      comments={comments}
+                      expandedCommentIds={expandedCommentIds}
+                      commentsViewportRef={commentsViewportRef}
+                      commentRefs={commentRefs}
+                      onDeleteComment={handleDeleteComment}
+                      onUpdateComment={handleUpdateComment}
+                      onExpandedChange={handleCommentExpandedChange}
+                      scrollToComment={scrollToComment}
+                      t={t}
+                    />
+                  )}
+                </div>
+                {/* Inline composer for side-by-side (xl) layout */}
+                <div className="shrink-0 border-t p-3">
+                  <ChatComposerInput
                     workspaceId={workspaceId}
-                    comments={comments}
-                    expandedCommentIds={expandedCommentIds}
-                    commentsViewportRef={commentsViewportRef}
-                    commentRefs={commentRefs}
-                    onDeleteComment={handleDeleteComment}
-                    onUpdateComment={handleUpdateComment}
-                    onExpandedChange={handleCommentExpandedChange}
-                    scrollToComment={scrollToComment}
-                    t={t}
+                    agents={enabledAgents}
+                    placeholder={t('detail.commentPlaceholder')}
+                    onSubmit={(content, mentions) => handleSendComment(content, mentions)}
+                    enableAutoMode={false}
+                    enableContextControl={false}
+                    enableAgentResources={false}
                   />
-                )}
+                </div>
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
         </div>
 
-        {/* Floating composer — UNCHANGED */}
+        {/* Floating composer — hidden in side-by-side (xl) layout */}
         {!composerOpen ? (
           <button
             onClick={() => setComposerOpen(true)}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all z-10 cursor-pointer"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all z-10 cursor-pointer xl:hidden"
           >
             <MessageSquare className="size-4" />
             <span className="text-sm font-medium">{t('detail.comment')}</span>
           </button>
         ) : (
-          <div className="absolute bottom-4 left-4 right-4 z-10 animate-in slide-in-from-bottom-2 duration-200">
+          <div className="absolute bottom-4 left-4 right-4 z-10 animate-in slide-in-from-bottom-2 duration-200 xl:hidden">
             <div className="relative">
               <button
                 onClick={() => setComposerOpen(false)}

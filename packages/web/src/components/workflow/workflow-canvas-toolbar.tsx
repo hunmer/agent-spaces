@@ -63,6 +63,8 @@ export function CanvasToolbar({
   logsCollapsed,
   onToggleLogsCollapsed,
   embeddedMode = null,
+  workspaceId,
+  issueId,
 }: {
   workflow: Workflow;
   isPreview: boolean;
@@ -87,6 +89,8 @@ export function CanvasToolbar({
   logsCollapsed: boolean;
   onToggleLogsCollapsed: () => void;
   embeddedMode?: 'issue' | null;
+  workspaceId?: string;
+  issueId?: string;
 }) {
   const t = useTranslations("workflows");
   const [clipboardOpen, setClipboardOpen] = useState(false);
@@ -94,7 +98,12 @@ export function CanvasToolbar({
   const autoLayoutOptions = layoutEngine ? { layoutEngine } : undefined;
   const openWorkflowInNewWindow = () => {
     if (typeof window === 'undefined') return;
-    window.open(`/workflows/${workflow.id}`, '_blank', 'noopener,noreferrer');
+    const params = new URLSearchParams();
+    if (embeddedMode) params.set('embedded', embeddedMode);
+    if (workspaceId) params.set('returnWorkspaceId', workspaceId);
+    if (issueId) params.set('returnIssueId', issueId);
+    const qs = params.toString();
+    window.open(`/workflows/${workflow.id}${qs ? `?${qs}` : ''}`, '_blank', 'noopener,noreferrer');
   };
 
   return (

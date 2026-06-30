@@ -13,11 +13,13 @@ const noop = () => {};
 export function WorkflowPreview({
   workflowId,
   workspaceId,
+  issueId,
   className,
   embeddedMode = null,
 }: {
   workflowId: string;
   workspaceId?: string;
+  issueId?: string;
   className?: string;
   embeddedMode?: 'issue' | null;
 }) {
@@ -119,6 +121,8 @@ export function WorkflowPreview({
           execStatus={execStatus}
           executionLog={executionLog}
           embeddedMode={embeddedMode}
+          workspaceId={workspaceId}
+          issueId={issueId}
           onNodeAdd={noop}
           onNodeDelete={noop}
           onNodeSelect={noop}
