@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import {
   Dialog,
@@ -47,6 +48,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   const { workflows, loadWorkflows, upsertWorkflow } = useWorkflowStore();
   const { models, providers, ensure: ensureLLM } = useLLMStore();
   const pendingDraftWorkflowIdRef = useRef<string | null>(null);
+  const router = useRouter();
   const t = useTranslations('issue');
   const tc = useTranslations('common');
 
@@ -206,11 +208,14 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
     setSelectedWorkflowId(saved.id);
     setWorkflowInfoOpen(false);
     pendingDraftWorkflowIdRef.current = null;
+    const workflowHref = `/workflows/${saved.id}`;
+    router.prefetch(workflowHref);
+    void fetch(workflowHref, { credentials: 'same-origin' }).catch(() => {});
     // 不立即弹 FloatingPanel，等频道创建完成（handleSubmit）后再弹
     setPendingPanel({
       id: saved.id,
       title: saved.name,
-      src: `http://127.0.0.1:3000/workflows/${saved.id}?prompt=${encodeURIComponent(buildWorkflowPrompt(saved.description || ''))}`,
+      src: `${workflowHref}?embedded=issue&prompt=${encodeURIComponent(buildWorkflowPrompt(saved.description || ''))}`,
     });
   };
 

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { MultiServerMCPClient } from '@langchain/mcp-adapters';
 import type { Connection } from '@langchain/mcp-adapters';
+import { MemorySaver } from '@langchain/langgraph';
 import { createAgent, initChatModel, tool } from 'langchain';
 import type { CreateAgentParams } from 'langchain';
 import type {
@@ -28,6 +29,7 @@ const TOOL_RESULT_FINAL_RESPONSE_RETRY_COUNT = 5;
 export class LangChainRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
   private static nextRunId = 1;
+  private static readonly checkpointer = new MemorySaver();
 
   constructor(private readonly config: AgentRuntimeConfig = {}) {}
 
@@ -79,7 +81,7 @@ export class LangChainRuntime implements AgentRuntime {
           ...mcpTools,
         ],
         systemPrompt: runtimeOptions?.systemPrompt,
-        checkpointer: true,
+        checkpointer: LangChainRuntime.checkpointer,
       });
       d(`agent created | type=${getObjectTypeName(agent)}`);
 
