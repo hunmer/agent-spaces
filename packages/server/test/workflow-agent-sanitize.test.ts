@@ -62,7 +62,7 @@ test('createWorkflow sanitizes agent_run agent JSON string into object', (t) => 
   assert.equal(Object.prototype.hasOwnProperty.call(workflow.nodes[0].data.agent as object, 'apiKey'), false);
 });
 
-test('createWorkflow filters unsupported mcps, skills, and tools from agent_run agent config by preset', (t) => {
+test('createWorkflow preserves agent_run mcps, skills, and tools from preset-backed config', (t) => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-workflow-agent-cap-'));
   process.env.AGENT_SPACES_DATA_DIR = dataDir;
@@ -130,10 +130,11 @@ test('createWorkflow filters unsupported mcps, skills, and tools from agent_run 
     mcps: {
       mcpServers: {
         filesystem: {},
+        github: {},
       },
     },
-    skills: ['research'],
-    tools: ['ReadWorkspaceFile'],
+    skills: ['research', 'writer'],
+    tools: ['ReadWorkspaceFile', 'DeleteWorkspacePath', 'NotARealTool'],
     systemPrompt: undefined,
     outputStyle: undefined,
     temperature: undefined,
@@ -144,4 +145,72 @@ test('createWorkflow filters unsupported mcps, skills, and tools from agent_run 
     enabled: true,
   });
   assert.equal(Object.prototype.hasOwnProperty.call(workflow.nodes[0].data.agent as object, 'apiKey'), false);
+});
+
+test('createWorkflow preserves agent_run mcps, skills, and tools on save', (t) => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-workflow-agent-save-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+  t.after(() => {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const workflow = workflowService.createWorkflow({
+    name: 'agent save preserve',
+    nodes: [{
+      id: 'node-1',
+      type: 'agent_run',
+      label: 'Agent',
+      position: { x: 0, y: 0 },
+      data: {
+        agent: {
+          id: 'agent-1',
+          name: 'Agent One',
+          role: 'agent',
+          enabled: true,
+          mcps: {
+            mcpServers: {
+              filesystem: {},
+              github: {},
+            },
+          },
+          skills: ['research', 'writer'],
+          tools: ['ReadWorkspaceFile', 'DeleteWorkspacePath'],
+        },
+        prompt: 'go',
+      },
+    }],
+    edges: [],
+  });
+
+  assert.deepEqual(workflow.nodes[0].data.agent, {
+    id: 'agent-1',
+    name: 'Agent One',
+    role: 'agent',
+    description: undefined,
+    runtimeKind: undefined,
+    modelProvider: undefined,
+    providerId: undefined,
+    modelId: undefined,
+    apiBase: undefined,
+    workingDir: undefined,
+    mcps: {
+      mcpServers: {
+        filesystem: {},
+        github: {},
+      },
+    },
+    skills: ['research', 'writer'],
+    tools: ['ReadWorkspaceFile', 'DeleteWorkspacePath'],
+    systemPrompt: undefined,
+    outputStyle: undefined,
+    temperature: undefined,
+    maxTokens: undefined,
+    sandboxDirs: undefined,
+    avatarUrl: undefined,
+    icon: undefined,
+    enabled: true,
+  });
 });

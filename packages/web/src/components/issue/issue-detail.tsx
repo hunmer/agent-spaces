@@ -647,6 +647,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           variableFields={workflowVariableFields}
           startNodeLabel={startNodeLabel}
           workflowId={issue.workflowId}
+          restoreSavedValues={false}
           onOpenChange={setStartInputOpen}
           onSubmit={(values, env) => startIssue(workspaceId, issue.id, values, env)}
         />

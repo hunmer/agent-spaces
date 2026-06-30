@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { OutputField } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -369,21 +369,26 @@ function saveValues(workflowId: string, startNodeLabel: string, values: Record<s
 }
 
 export function ExecutionInputDialog({
-  open, fields, variableFields = [], startNodeLabel, onOpenChange, onSubmit, workflowId,
+  open, fields, variableFields = [], startNodeLabel, onOpenChange, onSubmit, workflowId, restoreSavedValues = true,
 }: {
   open: boolean;
   fields: OutputField[];
   variableFields?: OutputField[];
   startNodeLabel: string;
   workflowId?: string | null;
+  restoreSavedValues?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: Record<string, unknown>, env?: Record<string, unknown>) => void | Promise<void>;
 }) {
   const t = useTranslations('workflows');
-  const savedValues = workflowId ? loadSavedValues(workflowId, startNodeLabel) : undefined;
-  const savedEnvValues = workflowId ? loadSavedValues(workflowId, `${startNodeLabel}:__env__`) : undefined;
+  const savedValues = restoreSavedValues && workflowId ? loadSavedValues(workflowId, startNodeLabel) : undefined;
+  const savedEnvValues = restoreSavedValues && workflowId ? loadSavedValues(workflowId, `${startNodeLabel}:__env__`) : undefined;
   const hasInputFields = fields.length > 0;
   const hasVariableFields = variableFields.length > 0;
+  const formKey = useMemo(
+    () => `${workflowId ?? 'workflow'}:${startNodeLabel}:${restoreSavedValues ? 'saved' : 'fresh'}:${open ? 'open' : 'closed'}`,
+    [open, restoreSavedValues, startNodeLabel, workflowId],
+  );
   const submit = async (values: Record<string, unknown>, env?: Record<string, unknown>) => {
     if (workflowId) {
       saveValues(workflowId, startNodeLabel, values);
@@ -401,6 +406,7 @@ export function ExecutionInputDialog({
         </DialogHeader>
         {hasInputFields && !hasVariableFields ? (
           <ExecutionInputForm
+            key={formKey}
             fields={fields}
             initialValues={savedValues}
             onSubmit={(values) => submit(values)}
@@ -408,6 +414,7 @@ export function ExecutionInputDialog({
           />
         ) : hasVariableFields && !hasInputFields ? (
           <ExecutionInputForm
+            key={formKey}
             fields={variableFields}
             initialValues={savedEnvValues}
             onSubmit={(env) => submit({}, env)}
@@ -415,6 +422,7 @@ export function ExecutionInputDialog({
           />
         ) : (
           <CombinedExecutionInputForm
+            key={formKey}
             fields={fields}
             variableFields={variableFields}
             initialValues={savedValues}

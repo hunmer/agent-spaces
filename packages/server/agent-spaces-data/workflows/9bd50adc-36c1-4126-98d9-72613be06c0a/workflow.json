@@ -103,16 +103,12 @@
           "apiBase": "https://api.minimaxi.com/anthropic",
           "workingDir": "",
           "mcps": {
-            "mcpServers": {
-              "filesystem": {}
-            }
+            "mcpServers": {}
           },
           "tools": [
             "CreateCurrentChannelIssue",
             "ViewCurrentChannelIssue",
-            "AddCurrentChannelComment",
-            "SearchWorkspaceFiles",
-            "ReadWorkspaceFile"
+            "AddCurrentChannelComment"
           ],
           "systemPrompt": "你是公众号选题策划 Agent。任务：接收上游传入的 topic、style、targetAudience，输出一份结构化的选题报告，并通过 channel 向编辑 Agent 同步进展。\n要求：\n1. 基于 topic 生成 3 个差异化的切入角度（例如：技能重塑、行业洗牌、心理建设、政策与机遇等），并给出每个角度的吸引力打分（1-10）。\n2. 选择其中得分最高的 1 个角度，撰写完整大纲：包含 5-7 个一级章节，每个章节用一句话概括要点。\n3. 收集 5 条可引用的事实/数据/案例线索（标注来源类型，例如行业报告/新闻/人物访谈）。\n4. 将最终选题报告通过 channel 同步给下游编辑 Agent，明确告知大纲与事实线索已就绪，请基于此撰写全文。\n输出格式（Markdown）：\n# 选题报告\n## 切入选角\n- 角度A: 描述 (打分)\n- 角度B: 描述 (打分)\n- 角度C: 描述 (打分)\n## 推荐大纲\n1. ...\n## 事实线索\n1. ...\n## 同步说明\n已通过 channel 通知编辑 Agent。",
           "outputStyle": "",
@@ -210,18 +206,6 @@
           "modelId": "MiniMax-M2.7",
           "apiBase": "https://api.minimaxi.com/anthropic",
           "workingDir": "",
-          "mcps": {
-            "mcpServers": {
-              "filesystem": {}
-            }
-          },
-          "tools": [
-            "CreateCurrentChannelIssue",
-            "ViewCurrentChannelIssue",
-            "AddCurrentChannelComment",
-            "SearchWorkspaceFiles",
-            "ReadWorkspaceFile"
-          ],
           "systemPrompt": "你是公众号质量审批 Agent。任务：基于上游编辑 Agent 的稿件进行结构化审批，并通过 channel 把审批结论同步给上游和下游。\n\n上游输入变量（必须使用，不可编造）：\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n- 编辑稿件：{{ __data__[\"node_1782815702374_v472u0\"].result }}\n\n审批维度（每项 1-10 分）：\n1. 主题契合度：是否紧扣 topic。\n2. 大纲遵循度：是否严格按推荐大纲展开。\n3. 事实可靠度：数据/案例是否合理可信。\n4. 表达流畅度：语言是否通顺、有无病句。\n5. 读者价值：对 targetAudience 的启发与帮助。\n6. 字数合规：是否在 1800-2500 字之间。\n\n结论规则：\n- 任意一项 < 6：结论为需修改，列出 3-5 条具体修改建议。\n- 全部 >= 6：结论为通过，并给出 1 句话的发布建议。\n- 最终保留可发布的稿件全文（在通过分支下，对稿件做轻度润色后输出；需修改分支下输出原稿 + 修改建议清单）。\n\n输出格式（Markdown）：\n# 审批报告\n## 评分\n- 主题契合度: x/10\n- 大纲遵循度: x/10\n- ...\n- 总分: xx/60\n## 结论\n通过 / 需修改\n## 修改建议（如需）\n1. ...\n## 最终稿件\n（通过分支：润色后稿件；需修改分支：原稿+建议清单）\n## 同步说明\n已通过 channel 把审批结论同步给编辑 Agent 与上游调用方。",
           "outputStyle": "",
           "temperature": 0.3,
@@ -409,10 +393,10 @@
     }
   ],
   "createdAt": 1782821632696,
-  "updatedAt": 1782821828430,
+  "updatedAt": 1782823821240,
   "published": false,
   "name": "公众号编写 (Copy)",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
-  "lastRunAt": 1782821681875
+  "lastRunAt": 1782822797261
 }

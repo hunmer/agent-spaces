@@ -4,7 +4,9 @@ import { Bot, Workflow as WorkflowIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { Agent, AgentContent } from '@/components/chat/subagent';
+import { AgentIcon, colorFromName } from '@/components/common/agent-icon';
 import { Badge } from '@/components/ui/badge';
+import { Markdown } from '@/components/ui/markdown';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WorkflowPreview } from '@/components/workflow/workflow-preview';
@@ -22,7 +24,10 @@ type TaskPanelView = 'workflow' | 'agents';
 type AgentRunCard = {
   nodeId: string;
   title: string;
+  agentId?: string;
   model?: string;
+  providerId?: string;
+  modelProvider?: string;
   status: 'idle' | ExecutionStep['status'];
   outputText: string;
   timestamp?: number;
@@ -153,7 +158,10 @@ function AgentRunsView({
       return {
         nodeId: node.id,
         title: typeof agent?.name === 'string' && agent.name.trim() ? agent.name : node.label,
+        agentId: typeof agent?.id === 'string' ? agent.id : undefined,
         model: typeof agent?.modelId === 'string' ? agent.modelId : undefined,
+        providerId: typeof agent?.providerId === 'string' ? agent.providerId : undefined,
+        modelProvider: typeof agent?.modelProvider === 'string' ? agent.modelProvider : undefined,
         status: step?.status ?? 'idle',
         outputText: extractOutputText(step),
         timestamp: step?.finishedAt ?? step?.startedAt,
@@ -178,9 +186,23 @@ function AgentRunsView({
     <div className="h-full overflow-x-auto overflow-y-hidden p-3">
       <div className="flex h-full min-w-max gap-3">
         {cards.map((card) => (
-          <Agent key={card.nodeId} className="flex h-full w-[320px] shrink-0 flex-col rounded-xl">
-            <div className="flex items-center justify-between gap-3 border-b p-3">
+          <Agent
+            key={card.nodeId}
+            className="flex h-full w-[320px] shrink-0 flex-col overflow-hidden rounded-xl"
+            style={{ background: colorFromName(card.title, 70, 92) }}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-black/5 p-3">
               <div className="flex min-w-0 items-center gap-2">
+                <AgentIcon
+                  agentId={card.agentId}
+                  name={card.title}
+                  modelId={card.model}
+                  providerId={card.providerId}
+                  modelProvider={card.modelProvider}
+                  className="size-7 shrink-0"
+                  bordered={false}
+                  hoverCard
+                />
                 <span className="min-w-0 truncate font-medium text-sm">{card.title}</span>
                 {card.model ? (
                   <Badge className="max-w-40 truncate font-mono text-xs" variant="secondary">
@@ -190,14 +212,18 @@ function AgentRunsView({
               </div>
               <Badge variant={getStatusVariant(card.status)}>{getStatusLabel(card.status)}</Badge>
             </div>
-            <AgentContent className="flex min-h-0 flex-1 flex-col space-y-2 p-3">
+            <AgentContent className="flex min-h-0 flex-1 flex-col space-y-2 bg-background/95 p-3">
               {card.timestamp ? (
                 <div className="text-xs text-muted-foreground">
                   {new Date(card.timestamp).toLocaleString()}
                 </div>
               ) : null}
-              <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/40 p-3 text-sm whitespace-pre-wrap break-words">
-                {card.outputText || '暂无输出'}
+              <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/40 p-3 text-sm break-words">
+                {card.outputText ? (
+                  <Markdown content={card.outputText} workspaceId={workspaceId} />
+                ) : (
+                  '暂无输出'
+                )}
               </div>
             </AgentContent>
           </Agent>
