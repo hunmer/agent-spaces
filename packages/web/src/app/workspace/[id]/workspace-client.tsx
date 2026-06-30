@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useChannelStore } from "@/stores/channel";
+import { useMobilePanelStore } from "@/stores/mobile-panel";
 import type { Workspace } from "@agent-spaces/shared";
 import { useRouter } from "next/navigation";
 import { tauriNavigate } from "@/lib/navigate";
@@ -43,10 +45,13 @@ function useWorkspaceId() {
 
 export function WorkspaceClient() {
   const id = useWorkspaceId();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const upsertWorkspace = useWorkspaceStore((state) => state.upsertWorkspace);
+  const ensureAndActivateChannel = useChannelStore((state) => state.ensureAndActivateChannel);
+  const setActivePanel = useMobilePanelStore((state) => state.setActivePanel);
 
   useEffect(() => {
     if (!id) return;
@@ -62,6 +67,13 @@ export function WorkspaceClient() {
       })
       .catch((e) => setError(e.message));
   }, [id, upsertWorkspace]);
+
+  useEffect(() => {
+    const channelId = searchParams.get("channelId");
+    if (!id || !channelId) return;
+    void ensureAndActivateChannel(id, channelId);
+    setActivePanel("chat");
+  }, [ensureAndActivateChannel, id, searchParams, setActivePanel]);
 
   if (error) {
     return (

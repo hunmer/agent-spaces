@@ -17,6 +17,8 @@ export default function WorkflowEditorPageClient() {
 
   const id = searchParams.get("workflowId") || params.id;
   const embeddedMode = searchParams.get("embedded") === "issue" ? "issue" : null;
+  const returnWorkspaceId = searchParams.get("returnWorkspaceId") || "";
+  const returnChannelId = searchParams.get("returnChannelId") || "";
 
   useEffect(() => {
     const prompt = searchParams.get("prompt");
@@ -64,6 +66,7 @@ export default function WorkflowEditorPageClient() {
       template={workflow}
       initialAgentPrompt={initialPrompt}
       embeddedMode={embeddedMode}
+      returnToChannel={returnWorkspaceId && returnChannelId ? { workspaceId: returnWorkspaceId, channelId: returnChannelId } : null}
       onBack={() => nativeNavigate(router, "/workflows")}
     />
   );

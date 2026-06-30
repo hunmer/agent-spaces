@@ -1,0 +1,171 @@
+{
+  "id": "96a5bb17-ad71-4543-b69a-1969fd479278",
+  "name": "文案创作",
+  "type": "workspace",
+  "folderId": null,
+  "description": "选题->写稿->审阅",
+  "nodes": [
+    {
+      "id": "start_1782787074220",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 240,
+        "y": 80
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "topic",
+            "type": "string",
+            "description": "用户想要写作的主题或需求描述",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "end_1782787074220",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 240,
+        "y": 360
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "finalResult",
+            "type": "string",
+            "description": "最终完成的文案"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782787244803_388ldq",
+      "type": "agent_run",
+      "label": "选题 Agent",
+      "position": {
+        "x": 500,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "你是一个专业的文案选题专家。请根据用户的需求或当前主题，提供 3-5 个有吸引力的写作选题方向。每个选题应包含：\n1. 标题\n2. 核心观点\n3. 目标受众\n4. 预期价值\n\n请以 JSON 格式输出：\n[{\"title\": \"...\", \"corePoint\": \"...\", \"targetAudience\": \"...\", \"value\": \"...\"}]",
+        "agent": {
+          "id": "topic-agent",
+          "name": "选题 Agent",
+          "role": "agent",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
+          "modelId": "MiniMax-M2.5",
+          "systemPrompt": "你是一个专业的文案选题专家，擅长捕捉热点、挖掘用户痛点、提炼有价值的写作主题。你的输出要简洁有力，逻辑清晰，具有很强的可执行性。",
+          "enabled": true
+        }
+      }
+    },
+    {
+      "id": "node_1782787252771_an7kr6",
+      "type": "agent_run",
+      "label": "写稿 Agent",
+      "position": {
+        "x": 760,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "你是一个专业的文案写手。请根据选题 Agent 提供的选题方向，撰写一篇完整的文案。\n\n要求：\n1. 结构清晰：开篇引入→核心内容→总结升华\n2. 语言风格：根据目标受众选择合适的语气\n3. 重点突出：关键信息要醒目\n4. 结尾有力：要有明确的行动指引或价值共鸣\n\n请输出完整的文案内容。",
+        "agent": {
+          "id": "writer-agent",
+          "name": "写稿 Agent",
+          "role": "agent",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
+          "modelId": "MiniMax-M2.7",
+          "systemPrompt": "你是一个资深的文案写手，擅长各种类型的文案创作，包括但不限于：产品文案、营销文案、品牌文案、社交媒体文案等。你注重文字的力量，追求精准、简洁、有感染力的表达。你的作品结构清晰，重点突出，能够有效传递信息并引发读者共鸣。",
+          "enabled": true
+        }
+      }
+    },
+    {
+      "id": "node_1782787264697_f7dv1a",
+      "type": "agent_run",
+      "label": "审阅 Agent",
+      "position": {
+        "x": 1020,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "你是一个专业的文案审阅专家。请对写稿 Agent 完成的文案进行全面审阅。\n\n审阅维度：\n1. 结构完整性：是否层次清晰、逻辑通顺\n2. 内容质量：是否准确传达核心观点、是否有说服力\n3. 语言表达：是否简洁有力、是否有感染力\n4. 格式规范：是否符合文案规范、是否有错别字\n5. 目标达成：是否能够吸引目标受众、是否达到预期效果\n\n请输出审阅结果，格式如下：\n{\"overallScore\": 85, \"structureScore\": 8, \"contentScore\": 9, \"languageScore\": 8, \"formatScore\": 9, \"suggestions\": [\"建议1\", \"建议2\"], \"conclusion\": \"总体评价\"}",
+        "agent": {
+          "id": "reviewer-agent",
+          "name": "审阅 Agent",
+          "role": "agent",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "GLM-5.1",
+          "systemPrompt": "你是一个资深的文案审阅专家，拥有多年的文案编辑和审核经验。你擅长从多个维度评估文案质量，包括结构、内容、语言、格式等。你的审阅意见客观、专业、具体，能够帮助写手有效提升文案质量。你注重建设性反馈，既肯定优点，也指出改进方向。",
+          "enabled": true
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-start_1782787074220-node_1782787244803_388ldq-mr01jjx6",
+      "source": "start_1782787074220",
+      "target": "node_1782787244803_388ldq"
+    },
+    {
+      "id": "e-node_1782787244803_388ldq-node_1782787252771_an7kr6-mr01jrb3",
+      "source": "node_1782787244803_388ldq",
+      "target": "node_1782787252771_an7kr6"
+    },
+    {
+      "id": "e-node_1782787252771_an7kr6-node_1782787264697_f7dv1a-mr01jyev",
+      "source": "node_1782787252771_an7kr6",
+      "target": "node_1782787264697_f7dv1a"
+    },
+    {
+      "id": "e-node_1782787264697_f7dv1a-end_1782787074220-mr01k3li",
+      "source": "node_1782787264697_f7dv1a",
+      "target": "end_1782787074220"
+    }
+  ],
+  "createdAt": 1782787074227,
+  "updatedAt": 1782787370943,
+  "published": false,
+  "lastRunAt": 1782799615653
+}

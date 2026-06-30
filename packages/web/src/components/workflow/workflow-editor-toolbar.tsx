@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft, Loader2,
   Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon, Trash2, LayoutTemplate, Play, Download,
   RotateCcw, RotateCw, CheckSquare, FlipHorizontal2, ArrowRightLeft, ArrowDownUp,
-  AlertTriangle, Clock,
+  AlertTriangle, Clock, MessagesSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,7 @@ interface EditorToolbarProps {
   isPreview: boolean;
   isPreviewDirty: boolean;
   onBack: () => void;
+  returnToChannel?: { workspaceId: string; channelId: string } | null;
   onExitPreview: () => void;
   onSave: () => void;
   canRunTest: boolean;
@@ -77,13 +79,14 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 
 export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview, isPreviewDirty,
-  onBack, onExitPreview, onSave, canRunTest, onRunTest, onSavePreviewEdits,
+  onBack, returnToChannel, onExitPreview, onSave, canRunTest, onRunTest, onSavePreviewEdits,
   onExport, isExporting,
   canUndo, canRedo, onUndo, onRedo, onAutoLayout, onSelectAll, onInvertSelection,
   onExportWorkflow, onImport,
   onOpenPluginManager, onOpenTriggerDialog, missingPluginCount = 0, workflowErrorMessage = null, onOpenWorkflowLocation, onClearNodes, onWorkflowInfoChange,
   layoutManager,
 }: EditorToolbarProps) {
+  const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [clearNodesOpen, setClearNodesOpen] = useState(false);
@@ -110,6 +113,20 @@ export function WorkflowEditorToolbar({
       <ToolBtn tooltip={t('editor.backToList')} variant="ghost" size="icon" className="h-7 w-7" onClick={onBack}>
         <ArrowLeft className="h-4 w-4" />
       </ToolBtn>
+      {returnToChannel && (
+        <ToolBtn
+          tooltip="返回对应频道"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => {
+            const params = new URLSearchParams({ channelId: returnToChannel.channelId });
+            router.push(`/workspace/${returnToChannel.workspaceId}?${params.toString()}`);
+          }}
+        >
+          <MessagesSquare className="h-4 w-4" />
+        </ToolBtn>
+      )}
 
       <div className="w-px h-5 bg-border mx-1" />
 

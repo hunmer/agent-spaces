@@ -19,8 +19,9 @@ export function SendToIssueDialog() {
       agents={agents}
       defaultDescription={pendingSendToIssue.position}
       onSubmit={async (data) => {
-        await createIssue(pendingSendToIssue.workspaceId, data.title, data.description, data.members, data.workflowId);
+        const issue = await createIssue(pendingSendToIssue.workspaceId, data.title, data.description, data.members, data.workflowId);
         setPendingSendToIssue(null);
+        return issue;
       }}
     />
   );

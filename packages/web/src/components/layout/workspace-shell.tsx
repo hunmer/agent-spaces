@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
@@ -158,6 +159,7 @@ interface WorkspaceShellProps {
 
 export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) {
   const isMobile = useIsMobile();
+  const searchParams = useSearchParams();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
   const issueSelectSeq = useIssueStore((s) => s.issueSelectSeq);
   const upsertIssue = useIssueStore((s) => s.upsertIssue);
@@ -295,6 +297,19 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }
     }
   }, [channelSelectSeq, activeChannelId, model, isMobile, setActivePanel]);
+
+  useEffect(() => {
+    const channelId = searchParams.get("channelId");
+    if (!channelId || activeChannelId !== channelId) return;
+    if (isMobile) {
+      setActivePanel("chat");
+    } else {
+      const node = model.getNodeById("chat");
+      if (node && node instanceof TabNode) {
+        model.doAction(Actions.selectTab(node.getId()));
+      }
+    }
+  }, [activeChannelId, isMobile, model, searchParams, setActivePanel]);
 
   // 打开文件时自动切换到 Code Editor tab，关闭最后一个文件时切换回 Workfolder tab
   useEffect(() => {

@@ -86,7 +86,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
   }, [t]);
 
   const handleCreate = async (data: { title: string; description: string; members: string[]; workflowId?: string }) => {
-    await createIssue(workspaceId, data.title, data.description, data.members, data.workflowId);
+    return createIssue(workspaceId, data.title, data.description, data.members, data.workflowId);
   };
 
   const handleToggleArchive = async (issue: Issue) => {

@@ -18,13 +18,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { MemberPicker } from '@/components/common/member-picker';
 import { SearchSelect } from '@/components/ui/search-select';
 import { WorkflowInfoDialog } from '@/components/workflow/workflow-info-dialog';
-import { FloatingPanel } from '@/components/common/floating-panel';
 import { getMemberDisplayName } from '@/lib/agent-members';
 import { useWorkflowStore } from '@/stores/workflow';
 import { useLLMStore } from '@/stores/llm';
 import { workflowApi } from '@/lib/workflow-api';
 
-import type { AgentConfig, WorkflowTemplate } from '@agent-spaces/shared';
+import type { AgentConfig, Issue, WorkflowTemplate } from '@agent-spaces/shared';
 
 interface CreateIssueDialogProps {
   open: boolean;
@@ -32,7 +31,7 @@ interface CreateIssueDialogProps {
   agents?: AgentConfig[];
   defaultTitle?: string;
   defaultDescription?: string;
-  onSubmit: (data: { title: string; description: string; members: string[]; workflowId?: string }) => void;
+  onSubmit: (data: { title: string; description: string; members: string[]; workflowId?: string }) => Promise<Issue | void> | Issue | void;
 }
 
 export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitle, defaultDescription, onSubmit }: CreateIssueDialogProps) {
@@ -42,9 +41,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('');
   const [workflowInfoOpen, setWorkflowInfoOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
-  const [workflowPanel, setWorkflowPanel] = useState<{ id: string; title: string; src: string } | null>(null);
-  // 创建工作流后暂存面板信息，等频道（issue）创建完成后再弹出
-  const [pendingPanel, setPendingPanel] = useState<{ id: string; title: string; src: string } | null>(null);
+  const [pendingWorkflowPrompt, setPendingWorkflowPrompt] = useState<string>('');
   const { workflows, loadWorkflows, upsertWorkflow } = useWorkflowStore();
   const { models, providers, ensure: ensureLLM } = useLLMStore();
   const pendingDraftWorkflowIdRef = useRef<string | null>(null);
@@ -88,7 +85,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
       setSelectedWorkflowId('');
       setWorkflowInfoOpen(false);
       setEditingWorkflow(null);
-      setPendingPanel(null);
+      setPendingWorkflowPrompt('');
       if (pendingDraftWorkflowIdRef.current) {
         const draftId = pendingDraftWorkflowIdRef.current;
         pendingDraftWorkflowIdRef.current = null;
@@ -107,13 +104,17 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim() && !desc.trim()) return;
-    onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId: selectedWorkflowId || undefined });
-    // 频道（issue）创建已发起：若之前已保存工作流草稿，此时再弹出面板
-    if (pendingPanel) {
-      setWorkflowPanel(pendingPanel);
-      setPendingPanel(null);
+    const workflowId = selectedWorkflowId || undefined;
+    const issue = await onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId });
+    if (workflowId && issue?.channelId) {
+      const params = new URLSearchParams({
+        prompt: pendingWorkflowPrompt,
+        returnWorkspaceId: issue.workspaceId,
+        returnChannelId: issue.channelId,
+      });
+      router.push(`/workflows/${workflowId}?${params.toString()}`);
     }
     handleClose(false);
   };
@@ -211,12 +212,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
     const workflowHref = `/workflows/${saved.id}`;
     router.prefetch(workflowHref);
     void fetch(workflowHref, { credentials: 'same-origin' }).catch(() => {});
-    // 不立即弹 FloatingPanel，等频道创建完成（handleSubmit）后再弹
-    setPendingPanel({
-      id: saved.id,
-      title: saved.name,
-      src: `${workflowHref}?embedded=issue&prompt=${encodeURIComponent(buildWorkflowPrompt(saved.description || ''))}`,
-    });
+    setPendingWorkflowPrompt(buildWorkflowPrompt(saved.description || ''));
   };
 
   const handleWorkflowInfoOpenChange = (nextOpen: boolean) => {
@@ -326,26 +322,6 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
         onSave={handleSaveWorkflow}
       />
 
-      {workflowPanel && (
-        <FloatingPanel
-          id={`issue-workflow-create:${workflowPanel.id}`}
-          title={workflowPanel.title}
-          defaultWidth={Math.round((typeof window !== 'undefined' ? window.innerWidth : 1500) * 0.8)}
-          defaultHeight={Math.round((typeof window !== 'undefined' ? window.innerHeight : 1025) * 0.8)}
-          minWidth={720}
-          minHeight={520}
-          onClose={() => setWorkflowPanel(null)}
-          onOpenInNewWindow={() => {
-            window.open(workflowPanel.src, "_blank", "noopener,noreferrer");
-          }}
-        >
-          <iframe
-            src={workflowPanel.src}
-            title={workflowPanel.title}
-            className="h-full w-full border-0 bg-white"
-          />
-        </FloatingPanel>
-      )}
     </>
   );
 }
