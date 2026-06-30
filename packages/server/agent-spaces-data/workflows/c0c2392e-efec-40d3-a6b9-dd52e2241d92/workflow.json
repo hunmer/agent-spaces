@@ -1,0 +1,369 @@
+{
+  "id": "c0c2392e-efec-40d3-a6b9-dd52e2241d92",
+  "type": "workspace",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "start_1782808345138",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 240,
+        "y": 80
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "topic",
+            "type": "string",
+            "value": "年轻人为什么不结婚了",
+            "description": "文章主题 / Issue 需求",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "target_audience",
+            "type": "string",
+            "value": "25-35 岁都市青年读者",
+            "description": "目标读者画像",
+            "children": []
+          },
+          {
+            "key": "article_length",
+            "type": "string",
+            "value": "2500 字左右",
+            "description": "期望文章字数",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "end_1782808345138",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 240,
+        "y": 360
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "article",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782808488995_8l8dul\"].result }}",
+            "description": "编辑审校后输出的最终文章正文"
+          },
+          {
+            "key": "topic_angles",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782808445312_u31to3\"].result }}",
+            "description": "上游选题清单（备查）"
+          },
+          {
+            "key": "outline",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782808473239_uye9vl\"].result }}",
+            "description": "上游文章大纲（备查）"
+          },
+          {
+            "key": "draft",
+            "type": "string",
+            "value": "{{ __data__[\"node_1782808488994_u4w8dq\"].result }}",
+            "description": "上游初稿（备查）"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1782808445312_u31to3",
+      "type": "agent_run",
+      "label": "Agent1-选题策划",
+      "position": {
+        "x": 500,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "你的任务是基于用户给出的主题，输出 3-5 个有差异化、有深度的选题角度。\n\n主题：{{ __data__[\"start_1782808345138\"].topic }}\n目标读者：{{ __data__[\"start_1782808345138\"].target_audience }}\n字数预期：{{ __data__[\"start_1782808345138\"].article_length }}\n\n请输出\"选题清单\"。",
+        "modelProvider": "openai-chat-completions",
+        "providerId": "575f5fea-467e-4aa2-8b17-f4522dc74429",
+        "modelId": "GLM-4.7",
+        "systemPrompt": "你是一位资深新媒体内容策略专家，擅长从社会议题中提炼出有差异化、有深度的选题角度。"
+      }
+    },
+    {
+      "id": "node_1782808473239_uye9vl",
+      "type": "agent_run",
+      "label": "Agent2-大纲架构",
+      "position": {
+        "x": 760,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "你是文章大纲架构师。基于上游\"选题策划\"agent 的输出，整理出可直接用于撰写的结构化大纲。\n\n上游选题清单：\n{{ __data__[\"node_1782808445312_u31to3\"].result }}\n\n你的任务：\n1. 从上游多个选题角度中挑出最值得写的那一个（说明选择理由）；\n2. 围绕该选题设计一个 3-5 段、层层递进的文章大纲；\n3. 给出每个段落的目标、关键论据/案例占位、可参考的视角；\n4. 最后给出一句话定调（开头金句方向）和结尾落点。\n\n字数预期：{{ __data__[\"start_1782808345138\"].article_length }}。\n最后用 \"===END===\" 结尾。",
+        "modelProvider": "openai-chat-completions",
+        "providerId": "575f5fea-467e-4aa2-8b17-f4522dc74429",
+        "modelId": "GLM-5-Turbo",
+        "systemPrompt": "你是一位经验丰富的非虚构写作架构师，擅长把社会议题转译成清晰可读的文章大纲。你追求结构清晰、节奏稳健、论据可补。"
+      }
+    },
+    {
+      "id": "node_1782808488994_u4w8dq",
+      "type": "agent_run",
+      "label": "Agent3-内容撰写",
+      "position": {
+        "x": 1020,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "你是文章主笔。基于上游\"大纲架构\"agent 的输出，撰写一篇可直接发布的完整文章。\n\n上游大纲：\n{{ __data__[\"node_1782808473239_uye9vl\"].result }}\n\n写作要求：\n1. 严格围绕上游确定的角度和结构展开；\n2. 面向目标读者：{{ __data__[\"start_1782808345138\"].target_audience }}；\n3. 字数控制在 {{ __data__[\"start_1782808345138\"].article_length }}；\n4. 标题犀利、开头抓人、论据具体、结尾有态度；\n5. 避免说教、避免空话、避免清单堆砌；\n6. 文风克制而有温度，承认议题的复杂，不要轻易下道德判断。\n\n输出要求：直接给出最终正文（不需要额外说明、不需要 ===END===）。",
+        "modelProvider": "anthropic-messages",
+        "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+        "modelId": "MiniMax-M2.7",
+        "systemPrompt": "你是一位中文非虚构主笔，擅长在 2000-3000 字内把社会议题写成一篇有结构、有温度、有锋芒的长文。你尊重读者的智识，绝不用情绪替代论证。"
+      }
+    },
+    {
+      "id": "node_1782808488995_8l8dul",
+      "type": "agent_run",
+      "label": "Agent4-编辑审校",
+      "position": {
+        "x": 1280,
+        "y": 220
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "prompt": "你是资深稿件编辑。基于上游\"内容撰写\"agent 给出的初稿，完成两件事：\n1. 找出 3-5 处最值得改的地方（结构、论据、口吻、用词），按\"问题 + 改法\"列出；\n2. 直接输出一版润色后的完整文章作为 result。\n\n上游初稿：\n{{ __data__[\"node_1782808488994_u4w8dq\"].result }}\n\n润色原则：\n- 不改变核心立论与结构；\n- 删除重复、口号化、煽情、空话；\n- 让长句更利落、让逻辑更显性；\n- 标题可换 1-2 个备选放在文末。\n\n直接输出润色后的完整文章，不要输出分析过程。",
+        "modelProvider": "openai-responses",
+        "providerId": "aeeef273-a29a-4e8e-bc1a-c36ebe568df3",
+        "modelId": "gpt-5.5",
+        "systemPrompt": "你是一位中文资深编辑，对结构、用词、节奏都有洁癖。你绝不为了政治正确而软化锋芒，也绝不为了锋芒而牺牲准确。"
+      }
+    },
+    {
+      "id": "node_1782808497330_bdi407",
+      "type": "toast",
+      "label": "通知-选题完成",
+      "position": {
+        "x": 1540,
+        "y": 220
+      },
+      "data": {
+        "type": "success",
+        "message": "【选题阶段完成】已生成多角度选题清单：{{ __data__[\"node_1782808445312_u31to3\"].result }}"
+      }
+    },
+    {
+      "id": "node_1782808497331_x13hkh",
+      "type": "toast",
+      "label": "通知-大纲完成",
+      "position": {
+        "x": 1800,
+        "y": 220
+      },
+      "data": {
+        "type": "info",
+        "message": "【大纲阶段完成】已确定写作结构：{{ __data__[\"node_1782808473239_uye9vl\"].result }}"
+      }
+    },
+    {
+      "id": "node_1782808497331_xkwyml",
+      "type": "toast",
+      "label": "通知-初稿完成",
+      "position": {
+        "x": 2060,
+        "y": 220
+      },
+      "data": {
+        "type": "info",
+        "message": "【初稿完成】字数：约 {{ __data__[\"node_1782808488994_u4w8dq\"].result }} 字符"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-start_1782808345138-node_1782808445312_u31to3-mr0e5jg5",
+      "source": "start_1782808345138",
+      "target": "node_1782808445312_u31to3"
+    },
+    {
+      "id": "e-node_1782808445312_u31to3-node_1782808497330_bdi407-mr0e5jg5",
+      "source": "node_1782808445312_u31to3",
+      "target": "node_1782808497330_bdi407"
+    },
+    {
+      "id": "e-node_1782808497330_bdi407-node_1782808473239_uye9vl-mr0e5jg6",
+      "source": "node_1782808497330_bdi407",
+      "target": "node_1782808473239_uye9vl"
+    },
+    {
+      "id": "e-node_1782808473239_uye9vl-node_1782808497331_x13hkh-mr0e5jg6",
+      "source": "node_1782808473239_uye9vl",
+      "target": "node_1782808497331_x13hkh"
+    },
+    {
+      "id": "e-node_1782808497331_x13hkh-node_1782808488994_u4w8dq-mr0e5jg6",
+      "source": "node_1782808497331_x13hkh",
+      "target": "node_1782808488994_u4w8dq"
+    },
+    {
+      "id": "e-node_1782808488994_u4w8dq-node_1782808497331_xkwyml-mr0e5jg7",
+      "source": "node_1782808488994_u4w8dq",
+      "target": "node_1782808497331_xkwyml"
+    },
+    {
+      "id": "e-node_1782808497331_xkwyml-node_1782808488995_8l8dul-mr0e5jg7",
+      "source": "node_1782808497331_xkwyml",
+      "target": "node_1782808488995_8l8dul"
+    },
+    {
+      "id": "e-node_1782808488995_8l8dul-end_1782808345138-mr0e5jg7",
+      "source": "node_1782808488995_8l8dul",
+      "target": "end_1782808345138"
+    },
+    {
+      "id": "e-start_1782808345138-output:topic-node_1782808445312_u31to3-property:prompt",
+      "source": "start_1782808345138",
+      "target": "node_1782808445312_u31to3",
+      "edgeKind": "reference",
+      "sourceHandle": "output:topic",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782808345138-output:target_audience-node_1782808445312_u31to3-property:prompt",
+      "source": "start_1782808345138",
+      "target": "node_1782808445312_u31to3",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target_audience",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782808345138-output:article_length-node_1782808445312_u31to3-property:prompt",
+      "source": "start_1782808345138",
+      "target": "node_1782808445312_u31to3",
+      "edgeKind": "reference",
+      "sourceHandle": "output:article_length",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782808445312_u31to3-output:result-node_1782808473239_uye9vl-property:prompt",
+      "source": "node_1782808445312_u31to3",
+      "target": "node_1782808473239_uye9vl",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782808345138-output:article_length-node_1782808473239_uye9vl-property:prompt",
+      "source": "start_1782808345138",
+      "target": "node_1782808473239_uye9vl",
+      "edgeKind": "reference",
+      "sourceHandle": "output:article_length",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782808473239_uye9vl-output:result-node_1782808488994_u4w8dq-property:prompt",
+      "source": "node_1782808473239_uye9vl",
+      "target": "node_1782808488994_u4w8dq",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782808345138-output:target_audience-node_1782808488994_u4w8dq-property:prompt",
+      "source": "start_1782808345138",
+      "target": "node_1782808488994_u4w8dq",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target_audience",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-start_1782808345138-output:article_length-node_1782808488994_u4w8dq-property:prompt",
+      "source": "start_1782808345138",
+      "target": "node_1782808488994_u4w8dq",
+      "edgeKind": "reference",
+      "sourceHandle": "output:article_length",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782808488994_u4w8dq-output:result-node_1782808488995_8l8dul-property:prompt",
+      "source": "node_1782808488994_u4w8dq",
+      "target": "node_1782808488995_8l8dul",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782808445312_u31to3-output:result-node_1782808497330_bdi407-property:message",
+      "source": "node_1782808445312_u31to3",
+      "target": "node_1782808497330_bdi407",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:message"
+    },
+    {
+      "id": "e-node_1782808473239_uye9vl-output:result-node_1782808497331_x13hkh-property:message",
+      "source": "node_1782808473239_uye9vl",
+      "target": "node_1782808497331_x13hkh",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:message"
+    },
+    {
+      "id": "e-node_1782808488994_u4w8dq-output:result-node_1782808497331_xkwyml-property:message",
+      "source": "node_1782808488994_u4w8dq",
+      "target": "node_1782808497331_xkwyml",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:message"
+    }
+  ],
+  "createdAt": 1782808345147,
+  "updatedAt": 1782808735814,
+  "published": false,
+  "name": "文章编写",
+  "description": "选题->撰写"
+}

@@ -276,9 +276,13 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   // Flutter handles back button natively via PopScope / WillPopScope
 
+  // 最近选中的类型：issue / channel，用于 URL 参数互斥同步
+  const lastSelectKindRef = useRef<'issue' | 'channel' | null>(null);
+
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {
     if (!activeIssueId || !userInteractedRef.current) return;
+    lastSelectKindRef.current = 'issue';
     if (isMobile) {
       setActivePanel("issue-detail");
     } else {
@@ -292,6 +296,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   // 选中 channel 时自动切换到 Chat tab
   useEffect(() => {
     if (!activeChannelId || !userInteractedRef.current) return;
+    lastSelectKindRef.current = 'channel';
     if (isMobile) {
       setActivePanel("chat");
     } else {
@@ -302,32 +307,43 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
   }, [channelSelectSeq, activeChannelId, model, isMobile, setActivePanel]);
 
-  // 从 URL 恢复 active issue / channel（刷新或外部链接进入时）
+  // 从 URL 恢复 active issue / channel（刷新或外部链接进入时）；二者互斥，channelId 优先
   useEffect(() => {
     const urlIssueId = searchParams.get("issueId");
     const urlChannelId = searchParams.get("channelId");
-    let changed = false;
-    if (urlIssueId && urlIssueId !== activeIssueId) { setActiveIssue(urlIssueId); changed = true; }
-    if (urlChannelId && urlChannelId !== activeChannelId) { setActiveChannel(urlChannelId); changed = true; }
-    if (!changed) return;
-    // URL 进入时绕过 userInteracted 限制，直接切到对应 tab
-    const targetId = urlChannelId ? "chat" : "issue-detail";
-    if (isMobile) {
-      setActivePanel(targetId === "chat" ? "chat" : "issue-detail");
+    if (urlChannelId && urlChannelId !== activeChannelId) {
+      setActiveChannel(urlChannelId);
+      lastSelectKindRef.current = 'channel';
+    } else if (!urlChannelId && urlIssueId && urlIssueId !== activeIssueId) {
+      setActiveIssue(urlIssueId);
+      lastSelectKindRef.current = 'issue';
     } else {
-      const node = model.getNodeById(targetId);
+      return;
+    }
+    // URL 进入时绕过 userInteracted 限制，直接切到对应 tab
+    const tabId = urlChannelId ? "chat" : "issue-detail";
+    if (isMobile) {
+      setActivePanel(tabId);
+    } else {
+      const node = model.getNodeById(tabId);
       if (node && node instanceof TabNode) model.doAction(Actions.selectTab(node.getId()));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // 用户点击 issue / channel 后，把 active id 同步进 URL
+  // 用户点击 issue / channel 后，把 active id 同步进 URL（issueId / channelId 互斥）
+  const lastUrlSyncRef = useRef<string | null>(null);
   useEffect(() => {
     if (!userInteractedRef.current) return;
     const params = new URLSearchParams(searchParams.toString());
-    if (activeIssueId) params.set("issueId", activeIssueId); else params.delete("issueId");
-    if (activeChannelId) params.set("channelId", activeChannelId); else params.delete("channelId");
+    params.delete("issueId");
+    params.delete("channelId");
+    const kind = lastSelectKindRef.current;
+    if (kind === 'issue' && activeIssueId) params.set("issueId", activeIssueId);
+    else if (kind === 'channel' && activeChannelId) params.set("channelId", activeChannelId);
     const qs = params.toString();
+    if (qs === lastUrlSyncRef.current) return;
+    lastUrlSyncRef.current = qs;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [activeIssueId, activeChannelId, searchParams, pathname, router]);
 

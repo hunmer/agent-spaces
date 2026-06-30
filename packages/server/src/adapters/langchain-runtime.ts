@@ -124,6 +124,7 @@ export class LangChainRuntime implements AgentRuntime {
         let emptyAiChunkCount = 0;
         let emptyAiChunkStart = 0;
         let emptyAiChunkLastId = '';
+        let stalledAfterToolResultsReason: string | undefined;
         const appendOutputText = (text: string) => {
           if (!text) return;
           progress.recordAiText();
@@ -186,8 +187,9 @@ export class LangChainRuntime implements AgentRuntime {
               d(`stream ai empty | count=${emptyAiChunkCount} stalledMs=${stalledMs} id=${tokenId || '-'} step=${messageMeta?.langgraph_step ?? '-'} node=${messageMeta?.langgraph_node ?? '-'}`);
             }
             if (progress.hasSeenToolResult() && stalledMs >= STREAM_NO_PROGRESS_TIMEOUT_MS) {
-              this.abortController?.abort();
-              throw new Error(`LangChain stream stalled after tool results: no assistant text/reasoning/tool calls for ${stalledMs}ms while receiving empty AI chunks.`);
+              stalledAfterToolResultsReason = `LangChain stream stalled after tool results: no assistant text/reasoning/tool calls for ${stalledMs}ms while receiving empty AI chunks.`;
+              d(`stream stalled | attempt=${attempt}/${maxAttempts} reason=${stalledAfterToolResultsReason}`);
+              break;
             }
             continue;
           }
@@ -236,6 +238,9 @@ export class LangChainRuntime implements AgentRuntime {
         d(`usage | attempt=${attempt}/${maxAttempts} ${usage ? summarizeForLog(usage, 500) : '-'}`);
 
         const incompleteReason = progress.getIncompleteReason();
+        if (stalledAfterToolResultsReason && !incompleteReason) {
+          d(`stalled fallback completed | attempt=${attempt}/${maxAttempts}`);
+        }
         if (incompleteReason) {
           d(`incomplete | attempt=${attempt}/${maxAttempts} ${incompleteReason}`);
           if (isMissingFinalAssistantAfterToolResults(incompleteReason) && attempt < maxAttempts) {
