@@ -25,6 +25,8 @@ interface WorkflowInfoDialogProps {
   onOpenChange: (open: boolean) => void;
   workflow: Workflow | null;
   onSave: (updates: Partial<Workflow>) => void | Promise<void>;
+  /** 是否显示「复制工作流信息」按钮，仅在编辑已有工作流时为 true（默认 true） */
+  showCopyInfo?: boolean;
 }
 
 function buildWorkflowFolderPath(
@@ -88,7 +90,7 @@ function buildWorkflowInfoText(
   ].join('\n');
 }
 
-export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: WorkflowInfoDialogProps) {
+export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave, showCopyInfo = true }: WorkflowInfoDialogProps) {
   const t = useTranslations('workflows.infoDialog');
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('');
@@ -172,7 +174,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave }: Wor
         <DialogHeader>
           <div className="flex items-center justify-between gap-3">
             <DialogTitle>{t('title')}</DialogTitle>
-            {workflow && (
+            {showCopyInfo && workflow && (
               <Button variant="outline" size="sm" className="h-8 gap-1.5 me-5" onClick={handleCopyWorkflowInfo}>
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {copied ? t('copied') : t('copyInfo')}

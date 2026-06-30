@@ -317,6 +317,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
         open={workflowInfoOpen}
         onOpenChange={handleWorkflowInfoOpenChange}
         workflow={editingWorkflow}
+        showCopyInfo={false}
         onSave={handleSaveWorkflow}
       />
 

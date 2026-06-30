@@ -478,6 +478,7 @@ export function WorkflowsPage() {
         open={infoDialogOpen}
         onOpenChange={setInfoDialogOpen}
         workflow={null}
+        showCopyInfo={false}
         onSave={async (updates) => {
           const created = await workflowApi.create({
             name: updates.name || t('defaultWorkflow.name'),
