@@ -4,11 +4,11 @@ import { v4 as uuid } from 'uuid';
 import nodeCron from 'node-cron';
 import { CronExpressionParser } from 'cron-parser';
 import type {
-  Workflow, WorkflowTemplate, WorkflowNode, WorkflowEdge,
+  Workflow, WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig,
   WorkflowFolder, WorkflowVersion, ExecutionLog, StagedNode, OperationEntry,
   WorkflowTrigger, WorkflowAgentChatMessage,
 } from '@agent-spaces/shared';
-import { isRuntimeWorkflowEdge } from '@agent-spaces/shared';
+import { BUILT_IN_AGENT_TOOLS, isRuntimeWorkflowEdge } from '@agent-spaces/shared';
 import * as store from '../storage/workflow-store.js';
 import { listTemplates } from './agent.js';
 
@@ -146,6 +146,10 @@ function sanitizeWorkflowAgentValue(value: unknown): unknown {
   }
   if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return normalized;
   const agent = normalized as Record<string, unknown>;
+  const baseTemplate = resolveBaseAgentTemplateForWorkflowAgent(agent);
+  const allowedTools = new Set(baseTemplate?.tools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  const allowedSkills = baseTemplate ? new Set(normalizeStringArray(baseTemplate.skills)) : null;
+  const allowedMcpServers = baseTemplate ? new Set(getMcpServerNames(baseTemplate.mcps)) : null;
   return {
     id: agent.id,
     name: agent.name,
@@ -158,9 +162,9 @@ function sanitizeWorkflowAgentValue(value: unknown): unknown {
     apiBase: agent.apiBase,
     apiKey: agent.apiKey,
     workingDir: agent.workingDir,
-    mcps: agent.mcps,
-    skills: agent.skills,
-    tools: agent.tools,
+    mcps: sanitizeWorkflowAgentMcps(agent.mcps, allowedMcpServers),
+    skills: sanitizeWorkflowAgentSkills(agent.skills, allowedSkills),
+    tools: sanitizeWorkflowAgentTools(agent.tools, allowedTools),
     systemPrompt: agent.systemPrompt,
     outputStyle: agent.outputStyle,
     temperature: agent.temperature,
@@ -170,6 +174,73 @@ function sanitizeWorkflowAgentValue(value: unknown): unknown {
     icon: agent.icon,
     enabled: agent.enabled,
   };
+}
+
+function resolveBaseAgentTemplateForWorkflowAgent(agent: Record<string, unknown>): AgentConfig | null {
+  const templates = listTemplates();
+  const id = typeof agent.id === 'string' ? agent.id.trim() : '';
+  if (id) {
+    const byId = templates.find((template) => template.id === id);
+    if (byId) return byId;
+  }
+
+  const modelProvider = typeof agent.modelProvider === 'string' ? agent.modelProvider.trim() : '';
+  const providerId = typeof agent.providerId === 'string' ? agent.providerId.trim() : '';
+  const modelId = typeof agent.modelId === 'string' ? agent.modelId.trim() : '';
+  if (!modelProvider && !providerId && !modelId) return null;
+
+  return templates.find((template) => (
+    (!modelProvider || template.modelProvider === modelProvider)
+    && (!providerId || template.providerId === providerId)
+    && (!modelId || template.modelId === modelId)
+  )) ?? null;
+}
+
+function sanitizeWorkflowAgentMcps(
+  value: unknown,
+  allowedServerNames: Set<string> | null,
+): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const mcps = value as Record<string, unknown>;
+  const next: Record<string, unknown> = { ...mcps };
+  const servers = mcps.mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) {
+    delete next.mcpServers;
+    return Object.keys(next).length ? next : undefined;
+  }
+
+  const filteredEntries = Object.entries(servers as Record<string, unknown>)
+    .filter(([name]) => !allowedServerNames || allowedServerNames.has(name));
+  if (filteredEntries.length > 0) next.mcpServers = Object.fromEntries(filteredEntries);
+  else delete next.mcpServers;
+  return Object.keys(next).length ? next : undefined;
+}
+
+function sanitizeWorkflowAgentSkills(value: unknown, allowedSkills: Set<string> | null): string[] | undefined {
+  const skills = normalizeStringArray(value);
+  const filtered = allowedSkills ? skills.filter((skill) => allowedSkills.has(skill)) : skills;
+  return filtered.length ? filtered : undefined;
+}
+
+function sanitizeWorkflowAgentTools(value: unknown, allowedTools: Set<string>): string[] | undefined {
+  const tools = normalizeStringArray(value)
+    .filter((tool): tool is string => allowedTools.has(tool));
+  return tools.length ? tools : undefined;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getMcpServerNames(value: unknown): string[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const servers = (value as { mcpServers?: unknown }).mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return [];
+  return Object.keys(servers as Record<string, unknown>);
 }
 
 function sanitizeAgentRunNodes(nodes: WorkflowNode[]): WorkflowNode[] {
