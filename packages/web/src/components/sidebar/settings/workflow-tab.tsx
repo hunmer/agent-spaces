@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sdk } from "@/lib/sdk";
-import type { WorkflowFaultTolerance } from "@agent-spaces/sdk";
 
-type FaultTolerance = WorkflowFaultTolerance;
+type FaultTolerance = "ignore" | "stop";
 
 export function WorkflowTab() {
   const t = useTranslations("settings");

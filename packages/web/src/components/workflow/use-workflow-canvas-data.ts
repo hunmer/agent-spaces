@@ -189,21 +189,20 @@ function createNormalNodeLevelAdjacency(edges: Workflow['edges']): Map<string, s
   return adjacency;
 }
 
-function hasNormalNodeLevelPath(
-  adjacency: Map<string, string[]>,
-  source: string,
-  target: string,
-): boolean {
-  const visited = new Set<string>();
-  const stack = [...(adjacency.get(source) || [])];
-  while (stack.length > 0) {
-    const nodeId = stack.pop();
-    if (!nodeId || visited.has(nodeId)) continue;
-    if (nodeId === target) return true;
-    visited.add(nodeId);
-    stack.push(...(adjacency.get(nodeId) || []));
+function createNormalReachableNodePairKeys(adjacency: Map<string, string[]>): Set<string> {
+  const reachable = new Set<string>();
+  for (const source of adjacency.keys()) {
+    const visited = new Set<string>();
+    const stack = [...(adjacency.get(source) || [])];
+    while (stack.length > 0) {
+      const nodeId = stack.pop();
+      if (!nodeId || visited.has(nodeId)) continue;
+      visited.add(nodeId);
+      reachable.add(getNormalDisplayEdgeKey({ source, target: nodeId }));
+      stack.push(...(adjacency.get(nodeId) || []));
+    }
   }
-  return false;
+  return reachable;
 }
 
 interface UseCanvasDataParams {
@@ -419,10 +418,10 @@ export function useCanvasData({
 
   const rfEdges: Edge[] = useMemo(() => {
     const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
-    const normalNodeLevelAdjacency = nodeDisplayMode === 'normal'
-      ? createNormalNodeLevelAdjacency(workflow.edges)
+    const normalReachableNodePairKeys = nodeDisplayMode === 'normal'
+      ? createNormalReachableNodePairKeys(createNormalNodeLevelAdjacency(workflow.edges))
       : null;
-    return workflow.edges.filter(edge => (
+    const mappedEdges = workflow.edges.filter(edge => (
       !isHiddenWorkflowEdge(edge)
       && (nodeDisplayMode === 'properties' || !isGeneratedReferenceRuntimeEdge(edge))
     )).map(e => {
@@ -436,9 +435,9 @@ export function useCanvasData({
       const shouldPreferDashedLine = nodeDisplayMode === 'properties'
         && isFieldHandleEdge;
       if (
-        normalNodeLevelAdjacency
+        normalReachableNodePairKeys
         && (e.edgeKind === 'reference' || isFieldHandleEdge)
-        && hasNormalNodeLevelPath(normalNodeLevelAdjacency, e.source, e.target)
+        && normalReachableNodePairKeys.has(getNormalDisplayEdgeKey(e))
       ) {
         return null;
       }
@@ -467,14 +466,24 @@ export function useCanvasData({
           isFieldHandleEdge,
         } as Record<string, unknown>,
       };
-    }).filter((edge): edge is Edge => edge !== null)
-    .filter((edge, index, edges) => {
-      if (nodeDisplayMode === 'properties') return true;
+    }).filter((edge): edge is Edge => edge !== null);
+    if (nodeDisplayMode === 'properties') return mappedEdges;
+
+    const edgeByNormalKey = new Map<string, Edge>();
+    for (const edge of mappedEdges) {
       const key = getNormalDisplayEdgeKey(edge);
-      const firstRuntimeIndex = edges.findIndex(item => getNormalDisplayEdgeKey(item) === key && (item.data as Record<string, unknown>)?.isFieldHandleEdge !== true);
-      if (firstRuntimeIndex !== -1) return index === firstRuntimeIndex;
-      return edges.findIndex(item => getNormalDisplayEdgeKey(item) === key) === index;
-    });
+      const existing = edgeByNormalKey.get(key);
+      if (!existing) {
+        edgeByNormalKey.set(key, edge);
+        continue;
+      }
+      const existingIsFieldHandleEdge = (existing.data as Record<string, unknown>)?.isFieldHandleEdge === true;
+      const nextIsFieldHandleEdge = (edge.data as Record<string, unknown>)?.isFieldHandleEdge === true;
+      if (existingIsFieldHandleEdge && !nextIsFieldHandleEdge) {
+        edgeByNormalKey.set(key, edge);
+      }
+    }
+    return Array.from(edgeByNormalKey.values());
   }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType, edgeLineStyle, nodeDisplayMode]);
 
   return { rfNodes, rfEdges, selectedNodeIdSet, executionNodeIds, executionStepByNodeId, executionStepsByNodeId, runningEdgeIds };

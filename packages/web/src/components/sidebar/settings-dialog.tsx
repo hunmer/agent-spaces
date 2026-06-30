@@ -69,6 +69,7 @@ export function SettingsDialog({
     agent_store: t("agentStore"),
     npm: t("npm"),
     model_catalog: t("modelCatalogTab"),
+    workflow: t("workflow"),
     data: t("data"),
     git: t("git"),
     speech: t("speech"),
@@ -96,6 +97,8 @@ export function SettingsDialog({
         return <NpmSettingsTab />;
       case "model_catalog":
         return <ModelCatalogTab />;
+      case "workflow":
+        return <WorkflowTab />;
       case "data":
         return <DataTab />;
       case "git":
