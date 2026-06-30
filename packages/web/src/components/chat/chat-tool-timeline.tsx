@@ -21,11 +21,13 @@ export function ChatToolTimeline({
   workspaceId,
   onRerunTool,
   showTools = true,
+  streaming = false,
 }: {
   timeline?: WorkflowAgentTimelineItem[];
   workspaceId?: string;
   onRerunTool?: (item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
   showTools?: boolean;
+  streaming?: boolean;
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export function ChatToolTimeline({
                   <Copy className="size-3.5" />
                 )}
               </button>
-              {onRerunTool && item.status !== "running" ? (
+              {onRerunTool && !streaming && item.status !== "running" ? (
                 <button
                   type="button"
                   title="再次运行工具"

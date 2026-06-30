@@ -718,7 +718,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       inputSchema: schema({
         type: { type: 'string', description: '节点类型标识。' },
         label: { type: 'string', description: '节点显示名称。' },
-        data: { type: 'object', description: '节点参数数据。', properties: {} },
+        data: { type: ['object', 'string'], description: '节点参数数据。可传对象或 JSON 字符串；agent_run.data.agent 也可传 JSON 字符串。', properties: {} },
         scopeNodeId: { type: 'string', description: '可选，作用域容器节点 ID，例如 loop_body 节点 ID。' },
         scope_node_id: { type: 'string', description: '可选，作用域容器节点 ID，兼容蛇形命名。' },
         parentId: { type: 'string', description: '兼容参数，等同 scopeNodeId。' },
@@ -733,7 +733,9 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         if (!type) return { success: false, message: 'type is required' };
         const definition = definitionByType.get(type);
         if (!definition) return { success: false, message: `Unknown node type: ${type}` };
-        const rootData = objectInput(record, 'data');
+        const rootDataResult = objectInputResult(record, 'data');
+        if (!rootDataResult.success) return rootDataResult;
+        const rootData = rootDataResult.value;
         const validation = validateNodeDataPatch(definition, rootData);
         if (!validation.success) return validation;
         const scopeNodeResult = resolveScopeNode(draft.nodes, record);
@@ -933,7 +935,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         node_id: { type: 'string', description: '可选，要复用并插入的现有节点 ID，兼容蛇形命名。' },
         type: { type: 'string', description: '新节点类型。' },
         label: { type: 'string', description: '新节点显示名称。' },
-        data: { type: 'object', description: '新节点参数。', properties: {} },
+        data: { type: ['object', 'string'], description: '新节点参数。可传对象或 JSON 字符串。', properties: {} },
       }),
       execute: async (input) => {
         const record = asRecord(input);
@@ -949,7 +951,9 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           x: ((sourceNode?.position.x ?? 0) + (targetNode?.position.x ?? 260)) / 2,
           y: ((sourceNode?.position.y ?? 0) + (targetNode?.position.y ?? 0)) / 2,
         };
-        const data = objectInput(record, 'data');
+        const dataResult = objectInputResult(record, 'data');
+        if (!dataResult.success) return dataResult;
+        const data = dataResult.value;
         const reuseNode = reuseNodeId
           ? draft.nodes.find((node) => node.id === reuseNodeId)
           : findReusableInsertNode(draft.nodes, draft.edges, {

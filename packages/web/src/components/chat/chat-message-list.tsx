@@ -219,6 +219,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               workspaceId={workspaceId}
               onRerunTool={onRerunTool ? (item) => onRerunTool(msg, item) : undefined}
               showTools={showTools}
+              streaming={streaming}
             />
           ) : null}
           {renderMessageExtras?.(msg)}

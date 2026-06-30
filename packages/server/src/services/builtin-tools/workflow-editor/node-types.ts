@@ -170,6 +170,10 @@ export function validateNodeDataPatch(
       const normalized = normalizeConditionsValue(value);
       if (normalized !== value) data[key] = normalized;
     }
+    if (property.type === 'agent') {
+      const normalized = normalizeAgentValue(value);
+      if (normalized !== value) data[key] = normalized;
+    }
     const result = validateNodePropertyValue(property.type, data[key]);
     if (!result.success) {
       return {
@@ -183,6 +187,16 @@ export function validateNodeDataPatch(
     }
   }
   return { success: true };
+}
+
+function normalizeAgentValue(value: unknown): unknown {
+  if (typeof value !== 'string' || !value.trim()) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return isPlainRecord(parsed) ? parsed : value;
+  } catch {
+    return value;
+  }
 }
 
 export function validateNodePropertyValue(

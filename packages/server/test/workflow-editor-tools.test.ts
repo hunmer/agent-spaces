@@ -410,6 +410,115 @@ test('update_node rejects agent property when value does not match type definiti
   assert.match(updateResult.message, /expected agent/);
 });
 
+test('create_node accepts agent object passed inside JSON-string data', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  assert.ok(createNode);
+
+  const result = await createNode.execute({
+    type: 'agent_run',
+    data: JSON.stringify({
+      agent: {
+        id: 'agent-1',
+        name: 'Agent One',
+        role: 'agent',
+        enabled: true,
+      },
+      prompt: 'hello',
+    }),
+  }) as {
+    success: boolean;
+    workflow: Workflow;
+    created_node_id: string;
+  };
+
+  assert.equal(result.success, true);
+  assert.deepEqual(
+    result.workflow.nodes.find((node) => node.id === result.created_node_id)?.data.agent,
+    {
+      id: 'agent-1',
+      name: 'Agent One',
+      role: 'agent',
+      enabled: true,
+    },
+  );
+});
+
+test('create_node accepts agent JSON string inside object data', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  assert.ok(createNode);
+
+  const result = await createNode.execute({
+    type: 'agent_run',
+    data: {
+      agent: JSON.stringify({
+        id: 'agent-2',
+        name: 'Agent Two',
+        role: 'agent',
+        enabled: true,
+      }),
+      prompt: 'hello',
+    },
+  }) as {
+    success: boolean;
+    workflow: Workflow;
+    created_node_id: string;
+  };
+
+  assert.equal(result.success, true);
+  assert.deepEqual(
+    result.workflow.nodes.find((node) => node.id === result.created_node_id)?.data.agent,
+    {
+      id: 'agent-2',
+      name: 'Agent Two',
+      role: 'agent',
+      enabled: true,
+    },
+  );
+});
+
+test('update_node accepts agent JSON string and normalizes it to object', async () => {
+  const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
+  const createNode = tools.find((tool) => tool.name === 'create_node');
+  const updateNode = tools.find((tool) => tool.name === 'update_node');
+  assert.ok(createNode);
+  assert.ok(updateNode);
+
+  const createResult = await createNode.execute({ type: 'agent_run' }) as {
+    success: boolean;
+    created_node_id: string;
+  };
+  assert.equal(createResult.success, true);
+
+  const updateResult = await updateNode.execute({
+    nodeId: createResult.created_node_id,
+    data: {
+      agent: JSON.stringify({
+        id: 'agent-3',
+        name: 'Agent Three',
+        role: 'agent',
+        enabled: true,
+      }),
+      prompt: 'hello',
+    },
+  }) as {
+    success: boolean;
+    workflow: Workflow;
+  };
+
+  assert.equal(updateResult.success, true);
+  assert.deepEqual(
+    updateResult.workflow.nodes.find((node) => node.id === createResult.created_node_id)?.data.agent,
+    {
+      id: 'agent-3',
+      name: 'Agent Three',
+      role: 'agent',
+      enabled: true,
+    },
+  );
+});
+
 test('update_node rejects empty data updates', async () => {
   const tools = createWorkflowEditorFunctionTools({ workflow, nodeDefinitions });
   const createNode = tools.find((tool) => tool.name === 'create_node');

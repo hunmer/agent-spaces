@@ -135,8 +135,17 @@ function resolveStaleRoles(nodes: WorkflowNode[]): { nodes: WorkflowNode[]; inva
 }
 
 function sanitizeWorkflowAgentValue(value: unknown): unknown {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-  const agent = value as Record<string, unknown>;
+  let normalized = value;
+  if (typeof normalized === 'string' && normalized.trim()) {
+    try {
+      const parsed = JSON.parse(normalized);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) normalized = parsed;
+    } catch {
+      return value;
+    }
+  }
+  if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return normalized;
+  const agent = normalized as Record<string, unknown>;
   return {
     id: agent.id,
     name: agent.name,
