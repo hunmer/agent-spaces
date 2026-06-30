@@ -200,6 +200,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }
 
   const canStart = issue.status === 'draft' || issue.status === 'planned' || issue.status === 'stopped';
+  const canRerun = issue.status === 'completed';
   const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
   const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
   const canPause = isWorkflowRunning;
@@ -245,20 +246,30 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                       {t('detail.start')}
                     </Button>
                   )}
+                  {canRerun && (
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setStartInputOpen(true)}>
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      {t('detail.rerun')}
+                    </Button>
+                  )}
                   {isWorkflowPaused && (
                     <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
                       <Play className="h-3 w-3 mr-1" />
                       {tw('execution.resume')}
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={!canPause} onClick={() => pauseIssue(workspaceId, issue.id)}>
-                    <Pause className="h-3 w-3 mr-1" />
-                    {tw('execution.pause')}
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" disabled={!canStop} onClick={() => interruptIssue(workspaceId, issue.id)}>
-                    <Square className="h-3 w-3 mr-1" />
-                    {tw('execution.stop')}
-                  </Button>
+                  {canPause && (
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => pauseIssue(workspaceId, issue.id)}>
+                      <Pause className="h-3 w-3 mr-1" />
+                      {tw('execution.pause')}
+                    </Button>
+                  )}
+                  {canStop && (
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" onClick={() => interruptIssue(workspaceId, issue.id)}>
+                      <Square className="h-3 w-3 mr-1" />
+                      {tw('execution.stop')}
+                    </Button>
+                  )}
                   {issue.status === 'error' && issue.workflowExecutionStatus !== 'paused' && (
                     <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
                       <RotateCcw className="h-3 w-3 mr-1" />

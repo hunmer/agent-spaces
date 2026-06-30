@@ -68,6 +68,7 @@ export const IssueDetailHeader = forwardRef<IssueDetailHeaderRef, IssueDetailHea
   const activeTaskStatuses = new Set(['running', 'reviewing', 'retrying', 'waiting_review']);
   const hasActiveTask = issueTasks.some((task) => activeTaskStatuses.has(task.status));
   const canStart = issue.status === 'draft' || issue.status === 'planned' || issue.status === 'stopped';
+  const canRerun = issue.status === 'completed';
   const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
   const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
   const canPause = isWorkflowRunning;
@@ -185,20 +186,30 @@ export const IssueDetailHeader = forwardRef<IssueDetailHeaderRef, IssueDetailHea
             {t('detail.start')}
           </Button>
         )}
+        {canRerun && (
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => startIssue(workspaceId, issue.id)}>
+            <RotateCcw className="h-3 w-3 mr-1" />
+            {t('detail.rerun')}
+          </Button>
+        )}
         {isWorkflowPaused && (
           <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
             <Play className="h-3 w-3 mr-1" />
             {tw('execution.resume')}
           </Button>
         )}
-        <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={!canPause} onClick={() => pauseIssue(workspaceId, issue.id)}>
-          <Pause className="h-3 w-3 mr-1" />
-          {tw('execution.pause')}
-        </Button>
-        <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" disabled={!canStop} onClick={() => interruptIssue(workspaceId, issue.id)}>
-          <Square className="h-3 w-3 mr-1" />
-          {tw('execution.stop')}
-        </Button>
+        {canPause && (
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => pauseIssue(workspaceId, issue.id)}>
+            <Pause className="h-3 w-3 mr-1" />
+            {tw('execution.pause')}
+          </Button>
+        )}
+        {canStop && (
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" onClick={() => interruptIssue(workspaceId, issue.id)}>
+            <Square className="h-3 w-3 mr-1" />
+            {tw('execution.stop')}
+          </Button>
+        )}
         <Dialog open={taskDialogOpen} onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}>
           <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog} />}>
             <Plus className="h-4 w-4" />

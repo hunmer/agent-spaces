@@ -1,5 +1,6 @@
 'use client';
 
+import { Bot, Workflow as WorkflowIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { Agent, AgentContent } from '@/components/chat/subagent';
@@ -220,11 +221,21 @@ export function IssueDetailTasksPanel({
         {issue.workflowId ? (
           <Tabs value={view} onValueChange={(value) => setView(value as TaskPanelView)}>
             <TabsList variant="line" className="h-8 gap-0.5 rounded-md border bg-muted/30 p-1">
-              <TabsTrigger value="workflow" className="px-3 text-xs data-[active]:rounded-sm">
-                工作流视图
+              <TabsTrigger
+                value="workflow"
+                className="size-7 px-0 data-[active]:rounded-sm"
+                aria-label="工作流视图"
+                title="工作流视图"
+              >
+                <WorkflowIcon className="size-4" />
               </TabsTrigger>
-              <TabsTrigger value="agents" className="px-3 text-xs data-[active]:rounded-sm">
-                agents视图
+              <TabsTrigger
+                value="agents"
+                className="size-7 px-0 data-[active]:rounded-sm"
+                aria-label="agents视图"
+                title="agents视图"
+              >
+                <Bot className="size-4" />
               </TabsTrigger>
             </TabsList>
           </Tabs>

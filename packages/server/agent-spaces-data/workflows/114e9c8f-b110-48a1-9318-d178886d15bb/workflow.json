@@ -152,11 +152,11 @@
           "role": "agent",
           "description": "基于选题大纲撰写完整公众号文章",
           "runtimeKind": "claude-code",
-          "modelProvider": "openai-responses",
-          "providerId": "aeeef273-a29a-4e8e-bc1a-c36ebe568df3",
-          "modelId": "gpt-5.5",
-          "apiBase": "https://api.claudecode.net.cn/api/codex/backend-api/codex",
-          "apiKey": "sk-ant-api03-WlYCqe47YdpWulGXC2f8aZc6ic6Yz8XUgkRWoImDyx5tcAKYsK_zq2NH7Cw-B5in1jDmff2D7Jfb8svRXl16NA",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -207,11 +207,11 @@
           "role": "agent",
           "description": "对编辑 Agent 产出的文章进行质量审批",
           "runtimeKind": "claude-code",
-          "modelProvider": "openai-chat-completions",
-          "providerId": "575f5fea-467e-4aa2-8b17-f4522dc74429",
-          "modelId": "GLM-5.2",
-          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
-          "apiKey": "bbe69f8da9114b339e438002f060a22a.nPzQsBxLQhcW78ZM",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "apiKey": "e55211b756514312a76ae69ee4acc85e.WfLhpXnGN9EhyK5O",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -412,10 +412,10 @@
     }
   ],
   "createdAt": 1782815018975,
-  "updatedAt": 1782816172655,
+  "updatedAt": 1782818589728,
   "published": false,
   "name": "公众号编写",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
-  "lastRunAt": 1782816864336
+  "lastRunAt": 1782818269883
 }

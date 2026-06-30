@@ -34,6 +34,7 @@
     "updated": "Updated",
     "pr": "PR:",
     "start": "Start",
+    "rerun": "Rerun",
     "interrupt": "Interrupt",
     "resumeFailed": "Resume failed tasks",
     "retryPaused": "Automatic retry paused after {failed}/{total} attempts.",

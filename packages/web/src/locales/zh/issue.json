@@ -34,6 +34,7 @@
     "updated": "更新于",
     "pr": "PR：",
     "start": "开始",
+    "rerun": "重新运行",
     "interrupt": "中断",
     "resumeFailed": "重试失败任务",
     "retryPaused": "自动重试已在 {failed}/{total} 次尝试后暂停。",
