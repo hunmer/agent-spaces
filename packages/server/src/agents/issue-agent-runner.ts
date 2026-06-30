@@ -25,7 +25,12 @@ function syncIssueWorkflowEvent(
     const updated = issueService.save(workspaceId, {
       ...issue,
       workflowExecutionId: event.executionId,
-      workflowExecutionStatus: nextStatus === 'running' ? 'running' : nextStatus === 'completed' ? 'completed' : nextStatus === 'paused' ? 'paused' : 'error',
+      workflowExecutionStatus:
+        nextStatus === 'running' ? 'running'
+          : nextStatus === 'completed' ? 'completed'
+            : nextStatus === 'paused' ? 'paused'
+              : issue.status === 'stopped' ? 'stopped'
+                : 'error',
     });
     ctx.broadcast('issue.updated', updated);
     return;
@@ -81,16 +86,19 @@ function syncIssueWorkflowEvent(
 
   if (channel === 'workflow:error') {
     const event = payload as ExecutionEventMap['workflow:error'];
+    const isStopped = event.error?.message === 'Execution stopped';
+    const nextStatus = isStopped ? 'stopped' : 'error';
     const from = issue.status;
     const updated = issueService.save(workspaceId, {
       ...issue,
-      status: 'error',
+      status: nextStatus,
       workflowExecutionId: event.executionId,
-      workflowExecutionStatus: 'error',
-      lastError: event.error?.message || 'Workflow execution failed',
+      workflowExecutionStatus: isStopped ? 'stopped' : 'error',
+      lastError: isStopped ? undefined : (event.error?.message || 'Workflow execution failed'),
+      retryPaused: isStopped ? false : issue.retryPaused,
     });
-    if (from !== 'error') {
-      ctx.broadcast('issue.status_changed', { issueId, from, to: 'error' });
+    if (from !== nextStatus) {
+      ctx.broadcast('issue.status_changed', { issueId, from, to: nextStatus });
     }
     ctx.broadcast('issue.updated', updated);
   }

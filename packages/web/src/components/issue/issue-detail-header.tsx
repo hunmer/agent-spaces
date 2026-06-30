@@ -67,7 +67,7 @@ export const IssueDetailHeader = forwardRef<IssueDetailHeaderRef, IssueDetailHea
 
   const activeTaskStatuses = new Set(['running', 'reviewing', 'retrying', 'waiting_review']);
   const hasActiveTask = issueTasks.some((task) => activeTaskStatuses.has(task.status));
-  const canStart = issue.status === 'draft' || issue.status === 'planned';
+  const canStart = issue.status === 'draft' || issue.status === 'planned' || issue.status === 'stopped';
   const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
   const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
   const canPause = isWorkflowRunning;

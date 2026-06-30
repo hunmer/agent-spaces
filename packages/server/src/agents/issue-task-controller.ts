@@ -201,7 +201,7 @@ export async function runIssueTask(
 
   const taskAgentPreset = findAgentForTask(workspaceId, issue, task);
   if (!taskAgentPreset) {
-    if (issueService.getById(workspaceId, issueId)?.status === 'error') return;
+    if (['error', 'stopped'].includes(issueService.getById(workspaceId, issueId)?.status ?? '')) return;
     const missingExecutorResult = {
       success: false,
       summary: 'No runnable agent configured in issue channel members',
@@ -287,7 +287,7 @@ export async function runIssueTask(
     unregisterActiveIssueRuntime(workspaceId, issueId, taskAgent.id);
   }
 
-  if (issueService.getById(workspaceId, issueId)?.status === 'error') {
+  if (['error', 'stopped'].includes(issueService.getById(workspaceId, issueId)?.status ?? '')) {
     const failedTask = taskService.updateStatus(workspaceId, taskId, 'failed', {
       result: {
         success: false,
@@ -400,14 +400,6 @@ async function runCommandTask(
   broadcastTaskUpdate(ctx, completedTask, 'running');
 
   await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
-}
-
-export async function continueIssueTaskScheduling(
-  workspaceId: string,
-  issueId: string,
-  ctx: AgentContext,
-): Promise<void> {
-  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx, { force: true });
 }
 
 export function stopIssueAutomation(workspaceId: string, issueId: string, reason = 'Interrupted by user'): Array<{ task: Task; from: TaskStatus }> {

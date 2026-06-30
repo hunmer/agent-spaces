@@ -7,6 +7,7 @@
     "changes_requested": "需修改",
     "approved": "已批准",
     "completed": "已完成",
+    "stopped": "已停止",
     "archived": "已归档",
     "error": "错误"
   },
@@ -33,9 +34,7 @@
     "updated": "更新于",
     "pr": "PR：",
     "start": "开始",
-    "continue": "继续",
     "interrupt": "中断",
-    "continuousRun": "连续运行",
     "resumeFailed": "重试失败任务",
     "retryPaused": "自动重试已在 {failed}/{total} 次尝试后暂停。",
     "tasks": "任务 ({count})",

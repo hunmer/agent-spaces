@@ -19,6 +19,7 @@ const issueStatuses = [
   'changes_requested',
   'approved',
   'completed',
+  'stopped',
   'archived',
   'error',
 ] as const satisfies readonly IssueStatus[];

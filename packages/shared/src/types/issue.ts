@@ -6,6 +6,7 @@ export type IssueStatus =
   | 'changes_requested'
   | 'approved'
   | 'completed'
+  | 'stopped'
   | 'archived'
   | 'error';
 
@@ -21,7 +22,7 @@ export interface Issue {
   members: string[];
   workflowId?: string;
   workflowExecutionId?: string;
-  workflowExecutionStatus?: 'running' | 'paused' | 'completed' | 'error';
+  workflowExecutionStatus?: 'running' | 'paused' | 'completed' | 'stopped' | 'error';
   retryCount: number;
   maxRetries: number;
   retryPaused?: boolean;

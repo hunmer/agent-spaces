@@ -244,14 +244,12 @@ router.post('/:issueId/interrupt', (req: Request<{ id: string; issueId: string }
   }
   if (before.channelId) stopChannelRuns(workspaceId, before.channelId);
 
-  const issue = issueService.markError(workspaceId, issueId, reason);
+  const issue = issueService.markStopped(workspaceId, issueId);
   if (!issue) {
     res.status(404).json({ error: 'issue not found' });
     return;
   }
-  issue.workflowExecutionStatus = 'error';
-  issueService.save(workspaceId, issue);
-  broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before.status, to: 'error' });
+  broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before.status, to: 'stopped' });
   broadcastToWorkspace(workspaceId, 'issue.updated', issue);
   res.json(issue);
 });

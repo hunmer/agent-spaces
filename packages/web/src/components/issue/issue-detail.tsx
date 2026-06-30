@@ -199,7 +199,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     );
   }
 
-  const canStart = issue.status === 'draft' || issue.status === 'planned';
+  const canStart = issue.status === 'draft' || issue.status === 'planned' || issue.status === 'stopped';
   const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
   const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
   const canPause = isWorkflowRunning;
@@ -207,6 +207,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   const statusDotColor = issue.status === 'completed' ? 'bg-green-500'
     : issue.status === 'in_progress' ? 'bg-blue-500'
+    : issue.status === 'stopped' ? 'bg-slate-500'
     : issue.status === 'error' ? 'bg-red-500'
     : 'bg-yellow-500';
 

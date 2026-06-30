@@ -13,7 +13,7 @@ import type { Issue, IssueStatus, AgentConfig } from '@agent-spaces/shared';
 
 const STATUS_OPTIONS: IssueStatus[] = [
   'draft', 'planned', 'in_progress', 'review_pending', 'changes_requested',
-  'approved', 'completed', 'archived',
+  'approved', 'completed', 'stopped', 'archived',
 ];
 
 interface EditIssueDialogProps {

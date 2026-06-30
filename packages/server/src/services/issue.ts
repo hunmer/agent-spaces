@@ -148,6 +148,17 @@ export function markError(
   });
 }
 
+export function markStopped(
+  workspaceId: string,
+  issueId: string,
+): Issue | null {
+  return updateStatus(workspaceId, issueId, 'stopped', {
+    workflowExecutionStatus: 'stopped',
+    lastError: undefined,
+    retryPaused: false,
+  });
+}
+
 export function prepareRetry(
   workspaceId: string,
   issueId: string,

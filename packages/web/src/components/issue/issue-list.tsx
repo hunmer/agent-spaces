@@ -30,13 +30,14 @@ const STATUS_STYLE: Record<IssueStatus, string> = {
   changes_requested: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
   approved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   completed: 'bg-green-600/10 text-green-600 dark:text-green-400',
+  stopped: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
   archived: 'bg-muted text-muted-foreground',
   error: 'bg-destructive/10 text-destructive',
 };
 
 const GROUP_ORDER: IssueStatus[] = [
   'in_progress', 'review_pending', 'changes_requested',
-  'draft', 'planned', 'approved', 'completed', 'error',
+  'draft', 'planned', 'approved', 'completed', 'stopped', 'error',
 ];
 
 interface IssueListProps {

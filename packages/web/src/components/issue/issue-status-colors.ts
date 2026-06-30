@@ -8,6 +8,7 @@ export const ISSUE_STATUS_COLOR: Record<IssueStatus, 'default' | 'secondary' | '
   changes_requested: 'destructive',
   approved: 'default',
   completed: 'secondary',
+  stopped: 'outline',
   archived: 'outline',
   error: 'destructive',
 };
