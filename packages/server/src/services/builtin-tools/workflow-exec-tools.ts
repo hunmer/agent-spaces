@@ -1,6 +1,7 @@
 import { BUILT_IN_AGENT_TOOLS, getNodesForExecutionScope, type BuiltInAgentToolName, type ExecutionLog, type Workflow } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import type { ExecutionManager } from '../execution-manager.js';
+import * as agentService from '../agent.js';
 import * as workflowService from '../workflow.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -25,13 +26,32 @@ const executeWorkflowInputSchema = schema({
   max_wait_ms: { type: 'number', description: `Sync execution wait timeout. Defaults to ${DEFAULT_SYNC_TIMEOUT_MS}, max ${MAX_SYNC_TIMEOUT_MS}.` },
 });
 
+const listAgentCapabilitiesInputSchema = schema({
+  agent_ids: {
+    type: 'array',
+    description: 'Optional agent preset IDs to filter. Defaults to all enabled agent presets.',
+    items: { type: 'string' },
+  },
+  include_disabled: {
+    type: 'boolean',
+    description: 'Whether to include disabled agent presets. Defaults to false.',
+  },
+});
+
 export function setWorkflowExecutionManager(manager: ExecutionManager): void {
   workflowExecutionManager = manager;
 }
 
-export function createWorkflowExecutionFunctionTools(allowedTools?: BuiltInAgentToolName[]): AgentFunctionTool[] {
+export function createWorkflowExecutionFunctionTools(workspaceId = '', allowedTools?: BuiltInAgentToolName[]): AgentFunctionTool[] {
   const allowedToolNames = getAllowedWorkflowToolNames(allowedTools);
   const tools: AgentFunctionTool[] = [
+    {
+      name: 'list_agent_capabilities',
+      description: 'List agent presets with their configured MCP servers, skills, tools, model fields, and descriptions. Use this before designing multi-agent workflows so you can assign capabilities by role.',
+      inputSchema: listAgentCapabilitiesInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => listAgentCapabilities(workspaceId, input),
+    },
     {
       name: 'list_workflows',
       description: 'List saved workflows, newest updated first. Returns workflow IDs, descriptions, start nodes, and input fields.',
@@ -90,6 +110,46 @@ export function createWorkflowExecutionFunctionTools(allowedTools?: BuiltInAgent
   ];
 
   return tools.filter((tool) => allowedToolNames.has(tool.name as BuiltInAgentToolName));
+}
+
+function listAgentCapabilities(workspaceId: string, input: unknown) {
+  const record = asRecord(input);
+  const includeDisabled = booleanInput(record, 'include_disabled', false);
+  const requestedIds = new Set(stringArrayInput(record, 'agent_ids'));
+  const presets = agentService.listPresets(workspaceId)
+    .filter((agent) => (includeDisabled || agent.enabled !== false) && (!requestedIds.size || requestedIds.has(agent.id)))
+    .map((agent) => {
+      const configDir = workspaceId ? agentService.getAgentConfigDir(workspaceId, agent) : undefined;
+      const mcpServers = agentService.getMcpServers(agent.mcps);
+      const configuredMcpServers = objectKeys(((agent.mcps as { mcpServers?: unknown } | undefined)?.mcpServers));
+      const skillNames = agentService.getAvailableSkillNames(configDir, agent.skills);
+      const configuredSkills = stringArray(agent.skills);
+      const toolNames = Array.isArray(agent.tools) ? [...agent.tools] : [];
+      return {
+        id: agent.id,
+        name: agent.name,
+        role: agent.role,
+        description: agent.description ?? '',
+        enabled: agent.enabled,
+        providerId: agent.providerId ?? '',
+        modelId: agent.modelId ?? '',
+        modelProvider: agent.modelProvider ?? '',
+        mcp_servers: Object.keys(mcpServers ?? {}).length ? Object.keys(mcpServers ?? {}) : configuredMcpServers,
+        skills: skillNames.length ? skillNames : configuredSkills,
+        tools: toolNames,
+      };
+    });
+
+  return {
+    success: true,
+    message: presets.length
+      ? `Found ${presets.length} agent preset(s).`
+      : 'No matching agent presets found.',
+    data: {
+      total: presets.length,
+      agents: presets,
+    },
+  };
 }
 
 function listWorkflows(input: unknown) {
@@ -298,6 +358,7 @@ function getAllowedWorkflowToolNames(allowedTools?: BuiltInAgentToolName[]): Set
   const names = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const hasWorkflowTools = Array.from(names).some((name) => isWorkflowExecutionToolName(name));
   if (hasWorkflowTools) {
+    names.add('list_agent_capabilities');
     names.add('list_workflows');
     names.add('search_workflow');
     names.add('get_workflow_result');
@@ -307,7 +368,8 @@ function getAllowedWorkflowToolNames(allowedTools?: BuiltInAgentToolName[]): Set
 }
 
 function isWorkflowExecutionToolName(name: string): boolean {
-  return name === 'list_workflows'
+  return name === 'list_agent_capabilities'
+    || name === 'list_workflows'
     || name === 'search_workflow'
     || name === 'execute_workflow_sync'
     || name === 'execute_workflow_async'
@@ -346,9 +408,29 @@ function numberInput(input: JsonRecord, key: string, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function booleanInput(input: JsonRecord, key: string, fallback: boolean): boolean {
+  const value = input[key];
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function stringArrayInput(input: JsonRecord, key: string): string[] {
+  const value = input[key];
+  return stringArray(value);
+}
+
 function objectInput(input: JsonRecord, key: string): JsonRecord {
   const value = input[key];
   return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {};
+}
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+}
+
+function objectKeys(value: unknown): string[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  return Object.keys(value as Record<string, unknown>);
 }
 
 function clone<T>(value: T): T {

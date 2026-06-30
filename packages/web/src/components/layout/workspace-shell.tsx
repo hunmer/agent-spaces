@@ -276,13 +276,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   // Flutter handles back button natively via PopScope / WillPopScope
 
-  // 最近选中的类型：issue / channel，用于 URL 参数互斥同步
-  const lastSelectKindRef = useRef<'issue' | 'channel' | null>(null);
-
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {
     if (!activeIssueId || !userInteractedRef.current) return;
-    lastSelectKindRef.current = 'issue';
     if (isMobile) {
       setActivePanel("issue-detail");
     } else {
@@ -296,7 +292,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   // 选中 channel 时自动切换到 Chat tab
   useEffect(() => {
     if (!activeChannelId || !userInteractedRef.current) return;
-    lastSelectKindRef.current = 'channel';
     if (isMobile) {
       setActivePanel("chat");
     } else {
@@ -313,10 +308,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     const urlChannelId = searchParams.get("channelId");
     if (urlChannelId && urlChannelId !== activeChannelId) {
       setActiveChannel(urlChannelId);
-      lastSelectKindRef.current = 'channel';
     } else if (!urlChannelId && urlIssueId && urlIssueId !== activeIssueId) {
       setActiveIssue(urlIssueId);
-      lastSelectKindRef.current = 'issue';
     } else {
       return;
     }
@@ -330,22 +323,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
-  // 用户点击 issue / channel 后，把 active id 同步进 URL（issueId / channelId 互斥）
-  const lastUrlSyncRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!userInteractedRef.current) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("issueId");
-    params.delete("channelId");
-    const kind = lastSelectKindRef.current;
-    if (kind === 'issue' && activeIssueId) params.set("issueId", activeIssueId);
-    else if (kind === 'channel' && activeChannelId) params.set("channelId", activeChannelId);
-    const qs = params.toString();
-    if (qs === lastUrlSyncRef.current) return;
-    lastUrlSyncRef.current = qs;
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [activeIssueId, activeChannelId, searchParams, pathname, router]);
 
   // 打开文件时自动切换到 Code Editor tab，关闭最后一个文件时切换回 Workfolder tab
   useEffect(() => {
@@ -587,8 +564,22 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         git.loadDiffs(workspaceId);
         git.loadLog(workspaceId);
       }
+
+      // 切 tab 时同步 URL：issueId / channelId 互斥
+      const params = new URLSearchParams(window.location.search);
+      params.delete("issueId");
+      params.delete("channelId");
+      if (comp === "issue-detail") {
+        const id = useIssueStore.getState().activeIssueId;
+        if (id) params.set("issueId", id);
+      } else if (comp === "chat") {
+        const id = useChannelStore.getState().activeChannelId;
+        if (id) params.set("channelId", id);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [workspaceId],
+    [workspaceId, router, pathname],
   );
 
   if (isMobile) {

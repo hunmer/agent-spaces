@@ -174,7 +174,8 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
 
     return [
       '请创建一个以多 agent 协同合作为主的 workspace workflow。',
-      '要求：优先拆分为多个 agent 节点协作；为关键 agent 补充固定提示词；积极使用 channel、mcp、tool 来更新信息、同步状态和推进协作。',
+      '要求：优先拆分为多个 agent 节点协作；先调用 list_agent_capabilities 查询当前可用 agent 及其支持的 mcps/tools/skills，再根据每个 agent 的职责分配能力。把 channel/mcp/tool 理解为 agent 的协作与能力配置，不要把它们当成独立节点来创建。例如：为某个 agent_run 节点内的 agent 配置 mcps、tools、skills，并在提示词中要求它通过 channel 同步进度和结果。',
+      'agent 配置示例（写在 agent_run.data.agent 中，而不是新建 channel/mcp/tool 节点）：{"name":"Research Agent","role":"agent","providerId":"<from-model-list>","modelId":"<from-model-list>","modelProvider":"<from-model-list>","mcps":{"mcpServers":{"filesystem":{}}},"skills":["research"],"tools":["ReadWorkspaceFile","SearchWorkspaceFiles"],"systemPrompt":"先收集信息，再把结论同步到 channel。"}',
       '编写后续 agent 的提示词时，必须明确引用上一个 agent 的输出结果变量，使用 {{xx}} 这种变量占位格式，并替换为实际可用的上游输出变量名。',
       workflowDescription ? `工作流注释：${workflowDescription}` : '',
       issuePrompt ? `Issue 需求：${issuePrompt}` : '',

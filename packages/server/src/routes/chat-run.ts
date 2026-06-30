@@ -104,7 +104,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       ...createCommandFunctionTools(workspaceId, tools),
       ...createDatabaseFunctionTools(workspaceId, tools),
       ...createWorkspaceFileFunctionTools(workspaceId, tools, () => chatService.getAgentWorkspace(agentId)),
-      ...createWorkflowExecutionFunctionTools(tools),
+      ...createWorkflowExecutionFunctionTools(workspaceId, tools),
     ];
     const result = await runtime.execute(prompt, workingDir, {
       maxTurns: 100,
@@ -241,7 +241,7 @@ router.post('/agents/:id/run', async (req, res) => {
     const functionTools = [
       ...createCommandFunctionTools(id, tools),
       ...createDatabaseFunctionTools(id, tools),
-      ...createWorkflowExecutionFunctionTools(tools),
+      ...createWorkflowExecutionFunctionTools(id, tools),
     ];
     const result = await runtime.execute(prompt, workingDir, {
       maxTurns: 100,

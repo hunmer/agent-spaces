@@ -242,7 +242,7 @@ export async function runMentionedAgent(
     }, preset.tools),
     ...createCommandFunctionTools(workspaceId, preset.tools),
     ...createDatabaseFunctionTools(workspaceId, preset.tools),
-    ...createWorkflowExecutionFunctionTools(preset.tools),
+    ...createWorkflowExecutionFunctionTools(workspaceId, preset.tools),
     ...(miniAppRuntimeContext ? createMiniAppFunctionTools({
       enabledPlugins: miniAppRuntimeContext.enabledPlugins,
     }) : []),

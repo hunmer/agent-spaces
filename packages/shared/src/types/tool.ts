@@ -120,6 +120,11 @@ export const BUILT_IN_AGENT_TOOLS = [
     description: 'Move or rename a workspace file or directory.',
   },
   {
+    name: 'list_agent_capabilities',
+    label: 'List Agent Capabilities',
+    description: 'List available agent presets and their configured MCPs, skills, and tools.',
+  },
+  {
     name: 'list_workflows',
     label: 'List Workflows',
     description: 'List saved workflows and their start node input fields.',
