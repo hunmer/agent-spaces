@@ -1,5 +1,6 @@
 import type { WorkflowNode, ExecutionLogEntry } from '@agent-spaces/shared';
 import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
+import { listProviders } from '../storage/llm-store.js';
 import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import * as workspaceService from './workspace.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
@@ -244,7 +245,8 @@ function resolveAgentPreset(resolvedData: Record<string, any>, presets: any[]): 
     const id = typeof agentRecord.id === 'string' ? agentRecord.id.trim() : '';
     const storedPreset = id ? presets.find(p => p.id === id) : null;
     const basePreset = storedPreset ?? findPresetByNodeConfig(agentRecord as Record<string, any>, presets) ?? presets[0];
-    return basePreset ? { ...basePreset, ...agentRecord } : agent;
+    const merged = basePreset ? { ...basePreset, ...agentRecord } : agentRecord;
+    return resolveProviderBackedAgentConfig(merged);
   }
 
   const localOverrides = getAgentOverrideFields(resolvedData);
@@ -252,10 +254,39 @@ function resolveAgentPreset(resolvedData: Record<string, any>, presets: any[]): 
   const basePreset = agentConfigId
     ? presets.find(p => p.id === agentConfigId) ?? null
     : findPresetByNodeConfig(resolvedData, presets) ?? presets[0] ?? null;
-  if (basePreset) return { ...basePreset, ...localOverrides };
-  return Object.keys(localOverrides).length > 0 ? localOverrides : null;
+  if (basePreset) return resolveProviderBackedAgentConfig({ ...basePreset, ...localOverrides });
+  return Object.keys(localOverrides).length > 0 ? resolveProviderBackedAgentConfig(localOverrides) : null;
 }
 
 export function __resolveAgentPresetForTest(resolvedData: Record<string, any>, presets: any[]): any | null {
   return resolveAgentPreset(resolvedData, presets);
+}
+
+function resolveProviderBackedAgentConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const providerId = typeof config.providerId === 'string' ? config.providerId.trim() : '';
+  if (providerId) {
+    const provider = listProviders().find((entry) => entry.id === providerId);
+    if (provider) {
+      return {
+        ...config,
+        apiBase: provider.apiBase,
+        apiKey: provider.apiKey,
+      };
+    }
+  }
+
+  const apiBase = typeof config.apiBase === 'string' ? config.apiBase.trim() : '';
+  if (apiBase) {
+    const provider = listProviders().find((entry) => entry.apiBase === apiBase);
+    if (provider) {
+      return {
+        ...config,
+        providerId: config.providerId ?? provider.id,
+        apiBase: provider.apiBase,
+        apiKey: provider.apiKey,
+      };
+    }
+  }
+
+  return config;
 }

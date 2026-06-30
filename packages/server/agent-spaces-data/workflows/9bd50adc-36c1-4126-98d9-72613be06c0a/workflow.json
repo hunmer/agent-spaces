@@ -1,5 +1,5 @@
 {
-  "id": "114e9c8f-b110-48a1-9318-d178886d15bb",
+  "id": "9bd50adc-36c1-4126-98d9-72613be06c0a",
   "type": "workspace",
   "folderId": null,
   "nodes": [
@@ -152,9 +152,9 @@
           "description": "基于选题大纲撰写完整公众号文章",
           "runtimeKind": "claude-code",
           "modelProvider": "anthropic-messages",
-          "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
-          "modelId": "MiniMax-M2.7",
-          "apiBase": "https://api.minimaxi.com/anthropic",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
           "workingDir": "",
           "mcps": {
             "mcpServers": {
@@ -408,11 +408,11 @@
       "targetHandle": "property:prompt"
     }
   ],
-  "createdAt": 1782815018975,
-  "updatedAt": 1782819466267,
+  "createdAt": 1782821632696,
+  "updatedAt": 1782821828430,
   "published": false,
-  "name": "公众号编写",
+  "name": "公众号编写 (Copy)",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
-  "lastRunAt": 1782819756941
+  "lastRunAt": 1782821681875
 }
