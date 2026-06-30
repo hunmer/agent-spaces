@@ -929,13 +929,13 @@
     }
   ],
   "createdAt": 1782801818524,
-  "updatedAt": 1782805183149,
+  "updatedAt": 1782807386534,
   "published": false,
   "name": "文案创作",
   "description": "选题->写稿->审阅",
-  "lastRunAt": 1782802444894,
+  "lastRunAt": 1782807637960,
   "layoutSnapshot": {
-    "nodeDisplayMode": "properties",
+    "nodeDisplayMode": "normal",
     "canvasTheme": "default"
   }
 }

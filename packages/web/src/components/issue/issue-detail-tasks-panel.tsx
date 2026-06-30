@@ -21,8 +21,8 @@ export function IssueDetailTasksPanel({
       {!issue.workflowId ? (
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-background h-[720px]">
-          <WorkflowPreview workflowId={issue.workflowId} workspaceId={workspaceId} />
+        <div className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]">
+          <WorkflowPreview workflowId={issue.workflowId} workspaceId={workspaceId} embeddedMode="issue" />
         </div>
       )}
     </div>

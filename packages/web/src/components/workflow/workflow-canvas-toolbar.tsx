@@ -15,6 +15,7 @@ import {
   Archive, ClipboardPaste, Copy, Trash2,
   EyeOff, LassoSelect, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw, SquareDashedMousePointer,
   PanelBottomClose, PanelBottomOpen,
+  ExternalLink,
 } from 'lucide-react';
 
 export interface WorkflowClipboardRecord {
@@ -61,6 +62,7 @@ export function CanvasToolbar({
   onToggleMinimap,
   logsCollapsed,
   onToggleLogsCollapsed,
+  embeddedMode = null,
 }: {
   workflow: Workflow;
   isPreview: boolean;
@@ -84,11 +86,16 @@ export function CanvasToolbar({
   onToggleMinimap: () => void;
   logsCollapsed: boolean;
   onToggleLogsCollapsed: () => void;
+  embeddedMode?: 'issue' | null;
 }) {
   const t = useTranslations("workflows");
   const [clipboardOpen, setClipboardOpen] = useState(false);
   const hasNodes = workflow.nodes.length > 0;
   const autoLayoutOptions = layoutEngine ? { layoutEngine } : undefined;
+  const openWorkflowInNewWindow = () => {
+    if (typeof window === 'undefined') return;
+    window.open(`/workflows/${workflow.id}`, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-background/90 px-2 py-1 shadow-sm backdrop-blur-sm">
@@ -110,6 +117,11 @@ export function CanvasToolbar({
             onClick={onToggleLogsCollapsed}
           >
             {logsCollapsed ? <PanelBottomOpen className="h-3.5 w-3.5" /> : <PanelBottomClose className="h-3.5 w-3.5" />}
+          </CanvasToolbarButton>
+        )}
+        {embeddedMode === 'issue' && (
+          <CanvasToolbarButton tooltip={t('canvasToolbar.openInNewWindow')} onClick={openWorkflowInNewWindow}>
+            <ExternalLink className="h-3.5 w-3.5" />
           </CanvasToolbarButton>
         )}
         {canUndo && (
@@ -186,33 +198,37 @@ export function CanvasToolbar({
           </Popover>
         )}
 
-        <CanvasToolbarButton
-          tooltip={t('canvasToolbar.drawAreaAddNode')}
-          disabled={!onToggleRectangleDraw}
-          className={`h-7 w-7 p-0 ${rectangleDrawActive ? 'text-blue-500' : ''}`}
-          onClick={onToggleRectangleDraw}
-        >
-          <SquareDashedMousePointer className="h-3.5 w-3.5" />
-        </CanvasToolbarButton>
+        {onToggleRectangleDraw && (
+          <CanvasToolbarButton
+            tooltip={t('canvasToolbar.drawAreaAddNode')}
+            className={`h-7 w-7 p-0 ${rectangleDrawActive ? 'text-blue-500' : ''}`}
+            onClick={onToggleRectangleDraw}
+          >
+            <SquareDashedMousePointer className="h-3.5 w-3.5" />
+          </CanvasToolbarButton>
+        )}
 
-        <CanvasToolbarButton
-          tooltip={t('canvasToolbar.drawAreaSelectNode')}
-          disabled={!onToggleLassoSelection}
-          className={`h-7 w-7 p-0 ${lassoSelectionActive ? 'text-blue-500' : ''}`}
-          onClick={onToggleLassoSelection}
-        >
-          <LassoSelect className="h-3.5 w-3.5" />
-        </CanvasToolbarButton>
+        {onToggleLassoSelection && (
+          <CanvasToolbarButton
+            tooltip={t('canvasToolbar.drawAreaSelectNode')}
+            className={`h-7 w-7 p-0 ${lassoSelectionActive ? 'text-blue-500' : ''}`}
+            onClick={onToggleLassoSelection}
+          >
+            <LassoSelect className="h-3.5 w-3.5" />
+          </CanvasToolbarButton>
+        )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={!hasNodes || !onAutoLayout} />}>
-            <LayoutGrid className="h-3.5 w-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" side="top">
-            <DropdownMenuItem onClick={() => onAutoLayout?.('LR', autoLayoutOptions)}>{t('canvasToolbar.horizontalLayout')}</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAutoLayout?.('TB', autoLayoutOptions)}>{t('canvasToolbar.verticalLayout')}</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {hasNodes && onAutoLayout && (
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0" />}>
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" side="top">
+              <DropdownMenuItem onClick={() => onAutoLayout('LR', autoLayoutOptions)}>{t('canvasToolbar.horizontalLayout')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAutoLayout('TB', autoLayoutOptions)}>{t('canvasToolbar.verticalLayout')}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         <CanvasToolbarButton
           tooltip={minimapVisible ? t('canvasToolbar.hideMinimap') : t('canvasToolbar.showMinimap')}

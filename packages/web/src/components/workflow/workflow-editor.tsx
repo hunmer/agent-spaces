@@ -1374,6 +1374,7 @@ function WorkflowEditorInner({
             canRedo={false}
             onExitPreview={exitExecutionPreview}
             onAutoLayout={canvas.handleAutoLayout}
+            embeddedMode={embeddedMode}
             copiedNodeCount={0}
             copiedRecords={[]}
             onClearCopiedNodes={() => {}}

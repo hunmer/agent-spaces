@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
@@ -160,12 +160,16 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) {
   const isMobile = useIsMobile();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
   const issueSelectSeq = useIssueStore((s) => s.issueSelectSeq);
   const upsertIssue = useIssueStore((s) => s.upsertIssue);
+  const setActiveIssue = useIssueStore((s) => s.setActiveIssue);
   const activeFilePath = useEditorStore((s) => s.activeFilePath);
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
+  const setActiveChannel = useChannelStore((s) => s.setActiveChannel);
   const loadChannels = useChannelStore((s) => s.loadChannels);
   const gitStatus = useGitStore((s) => s.status);
   const terminalSessions = useTerminalStore((s) => s.sessions);
@@ -298,18 +302,34 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
   }, [channelSelectSeq, activeChannelId, model, isMobile, setActivePanel]);
 
+  // 从 URL 恢复 active issue / channel（刷新或外部链接进入时）
   useEffect(() => {
-    const channelId = searchParams.get("channelId");
-    if (!channelId || activeChannelId !== channelId) return;
+    const urlIssueId = searchParams.get("issueId");
+    const urlChannelId = searchParams.get("channelId");
+    let changed = false;
+    if (urlIssueId && urlIssueId !== activeIssueId) { setActiveIssue(urlIssueId); changed = true; }
+    if (urlChannelId && urlChannelId !== activeChannelId) { setActiveChannel(urlChannelId); changed = true; }
+    if (!changed) return;
+    // URL 进入时绕过 userInteracted 限制，直接切到对应 tab
+    const targetId = urlChannelId ? "chat" : "issue-detail";
     if (isMobile) {
-      setActivePanel("chat");
+      setActivePanel(targetId === "chat" ? "chat" : "issue-detail");
     } else {
-      const node = model.getNodeById("chat");
-      if (node && node instanceof TabNode) {
-        model.doAction(Actions.selectTab(node.getId()));
-      }
+      const node = model.getNodeById(targetId);
+      if (node && node instanceof TabNode) model.doAction(Actions.selectTab(node.getId()));
     }
-  }, [activeChannelId, isMobile, model, searchParams, setActivePanel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // 用户点击 issue / channel 后，把 active id 同步进 URL
+  useEffect(() => {
+    if (!userInteractedRef.current) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (activeIssueId) params.set("issueId", activeIssueId); else params.delete("issueId");
+    if (activeChannelId) params.set("channelId", activeChannelId); else params.delete("channelId");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [activeIssueId, activeChannelId, searchParams, pathname, router]);
 
   // 打开文件时自动切换到 Code Editor tab，关闭最后一个文件时切换回 Workfolder tab
   useEffect(() => {

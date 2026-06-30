@@ -258,6 +258,7 @@ interface WorkflowCanvasProps {
   onRedo?: () => void;
   onExitPreview?: () => void;
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
+  embeddedMode?: 'issue' | null;
   copiedNodeCount?: number;
   copiedRecords?: WorkflowClipboardRecord[];
   onPasteRecord?: (id: string) => void;
@@ -280,6 +281,7 @@ export function WorkflowCanvas({
   selectedNodeIds = EMPTY_STRING_ARRAY, onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
   onImageFilesDrop, onImageUrlsDrop, onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
+  embeddedMode = null,
   copiedNodeCount = 0, copiedRecords = [], onPasteRecord, onMoveRecord, onClearCopiedNodes,
   onConnectionDrop,
   onRectangleDrawNodeSelect,
@@ -1244,6 +1246,7 @@ export function WorkflowCanvas({
         onExitPreview={onExitPreview}
         onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
         layoutEngine={layoutEngine}
+        embeddedMode={embeddedMode}
         copiedNodeCount={isCanvasLocked ? 0 : copiedNodeCount}
         copiedRecords={isCanvasLocked ? [] : copiedRecords}
         onPasteRecord={isCanvasLocked ? undefined : onPasteRecord}

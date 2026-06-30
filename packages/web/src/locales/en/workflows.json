@@ -334,6 +334,7 @@
     "showMinimap": "Show Minimap",
     "expandLogs": "Expand Logs",
     "collapseLogs": "Collapse Logs",
+    "openInNewWindow": "Open in New Window",
     "copiedNodes": "Copied Nodes",
     "pasteCopiedNodes": "Paste",
     "moveCopiedNodesToStaging": "Move to Staging",

@@ -14,10 +14,12 @@ export function WorkflowPreview({
   workflowId,
   workspaceId,
   className,
+  embeddedMode = null,
 }: {
   workflowId: string;
   workspaceId?: string;
   className?: string;
+  embeddedMode?: 'issue' | null;
 }) {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
@@ -116,6 +118,7 @@ export function WorkflowPreview({
           isRunning
           execStatus={execStatus}
           executionLog={executionLog}
+          embeddedMode={embeddedMode}
           onNodeAdd={noop}
           onNodeDelete={noop}
           onNodeSelect={noop}

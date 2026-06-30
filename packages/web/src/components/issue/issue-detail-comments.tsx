@@ -87,12 +87,12 @@ export function IssueDetailComments({
   }, [comments, workspaceId, channelId, sendMessage]);
 
   return (
-    <div className="flex flex-col border-t">
-      <div className="px-4 pt-2">
+    <div className="flex flex-col border-t xl:h-full xl:border-t-0">
+      <div className="px-4 pt-2 xl:px-5 xl:pt-6">
         <h3 className="text-sm font-medium mb-3">{t('detail.comments', { count: comments.length })}</h3>
       </div>
       {comments.length > 0 ? (
-        <div ref={commentsViewportRef} className="relative">
+        <div ref={commentsViewportRef} className="relative xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
           {comments.map((comment) => (
             <div
               key={comment.id}

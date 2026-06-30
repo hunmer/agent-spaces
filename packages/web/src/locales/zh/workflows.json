@@ -334,6 +334,7 @@
     "showMinimap": "显示小地图",
     "expandLogs": "展开日志",
     "collapseLogs": "折叠日志",
+    "openInNewWindow": "新窗口打开",
     "copiedNodes": "已复制节点",
     "pasteCopiedNodes": "粘贴",
     "moveCopiedNodesToStaging": "移动到暂存",

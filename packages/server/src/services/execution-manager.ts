@@ -813,25 +813,10 @@ export class ExecutionManager {
     }
 
     const dryRunInput = this.getDryRunNodeValue(session, 'inputs', node.id);
-    const strictDataReferences = node.type !== 'variable_aggregate';
-    const resolvedData = applyNodeInputMiddleware(this.normalizeResolvedNodeDataTypes(node, this.applyDryRunInput(
-      this.resolveContextVariables(session, { ...node.data }, { strictDataReferences }),
-      dryRunInput,
-    )));
-    const stepInput = dryRunInput ?? getStepInput(node, resolvedData);
-    this.setNodeExecutionInput(session, node.id, dryRunInput ?? (node.type === 'end' ? {} : buildOutputObject(resolvedData.inputFields) ?? {}));
-
     const step: ExecutionStep = {
       nodeId: node.id, nodeLabel: node.label, startedAt: Date.now(), status: 'running',
-      ...(stepInput === undefined ? {} : { input: stepInput }),
     };
     session.steps.push(step);
-
-    this.emitEvent(session, 'node:start', {
-      executionId: session.id, workflowId: session.workflow.id,
-      timestamp: Date.now(), nodeId: node.id, nodeLabel: node.label, input: stepInput,
-    });
-    this.emitLog(session);
 
     const stepLogs: ExecutionLogEntry[] = [];
     const appendLog = (level: ExecutionLogEntry['level'], message: string) => {
@@ -846,6 +831,21 @@ export class ExecutionManager {
     };
 
     try {
+      const strictDataReferences = node.type !== 'variable_aggregate';
+      const resolvedData = applyNodeInputMiddleware(this.normalizeResolvedNodeDataTypes(node, this.applyDryRunInput(
+        this.resolveContextVariables(session, { ...node.data }, { strictDataReferences }),
+        dryRunInput,
+      )));
+      const stepInput = dryRunInput ?? getStepInput(node, resolvedData);
+      if (stepInput !== undefined) step.input = stepInput;
+      this.setNodeExecutionInput(session, node.id, dryRunInput ?? (node.type === 'end' ? {} : buildOutputObject(resolvedData.inputFields) ?? {}));
+
+      this.emitEvent(session, 'node:start', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: Date.now(), nodeId: node.id, nodeLabel: node.label, input: stepInput,
+      });
+      this.emitLog(session);
+
       const dryRunOutput = this.getDryRunNodeValue(session, 'outputs', node.id);
       if (dryRunOutput !== undefined) appendLog('info', 'Dry run output override used');
       const presetOutput = dryRunOutput === undefined ? this.getSelectedJsonPresetOutput(node) : undefined;

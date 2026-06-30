@@ -28,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Switch } from '@/components/ui/switch';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { ISSUE_STATUS_COLOR } from './issue-status-colors';
@@ -287,12 +288,18 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </motion.div>
             </CardHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto xl:hidden">
         <Card className="border-0 shadow-none rounded-none flex flex-col p-0">
-          <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex flex-col">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            className="flex min-h-full flex-col xl:h-full xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch"
+          >
 
             {/* Scrollable meta + commands + tasks + attachments */}
-            <div className="shrink-0 p-6 pb-2 space-y-5">
+            <div className="shrink-0 space-y-5 p-6 pb-2 xl:min-h-full xl:min-w-0">
               {/* Meta Info Grid — project-detail-view style */}
               <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 {members.length > 0 && (
@@ -372,13 +379,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             </div>
 
             {/* Comments — natural height, page-level scroll */}
-            <motion.div variants={itemVariants} className="flex flex-col">
+            <motion.div variants={itemVariants} className="flex flex-col xl:min-h-full xl:min-w-0 xl:border-l xl:pb-6">
               {commentsLoading && comments.length === 0 ? (
-                <div className="flex flex-col border-t">
-                  <div className="px-4 pt-2">
+                <div className="flex flex-col border-t xl:border-t-0">
+                  <div className="px-4 pt-2 xl:px-5 xl:pt-6">
                     <Skeleton className="h-4 w-20 mb-3" />
                   </div>
-                  <div className="px-4 space-y-4">
+                  <div className="space-y-4 px-4 xl:px-5">
                     {Array.from({ length: 3 }, (_, i) => (
                       <div key={i} className="flex gap-3">
                         <Skeleton className="size-6 rounded-full shrink-0 mt-0.5" />
@@ -413,6 +420,138 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
           </motion.div>
         </Card>
+        </div>
+        <div className="hidden h-full xl:block">
+          <ResizablePanelGroup orientation="horizontal" className="h-full">
+            <ResizablePanel id="issue-detail-main" defaultSize="72%" minSize="40%" className="min-w-0 overflow-hidden">
+              <div className="h-full overflow-y-auto">
+                <Card className="border-0 shadow-none rounded-none flex flex-col p-0">
+                  <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex min-h-full flex-col">
+                    <div className="space-y-5 p-6 pb-6">
+                      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                        {members.length > 0 && (
+                          <div className="flex items-start gap-3">
+                            <Users className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                            <div>
+                              <p className="text-muted-foreground">{t('detail.memberCount', { count: members.length })}</p>
+                              <div className="mt-1 flex items-center gap-2">
+                                {members.slice(0, 4).map((member) => (
+                                  <div key={member} className="flex items-center gap-1">
+                                    <AgentIcon
+                                      agentId={member !== 'user' ? member : undefined}
+                                      name={getMemberDisplayName(enabledAgents, member)}
+                                      className="size-6 rounded-full"
+                                    />
+                                    <span className="font-medium text-xs">{getMemberDisplayName(enabledAgents, member)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex items-start gap-3">
+                          <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                          <div>
+                            <p className="text-muted-foreground">{t('detail.created')}</p>
+                            <p className="mt-1 flex items-center gap-2 text-xs font-medium">
+                              {new Date(issue.createdAt).toLocaleDateString()}
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              {new Date(issue.updatedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        {issue.branch && (
+                          <div className="flex items-start gap-3">
+                            <GitBranch className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                            <div>
+                              <p className="text-muted-foreground">Branch</p>
+                              <p className="mt-1 font-mono text-xs">{issue.branch}</p>
+                            </div>
+                          </div>
+                        )}
+                        {issue.description && (
+                          <div className="col-span-1 flex items-start gap-3 md:col-span-2">
+                            <MoreHorizontal className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                            <div>
+                              <p className="text-muted-foreground">{t('detail.description')}</p>
+                              <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-foreground/80">{issue.description}</p>
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+
+                      <motion.div variants={itemVariants}>
+                        <IssueDetailTasksPanel
+                          issue={normalizedIssue}
+                          workspaceId={workspaceId}
+                          t={t}
+                        />
+                      </motion.div>
+
+                      <motion.div variants={itemVariants} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="flex items-center gap-2 font-semibold">
+                            <Paperclip className="h-5 w-5 text-muted-foreground" />
+                            Attachments
+                            <Badge variant="secondary">0</Badge>
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          <div className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed p-3 transition-colors hover:bg-muted/40">
+                            <Plus className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        </div>
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                </Card>
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            <ResizablePanel id="issue-detail-comments" defaultSize="28%" minSize="20%" maxSize="50%" className="min-w-0 overflow-hidden">
+              <div className="h-full border-l">
+                {commentsLoading && comments.length === 0 ? (
+                  <div className="flex h-full flex-col">
+                    <div className="px-5 pt-6">
+                      <Skeleton className="mb-3 h-4 w-20" />
+                    </div>
+                    <div className="space-y-4 px-5">
+                      {Array.from({ length: 3 }, (_, i) => (
+                        <div key={i} className="flex gap-3">
+                          <Skeleton className="mt-0.5 size-6 shrink-0 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-4 w-20" />
+                              <Skeleton className="h-3 w-12" />
+                            </div>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <IssueDetailComments
+                    issue={normalizedIssue}
+                    workspaceId={workspaceId}
+                    comments={comments}
+                    expandedCommentIds={expandedCommentIds}
+                    commentsViewportRef={commentsViewportRef}
+                    commentRefs={commentRefs}
+                    onDeleteComment={handleDeleteComment}
+                    onUpdateComment={handleUpdateComment}
+                    onExpandedChange={handleCommentExpandedChange}
+                    scrollToComment={scrollToComment}
+                    t={t}
+                  />
+                )}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
         </div>
 
         {/* Floating composer — UNCHANGED */}
