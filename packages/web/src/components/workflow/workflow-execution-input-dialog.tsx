@@ -120,7 +120,7 @@ function useExecutionInputFormState(fields: OutputField[], initialValues?: Recor
       const val = values[field.key];
       const empty = isFileOutputFieldType(field.type)
         ? !Array.isArray(val) || val.length === 0
-        : typeof val !== 'string' || val.trim() === '';
+        : getStringValue(val, field.value).trim() === '';
       if (empty) next[field.key] = true;
     }
     setErrors(next);
