@@ -4,11 +4,13 @@ import { WorkflowPreview } from '@/components/workflow/workflow-preview';
 
 interface IssueDetailTasksPanelProps {
   issue: { workflowId?: string; title: string };
+  workspaceId: string;
   t: (key: string, params?: Record<string, string | number | Date>) => string;
 }
 
 export function IssueDetailTasksPanel({
   issue,
+  workspaceId,
   t,
 }: IssueDetailTasksPanelProps) {
   return (
@@ -20,7 +22,7 @@ export function IssueDetailTasksPanel({
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-background h-[720px]">
-          <WorkflowPreview workflowId={issue.workflowId} />
+          <WorkflowPreview workflowId={issue.workflowId} workspaceId={workspaceId} />
         </div>
       )}
     </div>

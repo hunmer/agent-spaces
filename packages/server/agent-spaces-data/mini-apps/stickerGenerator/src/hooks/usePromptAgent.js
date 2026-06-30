@@ -27,7 +27,9 @@ export function usePromptAgent({ settings, currentPrompt }) {
         permissionMode: 'dontAsk',
       });
       const text = resp?.result?.result || resp?.result || '';
-      return typeof text === 'string' ? text : JSON.stringify(text);
+      const raw = typeof text === 'string' ? text : JSON.stringify(text);
+      // 过滤 AI 回复中的 <think>...</think>（含未闭合的残留标签）
+      return raw.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<\/?think>/gi, '');
     } catch (err) {
       throw new Error(err?.message || String(err));
     } finally {

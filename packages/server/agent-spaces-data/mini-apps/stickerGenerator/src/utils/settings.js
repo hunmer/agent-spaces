@@ -10,11 +10,19 @@ export const DEFAULT_SETTINGS = {
   editImageWorkflowId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
   editImageWorkflowName: 'edit_image',
   defaultModel: '',
+  // 工作流容错模式：ignore（忽略节点错误，继续执行）/ stop（遇到错误停止）
+  workflowFaultTolerance: 'ignore',
   // agent 配置由 openAgentEditor 返回后填入；agentConfigId 也存 localStorage 做本地兜底
   agentConfigId: '',
   agentName: '',
   agentModelProvider: '',
 };
+
+// 工作流容错模式选项
+export const WORKFLOW_FAULT_TOLERANCE_OPTIONS = [
+  { value: 'ignore', label: '忽略错误', desc: '节点出错时仅记录日志，继续执行后续节点' },
+  { value: 'stop', label: '遇到错误停止', desc: '节点出错时立即终止整个工作流' },
+];
 
 // 图片模型选项（按常见 provider 整理，用户可在设置里覆盖 defaultModel）
 export const PROVIDER_OPTIONS = [

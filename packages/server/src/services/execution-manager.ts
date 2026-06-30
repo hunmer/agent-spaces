@@ -210,6 +210,7 @@ export class ExecutionManager {
       executionId, workflow, ownerClientId, request.input || {}, executionSnapshot, request.context, request.env, eventSink, workspaceId,
       request.dryRun,
     );
+    session.faultTolerance = request.faultTolerance === 'stop' ? 'stop' : 'ignore';
     if (logSnapshot) session.logSnapshot = clone(logSnapshot);
     if (request.startNodeId) session.partialStartNodeId = request.startNodeId;
     this.recordContextPresetSteps(session);
@@ -477,6 +478,7 @@ export class ExecutionManager {
       lastUpdatedAt: Date.now(), eventSequence: 0,
       recentEvents: [], loopStack: [],
       breakpointBypassKeys: new Set(), dryRun, eventSink,
+      faultTolerance: 'ignore',
     };
   }
 
@@ -875,14 +877,21 @@ export class ExecutionManager {
       step.status = 'error';
       step.error = formatErrorWithStack(error);
       step.logs = stepLogs.length ? [...stepLogs] : undefined;
-      session.status = 'error';
-      session.lastErrorMessage = step.error;
+      const nodeErrorMessage = step.error;
       this.emitEvent(session, 'node:error', {
         executionId: session.id, workflowId: session.workflow.id,
         timestamp: Date.now(), nodeId: node.id, step: { ...step },
         error: createErrorShape('WORKFLOW_ERROR', step.error),
       });
       this.emitLog(session);
+      // 容错模式：忽略错误时仅记录到步骤日志，控制台输出，不终止工作流
+      if (session.faultTolerance === 'ignore') {
+        // eslint-disable-next-line no-console
+        console.error(`[workflow] node "${node.label || node.id}" failed but ignored (faultTolerance=ignore):`, nodeErrorMessage);
+        return 'completed';
+      }
+      session.status = 'error';
+      session.lastErrorMessage = nodeErrorMessage;
     }
 
     return 'completed';

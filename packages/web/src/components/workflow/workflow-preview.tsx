@@ -2,22 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import type { Workflow } from '@agent-spaces/shared';
-import { workflowApi } from '@/lib/workflow-api';
+import type { EngineStatus, ExecutionLog, Workflow } from '@agent-spaces/shared';
+import { executionLogApi, workflowApi } from '@/lib/workflow-api';
+import { getWS } from '@/lib/ws';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkflowCanvas } from './workflow-canvas';
 
 const noop = () => {};
 
-/**
- * 只读 workflow 节点预览。
- * 仅用于展示节点与连线，禁用一切编辑/执行/拖拽交互。
- */
-export function WorkflowPreview({ workflowId, className }: { workflowId: string; className?: string }) {
+export function WorkflowPreview({
+  workflowId,
+  workspaceId,
+  className,
+}: {
+  workflowId: string;
+  workspaceId?: string;
+  className?: string;
+}) {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
+  const [execStatus, setExecStatus] = useState<EngineStatus>('idle');
 
   useEffect(() => {
     let active = true;
+    setWorkflow(null);
     workflowApi
       .get(workflowId)
       .then((wf) => {
@@ -28,6 +36,68 @@ export function WorkflowPreview({ workflowId, className }: { workflowId: string;
       active = false;
     };
   }, [workflowId]);
+
+  useEffect(() => {
+    let active = true;
+    setExecutionLog(null);
+    setExecStatus('idle');
+    executionLogApi
+      .list(workflowId)
+      .then((logs) => {
+        if (!active) return;
+        const latest = logs[0] ?? null;
+        setExecutionLog(latest);
+        setExecStatus(latest?.status ?? 'idle');
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [workflowId]);
+
+  useEffect(() => {
+    if (!workspaceId) return undefined;
+    const ws = getWS(workspaceId);
+
+    const updateFromLog = (log: ExecutionLog) => {
+      setExecutionLog(log);
+      setExecStatus(log.status);
+    };
+
+    const offLog = ws.on('execution:log', (data) => {
+      const event = data as { workflowId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId || !event.log) return;
+      updateFromLog(event.log);
+    });
+    const offCompleted = ws.on('workflow:completed', (data) => {
+      const event = data as { workflowId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId) return;
+      if (event.log) updateFromLog(event.log);
+      else setExecStatus('completed');
+    });
+    const offFailed = ws.on('workflow:error', (data) => {
+      const event = data as { workflowId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId) return;
+      if (event.log) updateFromLog(event.log);
+      else setExecStatus('error');
+    });
+    const offPaused = ws.on('workflow:paused', (data) => {
+      const event = data as { workflowId?: string };
+      if (event.workflowId === workflowId) setExecStatus('paused');
+    });
+    const offResumed = ws.on('workflow:resumed', (data) => {
+      const event = data as { workflowId?: string };
+      if (event.workflowId === workflowId) setExecStatus('running');
+    });
+
+    return () => {
+      offLog();
+      offCompleted();
+      offFailed();
+      offPaused();
+      offResumed();
+    };
+  }, [workspaceId, workflowId]);
 
   if (!workflow) {
     return (
@@ -43,9 +113,9 @@ export function WorkflowPreview({ workflowId, className }: { workflowId: string;
         <WorkflowCanvas
           workflow={workflow}
           isPreview
-          // isRunning 触发 isCanvasLocked：禁用拖拽 / 连线 / 删除 / 工具栏编辑
           isRunning
-          // 其余必填回调全部 no-op，保证只读不产生副作用
+          execStatus={execStatus}
+          executionLog={executionLog}
           onNodeAdd={noop}
           onNodeDelete={noop}
           onNodeSelect={noop}

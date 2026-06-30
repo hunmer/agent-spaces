@@ -30,7 +30,8 @@ export function AgentList({
   onToggleEnabled?: (id: string) => void;
 }) {
   const t = useTranslations('agent');
-  const sortedAgents = [...agents].sort((a, b) => Number(!BUILT_IN_AGENT_IDS.has(a.id)) - Number(!BUILT_IN_AGENT_IDS.has(b.id)));
+  const visibleAgents = agents.filter((agent) => !agent.hideInAgentList);
+  const sortedAgents = [...visibleAgents].sort((a, b) => Number(!BUILT_IN_AGENT_IDS.has(a.id)) - Number(!BUILT_IN_AGENT_IDS.has(b.id)));
   return (
     <div className="flex flex-col p-2">
       {sortedAgents.map((agent) => {
@@ -91,7 +92,7 @@ export function AgentList({
           </div>
         );
       })}
-      {agents.length === 0 && (
+      {visibleAgents.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Bot className="size-10 mb-2 opacity-30" />
           <p className="text-sm">{t('list.empty')}</p>

@@ -60,6 +60,7 @@ export interface ExecutionSession {
   loopStack: LoopExecutionFrame[]
   breakpointBypassKeys: Set<string>
   dryRun?: WorkflowDryRunOptions
+  faultTolerance: 'ignore' | 'stop'
   eventSink?: (channel: string, payload: unknown) => void
 }
 

@@ -101,6 +101,7 @@ export async function startIssueWorkflowExecution(
   issueId: string,
   ctx: AgentContext,
   input?: Record<string, unknown>,
+  env?: Record<string, unknown>,
 ): Promise<void> {
   const issue = issueService.getById(workspaceId, issueId);
   if (!issue) {
@@ -135,16 +136,19 @@ export async function startIssueWorkflowExecution(
   }
   ctx.broadcast('issue.updated', plannedIssue);
 
+  const defaultInput = {
+    prompt: issue.description,
+    issueId: issue.id,
+    issueTitle: issue.title,
+    issueDescription: issue.description,
+    channelId: issue.channelId,
+  };
+
   const result = await manager.execute(
     {
       workflowId: issue.workflowId,
-      input: input ?? {
-        prompt: issue.description,
-        issueId: issue.id,
-        issueTitle: issue.title,
-        issueDescription: issue.description,
-        channelId: issue.channelId,
-      },
+      input: input ? { ...defaultInput, ...input } : defaultInput,
+      env,
       context: {
         issueId: issue.id,
         issueTitle: issue.title,

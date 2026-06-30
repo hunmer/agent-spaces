@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { AgentConfig } from '@agent-spaces/shared';
 import { createAgentRuntime } from '../../adapters/agent-runtime.js';
 import type { AgentRuntimeConfig } from '../../adapters/agent-runtime-types.js';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
@@ -8,10 +9,12 @@ import { getPluginTools, executePluginTool } from '../plugin.js';
 import { createBuiltinPluginApi } from '../plugin-runtime-api.js';
 import * as kbStore from '../../storage/knowledge-base-store.js';
 import * as llmStore from '../../storage/llm-store.js';
+import * as miniAppStore from '../../storage/mini-app-store.js';
 import * as kbService from '../knowledge-base.js';
 import { getWorkflowExecutionManager } from './workflow-exec-tools.js';
 
 type JsonRecord = Record<string, unknown>;
+type MiniAppAgentPreset = AgentConfig;
 
 export const MINI_APP_COMPONENT_CATEGORY_DESCRIPTIONS = [
   { category: 'actions', description: 'Buttons, toggles, and direct action controls.' },
@@ -429,6 +432,7 @@ async function executeWorkflowSyncForMiniApp(args: Record<string, any>) {
     workflowId,
     input: workflowObjectInput(args, 'input'),
     startNodeId: workflowStringInput(args, 'start_node_id', 'startNodeId') || undefined,
+    faultTolerance: workflowStringInput(args, 'fault_tolerance', 'faultTolerance') === 'stop' ? 'stop' : 'ignore',
   }, 'mini-app');
 
   const timeoutMs = Math.min(
@@ -507,9 +511,9 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
     description: '列出可用的 Agent preset（模型配置），返回 id/name/runtimeKind/modelId 供 agent_run 使用。',
     input_schema: { type: 'object', properties: {} },
     outputs: [{ key: 'presets', type: 'array', description: 'Agent preset 列表' }],
-    execute: async () => {
+    execute: async (args, ctx) => {
       const agentService = await import('../agent.js');
-      const presets = agentService.listPresets('');
+      const presets = listMiniAppAgentPresets(ctx?.workspaceId ?? '', agentService.listPresets(''));
       return {
         presets: presets.map(p => ({
           id: p.id,
@@ -542,14 +546,14 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
     outputs: [
       { key: 'result', type: 'string', description: 'Agent 执行结果' },
     ],
-    execute: async (args) => {
+    execute: async (args, ctx) => {
       const agentService = await import('../agent.js');
       const prompt = String(args.prompt || '').trim();
       if (!prompt) throw new Error('prompt is required');
 
       const agentConfigId = typeof args.agentConfigId === 'string' ? args.agentConfigId.trim() : '';
       if (!agentConfigId) throw new Error('agentConfigId is required');
-      const presets = agentService.listPresets('');
+      const presets = listMiniAppAgentPresets(ctx?.workspaceId ?? '', agentService.listPresets(''));
       const preset = presets.find(p => p.id === agentConfigId);
       if (!preset || preset.enabled === false) throw new Error(`Agent preset not found: ${agentConfigId}`);
 
@@ -698,6 +702,44 @@ export async function executeMiniAppBuiltinTool(
   const tool = BUILTIN_TOOLS.find(t => t.name === toolName);
   if (!tool) throw new Error(`Tool "${toolName}" not found in builtin tools`);
   return tool.execute(args, { workspaceId });
+}
+
+function listMiniAppAgentPresets(projectId: string, fallbackPresets: MiniAppAgentPreset[]): MiniAppAgentPreset[] {
+  if (!projectId) return fallbackPresets;
+  const configs = miniAppStore.readAgentsConfig(projectId);
+  if (!configs?.length) return fallbackPresets;
+  return configs
+    .filter((config): config is JsonRecord => !!config && typeof config === 'object' && !Array.isArray(config))
+    .map((config) => miniAppAgentConfigToPreset(config));
+}
+
+function miniAppAgentConfigToPreset(config: JsonRecord): MiniAppAgentPreset {
+  const providerId = typeof config.providerId === 'string' ? config.providerId : undefined;
+  const provider = providerId ? llmStore.getProvider(providerId) : undefined;
+  return {
+    id: String(config.id),
+    name: String(config.name ?? config.id),
+    role: 'agent',
+    description: typeof config.description === 'string' ? config.description : '',
+    runtimeKind: 'langchain',
+    modelProvider: (typeof config.modelProvider === 'string' ? config.modelProvider : provider?.modelProvider) as AgentConfig['modelProvider'],
+    providerId,
+    modelId: typeof config.modelId === 'string' ? config.modelId : undefined,
+    apiKey: typeof config.apiKey === 'string' ? config.apiKey : provider?.apiKey,
+    apiBase: typeof config.apiBase === 'string' ? config.apiBase : provider?.apiBase,
+    workingDir: '',
+    mcps: {},
+    skills: [],
+    tools: [],
+    systemPrompt: typeof config.systemPrompt === 'string' ? config.systemPrompt : '',
+    outputStyle: '',
+    temperature: typeof config.temperature === 'number' ? config.temperature : 0.3,
+    maxTokens: typeof config.maxTokens === 'number' ? config.maxTokens : 4096,
+    avatarUrl: '',
+    icon: typeof config.avatar === 'string' ? config.avatar : '',
+    backgroundUrl: '',
+    enabled: true,
+  };
 }
 
 // ---- Workflow UI function tools ----

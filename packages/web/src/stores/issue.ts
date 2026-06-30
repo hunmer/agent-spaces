@@ -29,7 +29,7 @@ interface IssueStore {
   setActiveIssue: (id: string | null) => void;
   updateIssue: (workspaceId: string, issueId: string, input: UpdateIssueInput) => Promise<void>;
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
-  startIssue: (workspaceId: string, issueId: string) => Promise<void>;
+  startIssue: (workspaceId: string, issueId: string, values?: Record<string, unknown>, env?: Record<string, unknown>) => Promise<void>;
   resumeIssue: (workspaceId: string, issueId: string) => Promise<void>;
   continueIssue: (workspaceId: string, issueId: string) => Promise<void>;
   interruptIssue: (workspaceId: string, issueId: string) => Promise<void>;
@@ -94,9 +94,9 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     await sdk.issue.update(workspaceId, issueId, { status } as Record<string, unknown>).catch(() => {});
   },
 
-  startIssue: async (workspaceId, issueId) => {
+  startIssue: async (workspaceId, issueId, values, env) => {
     try {
-      const issue = await sdk.issue.start(workspaceId, issueId);
+      const issue = await sdk.issue.start(workspaceId, issueId, { input: values, env });
       get().upsertIssue(issue);
     } catch (err) {
       if (err instanceof ApiError) {

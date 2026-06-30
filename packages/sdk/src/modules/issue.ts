@@ -1,6 +1,11 @@
 import type { HttpClient } from '../client';
 import type { Issue, IssueComment, CreateIssueInput } from '@agent-spaces/shared';
 
+export interface StartIssueInput {
+  input?: Record<string, unknown>;
+  env?: Record<string, unknown>;
+}
+
 export function createIssueApi(http: HttpClient) {
   return {
     list: (workspaceId: string): Promise<Issue[]> =>
@@ -18,8 +23,8 @@ export function createIssueApi(http: HttpClient) {
     delete_: (workspaceId: string, issueId: string): Promise<void> =>
       http.delete(`/api/workspaces/${workspaceId}/issues/${issueId}`),
 
-    start: (workspaceId: string, issueId: string): Promise<Issue> =>
-      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/start`),
+    start: (workspaceId: string, issueId: string, data?: StartIssueInput): Promise<Issue> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/start`, data),
 
     resume: (workspaceId: string, issueId: string): Promise<Issue> =>
       http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/resume`),

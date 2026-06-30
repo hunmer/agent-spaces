@@ -5,6 +5,8 @@ import { sdk } from '@/lib/sdk';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { newEmptyAgent, normalizeAgent, type AgentPreset } from '@/components/sidebar/agent-shared';
+import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
+import type { MiniAppAgentConfig } from '@agent-spaces/sdk';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { useEditorStore } from '@/stores/editor';
 import { getWS } from '@/lib/ws';
@@ -248,6 +250,8 @@ export function useMiniAppHostApi(projectId: string) {
   // —— Agent editor 弹窗：mini-app 通过 openAgentEditor 配置 AI 模型 ——
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorAgent, setEditorAgent] = useState<AgentPreset | null>(null);
+  const [editorOriginalConfig, setEditorOriginalConfig] = useState<MiniAppAgentConfig | null>(null);
+  const [editorMigratedGlobalAgentId, setEditorMigratedGlobalAgentId] = useState<string | null>(null);
   const [editorKey, setEditorKey] = useState(0);
   const editorResolverRef = useRef<((v: AgentPreset | null) => void) | null>(null);
 
@@ -626,18 +630,37 @@ export function useMiniAppHostApi(projectId: string) {
       agentId?: string;
     }): Promise<AgentPreset | null> => {
       let agent: AgentPreset;
+      let originalConfig: MiniAppAgentConfig | null = null;
+      let migratedGlobalAgentId: string | null = null;
       if (opts?.agentId) {
         try {
-          agent = normalizeAgent(await sdk.agent.getPreset(opts.agentId));
+          originalConfig = await sdk.miniApp.getAgent(projectId, opts.agentId);
+          agent = miniAppConfigToAgentPreset(originalConfig);
         } catch {
-          agent = newEmptyAgent();
+          try {
+            const globalAgent = normalizeAgent(await sdk.agent.getPreset(opts.agentId));
+            globalAgent.id = opts.agentId;
+            migratedGlobalAgentId = opts.agentId;
+            originalConfig = agentPresetToMiniAppConfig(globalAgent, { id: globalAgent.id, name: globalAgent.name });
+            agent = miniAppConfigToAgentPreset(originalConfig);
+          } catch {
+            const fallback = newEmptyAgent();
+            fallback.id = opts.agentId;
+            originalConfig = agentPresetToMiniAppConfig(fallback, { id: fallback.id, name: fallback.name });
+            agent = miniAppConfigToAgentPreset(originalConfig);
+          }
         }
       } else {
         agent = newEmptyAgent();
+        agent.id = createMiniAppAgentId(opts?.initialName);
+        originalConfig = agentPresetToMiniAppConfig(agent, { id: agent.id, name: agent.name });
       }
       if (opts?.initialName) agent.name = opts.initialName;
       if (opts?.initialPrompt) agent.systemPrompt = opts.initialPrompt;
+      originalConfig = agentPresetToMiniAppConfig(agent, originalConfig);
       setEditorAgent(agent);
+      setEditorOriginalConfig(originalConfig);
+      setEditorMigratedGlobalAgentId(migratedGlobalAgentId);
       setEditorKey((k) => k + 1);
       setEditorOpen(true);
       return new Promise<AgentPreset | null>((resolve) => {
@@ -751,8 +774,29 @@ export function useMiniAppHostApi(projectId: string) {
           agent={editorAgent}
           onSaved={(saved) => closeEditor(saved)}
           onBack={() => closeEditor(null)}
+          fixedValues={{ hideInAgentList: true }}
+          commit={async (draft) => {
+            const original = editorOriginalConfig ?? agentPresetToMiniAppConfig(draft, { id: draft.id, name: draft.name });
+            const config = agentPresetToMiniAppConfig(draft, original);
+            const saved = await sdk.miniApp.updateAgent(projectId, config.id, config);
+            if (editorMigratedGlobalAgentId) {
+              await sdk.agent.updatePreset(editorMigratedGlobalAgentId, { hideInAgentList: true });
+            }
+            return miniAppConfigToAgentPreset(saved);
+          }}
         />
       </DialogContent>
     </Dialog>
   ) : null;
+}
+
+function createMiniAppAgentId(name?: string): string {
+  const base = (name || 'mini-app-agent')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'mini-app-agent';
+  const g = globalThis.crypto as (Crypto & { randomUUID?: () => string }) | undefined;
+  const suffix = g?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${base}-${suffix}`;
 }

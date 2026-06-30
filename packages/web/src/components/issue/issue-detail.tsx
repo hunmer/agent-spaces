@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import type { IssueComment } from '@agent-spaces/shared';
+import type { IssueComment, OutputField, Workflow } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import {
@@ -18,7 +18,9 @@ import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { normalizeChannelMembersToAgentIds, getMemberDisplayName } from '@/lib/agent-members';
 import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
+import { workflowApi } from '@/lib/workflow-api';
 import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
+import { ExecutionInputDialog } from '@/components/workflow/workflow-execution-input-dialog';
 import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
 import { CommentNavigator } from './comment-navigator';
@@ -69,6 +71,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
   const [composerOpen, setComposerOpen] = useState(false);
+  const [startInputOpen, setStartInputOpen] = useState(false);
+  const [startWorkflow, setStartWorkflow] = useState<Workflow | null>(null);
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const t = useTranslations('issue');
@@ -94,6 +98,22 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   useEffect(() => {
     ensureAgents();
   }, [ensureAgents]);
+
+  useEffect(() => {
+    let active = true;
+    setStartWorkflow(null);
+    if (!issue?.workflowId) return () => { active = false; };
+    workflowApi.get(issue.workflowId)
+      .then((workflow) => {
+        if (active) setStartWorkflow(workflow);
+      })
+      .catch(() => {
+        if (active) setStartWorkflow(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [issue?.workflowId]);
 
   useEffect(() => {
     if (!issue) return;
@@ -187,6 +207,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     : issue.status === 'error' ? 'bg-red-500'
     : 'bg-yellow-500';
 
+  const startNode = startWorkflow?.nodes.find((node) => node.type === 'start') ?? null;
+  const startInputFields = (Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields : []) as OutputField[];
+  const workflowVariableFields = (Array.isArray(startWorkflow?.variables) ? startWorkflow.variables : []) as OutputField[];
+  const startNodeLabel = startNode?.label || t('detail.start');
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* Main content */}
@@ -219,7 +244,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     <span>{t('detail.continuousRun')}</span>
                   </div>
                   {canStart && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => startIssue(workspaceId, issue.id)}>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setStartInputOpen(true)}>
                       <Play className="h-3 w-3 mr-1" />
                       {t('detail.start')}
                     </Button>
@@ -324,6 +349,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               <motion.div variants={itemVariants}>
                 <IssueDetailTasksPanel
                   issue={normalizedIssue}
+                  workspaceId={workspaceId}
                   t={t}
                 />
               </motion.div>
@@ -448,6 +474,18 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           onSave={async (data) => {
             await updateIssue(workspaceId, issue.id, data);
           }}
+        />
+      )}
+
+      {issue.workflowId && (
+        <ExecutionInputDialog
+          open={startInputOpen}
+          fields={startInputFields}
+          variableFields={workflowVariableFields}
+          startNodeLabel={startNodeLabel}
+          workflowId={issue.workflowId}
+          onOpenChange={setStartInputOpen}
+          onSubmit={(values, env) => startIssue(workspaceId, issue.id, values, env)}
         />
       )}
 

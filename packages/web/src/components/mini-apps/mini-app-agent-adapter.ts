@@ -12,7 +12,9 @@ import type { MiniAppAgentConfig } from "@agent-spaces/sdk";
  * mini-app 的 agents.json 仍会透传保存该字段，而 SDK 的 MiniAppAgentConfig 不再单独声明，
  * 因此这里用本地 Record 类型承载读写，避免破坏 SDK 类型契约。
  */
-type MiniAppAgentRecord = MiniAppAgentConfig & { suggestions?: string[] };
+type MiniAppAgentRecord = MiniAppAgentConfig & {
+  suggestions?: string[];
+};
 
 /** 规整为 string[]；非数组或空集返回 undefined，避免落盘空数组。 */
 function normalizeSuggestions(value: unknown): string[] | undefined {
@@ -52,6 +54,7 @@ export function miniAppConfigToAgentPreset(config: MiniAppAgentConfig): AgentPre
     icon: config.avatar || "",
     backgroundUrl: "",
     suggestions: normalizeSuggestions(record.suggestions),
+    hideInAgentList: record.hideInAgentList,
     enabled: true,
   };
   return normalizeAgent(base);
@@ -79,6 +82,7 @@ export function agentPresetToMiniAppConfig(
     maxTokens: preset.maxTokens,
     tools: original.tools,
     suggestions: normalizeSuggestions(preset.suggestions),
+    hideInAgentList: preset.hideInAgentList,
   };
   return config;
 }

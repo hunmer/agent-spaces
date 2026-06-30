@@ -156,6 +156,12 @@ export interface WorkflowExecuteRequest {
   snapshot?: ExecutionSnapshot
   startNodeId?: string
   dryRun?: WorkflowDryRunOptions
+  /**
+   * 工作流容错模式：
+   * - ignore（默认）：节点出错时仅记录到步骤日志，继续执行后续节点
+   * - stop：节点出错时立即把 session 置为 error 并终止执行
+   */
+  faultTolerance?: 'ignore' | 'stop'
 }
 
 export interface WorkflowDryRunOptions {

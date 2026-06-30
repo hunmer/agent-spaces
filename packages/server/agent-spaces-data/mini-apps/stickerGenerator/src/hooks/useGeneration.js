@@ -36,6 +36,7 @@ export function useGeneration({ form, customStyles, settings, onComplete }) {
           textToImage: settings?.textToImageWorkflowId,
           editImage: settings?.editImageWorkflowId,
         },
+        faultTolerance: settings?.workflowFaultTolerance || 'ignore',
       });
 
       const matched = [...customStyles].find((s) => s.id === form.styleId);

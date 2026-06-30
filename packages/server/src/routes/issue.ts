@@ -17,6 +17,12 @@ import { getWorkflowExecutionManager } from '../services/builtin-tools/workflow-
 
 const router = Router({ mergeParams: true });
 
+function getRecordBodyValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
 router.get('/', (req: Request<{ id: string }>, res: Response) => {
   const status = req.query.status as string | undefined;
   const issues = issueService.list(req.params.id, status as any);
@@ -108,6 +114,8 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
 router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, res: Response) => {
   const workspaceId = req.params.id;
   const { issueId } = req.params;
+  const input = getRecordBodyValue(req.body?.input);
+  const env = getRecordBodyValue(req.body?.env);
   const before = issueService.getById(workspaceId, issueId);
   if (!before) {
     res.status(404).json({ error: 'issue not found' });
@@ -139,7 +147,7 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
     updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
       agentService.updateStatus(workspaceId, sessionId, status, extra),
   };
-  runIssueAutomation(workspaceId, issueId, ctx).catch((err) => {
+  startIssueWorkflowExecution(workspaceId, issueId, ctx, input, env).catch((err) => {
     console.error(`[issue-start] automation error for issue ${issueId}:`, err);
   });
 });

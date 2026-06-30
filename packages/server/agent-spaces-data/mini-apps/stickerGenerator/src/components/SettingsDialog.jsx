@@ -3,6 +3,7 @@
 import {
   WORKFLOW_SLOTS, MODEL_OPTIONS, BUILTIN_PLUGIN,
   AGENT_INIT_NAME, AGENT_INIT_PROMPT,
+  WORKFLOW_FAULT_TOLERANCE_OPTIONS,
 } from '../utils/settings';
 
 const {
@@ -134,6 +135,25 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
               )}
             </div>
           ))}
+
+          {/* 工作流容错模式 */}
+          <div className="sg-set-field">
+            <Label className="sg-set-label">工作流容错模式</Label>
+            <Select
+              value={WORKFLOW_FAULT_TOLERANCE_OPTIONS.some((o) => o.value === cfg.workflowFaultTolerance) ? cfg.workflowFaultTolerance : 'ignore'}
+              onValueChange={(v) => patch({ workflowFaultTolerance: v })}
+            >
+              <SelectTrigger className="w-full"><SelectValue placeholder="选择容错模式" /></SelectTrigger>
+              <SelectContent>
+                {WORKFLOW_FAULT_TOLERANCE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="sg-set-desc">
+              {WORKFLOW_FAULT_TOLERANCE_OPTIONS.find((o) => o.value === (cfg.workflowFaultTolerance || 'ignore'))?.desc}
+            </div>
+          </div>
 
           {/* 默认模型 */}
           <div className="sg-set-section-title">默认模型</div>

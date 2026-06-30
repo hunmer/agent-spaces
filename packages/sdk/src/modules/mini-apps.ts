@@ -35,6 +35,7 @@ export interface MiniAppAgentConfig {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  hideInAgentList?: boolean;
   tools?: { api?: boolean; plugin?: boolean };
 }
 
