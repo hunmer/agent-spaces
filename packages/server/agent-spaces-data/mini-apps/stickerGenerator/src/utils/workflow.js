@@ -15,7 +15,6 @@ export async function runStickerWorkflow({
   size,
   references = [],
   workflowIds = {},
-  faultTolerance = 'ignore',
 }) {
   const finalPrompt = prompt;
   const modelId = model;
@@ -43,7 +42,7 @@ export async function runStickerWorkflow({
   const result = await AS.callPluginTool(
     '@agent-spaces/builtin',
     'execute_workflow_sync',
-    { workflow_id: workflowId, input, max_wait_ms: 600000, fault_tolerance: faultTolerance },
+    { workflow_id: workflowId, input, max_wait_ms: 600000 },
     { taskId, meta: { workflowId, kind, prompt: finalPrompt, model: modelId, label: '贴图生成' } },
   );
 

@@ -9,7 +9,7 @@
       "label": "Start",
       "position": {
         "x": 0,
-        "y": 0
+        "y": 501.09295693814227
       },
       "data": {
         "inputFields": [
@@ -27,8 +27,8 @@
       "type": "end",
       "label": "End",
       "position": {
-        "x": 0,
-        "y": 2016
+        "x": 6207.428901163754,
+        "y": 456.59287034587584
       },
       "data": {
         "outputs": [
@@ -36,13 +36,15 @@
             "key": "finalText",
             "type": "string",
             "value": "{{ __data__[\"node_1782802301321_awxscy\"].finalText }}",
-            "description": "最终成稿正文"
+            "description": "最终成稿正文",
+            "children": []
           },
           {
             "key": "topicTitle",
             "type": "string",
             "value": "{{ __data__[\"node_1782802301321_awxscy\"].pickedTopic.title }}",
-            "description": "最终采用的选题标题"
+            "description": "最终采用的选题标题",
+            "children": []
           },
           {
             "key": "topic",
@@ -52,19 +54,23 @@
             "children": [
               {
                 "key": "title",
-                "type": "string"
+                "type": "string",
+                "children": []
               },
               {
                 "key": "audience",
-                "type": "string"
+                "type": "string",
+                "children": []
               },
               {
                 "key": "thesis",
-                "type": "string"
+                "type": "string",
+                "children": []
               },
               {
                 "key": "emotion",
-                "type": "string"
+                "type": "string",
+                "children": []
               }
             ]
           },
@@ -72,25 +78,29 @@
             "key": "review",
             "type": "object",
             "value": "{{ __data__[\"node_1782802301321_awxscy\"].review }}",
-            "description": "审阅结果"
+            "description": "审阅结果",
+            "children": []
           },
           {
             "key": "collaborationLog",
             "type": "any[]",
             "value": "{{ __data__[\"node_1782802301321_awxscy\"].collaborationLog }}",
-            "description": "多 agent 协作日志"
+            "description": "多 agent 协作日志",
+            "children": []
           },
           {
             "key": "pipeline",
             "type": "any[]",
             "value": "{{ __data__[\"node_1782802301321_awxscy\"].pipeline }}",
-            "description": "协作流水线说明"
+            "description": "协作流水线说明",
+            "children": []
           },
           {
             "key": "stats",
             "type": "object",
             "value": "{{ __data__[\"node_1782802301321_awxscy\"].stats }}",
-            "description": "成稿统计"
+            "description": "成稿统计",
+            "children": []
           }
         ]
       }
@@ -100,8 +110,8 @@
       "type": "agent_run",
       "label": "Agent-1 选题策划",
       "position": {
-        "x": 0,
-        "y": 200
+        "x": 330.000140116936,
+        "y": 501.09295693814227
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -135,8 +145,8 @@
       "type": "run_code",
       "label": "Channel-1 状态同步",
       "position": {
-        "x": 0,
-        "y": 400
+        "x": 660.000280233872,
+        "y": 501.09295693814227
       },
       "data": {
         "code": "async function main({ params, context }) {\n  const raw = String(params.agentResult || '');\n  let topics = [];\n  let parseError = null;\n  try {\n    const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();\n    const firstBracket = cleaned.indexOf('[');\n    const lastBracket = cleaned.lastIndexOf(']');\n    const jsonText = firstBracket >= 0 && lastBracket > firstBracket ? cleaned.slice(firstBracket, lastBracket + 1) : cleaned;\n    topics = JSON.parse(jsonText);\n    if (!Array.isArray(topics)) topics = [topics];\n  } catch (e) {\n    parseError = String(e && e.message ? e.message : e);\n    topics = [{ title: '默认选题-待人工兜底', audience: '通用', thesis: raw.slice(0, 200), emotion: '中性' }];\n  }\n  const scored = topics.map((t, i) => ({\n    index: i,\n    title: t.title || ('选题' + (i + 1)),\n    audience: t.audience || '',\n    thesis: t.thesis || '',\n    emotion: t.emotion || '',\n    score: typeof t.score === 'number' ? t.score : 7 + (i === 0 ? 1 : 0)\n  }));\n  scored.sort((a, b) => b.score - a.score);\n  const picked = scored[0];\n  context.collaboration = context.collaboration || {};\n  context.collaboration.stage = 'topic';\n  context.collaboration.topicCandidates = scored;\n  context.collaboration.pickedTopic = picked;\n  context.collaboration.log = context.collaboration.log || [];\n  context.collaboration.log.push({ stage: 'topic', at: Date.now(), agent: 'agent_topic_planner', status: parseError ? 'parse_fallback' : 'ok', picked: picked.title });\n  return {\n    pickedTopic: picked,\n    topicCandidates: scored,\n    topicRaw: raw,\n    stage: 'topic',\n    collaborationLog: context.collaboration.log\n  };\n}",
@@ -145,7 +155,8 @@
             "key": "agentResult",
             "type": "string",
             "value": "{{ __data__[\"node_1782802109610_n9yu9m\"].result }}",
-            "description": "上游选题策划 Agent 的原始输出"
+            "description": "上游选题策划 Agent 的原始输出",
+            "children": []
           }
         ],
         "outputs": [
@@ -204,8 +215,8 @@
       "type": "agent_run",
       "label": "Agent-2 内容写稿",
       "position": {
-        "x": 195,
-        "y": 615
+        "x": 990.0004203508081,
+        "y": 202.29021394595074
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -239,8 +250,8 @@
       "type": "run_code",
       "label": "Channel-2 稿件状态同步",
       "position": {
-        "x": 0,
-        "y": 829
+        "x": 4485,
+        "y": 540
       },
       "data": {
         "code": "async function main({ params, context }) {\n  const draft = String(params.draftResult || '').trim();\n  const topicTitle = String(params.pickedTopicTitle || '未识别选题');\n  const pickedTopic = (context.collaboration && context.collaboration.pickedTopic) || { title: topicTitle };\n  context.collaboration = context.collaboration || {};\n  context.collaboration.stage = 'draft';\n  context.collaboration.draft = draft;\n  context.collaboration.log = context.collaboration.log || [];\n  context.collaboration.log.push({\n    stage: 'draft',\n    at: Date.now(),\n    agent: 'agent_content_writer',\n    status: draft.length > 200 ? 'ok' : 'too_short',\n    length: draft.length\n  });\n  return {\n    draftText: draft,\n    pickedTopic: pickedTopic,\n    stage: 'draft',\n    draftStats: {\n      length: draft.length,\n      paragraphs: draft.split(/\\n+/).filter(Boolean).length,\n      tooShort: draft.length < 200\n    },\n    collaborationLog: context.collaboration.log\n  };\n}",
@@ -249,13 +260,15 @@
             "key": "draftResult",
             "type": "string",
             "value": "{{ __data__[\"node_1782802155731_dircw3\"].result }}",
-            "description": "上游写作 Agent 产出的稿件原文"
+            "description": "上游写作 Agent 产出的稿件原文",
+            "children": []
           },
           {
             "key": "pickedTopicTitle",
             "type": "string",
             "value": "{{ __data__[\"node_1782802129320_6z6lvi\"].pickedTopic.title }}",
-            "description": "被选中的选题标题（来自 Channel-1）"
+            "description": "被选中的选题标题（来自 Channel-1）",
+            "children": []
           }
         ],
         "outputs": [
@@ -320,8 +333,8 @@
       "type": "agent_run",
       "label": "Agent-3 内容审阅",
       "position": {
-        "x": 82.5,
-        "y": 1029
+        "x": 4890,
+        "y": 360
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -355,8 +368,8 @@
       "type": "run_code",
       "label": "Channel-3 审阅状态同步",
       "position": {
-        "x": 0,
-        "y": 1238
+        "x": 5205,
+        "y": 600
       },
       "data": {
         "code": "async function main({ params, context }) {\n  const raw = String(params.reviewResult || '');\n  let review = null;\n  let parseError = null;\n  try {\n    const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();\n    const first = cleaned.indexOf('{');\n    const last = cleaned.lastIndexOf('}');\n    const jsonText = first >= 0 && last > first ? cleaned.slice(first, last + 1) : cleaned;\n    review = JSON.parse(jsonText);\n  } catch (e) {\n    parseError = String(e && e.message ? e.message : e);\n    review = { overall: 0, dimensions: {}, strengths: [], weaknesses: [], suggestions: [], risk_flags: ['parse_failed'] };\n  }\n  const suggestions = Array.isArray(review.suggestions) ? review.suggestions : [];\n  const suggestionsText = suggestions\n    .map((s, i) => (i + 1) + '. [' + (s.target_section || '未指定段落') + '] ' + (s.rewrite_hint || ''))\n    .join('\\n');\n  context.collaboration = context.collaboration || {};\n  context.collaboration.stage = 'review';\n  context.collaboration.review = review;\n  context.collaboration.log = context.collaboration.log || [];\n  context.collaboration.log.push({\n    stage: 'review',\n    at: Date.now(),\n    agent: 'agent_content_reviewer',\n    status: parseError ? 'parse_fallback' : 'ok',\n    overall: review.overall || 0,\n    suggestions: suggestions.length\n  });\n  return {\n    review: review,\n    suggestionsText: suggestionsText,\n    suggestionsCount: suggestions.length,\n    draftText: String(params.draftText || ''),\n    pickedTopic: (context.collaboration && context.collaboration.pickedTopic) || { title: '未识别' },\n    stage: 'review',\n    parseError: parseError,\n    collaborationLog: context.collaboration.log\n  };\n}",
@@ -365,13 +378,15 @@
             "key": "reviewResult",
             "type": "string",
             "value": "{{ __data__[\"node_1782802180338_w71ps1\"].result }}",
-            "description": "上游审阅 Agent 的原始 JSON 输出"
+            "description": "上游审阅 Agent 的原始 JSON 输出",
+            "children": []
           },
           {
             "key": "draftText",
             "type": "string",
             "value": "{{ __data__[\"node_1782802180337_3671ad\"].draftText }}",
-            "description": "上游稿件原文（来自 Channel-2）"
+            "description": "上游稿件原文（来自 Channel-2）",
+            "children": []
           }
         ],
         "outputs": [
@@ -485,8 +500,8 @@
       "type": "agent_run",
       "label": "Agent-4 润色定稿",
       "position": {
-        "x": 82.5,
-        "y": 1438
+        "x": 5547.4286209298825,
+        "y": 508.842917757944
       },
       "data": {
         "permissionMode": "dontAsk",
@@ -520,8 +535,8 @@
       "type": "run_code",
       "label": "Channel-4 最终汇总",
       "position": {
-        "x": 0,
-        "y": 1807
+        "x": 5877.428761046818,
+        "y": 496.59295693814227
       },
       "data": {
         "code": "async function main({ params, context }) {\n  const finalText = String(params.finalResult || '').trim();\n  const pickedTopic = params.pickedTopic || (context.collaboration && context.collaboration.pickedTopic) || { title: '未识别' };\n  const review = params.review || (context.collaboration && context.collaboration.review) || null;\n  const previousLog = (context.collaboration && context.collaboration.log) || [];\n  context.collaboration = context.collaboration || {};\n  context.collaboration.stage = 'final';\n  context.collaboration.finalText = finalText;\n  const finalLog = previousLog.concat([{\n    stage: 'final',\n    at: Date.now(),\n    agent: 'agent_content_polisher',\n    status: finalText.length > 200 ? 'ok' : 'too_short',\n    length: finalText.length\n  }]);\n  context.collaboration.log = finalLog;\n  const pipeline = [\n    { stage: 'topic', agent: 'agent_topic_planner', model: 'GLM-5.1' },\n    { stage: 'draft', agent: 'agent_content_writer', model: 'MiniMax-M2.7' },\n    { stage: 'review', agent: 'agent_content_reviewer', model: 'gpt-5.5' },\n    { stage: 'final', agent: 'agent_content_polisher', model: 'GLM-5.1' }\n  ];\n  return {\n    finalText: finalText,\n    pickedTopic: pickedTopic,\n    review: review,\n    collaborationLog: finalLog,\n    pipeline: pipeline,\n    stats: {\n      finalLength: finalText.length,\n      hasReview: !!review,\n      stages: finalLog.length\n    },\n    stage: 'final'\n  };\n}",
@@ -530,19 +545,22 @@
             "key": "finalResult",
             "type": "string",
             "value": "{{ __data__[\"node_1782802258809_sf767i\"].result }}",
-            "description": "上游 Agent-4 的最终稿件"
+            "description": "上游 Agent-4 的最终稿件",
+            "children": []
           },
           {
             "key": "pickedTopic",
             "type": "object",
             "value": "{{ __data__[\"node_1782802258808_5dd9jw\"].pickedTopic }}",
-            "description": "当前选题（从 Channel-3 透传）"
+            "description": "当前选题（从 Channel-3 透传）",
+            "children": []
           },
           {
             "key": "review",
             "type": "object",
             "value": "{{ __data__[\"node_1782802258808_5dd9jw\"].review }}",
-            "description": "结构化审阅意见（从 Channel-3 透传）"
+            "description": "结构化审阅意见（从 Channel-3 透传）",
+            "children": []
           }
         ],
         "outputs": [
@@ -911,9 +929,12 @@
     }
   ],
   "createdAt": 1782801818524,
-  "updatedAt": 1782803640123,
+  "updatedAt": 1782804977895,
   "published": false,
   "name": "文案创作",
   "description": "选题->写稿->审阅",
-  "lastRunAt": 1782802444894
+  "lastRunAt": 1782802444894,
+  "layoutSnapshot": {
+    "nodeDisplayMode": "normal"
+  }
 }

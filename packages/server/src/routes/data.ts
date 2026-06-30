@@ -78,6 +78,7 @@ const CATEGORIES: Record<string, { path: string; label: string; group: string }>
   'auth':               { path: 'auth.json',               label: 'Authentication',        group: 'config' },
   'user-settings':      { path: 'user-settings.json',      label: 'User Settings',         group: 'config' },
   'npm-settings':       { path: 'npm-settings.json',       label: 'NPM Settings',          group: 'config' },
+  'workflow-settings':  { path: 'workflow-settings.json',  label: 'Workflow Settings',     group: 'config' },
   'robot-accounts':     { path: 'robot-accounts.json',     label: 'Robot Accounts',        group: 'config' },
   'speech-recognition': { path: 'speech-recognition.json', label: 'Speech Recognition',    group: 'config' },
   'llm':                { path: 'llm',                     label: 'LLM Models & Providers', group: 'ai' },

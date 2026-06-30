@@ -144,7 +144,7 @@ function getNormalizedTargetHandle(
   if (!canShowPropertyNodeView(node, nodeDisplayMode)) {
     const parsed = parseWorkflowFieldHandleId(targetHandle);
     if (parsed?.kind === 'input' || parsed?.kind === 'property') return 'target';
-    return targetHandle || undefined;
+    return targetHandle || 'target';
   }
 
   const parsed = parseWorkflowFieldHandleId(targetHandle);
@@ -162,13 +162,48 @@ function getNormalizedSourceHandle(
   if (!canShowPropertyNodeView(node, nodeDisplayMode)) {
     const parsed = parseWorkflowFieldHandleId(sourceHandle);
     if (parsed?.kind === 'output') return 'source';
-    return sourceHandle || undefined;
+    return sourceHandle || 'source';
   }
 
   const parsed = parseWorkflowFieldHandleId(sourceHandle);
   if (parsed?.kind === 'output') return sourceHandle || undefined;
   if (sourceHandle) return sourceHandle;
   return 'source';
+}
+
+function getNormalDisplayEdgeKey(edge: Pick<Edge, 'source' | 'target'>): string {
+  return [edge.source, edge.target].join('\u0000');
+}
+
+function createNormalNodeLevelAdjacency(edges: Workflow['edges']): Map<string, string[]> {
+  const adjacency = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (isHiddenWorkflowEdge(edge) || isGeneratedReferenceRuntimeEdge(edge)) continue;
+    const sourceHandle = parseWorkflowFieldHandleId(edge.sourceHandle);
+    const targetHandle = parseWorkflowFieldHandleId(edge.targetHandle);
+    if (edge.edgeKind === 'reference' || sourceHandle?.kind !== undefined || targetHandle?.kind !== undefined) continue;
+    const targets = adjacency.get(edge.source);
+    if (targets) targets.push(edge.target);
+    else adjacency.set(edge.source, [edge.target]);
+  }
+  return adjacency;
+}
+
+function hasNormalNodeLevelPath(
+  adjacency: Map<string, string[]>,
+  source: string,
+  target: string,
+): boolean {
+  const visited = new Set<string>();
+  const stack = [...(adjacency.get(source) || [])];
+  while (stack.length > 0) {
+    const nodeId = stack.pop();
+    if (!nodeId || visited.has(nodeId)) continue;
+    if (nodeId === target) return true;
+    visited.add(nodeId);
+    stack.push(...(adjacency.get(nodeId) || []));
+  }
+  return false;
 }
 
 interface UseCanvasDataParams {
@@ -384,6 +419,9 @@ export function useCanvasData({
 
   const rfEdges: Edge[] = useMemo(() => {
     const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
+    const normalNodeLevelAdjacency = nodeDisplayMode === 'normal'
+      ? createNormalNodeLevelAdjacency(workflow.edges)
+      : null;
     return workflow.edges.filter(edge => (
       !isHiddenWorkflowEdge(edge)
       && (nodeDisplayMode === 'properties' || !isGeneratedReferenceRuntimeEdge(edge))
@@ -397,6 +435,13 @@ export function useCanvasData({
       const isFieldHandleEdge = parsedSourceHandle?.kind !== undefined || parsedTargetHandle?.kind !== undefined;
       const shouldPreferDashedLine = nodeDisplayMode === 'properties'
         && isFieldHandleEdge;
+      if (
+        normalNodeLevelAdjacency
+        && (e.edgeKind === 'reference' || isFieldHandleEdge)
+        && hasNormalNodeLevelPath(normalNodeLevelAdjacency, e.source, e.target)
+      ) {
+        return null;
+      }
       return {
         id: e.id,
         source: e.source,
@@ -422,6 +467,13 @@ export function useCanvasData({
           isFieldHandleEdge,
         } as Record<string, unknown>,
       };
+    }).filter((edge): edge is Edge => edge !== null)
+    .filter((edge, index, edges) => {
+      if (nodeDisplayMode === 'properties') return true;
+      const key = getNormalDisplayEdgeKey(edge);
+      const firstRuntimeIndex = edges.findIndex(item => getNormalDisplayEdgeKey(item) === key && (item.data as Record<string, unknown>)?.isFieldHandleEdge !== true);
+      if (firstRuntimeIndex !== -1) return index === firstRuntimeIndex;
+      return edges.findIndex(item => getNormalDisplayEdgeKey(item) === key) === index;
     });
   }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType, edgeLineStyle, nodeDisplayMode]);
 

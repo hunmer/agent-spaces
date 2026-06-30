@@ -29,6 +29,7 @@ import type {
 } from '@agent-spaces/shared';
 import { createErrorShape, isRuntimeWorkflowEdge } from '@agent-spaces/shared';
 import * as workflowStore from '../storage/workflow-store.js';
+import { getWorkflowSettings } from '../storage/workflow-settings-store.js';
 import * as pluginService from './plugin.js';
 import { getNestedValue, normalizeVariablePath, setNestedValue } from './execution-value-access.js';
 import {
@@ -210,7 +211,11 @@ export class ExecutionManager {
       executionId, workflow, ownerClientId, request.input || {}, executionSnapshot, request.context, request.env, eventSink, workspaceId,
       request.dryRun,
     );
-    session.faultTolerance = request.faultTolerance === 'stop' ? 'stop' : 'ignore';
+    // 容错模式：请求显式指定时优先，否则回退到全局 workflow-settings
+    const globalFaultTolerance = request.faultTolerance
+      ? (request.faultTolerance === 'stop' ? 'stop' : 'ignore')
+      : getWorkflowSettings().faultTolerance;
+    session.faultTolerance = globalFaultTolerance;
     if (logSnapshot) session.logSnapshot = clone(logSnapshot);
     if (request.startNodeId) session.partialStartNodeId = request.startNodeId;
     this.recordContextPresetSteps(session);

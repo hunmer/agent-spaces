@@ -47,6 +47,7 @@ export { createPromptsApi, type PromptTemplate } from './modules/prompts';
 export { createSkillsApi, type SkillInfo, type SkillSyncItem } from './modules/skills';
 export { createMcpsApi, type McpServerInfo } from './modules/mcps';
 export { createNpmSettingsApi, type NpmSettings } from './modules/npm-settings';
+export { createWorkflowSettingsApi, type WorkflowSettings, type WorkflowFaultTolerance } from './modules/workflow-settings';
 export { createOutputStylesApi, type OutputStyleTemplate } from './modules/output-styles';
 export { createToolsApi } from './modules/tools';
 export { createRobotAccountsApi, type RobotAccount } from './modules/robot-accounts';
@@ -91,6 +92,7 @@ import { createPromptsApi } from './modules/prompts';
 import { createSkillsApi } from './modules/skills';
 import { createMcpsApi } from './modules/mcps';
 import { createNpmSettingsApi } from './modules/npm-settings';
+import { createWorkflowSettingsApi } from './modules/workflow-settings';
 import { createOutputStylesApi } from './modules/output-styles';
 import { createToolsApi } from './modules/tools';
 import { createRobotAccountsApi } from './modules/robot-accounts';
@@ -138,6 +140,7 @@ export interface SDK {
   readonly skills: ReturnType<typeof createSkillsApi>;
   readonly mcps: ReturnType<typeof createMcpsApi>;
   readonly npmSettings: ReturnType<typeof createNpmSettingsApi>;
+  readonly workflowSettings: ReturnType<typeof createWorkflowSettingsApi>;
   readonly outputStyles: ReturnType<typeof createOutputStylesApi>;
   readonly tools: ReturnType<typeof createToolsApi>;
   readonly robotAccounts: ReturnType<typeof createRobotAccountsApi>;
@@ -193,6 +196,7 @@ export function createSDK(config: SDKConfig): SDK {
     skills: createSkillsApi(http),
     mcps: createMcpsApi(http),
     npmSettings: createNpmSettingsApi(http),
+    workflowSettings: createWorkflowSettingsApi(http),
     outputStyles: createOutputStylesApi(http),
     tools: createToolsApi(http),
     robotAccounts: createRobotAccountsApi(http),

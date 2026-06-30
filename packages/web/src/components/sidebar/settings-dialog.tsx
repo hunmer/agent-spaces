@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket, Database, Package, BookOpen } from "lucide-react";
+import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket, Database, Package, BookOpen, Workflow } from "lucide-react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
 import { LanguageTab } from "./settings/language-tab";
@@ -25,6 +25,7 @@ import { AgentStoreTab } from "./settings/agent-store-tab";
 import { DataTab } from "./settings/data-tab";
 import { NpmSettingsTab } from "./settings/npm-settings-tab";
 import { ModelCatalogTab } from "./settings/model-catalog-tab";
+import { WorkflowTab } from "./settings/workflow-tab";
 
 const tabs = [
   { key: "appearance", icon: Palette },
@@ -36,6 +37,7 @@ const tabs = [
   { key: "agent_store", icon: Store },
   { key: "npm", icon: Package },
   { key: "model_catalog", icon: BookOpen },
+  { key: "workflow", icon: Workflow },
   { key: "data", icon: Database },
   { key: "git", icon: GitBranch },
   { key: "speech", icon: Mic },
