@@ -99,9 +99,15 @@
     "raw": "Raw JSON",
     "loading": "Loading session detail...",
     "empty": "No session messages found.",
-    "promptInfo": "Prompt Info",
+    "promptInfo": "Context Detail",
     "requests": "Tokens",
     "cost": "Cost",
-    "duration": "Duration"
+    "duration": "Duration",
+    "effectiveContext": "Effective Context",
+    "totalUsageWithCache": "Total Usage (incl. cache)",
+    "newInput": "New Input",
+    "output": "Output",
+    "reasoning": "Reasoning",
+    "cachedInput": "Cached Input"
   }
 }

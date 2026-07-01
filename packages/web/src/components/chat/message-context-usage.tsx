@@ -20,7 +20,8 @@ import {
   ContextReasoningUsage,
   ContextTrigger,
 } from "./context"
-import { AgentContextPanel, aggregateTokenUsage, toContextUsage } from "./message-context-panel"
+import { ContextPartChatView } from "./message-context-to-chat"
+import { aggregateTokenUsage, toContextUsage } from "./message-context-panel"
 
 export function MessageContextUsage({ message }: { message: Message }) {
   const t = useTranslations('chat.contextUsage')
@@ -117,7 +118,7 @@ export function MessageContextUsage({ message }: { message: Message }) {
               <ScrollArea className="max-h-[min(68vh,720px)] min-w-0 flex-1">
                 {contextParts.map((item) => (
                   <TabsContent key={item.id} value={item.id} className="m-0 min-w-0 p-5">
-                    <AgentContextPanel part={item} />
+                    <ContextPartChatView part={item} />
                   </TabsContent>
                 ))}
               </ScrollArea>

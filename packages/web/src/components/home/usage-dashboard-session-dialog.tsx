@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl"
 import type { AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from "@agent-spaces/shared"
 import { ChevronDown, Loader2 } from "lucide-react"
 
-import { AgentContextPanel } from "@/components/chat/message-context-panel"
 import { ChatMessageList } from "@/components/chat/chat-message-list"
+import { ContextPartChatView } from "@/components/chat/message-context-to-chat"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -176,9 +176,7 @@ function SessionMessageExtras({
             {t("sessionDetail.promptInfo")}
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-2">
-            <div className="rounded-md border p-3">
-              <AgentContextPanel part={message.contextPart} />
-            </div>
+            <ContextPartChatView part={message.contextPart} />
           </CollapsibleContent>
         </Collapsible>
       ) : null}

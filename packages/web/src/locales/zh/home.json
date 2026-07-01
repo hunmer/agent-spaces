@@ -99,9 +99,15 @@
     "raw": "原始 JSON",
     "loading": "正在加载会话详情...",
     "empty": "未找到会话消息",
-    "promptInfo": "提示详情",
+    "promptInfo": "上下文详情",
     "requests": "Tokens",
     "cost": "费用",
-    "duration": "耗时"
+    "duration": "耗时",
+    "effectiveContext": "有效上下文",
+    "totalUsageWithCache": "总用量（含缓存）",
+    "newInput": "新输入",
+    "output": "输出",
+    "reasoning": "推理",
+    "cachedInput": "缓存输入"
   }
 }
