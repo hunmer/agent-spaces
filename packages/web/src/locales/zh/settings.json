@@ -141,7 +141,7 @@
   "runtimeInstallSuccess": "已用 {packageManager} 安装 {runtime}",
   "runtimeInstallFailed": "安装 Runtime 包失败",
   "runtimeUpdatedAt": "最近更新时间：{date}",
-  "runtimeEmpty": "还没有发现结果，点击发现按钮扫描本地 CLI。",
+  "runtimeEmpty": "暂时没有可展示的运行时结果。",
   "runtimeFound": "已发现",
   "runtimeMissing": "未发现",
   "runtimeNotFound": "当前机器未找到该命令",
@@ -185,6 +185,6 @@
   "runtimeCheckUpdateSuccess": "检查更新完成",
   "runtimeCheckUpdateFailed": "检查更新失败",
   "runtimeLatestVersion": "最新版本",
-  "runtimeUpToDate": "更新",
-  "runtimeProcessing": "更新中..."
+  "runtimeUpToDate": "已最新",
+  "runtimeProcessing": "处理中..."
 }

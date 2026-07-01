@@ -11,7 +11,7 @@
     "!dist/**/*.map",
     "!dist/shared",
     "!public/uploads",
-    "!public/avatars" 
+    "!public/avatars"
   ],
   "publishConfig": {
     "access": "public"
@@ -58,7 +58,7 @@
   "optionalDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.126",
     "@codeany/open-agent-sdk": "^0.2.1",
-    "@openai/codex-sdk": "^0.128.0"
+    "@openai/codex-sdk": "^0.142.5"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.6",

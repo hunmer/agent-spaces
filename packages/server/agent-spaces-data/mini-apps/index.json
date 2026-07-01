@@ -290,5 +290,15 @@
     ],
     "enableAgents": true,
     "icon": "🎨"
+  },
+  {
+    "id": "workflow-miniapp",
+    "name": "workflow-miniapp",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-07-01T09:11:14.435Z",
+    "updatedAt": "2026-07-01T09:11:14.435Z"
   }
 ]

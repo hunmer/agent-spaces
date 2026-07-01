@@ -12,17 +12,27 @@ const rootDir = join(__dirname, '../..');
 const workspaceRootDir = join(rootDir, '../..');
 const requireFromRoot = createRequire(join(rootDir, 'package.json'));
 
-type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'open-agent-sdk'>;
+type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'open-agent-sdk' | 'hermes' | 'oh-my-pi'>;
 type InstallableRuntimePackageId = RuntimeDescriptor['id'];
 type RuntimeCategory = 'cli' | 'sdk';
+type VersionSource = { type: 'npm'; packageName: string } | { type: 'github'; repo: string };
+type InstallCommandSpec = {
+  command: string;
+  args: string[];
+  cwd: string;
+  packageManagerLabel: string;
+};
 
 interface RuntimeDescriptor {
-  id: 'claude-code' | 'codex' | 'gemini-cli' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
+  id: 'claude-code' | 'codex' | 'gemini-cli' | 'hermes' | 'oh-my-pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
   category: RuntimeCategory;
   label: string;
   commands?: string[];
   runtimeKind?: SupportedRuntimeKind;
   packageName?: string;
+  versionArgs?: string[];
+  versionSource?: VersionSource;
+  installable?: boolean;
 }
 
 interface RuntimeCheckUpdateRequestBody {
@@ -51,11 +61,33 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     commands: ['gemini'],
   },
   {
+    id: 'hermes',
+    category: 'cli',
+    label: 'Hermes CLI',
+    commands: ['hermes'],
+    runtimeKind: 'hermes',
+    versionArgs: ['--version'],
+    versionSource: { type: 'github', repo: 'NousResearch/hermes-agent' },
+    installable: true,
+  },
+  {
+    id: 'oh-my-pi',
+    category: 'cli',
+    label: 'Oh My Pi CLI',
+    commands: ['omp'],
+    runtimeKind: 'oh-my-pi',
+    versionArgs: ['--version'],
+    versionSource: { type: 'github', repo: 'can1357/oh-my-pi' },
+    installable: true,
+  },
+  {
     id: 'claude-code-sdk',
     category: 'sdk',
     label: 'Claude Code SDK',
     runtimeKind: 'claude-code',
     packageName: '@anthropic-ai/claude-agent-sdk',
+    versionSource: { type: 'npm', packageName: '@anthropic-ai/claude-agent-sdk' },
+    installable: true,
   },
   {
     id: 'codex-sdk',
@@ -63,6 +95,8 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     label: 'Codex SDK',
     runtimeKind: 'codex',
     packageName: '@openai/codex-sdk',
+    versionSource: { type: 'npm', packageName: '@openai/codex-sdk' },
+    installable: true,
   },
   {
     id: 'open-agent-sdk',
@@ -70,6 +104,8 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     label: 'Open Agent SDK',
     runtimeKind: 'open-agent-sdk',
     packageName: '@codeany/open-agent-sdk',
+    versionSource: { type: 'npm', packageName: '@codeany/open-agent-sdk' },
+    installable: true,
   },
 ];
 
@@ -80,35 +116,23 @@ router.post('/discover-cli', async (_req: Request, res: Response) => {
 
 router.post('/install-cli', async (req: Request, res: Response) => {
   const runtimeId = req.body?.runtimeId;
-  if (
-    runtimeId !== 'claude-code-sdk'
-    && runtimeId !== 'codex-sdk'
-    && runtimeId !== 'open-agent-sdk'
-  ) {
-    res.status(400).json({ error: 'runtimeId must be claude-code-sdk, codex-sdk, or open-agent-sdk' });
-    return;
-  }
-
   const descriptor = RUNTIME_DESCRIPTORS.find(
     (item): item is RuntimeDescriptor & { id: InstallableRuntimePackageId } => item.id === runtimeId,
   );
-  if (descriptor?.category !== 'sdk' || !descriptor.packageName) {
+  if (!descriptor?.installable) {
     res.status(400).json({ error: `runtime ${runtimeId} is not installable` });
     return;
   }
 
   try {
-    const packageManager = resolvePackageManager();
-    const packageSpec = `${descriptor.packageName}@latest`;
-    const args = packageManager === 'pnpm'
-      ? ['add', packageSpec]
-      : ['install', packageSpec];
-    const result = await runCommand(packageManager, args, rootDir);
+    const installCommand = resolveRuntimeInstallCommand(descriptor);
+    const packageSpec = descriptor.packageName ? `${descriptor.packageName}@latest` : descriptor.label;
+    const result = await runCommand(installCommand.command, installCommand.args, installCommand.cwd);
     const items = await Promise.all(RUNTIME_DESCRIPTORS.map(discoverRuntime));
     res.json({
       ok: true,
       runtimeId,
-      packageManager,
+      packageManager: installCommand.packageManagerLabel,
       packages: [packageSpec],
       stdout: result.stdout,
       stderr: result.stderr,
@@ -124,16 +148,14 @@ router.post('/install-cli', async (req: Request, res: Response) => {
 router.post('/check-sdk-updates', async (req: Request, res: Response) => {
   const runtimeId = (req.body as RuntimeCheckUpdateRequestBody | undefined)?.runtimeId;
   const targets = RUNTIME_DESCRIPTORS.filter((item) => (
-    item.category === 'sdk'
-    && item.packageName
+    item.installable
+    && item.versionSource
     && (!runtimeId || item.id === runtimeId)
   ));
 
   try {
     const updates = await Promise.all(targets.map(async (item) => {
-      const result = item.packageName
-        ? await fetchLatestPackageVersion(item.packageName)
-        : { latestVersion: null, debug: { packageName: null, command: null, cwd: rootDir, stdout: '', stderr: '', error: 'missing packageName' } };
+      const result = await fetchLatestVersion(item);
       return {
         runtimeId: item.id,
         latestVersion: result.latestVersion,
@@ -165,17 +187,17 @@ async function discoverRuntime(descriptor: RuntimeDescriptor) {
     };
   }
 
-  for (const command of descriptor.commands ?? []) {
-    const path = await locateCommand(command);
-    if (!path) continue;
+  const path = await locateRuntimeCommand(descriptor);
+  if (path) {
+    const version = await readInstalledCliVersion(descriptor, path);
     return {
       id: descriptor.id,
       category: descriptor.category,
       label: descriptor.label,
-      command,
+      command: descriptor.commands?.[0] ?? descriptor.id,
       found: true,
       path,
-      version: null,
+      version,
       runtimeKind: descriptor.runtimeKind ?? null,
       supportedRuntime: Boolean(descriptor.runtimeKind),
     };
@@ -216,6 +238,56 @@ function locateCommand(command: string): Promise<string | null> {
       resolve(firstLine ?? null);
     });
   });
+}
+
+async function locateRuntimeCommand(descriptor: RuntimeDescriptor): Promise<string | null> {
+  for (const command of descriptor.commands ?? []) {
+    const path = await locateCommand(command);
+    if (path) return path;
+  }
+
+  if (descriptor.id === 'hermes') {
+    return resolveWindowsInstalledCliPath('HERMES_CLI_PATH', [
+      ['hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe'],
+      ['AppData', 'Local', 'hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe'],
+    ]);
+  }
+
+  if (descriptor.id === 'oh-my-pi') {
+    return resolveWindowsInstalledCliPath('OMP_CLI_PATH', [
+      ['omp', 'omp.exe'],
+      ['AppData', 'Local', 'omp', 'omp.exe'],
+    ]);
+  }
+
+  return null;
+}
+
+function resolveWindowsInstalledCliPath(configEnvName: 'HERMES_CLI_PATH' | 'OMP_CLI_PATH', relativeCandidates: string[][]): string | null {
+  const configured = process.env[configEnvName]?.trim();
+  if (configured && existsSync(configured)) return configured;
+  if (process.platform !== 'win32') return null;
+
+  const bases = [process.env.LOCALAPPDATA, process.env.USERPROFILE].filter((value): value is string => Boolean(value));
+  for (const base of bases) {
+    for (const parts of relativeCandidates) {
+      const candidate = join(base, ...parts);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+async function readInstalledCliVersion(descriptor: RuntimeDescriptor, commandPath: string): Promise<string | null> {
+  const versionArgs = descriptor.versionArgs;
+  if (!versionArgs || versionArgs.length === 0) return null;
+
+  try {
+    const result = await runCommand(commandPath, versionArgs, rootDir);
+    return extractNormalizedVersion(result.stdout || result.stderr);
+  } catch {
+    return null;
+  }
 }
 
 function locatePackage(packageName: string): string | null {
@@ -271,10 +343,88 @@ function findPackageJsonPath(entryPath: string, packageName: string): string | n
   return null;
 }
 
-function resolvePackageManager() {
-  if (existsSync(join(rootDir, 'pnpm-lock.yaml'))) return 'pnpm';
-  if (existsSync(join(rootDir, 'package-lock.json'))) return 'npm';
-  return 'npm';
+function resolveInstallTarget(): { packageManager: 'pnpm' | 'npm'; cwd: string } {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (!isProduction && existsSync(join(workspaceRootDir, 'pnpm-lock.yaml'))) {
+    return {
+      packageManager: 'pnpm',
+      cwd: workspaceRootDir,
+    };
+  }
+
+  if (existsSync(join(rootDir, 'package-lock.json'))) {
+    return {
+      packageManager: 'npm',
+      cwd: rootDir,
+    };
+  }
+
+  if (existsSync(join(rootDir, 'pnpm-lock.yaml'))) {
+    return {
+      packageManager: 'pnpm',
+      cwd: rootDir,
+    };
+  }
+
+  return {
+    packageManager: 'npm',
+    cwd: rootDir,
+  };
+}
+
+function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor): InstallCommandSpec {
+  if (descriptor.category === 'sdk' && descriptor.packageName) {
+    const installTarget = resolveInstallTarget();
+    const packageSpec = `${descriptor.packageName}@latest`;
+    return installTarget.packageManager === 'pnpm'
+      ? {
+          command: 'pnpm',
+          args: ['--filter', '@agent-spaces/server', 'add', packageSpec],
+          cwd: installTarget.cwd,
+          packageManagerLabel: 'pnpm',
+        }
+      : {
+          command: 'npm',
+          args: ['install', packageSpec],
+          cwd: installTarget.cwd,
+          packageManagerLabel: 'npm',
+        };
+  }
+
+  if (descriptor.id === 'hermes') {
+    return process.platform === 'win32'
+      ? {
+          command: 'powershell.exe',
+          args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'iex (irm https://hermes-agent.nousresearch.com/install.ps1)'],
+          cwd: rootDir,
+          packageManagerLabel: 'powershell',
+        }
+      : {
+          command: 'sh',
+          args: ['-c', 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash'],
+          cwd: rootDir,
+          packageManagerLabel: 'shell',
+        };
+  }
+
+  if (descriptor.id === 'oh-my-pi') {
+    return process.platform === 'win32'
+      ? {
+          command: 'powershell.exe',
+          args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://omp.sh/install.ps1 | iex'],
+          cwd: rootDir,
+          packageManagerLabel: 'powershell',
+        }
+      : {
+          command: 'sh',
+          args: ['-c', 'curl -fsSL https://omp.sh/install | sh'],
+          cwd: rootDir,
+          packageManagerLabel: 'shell',
+        };
+  }
+
+  throw new Error(`runtime ${descriptor.id} is not installable`);
 }
 
 function runCommand(command: string, args: string[], cwd: string): Promise<{ stdout: string; stderr: string }> {
@@ -352,6 +502,90 @@ async function fetchLatestPackageVersion(packageName: string): Promise<{
       },
     };
   }
+}
+
+async function fetchLatestGithubReleaseVersion(repo: string): Promise<{
+  latestVersion: string | null;
+  debug: {
+    packageName: string;
+    command: string;
+    cwd: string;
+    stdout: string;
+    stderr: string;
+    error: string | null;
+  };
+}> {
+  const command = `GET https://api.github.com/repos/${repo}/releases/latest`;
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'agent-spaces-runtime-checker',
+      },
+    });
+    const body = await response.text();
+    if (!response.ok) {
+      throw new Error(`github latest release request failed: ${response.status}`);
+    }
+    const parsed = JSON.parse(body) as { tag_name?: unknown; name?: unknown };
+    const version = extractNormalizedVersion(
+      typeof parsed.tag_name === 'string'
+        ? parsed.tag_name
+        : typeof parsed.name === 'string'
+          ? parsed.name
+          : '',
+    );
+    return {
+      latestVersion: version,
+      debug: {
+        packageName: repo,
+        command,
+        cwd: rootDir,
+        stdout: body,
+        stderr: '',
+        error: null,
+      },
+    };
+  } catch (error) {
+    return {
+      latestVersion: null,
+      debug: {
+        packageName: repo,
+        command,
+        cwd: rootDir,
+        stdout: '',
+        stderr: '',
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+}
+
+function fetchLatestVersion(descriptor: RuntimeDescriptor) {
+  if (!descriptor.versionSource) {
+    return Promise.resolve({
+      latestVersion: null,
+      debug: {
+        packageName: descriptor.packageName ?? descriptor.id,
+        command: '',
+        cwd: rootDir,
+        stdout: '',
+        stderr: '',
+        error: 'missing versionSource',
+      },
+    });
+  }
+
+  return descriptor.versionSource.type === 'npm'
+    ? fetchLatestPackageVersion(descriptor.versionSource.packageName)
+    : fetchLatestGithubReleaseVersion(descriptor.versionSource.repo);
+}
+
+function extractNormalizedVersion(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/v?\d+(?:\.\d+)+(?:[-+][0-9A-Za-z.-]+)?/);
+  return match ? match[0].replace(/^v/i, '') : trimmed.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? null;
 }
 
 function resolveExecutable(command: string): string {

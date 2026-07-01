@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-export type RuntimeCliId = "claude-code" | "codex" | "gemini-cli" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+export type RuntimeCliId =
+  | "claude-code"
+  | "codex"
+  | "gemini-cli"
+  | "hermes"
+  | "oh-my-pi"
+  | "claude-code-sdk"
+  | "codex-sdk"
+  | "open-agent-sdk";
 export type RuntimeCategory = "cli" | "sdk";
-export type SupportedRuntimeKind = "claude-code" | "codex" | "open-agent-sdk";
+export type SupportedRuntimeKind = "claude-code" | "codex" | "open-agent-sdk" | "hermes" | "oh-my-pi";
 
 export interface RuntimeCliDiscoveryItem {
   id: RuntimeCliId;
@@ -84,6 +92,7 @@ export function saveRuntimeCliDiscovery(items: RuntimeCliDiscoveryResponseItem[]
   const next: RuntimeCliSettingsState = {
     items: items.map((item) => ({
       ...item,
+      latestVersion: previousById.get(item.id)?.latestVersion ?? null,
       enabled: item.category === "cli" && item.found ? (previousById.get(item.id)?.enabled ?? true) : false,
     })),
     updatedAt: new Date().toISOString(),
@@ -123,6 +132,8 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
     value.id !== "claude-code"
     && value.id !== "codex"
     && value.id !== "gemini-cli"
+    && value.id !== "hermes"
+    && value.id !== "oh-my-pi"
     && value.id !== "claude-code-sdk"
     && value.id !== "codex-sdk"
     && value.id !== "open-agent-sdk"
@@ -138,6 +149,12 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
     latestVersion: typeof value.latestVersion === "string" ? value.latestVersion : null,
     enabled: value.enabled === true,
     supportedRuntime: value.supportedRuntime === true,
-    runtimeKind: value.runtimeKind === "claude-code" || value.runtimeKind === "codex" || value.runtimeKind === "open-agent-sdk" ? value.runtimeKind : null,
+    runtimeKind: value.runtimeKind === "claude-code"
+      || value.runtimeKind === "codex"
+      || value.runtimeKind === "open-agent-sdk"
+      || value.runtimeKind === "hermes"
+      || value.runtimeKind === "oh-my-pi"
+      ? value.runtimeKind
+      : null,
   };
 }

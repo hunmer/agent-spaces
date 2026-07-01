@@ -21,8 +21,8 @@ interface DiscoverRuntimeCliResponse {
 
 interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
   ok: boolean;
-  runtimeId: "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
-  packageManager: "npm" | "pnpm";
+  runtimeId: "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+  packageManager: string;
   packages: string[];
   stdout: string;
   stderr: string;
@@ -30,7 +30,7 @@ interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
 
 interface CheckSdkUpdatesResponse {
   updates: Array<{
-    runtimeId: "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+    runtimeId: "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
     latestVersion: string | null;
     debug: {
       packageName: string | null;
@@ -43,13 +43,16 @@ interface CheckSdkUpdatesResponse {
   }>;
 }
 
+type InstallableRuntimeId = "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["hermes", "oh-my-pi"]);
+
 export function RuntimeTab() {
   const t = useTranslations("settings");
   const { items, updatedAt } = useRuntimeCliSettings();
   const [activeTab, setActiveTab] = useState<"cli" | "sdk">("cli");
   const [refreshingTab, setRefreshingTab] = useState<"cli" | "sdk" | null>(null);
-  const [installingId, setInstallingId] = useState<"claude-code-sdk" | "codex-sdk" | "open-agent-sdk" | null>(null);
-  const [checkingUpdateId, setCheckingUpdateId] = useState<"claude-code-sdk" | "codex-sdk" | "open-agent-sdk" | "all" | null>(null);
+  const [installingId, setInstallingId] = useState<InstallableRuntimeId | null>(null);
+  const [checkingUpdateId, setCheckingUpdateId] = useState<InstallableRuntimeId | "all" | null>(null);
   const cliItems = items.filter((item) => item.category === "cli");
   const sdkItems = items.filter((item) => item.category === "sdk");
 
@@ -71,7 +74,7 @@ export function RuntimeTab() {
     void refreshRuntimeItems(activeTab);
   }, [activeTab, refreshRuntimeItems]);
 
-  const handleInstall = async (runtimeId: "claude-code-sdk" | "codex-sdk" | "open-agent-sdk") => {
+  const handleInstall = async (runtimeId: InstallableRuntimeId) => {
     setInstallingId(runtimeId);
     try {
       const data = await sdk.http.post<InstallRuntimeCliResponse>("/api/runtime/install-cli", { runtimeId });
@@ -90,18 +93,17 @@ export function RuntimeTab() {
     }
   };
 
-  const handleCheckUpdates = async (runtimeId?: "claude-code-sdk" | "codex-sdk" | "open-agent-sdk") => {
+  const handleCheckUpdates = async (runtimeId?: InstallableRuntimeId) => {
     setCheckingUpdateId(runtimeId ?? "all");
     try {
       const data = await sdk.http.post<CheckSdkUpdatesResponse>("/api/runtime/check-sdk-updates", runtimeId ? { runtimeId } : {});
       console.debug("[runtime] check-sdk-updates response", data);
       const latestById = new Map(data.updates.map((item) => [item.runtimeId, item.latestVersion]));
       const next = {
-        items: items.map((item) => (
-          item.category === "sdk"
-            ? { ...item, latestVersion: latestById.get(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk") ?? item.latestVersion ?? null }
-            : item
-        )),
+        items: items.map((item) => ({
+          ...item,
+          latestVersion: latestById.get(item.id as InstallableRuntimeId) ?? item.latestVersion ?? null,
+        })),
         updatedAt: new Date().toISOString(),
       };
       if (typeof window !== "undefined") {
@@ -146,12 +148,12 @@ export function RuntimeTab() {
     Boolean(item.found && item.version && item.latestVersion && item.version === item.latestVersion)
   );
 
-  const getSdkAction = (item: RuntimeCliDiscoveryItem) => {
+  const getInstallableAction = (item: RuntimeCliDiscoveryItem) => {
     if (!item.found) {
       return {
         icon: Download,
         label: t("runtimeInstall"),
-        onClick: () => handleInstall(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+        onClick: () => handleInstall(item.id as InstallableRuntimeId),
         disabled: installingId !== null || checkingUpdateId !== null,
       };
     }
@@ -159,7 +161,7 @@ export function RuntimeTab() {
       return {
         icon: Download,
         label: t("runtimeUpdate"),
-        onClick: () => handleInstall(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+        onClick: () => handleInstall(item.id as InstallableRuntimeId),
         disabled: installingId !== null || checkingUpdateId !== null,
       };
     }
@@ -167,14 +169,14 @@ export function RuntimeTab() {
       return {
         icon: Check,
         label: t("runtimeUpToDate"),
-        onClick: () => handleCheckUpdates(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+        onClick: () => handleCheckUpdates(item.id as InstallableRuntimeId),
         disabled: checkingUpdateId !== null || installingId !== null,
       };
     }
     return {
       icon: ArrowUpCircle,
       label: t("runtimeCheckUpdate"),
-      onClick: () => handleCheckUpdates(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+      onClick: () => handleCheckUpdates(item.id as InstallableRuntimeId),
       disabled: checkingUpdateId !== null || installingId !== null,
     };
   };
@@ -235,8 +237,31 @@ export function RuntimeTab() {
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {item.found ? item.path : t("runtimeNotFound")}
                     </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {item.found && item.version ? `${t("runtimeVersion")}: ${item.version}` : null}
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {item.latestVersion ? `${t("runtimeLatestVersion")}: ${item.latestVersion}` : null}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {INSTALLABLE_CLI_IDS.has(item.id as InstallableRuntimeId) ? (() => {
+                      const action = getInstallableAction(item);
+                      const Icon = action.icon;
+                      const spinning = installingId === item.id || checkingUpdateId === item.id;
+                      return (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={action.onClick}
+                          disabled={action.disabled}
+                        >
+                          {spinning ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Icon className="mr-1.5 size-3.5" />}
+                          {spinning ? t("runtimeProcessing") : action.label}
+                        </Button>
+                      );
+                    })() : null}
                     <Switch
                       checked={item.enabled}
                       onCheckedChange={(checked) => setRuntimeCliEnabled(item.id, checked)}
@@ -289,7 +314,7 @@ export function RuntimeTab() {
                 </div>
                 <div className="flex items-center gap-2">
                   {(() => {
-                    const action = getSdkAction(item);
+                    const action = getInstallableAction(item);
                     const Icon = action.icon;
                     const spinning = installingId === item.id || checkingUpdateId === item.id;
                     return (

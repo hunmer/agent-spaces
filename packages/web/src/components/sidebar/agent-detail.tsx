@@ -41,7 +41,7 @@ import {
   Camera,
 } from "lucide-react";
 import { sdk } from "@/lib/sdk";
-import { getEnabledDiscoveredRuntimeKinds, useRuntimeCliSettings } from "@/lib/runtime-cli-settings";
+import { useRuntimeCliSettings } from "@/lib/runtime-cli-settings";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
@@ -111,19 +111,20 @@ export function AgentDetail({
       .map((m) => ({ value: m.modelId, label: m.name }));
   }, [selectedProvider, llmModels]);
   const runtimeOptions = useMemo(() => {
-    const discoveredCliOptions = discoveredRuntimeCliItems
-      .filter((item) => item.found && item.enabled && item.supportedRuntime && item.runtimeKind)
+    const discoveredRuntimeOptions = discoveredRuntimeCliItems
+      .filter((item): item is typeof item & { runtimeKind: NonNullable<typeof item.runtimeKind> } => (
+        item.found && item.supportedRuntime && Boolean(item.runtimeKind)
+      ))
       .map((item) => ({
         value: item.runtimeKind,
         label: item.label,
       }));
 
-    const discoveredKinds = new Set(getEnabledDiscoveredRuntimeKinds(discoveredRuntimeCliItems));
     const baseOptions = RUNTIME_OPTIONS
-      .filter((option) => !discoveredKinds.has(option.value as "claude-code" | "codex"))
+      .filter((option) => option.value === "langchain")
       .map((option) => ({ value: option.value, label: t(`runtime.${option.labelKey}`) }));
 
-    const merged = [...discoveredCliOptions, ...baseOptions];
+    const merged = [...discoveredRuntimeOptions, ...baseOptions];
     const deduped = new Map(merged.map((option) => [option.value, option]));
     if (agent.runtimeKind && !deduped.has(agent.runtimeKind)) {
       const current = RUNTIME_OPTIONS.find((option) => option.value === agent.runtimeKind);
