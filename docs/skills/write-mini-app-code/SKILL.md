@@ -291,6 +291,31 @@ Route state is single-`route` query param: path segments joined by `/`, query st
 
 Only render the active view. Avoid `.map`-ing every view into the tree (pre-rendering all tabs) when a single `<TabsContent>` keyed on the active value suffices.
 
+## Miniapp In Workflow
+
+Workflow miniapps can be embedded by the built-in workflow node `show_miniapp`. When editing a miniapp that will run inside a workflow, follow these rules:
+
+- Treat route and runtime params as host-provided workflow context, not user-entered page state.
+- Read route state from the built-in router (`Router` / `useRouter`) and read workflow params from the host runtime bridge.
+- Do not rely on URL `query.payload` as the primary transport for workflow params. Keep query parsing only as a compatibility fallback when needed.
+- The host sends runtime context with `postMessage` using `agent-spaces:mini-app-runtime:init`; the preview page exposes the same context through `window.AgentSpaces.getRuntimeContext()` / `window.AgentSpacesAPI.getRuntimeContext()`.
+- When host timing matters, prefer a ready/init handshake instead of assuming one load-time message is enough. The preview iframe may need to announce readiness before the host resends runtime context.
+- Keep workflow submit/cancel messaging centralized in one helper such as `src/utils/host.js`; route components should call the helper, not hand-roll `window.parent.postMessage(...)`.
+- Workflow completion/continuation messages must use `agent-spaces:workflow-miniapp-submit`.
+
+Rendering rules for `show_miniapp`:
+
+- Normal editor state, not running: if the node enables inline display, the node should still show a placeholder instead of eagerly rendering the miniapp.
+- Workflow preview mode: inline miniapps should render for real, not show the placeholder.
+- Runtime with `embedDisplay=true`: render inline in the node and do not also require a separate dialog UI for the same interaction.
+- Runtime with `embedDisplay=false`: the workflow host may open the miniapp in the interaction dialog.
+
+Implementation guidance:
+
+- If a miniapp is meant for workflow use, document the contract in `src/CLAUDE.md`: supported routes, expected runtime params, and submit payload shape.
+- For demo or starter workflow miniapps, include a small debug panel that shows current route, payload source, and resolved runtime params while developing the protocol. Remove or tone down noisy console logs after the protocol stabilizes.
+- If the workflow host protocol changes, update the shared bridge/helper files first (`utils/host.js`, payload/runtime helpers, preview host glue) instead of scattering protocol fixes across route components.
+
 ## Config And Data Helpers
 
 For project-local persistence, prefer the server-side [Project Services](#project-services-server-side-writers) channel so a single writer owns `configs/` and changes fan out to every client. The direct helpers below remain available for simple projects, but they do not protect against concurrent multi-client overwrites.
