@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from "react";
 
-export type RuntimeCliId = "claude-code" | "codex" | "gemini-cli";
-export type SupportedRuntimeKind = "claude-code" | "codex";
+export type RuntimeCliId = "claude-code" | "codex" | "gemini-cli" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+export type RuntimeCategory = "cli" | "sdk";
+export type SupportedRuntimeKind = "claude-code" | "codex" | "open-agent-sdk";
 
 export interface RuntimeCliDiscoveryItem {
   id: RuntimeCliId;
+  category: RuntimeCategory;
   label: string;
   command: string;
   found: boolean;
   path: string | null;
+  version: string | null;
   enabled: boolean;
   supportedRuntime: boolean;
   runtimeKind: SupportedRuntimeKind | null;
@@ -23,10 +26,12 @@ interface RuntimeCliSettingsState {
 
 interface RuntimeCliDiscoveryResponseItem {
   id: RuntimeCliId;
+  category: RuntimeCategory;
   label: string;
   command: string;
   found: boolean;
   path: string | null;
+  version: string | null;
   supportedRuntime: boolean;
   runtimeKind: SupportedRuntimeKind | null;
 }
@@ -78,7 +83,7 @@ export function saveRuntimeCliDiscovery(items: RuntimeCliDiscoveryResponseItem[]
   const next: RuntimeCliSettingsState = {
     items: items.map((item) => ({
       ...item,
-      enabled: item.found ? (previousById.get(item.id)?.enabled ?? true) : false,
+      enabled: item.category === "cli" && item.found ? (previousById.get(item.id)?.enabled ?? true) : false,
     })),
     updatedAt: new Date().toISOString(),
   };
@@ -113,15 +118,24 @@ function persistRuntimeCliSettings(state: RuntimeCliSettingsState) {
 function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
   if (!item || typeof item !== "object") return null;
   const value = item as Partial<RuntimeCliDiscoveryItem>;
-  if (value.id !== "claude-code" && value.id !== "codex" && value.id !== "gemini-cli") return null;
+  if (
+    value.id !== "claude-code"
+    && value.id !== "codex"
+    && value.id !== "gemini-cli"
+    && value.id !== "claude-code-sdk"
+    && value.id !== "codex-sdk"
+    && value.id !== "open-agent-sdk"
+  ) return null;
   return {
     id: value.id,
+    category: value.category === "sdk" ? "sdk" : "cli",
     label: typeof value.label === "string" ? value.label : value.id,
     command: typeof value.command === "string" ? value.command : value.id,
     found: value.found === true,
     path: typeof value.path === "string" ? value.path : null,
+    version: typeof value.version === "string" ? value.version : null,
     enabled: value.enabled === true,
     supportedRuntime: value.supportedRuntime === true,
-    runtimeKind: value.runtimeKind === "claude-code" || value.runtimeKind === "codex" ? value.runtimeKind : null,
+    runtimeKind: value.runtimeKind === "claude-code" || value.runtimeKind === "codex" || value.runtimeKind === "open-agent-sdk" ? value.runtimeKind : null,
   };
 }

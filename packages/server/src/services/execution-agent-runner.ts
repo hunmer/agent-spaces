@@ -75,7 +75,7 @@ async function executeAgentWithRuntime(
   const mcpServers = agentService.getMcpServers(preset.mcps);
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
 
-  appendLog('info', `Runtime: ${preset.runtimeKind || 'open-agent-sdk'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
+  appendLog('info', `Runtime: ${preset.runtimeKind || 'langchain'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
   if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
 
   const startTime = Date.now();

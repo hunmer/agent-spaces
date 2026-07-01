@@ -374,7 +374,7 @@ export function createPreset(
   const workingDir = data.workingDir?.trim();
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
     ? data.runtimeKind
-    : 'open-agent-sdk';
+    : 'langchain';
   const requestedModelProvider = normalizeModelProvider(data.modelProvider);
   const presetRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
   const preset: AgentConfig = {
@@ -419,7 +419,7 @@ export function updatePreset(
   const role = isValidRole(data.role) ? data.role.trim() : existing.role;
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
     ? data.runtimeKind
-    : existing.runtimeKind || 'open-agent-sdk';
+    : existing.runtimeKind || 'langchain';
   const requestedModelProvider = normalizeModelProvider(data.modelProvider);
   const updatedRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
   const updated: AgentConfig = {
@@ -1048,7 +1048,7 @@ export function createGlobalPreset(data: Omit<Partial<AgentConfig>, 'id'>): Agen
   const id = uuid();
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
     ? data.runtimeKind
-    : 'open-agent-sdk';
+    : 'langchain';
   const requestedModelProvider = normalizeModelProvider(data.modelProvider);
   const presetRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
 
@@ -1085,7 +1085,7 @@ export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>)
   const role = isValidRole(data.role) ? data.role.trim() : existing.role;
   const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
     ? data.runtimeKind
-    : existing.runtimeKind || 'open-agent-sdk';
+    : existing.runtimeKind || 'langchain';
   const requestedModelProvider = normalizeModelProvider(data.modelProvider);
   const updatedRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
 

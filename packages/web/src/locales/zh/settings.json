@@ -130,12 +130,15 @@
   "modelCatalogTab": "模型",
   "workflow": "工作流",
   "runtime": "Runtime",
-  "runtimeTitle": "Runtime CLI 发现",
-  "runtimeDescription": "发现本机已安装的 Claude Code、Codex、Gemini CLI，并控制是否启用。",
-  "runtimeDiscover": "发现 CLI",
+  "runtimeTitle": "Runtime",
+  "runtimeDescription": "CLI 标签会自动刷新本机命令状态；SDK 标签展示当前支持的运行时 SDK 列表，并可安装或更新到本项目。",
   "runtimeDiscovering": "发现中...",
   "runtimeDiscoverSuccess": "发现完成，找到 {count} 个 CLI",
   "runtimeDiscoverFailed": "发现 Runtime CLI 失败",
+  "runtimeInstall": "安装",
+  "runtimeInstalling": "安装中...",
+  "runtimeInstallSuccess": "已用 {packageManager} 安装 {runtime}",
+  "runtimeInstallFailed": "安装 Runtime 包失败",
   "runtimeUpdatedAt": "最近更新时间：{date}",
   "runtimeEmpty": "还没有发现结果，点击发现按钮扫描本地 CLI。",
   "runtimeFound": "已发现",
@@ -161,5 +164,8 @@
   "iconsUpdatedPartial": "已更新 {saved} 个，{failed} 个失败，清理 {removed} 个旧图标",
   "iconsUpdateFailed": "更新提供商图标失败",
   "catalogLoading": "加载目录中...",
-  "catalogMeta": "{providers} 个提供商，{models} 个模型 · 更新于 {date}"
+  "catalogMeta": "{providers} 个提供商，{models} 个模型 · 更新于 {date}",
+  "runtimeUpdate": "更新",
+  "runtimeVersion": "版本",
+  "runtimeVersionUnknown": "未知"
 }

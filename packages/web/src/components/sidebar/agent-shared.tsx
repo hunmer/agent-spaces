@@ -233,7 +233,7 @@ export function normalizeAgent(agent: AgentConfig): AgentPreset {
     avatarUrl: agent.avatarUrl || "",
     icon: agent.icon || "",
     backgroundUrl: agent.backgroundUrl || "",
-    runtimeKind: agent.runtimeKind || "open-agent-sdk",
+    runtimeKind: agent.runtimeKind || "langchain",
     modelProvider: agent.modelProvider || "",
     providerId: agent.providerId || "",
     modelId: agent.modelId || "claude-sonnet-4-6",
