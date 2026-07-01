@@ -132,7 +132,7 @@
   "workflow": "工作流",
   "runtime": "Runtime",
   "runtimeTitle": "Runtime",
-  "runtimeDescription": "CLI 标签会自动刷新本机命令状态；SDK 标签展示当前支持的运行时 SDK 列表，并可安装或更新到本项目。",
+  "runtimeDescription": "CLI 标签会自动刷新本机命令状态，并支持可安装运行时；SDK 标签展示当前支持的运行时 SDK 列表，并可安装或更新到本项目。",
   "runtimeDiscovering": "发现中...",
   "runtimeDiscoverSuccess": "发现完成，找到 {count} 个 CLI",
   "runtimeDiscoverFailed": "发现 Runtime CLI 失败",

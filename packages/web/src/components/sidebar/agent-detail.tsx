@@ -41,7 +41,7 @@ import {
   Camera,
 } from "lucide-react";
 import { sdk } from "@/lib/sdk";
-import { useRuntimeCliSettings } from "@/lib/runtime-cli-settings";
+import { useRuntimeCliSettings, type RuntimeCliDiscoveryItem, type SupportedRuntimeKind } from "@/lib/runtime-cli-settings";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
@@ -112,7 +112,7 @@ export function AgentDetail({
   }, [selectedProvider, llmModels]);
   const runtimeOptions = useMemo(() => {
     const discoveredRuntimeOptions = discoveredRuntimeCliItems
-      .filter((item): item is typeof item & { runtimeKind: NonNullable<typeof item.runtimeKind> } => (
+      .filter((item): item is RuntimeCliDiscoveryItem & { runtimeKind: SupportedRuntimeKind } => (
         item.found && item.supportedRuntime && Boolean(item.runtimeKind)
       ))
       .map((item) => ({
