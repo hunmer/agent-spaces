@@ -5,6 +5,7 @@ import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import * as workspaceService from './workspace.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import type { ExecutionSession } from './execution-types.js';
+import { listAvailableAgentCapabilities } from './agent-capability-catalog.js';
 
 type AppendLog = (level: ExecutionLogEntry['level'], message: string) => void;
 
@@ -75,6 +76,7 @@ async function executeAgentWithRuntime(
   const mcpServers = agentService.getMcpServers(preset.mcps);
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const tools = Array.isArray(preset.tools) ? [...preset.tools] : undefined;
+  const builtInTools = listAvailableAgentCapabilities().tools.map((tool) => ({ name: tool.name, description: tool.description }));
 
   appendLog('info', `Runtime: ${preset.runtimeKind || 'langchain'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
   if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
@@ -88,6 +90,7 @@ async function executeAgentWithRuntime(
       boundDirs: workspace?.boundDirs ?? [],
       workingDir,
       excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
+      builtInTools,
     }),
     workingDir,
     {

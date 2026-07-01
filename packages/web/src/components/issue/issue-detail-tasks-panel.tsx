@@ -1,7 +1,7 @@
 'use client';
 
 import { Bot, ChevronDown, Maximize2, MessageSquare, Workflow as WorkflowIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AgentUsageRecord, ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { Agent, AgentContent } from '@/components/chat/subagent';
 import { AgentIcon, colorFromName } from '@/components/common/agent-icon';
@@ -124,6 +124,14 @@ function formatExecutionLogLabel(log: IssueExecutionLog): string {
         ? '已暂停'
         : '失败';
   return `${startedAt} · ${status}`;
+}
+
+function sortIssueExecutionLogs(logs: IssueExecutionLog[]): IssueExecutionLog[] {
+  return [...logs].sort((a, b) => {
+    if (a.status === 'running' && b.status !== 'running') return -1;
+    if (a.status !== 'running' && b.status === 'running') return 1;
+    return b.startedAt - a.startedAt;
+  });
 }
 
 function AgentRunsView({
@@ -350,7 +358,9 @@ export function IssueDetailTasksPanel({
   const [selectedLogId, setSelectedLogId] = useState<string>('');
 
   const issueLogs = useMemo(
-    () => logs.filter((log) => log.issueId === issue.id || (!!issue.workflowExecutionId && log.id === issue.workflowExecutionId)),
+    () => sortIssueExecutionLogs(
+      logs.filter((log) => log.issueId === issue.id || (!!issue.workflowExecutionId && log.id === issue.workflowExecutionId)),
+    ),
     [issue.id, issue.workflowExecutionId, logs],
   );
 
@@ -365,37 +375,47 @@ export function IssueDetailTasksPanel({
     setSelectedLogId('');
   }, [issue.id, issue.workflowId]);
 
-  useEffect(() => {
+  const loadLogs = useCallback(async (keepLoadingState = true) => {
     if (!issue.workflowId) {
       setLogs([]);
       setLogsLoading(false);
       return;
     }
 
+    if (keepLoadingState) setLogsLoading(true);
+    try {
+      const nextLogs = await executionLogApi.list(issue.workflowId);
+      const scopedLogs = (nextLogs as IssueExecutionLog[])
+        .filter((log) => log.issueId === issue.id || (!!issue.workflowExecutionId && log.id === issue.workflowExecutionId));
+      setLogs(sortIssueExecutionLogs(scopedLogs));
+    } catch {
+      setLogs([]);
+    } finally {
+      if (keepLoadingState) setLogsLoading(false);
+    }
+  }, [issue.id, issue.workflowExecutionId, issue.workflowId]);
+
+  useEffect(() => {
     let active = true;
-    setLogsLoading(true);
-    executionLogApi.list(issue.workflowId)
-      .then((nextLogs) => {
-        if (!active) return;
-        const scopedLogs = (nextLogs as IssueExecutionLog[])
-          .filter((log) => log.issueId === issue.id || (!!issue.workflowExecutionId && log.id === issue.workflowExecutionId));
-        setLogs(scopedLogs);
-      })
-      .catch(() => {
-        if (active) setLogs([]);
-      })
-      .finally(() => {
-        if (active) setLogsLoading(false);
-      });
+    void loadLogs(true);
+
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    if (issue.workflowExecutionId) {
+      retryTimer = setTimeout(() => {
+        if (active) void loadLogs(false);
+      }, 1200);
+    }
 
     return () => {
       active = false;
+      if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [issue.id, issue.workflowExecutionId, issue.workflowId]);
+  }, [issue.workflowExecutionId, loadLogs]);
 
   useEffect(() => {
     if (!issue.workflowId) return undefined;
     const ws = getWS(workspaceId);
+    const refreshTimers = new Set<ReturnType<typeof setTimeout>>();
 
     const mergeLog = (log: IssueExecutionLog) => {
       if (log.workflowId !== issue.workflowId) return;
@@ -415,6 +435,17 @@ export function IssueDetailTasksPanel({
     };
 
     const offLog = ws.on('execution:log', handleLogEvent);
+    const offStarted = ws.on('workflow:started', (data: unknown) => {
+      const event = data as { workflowId?: string; executionId?: string };
+      if (event.workflowId !== issue.workflowId) return;
+      if (issue.workflowExecutionId && event.executionId !== issue.workflowExecutionId) return;
+      void loadLogs(false);
+      const timer = setTimeout(() => {
+        refreshTimers.delete(timer);
+        void loadLogs(false);
+      }, 1200);
+      refreshTimers.add(timer);
+    });
     const offCompleted = ws.on('workflow:completed', handleLogEvent);
     const offFailed = ws.on('workflow:error', handleLogEvent);
     const offPaused = ws.on('workflow:paused', (data: unknown) => {
@@ -426,16 +457,23 @@ export function IssueDetailTasksPanel({
     });
 
     return () => {
+      refreshTimers.forEach((timer) => clearTimeout(timer));
       offLog();
+      offStarted();
       offCompleted();
       offFailed();
       offPaused();
     };
-  }, [issue.id, issue.workflowExecutionId, issue.workflowId, workspaceId]);
+  }, [issue.id, issue.workflowExecutionId, issue.workflowId, loadLogs, workspaceId]);
 
   useEffect(() => {
     if (!issueLogs.length) {
       if (selectedLogId) setSelectedLogId('');
+      return;
+    }
+    const runningLog = issueLogs.find((log) => log.status === 'running');
+    if (runningLog && selectedLogId !== runningLog.id) {
+      setSelectedLogId(runningLog.id);
       return;
     }
     if (!selectedLogId || !issueLogs.some((log) => log.id === selectedLogId)) {
