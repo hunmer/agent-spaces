@@ -14,6 +14,19 @@ function readHostRuntime() {
   return runtimeFromWindow && typeof runtimeFromWindow === "object" ? runtimeFromWindow : null;
 }
 
+export function getRuntimeDebugInfo() {
+  const runtime = readHostRuntime();
+  return {
+    runtime,
+    route: runtime?.route || "/",
+    params: runtime?.params && typeof runtime.params === "object" && !Array.isArray(runtime.params)
+      ? runtime.params
+      : {},
+    search: typeof window !== "undefined" ? window.location.search : "",
+    href: typeof window !== "undefined" ? window.location.href : "",
+  };
+}
+
 export function getPayloadFromQuery(query) {
   const raw = typeof query?.payload === "string" ? query.payload : "";
   if (!raw) return {};

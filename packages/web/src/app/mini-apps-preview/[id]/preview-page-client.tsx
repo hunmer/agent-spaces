@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 
 const MINI_APP_RUNTIME_INIT_SOURCE = 'agent-spaces:mini-app-runtime:init';
 const MINI_APP_RUNTIME_EVENT = 'agent-spaces:mini-app-runtime';
+const MINI_APP_RUNTIME_READY_SOURCE = 'agent-spaces:mini-app-runtime:ready';
 
 type MiniAppRuntimeContext = {
   route: string;
@@ -96,6 +97,7 @@ export default function MiniAppPreviewPageClient() {
       if (event.source !== window.parent) return;
       const data = event.data;
       if (!data || data.source !== MINI_APP_RUNTIME_INIT_SOURCE) return;
+      console.debug('[mini-app-preview] received runtime init', data);
       setRuntimeContext({
         route: typeof data.route === 'string' && data.route.trim() ? data.route : '/',
         params: data.params && typeof data.params === 'object' && !Array.isArray(data.params)
@@ -105,11 +107,18 @@ export default function MiniAppPreviewPageClient() {
     };
 
     window.addEventListener('message', handleMessage);
+    window.parent?.postMessage({
+      source: MINI_APP_RUNTIME_READY_SOURCE,
+      projectId,
+      currentRuntimeContext: runtimeContext,
+    }, '*');
+    console.debug('[mini-app-preview] runtime listener ready', { projectId, runtimeContext });
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [projectId, runtimeContext]);
 
   useEffect(() => {
     (window as typeof window & { __AGENT_SPACES_MINIAPP_RUNTIME__?: MiniAppRuntimeContext }).__AGENT_SPACES_MINIAPP_RUNTIME__ = runtimeContext;
+    console.debug('[mini-app-preview] broadcast runtime context', runtimeContext);
     window.dispatchEvent(new CustomEvent(MINI_APP_RUNTIME_EVENT, { detail: runtimeContext }));
   }, [runtimeContext]);
 

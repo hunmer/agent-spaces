@@ -6,6 +6,7 @@ import { type DisplayNodeViewProps, EmptyDisplay, parseJsonRecord, readString } 
 
 const MINI_APP_RUNTIME_INIT_SOURCE = 'agent-spaces:mini-app-runtime:init';
 const MINI_APP_ROUTE_INIT_SOURCE = 'agent-spaces:mini-app-router:init';
+const MINI_APP_RUNTIME_READY_SOURCE = 'agent-spaces:mini-app-runtime:ready';
 
 function buildMiniAppPreviewUrl(miniAppId: string): string {
   const search = new URLSearchParams({
@@ -22,6 +23,7 @@ function postMiniAppRuntimeInit(
 ) {
   const target = iframe?.contentWindow;
   if (!target) return;
+  console.debug('[show_miniapp][node-view] post runtime init', { route, params });
   target.postMessage({ source: MINI_APP_RUNTIME_INIT_SOURCE, route, params }, '*');
   target.postMessage({ source: MINI_APP_ROUTE_INIT_SOURCE, route }, '*');
 }
@@ -40,6 +42,18 @@ export function MiniAppDisplayView({ data, isRunning = false }: DisplayNodeViewP
   useEffect(() => {
     if (!embedDisplay || !isRunning) return;
     syncRuntimeContext();
+  }, [embedDisplay, isRunning, syncRuntimeContext]);
+
+  useEffect(() => {
+    if (!embedDisplay || !isRunning) return undefined;
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.source !== MINI_APP_RUNTIME_READY_SOURCE) return;
+      console.debug('[show_miniapp][node-view] runtime ready, resend init', event.data);
+      syncRuntimeContext();
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [embedDisplay, isRunning, syncRuntimeContext]);
 
   if (!miniAppId) {

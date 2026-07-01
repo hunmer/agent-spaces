@@ -1237,6 +1237,15 @@ export class ExecutionManager {
       }
     }
 
+    console.info('[show_miniapp][server] interaction request payload', {
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      miniAppId,
+      route,
+      params,
+    });
+
     const result = await this.deps.interactionManager.request({
       clientId: session.ownerClientId,
       executionId: session.id,
@@ -1249,6 +1258,15 @@ export class ExecutionManager {
         params,
         title: miniAppId,
       },
+    });
+    console.info('[show_miniapp][server] interaction resolved', {
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      miniAppId,
+      route,
+      params,
+      result,
     });
 
     return {
