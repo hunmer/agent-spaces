@@ -14,12 +14,14 @@ export function WorkflowPreview({
   workflowId,
   workspaceId,
   issueId,
+  selectedExecutionLog,
   className,
   embeddedMode = null,
 }: {
   workflowId: string;
   workspaceId?: string;
   issueId?: string;
+  selectedExecutionLog?: ExecutionLog | null;
   className?: string;
   embeddedMode?: 'issue' | null;
 }) {
@@ -42,6 +44,12 @@ export function WorkflowPreview({
   }, [workflowId]);
 
   useEffect(() => {
+    if (selectedExecutionLog !== undefined) {
+      setExecutionLog(selectedExecutionLog ?? null);
+      setExecStatus(selectedExecutionLog?.status ?? 'idle');
+      return undefined;
+    }
+
     let active = true;
     setExecutionLog(null);
     setExecStatus('idle');
@@ -57,10 +65,11 @@ export function WorkflowPreview({
     return () => {
       active = false;
     };
-  }, [workflowId]);
+  }, [workflowId, selectedExecutionLog]);
 
   useEffect(() => {
     if (!workspaceId) return undefined;
+    if (selectedExecutionLog !== undefined) return undefined;
     const ws = getWS(workspaceId);
 
     const updateFromLog = (log: ExecutionLog) => {
@@ -101,7 +110,7 @@ export function WorkflowPreview({
       offPaused();
       offResumed();
     };
-  }, [workspaceId, workflowId]);
+  }, [workspaceId, workflowId, selectedExecutionLog]);
 
   if (!workflow) {
     return (

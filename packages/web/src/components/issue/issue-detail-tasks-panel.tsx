@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, Maximize2, MessageSquare, Workflow as WorkflowIcon } from 'lucide-react';
+import { Bot, ChevronDown, Maximize2, MessageSquare, Workflow as WorkflowIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { AgentUsageRecord, ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { Agent, AgentContent } from '@/components/chat/subagent';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WorkflowPreview } from '@/components/workflow/workflow-preview';
@@ -18,12 +19,17 @@ import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
 
 interface IssueDetailTasksPanelProps {
-  issue: { id: string; workflowId?: string; title: string };
+  issue: { id: string; workflowId?: string; workflowExecutionId?: string; title: string };
   workspaceId: string;
   t: (key: string, params?: Record<string, string | number | Date>) => string;
 }
 
 type TaskPanelView = 'workflow' | 'agents';
+
+type IssueExecutionLog = ExecutionLog & {
+  issueId?: string;
+  issueTitle?: string;
+};
 
 type AgentRunCard = {
   nodeId: string;
@@ -108,15 +114,28 @@ function getStatusVariant(status: AgentRunCard['status']): 'default' | 'secondar
   }
 }
 
+function formatExecutionLogLabel(log: IssueExecutionLog): string {
+  const startedAt = new Date(log.startedAt).toLocaleString();
+  const status = log.status === 'running'
+    ? '运行中'
+    : log.status === 'completed'
+      ? '已完成'
+      : log.status === 'paused'
+        ? '已暂停'
+        : '失败';
+  return `${startedAt} · ${status}`;
+}
+
 function AgentRunsView({
   workflowId,
   workspaceId,
+  executionLog,
 }: {
   workflowId: string;
   workspaceId: string;
+  executionLog?: ExecutionLog | null;
 }) {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
-  const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
   const [fullscreenCard, setFullscreenCard] = useState<AgentRunCard | null>(null);
   const [sessionRecord, setSessionRecord] = useState<AgentUsageRecord | null>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -164,40 +183,15 @@ function AgentRunsView({
   useEffect(() => {
     let active = true;
     setWorkflow(null);
-    setExecutionLog(null);
 
     workflowApi.get(workflowId).then((wf) => {
       if (active) setWorkflow(wf);
-    }).catch(() => {});
-
-    executionLogApi.list(workflowId).then((logs) => {
-      if (active) setExecutionLog(logs[0] ?? null);
     }).catch(() => {});
 
     return () => {
       active = false;
     };
   }, [workflowId]);
-
-  useEffect(() => {
-    const ws = getWS(workspaceId);
-
-    const updateFromEvent = (data: unknown) => {
-      const event = data as { workflowId?: string; log?: ExecutionLog };
-      if (event.workflowId !== workflowId || !event.log) return;
-      setExecutionLog(event.log);
-    };
-
-    const offLog = ws.on('execution:log', updateFromEvent);
-    const offCompleted = ws.on('workflow:completed', updateFromEvent);
-    const offFailed = ws.on('workflow:error', updateFromEvent);
-
-    return () => {
-      offLog();
-      offCompleted();
-      offFailed();
-    };
-  }, [workspaceId, workflowId]);
 
   const cards = useMemo<AgentRunCard[]>(() => {
     const nodes = (executionLog?.snapshot?.nodes ?? workflow?.nodes ?? []).filter(
@@ -351,10 +345,103 @@ export function IssueDetailTasksPanel({
   t,
 }: IssueDetailTasksPanelProps) {
   const [view, setView] = useState<TaskPanelView>('workflow');
+  const [logs, setLogs] = useState<IssueExecutionLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [selectedLogId, setSelectedLogId] = useState<string>('');
+
+  const issueLogs = useMemo(
+    () => logs.filter((log) => log.issueId === issue.id || (!!issue.workflowExecutionId && log.id === issue.workflowExecutionId)),
+    [issue.id, issue.workflowExecutionId, logs],
+  );
+
+  const selectedExecutionLog = useMemo(
+    () => issueLogs.find((log) => log.id === selectedLogId) ?? issueLogs[0] ?? null,
+    [issueLogs, selectedLogId],
+  );
 
   useEffect(() => {
     setView('workflow');
+    setLogs([]);
+    setSelectedLogId('');
   }, [issue.id, issue.workflowId]);
+
+  useEffect(() => {
+    if (!issue.workflowId) {
+      setLogs([]);
+      setLogsLoading(false);
+      return;
+    }
+
+    let active = true;
+    setLogsLoading(true);
+    executionLogApi.list(issue.workflowId)
+      .then((nextLogs) => {
+        if (!active) return;
+        const scopedLogs = (nextLogs as IssueExecutionLog[])
+          .filter((log) => log.issueId === issue.id || (!!issue.workflowExecutionId && log.id === issue.workflowExecutionId));
+        setLogs(scopedLogs);
+      })
+      .catch(() => {
+        if (active) setLogs([]);
+      })
+      .finally(() => {
+        if (active) setLogsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [issue.id, issue.workflowExecutionId, issue.workflowId]);
+
+  useEffect(() => {
+    if (!issue.workflowId) return undefined;
+    const ws = getWS(workspaceId);
+
+    const mergeLog = (log: IssueExecutionLog) => {
+      if (log.workflowId !== issue.workflowId) return;
+      if (log.issueId !== issue.id && (!issue.workflowExecutionId || log.id !== issue.workflowExecutionId)) return;
+      setLogs((current) => {
+        const filtered = current.filter((item) => item.id !== log.id);
+        return [log, ...filtered];
+      });
+    };
+
+    const handleLogEvent = (data: unknown) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: IssueExecutionLog };
+      if (event.workflowId !== issue.workflowId || !event.log) return;
+      if (event.log.issueId === issue.id || (!!issue.workflowExecutionId && event.executionId === issue.workflowExecutionId)) {
+        mergeLog(event.log);
+      }
+    };
+
+    const offLog = ws.on('execution:log', handleLogEvent);
+    const offCompleted = ws.on('workflow:completed', handleLogEvent);
+    const offFailed = ws.on('workflow:error', handleLogEvent);
+    const offPaused = ws.on('workflow:paused', (data: unknown) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: IssueExecutionLog };
+      if (event.workflowId !== issue.workflowId || !event.log) return;
+      if (event.log.issueId === issue.id || (!!issue.workflowExecutionId && event.executionId === issue.workflowExecutionId)) {
+        mergeLog(event.log);
+      }
+    });
+
+    return () => {
+      offLog();
+      offCompleted();
+      offFailed();
+      offPaused();
+    };
+  }, [issue.id, issue.workflowExecutionId, issue.workflowId, workspaceId]);
+
+  useEffect(() => {
+    if (!issueLogs.length) {
+      if (selectedLogId) setSelectedLogId('');
+      return;
+    }
+    if (!selectedLogId || !issueLogs.some((log) => log.id === selectedLogId)) {
+      setSelectedLogId(issueLogs[0].id);
+    }
+  }, [issueLogs, selectedLogId]);
 
   return (
     <div className="space-y-2">
@@ -379,16 +466,46 @@ export function IssueDetailTasksPanel({
       {!issue.workflowId ? (
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (
-        <div
-          key={`${issue.id}:${issue.workflowId}:${view}`}
-          className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]"
-        >
+        <>
+          <div className="flex items-center gap-2">
+            <Select
+              value={selectedLogId || undefined}
+              onValueChange={(value) => setSelectedLogId(value ?? '')}
+              disabled={logsLoading || issueLogs.length === 0}
+            >
+              <SelectTrigger className="h-8 w-full text-xs sm:max-w-[360px]">
+                <SelectValue placeholder={logsLoading ? '加载执行记录中...' : '选择当前 issue 的 workflow 执行记录'} />
+              </SelectTrigger>
+              <SelectContent>
+                {issueLogs.map((log) => (
+                  <SelectItem key={log.id} value={log.id} className="text-xs">
+                    {formatExecutionLogLabel(log)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Badge variant="outline" className="gap-1 text-xs">
+              <ChevronDown className="size-3" />
+              {issueLogs.length}
+            </Badge>
+          </div>
+          <div
+            key={`${issue.id}:${issue.workflowId}:${view}:${selectedExecutionLog?.id ?? 'none'}`}
+            className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]"
+          >
           {view === 'workflow' ? (
-            <WorkflowPreview workflowId={issue.workflowId} workspaceId={workspaceId} issueId={issue.id} embeddedMode="issue" />
+            <WorkflowPreview
+              workflowId={issue.workflowId}
+              workspaceId={workspaceId}
+              issueId={issue.id}
+              selectedExecutionLog={selectedExecutionLog}
+              embeddedMode="issue"
+            />
           ) : (
-            <AgentRunsView workflowId={issue.workflowId} workspaceId={workspaceId} />
+            <AgentRunsView workflowId={issue.workflowId} workspaceId={workspaceId} executionLog={selectedExecutionLog} />
           )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

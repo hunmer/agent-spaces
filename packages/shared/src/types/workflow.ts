@@ -339,6 +339,8 @@ export interface ExecutionStep {
 export interface ExecutionLog {
   id: string
   workflowId: string
+  issueId?: string
+  issueTitle?: string
   startedAt: number
   finishedAt?: number
   status: 'running' | 'completed' | 'paused' | 'error'

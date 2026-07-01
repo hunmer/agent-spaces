@@ -1935,8 +1935,16 @@ export class ExecutionManager {
       groups: session.groups || [],
       variables: session.variables || [],
     };
+    const issueId = typeof session.context.issueId === 'string' && session.context.issueId.trim()
+      ? session.context.issueId.trim()
+      : undefined;
+    const issueTitle = typeof session.context.issueTitle === 'string' && session.context.issueTitle.trim()
+      ? session.context.issueTitle.trim()
+      : undefined;
     return {
       id: session.id, workflowId: session.workflow.id,
+      issueId,
+      issueTitle,
       startedAt: session.startedAt, finishedAt: session.finishedAt,
       status: session.status === 'running' ? 'running' : session.status === 'paused' ? 'paused' : session.status === 'completed' ? 'completed' : 'error',
       steps: clone(session.steps),
