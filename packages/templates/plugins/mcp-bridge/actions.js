@@ -13,8 +13,9 @@
  */
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
 const pool = require('./lib/connection-pool');
-const { writeServerFile } = require('./lib/server-template');
 
 /** 解析连接配置参数（兼容对象或 JSON 字符串） */
 function parseConnConfig(args) {
@@ -28,20 +29,6 @@ function parseConnConfig(args) {
   }
   if (!cfg || typeof cfg !== 'object') throw new Error('缺少 config 连接配置');
   return cfg;
-}
-
-/** 从 args 里解析 tools 定义（兼容数组或 JSON 字符串） */
-function parseTools(args) {
-  let tools = args.tools;
-  if (typeof tools === 'string') {
-    try {
-      tools = JSON.parse(tools);
-    } catch {
-      throw new Error('tools 不是合法 JSON 数组');
-    }
-  }
-  if (!Array.isArray(tools)) throw new Error('tools 必须是数组');
-  return tools;
 }
 
 /** 把 listTools 结果裁剪成精简可读结构 */
@@ -94,7 +81,24 @@ module.exports = (t) => [
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', dataType: 'object' },
+      {
+        key: 'data',
+        type: 'object',
+        dataType: 'object',
+        children: [
+          { key: 'clientId', type: 'string' },
+          {
+            key: 'serverInfo',
+            type: 'object',
+            dataType: 'object',
+            children: [
+              { key: 'name', type: 'string' },
+              { key: 'version', type: 'string' },
+            ],
+          },
+          { key: 'protocolVersion', type: 'string' },
+        ],
+      },
     ],
     run: async (ctx, args) => {
       const cfg = parseConnConfig(args);
@@ -141,7 +145,24 @@ module.exports = (t) => [
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', dataType: 'object' },
+      {
+        key: 'data',
+        type: 'object',
+        dataType: 'object',
+        children: [
+          { key: 'count', type: 'number', dataType: 'number' },
+          {
+            key: 'tools',
+            type: 'object',
+            dataType: 'object[]',
+            children: [
+              { key: 'name', type: 'string' },
+              { key: 'description', type: 'string' },
+              { key: 'inputSchema', type: 'object', dataType: 'object' },
+            ],
+          },
+        ],
+      },
     ],
     run: async (ctx, args) => {
       const clientId = args.clientId;
@@ -195,7 +216,25 @@ module.exports = (t) => [
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', dataType: 'object' },
+      {
+        key: 'data',
+        type: 'object',
+        dataType: 'object',
+        children: [
+          {
+            key: 'content',
+            type: 'object',
+            dataType: 'object[]',
+            children: [
+              { key: 'type', type: 'string' },
+              { key: 'text', type: 'string' },
+            ],
+          },
+          { key: 'isError', type: 'boolean', dataType: 'boolean' },
+          { key: 'text', type: 'string' },
+          { key: 'structuredContent', type: 'object', dataType: 'object' },
+        ],
+      },
     ],
     run: async (ctx, args) => {
       const clientId = args.clientId;
@@ -271,66 +310,149 @@ module.exports = (t) => [
     icon: 'Server',
     description: t(
       'action.createServer.description',
-      'Generate a standalone MCP server file from tool definitions. Resulting file can be launched with `node <file>`.',
+      'Launch an existing JS file as an MCP server (stdio), handshake it, and keep the connection. Returns clientId + tool list.',
     ),
     properties: [
       {
-        key: 'serverName',
-        label: t('field.serverName.label', 'Server Name'),
+        key: 'entryFile',
+        label: t('field.entryFile.label', 'Entry File'),
         type: 'text',
         dataType: 'string',
-        tooltip: t('field.serverName.tooltip', 'MCP serverInfo.name. Default: mcp-bridge-server.'),
-      },
-      {
-        key: 'tools',
-        label: t('field.tools.label', 'Tool Definitions'),
-        type: 'textarea',
-        dataType: 'object[]',
         required: true,
         tooltip: t(
-          'field.tools.tooltip',
-          'JSON array. Each tool: {name, description, inputSchema, handlerSource}. handlerSource is a JS function body that receives `args`.',
+          'field.entryFile.tooltip',
+          'Absolute path to a JS file that starts an MCP stdio server (reads JSON-RPC from stdin, writes to stdout).',
         ),
       },
       {
-        key: 'filePath',
-        label: t('field.filePath.label', 'Output File Path'),
+        key: 'cwd',
+        label: t('field.cwd.label', 'Working Directory'),
         type: 'text',
         dataType: 'string',
-        tooltip: t(
-          'field.filePath.tooltip',
-          'Absolute path to write the server file. If empty, writes to temp dir.',
-        ),
+        tooltip: t('field.cwd.tooltip', 'Working dir for the server process. Defaults to the file\'s directory.'),
+      },
+      {
+        key: 'env',
+        label: t('field.env.label', 'Env (JSON)'),
+        type: 'textarea',
+        dataType: 'object',
+        tooltip: t('field.env.tooltip', 'Extra env vars for the server process, e.g. {"API_KEY":"xxx"}.'),
+      },
+      {
+        key: 'nodeArgs',
+        label: t('field.nodeArgs.label', 'Node Args'),
+        type: 'text',
+        dataType: 'string[]',
+        tooltip: t('field.nodeArgs.tooltip', 'Extra args passed to node before the entry file, e.g. --experimental-vm-modules.'),
       },
     ],
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
-      { key: 'data', type: 'object', dataType: 'object' },
+      {
+        key: 'data',
+        type: 'object',
+        dataType: 'object',
+        children: [
+          { key: 'clientId', type: 'string' },
+          {
+            key: 'serverInfo',
+            type: 'object',
+            dataType: 'object',
+            children: [
+              { key: 'name', type: 'string' },
+              { key: 'version', type: 'string' },
+            ],
+          },
+          { key: 'protocolVersion', type: 'string' },
+          { key: 'toolsCount', type: 'number', dataType: 'number' },
+          {
+            key: 'tools',
+            type: 'object',
+            dataType: 'object[]',
+            children: [
+              { key: 'name', type: 'string' },
+              { key: 'description', type: 'string' },
+              { key: 'inputSchema', type: 'object', dataType: 'object' },
+            ],
+          },
+          { key: 'entryFile', type: 'string' },
+        ],
+      },
     ],
     run: async (ctx, args) => {
-      const serverName = args.serverName || 'mcp-bridge-server';
-      const tools = parseTools(args);
-      ctx.logger.info(`mcp_create_server: ${serverName}, tools=${tools.length}`);
+      const entryFile = args.entryFile;
+      if (!entryFile) return { success: false, message: '缺少 entryFile' };
+
+      let resolved = entryFile;
+      try {
+        resolved = path.resolve(entryFile);
+      } catch {
+        /* keep raw */
+      }
+      if (!fs.existsSync(resolved)) {
+        return { success: false, message: `入口文件不存在: ${resolved}` };
+      }
+
+      // 解析 env（兼容 JSON 字符串）
+      let env = args.env || {};
+      if (typeof env === 'string') {
+        try {
+          env = JSON.parse(env);
+        } catch {
+          return { success: false, message: 'env 不是合法 JSON' };
+        }
+      }
+
+      // 解析 nodeArgs（兼容数组 / 字符串）
+      let nodeArgs = args.nodeArgs;
+      if (typeof nodeArgs === 'string') {
+        try {
+          nodeArgs = JSON.parse(nodeArgs);
+        } catch {
+          nodeArgs = nodeArgs.split(/\s+/).filter(Boolean);
+        }
+      }
+      nodeArgs = Array.isArray(nodeArgs) ? nodeArgs : [];
+
+      const cwd = args.cwd || path.dirname(resolved);
+      ctx.logger.info(`mcp_create_server: ${resolved}`);
 
       try {
-        const filePath = writeServerFile(serverName, tools, args.filePath || '');
+        const { clientId, serverInfo } = await pool.create({
+          transport: 'stdio',
+          command: process.execPath,
+          args: [...nodeArgs, resolved],
+          cwd,
+          env,
+        });
+        // 探测工具列表，验证 server 真正可用
+        const { client } = pool.get(clientId);
+        let tools = [];
+        try {
+          tools = summarizeTools(await client.listTools());
+        } catch {
+          /* server 启动成功但 tools/list 失败不视为致命 */
+        }
+
+        const serverName = (serverInfo && serverInfo.serverInfo && serverInfo.serverInfo.name) || 'mcp-server';
         return {
           success: true,
-          message: t('message.serverCreated', 'Server file created: {path}').replace('{path}', filePath),
+          message: t('message.serverStarted', 'MCP server started: {name} ({count} tools, clientId={clientId})')
+            .replace('{name}', serverName)
+            .replace('{count}', tools.length)
+            .replace('{clientId}', clientId),
           data: {
-            filePath,
-            serverName,
+            clientId,
+            serverInfo: serverInfo && serverInfo.serverInfo,
+            protocolVersion: serverInfo && serverInfo.protocolVersion,
             toolsCount: tools.length,
-            // 给 Claude Desktop / Cursor 用的连接配置示例
-            connectHint: {
-              command: 'node',
-              args: [filePath],
-            },
+            tools,
+            entryFile: resolved,
           },
         };
       } catch (err) {
-        return { success: false, message: `创建 server 失败: ${err.message}` };
+        return { success: false, message: `启动 MCP server 失败: ${err.message}` };
       }
     },
   },

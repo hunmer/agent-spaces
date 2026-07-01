@@ -37,16 +37,17 @@
           {
             "key": "success",
             "type": "boolean",
-            "dataType": "boolean"
+            "children": []
           },
           {
             "key": "message",
-            "type": "string"
+            "type": "string",
+            "children": []
           },
           {
             "key": "data",
             "type": "object",
-            "dataType": "object"
+            "children": []
           }
         ],
         "config": "{\n    \"type\": \"stdio\",\n    \"command\": \"node\",\n    \"args\": [\n      \"G:/agent_spaces/packages/mcp/dist/src/index.js\"\n    ],\n    \"env\": {\n      \"AGENT_SPACES_BASE_URL\": \"http://localhost:3100\",\n      \"AGENT_SPACES_TOKEN\": \"\"\n    }\n}"
@@ -100,7 +101,7 @@
             "type": "string"
           }
         ],
-        "clientId": "310a43e6-6970-4d91-8aa1-8a0207bf8b13"
+        "clientId": "db453ce4-fdf8-4619-a97b-42d9665ad08c"
       }
     },
     {
@@ -114,11 +115,38 @@
       "data": {
         "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
       }
+    },
+    {
+      "id": "node_1782873030047_8fh5f2",
+      "type": "mcp_create_server",
+      "label": "MCP 创建服务",
+      "position": {
+        "x": 1080,
+        "y": 435
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object"
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1782870380047,
-  "updatedAt": 1782872805945,
+  "updatedAt": 1782873204444,
   "published": false,
   "enabledPlugins": [
     "workflow.mcp-bridge"

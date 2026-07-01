@@ -45,6 +45,10 @@ function getElectronApi(): ElectronApi | undefined {
   return (window as typeof window & { electronAPI?: ElectronApi }).electronAPI;
 }
 
+function isDebugExecutionId(executionId?: string | null): boolean {
+  return typeof executionId === 'string' && executionId.startsWith('debug-');
+}
+
 async function executeClientPluginNode(request: ClientNodeRequest): Promise<unknown> {
   const executeNode = getElectronApi()?.clientPlugins?.executeNode;
   if (!executeNode) throw new Error('当前客户端不支持 client 插件运行时');
@@ -115,6 +119,8 @@ export function useWorkflowEditorExecution({
     const offLog = ws.on('execution:log', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
       if (event.workflowId !== workflowId || !event.log) return;
+      const executionId = event.executionId || event.log.id;
+      if (isDebugExecutionId(executionId)) return;
       setCurrentExecutionId(event.executionId || event.log.id);
       setExecutionLog(event.log);
       setSelectedExecutionLogId((current) => current ?? event.log!.id);
@@ -125,6 +131,7 @@ export function useWorkflowEditorExecution({
     const offPaused = ws.on('workflow:paused', (data) => {
       const event = data as { workflowId?: string; executionId?: string; currentNodeId?: string; reason?: string };
       if (event.workflowId !== workflowId) return;
+      if (isDebugExecutionId(event.executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       setPausedNodeId(event.currentNodeId ?? null);
       setPausedReason(event.reason ?? null);
@@ -134,6 +141,7 @@ export function useWorkflowEditorExecution({
     const offResumed = ws.on('workflow:resumed', (data) => {
       const event = data as { workflowId?: string; executionId?: string };
       if (event.workflowId !== workflowId) return;
+      if (isDebugExecutionId(event.executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       setPausedNodeId(null);
       setPausedReason(null);
@@ -143,6 +151,8 @@ export function useWorkflowEditorExecution({
     const offCompleted = ws.on('workflow:completed', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
       if (event.workflowId !== workflowId) return;
+      const executionId = event.executionId || event.log?.id;
+      if (isDebugExecutionId(executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) {
         setExecutionLog(event.log);
@@ -165,6 +175,8 @@ export function useWorkflowEditorExecution({
         error?: { message?: string };
       };
       if (event.workflowId !== workflowId) return;
+      const executionId = event.executionId || event.log?.id;
+      if (isDebugExecutionId(executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) {
         setExecutionLog(event.log);
@@ -393,6 +405,8 @@ export function useWorkflowEditorExecution({
     const offLog = ws.on('execution:log', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
       if (event.workflowId !== activeWorkflow.id || !event.log) return;
+      const executionId = event.executionId || event.log.id;
+      if (isDebugExecutionId(executionId)) return;
       setCurrentExecutionId(event.executionId || event.log.id);
       setExecutionLog(event.log);
       setSelectedExecutionLogId(event.log.id);
@@ -410,6 +424,7 @@ export function useWorkflowEditorExecution({
     const offPaused = ws.on('workflow:paused', (data) => {
       const event = data as { workflowId?: string; executionId?: string; currentNodeId?: string; reason?: string };
       if (event.workflowId !== activeWorkflow.id) return;
+      if (isDebugExecutionId(event.executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       setPausedNodeId(event.currentNodeId ?? null);
       setPausedReason(event.reason ?? null);
@@ -418,6 +433,7 @@ export function useWorkflowEditorExecution({
     const offResumed = ws.on('workflow:resumed', (data) => {
       const event = data as { workflowId?: string; executionId?: string };
       if (event.workflowId !== activeWorkflow.id) return;
+      if (isDebugExecutionId(event.executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       setPausedNodeId(null);
       setPausedReason(null);
@@ -426,6 +442,8 @@ export function useWorkflowEditorExecution({
     const offCompleted = ws.on('workflow:completed', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
       if (event.workflowId !== activeWorkflow.id) return;
+      const executionId = event.executionId || event.log?.id;
+      if (isDebugExecutionId(executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) setExecutionLog(event.log);
       if (event.log) {
@@ -447,6 +465,8 @@ export function useWorkflowEditorExecution({
         error?: { message?: string };
       };
       if (event.workflowId !== activeWorkflow.id) return;
+      const executionId = event.executionId || event.log?.id;
+      if (isDebugExecutionId(executionId)) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) setExecutionLog(event.log);
       if (event.log) {

@@ -588,8 +588,8 @@
     "hasWorkflow": true,
     "path": "mcp-bridge",
     "iconUrl": "plugins/mcp-bridge/icon.png",
-    "md5": "5430126499755d45259317bf6057ffd0",
-    "updatedAt": "2026-07-01T02:03:15.594Z",
+    "md5": "a0c5e4178934da04d8f8f3fbfeb071e7",
+    "updatedAt": "2026-07-01T02:54:37.410Z",
     "files": [
       "actions.js",
       "icon.png",
@@ -597,7 +597,6 @@
       "lang.json",
       "lib/connection-pool.js",
       "lib/mcp-client.js",
-      "lib/server-template.js",
       "main.js",
       "package.json",
       "tools.js",
