@@ -1,4 +1,4 @@
-import type { WorkflowNode, ExecutionLogEntry } from '@agent-spaces/shared';
+import type { WorkflowNode, ExecutionLogEntry, AgentSession } from '@agent-spaces/shared';
 import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
 import { listProviders } from '../storage/llm-store.js';
 import { getThinkingRuntimeConfig } from './llm-model-config.js';
@@ -78,6 +78,7 @@ async function executeAgentWithRuntime(
   appendLog('info', `Runtime: ${preset.runtimeKind || 'open-agent-sdk'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
   if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
 
+  const startTime = Date.now();
   const result = await runtime.execute(
     buildAgentPrompt(workspaceId, preset.systemPrompt, fullPrompt, [], {
       runtimeKind: preset.runtimeKind,
@@ -107,15 +108,49 @@ async function executeAgentWithRuntime(
     },
   );
 
+  // 创建 agent session 以便后续通过会话详情查看消息列表
+  const agentSession = workspaceId
+    ? agentService.create(workspaceId, (preset as { role?: AgentSession['role'] }).role ?? 'assistant', preset.id)
+    : null;
+  const agentSessionId = agentSession?.id;
+  appendLog('info', agentSessionId ? `Agent session: ${agentSessionId}` : 'Agent session not recorded (no workspace)');
+
   if (!result.success) {
+    if (agentSessionId) {
+      agentService.complete(workspaceId, agentSessionId, result.error || result.summary, {
+        runtime: preset.runtimeKind,
+        model: preset.modelId,
+        summary: result.summary,
+        output: result.output,
+        durationMs: Date.now() - startTime,
+        usage: result.usage,
+        costUsd: result.costUsd,
+      });
+      persistWorkflowAgentSessionHistory(agentService, agentSessionId, preset, prompt, result);
+    }
     throw new Error(result.summary || 'Agent execution failed');
   }
 
   appendLog('info', `Agent completed: ${result.summary || 'done'}`);
   const message = result.output?.join('\n').trim() || result.summary;
+
+  if (agentSessionId) {
+    agentService.complete(workspaceId, agentSessionId, undefined, {
+      runtime: preset.runtimeKind,
+      model: preset.modelId,
+      summary: result.summary,
+      output: result.output,
+      durationMs: Date.now() - startTime,
+      usage: result.usage,
+      costUsd: result.costUsd,
+    });
+    persistWorkflowAgentSessionHistory(agentService, agentSessionId, preset, prompt, result);
+  }
+
   return {
     result: message,
     usage: result.usage,
+    sessionId: agentSessionId,
     runtime: {
       cwd: workingDir,
       additionalDirectories: sandboxDirs,
@@ -127,6 +162,35 @@ async function executeAgentWithRuntime(
       agentConfigId: preset.id,
     },
   };
+}
+
+function persistWorkflowAgentSessionHistory(
+  agentService: typeof import('./agent.js'),
+  agentSessionId: string,
+  preset: Record<string, unknown>,
+  userPrompt: string,
+  result: { success: boolean; summary: string; output: string[]; error?: string; usage?: unknown; costUsd?: number },
+): void {
+  const now = new Date().toISOString();
+  const messages = [
+    { id: `${agentSessionId}-user`, role: 'user', content: userPrompt, createdAt: now, senderId: 'workflow' },
+    {
+      id: `${agentSessionId}-agent`,
+      role: 'agent',
+      content: result.output.join('\n').trim() || result.summary,
+      createdAt: now,
+      senderId: typeof preset.id === 'string' ? preset.id : 'agent',
+      senderRole: typeof preset.role === 'string' ? preset.role : 'assistant',
+    },
+  ];
+  const detail = agentService.getSessionDetail(agentSessionId);
+  const payload = {
+    session: detail?.session ?? null,
+    usage: detail?.usage ?? null,
+    messages,
+    generatedAt: now,
+  };
+  agentService.writeWorkflowAgentSessionHistory(agentSessionId, payload);
 }
 
 function normalizeStringList(value: unknown): string[] {

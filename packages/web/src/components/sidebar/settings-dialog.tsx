@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket, Database, Package, BookOpen, Workflow } from "lucide-react";
+import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket, Database, Package, BookOpen, Workflow, TerminalSquare } from "lucide-react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
 import { LanguageTab } from "./settings/language-tab";
@@ -26,6 +26,7 @@ import { DataTab } from "./settings/data-tab";
 import { NpmSettingsTab } from "./settings/npm-settings-tab";
 import { ModelCatalogTab } from "./settings/model-catalog-tab";
 import { WorkflowTab } from "./settings/workflow-tab";
+import { RuntimeTab } from "./settings/runtime-tab";
 
 const tabs = [
   { key: "appearance", icon: Palette },
@@ -38,6 +39,7 @@ const tabs = [
   { key: "npm", icon: Package },
   { key: "model_catalog", icon: BookOpen },
   { key: "workflow", icon: Workflow },
+  { key: "runtime", icon: TerminalSquare },
   { key: "data", icon: Database },
   { key: "git", icon: GitBranch },
   { key: "speech", icon: Mic },
@@ -70,6 +72,7 @@ export function SettingsDialog({
     npm: t("npm"),
     model_catalog: t("modelCatalogTab"),
     workflow: t("workflow"),
+    runtime: t("runtime"),
     data: t("data"),
     git: t("git"),
     speech: t("speech"),
@@ -99,6 +102,8 @@ export function SettingsDialog({
         return <ModelCatalogTab />;
       case "workflow":
         return <WorkflowTab />;
+      case "runtime":
+        return <RuntimeTab />;
       case "data":
         return <DataTab />;
       case "git":

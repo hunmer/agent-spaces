@@ -1,10 +1,11 @@
 'use client';
 
-import { Bot, Maximize2, Workflow as WorkflowIcon } from 'lucide-react';
+import { Bot, Maximize2, MessageSquare, Workflow as WorkflowIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import type { ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent-spaces/shared';
+import type { AgentUsageRecord, ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { Agent, AgentContent } from '@/components/chat/subagent';
 import { AgentIcon, colorFromName } from '@/components/common/agent-icon';
+import { UsageDashboardSessionDialog } from '@/components/home/usage-dashboard-session-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WorkflowPreview } from '@/components/workflow/workflow-preview';
 import { executionLogApi, workflowApi } from '@/lib/workflow-api';
+import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
 
 interface IssueDetailTasksPanelProps {
@@ -32,6 +34,7 @@ type AgentRunCard = {
   modelProvider?: string;
   status: 'idle' | ExecutionStep['status'];
   outputText: string;
+  sessionId?: string;
   timestamp?: number;
 };
 
@@ -69,6 +72,12 @@ function extractOutputText(step?: ExecutionStep): string {
 
   const lastLog = [...(step.logs ?? [])].reverse().find(entry => entry.message?.trim());
   return lastLog?.message?.trim() ?? '';
+}
+
+function extractSessionId(step?: ExecutionStep): string | undefined {
+  if (!step || !isRecord(step.output)) return undefined;
+  const sessionId = step.output.sessionId;
+  return typeof sessionId === 'string' && sessionId.trim() ? sessionId.trim() : undefined;
 }
 
 function getStatusLabel(status: AgentRunCard['status']) {
@@ -109,6 +118,48 @@ function AgentRunsView({
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
   const [fullscreenCard, setFullscreenCard] = useState<AgentRunCard | null>(null);
+  const [sessionRecord, setSessionRecord] = useState<AgentUsageRecord | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+
+  const openSessionDialog = async (card: AgentRunCard) => {
+    if (!card.sessionId) return;
+    setSessionLoading(true);
+    setSessionRecord(null);
+    try {
+      const detail = await sdk.agent.sessionDetail(card.sessionId);
+      // 复用 usage-dashboard 对话框需要 AgentUsageRecord，构造最小 record
+      if (detail.usage) {
+        setSessionRecord(detail.usage);
+      } else {
+        setSessionRecord({
+          id: card.nodeId,
+          workspaceId,
+          agentSessionId: card.sessionId,
+          agentConfigId: card.agentId ?? '',
+          role: 'assistant',
+          status: card.status === 'completed' ? 'completed' : 'error',
+          runtime: card.modelProvider,
+          model: card.model,
+          summary: card.title,
+          inputTokens: 0,
+          outputTokens: 0,
+          cachedInputTokens: 0,
+          reasoningTokens: 0,
+          totalTokens: 0,
+          inputCostUsd: 0,
+          outputCostUsd: 0,
+          totalCostUsd: 0,
+          startedAt: card.timestamp ? new Date(card.timestamp).toISOString() : new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          durationMs: 0,
+        } as AgentUsageRecord);
+      }
+    } catch {
+      setSessionRecord(null);
+    } finally {
+      setSessionLoading(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -167,6 +218,7 @@ function AgentRunsView({
         modelProvider: typeof agent?.modelProvider === 'string' ? agent.modelProvider : undefined,
         status: step?.status ?? 'idle',
         outputText: extractOutputText(step),
+        sessionId: extractSessionId(step),
         timestamp: step?.finishedAt ?? step?.startedAt,
       };
     });
@@ -224,16 +276,29 @@ function AgentRunsView({
                 ) : (
                   <span />
                 )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 shrink-0"
-                  aria-label="全屏查看"
-                  title="全屏查看"
-                  onClick={() => setFullscreenCard(card)}
-                >
-                  <Maximize2 className="size-3.5" />
-                </Button>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    disabled={!card.sessionId}
+                    aria-label="查看消息列表"
+                    title={card.sessionId ? '查看消息列表' : '暂无会话记录'}
+                    onClick={() => openSessionDialog(card)}
+                  >
+                    <MessageSquare className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    aria-label="全屏查看"
+                    title="全屏查看"
+                    onClick={() => setFullscreenCard(card)}
+                  >
+                    <Maximize2 className="size-3.5" />
+                  </Button>
+                </div>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/40 p-3 text-sm break-words">
                 {card.outputText ? (
@@ -266,6 +331,16 @@ function AgentRunsView({
           </div>
         </DialogContent>
       </Dialog>
+
+      <UsageDashboardSessionDialog
+        record={sessionRecord}
+        open={sessionLoading || !!sessionRecord}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSessionRecord(null);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -276,6 +351,10 @@ export function IssueDetailTasksPanel({
   t,
 }: IssueDetailTasksPanelProps) {
   const [view, setView] = useState<TaskPanelView>('workflow');
+
+  useEffect(() => {
+    setView('workflow');
+  }, [issue.id, issue.workflowId]);
 
   return (
     <div className="space-y-2">
@@ -300,7 +379,10 @@ export function IssueDetailTasksPanel({
       {!issue.workflowId ? (
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (
-        <div className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]">
+        <div
+          key={`${issue.id}:${issue.workflowId}:${view}`}
+          className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]"
+        >
           {view === 'workflow' ? (
             <WorkflowPreview workflowId={issue.workflowId} workspaceId={workspaceId} issueId={issue.id} embeddedMode="issue" />
           ) : (

@@ -41,6 +41,7 @@ import {
   Camera,
 } from "lucide-react";
 import { sdk } from "@/lib/sdk";
+import { getEnabledDiscoveredRuntimeKinds, useRuntimeCliSettings } from "@/lib/runtime-cli-settings";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
@@ -96,6 +97,7 @@ export function AgentDetail({
   const [bgPickerSrc, setBgPickerSrc] = useState("");
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
   const tools = agent.tools ?? [];
+  const { items: discoveredRuntimeCliItems } = useRuntimeCliSettings();
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
   const llmModels = allLlmModels.filter((m) => !m.embedding);
@@ -108,6 +110,17 @@ export function AgentDetail({
       .filter((m) => m.provider === selectedProvider.name)
       .map((m) => ({ value: m.modelId, label: m.name }));
   }, [selectedProvider, llmModels]);
+  const runtimeOptions = useMemo(() => {
+    const enabledCliKinds = new Set(getEnabledDiscoveredRuntimeKinds(discoveredRuntimeCliItems));
+    return RUNTIME_OPTIONS
+      .filter((option) => {
+        if (option.value === "claude-code" || option.value === "codex") {
+          return enabledCliKinds.has(option.value) || agent.runtimeKind === option.value;
+        }
+        return true;
+      })
+      .map((option) => ({ value: option.value, label: t(`runtime.${option.labelKey}`) }));
+  }, [agent.runtimeKind, discoveredRuntimeCliItems, t]);
 
   useEffect(() => {
     ensureLLM();
@@ -280,7 +293,7 @@ export function AgentDetail({
           <SearchSelect
             value={agent.runtimeKind ?? ""}
             onChange={(v) => onChange("runtimeKind", v as NonNullable<AgentConfig["runtimeKind"]>)}
-            options={RUNTIME_OPTIONS.map((option) => ({ value: option.value, label: t(`runtime.${option.labelKey}`) }))}
+            options={runtimeOptions}
             placeholder={t("detail.runtimePlaceholder")}
             searchPlaceholder={t("detail.runtimeSearchPlaceholder")}
             allowCustom={false}

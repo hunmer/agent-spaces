@@ -1266,13 +1266,20 @@ export function getSessionDetail(agentSessionId: string): AgentUsageSessionDetai
     ? JSON.parse(readFileSync(cliHistoryPath, 'utf-8'))
     : undefined;
   if (!session && !usage && rawSession === undefined) return null;
-  const messages = workspaceId ? listSessionDetailMessages(workspaceId, agentSessionId) : [];
+
+  let messages = workspaceId ? listSessionDetailMessages(workspaceId, agentSessionId) : [];
+  let source: AgentUsageSessionDetail['source'] = messages.length > 0 ? 'channel' : rawSession ? 'cli_history' : 'none';
+  // channel 中查不到消息时，回退到 cli_history 文件中保存的消息（如 workflow agent_run 节点）
+  if (messages.length === 0 && rawSession && Array.isArray(rawSession.messages)) {
+    messages = (rawSession.messages as AgentUsageSessionMessage[]).filter((msg) => msg && typeof msg.content === 'string');
+    source = 'cli_history';
+  }
 
   return {
     session,
     usage,
     messages,
-    source: messages.length > 0 ? 'channel' : rawSession ? 'cli_history' : 'none',
+    source,
     cliHistoryPath: rawSession ? cliHistoryPath : undefined,
     rawSession,
   };
@@ -1289,6 +1296,12 @@ export function persistSessionCliHistory(agentSessionId: string): void {
     messages: detail.messages,
     generatedAt: new Date().toISOString(),
   });
+}
+
+export function writeWorkflowAgentSessionHistory(agentSessionId: string, payload: unknown): void {
+  const cliHistoryDir = join(getDataDir(), 'cli_history');
+  ensureDir(cliHistoryDir);
+  writeJsonFile(join(cliHistoryDir, `${agentSessionId}.json`), payload);
 }
 
 function listSessionDetailMessages(workspaceId: string, agentSessionId: string): AgentUsageSessionMessage[] {
