@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Workflow } from '@agent-spaces/shared';
 import type { AgentPreset } from '@/components/sidebar/agent-shared';
-import { getAllNodeDefinitions } from '@/lib/workflow-nodes';
+import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
+import { getAllNodeDefinitions, getNodeDefinition } from '@/lib/workflow-nodes';
 import { workflowChatApi } from '@/lib/workflow-api';
 import { fetchWithAuth } from '@/lib/auth';
+import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
 import type { WorkflowAgentChatMessage, ThinkingStreamState, WorkflowToolCall, WorkflowTimelineItem } from './workflow-editor-agent-utils';
 import {
   hydrateWorkflowAgentChatMessage,
@@ -21,6 +23,50 @@ import {
   asRecord,
   findLastIndex,
 } from './workflow-editor-agent-utils';
+
+function normalizeLegacySourceHandle(snapshot: Pick<Workflow, 'nodes' | 'edges'>): Pick<Workflow, 'nodes' | 'edges'> {
+  const nodesById = new Map(snapshot.nodes.map(node => [node.id, node]));
+
+  const seen = new Set<string>();
+  const edges = snapshot.edges.filter((edge) => {
+    if (seen.has(edge.id)) return false;
+    seen.add(edge.id);
+    return true;
+  }).map((edge) => {
+    const sourceHandle = edge.sourceHandle;
+    if (!sourceHandle?.startsWith('source-')) return edge;
+
+    const sourceNode = nodesById.get(edge.source);
+    const dynamicSource = sourceNode ? getNodeDefinition(sourceNode.type)?.handles?.dynamicSource : undefined;
+    if (!sourceNode || !dynamicSource) return edge;
+
+    const match = /^source-(\d+)$/.exec(sourceHandle);
+    if (!match) return edge;
+
+    const handleIndex = Number(match[1]);
+    const values = sourceNode.data?.[dynamicSource.dataKey];
+    const conditionCount = Array.isArray(values) ? values.length : 0;
+    const hasDefaultHandle = (dynamicSource.extraCount || 0) > 0;
+    const nextSourceHandle = handleIndex < conditionCount
+      ? `case-${handleIndex}`
+      : hasDefaultHandle && handleIndex === conditionCount ? 'default' : sourceHandle;
+
+    if (nextSourceHandle === sourceHandle) return edge;
+
+    return {
+      ...edge,
+      id: createWorkflowEdgeId({
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: nextSourceHandle,
+        targetHandle: edge.targetHandle,
+      }),
+      sourceHandle: nextSourceHandle,
+    };
+  });
+
+  return { ...snapshot, edges };
+}
 
 export function useWorkflowEditorAgentChat({
   workflow,
@@ -177,11 +223,15 @@ export function useWorkflowEditorAgentChat({
   const applyWorkflowPatch = useCallback((result: unknown) => {
     const patch = readWorkflowPatch(result);
     if (!patch || patch.workflow_id !== workflow?.id) return;
+    const normalizedPatch = syncWorkflowReferenceEdges(normalizeLegacySourceHandle({
+      nodes: patch.nodes,
+      edges: patch.edges,
+    }));
     pushUndo('workflow agent edit');
     setWorkflow((w) => w ? {
       ...w,
-      nodes: patch.nodes,
-      edges: patch.edges,
+      nodes: normalizedPatch.nodes,
+      edges: normalizedPatch.edges,
       updatedAt: patch.updatedAt ?? Date.now(),
     } : w);
     markDirty();

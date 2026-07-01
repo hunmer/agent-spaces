@@ -25,12 +25,12 @@
       "data": {}
     },
     {
-      "id": "node_1782870494173_2mfpad",
+      "id": "node_1782872677802_c428yi",
       "type": "mcp_connect",
       "label": "MCP 连接",
       "position": {
-        "x": -60,
-        "y": 180
+        "x": -15,
+        "y": 210
       },
       "data": {
         "outputs": [
@@ -53,12 +53,12 @@
       }
     },
     {
-      "id": "node_1782870864240_zt4kp4",
+      "id": "node_1782872718083_wc51pt",
       "type": "mcp_list_tools",
       "label": "MCP 列出工具",
       "position": {
-        "x": 345,
-        "y": 255
+        "x": 450,
+        "y": 225
       },
       "data": {
         "outputs": [
@@ -76,13 +76,49 @@
             "type": "object",
             "dataType": "object"
           }
-        ]
+        ],
+        "clientId": "310a43e6-6970-4d91-8aa1-8a0207bf8b13"
+      }
+    },
+    {
+      "id": "node_1782872777162_ak7syu",
+      "type": "mcp_disconnect",
+      "label": "MCP Disconnect",
+      "position": {
+        "x": 855,
+        "y": 270
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          }
+        ],
+        "clientId": "310a43e6-6970-4d91-8aa1-8a0207bf8b13"
+      }
+    },
+    {
+      "id": "node_1782872795785_s5byao",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 1065,
+        "y": 60
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
       }
     }
   ],
   "edges": [],
   "createdAt": 1782870380047,
-  "updatedAt": 1782870874412,
+  "updatedAt": 1782872805945,
   "published": false,
   "enabledPlugins": [
     "workflow.mcp-bridge"
