@@ -48,25 +48,29 @@
             "key": "topic",
             "type": "string",
             "value": "{{ __data__[\"start_1782815018956\"].topic }}",
-            "description": "原始公众号主题"
+            "description": "原始公众号主题",
+            "children": []
           },
           {
             "key": "topicReport",
             "type": "string",
             "value": "{{ __data__[\"node_1782815693251_u96noi\"].result }}",
-            "description": "选题 Agent 产出的选题报告"
+            "description": "选题 Agent 产出的选题报告",
+            "children": []
           },
           {
             "key": "article",
             "type": "string",
             "value": "{{ __data__[\"node_1782815702374_v472u0\"].result }}",
-            "description": "编辑 Agent 产出的完整公众号文章"
+            "description": "编辑 Agent 产出的完整公众号文章",
+            "children": []
           },
           {
             "key": "reviewReport",
             "type": "string",
             "value": "{{ __data__[\"node_1782815702375_38k06l\"].result }}",
-            "description": "审批 Agent 产出的最终审批报告与可发布稿件"
+            "description": "审批 Agent 产出的最终审批报告与可发布稿件",
+            "children": []
           }
         ]
       }
@@ -80,7 +84,7 @@
         "y": 0
       },
       "data": {
-        "permissionMode": "dontAsk",
+        "permissionMode": "bypassPermissions",
         "outputs": [
           {
             "key": "result",
@@ -130,7 +134,7 @@
         "y": 0
       },
       "data": {
-        "permissionMode": "dontAsk",
+        "permissionMode": "bypassPermissions",
         "outputs": [
           {
             "key": "result",
@@ -184,7 +188,7 @@
         "y": 0
       },
       "data": {
-        "permissionMode": "dontAsk",
+        "permissionMode": "bypassPermissions",
         "outputs": [
           {
             "key": "result",
@@ -401,10 +405,10 @@
     }
   ],
   "createdAt": 1782821632696,
-  "updatedAt": 1782906660920,
+  "updatedAt": 1782910186103,
   "published": false,
   "name": "公众号编写 (Copy)",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
-  "lastRunAt": 1782907181488
+  "lastRunAt": 1782910206345
 }

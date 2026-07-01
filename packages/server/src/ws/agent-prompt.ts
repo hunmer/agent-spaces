@@ -224,24 +224,45 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
   }
 
   if (tools.some((tool) => isDatabaseToolName(tool.name))) {
+    const enabledDatabaseToolNames = new Set(
+      tools.filter((tool) => isDatabaseToolName(tool.name)).map((tool) => tool.name),
+    );
     lines.push(
       'Knowledge base database tool rules:',
       '- Knowledge base/database documents are Agent Spaces database nodes, not workspace filesystem files.',
-      '- Call Agent Spaces database tools with their MCP names, for example mcp__agent-spaces__ListDatabaseNodes.',
-      '- To list available knowledge base databases and valid database IDs, call mcp__agent-spaces__ListDatabases.',
-      '- If the user does not specify a database, omit databaseId and the first database will be used automatically.',
-      '- Never use the workspace id as databaseId.',
-      '- To list database files, call mcp__agent-spaces__ListDatabaseNodes with path and optional filter.',
-      '- To search database files, call mcp__agent-spaces__SearchDatabaseNodes with path and optional filter.',
-      '- To run semantic vector search, call mcp__agent-spaces__QueryDatabaseVectors with query and optional databaseId.',
-      '- To read database content, call mcp__agent-spaces__ReadDatabaseNode with an existing node id.',
-      '- To inspect database document edit history, call mcp__agent-spaces__ListDatabaseNodeVersions with an existing node id.',
-      '- To create a new database document, call mcp__agent-spaces__CreateDatabaseNode with title, optional content, and optional parentId or path.',
-      '- To write database content, call mcp__agent-spaces__WriteDatabaseNode with an existing node id, mode, replace when needed, and content.',
+      '- Call only the Agent Spaces database tools listed below. Do not claim or use database tools that are not listed in this runtime configuration.',
       '- Do not use native filesystem write/edit tools for knowledge base/database documents; those tools write workspace files, not Agent Spaces database nodes.',
-      '- Do not invent database node ids. If the target id is unknown, call mcp__agent-spaces__ListDatabaseNodes or mcp__agent-spaces__SearchDatabaseNodes first.',
-      '- If the database is empty or no existing node matches the requested document, call mcp__agent-spaces__CreateDatabaseNode instead of WriteDatabaseNode.',
     );
+    if (enabledDatabaseToolNames.has('ListDatabases')) {
+      lines.push('- To list available knowledge base databases and valid database IDs, call mcp__agent-spaces__ListDatabases.');
+      lines.push('- If the user does not specify a database, omit databaseId and the first database will be used automatically.');
+      lines.push('- Never use the workspace id as databaseId.');
+    }
+    if (enabledDatabaseToolNames.has('ListDatabaseNodes')) {
+      lines.push('- To list database files, call mcp__agent-spaces__ListDatabaseNodes with path and optional filter.');
+    }
+    if (enabledDatabaseToolNames.has('SearchDatabaseNodes')) {
+      lines.push('- To search database files, call mcp__agent-spaces__SearchDatabaseNodes with path and optional filter.');
+    }
+    if (enabledDatabaseToolNames.has('QueryDatabaseVectors')) {
+      lines.push('- To run semantic vector search, call mcp__agent-spaces__QueryDatabaseVectors with query and optional databaseId.');
+    }
+    if (enabledDatabaseToolNames.has('ReadDatabaseNode')) {
+      lines.push('- To read database content, call mcp__agent-spaces__ReadDatabaseNode with an existing node id.');
+    }
+    if (enabledDatabaseToolNames.has('ListDatabaseNodeVersions')) {
+      lines.push('- To inspect database document edit history, call mcp__agent-spaces__ListDatabaseNodeVersions with an existing node id.');
+    }
+    if (enabledDatabaseToolNames.has('CreateDatabaseNode')) {
+      lines.push('- To create a new database document, call mcp__agent-spaces__CreateDatabaseNode with title, optional content, and optional parentId or path.');
+      lines.push('- If the database is empty or no existing node matches the requested document, call mcp__agent-spaces__CreateDatabaseNode.');
+    }
+    if (enabledDatabaseToolNames.has('WriteDatabaseNode')) {
+      lines.push('- To write database content, call mcp__agent-spaces__WriteDatabaseNode with an existing node id, mode, replace when needed, and content.');
+    }
+    if (enabledDatabaseToolNames.has('ListDatabaseNodes') || enabledDatabaseToolNames.has('SearchDatabaseNodes')) {
+      lines.push('- Do not invent database node ids. If the target id is unknown, call an enabled listing or search database tool first.');
+    }
   }
 
   for (const tool of tools) {

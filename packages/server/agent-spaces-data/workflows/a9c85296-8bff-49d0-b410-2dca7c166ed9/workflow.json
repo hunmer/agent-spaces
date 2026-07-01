@@ -33,7 +33,7 @@
         "y": 225
       },
       "data": {
-        "permissionMode": "dontAsk",
+        "permissionMode": "bypassPermissions",
         "outputs": [
           {
             "key": "result",
@@ -49,11 +49,11 @@
           "name": "test",
           "role": "agent",
           "description": "",
-          "runtimeKind": "langchain",
-          "modelProvider": "openai-chat-completions",
-          "providerId": "575f5fea-467e-4aa2-8b17-f4522dc74429",
-          "modelId": "GLM-4.7",
-          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "runtimeKind": "claude-code",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "GLM-5.1",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
           "workingDir": "",
           "mcps": {},
           "tools": [
@@ -67,12 +67,12 @@
           "icon": "",
           "enabled": true
         },
-        "prompt": "你现在有哪些工具？"
+        "prompt": "使用ListDatabases tools"
       }
     }
   ],
   "edges": [],
   "createdAt": 1782908425007,
-  "updatedAt": 1782908921874,
+  "updatedAt": 1782910156255,
   "published": false
 }

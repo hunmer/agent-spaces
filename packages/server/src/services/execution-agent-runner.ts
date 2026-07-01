@@ -5,6 +5,13 @@ import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import * as workspaceService from './workspace.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import type { ExecutionSession } from './execution-types.js';
+import {
+  createCommandFunctionTools,
+  createDatabaseFunctionTools,
+  createIssueFunctionTools,
+  createWorkspaceFileFunctionTools,
+  createWorkflowExecutionFunctionTools,
+} from './builtin-tools/index.js';
 
 type AppendLog = (level: ExecutionLogEntry['level'], message: string) => void;
 
@@ -79,6 +86,13 @@ async function executeAgentWithRuntime(
   const builtInTools = BUILT_IN_AGENT_TOOLS
     .filter((tool) => enabledToolNames.has(tool.name))
     .map((tool) => ({ name: tool.name, description: tool.description }));
+  const functionTools = [
+    ...createIssueFunctionTools(workspaceId, undefined, { senderId: preset.id, senderRole: preset.role }, tools),
+    ...createCommandFunctionTools(workspaceId, tools),
+    ...createDatabaseFunctionTools(workspaceId, tools),
+    ...createWorkspaceFileFunctionTools(workspaceId, tools, () => workspace ?? null),
+    ...createWorkflowExecutionFunctionTools(workspaceId, tools),
+  ];
 
   appendLog('info', `Runtime: ${preset.runtimeKind || 'langchain'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
   if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
@@ -98,6 +112,7 @@ async function executeAgentWithRuntime(
     {
       maxTurns: 100,
       tools,
+      functionTools,
       mcpServers,
       skills,
       configDir,
