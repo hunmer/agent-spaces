@@ -21,18 +21,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn, textColorClass } from "@/lib/utils"
+import { SessionDetailButton, UsageDashboardSessionDialog } from "./usage-dashboard-session-dialog"
 import { formatCurrency, formatDuration, formatTokens, getModelIconUrl } from "./usage-dashboard-utils"
 
 export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecord[]; formatRelative: (v: string) => string }) {
   const t = useTranslations('home')
   const pageSize = 5
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
+  const [selectedRecord, setSelectedRecord] = useState<AgentUsageRecord | null>(null)
 
   const columns = useTableColumns(t, formatRelative)
 
   const table = useReactTable({
     data,
     columns,
+    meta: {
+      onViewDetail: (record: AgentUsageRecord) => setSelectedRecord(record),
+    },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -151,6 +156,13 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
           </PaginationContent>
         </Pagination>
       </div>
+      <UsageDashboardSessionDialog
+        record={selectedRecord}
+        open={Boolean(selectedRecord)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedRecord(null)
+        }}
+      />
     </div>
   )
 }
@@ -253,6 +265,14 @@ function useTableColumns(t: ReturnType<typeof useTranslations<'home'>>, formatRe
       cell: ({ row }) => (
         <span className="text-muted-foreground text-xs">{formatRelative(row.original.completedAt)}</span>
       )
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as { onViewDetail?: (record: AgentUsageRecord) => void } | undefined
+        return <SessionDetailButton onClick={() => meta?.onViewDetail?.(row.original)} />
+      }
     },
   ]
 }

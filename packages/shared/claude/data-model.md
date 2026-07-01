@@ -29,6 +29,7 @@ Task
 
 AgentSession
   |-- AgentUsageRecord (1:N, agentSessionId)
+  |-- AgentUsageSessionDetail (聚合视图: session + usage + messages[])
 
 Workflow
   |-- WorkflowNode (1:N)

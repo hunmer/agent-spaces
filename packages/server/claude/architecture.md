@@ -95,7 +95,15 @@ session 内存态（`ExecutionSession`）：含 nodes/edges/groups/variables 快
 | `{{__inputs__['nodeId'].path}}` | 节点输入 |
 | `{{__loop__.vars.key}}` / `{{__loop__.index}}` 等 | 循环变量 |
 | `{{__config__['pluginId']['key'].path}}` | 插件配置（自动 JSON.parse） |
+| `{{__WORKFLOW__.key}}` | 当前工作流上下文对象（见下） |
 | `{{context.key}}` | 任意上下文路径 |
+
+#### `__WORKFLOW__` 工作流上下文对象
+
+每次执行在 session 初始化时由 `buildWorkflowContextObject` 注入 `context.__WORKFLOW__`，暴露当前工作流元信息供节点引用：
+
+- 字段：`id` / `name` / `description` / `type` / `folderId` / `tags` / `published` / `createdAt` / `updatedAt` / `executionId` / `ownerClientId` / `source` / `workspaceId?`
+- `source` 由 `inferWorkflowSource` 推断：显式传入优先；否则 `ownerClientId` 以 `sse:` 前缀 → `api`；映射表 `__cron__→cron`、`__hook__→hook`、`agent-tools→agent-tools`；其余 → `web`
 
 路径支持点号 + 方括号混写（`a.b['c'][0]`），经 `normalizeVariablePath` 归一化。
 

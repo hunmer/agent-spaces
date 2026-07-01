@@ -46,7 +46,7 @@ SDK 的唯一入口。接收 `SDKConfig` 配置，返回 `SDK` 实例。
 | stopNotifications | POST | `/api/workspaces/:id/notifications/stop` | 停止通知 |
 | testNotification | POST | `/api/workspaces/:id/notifications/test` | 发送测试通知 |
 
-### agent（10 方法）
+### agent（11 方法）
 
 | 方法 | HTTP | 路径 | 说明 |
 |------|------|------|------|
@@ -56,6 +56,7 @@ SDK 的唯一入口。接收 `SDKConfig` 配置，返回 `SDK` 实例。
 | updatePreset | PUT | `/api/agents/presets/:id` | 更新预设 |
 | deletePreset | DELETE | `/api/agents/presets/:id` | 删除预设 |
 | usageDashboard | GET | `/api/agents/usage/dashboard` | 用量仪表盘 |
+| sessionDetail | GET | `/api/agents/sessions/:agentSessionId/detail` | 会话详情下钻（消息时间线 + 用量 + 来源） |
 | design | POST | `/api/agents/design` | AI 生成 Agent 配置 |
 | optimizePrompt | POST | `/api/agents/presets/optimize-prompt` | 优化 Prompt |
 | testConnection | POST | `/api/agents/presets/test-connection` | 测试连接 |

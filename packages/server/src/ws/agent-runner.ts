@@ -575,6 +575,7 @@ export async function runMentionedAgent(
         parts: waitingParts,
       });
       if (waiting) broadcastToWorkspace(workspaceId, 'channel.message.updated', waiting);
+      agentService.persistSessionCliHistory(nextSession.id);
       agentService.updateStatus(workspaceId, nextSession.id, 'blocked');
       broadcastToWorkspace(workspaceId, 'agent.status_changed', {
         agentId: nextSession.id,
@@ -654,6 +655,7 @@ export async function runMentionedAgent(
       parts: replyParts,
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
+    agentService.persistSessionCliHistory(nextSession.id);
   } catch (err) {
     if (activeRun?.stopped) return;
     const error = err instanceof Error ? err.message : String(err);
@@ -706,6 +708,7 @@ export async function runMentionedAgent(
       parts: errorParts,
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
+    agentService.persistSessionCliHistory(nextSession.id);
   } finally {
     untrackChannelRun(workspaceId, channelId, nextSession.id);
   }

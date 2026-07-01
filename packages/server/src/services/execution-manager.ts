@@ -121,6 +121,11 @@ const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
 const DELAY_NODE_MIN_MS = 100;
 const DELAY_NODE_MAX_MS = 30_000;
+const WORKFLOW_SOURCE_BY_OWNER_CLIENT_ID: Record<string, string> = {
+  '__cron__': 'cron',
+  '__hook__': 'hook',
+  'agent-tools': 'agent-tools',
+};
 
 function parseExecutionFieldHandle(handleId: string | null | undefined): { kind: 'input' | 'property' | 'output'; key: string } | null {
   if (!handleId) return null;
@@ -184,6 +189,34 @@ function isBranchActiveEdge(
 ): boolean {
   if (activeHandle === undefined) return true;
   return getBranchComparableSourceHandle(edge, edges) === activeHandle;
+}
+
+function inferWorkflowSource(ownerClientId: string): string {
+  if (ownerClientId.startsWith('sse:')) return 'api';
+  return WORKFLOW_SOURCE_BY_OWNER_CLIENT_ID[ownerClientId] ?? 'web';
+}
+
+function buildWorkflowContextObject(
+  workflow: Workflow,
+  executionId: string,
+  ownerClientId: string,
+  workspaceId?: string,
+): Record<string, unknown> {
+  return {
+    id: workflow.id,
+    name: workflow.name,
+    description: workflow.description ?? '',
+    type: workflow.type ?? 'normal',
+    folderId: workflow.folderId,
+    tags: Array.isArray(workflow.tags) ? [...workflow.tags] : [],
+    published: workflow.published === true,
+    createdAt: workflow.createdAt,
+    updatedAt: workflow.updatedAt,
+    executionId,
+    ownerClientId,
+    source: inferWorkflowSource(ownerClientId),
+    ...(workspaceId ? { workspaceId } : {}),
+  };
 }
 
 function normalizeExecutionSnapshotNodes(
@@ -506,6 +539,7 @@ export class ExecutionManager {
           ...(env ? clone(env) : {}),
         },
         __input__: input,
+        __WORKFLOW__: buildWorkflowContextObject(workflow, executionId, ownerClientId, workspaceId),
       },
       status: 'idle', executionOrder: [], currentIndex: 0,
       pauseRequested: false, stopRequested: false,
@@ -1632,6 +1666,12 @@ export class ExecutionManager {
     const envMatch = value.match(/^\s*\{\{\s*__env__\.([^}]+?)\s*\}\}\s*$/);
     if (envMatch) return getNestedValue(session.context.__env__ ?? {}, envMatch[1]) ?? '';
 
+    const workflowMatch = value.match(/^\s*\{\{\s*__WORKFLOW__(?:\.([^}]+?))?\s*\}\}\s*$/);
+    if (workflowMatch) {
+      if (!workflowMatch[1]) return session.context.__WORKFLOW__ ?? {};
+      return getNestedValue(session.context.__WORKFLOW__ ?? {}, workflowMatch[1]) ?? '';
+    }
+
     const dataMatch = value.match(/^\s*\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}\s*$/);
     if (dataMatch) {
       const data = this.getNodeExecutionData(session, dataMatch[2]);
@@ -1667,6 +1707,9 @@ export class ExecutionManager {
       .replace(/\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}/g, (_m, p) => String(this.getLoopVariableValue(session, p) ?? ''))
       .replace(/\{\{\s*__loop__\.((?:index|count|item|isFirst|isLast)(?:\.[^}]+?)?)\s*\}\}/g, (_m, p) => String(this.getLoopMetaPathValue(session, p) ?? ''))
       .replace(/\{\{\s*__env__\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context.__env__ ?? {}, p) ?? ''))
+      .replace(/\{\{\s*__WORKFLOW__(?:\.([^}]+?))?\s*\}\}/g, (_m, p) => (
+        p ? String(getNestedValue(session.context.__WORKFLOW__ ?? {}, p) ?? '') : JSON.stringify(session.context.__WORKFLOW__ ?? {})
+      ))
       .replace(/\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
         const d = this.getNodeExecutionData(session, nid);
         if (d == null) {

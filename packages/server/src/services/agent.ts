@@ -2,23 +2,38 @@ import { v4 as uuid } from 'uuid';
 import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path';
-import type { AgentConfig, AgentSession, AgentSessionStatus, AgentUsageDashboard, LLMProvider, MessageTokenUsage } from '@agent-spaces/shared';
+import type {
+  AgentConfig,
+  AgentSession,
+  AgentSessionStatus,
+  AgentUsageDashboard,
+  AgentUsageSessionDetail,
+  AgentUsageSessionMessage,
+  LLMProvider,
+  Message,
+  MessagePart,
+  MessageTokenUsage,
+  WorkflowAgentTimelineItem,
+} from '@agent-spaces/shared';
 import { BUILT_IN_AGENT_TOOLS } from '@agent-spaces/shared';
 import {
   listAgentSessions,
   getAgentSession,
+  getAgentSessionById,
   createAgentSession,
   updateAgentSession,
   deleteAgentSession,
   getAgentUsageDashboard,
+  getLatestAgentUsageBySessionId,
   recordAgentUsage,
 } from '../storage/agent-store.js';
 import { getWorkspace, listWorkspaces } from '../storage/workspace-store.js';
 import { listIssues, updateIssue } from '../storage/issue-store.js';
 import { listChannels, updateChannel } from './channel.js';
-import { ensureDir, getDataDir } from '../storage/json-store.js';
+import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 import { listModels, listProviders } from '../storage/llm-store.js';
 import { extractUsageFromOutput } from '../storage/usage.js';
+import { getToolDetail } from './tool-detail.js';
 
 const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
 export const AGENT_GENERATOR_PRESET_ID = 'agent-generator';
@@ -1214,4 +1229,152 @@ export function findActiveByRole(
 
 export function usageDashboard(days?: number): AgentUsageDashboard {
   return getAgentUsageDashboard(days);
+}
+
+export function getSessionDetail(agentSessionId: string): AgentUsageSessionDetail | null {
+  const session = getAgentSessionById(agentSessionId);
+  const usage = getLatestAgentUsageBySessionId(agentSessionId);
+  const workspaceId = session?.workspaceId ?? usage?.workspaceId;
+  const cliHistoryPath = join(getDataDir(), 'cli_history', `${agentSessionId}.json`);
+  const rawSession = existsSync(cliHistoryPath)
+    ? JSON.parse(readFileSync(cliHistoryPath, 'utf-8'))
+    : undefined;
+  if (!session && !usage && rawSession === undefined) return null;
+  const messages = workspaceId ? listSessionDetailMessages(workspaceId, agentSessionId) : [];
+
+  return {
+    session,
+    usage,
+    messages,
+    source: messages.length > 0 ? 'channel' : rawSession ? 'cli_history' : 'none',
+    cliHistoryPath: rawSession ? cliHistoryPath : undefined,
+    rawSession,
+  };
+}
+
+export function persistSessionCliHistory(agentSessionId: string): void {
+  const detail = getSessionDetail(agentSessionId);
+  if (!detail) return;
+  const cliHistoryDir = join(getDataDir(), 'cli_history');
+  ensureDir(cliHistoryDir);
+  writeJsonFile(join(cliHistoryDir, `${agentSessionId}.json`), {
+    session: detail.session,
+    usage: detail.usage,
+    messages: detail.messages,
+    generatedAt: new Date().toISOString(),
+  });
+}
+
+function listSessionDetailMessages(workspaceId: string, agentSessionId: string): AgentUsageSessionMessage[] {
+  const channels = listChannels(workspaceId);
+  const items: AgentUsageSessionMessage[] = [];
+
+  for (const channel of channels) {
+    const path = join(getDataDir(), 'workspaces', workspaceId, 'channels', channel.id, 'messages.json');
+    const messages = readJsonFile<Message[]>(path) ?? [];
+    for (const message of messages) {
+      const mapped = mapSessionDetailMessage(workspaceId, channel.id, channel.name, message, agentSessionId);
+      if (mapped) items.push(mapped);
+      for (const reply of message.replies ?? []) {
+        const replyMessage: Message = {
+          ...message,
+          id: reply.id,
+          senderId: reply.senderId,
+          senderRole: reply.senderRole,
+          content: reply.content,
+          status: reply.status,
+          attachments: reply.attachments,
+          parts: reply.parts,
+          metadata: reply.metadata,
+          createdAt: reply.createdAt,
+          replies: undefined,
+        };
+        const mappedReply = mapSessionDetailMessage(workspaceId, channel.id, channel.name, replyMessage, agentSessionId);
+        if (mappedReply) items.push(mappedReply);
+      }
+    }
+  }
+
+  return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function mapSessionDetailMessage(
+  workspaceId: string,
+  channelId: string,
+  channelName: string,
+  message: Message,
+  agentSessionId: string,
+): AgentUsageSessionMessage | null {
+  if (message.metadata?.agentSessionId !== agentSessionId) return null;
+  const contextPart = message.parts?.find((part): part is Extract<MessagePart, { type: 'context' }> => part.type === 'context');
+  return {
+    id: message.id,
+    role: message.senderId === 'user' ? 'user' : 'agent',
+    content: message.content,
+    createdAt: message.createdAt,
+    senderId: message.senderId,
+    senderRole: message.senderRole,
+    metadata: message.metadata,
+    parts: message.parts,
+    contextPart,
+    timeline: buildSessionMessageTimeline(workspaceId, channelId, message),
+    sourceChannelId: channelId,
+    sourceChannelName: channelName,
+  };
+}
+
+function buildSessionMessageTimeline(
+  workspaceId: string,
+  channelId: string,
+  message: Message,
+): WorkflowAgentTimelineItem[] {
+  const timeline: WorkflowAgentTimelineItem[] = [];
+
+  for (const part of message.parts ?? []) {
+    if (part.type === 'reasoning' && part.text.trim()) {
+      timeline.push({ id: part.id, type: 'thinking', content: part.text });
+      continue;
+    }
+    if (part.type === 'chain') {
+      for (const chain of part.chains) {
+        if (chain.kind === 'message' && chain.text?.trim()) {
+          timeline.push({ id: chain.id, type: 'message', content: chain.text });
+          continue;
+        }
+        if (chain.kind === 'tool') {
+          const detail = chain.detailId
+            ? getToolDetail(workspaceId, channelId, message.id, chain.detailId)
+            : null;
+          timeline.push({
+            id: detail?.id ?? chain.id,
+            type: 'tool',
+            name: chain.toolName ?? chain.title,
+            input: detail?.input,
+            result: detail?.output,
+            status: detail?.output === undefined ? 'running' : 'success',
+          });
+        }
+      }
+      continue;
+    }
+    if (part.type === 'terminal' && part.output.trim()) {
+      timeline.push({ id: part.id, type: 'message', content: part.output });
+      continue;
+    }
+    if (part.type === 'error' && part.message.trim()) {
+      timeline.push({ id: part.id, type: 'message', content: part.message });
+      continue;
+    }
+    if (part.type === 'subagent') {
+      const lines = [
+        part.instructions?.trim() ? `Instructions:\n${part.instructions}` : '',
+        part.output?.trim() ? `Output:\n${part.output}` : '',
+      ].filter(Boolean);
+      if (lines.length > 0) {
+        timeline.push({ id: part.id, type: 'message', content: `${part.name}\n\n${lines.join('\n\n')}` });
+      }
+    }
+  }
+
+  return timeline;
 }

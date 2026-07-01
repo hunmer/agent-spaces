@@ -22,6 +22,9 @@ export function createAgentApi(http: HttpClient) {
     usageDashboard: (days = 30): Promise<import('@agent-spaces/shared').AgentUsageDashboard> =>
       http.get(`/api/agents/usage/dashboard?days=${days}`),
 
+    sessionDetail: (agentSessionId: string): Promise<import('@agent-spaces/shared').AgentUsageSessionDetail> =>
+      http.get(`/api/agents/sessions/${agentSessionId}/detail`),
+
     /** Agent Designer — AI 生成 Agent 配置 */
     design: (prompt: string): Promise<Partial<AgentConfig>> =>
       http.post('/api/agents/design', { prompt }),

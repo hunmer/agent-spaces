@@ -100,6 +100,16 @@ export function getAgentSession(workspaceId: string, sessionId: string): AgentSe
   return null;
 }
 
+export function getAgentSessionById(sessionId: string): AgentSession | null {
+  const database = openDb();
+  const row = database.prepare(`
+    SELECT * FROM agent_sessions
+    WHERE id = ?
+  `).get(sessionId);
+  if (row) return mapSessionRow(row);
+  return null;
+}
+
 export function createAgentSession(session: AgentSession): void {
   const database = openDb();
   insertSession(database, session);
@@ -266,6 +276,18 @@ export function getAgentUsageDashboard(days = 30): AgentUsageDashboard {
     byModel: Array.from(modelMap.values()).sort((a, b) => b.costUsd - a.costUsd).slice(0, 5),
     recent: records.slice(0, 6),
   };
+}
+
+export function getLatestAgentUsageBySessionId(sessionId: string): AgentUsageRecord | null {
+  const database = openDb();
+  const row = database.prepare(`
+    SELECT * FROM agent_usage
+    WHERE agent_session_id = ?
+    ORDER BY completed_at DESC
+    LIMIT 1
+  `).get(sessionId);
+  if (row) return mapUsageRow(row);
+  return null;
 }
 
 function insertSession(database: DatabaseSync, session: AgentSession): void {

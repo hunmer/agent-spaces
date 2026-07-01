@@ -455,6 +455,7 @@
   "variablePicker": {
     "insertVariable": "插入变量",
     "workflowInput": "工作流输入",
+    "workflowInfo": "工作流信息",
     "workflowVariables": "工作流变量",
     "nodeInput": "节点输入",
     "nodeOutput": "节点输出",

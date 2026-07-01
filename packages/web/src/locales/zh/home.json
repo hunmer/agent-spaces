@@ -91,5 +91,17 @@
       "balance": "余额",
       "bonusBalance": "赠送余额"
     }
+  },
+  "sessionDetail": {
+    "title": "浼氳瘽璇︽儏",
+    "view": "鏌ョ湅",
+    "messages": "娑堟伅娴?",
+    "raw": "鍘熷 JSON",
+    "loading": "姝ｅ湪鍔犺浇浼氳瘽璇︽儏...",
+    "empty": "鏈壘鍒颁細璇濇秷鎭?",
+    "promptInfo": "鎻愮ず璇︽儏",
+    "requests": "Tokens",
+    "cost": "璐圭敤",
+    "duration": "鑰楁椂"
   }
 }

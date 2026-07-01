@@ -11,6 +11,15 @@ router.get('/usage/dashboard', (req: Request, res: Response) => {
   res.json(agentService.usageDashboard(Number.isFinite(days) ? days : 30));
 });
 
+router.get('/sessions/:agentSessionId/detail', (req: Request<{ agentSessionId: string }>, res: Response) => {
+  const detail = agentService.getSessionDetail(req.params.agentSessionId);
+  if (!detail) {
+    res.status(404).json({ error: 'agent session not found' });
+    return;
+  }
+  res.json(detail);
+});
+
 router.get('/presets', (req: Request<{ id: string }>, res: Response) => {
   res.json(agentService.listTemplates());
 });

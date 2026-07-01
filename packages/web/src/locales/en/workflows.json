@@ -455,6 +455,7 @@
   "variablePicker": {
     "insertVariable": "Insert Variable",
     "workflowInput": "Workflow Input",
+    "workflowInfo": "Workflow Info",
     "workflowVariables": "Workflow Variables",
     "nodeInput": "Node Input",
     "nodeOutput": "Node Output",

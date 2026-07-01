@@ -21,7 +21,7 @@
 | Channel | `/api/workspaces/:id/channels` | `routes/channel.ts` |
 | Issue | `/api/workspaces/:id/issues` | `routes/issue.ts` |
 | Command | `/api/workspaces/:id/commands` | `routes/command.ts` |
-| Agent | `/api/workspaces/:id/agents`, `/api/agents` | `routes/agent.ts` |
+| Agent | `/api/workspaces/:id/agents`, `/api/agents`（含 `GET /api/agents/sessions/:agentSessionId/detail` 会话详情下钻） | `routes/agent.ts` |
 | Task | `/api/workspaces/:id/tasks` | `routes/task.ts` |
 | Git | `/api/workspaces/:id/git` | `routes/git.ts` |
 | Search | `/api/workspaces/:id/search` | `routes/search.ts` |

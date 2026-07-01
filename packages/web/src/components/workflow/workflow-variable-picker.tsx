@@ -78,6 +78,33 @@ function buildEnvPath(fieldPath: string): string {
   return `{{ __env__.${fieldPath} }}`;
 }
 
+function buildWorkflowContextPath(fieldPath?: string): string {
+  return fieldPath ? `{{ __WORKFLOW__.${fieldPath} }}` : '{{ __WORKFLOW__ }}';
+}
+
+const WORKFLOW_CONTEXT_FIELDS: VariableField[] = [
+  {
+    key: '__WORKFLOW__',
+    type: 'object',
+    expressionPath: '',
+    children: [
+      { key: 'id', type: 'string' },
+      { key: 'name', type: 'string' },
+      { key: 'description', type: 'string' },
+      { key: 'type', type: 'string' },
+      { key: 'folderId', type: 'string' },
+      { key: 'tags', type: 'string[]' },
+      { key: 'published', type: 'boolean' },
+      { key: 'createdAt', type: 'number' },
+      { key: 'updatedAt', type: 'number' },
+      { key: 'executionId', type: 'string' },
+      { key: 'ownerClientId', type: 'string' },
+      { key: 'source', type: 'string' },
+      { key: 'workspaceId', type: 'string' },
+    ],
+  },
+];
+
 function getArrayItemField(arrayField: OutputField | null): VariableField {
   if (!arrayField) return { key: 'item', type: 'any', expressionPath: 'item' };
   if (arrayField.type === 'array') {
@@ -521,6 +548,18 @@ export function WorkflowVariablePicker({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.workflowInfo')}</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-[180px]">
+            <VariableFieldMenu
+              fields={WORKFLOW_CONTEXT_FIELDS}
+              nodeId="__WORKFLOW__"
+              typeFilter={normalizedTypeFilter}
+              onSelect={(_nodeId, fieldPath) => onSelect(buildWorkflowContextPath(fieldPath))}
+            />
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.workflowVariables')}</DropdownMenuSubTrigger>

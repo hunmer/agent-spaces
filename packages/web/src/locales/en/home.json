@@ -91,5 +91,17 @@
       "balance": "Balance",
       "bonusBalance": "Bonus Balance"
     }
+  },
+  "sessionDetail": {
+    "title": "Session Detail",
+    "view": "View",
+    "messages": "Messages",
+    "raw": "Raw JSON",
+    "loading": "Loading session detail...",
+    "empty": "No session messages found.",
+    "promptInfo": "Prompt Info",
+    "requests": "Tokens",
+    "cost": "Cost",
+    "duration": "Duration"
   }
 }
