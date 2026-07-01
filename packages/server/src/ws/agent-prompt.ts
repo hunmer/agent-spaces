@@ -48,7 +48,7 @@ export function buildAgentPrompt(
       `- MCP servers configured for this agent: ${runtimeConfig.mcpServers.length ? runtimeConfig.mcpServers.join(', ') : 'none'}`,
       `- Skills configured for this agent: ${runtimeConfig.skills.length ? runtimeConfig.skills.join(', ') : 'none'}`,
       formatRuntimeToolsLine(runtimeConfig.runtimeKind),
-      `- Agent Spaces channel tools configured for this channel: ${runtimeConfig.builtInTools?.length ? runtimeConfig.builtInTools.map((tool) => tool.name).join(', ') : 'none'}`,
+      `- Tools: ${runtimeConfig.builtInTools?.length ? runtimeConfig.builtInTools.map((tool) => tool.name).join(', ') : 'none'}`,
     ];
     if (runtimeConfig.boundDirs?.length) {
       configLines.push(`- Code directories (boundDirs): ${runtimeConfig.boundDirs.join(', ')}`);

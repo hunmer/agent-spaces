@@ -727,7 +727,7 @@ function isStrippableRuntimeNoticeLabel(label: string): boolean {
 }
 
 function isAgentSpacesPromptEchoStart(line: string): boolean {
-  return /^-?\s*Agent Spaces channel tools configured for this channel:/i.test(line);
+  return /^-?\s*Tools:/i.test(line);
 }
 
 function isIgnorablePromptEchoLine(line: string): boolean {

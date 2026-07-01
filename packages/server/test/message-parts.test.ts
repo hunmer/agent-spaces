@@ -4,7 +4,7 @@ import { buildAgentMessageParts, normalizeOutputLines } from '../src/ws/message-
 
 test('normalizeOutputLines drops Agent Spaces prompt echo blocks', () => {
   const lines = normalizeOutputLines([
-    'Agent Spaces channel tools configured for this channel: none',
+    'Tools: none',
     'Code directories (boundDirs): C:\\Users\\Administrator\\open-ai-test',
     'For Bash commands that create or modify files under the current working directory, use relative paths such as mkdir -p css js instead of absolute paths.',
     'When asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have, answer from this configuration only.',
@@ -24,7 +24,7 @@ test('normalizeOutputLines drops prefixed Hermes runtime configuration echo bloc
     '[hermes] stdout | - Skills configured for this agent: plans',
     '[hermes] stdout | - Runtime tools available through Hermes: Hermes CLI tools and configured',
     '[hermes] stdout | skills',
-    '[hermes] stdout | - Agent Spaces channel tools configured for this channel: none',
+    '[hermes] stdout | - Tools: none',
     '[hermes] stdout | - Code directories (boundDirs): C:\\Users\\Administrator\\open-ai-test',
     '[hermes] stdout | - For Bash commands that create or modify files under the current working',
     '[hermes] stdout | directory, use relative paths such as `mkdir -p css js` instead of absolute',
