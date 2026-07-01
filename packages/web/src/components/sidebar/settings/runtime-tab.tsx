@@ -21,7 +21,7 @@ interface DiscoverRuntimeCliResponse {
 
 interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
   ok: boolean;
-  runtimeId: "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+  runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
   packageManager: string;
   packages: string[];
   stdout: string;
@@ -30,7 +30,7 @@ interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
 
 interface CheckSdkUpdatesResponse {
   updates: Array<{
-    runtimeId: "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+    runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
     latestVersion: string | null;
     debug: {
       packageName: string | null;
@@ -43,8 +43,8 @@ interface CheckSdkUpdatesResponse {
   }>;
 }
 
-type InstallableRuntimeId = "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
-const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["hermes", "oh-my-pi"]);
+type InstallableRuntimeId = "claude-code" | "codex" | "gemini-cli" | "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["claude-code", "codex", "gemini-cli", "hermes", "oh-my-pi"]);
 
 export function RuntimeTab() {
   const t = useTranslations("settings");

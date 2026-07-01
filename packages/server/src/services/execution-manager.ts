@@ -1002,6 +1002,8 @@ export class ExecutionManager {
         return { items: Array.isArray(resolvedData.items) ? resolvedData.items : [] };
       case 'table_display':
         return this.executeTableDisplay(session, node, resolvedData);
+      case 'show_miniapp':
+        return this.executeShowMiniApp(session, node, resolvedData);
       case 'sqlite_query':  return executeSqliteQuery(resolvedData);
       case 'sqlite_insert': return executeSqliteInsert(resolvedData);
       case 'sqlite_update': return executeSqliteUpdate(resolvedData);
@@ -1205,6 +1207,57 @@ export class ExecutionManager {
       schema: { headers, cells, selectionMode },
     });
     return { ...(result as Record<string, any>), headers, cells };
+  }
+
+  private async executeShowMiniApp(
+    session: ExecutionSession,
+    node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): Promise<Record<string, unknown>> {
+    const miniAppId = typeof resolvedData.miniAppId === 'string' ? resolvedData.miniAppId.trim() : '';
+    if (!miniAppId) {
+      throw new Error('show_miniapp requires miniAppId');
+    }
+
+    const route = typeof resolvedData.route === 'string' && resolvedData.route.trim()
+      ? resolvedData.route.trim()
+      : '/';
+
+    let params: Record<string, unknown> = {};
+    if (resolvedData.params && typeof resolvedData.params === 'object' && !Array.isArray(resolvedData.params)) {
+      params = resolvedData.params as Record<string, unknown>;
+    } else if (typeof resolvedData.params === 'string' && resolvedData.params.trim()) {
+      try {
+        const parsed = JSON.parse(resolvedData.params);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          params = parsed as Record<string, unknown>;
+        }
+      } catch {
+        throw new Error('show_miniapp params must be valid JSON object');
+      }
+    }
+
+    const result = await this.deps.interactionManager.request({
+      clientId: session.ownerClientId,
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      interactionType: 'miniapp_confirm',
+      schema: {
+        miniAppId,
+        route,
+        params,
+        title: miniAppId,
+      },
+    });
+
+    return {
+      submittedData: result,
+      miniAppId,
+      route,
+      params,
+      confirmed: true,
+    };
   }
 
   private async executeAlertDialog(

@@ -1,13 +1,10 @@
-const { Button, Card, CardContent } = window.AgentSpacesUI;
+import { Router } from "@agent-spaces/ui";
+import AppShell from "./components/AppShell";
 
-function App() {
+export default function Root() {
   return (
-    <Card>
-      <CardContent>
-        <Button>Hello World</Button>
-      </CardContent>
-    </Card>
+    <Router>
+      <AppShell />
+    </Router>
   );
 }
-
-export default App;

@@ -33,6 +33,7 @@ interface RuntimeDescriptor {
   versionArgs?: string[];
   versionSource?: VersionSource;
   installable?: boolean;
+  updateCommand?: Omit<InstallCommandSpec, 'packageManagerLabel'>;
 }
 
 interface RuntimeCheckUpdateRequestBody {
@@ -46,6 +47,14 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     label: 'Claude Code CLI',
     commands: ['claude'],
     runtimeKind: 'claude-code',
+    versionArgs: ['--version'],
+    versionSource: { type: 'github', repo: 'anthropics/claude-code' },
+    installable: true,
+    updateCommand: {
+      command: 'claude',
+      args: ['update'],
+      cwd: rootDir,
+    },
   },
   {
     id: 'codex',
@@ -53,12 +62,28 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     label: 'Codex CLI',
     commands: ['codex'],
     runtimeKind: 'codex',
+    versionArgs: ['--version'],
+    versionSource: { type: 'github', repo: 'openai/codex' },
+    installable: true,
+    updateCommand: {
+      command: 'codex',
+      args: ['update'],
+      cwd: rootDir,
+    },
   },
   {
     id: 'gemini-cli',
     category: 'cli',
     label: 'Gemini CLI',
     commands: ['gemini'],
+    versionArgs: ['--version'],
+    versionSource: { type: 'npm', packageName: '@google/gemini-cli' },
+    installable: true,
+    updateCommand: {
+      command: 'npm',
+      args: ['update', '-g', '@google/gemini-cli'],
+      cwd: rootDir,
+    },
   },
   {
     id: 'hermes',
@@ -125,7 +150,8 @@ router.post('/install-cli', async (req: Request, res: Response) => {
   }
 
   try {
-    const installCommand = resolveRuntimeInstallCommand(descriptor);
+    const installedPath = descriptor.category === 'cli' ? await locateRuntimeCommand(descriptor) : null;
+    const installCommand = resolveRuntimeInstallCommand(descriptor, Boolean(installedPath));
     const packageSpec = descriptor.packageName ? `${descriptor.packageName}@latest` : descriptor.label;
     const result = await runCommand(installCommand.command, installCommand.args, installCommand.cwd);
     const items = await Promise.all(RUNTIME_DESCRIPTORS.map(discoverRuntime));
@@ -373,7 +399,7 @@ function resolveInstallTarget(): { packageManager: 'pnpm' | 'npm'; cwd: string }
   };
 }
 
-function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor): InstallCommandSpec {
+function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor, alreadyInstalled = false): InstallCommandSpec {
   if (descriptor.category === 'sdk' && descriptor.packageName) {
     const installTarget = resolveInstallTarget();
     const packageSpec = `${descriptor.packageName}@latest`;
@@ -390,6 +416,54 @@ function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor): InstallCom
           cwd: installTarget.cwd,
           packageManagerLabel: 'npm',
         };
+  }
+
+  if (alreadyInstalled && descriptor.updateCommand) {
+    return {
+      ...descriptor.updateCommand,
+      packageManagerLabel: descriptor.updateCommand.command,
+    };
+  }
+
+  if (descriptor.id === 'claude-code') {
+    return process.platform === 'win32'
+      ? {
+          command: 'powershell.exe',
+          args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://claude.ai/install.ps1 | iex'],
+          cwd: rootDir,
+          packageManagerLabel: 'powershell',
+        }
+      : {
+          command: 'sh',
+          args: ['-c', 'curl -fsSL https://claude.ai/install.sh | bash'],
+          cwd: rootDir,
+          packageManagerLabel: 'shell',
+        };
+  }
+
+  if (descriptor.id === 'codex') {
+    return process.platform === 'win32'
+      ? {
+          command: 'powershell.exe',
+          args: ['-ExecutionPolicy', 'ByPass', '-c', 'irm https://chatgpt.com/codex/install.ps1 | iex'],
+          cwd: rootDir,
+          packageManagerLabel: 'powershell',
+        }
+      : {
+          command: 'sh',
+          args: ['-c', 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'],
+          cwd: rootDir,
+          packageManagerLabel: 'shell',
+        };
+  }
+
+  if (descriptor.id === 'gemini-cli') {
+    return {
+      command: 'npm',
+      args: ['install', '-g', '@google/gemini-cli'],
+      cwd: rootDir,
+      packageManagerLabel: 'npm',
+    };
   }
 
   if (descriptor.id === 'hermes') {

@@ -489,6 +489,7 @@
       "ai": "AI",
       "interaction": "交互",
       "display": "展示",
+      "miniapp": "Mini App",
       "utilities": "辅助工具",
       "sqlite": "数据库",
       "knowledgeBase": "知识库"
@@ -881,6 +882,25 @@
           "single": "单选",
           "multi": "多选"
         }
+      }
+    },
+    "show_miniapp": {
+      "label": "展示miniapp",
+      "description": "在工作流运行时打开 miniapp，等待用户提交数据后再继续执行",
+      "props": {
+        "miniAppId": "目标miniapp id",
+        "miniAppId_placeholder": "选择 miniapp",
+        "route": "路由",
+        "route_placeholder": "/welcome",
+        "params": "传入参数(JSON)",
+        "params_tooltip": "传入 JSON 对象给此 miniapp，将在路由 query.payload 中可用。"
+      },
+      "outputs": {
+        "submittedData": "miniapp 提交的数据",
+        "miniAppId": "miniapp id",
+        "route": "打开时的路由",
+        "params": "传入的 JSON 参数",
+        "confirmed": "是否已完成交互"
       }
     },
     "code_render": {

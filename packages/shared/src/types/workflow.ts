@@ -209,7 +209,7 @@ export interface NodePropertyVisibleWhen {
 }
 
 export interface NodePropertyDynamicOptions {
-  source: 'sqlite-tables' | 'sqlite-columns'
+  source: 'sqlite-tables' | 'sqlite-columns' | 'mini-apps'
   dependsOn: string
   dependsOnTableKey?: string
   allOption?: boolean

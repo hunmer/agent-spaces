@@ -16,19 +16,26 @@ export function useDynamicOptions(
 
   useEffect(() => {
     if (!cfg) { setOptions([]); return; }
-    if (!dbId) { setOptions([]); return; }
+    if (cfg.source !== 'mini-apps' && !dbId) { setOptions([]); return; }
     if (cfg.source === 'sqlite-columns' && !table) { setOptions([]); return; }
+
     setLoading(true);
-    const p = cfg.source === 'sqlite-tables'
+    const request = cfg.source === 'sqlite-tables'
       ? sdk.sqlite.listTables(dbId).then((ts) => ts
           .filter((t) => t.name !== SQLITE_FIELD_META_TABLE)
           .map((t) => ({ label: `${t.name} (${t.rowCount})`, value: t.name })))
-      : sdk.sqlite.describeTable(dbId, table).then((cs) => {
-          const opts = cs.map((c) => ({ label: c.name, value: c.name }));
-          return cfg.allOption ? [{ label: '*（全部）', value: '*' }, ...opts] : opts;
-        });
-    p.then(setOptions).catch(() => setOptions([])).finally(() => setLoading(false));
-  }, [dbId, table, cfg?.source]);
+      : cfg.source === 'sqlite-columns'
+        ? sdk.sqlite.describeTable(dbId, table).then((cs) => {
+            const opts = cs.map((c) => ({ label: c.name, value: c.name }));
+            return cfg.allOption ? [{ label: '* (All)', value: '*' }, ...opts] : opts;
+          })
+        : sdk.miniApp.list().then((apps) => apps.map((app) => ({
+            label: app.name || app.id,
+            value: app.id,
+          })));
+
+    request.then(setOptions).catch(() => setOptions([])).finally(() => setLoading(false));
+  }, [dbId, table, cfg?.source, cfg?.allOption]);
 
   return { options, loading, placeholderKey: cfg?.placeholder };
 }

@@ -6,3 +6,4 @@ export { utilsNodes } from './utils';
 export { stringNodes } from './string';
 export { sqliteNodes } from './sqlite';
 export { knowledgeBaseNodes } from './knowledge-base';
+export { miniappNodes } from './miniapp';

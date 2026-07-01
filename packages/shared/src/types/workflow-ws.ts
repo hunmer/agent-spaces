@@ -79,6 +79,7 @@ export type InteractionType =
   | 'chat_tool'
   | 'node_execution'
   | 'table_confirm'
+  | 'miniapp_confirm'
   | 'dialog_alert'
   | 'dialog_prompt'
   | 'dialog_form'
@@ -116,6 +117,14 @@ export interface TableConfirmInteractionSchema {
   headers: Array<{ id: string; title: string; type: 'string' | 'number' | 'boolean' }>
   cells: Array<{ id: string; data: Record<string, unknown> }>
   selectionMode: 'none' | 'single' | 'multi'
+}
+
+export interface MiniAppConfirmInteractionSchema {
+  miniAppId: string
+  route?: string
+  params?: Record<string, unknown>
+  title?: string
+  description?: string
 }
 
 export interface InteractionRequest<Data = unknown> {
