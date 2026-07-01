@@ -32,6 +32,14 @@ interface CheckSdkUpdatesResponse {
   updates: Array<{
     runtimeId: "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
     latestVersion: string | null;
+    debug: {
+      packageName: string | null;
+      command: string | null;
+      cwd: string;
+      stdout: string;
+      stderr: string;
+      error: string | null;
+    };
   }>;
 }
 
@@ -86,6 +94,7 @@ export function RuntimeTab() {
     setCheckingUpdateId(runtimeId ?? "all");
     try {
       const data = await sdk.http.post<CheckSdkUpdatesResponse>("/api/runtime/check-sdk-updates", runtimeId ? { runtimeId } : {});
+      console.debug("[runtime] check-sdk-updates response", data);
       const latestById = new Map(data.updates.map((item) => [item.runtimeId, item.latestVersion]));
       const next = {
         items: items.map((item) => (

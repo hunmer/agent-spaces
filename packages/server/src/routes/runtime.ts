@@ -130,10 +130,17 @@ router.post('/check-sdk-updates', async (req: Request, res: Response) => {
   ));
 
   try {
-    const updates = await Promise.all(targets.map(async (item) => ({
-      runtimeId: item.id,
-      latestVersion: item.packageName ? await fetchLatestPackageVersion(item.packageName) : null,
-    })));
+    const updates = await Promise.all(targets.map(async (item) => {
+      const result = item.packageName
+        ? await fetchLatestPackageVersion(item.packageName)
+        : { latestVersion: null, debug: { packageName: null, command: null, cwd: rootDir, stdout: '', stderr: '', error: 'missing packageName' } };
+      return {
+        runtimeId: item.id,
+        latestVersion: result.latestVersion,
+        debug: result.debug,
+      };
+    }));
+    console.log('[runtime] check-sdk-updates', JSON.stringify({ runtimeId: runtimeId ?? 'all', updates }, null, 2));
     res.json({ updates });
   } catch (error) {
     res.status(500).json({
@@ -272,12 +279,20 @@ function resolvePackageManager() {
 
 function runCommand(command: string, args: string[], cwd: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(resolveExecutable(command), args, {
-      cwd,
-      env: process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
+    const resolvedCommand = resolveExecutable(command);
+    const child = process.platform === 'win32' && (resolvedCommand.endsWith('.cmd') || resolvedCommand.endsWith('.bat'))
+      ? spawn('cmd.exe', ['/d', '/s', '/c', buildWindowsCommandLine(resolvedCommand, args)], {
+          cwd,
+          env: process.env,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+        })
+      : spawn(resolvedCommand, args, {
+          cwd,
+          env: process.env,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+        });
 
     let stdout = '';
     let stderr = '';
@@ -298,13 +313,44 @@ function runCommand(command: string, args: string[], cwd: string): Promise<{ std
   });
 }
 
-async function fetchLatestPackageVersion(packageName: string): Promise<string | null> {
+async function fetchLatestPackageVersion(packageName: string): Promise<{
+  latestVersion: string | null;
+  debug: {
+    packageName: string;
+    command: string;
+    cwd: string;
+    stdout: string;
+    stderr: string;
+    error: string | null;
+  };
+}> {
+  const command = resolveExecutable('npm');
   try {
     const result = await runCommand('npm', ['view', packageName, 'version'], rootDir);
     const version = result.stdout.trim().split(/\r?\n/).map((line) => line.trim()).find(Boolean);
-    return version ?? null;
-  } catch {
-    return null;
+    return {
+      latestVersion: version ?? null,
+      debug: {
+        packageName,
+        command: `${command} view ${packageName} version`,
+        cwd: rootDir,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        error: null,
+      },
+    };
+  } catch (error) {
+    return {
+      latestVersion: null,
+      debug: {
+        packageName,
+        command: `${command} view ${packageName} version`,
+        cwd: rootDir,
+        stdout: '',
+        stderr: '',
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
   }
 }
 
@@ -313,6 +359,16 @@ function resolveExecutable(command: string): string {
   if (command.endsWith('.exe') || command.endsWith('.cmd') || command.endsWith('.bat')) return command;
   if (command === 'npm' || command === 'pnpm') return `${command}.cmd`;
   return command;
+}
+
+function buildWindowsCommandLine(command: string, args: string[]): string {
+  return [quoteWindowsArg(command), ...args.map(quoteWindowsArg)].join(' ');
+}
+
+function quoteWindowsArg(value: string): string {
+  if (value.length === 0) return '""';
+  if (!/[\s"]/u.test(value)) return value;
+  return `"${value.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/g, '$1$1')}"`;
 }
 
 export default router;

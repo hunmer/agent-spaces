@@ -3,6 +3,7 @@
   "description": "Customize your workspace appearance",
   "userAvatar": "User Avatar",
   "theme": "Theme",
+  "general": "General",
   "startup": "Startup",
   "themeLight": "Light",
   "themeDark": "Dark",
@@ -175,6 +176,15 @@
   "iconsUpdateFailed": "Failed to update provider icons",
   "catalogLoading": "Loading catalog...",
   "catalogMeta": "{providers} providers, {models} models · updated {date}",
+  "catalogTabModels": "Models ({count})",
+  "catalogTabProviders": "Providers ({count})",
+  "catalogSearchModels": "Search models...",
+  "catalogSearchProviders": "Search providers...",
+  "catalogEmpty": "No data",
+  "catalogColContext": "Context",
+  "catalogColInput": "Input $/M",
+  "catalogColOutput": "Output $/M",
+  "catalogProviderModels": "{count} models",
   "runtimeInstalled": "Installed",
   "runtimeNotInstalled": "Not installed"
 }

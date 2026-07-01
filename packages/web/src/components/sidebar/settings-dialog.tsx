@@ -10,17 +10,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket, Database, Package, BookOpen, Workflow, TerminalSquare } from "lucide-react";
+import { Palette, Mic, GitBranch, Store, Bot, Info, Keyboard, Database, Package, BookOpen, Workflow, TerminalSquare, Settings } from "lucide-react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
-import { LanguageTab } from "./settings/language-tab";
-import { AccountTab } from "./settings/account-tab";
-import { SecurityTab } from "./settings/security-tab";
+import { GeneralTab } from "./settings/general-tab";
 import { SpeechSettingsTab } from "./settings/speech-settings-tab";
 import { RobotAccountsTab } from "./settings/robot-accounts-tab";
 import { AboutTab } from "./settings/about-tab";
 import { ShortcutsTab } from "./settings/shortcuts-tab";
-import { StartupTab } from "./settings/startup-tab";
 import { AgentStoreTab } from "./settings/agent-store-tab";
 import { DataTab } from "./settings/data-tab";
 import { NpmSettingsTab } from "./settings/npm-settings-tab";
@@ -30,10 +27,7 @@ import { RuntimeTab } from "./settings/runtime-tab";
 
 const tabs = [
   { key: "appearance", icon: Palette },
-  { key: "startup", icon: Rocket },
-  { key: "language", icon: Globe },
-  { key: "account", icon: User },
-  { key: "security", icon: Shield },
+  { key: "general", icon: Settings },
   { key: "robots", icon: Bot },
   { key: "agent_store", icon: Store },
   { key: "npm", icon: Package },
@@ -63,10 +57,7 @@ export function SettingsDialog({
 
   const tabLabels: Record<TabKey, string> = {
     appearance: t("theme"),
-    startup: t("startup"),
-    language: t("language"),
-    account: t("userAvatar"),
-    security: t("security"),
+    general: t("general"),
     robots: t("robots"),
     agent_store: t("agentStore"),
     npm: t("npm"),
@@ -84,14 +75,8 @@ export function SettingsDialog({
     switch (activeTab) {
       case "appearance":
         return <AppearanceTab />;
-      case "startup":
-        return <StartupTab />;
-      case "language":
-        return <LanguageTab />;
-      case "account":
-        return <AccountTab />;
-      case "security":
-        return <SecurityTab />;
+      case "general":
+        return <GeneralTab />;
       case "robots":
         return <RobotAccountsTab />;
       case "agent_store":
