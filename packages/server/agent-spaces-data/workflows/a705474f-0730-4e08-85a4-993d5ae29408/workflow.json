@@ -1,0 +1,91 @@
+{
+  "id": "a705474f-0730-4e08-85a4-993d5ae29408",
+  "name": "miniapp",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1782898322891_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782898322891_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 960,
+        "y": 360
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782898328613_wyjsun",
+      "type": "show_miniapp",
+      "label": "nodes.show_miniapp.label",
+      "position": {
+        "x": 577.6111111111111,
+        "y": 206.77777777777777
+      },
+      "data": {
+        "route": "/welcome",
+        "params": "{\n  \"title\": \"Demo\",\n  \"summary\": \"hello\",\n  \"tags\": [\"a\", \"b\"]\n}",
+        "outputs": [
+          {
+            "key": "submittedData",
+            "type": "any",
+            "description": "nodes.show_miniapp.outputs.submittedData"
+          },
+          {
+            "key": "miniAppId",
+            "type": "string",
+            "description": "nodes.show_miniapp.outputs.miniAppId"
+          },
+          {
+            "key": "route",
+            "type": "string",
+            "description": "nodes.show_miniapp.outputs.route"
+          },
+          {
+            "key": "params",
+            "type": "object",
+            "description": "nodes.show_miniapp.outputs.params"
+          },
+          {
+            "key": "confirmed",
+            "type": "boolean",
+            "description": "nodes.show_miniapp.outputs.confirmed"
+          }
+        ],
+        "miniAppId": "workflow-miniapp"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1782898322891_start-source-node_1782898328613_wyjsun-target",
+      "source": "node_1782898322891_start",
+      "target": "node_1782898328613_wyjsun",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782898328613_wyjsun-source-node_1782898322891_end-target",
+      "source": "node_1782898328613_wyjsun",
+      "target": "node_1782898322891_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1782898322898,
+  "updatedAt": 1782898386442,
+  "published": false,
+  "lastRunAt": 1782898381314
+}

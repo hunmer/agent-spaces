@@ -234,7 +234,7 @@ export function RuntimeTab() {
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
+                    <div className="mt-0.5 break-all text-xs text-muted-foreground">
                       {item.found ? item.path : t("runtimeNotFound")}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">

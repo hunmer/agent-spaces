@@ -1242,7 +1242,7 @@ export class ExecutionManager {
       executionId: session.id,
       workflowId: session.workflow.id,
       nodeId: node.id,
-      interactionType: 'miniapp_confirm',
+      interactionType: 'miniapp_confirm' as any,
       schema: {
         miniAppId,
         route,
