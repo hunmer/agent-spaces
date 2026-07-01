@@ -13,7 +13,7 @@ import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
-import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
+import { CreateIssueDialog as EditIssueDialog } from '@/components/issue/create-issue-dialog';
 import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { normalizeChannelMembersToAgentIds, getMemberDisplayName } from '@/lib/agent-members';
 import { sdk } from '@/lib/sdk';
@@ -634,7 +634,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           open={editOpen}
           onOpenChange={setEditOpen}
           agents={enabledAgents}
-          onSave={async (data) => {
+          onSubmit={async (data) => {
             await updateIssue(workspaceId, issue.id, data);
           }}
         />

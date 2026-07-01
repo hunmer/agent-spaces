@@ -63,6 +63,7 @@ export interface AgentCompletionDetails {
   durationMs?: number;
   usage?: MessageTokenUsage;
   costUsd?: number;
+  forceRecord?: boolean;
 }
 
 export interface AgentConnectionTestResult {
@@ -1197,7 +1198,14 @@ export function complete(
   if (!session) return null;
 
   const usage = details?.usage ?? extractUsageFromOutput(details?.output ?? []);
-  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.cachedInputTokens || usage.reasoningTokens) {
+  if (
+    details?.forceRecord
+    || usage.totalTokens
+    || usage.inputTokens
+    || usage.outputTokens
+    || usage.cachedInputTokens
+    || usage.reasoningTokens
+  ) {
     recordAgentUsage({
       session,
       runtime: details?.runtime,

@@ -1,0 +1,158 @@
+{
+  "session": {
+    "id": "4b1a04d3-b959-42ec-a5a3-e34850d04872",
+    "workspaceId": "f2e02ef7-0b83-4a55-a07b-a46085cf83c8",
+    "agentConfigId": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
+    "role": "agent",
+    "status": "completed",
+    "startedAt": "2026-07-01T04:03:14.195Z",
+    "lastActivityAt": "2026-07-01T04:04:03.599Z"
+  },
+  "usage": {
+    "id": "ebf71a63-60d9-4ea2-a900-6606f81d191c",
+    "workspaceId": "f2e02ef7-0b83-4a55-a07b-a46085cf83c8",
+    "agentSessionId": "4b1a04d3-b959-42ec-a5a3-e34850d04872",
+    "agentConfigId": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
+    "role": "agent",
+    "status": "completed",
+    "runtime": "langchain",
+    "model": "GLM-4.7",
+    "inputTokens": 239,
+    "outputTokens": 1311,
+    "cachedInputTokens": 0,
+    "reasoningTokens": 0,
+    "totalTokens": 1550,
+    "inputCostUsd": 0,
+    "outputCostUsd": 0,
+    "totalCostUsd": 0,
+    "summary": "你好！有什么我可以帮你的吗？",
+    "startedAt": "2026-07-01T04:03:14.195Z",
+    "completedAt": "2026-07-01T04:04:03.599Z",
+    "durationMs": 49388
+  },
+  "messages": [
+    {
+      "id": "aa27497a-6dec-4f6e-a9cf-7dc71af8d701",
+      "role": "agent",
+      "content": "你好！有什么\n我可以帮你的吗？\n你好！有什么我可以帮你的吗？",
+      "createdAt": "2026-07-01T04:03:14.210Z",
+      "senderId": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
+      "senderRole": "agent",
+      "metadata": {
+        "agentSessionId": "4b1a04d3-b959-42ec-a5a3-e34850d04872",
+        "runtimeSessionId": "langchain-2",
+        "runtime": "langchain",
+        "model": "GLM-4.7",
+        "summary": "你好！有什么我可以帮你的吗？",
+        "duration": 49398
+      },
+      "parts": [
+        {
+          "id": "context-4b1a04d3-b959-42ec-a5a3-e34850d04872",
+          "type": "context",
+          "usedTokens": 1550,
+          "maxTokens": 128000,
+          "modelId": "GLM-4.7",
+          "usage": {
+            "inputTokens": 239,
+            "outputTokens": 1311,
+            "totalTokens": 1550
+          },
+          "agentContext": {
+            "sessionId": "4b1a04d3-b959-42ec-a5a3-e34850d04872",
+            "agentConfigId": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
+            "name": "test",
+            "role": "agent",
+            "runtime": "langchain",
+            "model": "GLM-4.7",
+            "systemPrompt": "",
+            "userPrompt": "@test 你好",
+            "fullPrompt": "Workspace prompt:\n结果使用中文回复\n\nAgent runtime configuration:\n- Current workspace id: f2e02ef7-0b83-4a55-a07b-a46085cf83c8\n- MCP servers configured for this agent: none\n- Skills configured for this agent: none\n- Runtime tools available through LangChain: Agent Spaces function tools and configured MCP tools\n- Agent Spaces channel tools configured for this channel: none\n- Code directories (boundDirs): C:\\Users\\Administrator\\test\n- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.\nWhen asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have, answer from this configuration only.\nImportant distinction: MCP servers configured for this agent are only the names in \"MCP servers configured for this agent\". Agent Spaces channel tools are built-in runtime tools and must not be listed as agent-configured MCP servers.\nDo not infer availability from provider-side function names, hidden runtime internals, previous sessions, or filesystem settings.\n\nUser message:\n@test 你好",
+            "output": "你好！有什么\n我可以帮你的吗？\n你好！有什么我可以帮你的吗？",
+            "outputItems": [
+              {
+                "id": "output-0",
+                "type": "output",
+                "text": "你好！有什么",
+                "characters": 6,
+                "tokens": 6
+              },
+              {
+                "id": "output-1",
+                "type": "output",
+                "text": "我可以帮你的吗？",
+                "characters": 8,
+                "tokens": 8
+              }
+            ],
+            "persistentContext": {
+              "instructionFiles": [],
+              "counts": {
+                "claudeMd": 0,
+                "agentsMd": 0,
+                "total": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "text-4b1a04d3-b959-42ec-a5a3-e34850d04872",
+          "type": "text",
+          "text": "你好！有什么\n我可以帮你的吗？\n你好！有什么我可以帮你的吗？"
+        }
+      ],
+      "contextPart": {
+        "id": "context-4b1a04d3-b959-42ec-a5a3-e34850d04872",
+        "type": "context",
+        "usedTokens": 1550,
+        "maxTokens": 128000,
+        "modelId": "GLM-4.7",
+        "usage": {
+          "inputTokens": 239,
+          "outputTokens": 1311,
+          "totalTokens": 1550
+        },
+        "agentContext": {
+          "sessionId": "4b1a04d3-b959-42ec-a5a3-e34850d04872",
+          "agentConfigId": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
+          "name": "test",
+          "role": "agent",
+          "runtime": "langchain",
+          "model": "GLM-4.7",
+          "systemPrompt": "",
+          "userPrompt": "@test 你好",
+          "fullPrompt": "Workspace prompt:\n结果使用中文回复\n\nAgent runtime configuration:\n- Current workspace id: f2e02ef7-0b83-4a55-a07b-a46085cf83c8\n- MCP servers configured for this agent: none\n- Skills configured for this agent: none\n- Runtime tools available through LangChain: Agent Spaces function tools and configured MCP tools\n- Agent Spaces channel tools configured for this channel: none\n- Code directories (boundDirs): C:\\Users\\Administrator\\test\n- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.\nWhen asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have, answer from this configuration only.\nImportant distinction: MCP servers configured for this agent are only the names in \"MCP servers configured for this agent\". Agent Spaces channel tools are built-in runtime tools and must not be listed as agent-configured MCP servers.\nDo not infer availability from provider-side function names, hidden runtime internals, previous sessions, or filesystem settings.\n\nUser message:\n@test 你好",
+          "output": "你好！有什么\n我可以帮你的吗？\n你好！有什么我可以帮你的吗？",
+          "outputItems": [
+            {
+              "id": "output-0",
+              "type": "output",
+              "text": "你好！有什么",
+              "characters": 6,
+              "tokens": 6
+            },
+            {
+              "id": "output-1",
+              "type": "output",
+              "text": "我可以帮你的吗？",
+              "characters": 8,
+              "tokens": 8
+            }
+          ],
+          "persistentContext": {
+            "instructionFiles": [],
+            "counts": {
+              "claudeMd": 0,
+              "agentsMd": 0,
+              "total": 0
+            }
+          }
+        }
+      },
+      "timeline": [],
+      "sourceChannelId": "122b2e33-e048-4c57-b1f2-085d600b322b",
+      "sourceChannelName": "general"
+    }
+  ],
+  "generatedAt": "2026-07-01T04:04:03.611Z"
+}

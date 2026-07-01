@@ -10,7 +10,6 @@ import { Plus, CircleDot, Pencil, Trash2, CircleAlert, Archive, ArchiveRestore, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { CreateIssueDialog } from './create-issue-dialog';
-import { EditIssueDialog } from './edit-issue-dialog';
 import { ItemListPanel, type ItemCtx } from '@/components/common/item-list-panel';
 import {
   ContextMenu,
@@ -251,12 +250,12 @@ export function IssueList({ workspaceId }: IssueListProps) {
         <>
           <CreateIssueDialog open={createOpen} onOpenChange={setCreateOpen} agents={agents} onSubmit={handleCreate} />
           {editingIssue && (
-            <EditIssueDialog
+            <CreateIssueDialog
               issue={editingIssue}
               open={!!editingIssue}
               onOpenChange={open => { if (!open) setEditingIssue(null); }}
               agents={agents}
-              onSave={async data => {
+              onSubmit={async data => {
                 await updateIssue(workspaceId, editingIssue.id, data);
                 setEditingIssue(null);
               }}

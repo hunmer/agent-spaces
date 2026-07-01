@@ -181,7 +181,9 @@ router.post('/run', async (req: Request, res: Response) => {
       durationMs: Date.now() - startTime,
       usage: result.usage,
       costUsd: result.costUsd,
+      forceRecord: true,
     });
+    agentService.persistSessionCliHistory(session.id);
 
     writeSse(res, 'done', {
       agentId: session.id,
@@ -204,7 +206,9 @@ router.post('/run', async (req: Request, res: Response) => {
       summary: error,
       output: output.length ? output : [error],
       durationMs: Date.now() - startTime,
+      forceRecord: true,
     });
+    agentService.persistSessionCliHistory(session.id);
     writeSse(res, 'error', { agentId: session.id, error });
     res.end();
   }

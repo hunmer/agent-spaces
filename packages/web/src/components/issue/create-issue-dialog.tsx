@@ -23,7 +23,12 @@ import { useWorkflowStore } from '@/stores/workflow';
 import { useLLMStore } from '@/stores/llm';
 import { workflowApi } from '@/lib/workflow-api';
 
-import type { AgentConfig, Issue, WorkflowTemplate } from '@agent-spaces/shared';
+import type { AgentConfig, Issue, IssueStatus, WorkflowTemplate } from '@agent-spaces/shared';
+
+const STATUS_OPTIONS: IssueStatus[] = [
+  'draft', 'planned', 'in_progress', 'review_pending', 'changes_requested',
+  'approved', 'completed', 'stopped', 'archived',
+];
 
 interface CreateIssueDialogProps {
   open: boolean;
@@ -31,13 +36,17 @@ interface CreateIssueDialogProps {
   agents?: AgentConfig[];
   defaultTitle?: string;
   defaultDescription?: string;
-  onSubmit: (data: { title: string; description: string; members: string[]; workflowId?: string }) => Promise<Issue | void> | Issue | void;
+  // 编辑模式：传入 issue 即为编辑
+  issue?: Issue | null;
+  onSubmit: (data: { title: string; description: string; members: string[]; workflowId?: string; status?: IssueStatus }) => Promise<Issue | void> | Issue | void;
 }
 
-export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitle, defaultDescription, onSubmit }: CreateIssueDialogProps) {
+export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitle, defaultDescription, issue, onSubmit }: CreateIssueDialogProps) {
+  const isEdit = !!issue;
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [members, setMembers] = useState<string[]>([]);
+  const [status, setStatus] = useState<IssueStatus>('draft');
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('');
   const [workflowInfoOpen, setWorkflowInfoOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
@@ -77,11 +86,23 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
     if (open && defaultTitle) setTitle(defaultTitle);
   }, [open, defaultTitle]);
 
+  // 编辑模式：打开时回填 issue 字段
+  useEffect(() => {
+    if (open && issue) {
+      setTitle(issue.title);
+      setDesc(issue.description);
+      setMembers(issue.members?.length ? [...issue.members] : []);
+      setStatus(issue.status);
+      setSelectedWorkflowId(issue.workflowId ?? '');
+    }
+  }, [open, issue]);
+
   const handleClose = (val: boolean) => {
     if (!val) {
       setTitle('');
       setDesc('');
       setMembers([]);
+      setStatus('draft');
       setSelectedWorkflowId('');
       setWorkflowInfoOpen(false);
       setEditingWorkflow(null);
@@ -107,12 +128,18 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   const handleSubmit = async () => {
     if (!title.trim() && !desc.trim()) return;
     const workflowId = selectedWorkflowId || undefined;
-    const issue = await onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId });
-    if (workflowId && issue?.channelId) {
+    if (isEdit) {
+      await onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId, status });
+      handleClose(false);
+      return;
+    }
+    const created = await onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId });
+    // 仅在新建 workflow 时跳转去配置；选择已有 workflow 不跳转
+    if (workflowId && pendingWorkflowPrompt && created?.channelId) {
       const params = new URLSearchParams({
         prompt: pendingWorkflowPrompt,
-        returnWorkspaceId: issue.workspaceId,
-        returnChannelId: issue.channelId,
+        returnWorkspaceId: created.workspaceId,
+        returnChannelId: created.channelId,
       });
       router.push(`/workflows/${workflowId}?${params.toString()}`);
     }
@@ -230,32 +257,51 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-md lg:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{t('create.title')}</DialogTitle>
-            <DialogDescription>{t('create.description')}</DialogDescription>
+            <DialogTitle>{t(isEdit ? 'edit.title' : 'create.title')}</DialogTitle>
+            <DialogDescription>{t(isEdit ? 'edit.description' : 'create.description')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col lg:flex-row gap-4 pt-2 min-h-0">
             <div className="flex-1 space-y-3">
               <Input
-                placeholder={t('create.titlePlaceholder')}
+                placeholder={t(isEdit ? 'edit.titlePlaceholder' : 'create.titlePlaceholder')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
               />
               <Textarea
-                placeholder={t('create.descriptionPlaceholder')}
+                placeholder={t(isEdit ? 'edit.descriptionPlaceholder' : 'create.descriptionPlaceholder')}
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
                 rows={3}
                 className="max-h-48 resize-none"
               />
 
+              {isEdit && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">{t('edit.statusLabel')}</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as IssueStatus)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {t(`status.${opt}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-sm font-medium text-foreground">Workspace Workflow</label>
-                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={handleCreateWorkflow}>
-                    <Plus className="size-3.5" />
-                    新建工作流
-                  </Button>
+                  {!isEdit && (
+                    <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={handleCreateWorkflow}>
+                      <Plus className="size-3.5" />
+                      新建工作流
+                    </Button>
+                  )}
                 </div>
                 <SearchSelect
                   value={selectedWorkflowId}
@@ -307,8 +353,8 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
 
           <DialogFooter>
             <Button variant="outline" onClick={() => handleClose(false)}>{tc('cancel')}</Button>
-            <Button onClick={handleSubmit} disabled={!title.trim() && !desc.trim()}>
-              {t('create.submit')}
+            <Button onClick={handleSubmit} disabled={isEdit ? !title.trim() : !title.trim() && !desc.trim()}>
+              {isEdit ? tc('save') : t('create.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>

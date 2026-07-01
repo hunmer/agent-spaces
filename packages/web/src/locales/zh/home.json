@@ -93,15 +93,15 @@
     }
   },
   "sessionDetail": {
-    "title": "浼氳瘽璇︽儏",
-    "view": "鏌ョ湅",
-    "messages": "娑堟伅娴?",
-    "raw": "鍘熷 JSON",
-    "loading": "姝ｅ湪鍔犺浇浼氳瘽璇︽儏...",
-    "empty": "鏈壘鍒颁細璇濇秷鎭?",
-    "promptInfo": "鎻愮ず璇︽儏",
+    "title": "会话详情",
+    "view": "查看",
+    "messages": "消息",
+    "raw": "原始 JSON",
+    "loading": "正在加载会话详情...",
+    "empty": "未找到会话消息",
+    "promptInfo": "提示详情",
     "requests": "Tokens",
-    "cost": "璐圭敤",
-    "duration": "鑰楁椂"
+    "cost": "费用",
+    "duration": "耗时"
   }
 }
