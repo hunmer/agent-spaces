@@ -3,19 +3,17 @@
 import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import type { AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from "@agent-spaces/shared"
-import { ChevronDown, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 import { ChatMessageList } from "@/components/chat/chat-message-list"
 import { ContextPartChatView } from "@/components/chat/message-context-to-chat"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { JsonViewer } from "@/components/viewers/json-viewer"
 import { sdk } from "@/lib/sdk"
-import { cn } from "@/lib/utils"
 
 import { formatCurrency, formatDuration, formatTokens } from "./usage-dashboard-utils"
 
@@ -115,7 +113,7 @@ export function UsageDashboardSessionDialog({
                   }))}
                   workspaceId={record?.workspaceId}
                   renderMessageExtras={(message) => (
-                    <SessionMessageExtras message={message} t={t} />
+                    <SessionMessageExtras message={message} />
                   )}
                 />
               )}
@@ -147,17 +145,13 @@ export function UsageDashboardSessionDialog({
 
 function SessionMessageExtras({
   message,
-  t,
 }: {
   message: {
     contextPart?: AgentUsageSessionMessage["contextPart"]
     sourceChannelName?: string
     metadata?: AgentUsageSessionMessage["metadata"]
   }
-  t: ReturnType<typeof useTranslations<"home">>
 }) {
-  const [open, setOpen] = useState(false)
-
   if (!message.contextPart && !message.sourceChannelName && !message.metadata?.runtimeSessionId) {
     return null
   }
@@ -169,17 +163,7 @@ function SessionMessageExtras({
         {message.metadata?.runtime ? <Badge variant="outline">{message.metadata.runtime}</Badge> : null}
         {message.metadata?.runtimeSessionId ? <span className="font-mono">{message.metadata.runtimeSessionId}</span> : null}
       </div>
-      {message.contextPart ? (
-        <Collapsible open={open} onOpenChange={setOpen}>
-          <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-left text-xs font-medium hover:bg-muted/50">
-            <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
-            {t("sessionDetail.promptInfo")}
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2">
-            <ContextPartChatView part={message.contextPart} />
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
+      {message.contextPart ? <ContextPartChatView part={message.contextPart} /> : null}
     </div>
   )
 }
