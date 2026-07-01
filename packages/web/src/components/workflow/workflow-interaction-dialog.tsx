@@ -119,6 +119,24 @@ export function WorkflowInteractionDialog({
     return () => window.removeEventListener('message', handleMessage);
   }, [request, onResolve, onCancel]);
 
+  const miniAppUrl = useMemo(
+    () => (request?.interactionType === 'miniapp_confirm' ? miniAppUrlFromSchema(schema, request.id) : ''),
+    [request, schema],
+  );
+  const miniAppRoute = useMemo(
+    () => (request?.interactionType === 'miniapp_confirm' ? miniAppRouteFromSchema(schema) : ''),
+    [request, schema],
+  );
+  const miniAppParams = useMemo(
+    () => (request?.interactionType === 'miniapp_confirm' ? miniAppParamsFromSchema(schema) : {}),
+    [request, schema],
+  );
+
+  useEffect(() => {
+    if (!request || request.interactionType !== 'miniapp_confirm') return;
+    postMiniAppRuntimeInit(iframeRef.current, miniAppRoute, miniAppParams);
+  }, [request, miniAppRoute, miniAppParams]);
+
   if (!request) return null;
 
   const title = String(schema.title || (request.interactionType === 'dialog_prompt' ? '请输入' : '提示'));
@@ -126,14 +144,6 @@ export function WorkflowInteractionDialog({
   const selectionMode = String(schema.selectionMode || 'none');
   const headers = Array.isArray(schema.headers) ? schema.headers as Array<{ id: string; title?: string }> : [];
   const cells = Array.isArray(schema.cells) ? schema.cells as Array<{ id: string; data?: Record<string, unknown> }> : [];
-  const miniAppUrl = request.interactionType === 'miniapp_confirm' ? miniAppUrlFromSchema(schema, request.id) : '';
-  const miniAppRoute = request.interactionType === 'miniapp_confirm' ? miniAppRouteFromSchema(schema) : '';
-  const miniAppParams = request.interactionType === 'miniapp_confirm' ? miniAppParamsFromSchema(schema) : {};
-
-  useEffect(() => {
-    if (!request || request.interactionType !== 'miniapp_confirm') return;
-    postMiniAppRuntimeInit(iframeRef.current, miniAppRoute, miniAppParams);
-  }, [request, miniAppRoute, miniAppParams]);
 
   const confirm = () => {
     if (request.interactionType === 'dialog_prompt') {
