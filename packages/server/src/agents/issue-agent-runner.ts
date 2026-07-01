@@ -132,17 +132,17 @@ export async function startIssueWorkflowExecution(
   }
 
   const before = issue.status;
-  const plannedIssue = issueService.save(workspaceId, {
+  const runningIssue = issueService.save(workspaceId, {
     ...issue,
-    status: 'planned',
+    status: 'in_progress',
     workflowExecutionStatus: 'running',
     lastError: undefined,
     retryPaused: false,
   });
-  if (before !== 'planned') {
-    ctx.broadcast('issue.status_changed', { issueId, from: before, to: 'planned' });
+  if (before !== 'in_progress') {
+    ctx.broadcast('issue.status_changed', { issueId, from: before, to: 'in_progress' });
   }
-  ctx.broadcast('issue.updated', plannedIssue);
+  ctx.broadcast('issue.updated', runningIssue);
 
   const defaultInput = {
     prompt: issue.description,
@@ -183,13 +183,12 @@ export async function startIssueWorkflowExecution(
   );
 
   const updated = issueService.save(workspaceId, {
-    ...plannedIssue,
+    ...runningIssue,
     status: 'in_progress',
     workflowExecutionId: result.executionId,
     workflowExecutionStatus: 'running',
     lastError: undefined,
   });
-  ctx.broadcast('issue.status_changed', { issueId, from: 'planned', to: 'in_progress' });
   ctx.broadcast('issue.updated', updated);
 }
 

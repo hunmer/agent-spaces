@@ -199,7 +199,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     );
   }
 
-  const canStart = issue.status === 'draft' || issue.status === 'planned' || issue.status === 'stopped';
+  const canStart = issue.status === 'draft' || issue.status === 'stopped';
   const canRerun = issue.status === 'completed';
   const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
   const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';

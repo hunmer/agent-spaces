@@ -31,7 +31,7 @@ export function startScheduler(workspaceId: string, ctx: AgentContext): void {
 
     const allIssues = issueService.list(workspaceId);
     const unfinished = allIssues.filter(
-      (i) => i.status === 'draft' || i.status === 'changes_requested',
+      (i) => i.status === 'draft',
     );
 
     if (unfinished.length === 0) {

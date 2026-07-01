@@ -52,7 +52,7 @@ KanbanBoard
 
 | 实体 | 状态类型 | 值 |
 |------|----------|------|
-| Issue | `IssueStatus` | `draft` / `planned` / `in_progress` / `review_pending` / `changes_requested` / `approved` / `completed` / `archived` / `error` |
+| Issue | `IssueStatus` | `draft` / `in_progress` / `completed` / `stopped` / `archived` / `error` |
 | Task | `TaskStatus` | `pending` / `running` / `reviewing` / `waiting_review` / `retrying` / `done` / `failed` / `cancelled` |
 | Agent | `AgentSessionStatus` | `idle` / `active` / `blocked` / `completed` / `crashed` |
 | Message | `Message['status']` | `pending` / `streaming` / `waiting_for_user` / `completed` / `error` |

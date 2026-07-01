@@ -7,7 +7,7 @@ export function shouldNotify(workspaceId: string, event: NonNullable<WorkspaceNo
 }
 
 export function isIssueStartStatus(status?: string): boolean {
-  return status === 'planned' || status === 'in_progress';
+  return status === 'in_progress';
 }
 
 export function isTaskDoneStatus(status?: string): boolean {

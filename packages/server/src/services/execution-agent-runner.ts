@@ -74,6 +74,7 @@ async function executeAgentWithRuntime(
   ]);
   const mcpServers = agentService.getMcpServers(preset.mcps);
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
+  const tools = Array.isArray(preset.tools) ? [...preset.tools] : undefined;
 
   appendLog('info', `Runtime: ${preset.runtimeKind || 'langchain'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
   if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
@@ -91,6 +92,7 @@ async function executeAgentWithRuntime(
     workingDir,
     {
       maxTurns: 100,
+      tools,
       mcpServers,
       skills,
       configDir,
@@ -151,14 +153,15 @@ async function executeAgentWithRuntime(
     result: message,
     usage: result.usage,
     sessionId: agentSessionId,
-    runtime: {
-      cwd: workingDir,
-      additionalDirectories: sandboxDirs,
-      permissionMode,
-      enabledPlugins: session.workflow.enabledPlugins,
-      mcpServers: Object.keys(mcpServers ?? {}),
-      skills,
-      workspaceId,
+      runtime: {
+        cwd: workingDir,
+        additionalDirectories: sandboxDirs,
+        permissionMode,
+        enabledPlugins: session.workflow.enabledPlugins,
+        tools,
+        mcpServers: Object.keys(mcpServers ?? {}),
+        skills,
+        workspaceId,
       agentConfigId: preset.id,
     },
   };

@@ -18,14 +18,14 @@
 - 接口使用 **PascalCase**：`Workspace`、`AgentConfig`、`IssueStatus`
 - 类型别名使用 **PascalCase**：`TaskStatus`、`NotificationProvider`
 - 常量使用 **UPPER_SNAKE_CASE**：`BUILT_IN_AGENT_TOOLS`、`PRESET_COVERS`
-- 枚举使用联合字面量类型（非 TypeScript `enum`）：`type IssueStatus = 'draft' | 'planned' | ...`
+- 枚举使用联合字面量类型（非 TypeScript `enum`）：`type IssueStatus = 'draft' | 'in_progress' | ...`
 
 ## 状态枚举模式
 
 所有状态字段使用联合字面量类型而非 `enum`，例如：
 
 ```typescript
-export type IssueStatus = 'draft' | 'planned' | 'in_progress' | ...;
+export type IssueStatus = 'draft' | 'in_progress' | ...;
 export type TaskStatus = 'pending' | 'running' | 'done' | ...;
 ```
 

@@ -26,8 +26,7 @@ import { workflowApi } from '@/lib/workflow-api';
 import type { AgentConfig, Issue, IssueStatus, WorkflowTemplate } from '@agent-spaces/shared';
 
 const STATUS_OPTIONS: IssueStatus[] = [
-  'draft', 'planned', 'in_progress', 'review_pending', 'changes_requested',
-  'approved', 'completed', 'stopped', 'archived',
+  'draft', 'in_progress', 'completed', 'stopped', 'archived', 'error',
 ];
 
 interface CreateIssueDialogProps {

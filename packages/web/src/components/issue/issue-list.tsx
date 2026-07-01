@@ -23,11 +23,7 @@ import type { Issue, IssueStatus } from '@agent-spaces/shared';
 
 const STATUS_STYLE: Record<IssueStatus, string> = {
   draft: 'bg-muted text-muted-foreground',
-  planned: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   in_progress: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  review_pending: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  changes_requested: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  approved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   completed: 'bg-green-600/10 text-green-600 dark:text-green-400',
   stopped: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
   archived: 'bg-muted text-muted-foreground',
@@ -35,8 +31,7 @@ const STATUS_STYLE: Record<IssueStatus, string> = {
 };
 
 const GROUP_ORDER: IssueStatus[] = [
-  'in_progress', 'review_pending', 'changes_requested',
-  'draft', 'planned', 'approved', 'completed', 'stopped', 'error',
+  'in_progress', 'draft', 'completed', 'stopped', 'error',
 ];
 
 interface IssueListProps {

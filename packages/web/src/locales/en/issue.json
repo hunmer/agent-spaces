@@ -1,11 +1,7 @@
 {
   "status": {
     "draft": "Draft",
-    "planned": "Planned",
     "in_progress": "In Progress",
-    "review_pending": "Review Pending",
-    "changes_requested": "Changes Requested",
-    "approved": "Approved",
     "completed": "Completed",
     "stopped": "Stopped",
     "archived": "Archived",

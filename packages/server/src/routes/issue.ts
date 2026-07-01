@@ -126,7 +126,7 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
   }
   const issue = issueService.save(workspaceId, {
     ...before,
-    status: 'planned',
+    status: 'in_progress',
     workflowExecutionStatus: 'running',
     lastError: undefined,
   });
@@ -134,7 +134,7 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
     res.status(404).json({ error: 'issue not found' });
     return;
   }
-  broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before?.status ?? 'draft', to: 'planned' });
+  broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before?.status ?? 'draft', to: 'in_progress' });
   broadcastToWorkspace(workspaceId, 'issue.updated', issue);
   res.json(issue);
 

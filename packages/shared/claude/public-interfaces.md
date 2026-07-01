@@ -23,7 +23,7 @@
 | 导出 | 类型 | 说明 |
 |------|------|------|
 | `Issue` | interface | 议题（9 种状态，含 workflowId 绑定、连续运行、重试控制、分支/PR 追踪） |
-| `IssueStatus` | type | `'draft' \| 'planned' \| 'in_progress' \| 'review_pending' \| 'changes_requested' \| 'approved' \| 'completed' \| 'archived' \| 'error'` |
+| `IssueStatus` | type | `'draft' \| 'in_progress' \| 'completed' \| 'stopped' \| 'archived' \| 'error'` |
 | `IssueComment` | interface | 评论（含 source: user/agent_progress、metadata 含 agent 运行时信息） |
 | `CreateIssueInput` | interface | 创建输入（title, description, status?, members?, workflowId?） |
 

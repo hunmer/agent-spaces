@@ -1,10 +1,6 @@
 export type IssueStatus =
   | 'draft'
-  | 'planned'
   | 'in_progress'
-  | 'review_pending'
-  | 'changes_requested'
-  | 'approved'
   | 'completed'
   | 'stopped'
   | 'archived'

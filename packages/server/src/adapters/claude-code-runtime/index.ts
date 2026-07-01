@@ -35,6 +35,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const configDir = agentDir ? join(agentDir, '.claude') : undefined;
     if (configDir) prepareConfigDir(configDir, agentDir);
     const skillNames = normalizeSkillNames(options?.skills, configDir);
+    const allowedToolNames = Array.isArray(options?.tools) ? options.tools : [];
     const outputStyleFile = configDir ? prepareClaudeOutputStyleFile(configDir, options?.outputStyle) : undefined;
     const claudeExecutable = resolveBundledClaudeExecutable();
     this.adapterRun = await startClaudeAdapterIfNeeded(this.config);
@@ -46,7 +47,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const sdkMcpServerNames = Object.keys(sdkMcpServers ?? {});
     const startupTimeoutMs = readPositiveIntegerEnv('AGENT_SPACES_CLAUDE_STARTUP_TIMEOUT_MS') ?? 60_000;
 
-    d(`starting | cwd=${cwd} model=${model ?? 'default'} targetModel=${this.config.model ?? 'default'} provider=${this.config.provider ?? 'default'} baseURL=${baseURL ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${additionalDirectories.join(',') || '-'} claudeExecutable=${claudeExecutable ?? 'sdk-default'}`);
+    d(`starting | cwd=${cwd} model=${model ?? 'default'} targetModel=${this.config.model ?? 'default'} provider=${this.config.provider ?? 'default'} baseURL=${baseURL ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} allowedTools=${allowedToolNames.join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${additionalDirectories.join(',') || '-'} claudeExecutable=${claudeExecutable ?? 'sdk-default'}`);
     d(`apikey: ${apiKey}`)
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
     d(`sdk mcp servers | ${sdkMcpServerNames.join(',') || '-'}`);
@@ -90,6 +91,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         maxTurns: options?.maxTurns,
         pathToClaudeCodeExecutable: claudeExecutable,
         tools: { type: 'preset', preset: 'claude_code' },
+        allowedTools: allowedToolNames,
         mcpServers: sdkMcpServers,
         skills: skillNames,
         outputStyle: outputStyleFile,

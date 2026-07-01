@@ -1,11 +1,7 @@
 {
   "status": {
     "draft": "草稿",
-    "planned": "已规划",
     "in_progress": "进行中",
-    "review_pending": "待审核",
-    "changes_requested": "需修改",
-    "approved": "已批准",
     "completed": "已完成",
     "stopped": "已停止",
     "archived": "已归档",

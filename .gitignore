@@ -59,3 +59,4 @@ packages/server/agent-spaces-data/public/uploads/
 .openviking/data/_system
 .openviking/data/vectordb/context/store/*
 .openviking/data/viking/default/user/default/sessions/
+packages/server/agent-spaces-data/cli_history/

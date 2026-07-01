@@ -13,11 +13,7 @@ sidebar_position: 5
 | 状态 | 说明 |
 |------|------|
 | `draft` | 刚创建（草稿），等待启动自动化 |
-| `planned` | 已规划，准备启动 Workflow 执行 |
 | `in_progress` | 进行中，Workflow 正在执行 |
-| `review_pending` | 待审查，等待 reviewer 评审 |
-| `changes_requested` | 要求修改，人工或 reviewer 反馈后回到 `planned` 重新处理 |
-| `approved` | 已通过审查 |
 | `completed` | 已完成，Workflow 执行完毕 |
 | `archived` | 已归档 |
 | `error` | 错误，未绑定 Workflow、模板缺失、执行失败、被中断，或重试超过上限 |
@@ -25,15 +21,13 @@ sidebar_position: 5
 典型成功路径：
 
 ```text
-draft -> planned -> in_progress -> completed
+draft -> in_progress -> completed
 ```
 
 异常或人工反馈路径：
 
 ```text
-changes_requested -> planned -> in_progress -> completed
-planned -> error
-in_progress -> changes_requested
+error -> in_progress
 ```
 
 Issue 完成由 Workflow 执行事件驱动：当目标 Workflow 发出 `workflow:completed` 事件时，Issue 会被标记为 `completed`。

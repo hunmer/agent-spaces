@@ -538,13 +538,10 @@ export function createTasksFromWorkflow(
 
   const drafts = mapWorkflowToTaskDrafts(template);
 
-  issueService.updateStatus(workspaceId, issueId, 'planned');
-  ctx.broadcast('issue.status_changed', { issueId, from: issue.status, to: 'planned' });
-
   replaceIssueTasksFromDrafts(workspaceId, issueId, ctx, drafts);
 
   issueService.updateStatus(workspaceId, issueId, 'in_progress');
-  ctx.broadcast('issue.status_changed', { issueId, from: 'planned', to: 'in_progress' });
+  ctx.broadcast('issue.status_changed', { issueId, from: issue.status, to: 'in_progress' });
   ctx.broadcast('issue.updated', issueService.getById(workspaceId, issueId));
 
   scheduleRunnableIssueTasks(workspaceId, issueId, ctx).catch((err) => {

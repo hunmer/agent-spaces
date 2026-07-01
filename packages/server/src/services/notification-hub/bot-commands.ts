@@ -85,7 +85,7 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
     if (args[0] === 'start') {
       const issue = getCurrentIssue(workspaceId, context.issueId);
       if (!issue) return 'No current issue. Use /issue [id/index] first.';
-      const updated = issueService.updateStatus(workspaceId, issue.id, 'planned');
+      const updated = issueService.updateStatus(workspaceId, issue.id, 'in_progress');
       if (updated) startIssueAutomation(workspaceId, issue.id);
       return updated ? `Issue started:\n${formatIssueSummary(updated)}` : 'Issue not found.';
     }
