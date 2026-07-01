@@ -3,6 +3,7 @@ import { createElement, type ReactNode } from 'react';
 export type DisplayNodeViewProps = {
   data: Record<string, unknown>;
   isRunning?: boolean;
+  isPreview?: boolean;
 };
 
 export type GalleryItem = {

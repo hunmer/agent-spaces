@@ -828,7 +828,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
-          <CustomView nodeId={id} data={customViewData} isRunning={nodeData.isRunning === true} />
+          <CustomView
+            nodeId={id}
+            data={customViewData}
+            isRunning={nodeData.isRunning === true}
+            isPreview={nodeData.isPreview === true}
+          />
         </div>
       ) : null}
 
@@ -838,7 +843,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
-          <PluginWorkflowCustomView nodeId={id} data={customViewData} isRunning={nodeData.isRunning === true} view={pluginCustomView} />
+          <PluginWorkflowCustomView
+            nodeId={id}
+            data={customViewData}
+            isRunning={nodeData.isRunning === true}
+            isPreview={nodeData.isPreview === true}
+            view={pluginCustomView}
+          />
         </div>
       ) : null}
 

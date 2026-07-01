@@ -47,6 +47,7 @@ export type WorkflowCustomViewProps = {
   nodeId: string;
   data: Record<string, unknown>;
   isRunning?: boolean;
+  isPreview?: boolean;
 };
 
 export type PluginNodeDefinitionMeta = {

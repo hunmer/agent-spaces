@@ -28,24 +28,25 @@ function postMiniAppRuntimeInit(
   target.postMessage({ source: MINI_APP_ROUTE_INIT_SOURCE, route }, '*');
 }
 
-export function MiniAppDisplayView({ data, isRunning = false }: DisplayNodeViewProps) {
+export function MiniAppDisplayView({ data, isRunning = false, isPreview = false }: DisplayNodeViewProps) {
   const miniAppId = readString(data.miniAppId);
   const route = readString(data.route) || '/';
   const embedDisplay = data.embedDisplay === true;
   const params = useMemo(() => parseJsonRecord(data.params), [data.params]);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewUrl = useMemo(() => (miniAppId ? buildMiniAppPreviewUrl(miniAppId) : ''), [miniAppId]);
+  const shouldRenderInline = embedDisplay && (isRunning || isPreview);
   const syncRuntimeContext = useCallback(() => {
     postMiniAppRuntimeInit(iframeRef.current, route, params);
   }, [route, params]);
 
   useEffect(() => {
-    if (!embedDisplay || !isRunning) return;
+    if (!shouldRenderInline) return;
     syncRuntimeContext();
-  }, [embedDisplay, isRunning, syncRuntimeContext]);
+  }, [shouldRenderInline, syncRuntimeContext]);
 
   useEffect(() => {
-    if (!embedDisplay || !isRunning) return undefined;
+    if (!shouldRenderInline) return undefined;
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (event.data?.source !== MINI_APP_RUNTIME_READY_SOURCE) return;
@@ -54,17 +55,17 @@ export function MiniAppDisplayView({ data, isRunning = false }: DisplayNodeViewP
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [embedDisplay, isRunning, syncRuntimeContext]);
+  }, [shouldRenderInline, syncRuntimeContext]);
 
   if (!miniAppId) {
     return <EmptyDisplay icon={<PanelsTopLeft className="h-5 w-5" />} text="No miniapp selected" />;
   }
 
-  if (!isRunning) {
+  if (!isRunning && !isPreview) {
     return <EmptyDisplay icon={<PanelsTopLeft className="h-5 w-5" />} text="Miniapp will appear here while this node is running." />;
   }
 
-  if (embedDisplay) {
+  if (shouldRenderInline) {
     return (
       <div className="nodrag nopan h-full w-full overflow-hidden rounded-lg border border-border/60 bg-background">
         <iframe

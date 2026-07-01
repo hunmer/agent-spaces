@@ -24,13 +24,13 @@ export function isPluginWorkflowCustomViewDefinition(input: unknown): input is P
     || typeof view.react === 'string';
 }
 
-export function PluginWorkflowCustomView({ nodeId, data, isRunning, view }: PluginWorkflowCustomViewProps) {
+export function PluginWorkflowCustomView({ nodeId, data, isRunning, isPreview, view }: PluginWorkflowCustomViewProps) {
   const [error, setError] = useState<string | null>(null);
   const type: MiniAppRenderType = view.type === 'html' ? 'html' : 'react';
   const sourceCode = type === 'html'
     ? (view.sourceCode || view.html || '')
     : (view.sourceCode || view.react || '');
-  const componentProps = useMemo(() => ({ nodeId, data, isRunning }), [nodeId, data, isRunning]);
+  const componentProps = useMemo(() => ({ nodeId, data, isRunning, isPreview }), [nodeId, data, isRunning, isPreview]);
 
   return (
     <div className="h-full w-full">
