@@ -32,7 +32,7 @@ export function MiniAppDisplayView({ data, isRunning = false }: DisplayNodeViewP
   const miniAppId = readString(data.miniAppId);
   const route = readString(data.route) || '/';
   const embedDisplay = data.embedDisplay === true;
-  const params = parseJsonRecord(data.params);
+  const params = useMemo(() => parseJsonRecord(data.params), [data.params]);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewUrl = useMemo(() => (miniAppId ? buildMiniAppPreviewUrl(miniAppId) : ''), [miniAppId]);
   const syncRuntimeContext = useCallback(() => {

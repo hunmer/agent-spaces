@@ -23,13 +23,19 @@ export default function AppShell() {
   const router = useRouter();
   const locationRouteState = useMemo(() => getRouteStateFromLocation(parseRoute), []);
   const [runtimePayload, setRuntimePayload] = useState(() => getPayloadFromRuntime());
-  const [runtimeDebug, setRuntimeDebug] = useState(() => getRuntimeDebugInfo());
-  const effectivePath = router.path.length > 0 ? router.path : locationRouteState.path;
-  const effectiveQuery = Object.keys(router.query || {}).length > 0 ? router.query : locationRouteState.query;
+  const effectivePath = useMemo(
+    () => (router.path.length > 0 ? router.path : locationRouteState.path),
+    [router.path, locationRouteState.path],
+  );
+  const effectiveQuery = useMemo(
+    () => (Object.keys(router.query || {}).length > 0 ? router.query : locationRouteState.query),
+    [router.query, locationRouteState.query],
+  );
   const currentRoute = ROUTES.some((item) => item.key === effectivePath[0]) ? effectivePath[0] : "welcome";
-  const queryPayload = getPayloadFromQuery(effectiveQuery);
+  const queryPayload = useMemo(() => getPayloadFromQuery(effectiveQuery), [effectiveQuery]);
   const payloadSource = Object.keys(runtimePayload).length > 0 ? "runtime" : "query";
   const payload = payloadSource === "runtime" ? runtimePayload : queryPayload;
+  const runtimeDebug = useMemo(() => getRuntimeDebugInfo(), [runtimePayload, effectiveQuery, effectivePath]);
 
   useEffect(() => {
     if (router.path.length === 0 && locationRouteState.path.length > 0) {
@@ -40,20 +46,17 @@ export default function AppShell() {
   useEffect(() => subscribeRuntimePayload((nextPayload) => {
     console.debug("[workflow-miniapp] runtime payload updated", nextPayload);
     setRuntimePayload(nextPayload);
-    setRuntimeDebug(getRuntimeDebugInfo());
   }), []);
 
   useEffect(() => {
-    const nextDebug = getRuntimeDebugInfo();
-    setRuntimeDebug(nextDebug);
     console.debug("[workflow-miniapp] payload resolution", {
       payloadSource,
       runtimePayload,
       queryPayload,
       effectiveQuery,
-      nextDebug,
+      nextDebug: runtimeDebug,
     });
-  }, [payloadSource, runtimePayload, queryPayload, effectiveQuery]);
+  }, [payloadSource, runtimePayload, queryPayload, effectiveQuery, runtimeDebug]);
 
   const navigate = (nextRoute) => {
     router.push([nextRoute], effectiveQuery);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, type ReadonlyURLSearchParams } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
 import type { MiniAppProject } from '@agent-spaces/sdk';
@@ -16,6 +16,10 @@ type MiniAppRuntimeContext = {
   route: string;
   params: Record<string, unknown>;
 };
+
+function runtimeContextEquals(a: MiniAppRuntimeContext, b: MiniAppRuntimeContext): boolean {
+  return a.route === b.route && JSON.stringify(a.params) === JSON.stringify(b.params);
+}
 
 function decodeRouteParam(value: string) {
   try { return decodeURIComponent(value); }
@@ -52,6 +56,7 @@ export default function MiniAppPreviewPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [runtimeContext, setRuntimeContext] = useState<MiniAppRuntimeContext>(() => readRuntimeContextFromSearchParams(searchParams));
+  const runtimeContextRef = useRef<MiniAppRuntimeContext>(runtimeContext);
 
   const host = useMiniAppHostApi(projectId, runtimeContext);
 
@@ -93,28 +98,37 @@ export default function MiniAppPreviewPageClient() {
   useEffect(() => { loadProject(); }, [loadProject]);
 
   useEffect(() => {
+    runtimeContextRef.current = runtimeContext;
+  }, [runtimeContext]);
+
+  useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== window.parent) return;
       const data = event.data;
       if (!data || data.source !== MINI_APP_RUNTIME_INIT_SOURCE) return;
       console.debug('[mini-app-preview] received runtime init', data);
-      setRuntimeContext({
+      const nextRuntimeContext = {
         route: typeof data.route === 'string' && data.route.trim() ? data.route : '/',
         params: data.params && typeof data.params === 'object' && !Array.isArray(data.params)
           ? data.params as Record<string, unknown>
           : {},
-      });
+      };
+      if (runtimeContextEquals(runtimeContextRef.current, nextRuntimeContext)) {
+        console.debug('[mini-app-preview] runtime init unchanged, skip update', nextRuntimeContext);
+        return;
+      }
+      setRuntimeContext(nextRuntimeContext);
     };
 
     window.addEventListener('message', handleMessage);
     window.parent?.postMessage({
       source: MINI_APP_RUNTIME_READY_SOURCE,
       projectId,
-      currentRuntimeContext: runtimeContext,
+      currentRuntimeContext: runtimeContextRef.current,
     }, '*');
-    console.debug('[mini-app-preview] runtime listener ready', { projectId, runtimeContext });
+    console.debug('[mini-app-preview] runtime listener ready', { projectId, runtimeContext: runtimeContextRef.current });
     return () => window.removeEventListener('message', handleMessage);
-  }, [projectId, runtimeContext]);
+  }, [projectId]);
 
   useEffect(() => {
     (window as typeof window & { __AGENT_SPACES_MINIAPP_RUNTIME__?: MiniAppRuntimeContext }).__AGENT_SPACES_MINIAPP_RUNTIME__ = runtimeContext;
