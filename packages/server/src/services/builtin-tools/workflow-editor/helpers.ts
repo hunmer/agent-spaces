@@ -108,3 +108,50 @@ export function arrayInput(value: unknown, key: string): { success: true; value:
   }
   return { success: false, message: `${key} must be an array` };
 }
+
+export function arrayStringInput(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? arrayStringInput(parsed) : [];
+    } catch {
+      return value.trim() ? [value.trim()] : [];
+    }
+  }
+  return [];
+}
+
+export function objectInputAny(input: JsonRecord, keys: string[]): JsonRecord {
+  for (const key of keys) {
+    const value = objectInput(input, key);
+    if (Object.keys(value).length > 0) return value;
+  }
+  return {};
+}
+
+export function stringInputObject(input: JsonRecord, key: string): JsonRecord {
+  const value = input[key];
+  if (typeof value !== 'string' || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as JsonRecord : {};
+  } catch {
+    return {};
+  }
+}
+
+export function compactObject(value: JsonRecord): JsonRecord {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+export function getMcpServerNames(value: unknown): string[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const servers = (value as { mcpServers?: unknown }).mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return [];
+  return Object.keys(servers as Record<string, unknown>);
+}
+
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

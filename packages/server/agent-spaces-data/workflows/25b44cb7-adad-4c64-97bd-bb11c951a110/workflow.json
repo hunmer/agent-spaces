@@ -23,10 +23,42 @@
         "y": 400
       },
       "data": {}
+    },
+    {
+      "id": "node_1782870494173_2mfpad",
+      "type": "mcp_connect",
+      "label": "MCP 连接",
+      "position": {
+        "x": -60,
+        "y": 180
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object"
+          }
+        ],
+        "config": "{\n  \"agent-spaces\": {\n    \"type\": \"stdio\",\n    \"command\": \"node\",\n    \"args\": [\n      \"G:/agent_spaces/packages/mcp/dist/src/index.js\"\n    ],\n    \"env\": {\n      \"AGENT_SPACES_BASE_URL\": \"http://localhost:3100\",\n      \"AGENT_SPACES_TOKEN\": \"\"\n    }\n  }\n}"
+      }
     }
   ],
   "edges": [],
   "createdAt": 1782870380047,
-  "updatedAt": 1782870380047,
-  "published": false
+  "updatedAt": 1782870622345,
+  "published": false,
+  "enabledPlugins": [
+    "workflow.mcp-bridge"
+  ],
+  "groups": []
 }
