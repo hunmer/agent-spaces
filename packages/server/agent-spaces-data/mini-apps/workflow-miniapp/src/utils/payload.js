@@ -9,3 +9,18 @@ export function getPayloadFromQuery(query) {
     return {};
   }
 }
+
+export function getRouteStateFromLocation(parseRoute) {
+  if (typeof window === "undefined") {
+    return { path: [], query: {} };
+  }
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const rawRoute = params.get("route");
+    if (!rawRoute) return { path: [], query: {} };
+    return parseRoute(rawRoute);
+  } catch {
+    return { path: [], query: {} };
+  }
+}

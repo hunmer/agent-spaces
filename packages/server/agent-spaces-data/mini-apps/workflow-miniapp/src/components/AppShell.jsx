@@ -1,8 +1,9 @@
-import { useRouter } from "@agent-spaces/ui";
+import { useEffect, useMemo } from "react";
+import { parseRoute, useRouter } from "@agent-spaces/ui";
 import WelcomeRoute from "./WelcomeRoute";
 import ApprovalRoute from "./ApprovalRoute";
 import SurveyRoute from "./SurveyRoute";
-import { getPayloadFromQuery } from "../utils/payload";
+import { getPayloadFromQuery, getRouteStateFromLocation } from "../utils/payload";
 
 const { Button, Card, CardContent, Badge } = window.AgentSpacesUI;
 
@@ -14,11 +15,20 @@ const ROUTES = [
 
 export default function AppShell() {
   const router = useRouter();
-  const currentRoute = ROUTES.some((item) => item.key === router.path[0]) ? router.path[0] : "welcome";
-  const payload = getPayloadFromQuery(router.query);
+  const locationRouteState = useMemo(() => getRouteStateFromLocation(parseRoute), []);
+  const effectivePath = router.path.length > 0 ? router.path : locationRouteState.path;
+  const effectiveQuery = Object.keys(router.query || {}).length > 0 ? router.query : locationRouteState.query;
+  const currentRoute = ROUTES.some((item) => item.key === effectivePath[0]) ? effectivePath[0] : "welcome";
+  const payload = getPayloadFromQuery(effectiveQuery);
+
+  useEffect(() => {
+    if (router.path.length === 0 && locationRouteState.path.length > 0) {
+      router.replace(locationRouteState.path, locationRouteState.query);
+    }
+  }, [locationRouteState.path, locationRouteState.query, router]);
 
   const navigate = (nextRoute) => {
-    router.push([nextRoute], router.query);
+    router.push([nextRoute], effectiveQuery);
   };
 
   return (

@@ -44,6 +44,7 @@ interface MiniAppPreviewProps {
   files?: Record<string, string>;
   /** entry point filename */
   mainFile?: string;
+  allowScroll?: boolean;
 }
 
 /** 从 fetch SSE Response 解析 event:/data: 帧，逐帧回调。 */
@@ -338,7 +339,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   );
 }
 
-export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents }: MiniAppPreviewProps) {
+export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, allowScroll = false }: MiniAppPreviewProps) {
   const t = useTranslations('mini-apps');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -424,7 +425,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   }, [onError, t]);
 
   return (
-    <div className="relative flex flex-col h-full overflow-hidden">
+    <div className={cn('relative flex flex-col h-full', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
       {showToolbar && (
         <div className="relative isolate z-40 flex items-center shrink-0 px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
           <div className="flex-1 min-w-0">
@@ -537,7 +538,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
           {error}
         </div>
       )}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className={cn('min-h-0 flex-1', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
         <MiniAppRenderer
           type={type}
           sourceCode={sourceCode}
@@ -545,6 +546,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
           taskEvents={taskEvents}
           files={files}
           mainFile={mainFile}
+          allowScroll={allowScroll}
         />
       </div>
       <WorkflowPluginConfigDialog

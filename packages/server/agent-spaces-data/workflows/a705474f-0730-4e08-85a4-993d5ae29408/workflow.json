@@ -19,18 +19,18 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 960,
-        "y": 360
+        "x": 1125,
+        "y": 315
       },
       "data": {}
     },
     {
-      "id": "node_1782898328613_wyjsun",
+      "id": "node_1782899879090_efwle8",
       "type": "show_miniapp",
       "label": "nodes.show_miniapp.label",
       "position": {
-        "x": 577.6111111111111,
-        "y": 206.77777777777777
+        "x": 540,
+        "y": 225
       },
       "data": {
         "route": "/welcome",
@@ -62,22 +62,25 @@
             "description": "nodes.show_miniapp.outputs.confirmed"
           }
         ],
-        "miniAppId": "workflow-miniapp"
+        "miniAppId": "workflow-miniapp",
+        "embedDisplay": true,
+        "nodeWidth": 376,
+        "nodeHeight": 278
       }
     }
   ],
   "edges": [
     {
-      "id": "e-node_1782898322891_start-source-node_1782898328613_wyjsun-target",
+      "id": "e-node_1782898322891_start-source-node_1782899879090_efwle8-target",
       "source": "node_1782898322891_start",
-      "target": "node_1782898328613_wyjsun",
+      "target": "node_1782899879090_efwle8",
       "edgeKind": "runtime",
       "sourceHandle": "source",
       "targetHandle": "target"
     },
     {
-      "id": "e-node_1782898328613_wyjsun-source-node_1782898322891_end-target",
-      "source": "node_1782898328613_wyjsun",
+      "id": "e-node_1782899879090_efwle8-source-node_1782898322891_end-target",
+      "source": "node_1782899879090_efwle8",
       "target": "node_1782898322891_end",
       "edgeKind": "runtime",
       "sourceHandle": "source",
@@ -85,7 +88,8 @@
     }
   ],
   "createdAt": 1782898322898,
-  "updatedAt": 1782898386442,
+  "updatedAt": 1782900373816,
   "published": false,
-  "lastRunAt": 1782898381314
+  "lastRunAt": 1782900343270,
+  "groups": []
 }

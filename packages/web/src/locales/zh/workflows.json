@@ -892,6 +892,8 @@
         "miniAppId_placeholder": "选择 miniapp",
         "route": "路由",
         "route_placeholder": "/welcome",
+        "embedDisplay": "是否内嵌显示miniapp",
+        "embedDisplay_tooltip": "将 miniapp 直接内嵌在节点内显示。工作流执行时仍然会打开交互弹窗。",
         "params": "传入参数(JSON)",
         "params_tooltip": "传入 JSON 对象给此 miniapp，将在路由 query.payload 中可用。"
       },

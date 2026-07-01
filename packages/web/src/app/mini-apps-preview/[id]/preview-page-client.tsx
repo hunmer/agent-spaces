@@ -78,9 +78,9 @@ export default function MiniAppPreviewPageClient() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className={`h-screen flex flex-col ${embedded ? 'overflow-auto' : 'overflow-hidden'}`}>
       {host}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className={`flex-1 min-h-0 ${embedded ? 'overflow-auto' : 'overflow-hidden'}`}>
         <MiniAppPreview
           type={project.type}
           sourceCode={sourceCode}
@@ -93,6 +93,7 @@ export default function MiniAppPreviewPageClient() {
           enableAgents={project.enableAgents}
           files={allFiles}
           mainFile={project.mainFile}
+          allowScroll={embedded}
         />
       </div>
     </div>

@@ -8,7 +8,6 @@ export const miniappNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.miniapp',
     icon: 'PanelsTopLeft',
     description: 'nodes.show_miniapp.description',
-    readonlyOutputs: true,
     customView: MiniAppDisplayView,
     customViewMinSize: { width: 260, height: 150 },
     properties: [
@@ -29,6 +28,13 @@ export const miniappNodes: NodeTypeDefinition[] = [
         type: 'text',
         default: '/',
         placeholder: 'nodes.show_miniapp.props.route_placeholder',
+      },
+      {
+        key: 'embedDisplay',
+        label: 'nodes.show_miniapp.props.embedDisplay',
+        type: 'checkbox',
+        default: false,
+        tooltip: 'nodes.show_miniapp.props.embedDisplay_tooltip',
       },
       {
         key: 'params',

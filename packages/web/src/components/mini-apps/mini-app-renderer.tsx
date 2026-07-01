@@ -20,6 +20,7 @@ interface MiniAppRendererProps {
   files?: Record<string, string>;
   /** entry point filename (used to resolve relative imports from sourceCode) */
   mainFile?: string;
+  allowScroll?: boolean;
 }
 
 export interface MiniAppTaskEvent {
@@ -61,6 +62,7 @@ export function MiniAppRenderer({
   taskEvents,
   files,
   mainFile,
+  allowScroll = false,
 }: MiniAppRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const taskEventListenersRef = useRef(new Set<(event: string, data: unknown) => void>());
@@ -149,7 +151,7 @@ export function MiniAppRenderer({
   return (
     <div
       ref={containerRef}
-      className={cn('h-full w-full overflow-hidden', resolvedTheme, className)}
+      className={cn('h-full w-full', allowScroll ? 'overflow-auto' : 'overflow-hidden', resolvedTheme, className)}
       style={{ colorScheme: resolvedTheme }}
     />
   );
