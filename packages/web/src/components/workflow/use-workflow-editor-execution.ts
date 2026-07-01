@@ -22,6 +22,12 @@ type ElectronApi = {
   };
 };
 
+type MiniAppSubmitMessage = {
+  source?: string;
+  payload?: unknown;
+  cancelled?: boolean;
+};
+
 function withOriginalIOFieldsSnapshot(workflow: Workflow): Workflow['nodes'] {
   return workflow.nodes.map((node) => {
     if (!Array.isArray(node.data?.inputFields) && !Array.isArray(node.data?.outputs)) return node;
@@ -263,6 +269,30 @@ export function useWorkflowEditorExecution({
     sendInteractionResponse(request, null, true);
   }, [sendInteractionResponse]);
 
+  useEffect(() => {
+    if (!pendingInteraction || pendingInteraction.interactionType !== 'miniapp_confirm') return undefined;
+
+    const handleMiniAppSubmit = (event: MessageEvent<MiniAppSubmitMessage>) => {
+      const data = event.data;
+      if (!data || data.source !== 'agent-spaces:workflow-miniapp-submit') return;
+      console.debug('[show_miniapp][execution] received miniapp submit', {
+        executionId: pendingInteraction.executionId,
+        workflowId: pendingInteraction.workflowId,
+        nodeId: pendingInteraction.nodeId,
+        cancelled: data.cancelled === true,
+        payload: data.payload ?? null,
+      });
+      if (data.cancelled) {
+        handleCancelInteraction(pendingInteraction);
+        return;
+      }
+      handleResolveInteraction(pendingInteraction, data.payload ?? null);
+    };
+
+    window.addEventListener('message', handleMiniAppSubmit);
+    return () => window.removeEventListener('message', handleMiniAppSubmit);
+  }, [pendingInteraction, handleResolveInteraction, handleCancelInteraction]);
+
   const handleCancelDebug = useCallback(() => {
     cleanupDebugListeners();
     setPendingInteraction(null);
@@ -485,7 +515,19 @@ export function useWorkflowEditorExecution({
       if (request.type !== 'client_node_request' || request.workflowId !== activeWorkflow.id) return;
       void handleClientNodeRequest(request);
     });
-    executionCleanupRef.current = [offResult, offError, offLog, offProgress, offPaused, offResumed, offCompleted, offFailed, offClientNode];
+    const offInteraction = ws.on('workflow:interaction', (data) => {
+      const request = data as InteractionRequest;
+      if (request.type !== 'interaction_required' || request.workflowId !== activeWorkflow.id) return;
+      console.debug('[show_miniapp][execution] interaction required', {
+        executionId: request.executionId,
+        workflowId: request.workflowId,
+        nodeId: request.nodeId,
+        interactionType: request.interactionType,
+        schema: request.schema,
+      });
+      setPendingInteraction(request);
+    });
+    executionCleanupRef.current = [offResult, offError, offLog, offProgress, offPaused, offResumed, offCompleted, offFailed, offClientNode, offInteraction];
 
     if (ws.connected) {
       sendExecuteRequest();

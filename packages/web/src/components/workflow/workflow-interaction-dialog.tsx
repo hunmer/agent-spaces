@@ -30,12 +30,6 @@ type FormItem = {
   };
 };
 
-type MiniAppMessage = {
-  source?: string;
-  payload?: unknown;
-  cancelled?: boolean;
-};
-
 function schemaRecord(request: InteractionRequest | null): Record<string, unknown> {
   return request?.schema && typeof request.schema === 'object' ? request.schema as Record<string, unknown> : {};
 }
@@ -116,26 +110,16 @@ export function WorkflowInteractionDialog({
   useEffect(() => {
     if (!request || request.interactionType !== 'miniapp_confirm') return undefined;
 
-    const handleMessage = (event: MessageEvent<MiniAppMessage>) => {
+    const handleReady = (event: MessageEvent<{ source?: string }>) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
-      const data = event.data;
-      if (data?.source === MINI_APP_RUNTIME_READY_SOURCE) {
-        console.debug('[show_miniapp][dialog] runtime ready, resend init', data);
-        postMiniAppRuntimeInit(iframeRef.current, miniAppRoute, miniAppParams);
-        return;
-      }
-      if (!data || data.source !== 'agent-spaces:workflow-miniapp-submit') return;
-      if (data.cancelled) {
-        onCancel(request);
-        return;
-      }
-      console.debug('[show_miniapp][dialog] submit payload', data.payload ?? null);
-      onResolve(request, data.payload ?? null);
+      if (event.data?.source !== MINI_APP_RUNTIME_READY_SOURCE) return;
+      console.debug('[show_miniapp][dialog] runtime ready, resend init', event.data);
+      postMiniAppRuntimeInit(iframeRef.current, miniAppRoute, miniAppParams);
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [request, onResolve, onCancel, miniAppRoute, miniAppParams]);
+    window.addEventListener('message', handleReady);
+    return () => window.removeEventListener('message', handleReady);
+  }, [request, miniAppRoute, miniAppParams]);
 
   useEffect(() => {
     if (!request || request.interactionType !== 'miniapp_confirm') return;

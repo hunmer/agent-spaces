@@ -1271,6 +1271,16 @@ function WorkflowEditorInner({
     clipboard.records,
   ]);
 
+  const dialogInteractionRequest = useMemo(() => {
+    const request = execution.pendingInteraction;
+    if (!request || request.interactionType !== 'miniapp_confirm') return request;
+    const node = state.workflow?.nodes.find((item) => item.id === request.nodeId);
+    if (node?.type === 'show_miniapp' && node.data?.embedDisplay === true) {
+      return null;
+    }
+    return request;
+  }, [execution.pendingInteraction, state.workflow?.nodes]);
+
   // ---- Render ----
   if (state.isLoading) {
     return (
@@ -1383,7 +1393,7 @@ function WorkflowEditorInner({
           />
         </div>
         <WorkflowInteractionDialog
-          request={execution.pendingInteraction}
+          request={dialogInteractionRequest}
           onResolve={execution.handleResolveInteraction}
           onCancel={execution.handleCancelInteraction}
         />
@@ -1486,7 +1496,7 @@ function WorkflowEditorInner({
       />
 
       <WorkflowInteractionDialog
-        request={execution.pendingInteraction}
+        request={dialogInteractionRequest}
         onResolve={execution.handleResolveInteraction}
         onCancel={execution.handleCancelInteraction}
       />
