@@ -111,15 +111,27 @@ export function AgentDetail({
       .map((m) => ({ value: m.modelId, label: m.name }));
   }, [selectedProvider, llmModels]);
   const runtimeOptions = useMemo(() => {
-    const enabledCliKinds = new Set(getEnabledDiscoveredRuntimeKinds(discoveredRuntimeCliItems));
-    return RUNTIME_OPTIONS
-      .filter((option) => {
-        if (option.value === "claude-code" || option.value === "codex") {
-          return enabledCliKinds.has(option.value) || agent.runtimeKind === option.value;
-        }
-        return true;
-      })
+    const discoveredCliOptions = discoveredRuntimeCliItems
+      .filter((item) => item.found && item.enabled && item.supportedRuntime && item.runtimeKind)
+      .map((item) => ({
+        value: item.runtimeKind,
+        label: item.label,
+      }));
+
+    const discoveredKinds = new Set(getEnabledDiscoveredRuntimeKinds(discoveredRuntimeCliItems));
+    const baseOptions = RUNTIME_OPTIONS
+      .filter((option) => !discoveredKinds.has(option.value as "claude-code" | "codex"))
       .map((option) => ({ value: option.value, label: t(`runtime.${option.labelKey}`) }));
+
+    const merged = [...discoveredCliOptions, ...baseOptions];
+    const deduped = new Map(merged.map((option) => [option.value, option]));
+    if (agent.runtimeKind && !deduped.has(agent.runtimeKind)) {
+      const current = RUNTIME_OPTIONS.find((option) => option.value === agent.runtimeKind);
+      if (current) {
+        deduped.set(current.value, { value: current.value, label: t(`runtime.${current.labelKey}`) });
+      }
+    }
+    return Array.from(deduped.values());
   }, [agent.runtimeKind, discoveredRuntimeCliItems, t]);
 
   useEffect(() => {
