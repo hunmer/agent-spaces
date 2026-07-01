@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl"
 import type { AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from "@agent-spaces/shared"
 import { Loader2 } from "lucide-react"
 
-import { ChatMessageList } from "@/components/chat/chat-message-list"
 import { ContextPartChatView } from "@/components/chat/message-context-to-chat"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,6 +29,7 @@ export function UsageDashboardSessionDialog({
   const [loading, setLoading] = useState(false)
   const [detail, setDetail] = useState<AgentUsageSessionDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState("messages")
 
   useEffect(() => {
     if (!open || !record) return
@@ -59,32 +59,35 @@ export function UsageDashboardSessionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] !w-[min(1120px,calc(100vw-2rem))] !max-w-[min(1120px,calc(100vw-2rem))] gap-3 overflow-hidden p-0">
-        <DialogHeader className="border-b px-4 pt-4 pb-3">
-          <DialogTitle className="flex flex-wrap items-center gap-2">
-            <span>{record?.summary || t("sessionDetail.title")}</span>
-            {record?.runtime ? <Badge variant="outline">{record.runtime}</Badge> : null}
-            {record?.model ? <Badge variant="outline">{record.model}</Badge> : null}
-            {record?.status ? <Badge variant="secondary">{record.status}</Badge> : null}
-          </DialogTitle>
-          <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-            <span>{t("sessionDetail.requests")}: {formatTokens(record?.totalTokens ?? 0)}</span>
-            <span>{t("sessionDetail.cost")}: {formatCurrency(record?.totalCostUsd ?? 0)}</span>
-            <span>{t("sessionDetail.duration")}: {formatDuration(record?.durationMs ?? 0)}</span>
-            {record?.agentSessionId ? <span className="font-mono">{record.agentSessionId}</span> : null}
-          </DialogDescription>
-        </DialogHeader>
+        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
+          <DialogHeader className="border-b px-4 pt-4 pb-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <DialogTitle className="flex flex-wrap items-center gap-2">
+                  <span>{record?.summary || t("sessionDetail.title")}</span>
+                  {record?.runtime ? <Badge variant="outline">{record.runtime}</Badge> : null}
+                  {record?.model ? <Badge variant="outline">{record.model}</Badge> : null}
+                  {record?.status ? <Badge variant="secondary">{record.status}</Badge> : null}
+                </DialogTitle>
+                <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span>{t("sessionDetail.requests")}: {formatTokens(record?.totalTokens ?? 0)}</span>
+                  <span>{t("sessionDetail.cost")}: {formatCurrency(record?.totalCostUsd ?? 0)}</span>
+                  <span>{t("sessionDetail.duration")}: {formatDuration(record?.durationMs ?? 0)}</span>
+                  {record?.agentSessionId ? <span className="font-mono">{record.agentSessionId}</span> : null}
+                </DialogDescription>
+              </div>
+              <TabsList variant="line" className="shrink-0 px-0 me-5">
+                <TabsTrigger value="messages" className="rounded-none px-3 text-xs">
+                  {t("sessionDetail.messages")}
+                </TabsTrigger>
+                <TabsTrigger value="raw" className="rounded-none px-3 text-xs">
+                  {t("sessionDetail.raw")}
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </DialogHeader>
 
-        <Tabs defaultValue="messages" className="min-h-0 flex-1 px-4 pb-4">
-          <TabsList variant="line" className="border-b px-0">
-            <TabsTrigger value="messages" className="rounded-none px-3 text-xs">
-              {t("sessionDetail.messages")}
-            </TabsTrigger>
-            <TabsTrigger value="raw" className="rounded-none px-3 text-xs">
-              {t("sessionDetail.raw")}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="messages" className="min-h-0">
+          <TabsContent value="messages" className="mt-0 min-h-0 px-4 pb-4">
             <ScrollArea className="h-[65vh]" viewportClassName="pr-3">
               {loading ? (
                 <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
@@ -100,27 +103,19 @@ export function UsageDashboardSessionDialog({
                   {t("sessionDetail.empty")}
                 </div>
               ) : (
-                <ChatMessageList
-                  messages={messages.map((message) => ({
-                    id: message.id,
-                    role: message.role,
-                    content: message.content,
-                    timestamp: message.createdAt,
-                    timeline: message.timeline,
-                    contextPart: message.contextPart,
-                    sourceChannelName: message.sourceChannelName,
-                    metadata: message.metadata,
-                  }))}
-                  workspaceId={record?.workspaceId}
-                  renderMessageExtras={(message) => (
-                    <SessionMessageExtras message={message} />
-                  )}
-                />
+                <div className="flex flex-col gap-3 py-3">
+                  {messages.map((message) => (
+                    <SessionMessageExtras
+                      key={message.id}
+                      message={message}
+                    />
+                  ))}
+                </div>
               )}
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="raw" className="min-h-0">
+          <TabsContent value="raw" className="mt-0 min-h-0 px-4 pb-4">
             <ScrollArea className="h-[65vh]" viewportClassName="pr-3">
               <div className="space-y-3 py-3">
                 {detail?.cliHistoryPath ? (
