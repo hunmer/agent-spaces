@@ -57,9 +57,7 @@
           "workingDir": "",
           "mcps": {},
           "tools": [
-            "CreateCurrentChannelIssue",
-            "ViewCurrentChannelIssue",
-            "AddCurrentChannelComment"
+            "ListDatabases"
           ],
           "systemPrompt": "",
           "outputStyle": "",
@@ -75,6 +73,6 @@
   ],
   "edges": [],
   "createdAt": 1782908425007,
-  "updatedAt": 1782908495363,
+  "updatedAt": 1782908921874,
   "published": false
 }
