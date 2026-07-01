@@ -272,7 +272,7 @@ function resolvePackageManager() {
 
 function runCommand(command: string, args: string[], cwd: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(resolveExecutable(command), args, {
       cwd,
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -306,6 +306,13 @@ async function fetchLatestPackageVersion(packageName: string): Promise<string | 
   } catch {
     return null;
   }
+}
+
+function resolveExecutable(command: string): string {
+  if (process.platform !== 'win32') return command;
+  if (command.endsWith('.exe') || command.endsWith('.cmd') || command.endsWith('.bat')) return command;
+  if (command === 'npm' || command === 'pnpm') return `${command}.cmd`;
+  return command;
 }
 
 export default router;

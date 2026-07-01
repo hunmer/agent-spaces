@@ -11,7 +11,7 @@
     "!dist/**/*.map",
     "!dist/shared",
     "!public/uploads",
-    "!public/avatars"
+    "!public/avatars" 
   ],
   "publishConfig": {
     "access": "public"

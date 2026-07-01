@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowUpCircle, Download, Loader2 } from "lucide-react";
+import { ArrowUpCircle, Check, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -129,6 +129,47 @@ export function RuntimeTab() {
     );
   };
 
+  const hasUpdate = (item: RuntimeCliDiscoveryItem) => (
+    Boolean(item.found && item.version && item.latestVersion && item.version !== item.latestVersion)
+  );
+
+  const isUpToDate = (item: RuntimeCliDiscoveryItem) => (
+    Boolean(item.found && item.version && item.latestVersion && item.version === item.latestVersion)
+  );
+
+  const getSdkAction = (item: RuntimeCliDiscoveryItem) => {
+    if (!item.found) {
+      return {
+        icon: Download,
+        label: t("runtimeInstall"),
+        onClick: () => handleInstall(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+        disabled: installingId !== null || checkingUpdateId !== null,
+      };
+    }
+    if (hasUpdate(item)) {
+      return {
+        icon: Download,
+        label: t("runtimeUpdate"),
+        onClick: () => handleInstall(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+        disabled: installingId !== null || checkingUpdateId !== null,
+      };
+    }
+    if (isUpToDate(item)) {
+      return {
+        icon: Check,
+        label: t("runtimeUpToDate"),
+        onClick: () => handleCheckUpdates(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+        disabled: checkingUpdateId !== null || installingId !== null,
+      };
+    }
+    return {
+      icon: ArrowUpCircle,
+      label: t("runtimeCheckUpdate"),
+      onClick: () => handleCheckUpdates(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk"),
+      disabled: checkingUpdateId !== null || installingId !== null,
+    };
+  };
+
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -236,31 +277,25 @@ export function RuntimeTab() {
                   <div className="mt-0.5 text-xs text-muted-foreground">
                     {item.latestVersion ? `${t("runtimeLatestVersion")}: ${item.latestVersion}` : null}
                   </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    {item.found ? item.path : item.command}
-                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCheckUpdates(item.id)}
-                    disabled={checkingUpdateId !== null || installingId !== null}
-                  >
-                    {checkingUpdateId === item.id ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <ArrowUpCircle className="mr-1.5 size-3.5" />}
-                    {t("runtimeCheckUpdate")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleInstall(item.id)}
-                    disabled={installingId !== null || checkingUpdateId !== null}
-                  >
-                    {installingId === item.id ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Download className="mr-1.5 size-3.5" />}
-                    {installingId === item.id ? t("runtimeInstalling") : t("runtimeInstall")}
-                  </Button>
+                  {(() => {
+                    const action = getSdkAction(item);
+                    const Icon = action.icon;
+                    const spinning = installingId === item.id || checkingUpdateId === item.id;
+                    return (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={action.onClick}
+                        disabled={action.disabled}
+                      >
+                        {spinning ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Icon className="mr-1.5 size-3.5" />}
+                        {installingId === item.id || checkingUpdateId === item.id ? t("runtimeProcessing") : action.label}
+                      </Button>
+                    );
+                  })()}
                 </div>
               </div>
             ))
