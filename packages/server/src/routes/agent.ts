@@ -11,6 +11,21 @@ router.get('/usage/dashboard', (req: Request, res: Response) => {
   res.json(agentService.usageDashboard(Number.isFinite(days) ? days : 30));
 });
 
+router.get('/usage/options', (req: Request, res: Response) => {
+  const days = Number(req.query.days ?? 30);
+  res.json(agentService.getUsageFilterOptions(Number.isFinite(days) ? days : 30));
+});
+
+router.post('/usage/recent', (req: Request, res: Response) => {
+  const body = req.body as { days?: number; filters?: unknown; page?: number; pageSize?: number };
+  res.json(agentService.queryRecentUsage({
+    days: Number(body.days ?? 30) || 30,
+    filters: Array.isArray(body.filters) ? body.filters as any : [],
+    page: Math.max(1, Number(body.page ?? 1) || 1),
+    pageSize: Math.min(200, Math.max(1, Number(body.pageSize ?? 10) || 10)),
+  }));
+});
+
 router.get('/sessions/:agentSessionId/detail', (req: Request<{ agentSessionId: string }>, res: Response) => {
   const detail = agentService.getSessionDetail(req.params.agentSessionId);
   if (!detail) {

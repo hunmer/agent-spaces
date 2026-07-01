@@ -86,6 +86,43 @@ export interface AgentUsageDashboard {
   recent: AgentUsageRecord[];
 }
 
+/** 过滤运算符（前后端共享，与 reui/filters.tsx 对齐） */
+export type UsageFilterOperator =
+  | 'is' | 'is_not' | 'is_any_of' | 'is_not_any_of'
+  | 'contains' | 'not_contains' | 'starts_with' | 'ends_with'
+  | 'empty' | 'not_empty'
+  | 'greater_than' | 'less_than' | 'between';
+
+/** 单个过滤条件，field 用 camelCase（与 AgentUsageRecord 字段名一致） */
+export interface UsageFilter {
+  id: string;
+  field: string;
+  operator: UsageFilterOperator;
+  values: (string | number)[];
+}
+
+/** recent 用量表格查询入参 */
+export interface AgentUsageRecentQuery {
+  days?: number;
+  filters?: UsageFilter[];
+  page?: number;
+  pageSize?: number;
+}
+
+/** recent 用量表格查询结果 */
+export interface AgentUsageRecentResult {
+  records: AgentUsageRecord[];
+  total: number;
+}
+
+/** 过滤选项（model/status/role 去重列表，供下拉选择） */
+export interface AgentUsageFilterOptions {
+  models: string[];
+  statuses: string[];
+  roles: string[];
+  runtimes: string[];
+}
+
 export interface AgentUsageSessionMessage {
   id: string;
   role: 'user' | 'agent';

@@ -7,6 +7,9 @@ import type {
   AgentSession,
   AgentSessionStatus,
   AgentUsageDashboard,
+  AgentUsageFilterOptions,
+  AgentUsageRecentQuery,
+  AgentUsageRecentResult,
   AgentUsageSessionDetail,
   AgentUsageSessionMessage,
   LLMProvider,
@@ -24,7 +27,9 @@ import {
   updateAgentSession,
   deleteAgentSession,
   getAgentUsageDashboard,
+  getAgentUsageFilterOptions,
   getLatestAgentUsageBySessionId,
+  queryAgentUsageRecent,
   recordAgentUsage,
 } from '../storage/agent-store.js';
 import { getWorkspace, listWorkspaces } from '../storage/workspace-store.js';
@@ -1237,6 +1242,14 @@ export function findActiveByRole(
 
 export function usageDashboard(days?: number): AgentUsageDashboard {
   return getAgentUsageDashboard(days);
+}
+
+export function queryRecentUsage(q: AgentUsageRecentQuery): AgentUsageRecentResult {
+  return queryAgentUsageRecent(q);
+}
+
+export function getUsageFilterOptions(days?: number): AgentUsageFilterOptions {
+  return getAgentUsageFilterOptions(days ?? 30);
 }
 
 export function getSessionDetail(agentSessionId: string): AgentUsageSessionDetail | null {

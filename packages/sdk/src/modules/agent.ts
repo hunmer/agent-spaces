@@ -1,5 +1,5 @@
 import type { HttpClient } from '../client';
-import type { AgentConfig } from '@agent-spaces/shared';
+import type { AgentConfig, AgentUsageDashboard, AgentUsageFilterOptions, AgentUsageRecentQuery, AgentUsageRecentResult, AgentUsageSessionDetail } from '@agent-spaces/shared';
 
 export function createAgentApi(http: HttpClient) {
   return {
@@ -19,10 +19,18 @@ export function createAgentApi(http: HttpClient) {
       http.delete(`/api/agents/presets/${id}`),
 
     /** 用量仪表盘 */
-    usageDashboard: (days = 30): Promise<import('@agent-spaces/shared').AgentUsageDashboard> =>
+    usageDashboard: (days = 30): Promise<AgentUsageDashboard> =>
       http.get(`/api/agents/usage/dashboard?days=${days}`),
 
-    sessionDetail: (agentSessionId: string): Promise<import('@agent-spaces/shared').AgentUsageSessionDetail> =>
+    /** 过滤选项（model/status/role/runtime 去重列表） */
+    usageOptions: (days = 30): Promise<AgentUsageFilterOptions> =>
+      http.get(`/api/agents/usage/options?days=${days}`),
+
+    /** recent 用量表格：后端过滤 + 分页 */
+    recentUsage: (q: AgentUsageRecentQuery): Promise<AgentUsageRecentResult> =>
+      http.post(`/api/agents/usage/recent`, q),
+
+    sessionDetail: (agentSessionId: string): Promise<AgentUsageSessionDetail> =>
       http.get(`/api/agents/sessions/${agentSessionId}/detail`),
 
     /** Agent Designer — AI 生成 Agent 配置 */

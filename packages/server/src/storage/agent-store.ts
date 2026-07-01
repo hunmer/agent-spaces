@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { v4 as uuid } from 'uuid';
-import type { AgentSession, AgentUsageDashboard, AgentUsageRecord, MessageTokenUsage } from '@agent-spaces/shared';
+import type { AgentSession, AgentUsageDashboard, AgentUsageRecord, AgentUsageFilterOptions, AgentUsageRecentQuery, AgentUsageRecentResult, MessageTokenUsage, UsageFilter } from '@agent-spaces/shared';
 import { getDataDir, ensureDir } from './json-store.js';
 import { listModels } from './llm-store.js';
 
@@ -275,6 +275,165 @@ export function getAgentUsageDashboard(days = 30): AgentUsageDashboard {
     daily: Array.from(dailyMap.values()),
     byModel: Array.from(modelMap.values()).sort((a, b) => b.costUsd - a.costUsd).slice(0, 5),
     recent: records.slice(0, 6),
+  };
+}
+
+// ---- recent 表格：后端过滤 + 分页 ----
+
+// camelCase field key → DB 列名（白名单，未列入的 field 一律忽略，防注入）
+const USAGE_FIELD_COLUMNS: Record<string, string> = {
+  model: 'model',
+  status: 'status',
+  role: 'role',
+  summary: 'summary',
+  runtime: 'runtime',
+  totalCostUsd: 'total_cost_usd',
+  durationMs: 'duration_ms',
+  completedAt: 'completed_at',
+  startedAt: 'started_at',
+  inputTokens: 'input_tokens',
+  outputTokens: 'output_tokens',
+  totalTokens: 'total_tokens',
+};
+
+// 数值列：greater_than/less_than/between 走数值比较
+const USAGE_NUMERIC_COLUMNS = new Set([
+  'total_cost_usd',
+  'duration_ms',
+  'input_tokens',
+  'output_tokens',
+  'total_tokens',
+]);
+
+const quoteIdent = (name: string) => `"${name.replaceAll('"', '""')}"`;
+
+// 转义 LIKE 通配符，保证「包含」语义与子串匹配一致
+const escapeLike = (s: string) => s.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+
+function hasValues(values: unknown[]): boolean {
+  return values.length > 0 && values.every((v) => v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === ''));
+}
+
+// 把单个过滤条件编译成 SQL 片段 + 绑定参数
+function buildUsageFilterClause(filter: UsageFilter): { clause: string; params: unknown[] } | null {
+  const column = USAGE_FIELD_COLUMNS[filter.field];
+  if (!column) return null; // 白名单外的字段忽略
+  const ident = quoteIdent(column);
+  const isNumeric = USAGE_NUMERIC_COLUMNS.has(column);
+  const colText = `CAST(${ident} AS TEXT)`;
+  const op = filter.operator;
+
+  // 空判断（所有列通用）
+  if (op === 'empty') {
+    return isNumeric
+      ? { clause: `${ident} = 0`, params: [] }
+      : { clause: `(${ident} IS NULL OR ${colText} = '')`, params: [] };
+  }
+  if (op === 'not_empty') {
+    return isNumeric
+      ? { clause: `${ident} > 0`, params: [] }
+      : { clause: `(${ident} IS NOT NULL AND ${colText} != '')`, params: [] };
+  }
+
+  // 多值运算符（is_any_of / is_not_any_of）
+  if (op === 'is_any_of' || op === 'is_not_any_of') {
+    if (!hasValues(filter.values)) return null;
+    const ph = filter.values.map(() => '?').join(', ');
+    return op === 'is_any_of'
+      ? { clause: `${ident} IN (${ph})`, params: [...filter.values] }
+      : { clause: `${ident} NOT IN (${ph})`, params: [...filter.values] };
+  }
+
+  // 数值/日期范围运算符
+  if (op === 'greater_than' || op === 'less_than') {
+    if (!hasValues(filter.values)) return null;
+    const v = filter.values[0];
+    const sign = op === 'greater_than' ? '>' : '<';
+    return { clause: `${ident} ${sign} ?`, params: [v] };
+  }
+  if (op === 'between') {
+    if (!hasValues(filter.values) || filter.values.length < 2) return null;
+    return { clause: `${ident} BETWEEN ? AND ?`, params: [filter.values[0], filter.values[1]] };
+  }
+
+  // 以下为文本运算符（仅对非数值列生效）
+  if (isNumeric) return null;
+  const term = typeof filter.values[0] === 'string' ? filter.values[0] : String(filter.values[0] ?? '');
+
+  switch (op) {
+    case 'is':
+      return { clause: `${colText} = ?`, params: [term] };
+    case 'is_not':
+      return { clause: `${colText} != ?`, params: [term] };
+    case 'contains':
+      return { clause: `${colText} LIKE ? ESCAPE '\\'`, params: [`%${escapeLike(term)}%`] };
+    case 'not_contains':
+      return { clause: `(${ident} IS NULL OR ${colText} NOT LIKE ? ESCAPE '\\')`, params: [`%${escapeLike(term)}%`] };
+    case 'starts_with':
+      return { clause: `${colText} LIKE ? ESCAPE '\\'`, params: [`${escapeLike(term)}%`] };
+    case 'ends_with':
+      return { clause: `${colText} LIKE ? ESCAPE '\\'`, params: [`%${escapeLike(term)}`] };
+    default:
+      return null;
+  }
+}
+
+// 编译全部过滤条件 → WHERE 子句（AND 语义）
+function buildUsageWhere(filters: UsageFilter[]): { clause: string; params: unknown[] } {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  for (const f of filters) {
+    const built = buildUsageFilterClause(f);
+    if (built) {
+      clauses.push(built.clause);
+      params.push(...built.params);
+    }
+  }
+  return clauses.length ? { clause: clauses.join(' AND '), params } : { clause: '', params: [] };
+}
+
+export function queryAgentUsageRecent(q: AgentUsageRecentQuery): AgentUsageRecentResult {
+  const database = openDb();
+  const days = Math.max(1, Number(q.days ?? 30) || 30);
+  const page = Math.max(1, Number(q.page ?? 1) || 1);
+  const pageSize = Math.min(200, Math.max(1, Number(q.pageSize ?? 10) || 10));
+
+  const since = new Date(Date.now() - (days - 1) * 86_400_000);
+  since.setHours(0, 0, 0, 0);
+  const sinceIso = since.toISOString();
+
+  const where = buildUsageWhere(q.filters ?? []);
+  const whereParts = ['completed_at >= ?', ...where.clause ? [where.clause] : []];
+  const whereSql = `WHERE ${whereParts.join(' AND ')}`;
+  const baseParams = [sinceIso, ...where.params];
+
+  const offset = (page - 1) * pageSize;
+  const rows = database.prepare(`
+    SELECT * FROM agent_usage
+    ${whereSql}
+    ORDER BY completed_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...baseParams, pageSize, offset).map(mapUsageRow);
+
+  const totalRow = database.prepare(`SELECT COUNT(*) AS c FROM agent_usage ${whereSql}`).get(...baseParams) as { c: number } | undefined;
+  const total = Number(totalRow?.c ?? 0);
+
+  return { records: rows, total };
+}
+
+export function getAgentUsageFilterOptions(days = 30): AgentUsageFilterOptions {
+  const database = openDb();
+  const since = new Date(Date.now() - (days - 1) * 86_400_000);
+  since.setHours(0, 0, 0, 0);
+  const sinceIso = since.toISOString();
+  const pickDistinct = (col: string): string[] =>
+    (database.prepare(`SELECT DISTINCT ${col} AS v FROM agent_usage WHERE completed_at >= ? AND ${col} IS NOT NULL AND ${col} != '' ORDER BY ${col}`).all(sinceIso) as { v: string }[])
+      .map((r) => r.v);
+  return {
+    models: pickDistinct('model'),
+    statuses: pickDistinct('status'),
+    roles: pickDistinct('role'),
+    runtimes: pickDistinct('runtime'),
   };
 }
 

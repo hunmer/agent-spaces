@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from 'next-intl'
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import type { ColumnDef, PaginationState } from "@tanstack/react-table"
@@ -8,7 +8,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable
 } from "@tanstack/react-table"
@@ -16,85 +15,179 @@ import type { AgentUsageRecord } from "@agent-spaces/shared"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn, textColorClass } from "@/lib/utils"
+import { sdk } from "@/lib/sdk"
 import { SessionDetailButton, UsageDashboardSessionDialog } from "./usage-dashboard-session-dialog"
 import { formatCurrency, formatDuration, formatTokens, getModelIconUrl } from "./usage-dashboard-utils"
-import { FilterPanel, applyFilters, getActiveFilters } from "@/components/table/filter-panel"
-import type { Filter, FilterFieldConfig } from "@/components/reui/filters"
+import { FilterPanel } from "@/components/table/filter-panel"
+import type { Filter, FilterFieldConfig, CustomRendererProps } from "@/components/reui/filters"
 
-export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecord[]; formatRelative: (v: string) => string }) {
+const PAGE_SIZE = 5
+
+export function AgentRunsTable({ days, formatRelative }: { days: number; formatRelative: (v: string) => string }) {
   const t = useTranslations('home')
-  const pageSize = 5
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE })
   const [selectedRecord, setSelectedRecord] = useState<AgentUsageRecord | null>(null)
   const [filters, setFilters] = useState<Filter[]>([])
+  const [records, setRecords] = useState<AgentUsageRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // 过滤条件字段配置：模型 / 状态 / Agent 来自当前数据动态生成
-  const filterFields = useMemo<FilterFieldConfig[]>(() => {
-    const models = Array.from(new Set(data.map(r => r.model).filter(Boolean))) as string[]
-    const statuses = Array.from(new Set(data.map(r => r.status).filter(Boolean))) as string[]
-    const agents = Array.from(new Set(data.map(r => r.role).filter(Boolean))) as string[]
-    return [
-      {
-        key: 'model',
-        label: t('table.model'),
-        type: 'select',
-        options: models.map(m => ({ value: m, label: m })),
-        defaultOperator: 'is',
-      },
-      {
-        key: 'status',
-        label: t('table.status'),
-        type: 'select',
-        options: statuses.map(s => ({ value: s, label: s })),
-        defaultOperator: 'is',
-      },
-      {
-        key: 'role',
-        label: t('table.agent'),
-        type: 'select',
-        options: agents.map(a => ({ value: a, label: a })),
-        defaultOperator: 'is',
-      },
-      {
-        key: 'summary',
-        label: t('table.summary'),
-        type: 'text',
-        operators: [
-          { value: 'contains', label: t('filter.contains') },
-          { value: 'not_contains', label: t('filter.notContains') },
-          { value: 'is', label: t('filter.is') },
-          { value: 'is_not', label: t('filter.isNot') },
-          { value: 'empty', label: t('filter.empty') },
-          { value: 'not_empty', label: t('filter.notEmpty') },
-        ],
-        defaultOperator: 'contains',
-        placeholder: t('filter.searchSummary'),
-      },
-    ]
-  }, [data, t])
+  // 过滤选项（model/status/role/runtime 来自后端去重）
+  const [options, setOptions] = useState<{ models: string[]; statuses: string[]; roles: string[]; runtimes: string[] }>({ models: [], statuses: [], roles: [], runtimes: [] })
 
-  // 外部预过滤（与 FilterPanel 既有模式一致），再交给 react-table 渲染
-  const activeFilters = getActiveFilters(filters)
-  const filteredData = useMemo(
-    () => (activeFilters.length === 0 ? data : data.filter(row => applyFilters(row, activeFilters))),
-    [data, activeFilters]
-  )
+  // 拉取过滤选项（days 变化时刷新）
+  useEffect(() => {
+    let alive = true
+    sdk.agent.usageOptions(days)
+      .then((o) => { if (alive) setOptions(o) })
+      .catch(() => { /* 选项失败不阻塞，静默 */ })
+    return () => { alive = false }
+  }, [days])
+
+  const filterFields = useMemo<FilterFieldConfig[]>(() => [
+    {
+      key: 'model',
+      label: t('table.model'),
+      type: 'multiselect',
+      options: options.models.map(m => ({ value: m, label: m })),
+      defaultOperator: 'is_any_of',
+    },
+    {
+      key: 'status',
+      label: t('table.status'),
+      type: 'multiselect',
+      options: options.statuses.map(s => ({ value: s, label: s })),
+      defaultOperator: 'is_any_of',
+    },
+    {
+      key: 'role',
+      label: t('table.agent'),
+      type: 'multiselect',
+      options: options.roles.map(a => ({ value: a, label: a })),
+      defaultOperator: 'is_any_of',
+    },
+    {
+      key: 'summary',
+      label: t('table.summary'),
+      type: 'text',
+      operators: [
+        { value: 'contains', label: t('filter.contains') },
+        { value: 'not_contains', label: t('filter.notContains') },
+        { value: 'is', label: t('filter.is') },
+        { value: 'is_not', label: t('filter.isNot') },
+        { value: 'empty', label: t('filter.empty') },
+        { value: 'not_empty', label: t('filter.notEmpty') },
+      ],
+      defaultOperator: 'contains',
+      placeholder: t('filter.searchSummary'),
+    },
+    {
+      key: 'totalCostUsd',
+      label: t('table.cost'),
+      type: 'custom',
+      operators: [
+        { value: 'greater_than', label: t('filter.greaterThan') },
+        { value: 'less_than', label: t('filter.lessThan') },
+        { value: 'between', label: t('filter.between') },
+      ],
+      defaultOperator: 'greater_than',
+      customRenderer: (props: CustomRendererProps) => (
+        <NumberRangeInput values={props.values as (string | number)[]} onChange={props.onChange as (v: (string | number)[]) => void} operator={props.operator} placeholder={t('filter.costPlaceholder')} />
+      ),
+    },
+    {
+      key: 'durationMs',
+      label: t('table.duration'),
+      type: 'custom',
+      operators: [
+        { value: 'greater_than', label: t('filter.greaterThan') },
+        { value: 'less_than', label: t('filter.lessThan') },
+        { value: 'between', label: t('filter.between') },
+      ],
+      defaultOperator: 'greater_than',
+      customRenderer: (props: CustomRendererProps) => (
+        <NumberRangeInput values={props.values as (string | number)[]} onChange={props.onChange as (v: (string | number)[]) => void} operator={props.operator} placeholder={t('filter.durationPlaceholder')} suffix={t('filter.ms')} />
+      ),
+    },
+    {
+      key: 'completedAt',
+      label: t('table.time'),
+      type: 'custom',
+      operators: [
+        { value: 'between', label: t('filter.between') },
+        { value: 'greater_than', label: t('filter.after') },
+        { value: 'less_than', label: t('filter.before') },
+      ],
+      defaultOperator: 'between',
+      customRenderer: (props: CustomRendererProps) => (
+        <DateRangeInput values={props.values as (string | number)[]} onChange={props.onChange as (v: (string | number)[]) => void} operator={props.operator} />
+      ),
+    },
+  ], [options, t])
+
+  // 前端 Filter[] → 后端 UsageFilter[]（数值字段归一为 number）
+  const toUsageFilters = useCallback((fs: Filter[]) => fs.map(f => {
+    const isNumericField = f.field === 'totalCostUsd' || f.field === 'durationMs'
+    return {
+      id: f.id,
+      field: f.field,
+      operator: f.operator,
+      values: f.values.map(v => (isNumericField && v !== '' && v !== undefined && v !== null ? Number(v) : v)),
+    }
+  }), [])
+
+  // 防抖拉取：filters / page / days 变化时请求后端
+  const reqSeq = useRef(0)
+  useEffect(() => {
+    const seq = ++reqSeq.current
+    setLoading(true)
+    setError(null)
+    const timer = setTimeout(() => {
+      sdk.agent.recentUsage({
+        days,
+        filters: toUsageFilters(filters),
+        page: pagination.pageIndex + 1,
+        pageSize: PAGE_SIZE,
+      })
+        .then((r) => {
+          if (seq !== reqSeq.current) return
+          setRecords(r.records)
+          setTotal(r.total)
+        })
+        .catch((e) => {
+          if (seq !== reqSeq.current) return
+          setError(e instanceof Error ? e.message : t('filter.error'))
+          setRecords([])
+          setTotal(0)
+        })
+        .finally(() => { if (seq === reqSeq.current) setLoading(false) })
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [days, filters, pagination.pageIndex, toUsageFilters, t])
+
+  const handleFiltersChange = useCallback((next: Filter[]) => {
+    setFilters(next)
+    setPagination(p => ({ ...p, pageIndex: 0 })) // 过滤变化回到首页
+  }, [])
 
   const columns = useTableColumns(t, formatRelative)
 
   const table = useReactTable({
-    data: filteredData,
+    data: records,
     columns,
+    manualPagination: true, // 分页由后端控制
+    pageCount: Math.ceil(total / PAGE_SIZE),
     meta: {
       onViewDetail: (record: AgentUsageRecord) => setSelectedRecord(record),
     },
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onPaginationChange: setPagination,
@@ -102,15 +195,15 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
   })
 
   const { pages, showLeftEllipsis, showRightEllipsis } = usePagination({
-    currentPage: table.getState().pagination.pageIndex + 1,
-    totalPages: table.getPageCount(),
+    currentPage: pagination.pageIndex + 1,
+    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
     paginationItemsToDisplay: 2
   })
 
-  if (data.length === 0) {
+  if (loading && records.length === 0) {
     return (
       <div className="p-6 text-center text-xs text-muted-foreground">
-        {t('table.emptyMessage')}
+        {t('filter.loading')}
       </div>
     )
   }
@@ -121,8 +214,8 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
         <FilterPanel
           fields={filterFields}
           filters={filters}
-          onFiltersChange={setFilters}
-          onClear={() => setFilters([])}
+          onFiltersChange={handleFiltersChange}
+          onClear={() => handleFiltersChange([])}
           clearLabel={t('filter.clear')}
         />
       </div>
@@ -140,7 +233,13 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {error ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center text-destructive text-xs">
+                  {error}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map(row => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map(cell => (
@@ -165,10 +264,10 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
         <p className="text-muted-foreground text-sm whitespace-nowrap" aria-live="polite">
           {t('pagination.showing')}{' '}
           <span>
-            {table.getState().pagination.pageIndex * pageSize + 1} {t('pagination.to')}{' '}
-            {Math.min((table.getState().pagination.pageIndex + 1) * pageSize, table.getRowCount())}
+            {total === 0 ? 0 : pagination.pageIndex * PAGE_SIZE + 1} {t('pagination.to')}{' '}
+            {Math.min((pagination.pageIndex + 1) * PAGE_SIZE, total)}
           </span>{' '}
-          {t('pagination.of')} <span>{table.getRowCount()}</span> {t('pagination.entries')}
+          {t('pagination.of')} <span>{total}</span> {t('pagination.entries')}
         </p>
         <Pagination className="mx-0 ml-auto w-auto justify-end">
           <PaginationContent>
@@ -188,7 +287,7 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
               <PaginationItem><PaginationEllipsis /></PaginationItem>
             )}
             {pages.map(page => {
-              const isActive = page === table.getState().pagination.pageIndex + 1
+              const isActive = page === pagination.pageIndex + 1
               return (
                 <PaginationItem key={page}>
                   <Button
@@ -228,6 +327,92 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
         }}
       />
     </div>
+  )
+}
+
+// 数值范围输入：greater_than/less_than 单输入；between 双输入
+function NumberRangeInput({ values, onChange, operator, placeholder, suffix }: {
+  values: (number | string)[]
+  onChange: (values: (number | string)[]) => void
+  operator: string
+  placeholder?: string
+  suffix?: string
+}) {
+  if (operator === 'between') {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          className="h-8 w-20 text-xs"
+          placeholder="min"
+          value={values[0] ?? ''}
+          onChange={(e) => onChange([e.target.value, values[1] ?? ''])}
+        />
+        <span className="text-muted-foreground text-[10px]">~</span>
+        <Input
+          type="number"
+          className="h-8 w-20 text-xs"
+          placeholder="max"
+          value={values[1] ?? ''}
+          onChange={(e) => onChange([values[0] ?? '', e.target.value])}
+        />
+        {suffix && <span className="text-muted-foreground text-[10px]">{suffix}</span>}
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        type="number"
+        className="h-8 w-24 text-xs"
+        placeholder={placeholder}
+        value={values[0] ?? ''}
+        onChange={(e) => onChange([e.target.value])}
+      />
+      {suffix && <span className="text-muted-foreground text-[10px]">{suffix}</span>}
+    </div>
+  )
+}
+
+// 日期范围输入：between 双 date；greater_than(之后)/less_than(之前) 单 date
+function DateRangeInput({ values, onChange, operator }: {
+  values: (string | number)[]
+  onChange: (values: (string | number)[]) => void
+  operator: string
+}) {
+  const toDateInput = (v: string | number | undefined) => {
+    if (!v) return ''
+    const d = new Date(v)
+    return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
+  }
+  const fromDateInput = (v: string) => (v ? new Date(`${v}T00:00:00`).toISOString() : '')
+
+  if (operator === 'between') {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          type="date"
+          className="h-8 w-36 text-xs"
+          value={toDateInput(values[0])}
+          onChange={(e) => onChange([fromDateInput(e.target.value), values[1] ?? ''])}
+        />
+        <span className="text-muted-foreground text-[10px]">~</span>
+        <Input
+          type="date"
+          className="h-8 w-36 text-xs"
+          value={toDateInput(values[1])}
+          onChange={(e) => onChange([values[0] ?? '', fromDateInput(e.target.value)])}
+        />
+      </div>
+    )
+  }
+  return (
+    <Input
+      type="date"
+      className="h-8 w-36 text-xs"
+      value={toDateInput(values[0])}
+      onChange={(e) => onChange([fromDateInput(e.target.value)])}
+    />
   )
 }
 
@@ -318,8 +503,10 @@ function useTableColumns(t: ReturnType<typeof useTranslations<'home'>>, formatRe
       accessorKey: 'durationMs',
       header: t('table.duration'),
       cell: ({ row }) => {
-        const { startedAt, completedAt } = row.original
-        const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime()
+        const { startedAt, completedAt, durationMs } = row.original
+        const ms = typeof durationMs === 'number' && durationMs > 0
+          ? durationMs
+          : new Date(completedAt).getTime() - new Date(startedAt).getTime()
         return <span className="font-mono text-xs tabular-nums">{formatDuration(Number.isFinite(ms) && ms > 0 ? ms : 0)}</span>
       }
     },

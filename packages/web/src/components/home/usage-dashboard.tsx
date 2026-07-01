@@ -66,7 +66,6 @@ export function UsageDashboard() {
   }
   const daily = data.daily ?? []
   const byModel = data.byModel ?? []
-  const recent = data.recent ?? []
   const maxDailyTokens = Math.max(1, ...daily.map((item) => item.totalTokens))
   const maxModelCost = Math.max(1, ...byModel.map((item) => item.costUsd))
   const days = fetchDays()
@@ -116,7 +115,7 @@ export function UsageDashboard() {
 
       {/* Recent Runs */}
       <Card className="gap-0 overflow-hidden py-0">
-        <AgentRunsTable data={recent} formatRelative={formatRelative} />
+        <AgentRunsTable days={days} formatRelative={formatRelative} />
       </Card>
     </div>
   )
