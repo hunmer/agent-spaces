@@ -14,6 +14,7 @@ export interface RuntimeCliDiscoveryItem {
   found: boolean;
   path: string | null;
   version: string | null;
+  latestVersion?: string | null;
   enabled: boolean;
   supportedRuntime: boolean;
   runtimeKind: SupportedRuntimeKind | null;
@@ -134,6 +135,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
     found: value.found === true,
     path: typeof value.path === "string" ? value.path : null,
     version: typeof value.version === "string" ? value.version : null,
+    latestVersion: typeof value.latestVersion === "string" ? value.latestVersion : null,
     enabled: value.enabled === true,
     supportedRuntime: value.supportedRuntime === true,
     runtimeKind: value.runtimeKind === "claude-code" || value.runtimeKind === "codex" || value.runtimeKind === "open-agent-sdk" ? value.runtimeKind : null,

@@ -2,13 +2,14 @@ import { Router, type Request, type Response } from 'express';
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentConfig } from '@agent-spaces/shared';
 
 const router = Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, '../../..');
+const rootDir = join(__dirname, '../..');
+const workspaceRootDir = join(rootDir, '../..');
 const requireFromRoot = createRequire(join(rootDir, 'package.json'));
 
 type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'open-agent-sdk'>;
@@ -22,6 +23,10 @@ interface RuntimeDescriptor {
   commands?: string[];
   runtimeKind?: SupportedRuntimeKind;
   packageName?: string;
+}
+
+interface RuntimeCheckUpdateRequestBody {
+  runtimeId?: InstallableRuntimePackageId;
 }
 
 const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
@@ -116,6 +121,27 @@ router.post('/install-cli', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/check-sdk-updates', async (req: Request, res: Response) => {
+  const runtimeId = (req.body as RuntimeCheckUpdateRequestBody | undefined)?.runtimeId;
+  const targets = RUNTIME_DESCRIPTORS.filter((item) => (
+    item.category === 'sdk'
+    && item.packageName
+    && (!runtimeId || item.id === runtimeId)
+  ));
+
+  try {
+    const updates = await Promise.all(targets.map(async (item) => ({
+      runtimeId: item.id,
+      latestVersion: item.packageName ? await fetchLatestPackageVersion(item.packageName) : null,
+    })));
+    res.json({ updates });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to check sdk updates',
+    });
+  }
+});
+
 async function discoverRuntime(descriptor: RuntimeDescriptor) {
   if (descriptor.category === 'sdk' && descriptor.packageName) {
     const installed = readInstalledPackage(descriptor.packageName);
@@ -186,8 +212,17 @@ function locateCommand(command: string): Promise<string | null> {
 }
 
 function locatePackage(packageName: string): string | null {
+  const directCandidates = [
+    resolve(rootDir, 'node_modules', ...packageName.split('/'), 'package.json'),
+    resolve(workspaceRootDir, 'node_modules', ...packageName.split('/'), 'package.json'),
+  ];
+  for (const directPath of directCandidates) {
+    if (existsSync(directPath)) return directPath;
+  }
+
   try {
-    return requireFromRoot.resolve(`${packageName}/package.json`);
+    const entryPath = requireFromRoot.resolve(packageName);
+    return findPackageJsonPath(entryPath, packageName);
   } catch {
     return null;
   }
@@ -205,6 +240,28 @@ function readInstalledPackage(packageName: string): { path: string; version: str
   } catch {
     return { path, version: null };
   }
+}
+
+function findPackageJsonPath(entryPath: string, packageName: string): string | null {
+  let currentDir = dirname(entryPath);
+  const root = dirname(currentDir);
+
+  while (currentDir !== root) {
+    const packageJsonPath = join(currentDir, 'package.json');
+    if (existsSync(packageJsonPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { name?: unknown };
+        if (pkg.name === packageName) return packageJsonPath;
+      } catch {
+        // Ignore malformed package.json and continue upward.
+      }
+    }
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) break;
+    currentDir = parentDir;
+  }
+
+  return null;
 }
 
 function resolvePackageManager() {
@@ -239,6 +296,16 @@ function runCommand(command: string, args: string[], cwd: string): Promise<{ std
       reject(new Error(stderr.trim() || stdout.trim() || `${command} ${args.join(' ')} failed with code ${code}`));
     });
   });
+}
+
+async function fetchLatestPackageVersion(packageName: string): Promise<string | null> {
+  try {
+    const result = await runCommand('npm', ['view', packageName, 'version'], rootDir);
+    const version = result.stdout.trim().split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+    return version ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export default router;

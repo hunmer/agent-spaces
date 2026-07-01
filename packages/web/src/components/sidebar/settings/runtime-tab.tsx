@@ -28,12 +28,20 @@ interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
   stderr: string;
 }
 
+interface CheckSdkUpdatesResponse {
+  updates: Array<{
+    runtimeId: "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+    latestVersion: string | null;
+  }>;
+}
+
 export function RuntimeTab() {
   const t = useTranslations("settings");
   const { items, updatedAt } = useRuntimeCliSettings();
   const [activeTab, setActiveTab] = useState<"cli" | "sdk">("cli");
   const [refreshingTab, setRefreshingTab] = useState<"cli" | "sdk" | null>(null);
   const [installingId, setInstallingId] = useState<"claude-code-sdk" | "codex-sdk" | "open-agent-sdk" | null>(null);
+  const [checkingUpdateId, setCheckingUpdateId] = useState<"claude-code-sdk" | "codex-sdk" | "open-agent-sdk" | "all" | null>(null);
   const cliItems = items.filter((item) => item.category === "cli");
   const sdkItems = items.filter((item) => item.category === "sdk");
 
@@ -72,6 +80,53 @@ export function RuntimeTab() {
     } finally {
       setInstallingId(null);
     }
+  };
+
+  const handleCheckUpdates = async (runtimeId?: "claude-code-sdk" | "codex-sdk" | "open-agent-sdk") => {
+    setCheckingUpdateId(runtimeId ?? "all");
+    try {
+      const data = await sdk.http.post<CheckSdkUpdatesResponse>("/api/runtime/check-sdk-updates", runtimeId ? { runtimeId } : {});
+      const latestById = new Map(data.updates.map((item) => [item.runtimeId, item.latestVersion]));
+      const next = {
+        items: items.map((item) => (
+          item.category === "sdk"
+            ? { ...item, latestVersion: latestById.get(item.id as "claude-code-sdk" | "codex-sdk" | "open-agent-sdk") ?? item.latestVersion ?? null }
+            : item
+        )),
+        updatedAt: new Date().toISOString(),
+      };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("agent-spaces:runtime-cli-settings", JSON.stringify(next));
+        window.dispatchEvent(new Event("agent-spaces:runtime-cli-settings-change"));
+      }
+      toast.success(t("runtimeCheckUpdateSuccess"));
+    } catch (error) {
+      toast.error(t("runtimeCheckUpdateFailed"), {
+        description: error instanceof Error ? error.message : undefined,
+      });
+    } finally {
+      setCheckingUpdateId(null);
+    }
+  };
+
+  const renderStatusBadge = (item: RuntimeCliDiscoveryItem) => {
+    const installing = installingId === item.id;
+    const statusLabel = installing
+      ? t("runtimeInstalling")
+      : item.found
+        ? t("runtimeInstalled")
+        : t("runtimeNotInstalled");
+    const statusClassName = installing
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : item.found
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : "border-slate-200 bg-slate-50 text-slate-600";
+
+    return (
+      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusClassName}`}>
+        {statusLabel}
+      </span>
+    );
   };
 
   return (
@@ -119,6 +174,7 @@ export function RuntimeTab() {
                 <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2.5">
                   <div className="min-w-0 pr-4">
                     <div className="flex items-center gap-2 text-sm font-medium">
+                      {renderStatusBadge(item)}
                       <span>{item.label}</span>
                       {!item.supportedRuntime ? (
                         <span className="rounded border border-dashed px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
@@ -131,9 +187,6 @@ export function RuntimeTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {item.found ? t("runtimeFound") : t("runtimeMissing")}
-                    </span>
                     <Switch
                       checked={item.enabled}
                       onCheckedChange={(checked) => setRuntimeCliEnabled(item.id, checked)}
@@ -147,6 +200,18 @@ export function RuntimeTab() {
         </TabsContent>
 
         <TabsContent value="sdk" className="mt-0 space-y-2 pt-3">
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleCheckUpdates()}
+              disabled={checkingUpdateId !== null}
+            >
+              {checkingUpdateId === "all" ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <ArrowUpCircle className="mr-1.5 size-3.5" />}
+              {t("runtimeCheckUpdates")}
+            </Button>
+          </div>
           {refreshingTab === "sdk" ? (
             <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
               <Loader2 className="mr-1.5 inline size-3.5 animate-spin" />
@@ -162,28 +227,39 @@ export function RuntimeTab() {
               <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2.5">
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2 text-sm font-medium">
+                    {renderStatusBadge(item)}
                     <span>{item.label}</span>
                   </div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
                     {item.found ? `${t("runtimeVersion")}: ${item.version ?? t("runtimeVersionUnknown")}` : t("runtimeNotFound")}
                   </div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
+                    {item.latestVersion ? `${t("runtimeLatestVersion")}: ${item.latestVersion}` : null}
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
                     {item.found ? item.path : item.command}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {item.found ? t("runtimeFound") : t("runtimeMissing")}
-                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCheckUpdates(item.id)}
+                    disabled={checkingUpdateId !== null || installingId !== null}
+                  >
+                    {checkingUpdateId === item.id ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <ArrowUpCircle className="mr-1.5 size-3.5" />}
+                    {t("runtimeCheckUpdate")}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => handleInstall(item.id)}
-                    disabled={installingId !== null}
+                    disabled={installingId !== null || checkingUpdateId !== null}
                   >
-                    {installingId === item.id ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : item.found ? <ArrowUpCircle className="mr-1.5 size-3.5" /> : <Download className="mr-1.5 size-3.5" />}
-                    {installingId === item.id ? t("runtimeInstalling") : item.found ? t("runtimeUpdate") : t("runtimeInstall")}
+                    {installingId === item.id ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Download className="mr-1.5 size-3.5" />}
+                    {installingId === item.id ? t("runtimeInstalling") : t("runtimeInstall")}
                   </Button>
                 </div>
               </div>

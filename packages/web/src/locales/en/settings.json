@@ -139,13 +139,18 @@
   "runtimeInstalling": "Installing...",
   "runtimeInstallSuccess": "{runtime} installed with {packageManager}",
   "runtimeInstallFailed": "Failed to install runtime package",
-  "runtimeUpdate": "Update",
+  "runtimeUpdate": "Check update",
+  "runtimeCheckUpdate": "Check update",
+  "runtimeCheckUpdates": "Check updates",
+  "runtimeCheckUpdateSuccess": "Update check completed",
+  "runtimeCheckUpdateFailed": "Failed to check updates",
   "runtimeUpdatedAt": "Last updated: {date}",
   "runtimeEmpty": "No discovery results yet. Click discover to scan local CLI tools.",
   "runtimeFound": "Found",
   "runtimeMissing": "Missing",
   "runtimeNotFound": "Command not found on this machine",
   "runtimeVersion": "Version",
+  "runtimeLatestVersion": "Latest",
   "runtimeVersionUnknown": "Unknown",
   "runtimeUnsupported": "Runtime unsupported",
   "workflowFaultTolerance": "Workflow Fault Tolerance",
@@ -167,5 +172,7 @@
   "iconsUpdatedPartial": "Updated {saved} icons, {failed} failed, removed {removed} stale",
   "iconsUpdateFailed": "Failed to update provider icons",
   "catalogLoading": "Loading catalog...",
-  "catalogMeta": "{providers} providers, {models} models · updated {date}"
+  "catalogMeta": "{providers} providers, {models} models · updated {date}",
+  "runtimeInstalled": "Installed",
+  "runtimeNotInstalled": "Not installed"
 }
