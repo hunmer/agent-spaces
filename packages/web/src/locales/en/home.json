@@ -15,6 +15,16 @@
     "emptyMessage": "Usage appears here after an agent run completes.",
     "noResults": "No results."
   },
+  "filter": {
+    "clear": "Clear",
+    "is": "is",
+    "isNot": "is not",
+    "contains": "contains",
+    "notContains": "does not contain",
+    "empty": "is empty",
+    "notEmpty": "is not empty",
+    "searchSummary": "Enter keyword"
+  },
   "period": {
     "today": "Today",
     "7d": "7 days",

@@ -15,6 +15,16 @@
     "emptyMessage": "Agent 运行完成后，使用记录将显示在此处。",
     "noResults": "暂无结果。"
   },
+  "filter": {
+    "clear": "清除筛选",
+    "is": "是",
+    "isNot": "不是",
+    "contains": "包含",
+    "notContains": "不包含",
+    "empty": "为空",
+    "notEmpty": "不为空",
+    "searchSummary": "输入关键字"
+  },
   "period": {
     "today": "今日",
     "7d": "7 天",

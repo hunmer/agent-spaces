@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslations } from 'next-intl'
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import type { ColumnDef, PaginationState } from "@tanstack/react-table"
@@ -23,17 +23,72 @@ import { usePagination } from "@/hooks/use-pagination"
 import { cn, textColorClass } from "@/lib/utils"
 import { SessionDetailButton, UsageDashboardSessionDialog } from "./usage-dashboard-session-dialog"
 import { formatCurrency, formatDuration, formatTokens, getModelIconUrl } from "./usage-dashboard-utils"
+import { FilterPanel, applyFilters, getActiveFilters } from "@/components/table/filter-panel"
+import type { Filter, FilterFieldConfig } from "@/components/reui/filters"
 
 export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecord[]; formatRelative: (v: string) => string }) {
   const t = useTranslations('home')
   const pageSize = 5
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
   const [selectedRecord, setSelectedRecord] = useState<AgentUsageRecord | null>(null)
+  const [filters, setFilters] = useState<Filter[]>([])
+
+  // 过滤条件字段配置：模型 / 状态 / Agent 来自当前数据动态生成
+  const filterFields = useMemo<FilterFieldConfig[]>(() => {
+    const models = Array.from(new Set(data.map(r => r.model).filter(Boolean))) as string[]
+    const statuses = Array.from(new Set(data.map(r => r.status).filter(Boolean))) as string[]
+    const agents = Array.from(new Set(data.map(r => r.role).filter(Boolean))) as string[]
+    return [
+      {
+        key: 'model',
+        label: t('table.model'),
+        type: 'select',
+        options: models.map(m => ({ value: m, label: m })),
+        defaultOperator: 'is',
+      },
+      {
+        key: 'status',
+        label: t('table.status'),
+        type: 'select',
+        options: statuses.map(s => ({ value: s, label: s })),
+        defaultOperator: 'is',
+      },
+      {
+        key: 'role',
+        label: t('table.agent'),
+        type: 'select',
+        options: agents.map(a => ({ value: a, label: a })),
+        defaultOperator: 'is',
+      },
+      {
+        key: 'summary',
+        label: t('table.summary'),
+        type: 'text',
+        operators: [
+          { value: 'contains', label: t('filter.contains') },
+          { value: 'not_contains', label: t('filter.notContains') },
+          { value: 'is', label: t('filter.is') },
+          { value: 'is_not', label: t('filter.isNot') },
+          { value: 'empty', label: t('filter.empty') },
+          { value: 'not_empty', label: t('filter.notEmpty') },
+        ],
+        defaultOperator: 'contains',
+        placeholder: t('filter.searchSummary'),
+      },
+    ]
+  }, [data, t])
+
+  // 外部预过滤（与 FilterPanel 既有模式一致），再交给 react-table 渲染
+  const activeFilters = getActiveFilters(filters)
+  const filteredData = useMemo(
+    () => (activeFilters.length === 0 ? data : data.filter(row => applyFilters(row, activeFilters))),
+    [data, activeFilters]
+  )
 
   const columns = useTableColumns(t, formatRelative)
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     meta: {
       onViewDetail: (record: AgentUsageRecord) => setSelectedRecord(record),
@@ -62,6 +117,15 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
 
   return (
     <div className="w-full">
+      <div className="flex items-center gap-2 px-4 py-2">
+        <FilterPanel
+          fields={filterFields}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClear={() => setFilters([])}
+          clearLabel={t('filter.clear')}
+        />
+      </div>
       <div>
         <Table>
           <TableHeader>
