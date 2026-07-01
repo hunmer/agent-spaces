@@ -130,6 +130,10 @@
     "newInput": "新输入",
     "output": "输出",
     "reasoning": "推理",
-    "cachedInput": "缓存输入"
+    "cachedInput": "缓存输入",
+    "delete": "删除",
+    "deleteTitle": "删除用量记录",
+    "deleteConfirm": "确定删除该用量记录吗？此操作不可撤销。",
+    "cancel": "取消"
   }
 }

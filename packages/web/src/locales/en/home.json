@@ -130,6 +130,10 @@
     "newInput": "New Input",
     "output": "Output",
     "reasoning": "Reasoning",
-    "cachedInput": "Cached Input"
+    "cachedInput": "Cached Input",
+    "delete": "Delete",
+    "deleteTitle": "Delete usage record",
+    "deleteConfirm": "Are you sure you want to delete this usage record? This action cannot be undone.",
+    "cancel": "Cancel"
   }
 }

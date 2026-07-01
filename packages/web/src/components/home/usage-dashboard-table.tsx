@@ -12,6 +12,7 @@ import {
   useReactTable
 } from "@tanstack/react-table"
 import type { AgentUsageRecord } from "@agent-spaces/shared"
+import type { UsageFilter } from "@agent-spaces/shared"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ export function AgentRunsTable({ days, formatRelative }: { days: number; formatR
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshTick, setRefreshTick] = useState(0)
 
   // 过滤选项（model/status/role/runtime 来自后端去重）
   const [options, setOptions] = useState<{ models: string[]; statuses: string[]; roles: string[]; runtimes: string[] }>({ models: [], statuses: [], roles: [], runtimes: [] })
@@ -133,13 +135,13 @@ export function AgentRunsTable({ days, formatRelative }: { days: number; formatR
   ], [options, t])
 
   // 前端 Filter[] → 后端 UsageFilter[]（数值字段归一为 number）
-  const toUsageFilters = useCallback((fs: Filter[]) => fs.map(f => {
+  const toUsageFilters = useCallback((fs: Filter[]): UsageFilter[] => fs.map(f => {
     const isNumericField = f.field === 'totalCostUsd' || f.field === 'durationMs'
     return {
       id: f.id,
       field: f.field,
-      operator: f.operator,
-      values: f.values.map(v => (isNumericField && v !== '' && v !== undefined && v !== null ? Number(v) : v)),
+      operator: f.operator as UsageFilter['operator'],
+      values: f.values.map(v => (isNumericField && v !== '' && v !== undefined && v !== null ? Number(v) : v)) as (string | number)[],
     }
   }), [])
 
@@ -170,7 +172,21 @@ export function AgentRunsTable({ days, formatRelative }: { days: number; formatR
         .finally(() => { if (seq === reqSeq.current) setLoading(false) })
     }, 250)
     return () => clearTimeout(timer)
-  }, [days, filters, pagination.pageIndex, toUsageFilters, t])
+  }, [days, filters, pagination.pageIndex, refreshTick, toUsageFilters, t])
+
+  const handleDeleteRecord = useCallback(async (record: AgentUsageRecord) => {
+    try {
+      await sdk.agent.deleteUsageRecord(record.id)
+      // 删除后若当前页只剩这一条且不是首页，回到上一页；否则原地刷新
+      if (records.length === 1 && pagination.pageIndex > 0) {
+        setPagination(p => ({ ...p, pageIndex: p.pageIndex - 1 }))
+      } else {
+        setRefreshTick(tick => tick + 1)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('filter.error'))
+    }
+  }, [records.length, pagination.pageIndex, t])
 
   const handleFiltersChange = useCallback((next: Filter[]) => {
     setFilters(next)
@@ -186,6 +202,7 @@ export function AgentRunsTable({ days, formatRelative }: { days: number; formatR
     pageCount: Math.ceil(total / PAGE_SIZE),
     meta: {
       onViewDetail: (record: AgentUsageRecord) => setSelectedRecord(record),
+      onDeleteRecord: handleDeleteRecord,
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -521,8 +538,13 @@ function useTableColumns(t: ReturnType<typeof useTranslations<'home'>>, formatRe
       id: 'actions',
       header: '',
       cell: ({ row, table }) => {
-        const meta = table.options.meta as { onViewDetail?: (record: AgentUsageRecord) => void } | undefined
-        return <SessionDetailButton onClick={() => meta?.onViewDetail?.(row.original)} />
+        const meta = table.options.meta as { onViewDetail?: (record: AgentUsageRecord) => void; onDeleteRecord?: (record: AgentUsageRecord) => void } | undefined
+        return (
+          <SessionDetailButton
+            onView={() => meta?.onViewDetail?.(row.original)}
+            onDelete={() => meta?.onDeleteRecord?.(row.original)}
+          />
+        )
       }
     },
   ]

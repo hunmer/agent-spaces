@@ -31,6 +31,7 @@ import {
   getLatestAgentUsageBySessionId,
   queryAgentUsageRecent,
   recordAgentUsage,
+  deleteAgentUsageRecord,
 } from '../storage/agent-store.js';
 import { getWorkspace, listWorkspaces } from '../storage/workspace-store.js';
 import { listIssues, updateIssue } from '../storage/issue-store.js';
@@ -1250,6 +1251,10 @@ export function queryRecentUsage(q: AgentUsageRecentQuery): AgentUsageRecentResu
 
 export function getUsageFilterOptions(days?: number): AgentUsageFilterOptions {
   return getAgentUsageFilterOptions(days ?? 30);
+}
+
+export function deleteUsageRecord(id: string): boolean {
+  return deleteAgentUsageRecord(id);
 }
 
 export function getSessionDetail(agentSessionId: string): AgentUsageSessionDetail | null {

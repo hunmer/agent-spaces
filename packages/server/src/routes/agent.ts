@@ -26,6 +26,15 @@ router.post('/usage/recent', (req: Request, res: Response) => {
   }));
 });
 
+router.delete('/usage/:recordId', (req: Request<{ recordId: string }>, res: Response) => {
+  const deleted = agentService.deleteUsageRecord(req.params.recordId);
+  if (!deleted) {
+    res.status(404).json({ error: 'usage record not found' });
+    return;
+  }
+  res.status(204).end();
+});
+
 router.get('/sessions/:agentSessionId/detail', (req: Request<{ agentSessionId: string }>, res: Response) => {
   const detail = agentService.getSessionDetail(req.params.agentSessionId);
   if (!detail) {

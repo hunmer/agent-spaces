@@ -30,6 +30,10 @@ export function createAgentApi(http: HttpClient) {
     recentUsage: (q: AgentUsageRecentQuery): Promise<AgentUsageRecentResult> =>
       http.post(`/api/agents/usage/recent`, q),
 
+    /** 删除单条用量记录 */
+    deleteUsageRecord: (recordId: string): Promise<void> =>
+      http.delete(`/api/agents/usage/${recordId}`),
+
     sessionDetail: (agentSessionId: string): Promise<AgentUsageSessionDetail> =>
       http.get(`/api/agents/sessions/${agentSessionId}/detail`),
 

@@ -437,6 +437,12 @@ export function getAgentUsageFilterOptions(days = 30): AgentUsageFilterOptions {
   };
 }
 
+export function deleteAgentUsageRecord(id: string): boolean {
+  const database = openDb();
+  const result = database.prepare('DELETE FROM agent_usage WHERE id = ?').run(id) as { changes?: number };
+  return (result.changes ?? 0) > 0;
+}
+
 export function getLatestAgentUsageBySessionId(sessionId: string): AgentUsageRecord | null {
   const database = openDb();
   const row = database.prepare(`

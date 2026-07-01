@@ -1,11 +1,13 @@
 'use client';
 
-import { Bot, Workflow as WorkflowIcon } from 'lucide-react';
+import { Bot, Maximize2, Workflow as WorkflowIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ExecutionLog, ExecutionStep, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { Agent, AgentContent } from '@/components/chat/subagent';
 import { AgentIcon, colorFromName } from '@/components/common/agent-icon';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -106,6 +108,7 @@ function AgentRunsView({
 }) {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
+  const [fullscreenCard, setFullscreenCard] = useState<AgentRunCard | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -213,11 +216,25 @@ function AgentRunsView({
               <Badge variant={getStatusVariant(card.status)}>{getStatusLabel(card.status)}</Badge>
             </div>
             <AgentContent className="flex min-h-0 flex-1 flex-col space-y-2 bg-background/95 p-3">
-              {card.timestamp ? (
-                <div className="text-xs text-muted-foreground">
-                  {new Date(card.timestamp).toLocaleString()}
-                </div>
-              ) : null}
+              <div className="flex items-center justify-between gap-2">
+                {card.timestamp ? (
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(card.timestamp).toLocaleString()}
+                  </div>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 shrink-0"
+                  aria-label="全屏查看"
+                  title="全屏查看"
+                  onClick={() => setFullscreenCard(card)}
+                >
+                  <Maximize2 className="size-3.5" />
+                </Button>
+              </div>
               <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/40 p-3 text-sm break-words">
                 {card.outputText ? (
                   <Markdown content={card.outputText} workspaceId={workspaceId} />
@@ -229,6 +246,26 @@ function AgentRunsView({
           </Agent>
         ))}
       </div>
+
+      <Dialog open={!!fullscreenCard} onOpenChange={(open) => !open && setFullscreenCard(null)}>
+        <DialogContent className="flex max-h-[90vh] flex-col gap-3 sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{fullscreenCard?.title ?? ''}</DialogTitle>
+          </DialogHeader>
+          {fullscreenCard?.timestamp ? (
+            <div className="text-xs text-muted-foreground">
+              {new Date(fullscreenCard.timestamp).toLocaleString()}
+            </div>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/40 p-4 text-sm break-words">
+            {fullscreenCard?.outputText ? (
+              <Markdown content={fullscreenCard.outputText} workspaceId={workspaceId} />
+            ) : (
+              '暂无输出'
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

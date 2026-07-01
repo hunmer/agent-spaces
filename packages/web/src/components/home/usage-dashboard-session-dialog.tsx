@@ -3,12 +3,23 @@
 import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import type { AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from "@agent-spaces/shared"
-import { Loader2 } from "lucide-react"
+import { Loader2, Trash2 } from "lucide-react"
 
 import { ContextPartChatView } from "@/components/chat/message-context-to-chat"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { JsonViewer } from "@/components/viewers/json-viewer"
@@ -163,12 +174,35 @@ function SessionMessageExtras({
   )
 }
 
-export function SessionDetailButton({ onClick }: { onClick: () => void }) {
+export function SessionDetailButton({ onView, onDelete }: { onView: () => void; onDelete: () => void }) {
   const t = useTranslations("home")
 
   return (
-    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onClick}>
-      {t("sessionDetail.view")}
-    </Button>
+    <div className="flex items-center gap-1">
+      <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onView}>
+        {t("sessionDetail.view")}
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger
+          render={
+            <Button type="button" variant="ghost" size="icon-sm" className="size-7 text-muted-foreground hover:text-destructive" aria-label={t("sessionDetail.delete")}>
+              <Trash2 className="size-3.5" />
+            </Button>
+          }
+        />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("sessionDetail.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("sessionDetail.deleteConfirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("sessionDetail.cancel")}</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={onDelete}>
+              {t("sessionDetail.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }
