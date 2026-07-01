@@ -3,7 +3,7 @@
   "name": "MCP Bridge",
   "name_zh": "MCP 桥接",
   "name_en": "MCP Bridge",
-  "icon": "icon.png",
+  "icon": "icon.svg",
   "version": "1.0.0",
   "description": "MCP 客户端/服务端桥接：连接 MCP、列出工具、执行工具、生成 MCP 服务",
   "description_zh": "MCP 客户端/服务端桥接：连接 MCP、列出工具、执行工具、生成 MCP 服务",

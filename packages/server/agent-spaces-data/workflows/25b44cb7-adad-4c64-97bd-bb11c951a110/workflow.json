@@ -9,8 +9,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 250,
-        "y": 50
+        "x": -75,
+        "y": 90
       },
       "data": {}
     },
@@ -19,8 +19,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 1185,
+        "y": 360
       },
       "data": {}
     },
@@ -29,7 +29,7 @@
       "type": "mcp_connect",
       "label": "MCP 连接",
       "position": {
-        "x": -15,
+        "x": 0,
         "y": 210
       },
       "data": {
@@ -37,20 +37,46 @@
           {
             "key": "success",
             "type": "boolean",
-            "children": []
+            "dataType": "boolean"
           },
           {
             "key": "message",
-            "type": "string",
-            "children": []
+            "type": "string"
           },
           {
             "key": "data",
             "type": "object",
-            "children": []
+            "dataType": "object",
+            "children": [
+              {
+                "key": "clientId",
+                "type": "string"
+              },
+              {
+                "key": "serverInfo",
+                "type": "object",
+                "dataType": "object",
+                "children": [
+                  {
+                    "key": "name",
+                    "type": "string"
+                  },
+                  {
+                    "key": "version",
+                    "type": "string"
+                  }
+                ]
+              },
+              {
+                "key": "protocolVersion",
+                "type": "string"
+              }
+            ]
           }
         ],
-        "config": "{\n    \"type\": \"stdio\",\n    \"command\": \"node\",\n    \"args\": [\n      \"G:/agent_spaces/packages/mcp/dist/src/index.js\"\n    ],\n    \"env\": {\n      \"AGENT_SPACES_BASE_URL\": \"http://localhost:3100\",\n      \"AGENT_SPACES_TOKEN\": \"\"\n    }\n}"
+        "config": "{\n    \"type\": \"stdio\",\n    \"command\": \"node\",\n    \"args\": [\n      \"G:/agent_spaces/packages/mcp/dist/src/index.js\"\n    ],\n    \"env\": {\n      \"AGENT_SPACES_BASE_URL\": \"http://localhost:3100\",\n      \"AGENT_SPACES_TOKEN\": \"\"\n    }\n}",
+        "nodeWidth": 242,
+        "nodeHeight": 74
       }
     },
     {
@@ -78,7 +104,7 @@
             "dataType": "object"
           }
         ],
-        "clientId": "310a43e6-6970-4d91-8aa1-8a0207bf8b13"
+        "clientId": "{{ __data__[\"node_1782872677802_c428yi\"].data.clientId }}"
       }
     },
     {
@@ -87,7 +113,7 @@
       "label": "MCP Disconnect",
       "position": {
         "x": 855,
-        "y": 270
+        "y": 275.46875
       },
       "data": {
         "outputs": [
@@ -101,55 +127,66 @@
             "type": "string"
           }
         ],
-        "clientId": "db453ce4-fdf8-4619-a97b-42d9665ad08c"
-      }
-    },
-    {
-      "id": "node_1782872795785_s5byao",
-      "type": "run_code",
-      "label": "nodes.run_code.label",
-      "position": {
-        "x": 1065,
-        "y": 60
-      },
-      "data": {
-        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
-      }
-    },
-    {
-      "id": "node_1782873030047_8fh5f2",
-      "type": "mcp_create_server",
-      "label": "MCP 创建服务",
-      "position": {
-        "x": 1080,
-        "y": 435
-      },
-      "data": {
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
-            "type": "object",
-            "dataType": "object"
-          }
-        ]
+        "clientId": "{{ __data__[\"node_1782872677802_c428yi\"].data.clientId }}"
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1782872677802_c428yi-source-node_1782872718083_wc51pt-target",
+      "source": "node_1782872677802_c428yi",
+      "target": "node_1782872718083_wc51pt",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782872718083_wc51pt-source-node_1782872777162_ak7syu-target",
+      "source": "node_1782872718083_wc51pt",
+      "target": "node_1782872777162_ak7syu",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782872677802_c428yi-output:data.clientId-node_1782872718083_wc51pt-property:clientId",
+      "source": "node_1782872677802_c428yi",
+      "target": "node_1782872718083_wc51pt",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.clientId",
+      "targetHandle": "property:clientId"
+    },
+    {
+      "id": "e-node_1782872677802_c428yi-output:data.clientId-node_1782872777162_ak7syu-property:clientId",
+      "source": "node_1782872677802_c428yi",
+      "target": "node_1782872777162_ak7syu",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.clientId",
+      "targetHandle": "property:clientId"
+    },
+    {
+      "id": "e-node_1782870380033_start-source-node_1782872677802_c428yi-target",
+      "source": "node_1782870380033_start",
+      "target": "node_1782872677802_c428yi",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782872777162_ak7syu-source-node_1782870380033_end-target",
+      "source": "node_1782872777162_ak7syu",
+      "target": "node_1782870380033_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1782870380047,
-  "updatedAt": 1782873204444,
+  "updatedAt": 1782874910248,
   "published": false,
   "enabledPlugins": [
     "workflow.mcp-bridge"
   ],
-  "groups": []
+  "groups": [],
+  "lastRunAt": 1782874671662
 }
