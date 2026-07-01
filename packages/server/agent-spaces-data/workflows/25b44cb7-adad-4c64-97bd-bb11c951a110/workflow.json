@@ -1,0 +1,32 @@
+{
+  "id": "25b44cb7-adad-4c64-97bd-bb11c951a110",
+  "name": "mcp",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1782870380033_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1782870380033_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    }
+  ],
+  "edges": [],
+  "createdAt": 1782870380047,
+  "updatedAt": 1782870380047,
+  "published": false
+}

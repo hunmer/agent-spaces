@@ -21,12 +21,12 @@
     "md5": "6ada1c9bb22d4bd4a7000f5ac6dcadb1",
     "updatedAt": "2026-06-18T01:06:04.297Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "refs/api-339685644.md",
       "refs/api-356258955.md",
       "refs/api-356258956.md",
@@ -67,13 +67,13 @@
     "md5": "33aba992070ae5a1faffd0a3108a37cd",
     "updatedAt": "2026-06-24T06:15:47.828Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
       "lang.json",
       "main.js",
       "package.json",
+      "README.md",
       "shared.js",
       "tools-asr.js",
       "tools-image.js",
@@ -104,7 +104,6 @@
     "md5": "476437bfe5d728063b5958eea9fc2322",
     "updatedAt": "2026-06-18T01:06:04.300Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
@@ -112,6 +111,7 @@
       "main.js",
       "package-lock.json",
       "package.json",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -135,15 +135,17 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "comfyui",
-    "md5": "495fb57a624ea39eff0681462bc4b8a0",
-    "updatedAt": "2026-06-28T08:22:51.953Z",
+    "iconUrl": "plugins/comfyui/icon.png",
+    "md5": "7556749f869dff4b20426a7d3650dd33",
+    "updatedAt": "2026-06-29T06:45:26.243Z",
     "files": [
-      "README.md",
       "actions.js",
+      "icon.png",
       "info.json",
       "lang.json",
       "main.js",
       "package.json",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -169,10 +171,10 @@
     "md5": "9f0e7fc44928f1cf71caa9805d570766",
     "updatedAt": "2026-06-18T01:06:04.302Z",
     "files": [
-      "README.md",
       "actions.js",
       "info.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -198,13 +200,13 @@
     "md5": "b1c79bf8b6a444a46b1ffdd1f99e729d",
     "updatedAt": "2026-06-18T01:06:04.303Z",
     "files": [
-      "README.md",
       "actions.js",
       "api.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -228,11 +230,11 @@
     "md5": "00124aef1a9b04bb35548ce7571b87f5",
     "updatedAt": "2026-06-18T01:06:04.304Z",
     "files": [
-      "README.md",
       "actions.js",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -259,7 +261,6 @@
     "md5": "28efea66425c265c14a6e4f0200e500c",
     "updatedAt": "2026-06-27T07:40:08.375Z",
     "files": [
-      "README.md",
       "actions/folder.js",
       "actions/index.js",
       "actions/item.js",
@@ -269,6 +270,7 @@
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -295,7 +297,6 @@
     "md5": "7b122bfaac58a15e58657985598d44e1",
     "updatedAt": "2026-06-18T01:06:04.305Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
@@ -303,6 +304,7 @@
       "main.js",
       "package-lock.json",
       "package.json",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -328,13 +330,13 @@
     "md5": "66100664b8638da05a631ce58a6e070e",
     "updatedAt": "2026-06-27T07:15:03.553Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
       "package.json",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -361,12 +363,12 @@
     "md5": "7358fbfd3272fbd89b898e91d18a0585",
     "updatedAt": "2026-06-18T01:06:04.306Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -392,7 +394,6 @@
     "md5": "dfe288d778edfeb72ebcfadc5e4f64e7",
     "updatedAt": "2026-06-22T07:59:12.772Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
@@ -400,6 +401,7 @@
       "main.js",
       "package-lock.json",
       "package.json",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -425,12 +427,12 @@
     "md5": "1b02b1bf9027345643397947219ac28a",
     "updatedAt": "2026-06-24T01:59:52.675Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -459,12 +461,12 @@
     "md5": "7bed9f1e31afe665a85df57a49d5acd4",
     "updatedAt": "2026-06-18T01:06:04.311Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -491,13 +493,13 @@
     "md5": "b93a46354284aaa21a6d59200db17ee7",
     "updatedAt": "2026-06-22T06:00:47.700Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
       "package.json",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -525,12 +527,12 @@
     "md5": "5ced00566adf119a0855abbe3a89d031",
     "updatedAt": "2026-06-24T09:50:25.943Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -556,13 +558,46 @@
     "md5": "f64d79b399df502efbcc4c0a5eba2a0a",
     "updatedAt": "2026-06-18T01:06:04.314Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
       "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.mcp-bridge",
+    "name": "MCP 桥接",
+    "version": "1.0.0",
+    "description": "MCP 客户端/服务端桥接：连接 MCP、列出工具、执行工具、生成 MCP 服务",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "MCP",
+      "AI",
+      "工具桥接"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "mcp-bridge",
+    "iconUrl": "plugins/mcp-bridge/icon.png",
+    "md5": "ce6fed85c702a611fc3663134fe9a78c",
+    "updatedAt": "2026-07-01T01:42:55.303Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "lib/mcp-client.js",
+      "lib/server-template.js",
+      "main.js",
       "package.json",
       "tools.js",
       "workflow.js"
@@ -594,12 +629,12 @@
     "md5": "90eb83e2dde6f5198696c8d0f21b66ec",
     "updatedAt": "2026-06-24T12:13:34.629Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -624,12 +659,12 @@
     "md5": "7f0b78ead3b90eb0c7bf45c854b244c9",
     "updatedAt": "2026-06-28T08:11:14.308Z",
     "files": [
-      "README.md",
       "actions.js",
       "info.json",
       "lang.json",
       "main.js",
       "package.json",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -657,13 +692,13 @@
     "md5": "b0804459c5d1975cf30a38b20f5f8e22",
     "updatedAt": "2026-06-18T01:06:04.317Z",
     "files": [
-      "Nano Banana image generation.md",
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
       "lang.json",
       "main.js",
+      "Nano Banana image generation.md",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -690,12 +725,12 @@
     "md5": "f49d80517e6aa8428fc6406371083e8e",
     "updatedAt": "2026-06-27T07:14:18.423Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -727,7 +762,6 @@
     "md5": "5c6003a3bd400a357e9260fde8e89866",
     "updatedAt": "2026-06-18T01:06:04.319Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
@@ -735,6 +769,7 @@
       "main.js",
       "package-lock.json",
       "package.json",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -761,12 +796,12 @@
     "md5": "31fda24f79b8d751068845ffafd2196f",
     "updatedAt": "2026-06-22T05:54:46.165Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -795,12 +830,12 @@
     "md5": "5f5723604a4683b3575e82a6e8835c67",
     "updatedAt": "2026-06-22T05:55:10.260Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -827,7 +862,6 @@
     "md5": "750d53e3c9d5dd6536dc7f71374772c5",
     "updatedAt": "2026-06-24T01:59:27.199Z",
     "files": [
-      "README.md",
       "actions.js",
       "icon.svg",
       "info.json",
@@ -835,6 +869,7 @@
       "main.js",
       "package-lock.json",
       "package.json",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
@@ -887,11 +922,11 @@
     "md5": "c1a87a0ef96f74d9e8d18b6ffac44c34",
     "updatedAt": "2026-06-18T01:06:04.324Z",
     "files": [
-      "README.md",
       "actions.js",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]
@@ -917,13 +952,13 @@
     "md5": "b1f97902d28be2d8bc66aadd57703994",
     "updatedAt": "2026-06-18T01:06:04.326Z",
     "files": [
-      "README.md",
       "actions.js",
       "api.js",
       "icon.png",
       "info.json",
       "lang.json",
       "main.js",
+      "README.md",
       "tools.js",
       "workflow.js"
     ]

@@ -1,0 +1,24 @@
+{
+  "id": "workflow.mcp-bridge",
+  "name": "MCP Bridge",
+  "name_zh": "MCP 桥接",
+  "name_en": "MCP Bridge",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "MCP 客户端/服务端桥接：连接 MCP、列出工具、执行工具、生成 MCP 服务",
+  "description_zh": "MCP 客户端/服务端桥接：连接 MCP、列出工具、执行工具、生成 MCP 服务",
+  "description_en": "MCP client/server bridge: connect to an MCP, list tools, call a tool, and create an MCP server.",
+  "author": { "name": "workflow" },
+  "tags": ["MCP", "AI", "工具桥接"],
+  "tags_zh": ["MCP", "AI", "工具桥接"],
+  "tags_en": ["MCP", "AI", "Bridge"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": []
+}
