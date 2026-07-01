@@ -20,10 +20,10 @@ import {
 } from './node-types.js';
 import { describeNodeUsage, summarizeNodeDefinition, summarizeWorkflow } from './summary.js';
 import { checkRequiredFields } from './validation.js';
-import type { ToolDeps, ToolFactory } from './types.js';
+import type { ToolDeps } from './types.js';
 
 /** 列出环境能力 / agent preset 清单。 */
-const listAvailableAgentCapabilitiesTool: ToolFactory = () => ({
+const listAvailableAgentCapabilitiesTool: (deps: ToolDeps) => AgentFunctionTool = () => ({
   name: 'list_available_agent_capabilities',
   description: '列出当前环境里可用的 MCP、skills、内置 tools 清单。设计多 agent workflow 前先调用它，再决定哪些能力可以分配。',
   inputSchema: schema({}),
@@ -34,7 +34,7 @@ const listAvailableAgentCapabilitiesTool: ToolFactory = () => ({
   }),
 });
 
-const listAgentCapabilitiesTool: ToolFactory = (deps) => ({
+const listAgentCapabilitiesTool: (deps: ToolDeps) => AgentFunctionTool = (deps) => ({
   name: 'list_agent_capabilities',
   description: '列出当前可用的 agent preset，以及它们配置的 mcps、skills、tools 和模型字段。设计多 agent workflow 前先调用它，再按职责分配能力。',
   inputSchema: schema({
@@ -82,7 +82,7 @@ const listAgentCapabilitiesTool: ToolFactory = (deps) => ({
   },
 });
 
-const getWorkflowTool: ToolFactory = () => ({
+const getWorkflowTool: (deps: ToolDeps) => AgentFunctionTool = () => ({
   name: 'get_workflow',
   description: '按 workflow_id 读取指定工作流的最新已保存文件数据。默认返回摘要，summarize=false 返回完整数据。',
   inputSchema: schema({
@@ -99,7 +99,7 @@ const getWorkflowTool: ToolFactory = () => ({
   },
 });
 
-const getCurrentWorkflowTool: ToolFactory = (deps) => ({
+const getCurrentWorkflowTool: (deps: ToolDeps) => AgentFunctionTool = (deps) => ({
   name: 'get_current_workflow',
   description: '读取当前编辑器中的工作流草稿，包含尚未保存的编辑状态。默认返回摘要，summarize=false 返回完整 data；字符串 "false" 也按 false 处理。',
   inputSchema: schema({ summarize: { type: 'boolean', description: '是否返回摘要，默认 true。' } }),
@@ -114,7 +114,7 @@ const getCurrentWorkflowTool: ToolFactory = (deps) => ({
   },
 });
 
-const searchNodesTool: ToolFactory = (deps) => ({
+const searchNodesTool: (deps: ToolDeps) => AgentFunctionTool = (deps) => ({
   name: 'search_nodes',
   description: '在当前工作流中搜索节点，支持 keyword/type/label/category/description 模糊匹配。',
   inputSchema: workflowSearchSchema(),
@@ -159,7 +159,7 @@ const searchNodesTool: ToolFactory = (deps) => ({
   },
 });
 
-const listNodeTypesTool: ToolFactory = (deps) => ({
+const listNodeTypesTool: (deps: ToolDeps) => AgentFunctionTool = (deps) => ({
   name: 'list_node_types',
   description: '分页查询当前工作流可用的节点类型列表，返回轻量摘要；支持 pluginId/plugin_id/plugin 按插件 ID 精确筛选，也支持 keyword/type/label/category/description 筛选。需要某个插件下节点时优先传 pluginId；需要字段、输出和示例 data 时继续调用 search_node_usage。',
   inputSchema: schema({
@@ -193,7 +193,7 @@ const listNodeTypesTool: ToolFactory = (deps) => ({
   },
 });
 
-const searchNodeUsageTool: ToolFactory = (deps) => ({
+const searchNodeUsageTool: (deps: ToolDeps) => AgentFunctionTool = (deps) => ({
   name: 'search_node_usage',
   description: '查询当前工作流可用节点类型的具体用法，返回字段说明、句柄、输出和示例 data。准备使用陌生节点前必须调用。',
   inputSchema: workflowSearchSchema(),
@@ -209,7 +209,7 @@ const searchNodeUsageTool: ToolFactory = (deps) => ({
   },
 });
 
-const checkWorkflowChainTool: ToolFactory = (deps) => ({
+const checkWorkflowChainTool: (deps: ToolDeps) => AgentFunctionTool = (deps) => ({
   name: 'check_workflow_chain',
   description: '从起始节点 ID 开始，沿当前工作流草稿的出边向后检查所有可达节点，返回必填字段未填写的节点和字段。通常传开始节点 ID；工作流编辑完成后必须调用，直到 passed=true。',
   inputSchema: schema({
@@ -229,7 +229,7 @@ const checkWorkflowChainTool: ToolFactory = (deps) => ({
   },
 });
 
-const getNodePropertyTypeDefinitionTool: ToolFactory = () => ({
+const getNodePropertyTypeDefinitionTool: (deps: ToolDeps) => AgentFunctionTool = () => ({
   name: 'get_node_property_type_definition',
   description: '查询节点 properties[].type 对应的 data 值结构。遇到 agent 等非常见属性类型，写入或更新 data 前必须调用。',
   inputSchema: schema({

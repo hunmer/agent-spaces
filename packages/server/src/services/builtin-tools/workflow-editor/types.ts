@@ -31,5 +31,3 @@ export interface ToolDeps {
   workflowPayload: (workflow: Workflow, summarize: boolean) => Record<string, unknown>;
 }
 
-export type ToolFactory = (deps: ToolDeps) => AgentFunctionTool | AgentFunctionTool[];
-

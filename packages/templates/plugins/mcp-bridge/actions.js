@@ -1,18 +1,19 @@
 /**
  * mcp-bridge actions —— MCP 客户端/服务端桥接。
  *
- * 4 个 action，一一对应需求：
- *   mcp_connect         连接一个 MCP（stdio 或 http），返回握手信息
- *   mcp_list_tools      连接 MCP 并列出工具
- *   mcp_call_tool       连接 MCP 并调用指定工具
- *   mcp_create_server   根据工具定义生成一个独立 MCP server 文件
+ * 有状态连接模型：
+ *   mcp_connect         建立长连接，返回 clientId（连接池常驻）
+ *   mcp_list_tools      用 clientId 列出工具
+ *   mcp_call_tool       用 clientId 调用工具
+ *   mcp_disconnect      用 clientId 主动关闭连接
+ *   mcp_create_server   根据工具定义生成独立 MCP server 文件
  *
- * 设计：每次调用即时建立连接并关闭，不在插件进程长期持有 client。
- * 原因：MCP server 多为 stdio 子进程，长驻会占用资源；按需连接更稳。
+ * 连接复用：mcp_connect 只握手一次；后续 list/call 用 clientId 直接操作，
+ * 避免重复握手和重启 stdio 子进程。
  */
 'use strict';
 
-const { connect } = require('./lib/mcp-client');
+const pool = require('./lib/connection-pool');
 const { writeServerFile } = require('./lib/server-template');
 
 /** 解析连接配置参数（兼容对象或 JSON 字符串） */
@@ -75,7 +76,7 @@ module.exports = (t) => [
     icon: 'Plug',
     description: t(
       'action.connect.description',
-      'Connect to an MCP server (stdio or http) and return the handshake info.',
+      'Connect to an MCP server (stdio or http) and return a clientId for reuse.',
     ),
     properties: [
       {
@@ -98,25 +99,22 @@ module.exports = (t) => [
     run: async (ctx, args) => {
       const cfg = parseConnConfig(args);
       ctx.logger.info(`mcp_connect: transport=${cfg.transport || (cfg.url ? 'http' : 'stdio')}`);
-      const client = connect(cfg);
       try {
-        const info = await client.initialize();
+        const { clientId, serverInfo } = await pool.create(cfg);
+        const serverName = (serverInfo && serverInfo.serverInfo && serverInfo.serverInfo.name) || 'mcp-server';
         return {
           success: true,
-          message: t('message.connected', 'Connected: {name}').replace(
-            '{name}',
-            (info && info.serverInfo && info.serverInfo.name) || 'mcp-server',
-          ),
+          message: t('message.connected', 'Connected: {name} (clientId={clientId})')
+            .replace('{name}', serverName)
+            .replace('{clientId}', clientId),
           data: {
-            serverInfo: info && info.serverInfo,
-            protocolVersion: info && info.protocolVersion,
-            transport: client.transport,
+            clientId,
+            serverInfo: serverInfo && serverInfo.serverInfo,
+            protocolVersion: serverInfo && serverInfo.protocolVersion,
           },
         };
       } catch (err) {
         return { success: false, message: `连接失败: ${err.message}` };
-      } finally {
-        client.close();
       }
     },
   },
@@ -128,16 +126,16 @@ module.exports = (t) => [
     icon: 'List',
     description: t(
       'action.listTools.description',
-      'Connect to an MCP server and list its available tools.',
+      'List tools of a connected MCP server by clientId.',
     ),
     properties: [
       {
-        key: 'config',
-        label: t('field.config.label', 'Connection Config'),
-        type: 'textarea',
-        dataType: 'object',
+        key: 'clientId',
+        label: t('field.clientId.label', 'Client ID'),
+        type: 'text',
+        dataType: 'string',
         required: true,
-        tooltip: t('field.config.tooltip', 'Same as mcp_connect.'),
+        tooltip: t('field.clientId.tooltip', 'Returned by mcp_connect.'),
       },
     ],
     outputs: [
@@ -146,24 +144,18 @@ module.exports = (t) => [
       { key: 'data', type: 'object', dataType: 'object' },
     ],
     run: async (ctx, args) => {
-      const cfg = parseConnConfig(args);
-      ctx.logger.info('mcp_list_tools: connecting');
-      const client = connect(cfg);
+      const clientId = args.clientId;
+      ctx.logger.info(`mcp_list_tools: clientId=${clientId}`);
       try {
-        await client.initialize();
+        const { client } = pool.get(clientId);
         const tools = await client.listTools();
         return {
           success: true,
-          message: t('message.toolsCount', 'Found {count} tools.').replace(
-            '{count}',
-            tools.length,
-          ),
+          message: t('message.toolsCount', 'Found {count} tools.').replace('{count}', tools.length),
           data: { count: tools.length, tools: summarizeTools(tools) },
         };
       } catch (err) {
         return { success: false, message: `列出工具失败: ${err.message}` };
-      } finally {
-        client.close();
       }
     },
   },
@@ -175,14 +167,14 @@ module.exports = (t) => [
     icon: 'Wrench',
     description: t(
       'action.callTool.description',
-      'Connect to an MCP server and call a specific tool with arguments.',
+      'Call a tool of a connected MCP server by clientId.',
     ),
     properties: [
       {
-        key: 'config',
-        label: t('field.config.label', 'Connection Config'),
-        type: 'textarea',
-        dataType: 'object',
+        key: 'clientId',
+        label: t('field.clientId.label', 'Client ID'),
+        type: 'text',
+        dataType: 'string',
         required: true,
       },
       {
@@ -206,7 +198,7 @@ module.exports = (t) => [
       { key: 'data', type: 'object', dataType: 'object' },
     ],
     run: async (ctx, args) => {
-      const cfg = parseConnConfig(args);
+      const clientId = args.clientId;
       const toolName = args.toolName;
       if (!toolName) return { success: false, message: '缺少 toolName' };
       let toolArgs = args.arguments;
@@ -219,10 +211,9 @@ module.exports = (t) => [
       }
       toolArgs = toolArgs || {};
 
-      ctx.logger.info(`mcp_call_tool: ${toolName}`);
-      const client = connect(cfg);
+      ctx.logger.info(`mcp_call_tool: clientId=${clientId} tool=${toolName}`);
       try {
-        await client.initialize();
+        const { client } = pool.get(clientId);
         const result = await client.callTool(toolName, toolArgs);
         const summary = summarizeCallResult(result);
         return {
@@ -234,9 +225,42 @@ module.exports = (t) => [
         };
       } catch (err) {
         return { success: false, message: `调用工具失败: ${err.message}` };
-      } finally {
-        client.close();
       }
+    },
+  },
+
+  {
+    name: 'mcp_disconnect',
+    label: t('action.disconnect.label', 'MCP Disconnect'),
+    category: t('category', 'MCP Bridge'),
+    icon: 'Unplug',
+    description: t(
+      'action.disconnect.description',
+      'Close and release an MCP connection by clientId.',
+    ),
+    properties: [
+      {
+        key: 'clientId',
+        label: t('field.clientId.label', 'Client ID'),
+        type: 'text',
+        dataType: 'string',
+        required: true,
+      },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+    ],
+    run: async (ctx, args) => {
+      const clientId = args.clientId;
+      ctx.logger.info(`mcp_disconnect: clientId=${clientId}`);
+      const ok = pool.close(clientId);
+      return {
+        success: ok,
+        message: ok
+          ? t('message.disconnected', 'Disconnected: {clientId}').replace('{clientId}', clientId)
+          : t('message.notConnected', 'No such clientId or already closed.'),
+      };
     },
   },
 
@@ -293,10 +317,7 @@ module.exports = (t) => [
         const filePath = writeServerFile(serverName, tools, args.filePath || '');
         return {
           success: true,
-          message: t('message.serverCreated', 'Server file created: {path}').replace(
-            '{path}',
-            filePath,
-          ),
+          message: t('message.serverCreated', 'Server file created: {path}').replace('{path}', filePath),
           data: {
             filePath,
             serverName,
