@@ -29,8 +29,8 @@
       "type": "show_miniapp",
       "label": "nodes.show_miniapp.label",
       "position": {
-        "x": 540,
-        "y": 225
+        "x": 593.2427695004383,
+        "y": 162.88343558282207
       },
       "data": {
         "route": "/welcome",
@@ -88,7 +88,7 @@
     }
   ],
   "createdAt": 1782898322898,
-  "updatedAt": 1782900373816,
+  "updatedAt": 1782901559382,
   "published": false,
   "lastRunAt": 1782900343270,
   "groups": []

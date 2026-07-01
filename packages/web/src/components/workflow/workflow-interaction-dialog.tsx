@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/select';
 import { parseRoute, serializeRoute } from '@/components/mini-apps/mini-app-router';
 
+const MINI_APP_RUNTIME_INIT_SOURCE = 'agent-spaces:mini-app-runtime:init';
+const MINI_APP_ROUTE_INIT_SOURCE = 'agent-spaces:mini-app-router:init';
+
 type FormItem = {
   id?: string;
   title?: string;
@@ -48,17 +51,30 @@ function getFormInitialValues(items: FormItem[]): Record<string, unknown> {
 
 function miniAppUrlFromSchema(schema: Record<string, unknown>, refreshKey: string): string {
   const miniAppId = typeof schema.miniAppId === 'string' ? schema.miniAppId : '';
-  const routeInput = typeof schema.route === 'string' && schema.route.trim() ? schema.route.trim() : '/';
-  const routeState = parseRoute(routeInput);
-
-  if (schema.params && typeof schema.params === 'object' && !Array.isArray(schema.params)) {
-    routeState.query.payload = JSON.stringify(schema.params);
-  }
-
-  const route = serializeRoute(routeState);
   const params = new URLSearchParams({ id: miniAppId, embedded: '1', refresh: refreshKey });
-  if (route) params.set('route', route);
   return `/mini-apps-preview?${params.toString()}`;
+}
+
+function miniAppRouteFromSchema(schema: Record<string, unknown>): string {
+  const routeInput = typeof schema.route === 'string' && schema.route.trim() ? schema.route.trim() : '/';
+  return serializeRoute(parseRoute(routeInput));
+}
+
+function miniAppParamsFromSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  return schema.params && typeof schema.params === 'object' && !Array.isArray(schema.params)
+    ? schema.params as Record<string, unknown>
+    : {};
+}
+
+function postMiniAppRuntimeInit(
+  iframe: HTMLIFrameElement | null,
+  route: string,
+  params: Record<string, unknown>,
+) {
+  const target = iframe?.contentWindow;
+  if (!target) return;
+  target.postMessage({ source: MINI_APP_RUNTIME_INIT_SOURCE, route, params }, '*');
+  target.postMessage({ source: MINI_APP_ROUTE_INIT_SOURCE, route }, '*');
 }
 
 interface WorkflowInteractionDialogProps {
@@ -111,6 +127,13 @@ export function WorkflowInteractionDialog({
   const headers = Array.isArray(schema.headers) ? schema.headers as Array<{ id: string; title?: string }> : [];
   const cells = Array.isArray(schema.cells) ? schema.cells as Array<{ id: string; data?: Record<string, unknown> }> : [];
   const miniAppUrl = request.interactionType === 'miniapp_confirm' ? miniAppUrlFromSchema(schema, request.id) : '';
+  const miniAppRoute = request.interactionType === 'miniapp_confirm' ? miniAppRouteFromSchema(schema) : '';
+  const miniAppParams = request.interactionType === 'miniapp_confirm' ? miniAppParamsFromSchema(schema) : {};
+
+  useEffect(() => {
+    if (!request || request.interactionType !== 'miniapp_confirm') return;
+    postMiniAppRuntimeInit(iframeRef.current, miniAppRoute, miniAppParams);
+  }, [request, miniAppRoute, miniAppParams]);
 
   const confirm = () => {
     if (request.interactionType === 'dialog_prompt') {
@@ -257,6 +280,7 @@ export function WorkflowInteractionDialog({
                 title={String(schema.miniAppId || 'miniapp')}
                 src={miniAppUrl}
                 className="h-[70vh] w-full bg-background"
+                onLoad={() => postMiniAppRuntimeInit(iframeRef.current, miniAppRoute, miniAppParams)}
               />
             </div>
           </div>

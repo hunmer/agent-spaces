@@ -2,6 +2,7 @@ import { createElement, type ReactNode } from 'react';
 
 export type DisplayNodeViewProps = {
   data: Record<string, unknown>;
+  isRunning?: boolean;
 };
 
 export type GalleryItem = {

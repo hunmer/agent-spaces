@@ -41,6 +41,11 @@ type WorkflowFileUploadItem = {
   preview?: string;
 };
 
+type MiniAppRuntimeContext = {
+  route: string;
+  params: Record<string, unknown>;
+};
+
 function normalizeRelativePath(filePath: string, fallback: string) {
   const normalized = (filePath || fallback).trim().replace(/\\/g, '/').replace(/^\/+/, '');
   if (!normalized || normalized.includes('\0') || normalized.split('/').includes('..')) {
@@ -242,10 +247,15 @@ function WrappedFileUpload(props: any) {
  * Mount `window.AgentSpacesUI`, `window.AgentSpaces`, `window.AgentSpacesAPI`
  * for mini-app preview code. Cleans up on unmount.
  */
-export function useMiniAppHostApi(projectId: string) {
+export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRuntimeContext) {
   const executorIdRef = useRef<string>('');
+  const runtimeContextRef = useRef<MiniAppRuntimeContext>(runtimeContext ?? { route: '/', params: {} });
   const configCacheRef = useRef<Map<string, unknown>>(new Map());
   const configChangeCallbacksRef = useRef<Set<(path: string, value: unknown) => void>>(new Set());
+
+  useEffect(() => {
+    runtimeContextRef.current = runtimeContext ?? { route: '/', params: {} };
+  }, [runtimeContext]);
 
   // —— Agent editor 弹窗：mini-app 通过 openAgentEditor 配置 AI 模型 ——
   const [editorOpen, setEditorOpen] = useState(false);
@@ -696,6 +706,7 @@ export function useMiniAppHostApi(projectId: string) {
       invokeService,
       openAgentEditor,
       localFileUrl,
+      getRuntimeContext: () => runtimeContextRef.current,
     };
 
     const fileApi = {

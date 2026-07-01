@@ -9,6 +9,7 @@ import { sdk } from '@/lib/sdk';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { getWS } from '@/lib/ws';
+import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

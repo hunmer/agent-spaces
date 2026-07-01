@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { parseRoute, useRouter } from "@agent-spaces/ui";
 import WelcomeRoute from "./WelcomeRoute";
 import ApprovalRoute from "./ApprovalRoute";
 import SurveyRoute from "./SurveyRoute";
-import { getPayloadFromQuery, getRouteStateFromLocation } from "../utils/payload";
+import { getPayloadFromQuery, getPayloadFromRuntime, getRouteStateFromLocation, subscribeRuntimePayload } from "../utils/payload";
 
 const { Button, Card, CardContent, Badge } = window.AgentSpacesUI;
 
@@ -16,16 +16,19 @@ const ROUTES = [
 export default function AppShell() {
   const router = useRouter();
   const locationRouteState = useMemo(() => getRouteStateFromLocation(parseRoute), []);
+  const [runtimePayload, setRuntimePayload] = useState(() => getPayloadFromRuntime());
   const effectivePath = router.path.length > 0 ? router.path : locationRouteState.path;
   const effectiveQuery = Object.keys(router.query || {}).length > 0 ? router.query : locationRouteState.query;
   const currentRoute = ROUTES.some((item) => item.key === effectivePath[0]) ? effectivePath[0] : "welcome";
-  const payload = getPayloadFromQuery(effectiveQuery);
+  const payload = Object.keys(runtimePayload).length > 0 ? runtimePayload : getPayloadFromQuery(effectiveQuery);
 
   useEffect(() => {
     if (router.path.length === 0 && locationRouteState.path.length > 0) {
       router.replace(locationRouteState.path, locationRouteState.query);
     }
   }, [locationRouteState.path, locationRouteState.query, router]);
+
+  useEffect(() => subscribeRuntimePayload(setRuntimePayload), []);
 
   const navigate = (nextRoute) => {
     router.push([nextRoute], effectiveQuery);
@@ -42,7 +45,7 @@ export default function AppShell() {
                 <div>
                   <h1 className="text-xl font-semibold">Workflow miniapp interaction demo</h1>
                   <p className="text-sm text-muted-foreground">
-                    The route reads params from query.payload. Buttons submit results through postMessage so the workflow can continue.
+                    Runtime params come from the host bridge. Buttons submit results through postMessage so the workflow can continue.
                   </p>
                 </div>
               </div>

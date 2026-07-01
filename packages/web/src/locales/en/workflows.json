@@ -895,7 +895,7 @@
         "embedDisplay": "Inline display",
         "embedDisplay_tooltip": "Embed the miniapp directly inside the node. Workflow execution still opens the interaction dialog.",
         "params": "Input Params (JSON)",
-        "params_tooltip": "Pass a JSON object to the mini app. It will be available in route query payload."
+        "params_tooltip": "Pass a JSON object to the mini app. Runtime delivery uses the host bridge instead of URL query params."
       },
       "outputs": {
         "submittedData": "Submitted payload from mini app",

@@ -828,7 +828,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
-          <CustomView nodeId={id} data={customViewData} />
+          <CustomView nodeId={id} data={customViewData} isRunning={nodeData.isRunning === true} />
         </div>
       ) : null}
 
@@ -838,7 +838,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           !showFullNode && 'pointer-events-none opacity-0',
           isLoopBody && 'pointer-events-none',
         )}>
-          <PluginWorkflowCustomView nodeId={id} data={customViewData} view={pluginCustomView} />
+          <PluginWorkflowCustomView nodeId={id} data={customViewData} isRunning={nodeData.isRunning === true} view={pluginCustomView} />
         </div>
       ) : null}
 
@@ -909,6 +909,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           nodeId={id}
           executionStep={displayExecutionStep}
           executionSteps={Array.isArray(nodeData.executionSteps) ? nodeData.executionSteps : undefined}
+          executionStatus={nodeData.execStatus}
           nodeType={workflowNodeType}
           loopExecutionScopeId={nodeData.loopExecutionScopeId}
           data={getRecordValue(nodeData[EXECUTION_DATA_KEY] ?? nodeData.executionLogData)}

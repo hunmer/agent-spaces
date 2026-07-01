@@ -1,16 +1,41 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, type ReadonlyURLSearchParams } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { MiniAppPreview } from '@/components/mini-apps/mini-app-preview';
 import { useMiniAppHostApi } from '@/components/mini-apps/use-mini-app-host-api';
 import { Loader2 } from 'lucide-react';
 
+const MINI_APP_RUNTIME_INIT_SOURCE = 'agent-spaces:mini-app-runtime:init';
+const MINI_APP_RUNTIME_EVENT = 'agent-spaces:mini-app-runtime';
+
+type MiniAppRuntimeContext = {
+  route: string;
+  params: Record<string, unknown>;
+};
+
 function decodeRouteParam(value: string) {
   try { return decodeURIComponent(value); }
   catch { return value; }
+}
+
+function parseRuntimeParams(raw: string | null): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function readRuntimeContextFromSearchParams(searchParams: ReadonlyURLSearchParams): MiniAppRuntimeContext {
+  return {
+    route: searchParams.get('route') || '/',
+    params: parseRuntimeParams(searchParams.get('payload')),
+  };
 }
 
 export default function MiniAppPreviewPageClient() {
@@ -25,8 +50,9 @@ export default function MiniAppPreviewPageClient() {
   const [allFiles, setAllFiles] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [runtimeContext, setRuntimeContext] = useState<MiniAppRuntimeContext>(() => readRuntimeContextFromSearchParams(searchParams));
 
-  const host = useMiniAppHostApi(projectId);
+  const host = useMiniAppHostApi(projectId, runtimeContext);
 
   const loadProject = useCallback(async () => {
     try {
@@ -64,6 +90,28 @@ export default function MiniAppPreviewPageClient() {
   }, [projectId]);
 
   useEffect(() => { loadProject(); }, [loadProject]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent) return;
+      const data = event.data;
+      if (!data || data.source !== MINI_APP_RUNTIME_INIT_SOURCE) return;
+      setRuntimeContext({
+        route: typeof data.route === 'string' && data.route.trim() ? data.route : '/',
+        params: data.params && typeof data.params === 'object' && !Array.isArray(data.params)
+          ? data.params as Record<string, unknown>
+          : {},
+      });
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  useEffect(() => {
+    (window as typeof window & { __AGENT_SPACES_MINIAPP_RUNTIME__?: MiniAppRuntimeContext }).__AGENT_SPACES_MINIAPP_RUNTIME__ = runtimeContext;
+    window.dispatchEvent(new CustomEvent(MINI_APP_RUNTIME_EVENT, { detail: runtimeContext }));
+  }, [runtimeContext]);
 
   if (loading) {
     return (
