@@ -35,6 +35,11 @@ router.delete('/usage/:recordId', (req: Request<{ recordId: string }>, res: Resp
   res.status(204).end();
 });
 
+router.delete('/usage', (_req: Request, res: Response) => {
+  const deleted = agentService.clearAllUsageRecords();
+  res.json({ deleted });
+});
+
 router.get('/sessions/:agentSessionId/detail', (req: Request<{ agentSessionId: string }>, res: Response) => {
   const detail = agentService.getSessionDetail(req.params.agentSessionId);
   if (!detail) {

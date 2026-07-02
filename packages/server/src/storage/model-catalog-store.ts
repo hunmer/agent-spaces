@@ -250,13 +250,53 @@ export function getCatalogProviderIdByModelId(catalog: Catalog, modelId?: string
   return fixed && catalog.providers[fixed] ? fixed : "";
 }
 
+export function getCatalogProviderIdByCatalogModel(
+  catalog: Catalog,
+  modelId?: string,
+  apiBase?: string,
+): string {
+  const targetModel = modelId?.trim().toLowerCase();
+  if (!targetModel) return "";
+  const targetHost = normalizeUrl(apiBase)?.hostname.toLowerCase() ?? "";
+  const hostMatches: string[] = [];
+  const matches: string[] = [];
+
+  for (const [providerId, provider] of Object.entries(catalog.providers ?? {})) {
+    const modelEntries = Object.values(provider.models ?? {});
+    const hit = modelEntries.some((model) => {
+      const modelKey = String(model.id ?? "").trim().toLowerCase();
+      const modelName = String(model.name ?? "").trim().toLowerCase();
+      return modelKey === targetModel || modelName === targetModel;
+    });
+    if (!hit) continue;
+    matches.push(providerId);
+    const providerHost = normalizeUrl(provider.api)?.hostname.toLowerCase() ?? "";
+    if (targetHost && providerHost === targetHost) {
+      hostMatches.push(providerId);
+    }
+  }
+
+  return hostMatches[0] || matches[0] || "";
+}
+
+export function getCatalogProviderIdByName(catalog: Catalog, name?: string): string {
+  if (!name) return "";
+  const target = name.trim().toLowerCase();
+  if (!target) return "";
+  for (const [providerId, provider] of Object.entries(catalog.providers ?? {})) {
+    if (providerId.toLowerCase() === target) return providerId;
+    if (String(provider.name ?? "").trim().toLowerCase() === target) return providerId;
+  }
+  return "";
+}
+
 function isLikelyImageValue(value: string): boolean {
   return /^(https?:)?\/\//.test(value) || value.startsWith("/");
 }
 
 export function resolveAgentIcon(
   catalog: Catalog,
-  agent: Partial<Pick<AgentConfig, "avatarUrl" | "icon" | "apiBase" | "modelId">>,
+  agent: Partial<Pick<AgentConfig, "avatarUrl" | "icon" | "apiBase" | "modelId">> & { providerName?: string },
 ): ResolvedAgentIcon | null {
   const avatarUrl = agent.avatarUrl?.trim();
   if (avatarUrl) {
@@ -272,11 +312,13 @@ export function resolveAgentIcon(
   }
 
   const providerId = getCatalogProviderIdByApiBase(catalog, agent.apiBase)
-    || getCatalogProviderIdByModelId(catalog, agent.modelId);
-  if (!providerId) return null;
+    || getCatalogProviderIdByModelId(catalog, agent.modelId)
+    || getCatalogProviderIdByCatalogModel(catalog, agent.modelId, agent.apiBase);
+  const fallbackProviderId = providerId || getCatalogProviderIdByName(catalog, agent.providerName);
+  if (!fallbackProviderId) return null;
   return {
     kind: "image",
-    value: `/static/provider-icons/${providerId}.svg`,
-    providerId,
+    value: `/static/provider-icons/${fallbackProviderId}.svg`,
+    providerId: fallbackProviderId,
   };
 }

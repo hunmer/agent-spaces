@@ -32,6 +32,7 @@ import {
   queryAgentUsageRecent,
   recordAgentUsage,
   deleteAgentUsageRecord,
+  clearAllAgentUsageRecords,
 } from '../storage/agent-store.js';
 import { getWorkspace, listWorkspaces } from '../storage/workspace-store.js';
 import { listIssues, updateIssue } from '../storage/issue-store.js';

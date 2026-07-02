@@ -17,6 +17,10 @@
   },
   "filter": {
     "clear": "清除筛选",
+    "clearAll": "清空所有记录",
+    "clearAllTitle": "清空所有用量记录",
+    "clearAllConfirm": "确定删除所有用量记录吗？此操作不可撤销。",
+    "clearAllSuccess": "已清空 {n} 条记录",
     "is": "是",
     "isNot": "不是",
     "isAnyOf": "属于任一",

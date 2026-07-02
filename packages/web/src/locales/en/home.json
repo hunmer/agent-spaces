@@ -17,6 +17,10 @@
   },
   "filter": {
     "clear": "Clear",
+    "clearAll": "Clear All",
+    "clearAllTitle": "Clear all usage records",
+    "clearAllConfirm": "Are you sure you want to delete ALL usage records? This action cannot be undone.",
+    "clearAllSuccess": "Cleared {n} records",
     "is": "is",
     "isNot": "is not",
     "isAnyOf": "is any of",

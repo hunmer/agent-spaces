@@ -108,12 +108,19 @@ async function handleResolveAgentIcon(req: Request, res: Response) {
   try {
     const input = req.body as Partial<AgentConfig>;
     const provider = input.providerId ? store.getProvider(input.providerId) : undefined;
+    const configuredModel = input.modelId
+      ? store.listModels().find((model) => model.modelId === input.modelId || model.name === input.modelId)
+      : undefined;
+    const configuredProvider = configuredModel
+      ? store.listProviders().find((item) => item.id === configuredModel.provider || item.name === configuredModel.provider)
+      : undefined;
     const catalog = await getCatalog();
     const icon = resolveAgentIcon(catalog, {
       avatarUrl: input.avatarUrl,
       icon: input.icon,
-      apiBase: input.apiBase || provider?.apiBase,
+      apiBase: input.apiBase || provider?.apiBase || configuredProvider?.apiBase,
       modelId: input.modelId,
+      providerName: configuredProvider?.name || configuredModel?.provider,
     });
     res.json(icon);
   } catch (error: any) {
