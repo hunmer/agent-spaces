@@ -22,6 +22,7 @@
     "multiSelect": "多选"
   },
   "detail": {
+    "workflow": "工作流",
     "selectIssue": "选择一个议题查看详情",
     "commentPlaceholder": "写评论... 使用 @ 提及 Agent，输入 / 打开命令",
     "openChatChannel": "打开聊天频道",

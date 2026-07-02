@@ -518,7 +518,7 @@ export function IssueDetailTasksPanel({
         <>
           <div className="flex items-center gap-2">
             <Select
-              value={selectedLogId || undefined}
+              value={selectedLogId}
               onValueChange={(value) => setSelectedLogId(value ?? '')}
               disabled={logsLoading || issueLogs.length === 0}
             >

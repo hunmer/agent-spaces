@@ -265,13 +265,16 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       const last = logs
         .filter((log) => log.issueId === issue.id)
         .sort((a, b) => b.startedAt - a.startedAt)[0];
-      const startStep = last?.steps?.find((step) => step.nodeLabel === startNodeLabel);
-      const input = (startStep?.input ?? undefined) as Record<string, unknown> | undefined;
+      const startStep = last?.steps?.find((step) => (
+        (startNode?.id && step.nodeId === startNode.id)
+        || step.nodeLabel === startNodeLabel
+      ));
+      const input = (startStep?.output ?? startStep?.input ?? undefined) as Record<string, unknown> | undefined;
       setRetryInputValues(stringifyValues(input));
       setRetryEnvValues(undefined);
       setStartInputOpen(true);
     } catch { /* ignore */ }
-  }, [issue?.id, issue?.workflowId, startNodeLabel]);
+  }, [issue?.id, issue?.workflowId, startNode?.id, startNodeLabel]);
 
   return (
     <div className="flex h-full overflow-hidden">

@@ -34,6 +34,15 @@ function getGitOptions(): Partial<import('simple-git').SimpleGitOptions> {
   return config.length ? { config } : {};
 }
 
+async function ensureRepo(git: SimpleGit, dir: string): Promise<void> {
+  try {
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) await git.init(false);
+  } catch {
+    try { await git.init(false); } catch {}
+  }
+}
+
 function getGit(workspace: Workspace): SimpleGit {
   const existing = gitInstances.get(workspace.id);
   if (existing) return existing;
@@ -184,6 +193,7 @@ export async function gitStatus(workspaceId: string): Promise<GitStatusResult> {
   if (!ws) throw new Error('Workspace not found');
 
   const git = getGit(ws);
+  await ensureRepo(git, ws.boundDirs[0]);
   const raw = await git.status();
   const result = mapStatus(raw);
 
