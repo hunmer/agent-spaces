@@ -2,8 +2,7 @@ import type { WorkspaceNotificationSettings } from '@agent-spaces/shared';
 
 export type NotificationBroadcastEvent =
   | 'issuse_status_change'
-  | 'issue_status_change'
-  | 'channel_agent_completed';
+  | 'issue_status_change';
 
 export interface BroadcastEnvelope {
   event: NotificationBroadcastEvent;

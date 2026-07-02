@@ -78,8 +78,7 @@
     "uploadFailed": "Upload failed: {name}",
     "voiceStart": "Voice Input",
     "voiceStop": "Stop Recording",
-    "manageMembers": "Manage channel members",
-    "notifyOnComplete": "Notify on AI reply complete"
+    "manageMembers": "Manage channel members"
   },
   "messageParts": {
     "agentProcessing": "Agent is processing...",

@@ -121,11 +121,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               agents={sortedAgents}
               activeAgent={activeAgent}
               lastActiveAgentId={lastActiveAgentId}
-              channel={channel}
               onActivateAgent={activateAgent}
               onAgentActivated={onAgentActivated}
               onOpenAddMember={() => setAddMemberOpen(true)}
-              onToggleNotify={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
             />
           )}
 

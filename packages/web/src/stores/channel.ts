@@ -22,7 +22,7 @@ interface ChannelStore {
 
   loadChannels: (workspaceId: string) => Promise<void>;
   createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[], titlePrompt?: string) => Promise<void>;
-  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'notifyOnComplete' | 'archived'>>) => Promise<Channel>;
+  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'archived'>>) => Promise<Channel>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   loadChannelState: (workspaceId: string, channelId: string) => Promise<ChannelState | null>;

@@ -12,7 +12,7 @@ export function createChannelApi(http: HttpClient) {
     get: (workspaceId: string, channelId: string): Promise<Channel> =>
       http.get(`/api/workspaces/${workspaceId}/channels/${channelId}`),
 
-    update: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'notifyOnComplete' | 'archived'>>): Promise<Channel> =>
+    update: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'archived'>>): Promise<Channel> =>
       http.put(`/api/workspaces/${workspaceId}/channels/${channelId}`, data),
 
     delete_: (workspaceId: string, channelId: string): Promise<void> =>

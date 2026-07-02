@@ -3,6 +3,7 @@ import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from '../storage/j
 import { join } from 'node:path';
 import type { AppNotification, NotificationType } from '@agent-spaces/shared';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import * as workspaceService from './workspace.js';
 
 function notificationsPath(workspaceId: string): string {
   const dir = join(getDataDir(), 'workspaces', workspaceId);
@@ -73,4 +74,17 @@ export function removeNotification(workspaceId: string, notificationId: string):
 
 export function unreadCount(workspaceId: string): number {
   return readAll(workspaceId).filter((n) => !n.read).length;
+}
+
+/**
+ * 聚合所有 workspace 的通知（用于主页/无选中 workspace 场景）。
+ */
+export function listAllNotifications(): AppNotification[] {
+  const all: AppNotification[] = [];
+  for (const ws of workspaceService.getAll()) {
+    all.push(...readAll(ws.id));
+  }
+  return all.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }

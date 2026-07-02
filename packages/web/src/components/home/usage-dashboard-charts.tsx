@@ -75,9 +75,9 @@ export function PeriodSelector({ period, customRange, onPeriodChange }: {
 
 // ── metric card ──
 
-export function Metric({ label, value, helper, icon: Icon, last, totalCostLabel }: { label: string; value: string; helper: string; icon: LucideIcon; last?: boolean; totalCostLabel: string }) {
+export function Metric({ label, value, helper, icon: Icon, totalCostLabel }: { label: string; value: string; helper: string; icon: LucideIcon; last?: boolean; totalCostLabel: string }) {
   return (
-    <div className={cn("px-4 py-3", !last && "border-r")}>
+    <div className="px-4 py-3">
       <div className="flex items-center justify-between">
         <span className="text-muted-foreground text-xs">{label}</span>
         <Icon className="size-3.5 text-muted-foreground" />

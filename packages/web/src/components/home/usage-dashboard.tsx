@@ -72,19 +72,29 @@ export function UsageDashboard() {
 
   return (
     <div className="col-span-full flex flex-col gap-3">
-      {/* Header + Metrics */}
-      <Card className="gap-0 overflow-hidden py-0">
-        <div className="flex items-center gap-3 border-b px-4 py-3">
+      {/* Header */}
+      <Card className="gap-0 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
           <span className="font-medium text-sm">{t('title')}</span>
           <PeriodSelector period={period} customRange={customRange} onPeriodChange={handlePeriodChange} />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4">
-          <Metric label={t('metric.agentRuns')} value={formatNumber(totals.requests)} helper={t('metric.agentRunsHelper')} icon={Zap} totalCostLabel={t('metric.totalCost')} />
-          <Metric label={t('metric.tokensUsed')} value={formatTokens(totals.totalTokens)} helper={`${formatTokens(totals.inputTokens)} ${t('metric.tokensIn')}`} icon={Cpu} totalCostLabel={t('metric.totalCost')} />
-          <Metric label={t('metric.totalCost')} value={formatCurrency(totals.totalCostUsd)} helper={t('metric.totalCostHelper')} icon={DollarSign} totalCostLabel={t('metric.totalCost')} />
-          <Metric label={t('metric.avgDuration')} value={formatDuration(totals.avgDurationMs)} helper={t('metric.avgDurationHelper')} icon={Clock3} last totalCostLabel={t('metric.totalCost')} />
-        </div>
       </Card>
+
+      {/* Metrics */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Card className="gap-0 py-0">
+          <Metric label={t('metric.agentRuns')} value={formatNumber(totals.requests)} helper={t('metric.agentRunsHelper')} icon={Zap} totalCostLabel={t('metric.totalCost')} />
+        </Card>
+        <Card className="gap-0 py-0">
+          <Metric label={t('metric.tokensUsed')} value={formatTokens(totals.totalTokens)} helper={`${formatTokens(totals.inputTokens)} ${t('metric.tokensIn')}`} icon={Cpu} totalCostLabel={t('metric.totalCost')} />
+        </Card>
+        <Card className="gap-0 py-0">
+          <Metric label={t('metric.totalCost')} value={formatCurrency(totals.totalCostUsd)} helper={t('metric.totalCostHelper')} icon={DollarSign} totalCostLabel={t('metric.totalCost')} />
+        </Card>
+        <Card className="gap-0 py-0">
+          <Metric label={t('metric.avgDuration')} value={formatDuration(totals.avgDurationMs)} helper={t('metric.avgDurationHelper')} icon={Clock3} totalCostLabel={t('metric.totalCost')} />
+        </Card>
+      </div>
 
       {/* Activity */}
       <ActivitySection daily={daily} days={days} maxDailyTokens={maxDailyTokens} />

@@ -36,10 +36,7 @@
     "backToList": "返回列表",
     "type": {
       "issue_completed": "Issue 完成",
-      "issue_failed": "Issue 失败",
-      "workflow_completed": "Workflow 完成",
-      "workflow_failed": "Workflow 失败",
-      "channel_agent_completed": "Agent 执行完成"
+      "issue_failed": "Issue 失败"
     },
     "delete": "删除",
     "allWorkspaces": "全部工作空间",

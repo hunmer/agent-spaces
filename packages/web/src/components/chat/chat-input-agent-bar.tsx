@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { IconUserPlus, IconBell, IconBellOff } from "@tabler/icons-react";
+import { IconUserPlus } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -10,7 +10,6 @@ import { AgentEditor } from "@/components/sidebar/agent-editor";
 import { normalizeAgent } from "@/components/sidebar/agent-shared";
 import { useAgentStore } from "@/stores/agent";
 import { MemberHoverCard } from "./member-hover-card";
-import type { Channel } from "@agent-spaces/shared";
 import type { MentionedAgent } from "./chat-input-utils";
 import { ShinyBadge } from "@/components/ui/shiny-badge";
 
@@ -18,10 +17,8 @@ interface ChatInputAgentBarProps {
   agents: MentionedAgent[];
   activeAgent?: MentionedAgent;
   lastActiveAgentId?: string;
-  channel: Channel;
   onActivateAgent: (agent: MentionedAgent) => void;
   onOpenAddMember: () => void;
-  onToggleNotify: () => void;
   onAgentActivated?: (agent: MentionedAgent) => void;
 }
 
@@ -29,10 +26,8 @@ export function ChatInputAgentBar({
   agents,
   activeAgent,
   lastActiveAgentId,
-  channel,
   onActivateAgent,
   onOpenAddMember,
-  onToggleNotify,
   onAgentActivated,
 }: ChatInputAgentBarProps) {
   const t = useTranslations("chat");
@@ -77,19 +72,6 @@ export function ChatInputAgentBar({
             );
           })}
         </div>
-        <button
-          type="button"
-          onClick={onToggleNotify}
-          className={cn(
-            "shrink-0 inline-flex items-center gap-1 h-6 px-1.5 rounded-full text-xs transition-all",
-            channel.notifyOnComplete
-              ? "bg-primary/10 text-primary border border-primary/30"
-              : "text-muted-foreground border border-transparent hover:bg-accent"
-          )}
-          title={t("input.notifyOnComplete")}
-        >
-          {channel.notifyOnComplete ? <IconBell className="size-3" /> : <IconBellOff className="size-3" />}
-        </button>
       </div>
       {configAgentId && (() => {
         const agent = storeAgents.find((a) => a.id === configAgentId);

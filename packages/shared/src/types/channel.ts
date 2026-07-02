@@ -19,7 +19,6 @@ export interface Channel {
     updatedAt: string;
   };
   todos?: TodoItem[];
-  notifyOnComplete?: boolean;
   archived?: boolean;
   createdAt: string;
 }

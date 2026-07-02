@@ -21,7 +21,7 @@ export interface Workspace {
 
 export type NotificationProvider = 'lark' | 'wechat' | 'native';
 
-export type NotificationEventKey = 'issue_started' | 'issue_completed' | 'channel_agent_completed';
+export type NotificationEventKey = 'issue_started' | 'issue_completed';
 
 export interface RobotAccount {
   id: string;

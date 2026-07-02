@@ -20,7 +20,11 @@ export const useNotificationStore = create<NotificationState>((set, _get) => ({
 
   load: async (workspaceId: string) => {
     try {
-      const notifications: AppNotification[] = await sdk.http.get(`/api/workspaces/${workspaceId}/notifications`);
+      // 无 workspace（主页场景）走全局聚合接口
+      const url = workspaceId
+        ? `/api/workspaces/${workspaceId}/notifications`
+        : '/api/notifications';
+      const notifications: AppNotification[] = await sdk.http.get(url);
       set({ notifications, loaded: true });
     } catch {
       set({ loaded: true });

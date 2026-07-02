@@ -78,8 +78,7 @@
   "events": {
     "title": "Notification Events",
     "issueStarted": "Issue Started",
-    "issueCompleted": "Issue Completed",
-    "channelAgentCompleted": "Channel Agent Reply Completed"
+    "issueCompleted": "Issue Completed"
   },
   "prompt": {
     "title": "Prompt",

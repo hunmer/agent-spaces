@@ -22,6 +22,7 @@ import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { AnimatedThemeToggler } from "@/components/decorations/animated-theme-toggler";
 import { LayoutTemplateIcon } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useNotificationStore } from "@/stores/notification";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
@@ -92,6 +93,13 @@ export function DashboardSidebar() {
   useEffect(() => {
     refreshWorkspaces();
   }, [refreshWorkspaces]);
+
+  // 通知加载：无选中 workspace（主页）时加载全局聚合通知；
+  // workspace 页由 workspace-shell 负责，此处仅在主页触发。
+  const notificationLoad = useNotificationStore((s) => s.load);
+  useEffect(() => {
+    if (!currentWorkspaceId) notificationLoad('');
+  }, [currentWorkspaceId, notificationLoad]);
 
   const handleDelete = useCallback(
     async (ws: Workspace) => {

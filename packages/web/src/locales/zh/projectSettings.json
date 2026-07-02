@@ -78,8 +78,7 @@
   "events": {
     "title": "通知事件",
     "issueStarted": "议题开始",
-    "issueCompleted": "议题完成",
-    "channelAgentCompleted": "频道 Agent 回复完成"
+    "issueCompleted": "议题完成"
   },
   "prompt": {
     "title": "Prompt",

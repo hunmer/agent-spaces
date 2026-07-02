@@ -36,10 +36,7 @@
     "backToList": "Back to list",
     "type": {
       "issue_completed": "Issue Completed",
-      "issue_failed": "Issue Failed",
-      "workflow_completed": "Workflow Completed",
-      "workflow_failed": "Workflow Failed",
-      "channel_agent_completed": "Agent Completed"
+      "issue_failed": "Issue Failed"
     },
     "delete": "Delete",
     "allWorkspaces": "All Workspaces",

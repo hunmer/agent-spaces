@@ -33,7 +33,6 @@ interface NotificationSettingsTabProps {
 const NOTIFICATION_EVENTS: Array<{ value: NotificationEventKey; labelKey: string }> = [
   { value: 'issue_started', labelKey: 'events.issueStarted' },
   { value: 'issue_completed', labelKey: 'events.issueCompleted' },
-  { value: 'channel_agent_completed', labelKey: 'events.channelAgentCompleted' },
 ];
 
 function defaultNotificationSettings(): WorkspaceNotificationSettings {

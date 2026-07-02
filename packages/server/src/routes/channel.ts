@@ -46,7 +46,7 @@ router.post('/', (req: Request<ChannelParams>, res: Response) => {
 router.put('/:channelId', (req: Request<ChannelParams>, res: Response) => {
   const { id, channelId } = req.params;
   const patch: Parameters<typeof updateChannel>[2] = {};
-  for (const key of ['name', 'type', 'issueId', 'members', 'pinnedMentionId', 'draft', 'todos', 'notifyOnComplete', 'archived'] as const) {
+  for (const key of ['name', 'type', 'issueId', 'members', 'pinnedMentionId', 'draft', 'todos', 'archived'] as const) {
     if (Object.hasOwn(req.body, key)) patch[key] = req.body[key];
   }
   const channel = updateChannel(id, channelId!, patch);
