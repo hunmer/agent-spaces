@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import type { AgentConfig } from '@agent-spaces/shared';
 import * as store from '../storage/llm-store.js';
 import { getCatalog, resolveAgentIcon } from '../storage/model-catalog-store.js';
+import type { Catalog, CatalogModel } from '../storage/model-catalog-store.js';
 
 const router = Router();
 
@@ -65,6 +66,17 @@ router.delete('/models/:id', (req, res) => {
     return;
   }
   res.status(204).end();
+});
+
+// 同步模型价格：读取 catalog.json 中各模型的 cost，更新到本地模型列表
+router.post('/models/sync-prices', async (_req, res) => {
+  try {
+    const catalog = await getCatalog();
+    const result = syncModelPricesFromCatalog(catalog);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to sync model prices' });
+  }
 });
 
 // Providers
@@ -160,4 +172,61 @@ function normalizeThinkingEnabled(value: unknown): boolean {
 
 function normalizeThinkingEffort(value: unknown): 'low' | 'medium' | 'high' {
   return value === 'low' || value === 'high' ? value : 'medium';
+}
+
+// 从 catalog 中查找模型的 cost（优先在 providers.models 查找，其次顶层 models）
+function findCatalogModelCost(catalog: Catalog, modelId: string): { input?: number; output?: number } | null {
+  for (const pid of Object.keys(catalog.providers)) {
+    const m = catalog.providers[pid]?.models?.[modelId];
+    if (m?.cost) return m.cost;
+  }
+  const top = catalog.models[modelId];
+  return top?.cost ?? null;
+}
+
+function hasModelCost(cost: { input?: number; output?: number } | null): cost is { input: number; output: number } {
+  return !!cost && typeof cost.input === 'number' && typeof cost.output === 'number';
+}
+
+interface SyncResult {
+  total: number;
+  updated: number;
+  skipped: number;
+  details: Array<{ id: string; name: string; modelId: string; from: { input: number; output: number }; to: { input: number; output: number } }>;
+}
+
+// 遍历本地模型，匹配 catalog 的 modelId，更新价格并保存
+function syncModelPricesFromCatalog(catalog: Catalog): SyncResult {
+  const models = store.listModels();
+  const details: SyncResult['details'] = [];
+  let updated = 0;
+  let skipped = 0;
+
+  for (const model of models) {
+    const cost = findCatalogModelCost(catalog, model.modelId);
+    if (!hasModelCost(cost)) {
+      skipped++;
+      continue;
+    }
+    const prevInput = model.cost?.inputPerMillion ?? 0;
+    const prevOutput = model.cost?.outputPerMillion ?? 0;
+    // 价格未变化则跳过
+    if (prevInput === cost.input && prevOutput === cost.output) {
+      skipped++;
+      continue;
+    }
+    store.updateModel(model.id, {
+      cost: { inputPerMillion: cost.input, outputPerMillion: cost.output },
+    });
+    details.push({
+      id: model.id,
+      name: model.name,
+      modelId: model.modelId,
+      from: { input: prevInput, output: prevOutput },
+      to: { input: cost.input, output: cost.output },
+    });
+    updated++;
+  }
+
+  return { total: models.length, updated, skipped, details };
 }

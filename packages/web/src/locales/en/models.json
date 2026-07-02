@@ -6,7 +6,8 @@
   },
   "error": {
     "saveFailed": "Failed to save model",
-    "deleteFailed": "Failed to delete model"
+    "deleteFailed": "Failed to delete model",
+    "syncFailed": "Failed to sync model prices"
   },
   "confirm": {
     "delete": "Delete this model?"
@@ -18,7 +19,10 @@
     "editDescription": "Configure model properties and capabilities",
     "listDescription": "Manage available LLM models",
     "add": "Add",
-    "loading": "Loading models..."
+    "loading": "Loading models...",
+    "syncPrices": "Sync Model Prices",
+    "syncing": "Syncing...",
+    "syncResult": "Synced prices: {updated}/{total} models updated"
   },
   "list": {
     "contextAbbr": "ctx",

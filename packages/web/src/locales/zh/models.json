@@ -6,7 +6,8 @@
   },
   "error": {
     "saveFailed": "保存模型失败",
-    "deleteFailed": "删除模型失败"
+    "deleteFailed": "删除模型失败",
+    "syncFailed": "同步模型价格失败"
   },
   "confirm": {
     "delete": "删除此模型？"
@@ -18,7 +19,10 @@
     "editDescription": "配置模型属性和能力",
     "listDescription": "管理可用的 LLM 模型",
     "add": "添加",
-    "loading": "加载模型中..."
+    "loading": "加载模型中...",
+    "syncPrices": "同步模型价格",
+    "syncing": "同步中...",
+    "syncResult": "价格同步完成：{updated}/{total} 个模型已更新"
   },
   "list": {
     "contextAbbr": "上下文",

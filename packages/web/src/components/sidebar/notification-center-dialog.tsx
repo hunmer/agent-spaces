@@ -112,7 +112,7 @@ export function NotificationCenterDialog({
                     "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors truncate",
                     !selectedWorkspaceId ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                   )}
-                  onClick={() => setSelectedWorkspaceId(null)}
+                  onClick={() => { setSelectedWorkspaceId(null); setDetail(null); }}
                 >
                   {t('allWorkspaces')}
                 </button>
@@ -123,7 +123,7 @@ export function NotificationCenterDialog({
                       "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors truncate",
                       selectedWorkspaceId === ws.id ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                     )}
-                    onClick={() => setSelectedWorkspaceId(ws.id)}
+                    onClick={() => { setSelectedWorkspaceId(ws.id); setDetail(null); }}
                   >
                     {ws.name}
                   </button>
@@ -140,7 +140,7 @@ export function NotificationCenterDialog({
                     "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors",
                     !selectedType ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                   )}
-                  onClick={() => setSelectedType(null)}
+                  onClick={() => { setSelectedType(null); setDetail(null); }}
                 >
                   {t('allTypes')}
                 </button>
@@ -151,7 +151,7 @@ export function NotificationCenterDialog({
                       "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors flex items-center gap-2",
                       selectedType === nt ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                     )}
-                    onClick={() => setSelectedType(nt)}
+                    onClick={() => { setSelectedType(nt); setDetail(null); }}
                   >
                     <span className={cn("inline-flex items-center justify-center size-5 rounded-full text-[10px] shrink-0", typeColor[nt] ?? "")}>
                       {typeIcon[nt] ?? ""}

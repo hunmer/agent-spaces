@@ -268,7 +268,6 @@ function ProviderList({
               <div className="mt-2 ml-11 flex flex-wrap gap-1">
                 {models.map(m => (
                   <Badge key={m.id} variant="secondary" className="text-[11px] h-5 gap-1 px-1.5 font-normal">
-                    <Brain className="size-3" />
                     <span className="max-w-[120px] truncate">{m.name}</span>
                     {(["vision", "reasoning", "embedding"] as const).map(cap =>
                       m[cap] ? (

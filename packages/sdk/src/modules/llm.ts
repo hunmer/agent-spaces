@@ -20,6 +20,19 @@ export interface AgentIconResult {
   providerId?: string;
 }
 
+export interface ModelSyncResult {
+  total: number;
+  updated: number;
+  skipped: number;
+  details: Array<{
+    id: string;
+    name: string;
+    modelId: string;
+    from: { input: number; output: number };
+    to: { input: number; output: number };
+  }>;
+}
+
 export function createLlmApi(http: HttpClient) {
   return {
     listModels: (): Promise<LLMModel[]> =>
@@ -33,6 +46,9 @@ export function createLlmApi(http: HttpClient) {
 
     deleteModel: (id: string): Promise<void> =>
       http.delete(`/api/models/${id}`),
+
+    syncModelPrices: (): Promise<ModelSyncResult> =>
+      http.post("/api/models/sync-prices"),
 
     listProviders: (): Promise<LLMProvider[]> =>
       http.get("/api/providers"),

@@ -42,6 +42,7 @@ interface LLMStore {
   addModel: (model: LLMModel) => void;
   updateModel: (model: LLMModel) => void;
   removeModel: (id: string) => void;
+  setModels: (models: LLMModel[]) => void;
   addProvider: (provider: LLMProvider) => void;
   updateProvider: (provider: LLMProvider) => void;
   removeProvider: (id: string) => void;
@@ -79,6 +80,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ catalog, catalogLoaded: true });
   },
   addModel: (model) => set(s => ({ models: [...s.models, model] })),
+  setModels: (models) => set({ models }),
   updateModel: (model) => set((state) => ({ models: state.models.map(m => m.id === model.id ? model : m) })),
   removeModel: (id) => set(s => ({ models: s.models.filter(m => m.id !== id) })),
   addProvider: (provider) => {

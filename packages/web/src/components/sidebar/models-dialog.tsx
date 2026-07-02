@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { LLMModel } from "@agent-spaces/shared";
+import type { LLMModel, AgentConfig } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -16,15 +16,26 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import {
   ArrowLeft,
   Brain,
   Plus,
   Trash2,
+  MoreVertical,
+  DollarSign,
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
 import type { CatalogModel } from "@/stores/llm";
 import { sdk } from "@/lib/sdk";
 import { SearchSelect } from "@/components/ui/search-select";
+import { useResolvedAgentIcon } from "@/hooks/use-resolved-agent-icon";
+import { resolveServerAssetUrl } from "@/lib/server";
+import { getProviderIconUrlById } from "@/lib/provider-icon";
 
 const CAP_CLS: Record<string, string> = {
   vision: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -67,7 +78,7 @@ export function ModelsDialog({
 }) {
   const t = useTranslations("models");
   const tc = useTranslations("common");
-  const { models, providers, ensure, addModel, updateModel, removeModel, catalog, loadCatalog } = useLLMStore();
+  const { models, providers, ensure, addModel, updateModel, removeModel, setModels, catalog, loadCatalog } = useLLMStore();
   const providerNames = providers.map(p => p.name);
   const [selected, setSelected] = useState<LLMModel | null>(null);
   const [draft, setDraft] = useState<Partial<LLMModel> | null>(null);
@@ -174,6 +185,25 @@ export function ModelsDialog({
     setDraft(prev => prev ? { ...prev, [key]: value } : prev);
   };
 
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncPrices = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      const result = await sdk.llm.syncModelPrices();
+      // 重新拉取最新模型列表以反映价格更新
+      const latest = await sdk.llm.listModels();
+      setModels(latest);
+      const msg = t("dialog.syncResult", { updated: result.updated, total: result.total });
+      window.alert(msg);
+    } catch {
+      setError(t("error.syncFailed"));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const groups = groupByProvider(models);
 
   const content = (
@@ -194,15 +224,39 @@ export function ModelsDialog({
             </DialogDescription>
           </DialogHeader>
           {!draft && (
-            <Button variant="outline" size="sm" onClick={() => handleAdd()} className="mr-6">
-              <Plus className="size-3.5" />
-              {t("dialog.add")}
-            </Button>
+            <div className="flex items-center gap-1 mr-6">
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" disabled={syncing} />}>
+                  <MoreVertical className="size-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleSyncPrices} disabled={syncing}>
+                    <DollarSign className="size-3.5 mr-1.5" />
+                    {syncing ? t("dialog.syncing") : t("dialog.syncPrices")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" size="sm" onClick={() => handleAdd()}>
+                <Plus className="size-3.5" />
+                {t("dialog.add")}
+              </Button>
+            </div>
           )}
         </div>
       )}
       {standalone && !draft && (
-        <div className="flex items-center justify-end px-5 py-3 border-b">
+        <div className="flex items-center justify-end gap-1 px-5 py-3 border-b">
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" disabled={syncing} />}>
+              <MoreVertical className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleSyncPrices} disabled={syncing}>
+                <DollarSign className="size-3.5 mr-1.5" />
+                {syncing ? t("dialog.syncing") : t("dialog.syncPrices")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" onClick={() => handleAdd()}>
             <Plus className="size-3.5" />
             {t("dialog.add")}
@@ -234,7 +288,7 @@ export function ModelsDialog({
         ) : draft ? (
           <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} catalog={catalog} />
         ) : (
-          <ModelList groups={groups} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
+          <ModelList groups={groups} providers={providers} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
         )}
       </div>
 
@@ -262,14 +316,47 @@ export function ModelsDialog({
   );
 }
 
+function ProviderIcon({
+  apiBase,
+  modelProvider,
+  modelId,
+  className,
+}: {
+  apiBase?: string;
+  modelProvider?: AgentConfig["modelProvider"];
+  modelId?: string;
+  className?: string;
+}) {
+  const { remoteResolved } = useResolvedAgentIcon({ apiBase, modelProvider, modelId });
+  const iconUrl = remoteResolved?.kind === "image"
+    ? resolveServerAssetUrl(remoteResolved.value)
+    : remoteResolved?.providerId
+      ? getProviderIconUrlById(remoteResolved.providerId)
+      : "";
+  if (iconUrl) {
+    return (
+      <img
+        src={iconUrl}
+        alt=""
+        className={`shrink-0 rounded-sm object-contain ${className ?? ""}`}
+        loading="lazy"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+      />
+    );
+  }
+  return <span className={`shrink-0 rounded-sm bg-muted text-[9px] font-semibold flex items-center justify-center ${className ?? ""}`} />;
+}
+
 function ModelList({
   groups,
+  providers,
   providerNames,
   onEdit,
   onDelete,
   onAdd,
 }: {
   groups: Record<string, LLMModel[]>;
+  providers: { id: string; name: string; apiBase?: string; modelProvider?: string }[];
   providerNames: string[];
   onEdit: (m: LLMModel) => void;
   onDelete: (id: string) => void;
@@ -288,9 +375,17 @@ function ModelList({
 
   return (
     <div className="flex flex-col p-4 gap-4">
-      {sorted.map(provider => (
+      {sorted.map(provider => {
+        const entity = providers.find(p => p.name === provider);
+        return (
         <div key={provider}>
           <div className="group flex items-center gap-2 mb-2 px-1">
+            <ProviderIcon
+              apiBase={entity?.apiBase}
+              modelProvider={entity?.modelProvider as never}
+              modelId={groups[provider][0]?.modelId}
+              className="size-4"
+            />
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {provider}
             </span>
@@ -304,41 +399,44 @@ function ModelList({
               <Plus className="size-3" />
             </Button>
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {groups[provider].map(model => (
               <div
                 key={model.id}
-                className="group flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                className="group flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/40 px-3 py-2.5 hover:bg-muted/50 hover:border-border cursor-pointer transition-colors"
                 onClick={() => onEdit(model)}
               >
-                <Brain className="size-4 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium">{model.name}</span>
-                  <span className="text-[11px] text-muted-foreground font-mono ml-2">{model.modelId}</span>
-                  {model.cost ? (
-                    <span className="ml-2 text-[11px] text-muted-foreground font-mono">
-                      ${formatCost(model.cost.inputPerMillion)}/${formatCost(model.cost.outputPerMillion)}
-                    </span>
-                  ) : null}
-                  {model.maxContextTokens ? (
-                    <span className="ml-2 text-[11px] text-muted-foreground font-mono">
-                      {formatTokenLimit(model.maxContextTokens)} {t("list.contextAbbr")}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-1">
-                  {(["vision", "reasoning", "embedding"] as const).map(cap =>
-                    model[cap] ? (
-                      <Badge key={cap} variant="outline" className={`text-[10px] h-5 px-1.5 ${CAP_CLS[cap]}`}>
-                        {t(`capability.${cap}`)}
-                      </Badge>
-                    ) : null
-                  )}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-medium truncate">{model.name}</span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-[11px] text-muted-foreground font-mono truncate">{model.modelId}</span>
+                    {model.cost ? (
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        ${formatCost(model.cost.inputPerMillion)}/${formatCost(model.cost.outputPerMillion)}
+                      </span>
+                    ) : null}
+                    {model.maxContextTokens ? (
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        {formatTokenLimit(model.maxContextTokens)} {t("list.contextAbbr")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+                    {(["vision", "reasoning", "embedding"] as const).map(cap =>
+                      model[cap] ? (
+                        <Badge key={cap} variant="outline" className={`text-[10px] h-5 px-1.5 ${CAP_CLS[cap]}`}>
+                          {t(`capability.${cap}`)}
+                        </Badge>
+                      ) : null
+                    )}
+                  </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                   onClick={e => { e.stopPropagation(); onDelete(model.id); }}
                 >
                   <Trash2 className="size-3 text-destructive" />
@@ -347,7 +445,8 @@ function ModelList({
             ))}
           </div>
         </div>
-      ))}
+        );
+      })}
       {sorted.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Brain className="size-10 mb-2 opacity-30" />
@@ -379,22 +478,21 @@ function ModelForm({
   const catalogModels = catalog?.models ?? {};
   const catalogProviders = catalog?.providers ?? {};
 
-  // 选项按 provider 分组：遍历 providers.models（含 cost），合并去重
+  // 选项为去重的模型名称列表（不分组）：遍历 providers.models（含 cost）
   const modelOptions = useMemo(() => {
     const seen = new Set<string>();
-    const opts: { value: string; label?: string; group?: string }[] = [];
+    const opts: { value: string; label?: string }[] = [];
     for (const pid of Object.keys(catalogProviders)) {
       const p = catalogProviders[pid];
-      const group = p.name || pid;
       const pModels = p.models ?? {};
       for (const mid of Object.keys(pModels)) {
         if (seen.has(mid)) continue;
         seen.add(mid);
         const m = pModels[mid];
-        opts.push({ value: mid, label: m.name || mid, group });
+        opts.push({ value: mid, label: m.name || mid });
       }
     }
-    return opts;
+    return opts.sort((a, b) => (a.label || a.value).localeCompare(b.label || b.value));
   }, [catalogProviders]);
 
   // 从 catalog 查模型：优先在 providers.models 里查（含 cost），其次顶层 models
