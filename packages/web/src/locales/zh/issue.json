@@ -48,7 +48,7 @@
     "tabMembers": "成员",
     "infoStatus": "状态",
     "infoIssueId": "议题 ID",
-    "infoTaskCount": "工作流执行",
+    "infoWorkflowExecution": "工作流执行",
     "infoMemberCount": "成员数",
     "infoCreatedAt": "创建时间",
     "infoUpdatedAt": "更新时间",
@@ -74,6 +74,7 @@
     "executionLogLabel": "{startedAt} · {status}"
   },
   "message": {
+    "nodeExecution": "节点 {nodeExecutionId}",
     "openMessage": "打开消息",
     "expandMore": "展开更多",
     "collapse": "收起"

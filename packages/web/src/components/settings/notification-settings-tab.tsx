@@ -356,20 +356,20 @@ export function NotificationSettingsTab({
                 {isAndroidNative && (
                   <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2.5">
                     <div className="space-y-0.5 pr-4">
-                      <Label htmlFor="android-ongoing-task-notification" className="text-sm font-medium">
-                        {t('notifications.androidOngoingTaskNotification')}
+                      <Label htmlFor="android-ongoing-workflow-notification" className="text-sm font-medium">
+                        {t('notifications.androidOngoingWorkflowNotification')}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        {t('notifications.androidOngoingTaskNotificationDescription')}
+                        {t('notifications.androidOngoingWorkflowNotificationDescription')}
                       </p>
                     </div>
                     <Switch
-                      id="android-ongoing-task-notification"
-                      checked={notificationSettings.native?.androidOngoingTaskNotification ?? false}
-                      onCheckedChange={(androidOngoingTaskNotification) => patchNotifications({
+                      id="android-ongoing-workflow-notification"
+                      checked={notificationSettings.native?.androidOngoingWorkflowNotification ?? false}
+                      onCheckedChange={(androidOngoingWorkflowNotification) => patchNotifications({
                         native: {
                           permissionGranted: notificationSettings.native?.permissionGranted,
-                          androidOngoingTaskNotification,
+                          androidOngoingWorkflowNotification,
                         },
                       })}
                       disabled={savingNotifications || nativePermission !== 'granted'}

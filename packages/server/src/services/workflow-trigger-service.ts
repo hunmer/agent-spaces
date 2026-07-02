@@ -81,8 +81,8 @@ export class WorkflowTriggerService {
 
   stop(): void {
     console.log(`[TriggerService] Stopping. ${this.cronJobs.size} cron jobs, ${this.hookIndex.size} hook(s) will be cleared`);
-    for (const [, task] of this.cronJobs) {
-      task.stop();
+    for (const [, job] of this.cronJobs) {
+      job.stop();
     }
     this.cronJobs.clear();
     this.hookIndex.clear();
@@ -108,7 +108,7 @@ export class WorkflowTriggerService {
     const key = `${workflowId}:${trigger.id}`;
     try {
       console.log(`[TriggerService] Register cron trigger ${trigger.id} for workflow ${workflowId}: expr="${trigger.cron}" timezone="${trigger.timezone || 'system'}"`);
-      const task = nodeCron.schedule(trigger.cron, () => {
+      const job = nodeCron.schedule(trigger.cron, () => {
         console.log(`[TriggerService] Cron fired for workflow ${workflowId} (trigger=${trigger.id}, expr="${trigger.cron}", timezone="${trigger.timezone || 'system'}")`);
         if (this.executionManager) {
           console.log(`[TriggerService] Dispatching cron execution for workflow ${workflowId} via execution manager`);
@@ -119,7 +119,7 @@ export class WorkflowTriggerService {
           console.warn(`[TriggerService] Execution manager missing; cron trigger ${trigger.id} for workflow ${workflowId} cannot run`);
         }
       }, { timezone: trigger.timezone });
-      this.cronJobs.set(key, task);
+      this.cronJobs.set(key, job);
       console.log(`[TriggerService] Cron trigger ${trigger.id} registered under key ${key}`);
     } catch (err: any) {
       console.error(`[TriggerService] Invalid cron "${trigger.cron}" for workflow ${workflowId}: ${err.message}`);
@@ -137,9 +137,9 @@ export class WorkflowTriggerService {
   }
 
   private clearTriggersForWorkflow(workflowId: string): void {
-    for (const [key, task] of this.cronJobs) {
+    for (const [key, job] of this.cronJobs) {
       if (key.startsWith(`${workflowId}:`)) {
-        task.stop();
+        job.stop();
         this.cronJobs.delete(key);
         console.log(`[TriggerService] Cleared cron trigger ${key}`);
       }

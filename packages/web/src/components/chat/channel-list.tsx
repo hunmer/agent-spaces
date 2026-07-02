@@ -41,12 +41,23 @@ const statusBadgeConfig: Record<string, { className: string; label: string }> = 
   error: { className: 'bg-red-500/15 text-red-600', label: 'status.error' },
 };
 
-function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Message['status'] } | null {
+function formatRelativeTime(ts: string | undefined): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  const diffMs = Date.now() - d.getTime();
+  if (diffMs < 60000) return '刚刚';
+  if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}分钟前`;
+  if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}小时前`;
+  return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Message['status']; time: string } | null {
   if (!msgs || msgs.length === 0) return null;
   const last = msgs[msgs.length - 1];
   if (!last) return null;
   const text = (last.content ?? '').replace(/<[^>]*>/g, '').slice(0, 60);
-  return { text: text || '...', status: last.status };
+  return { text: text || '...', status: last.status, time: formatRelativeTime(last.createdAt) };
 }
 
 interface ChannelListProps {
@@ -178,7 +189,10 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             )}
           </div>
           {preview ? (
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">{preview.text}</p>
+              <span className="text-[10px] text-muted-foreground/60 shrink-0">{preview.time}</span>
+            </div>
           ) : (
             <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
           )}
@@ -232,7 +246,10 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
               </Badge>
             </div>
             {preview ? (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">{preview.text}</p>
+                <span className="text-[10px] text-muted-foreground/60 shrink-0">{preview.time}</span>
+              </div>
             ) : (
               <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
             )}

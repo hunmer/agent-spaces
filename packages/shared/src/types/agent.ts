@@ -25,7 +25,7 @@ export interface AgentSession {
   agentConfigId: string;
   role: AgentRole;
   status: AgentSessionStatus;
-  currentTaskId?: string;
+  currentNodeExecutionId?: string;
   processId?: number;
   startedAt: string;
   lastActivityAt: string;

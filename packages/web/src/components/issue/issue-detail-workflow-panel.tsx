@@ -17,13 +17,13 @@ import { executionLogApi, workflowApi } from '@/lib/workflow-api';
 import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
 
-interface IssueDetailTasksPanelProps {
+interface IssueDetailWorkflowPanelProps {
   issue: { id: string; workflowId?: string; workflowExecutionId?: string; title: string };
   workspaceId: string;
   t: (key: string, params?: Record<string, string | number | Date>) => string;
 }
 
-type TaskPanelView = 'workflow' | 'agents';
+type WorkflowPanelView = 'workflow' | 'agents';
 
 type IssueExecutionLog = ExecutionLog & {
   issueId?: string;
@@ -370,12 +370,12 @@ function AgentRunsView({
   );
 }
 
-export function IssueDetailTasksPanel({
+export function IssueDetailWorkflowPanel({
   issue,
   workspaceId,
   t,
-}: IssueDetailTasksPanelProps) {
-  const [view, setView] = useState<TaskPanelView>('workflow');
+}: IssueDetailWorkflowPanelProps) {
+  const [view, setView] = useState<WorkflowPanelView>('workflow');
   const [logs, setLogs] = useState<IssueExecutionLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [selectedLogId, setSelectedLogId] = useState<string>('');
@@ -512,7 +512,7 @@ export function IssueDetailTasksPanel({
           <ToggleGroup
             value={[view]}
             onValueChange={(value) => {
-              if (value.length > 0) setView(value[0] as TaskPanelView);
+              if (value.length > 0) setView(value[0] as WorkflowPanelView);
             }}
           >
             <ToggleGroupItem value="workflow" aria-label={t('detail.viewWorkflow')} title={t('detail.viewWorkflow')}>

@@ -14,7 +14,7 @@ const createSchema = z.object({
   branch: z.string().optional(),
   agentId: z.string().optional(),
   issueId: z.string().optional(),
-  taskId: z.string().optional(),
+  nodeExecutionId: z.string().optional(),
 });
 
 const prSchema = z.object({

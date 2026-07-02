@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
 import { ensureGeneralChannel } from './channel.js';
 
-const AGENTSPACE_DIRS = ['skills', 'agents', 'tasks', 'cache', 'logs', 'cache/locks'];
+const AGENTSPACE_DIRS = ['skills', 'agents', 'workflow-runs', 'cache', 'logs', 'cache/locks'];
 const AGENTSPACE_FILES: Record<string, string> = {
   'claude.md': '# Agent Spaces Knowledge Base\n',
 };

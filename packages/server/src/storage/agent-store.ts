@@ -38,7 +38,7 @@ function openDb(): DatabaseSync {
       agent_config_id TEXT NOT NULL,
       role TEXT NOT NULL,
       status TEXT NOT NULL,
-      current_task_id TEXT,
+      current_node_execution_id TEXT,
       process_id INTEGER,
       started_at TEXT NOT NULL,
       last_activity_at TEXT NOT NULL,
@@ -464,7 +464,7 @@ export function getLatestAgentUsageBySessionId(sessionId: string): AgentUsageRec
 function insertSession(database: DatabaseSync, session: AgentSession): void {
   database.prepare(`
     INSERT INTO agent_sessions (
-      id, workspace_id, agent_config_id, role, status, current_task_id,
+      id, workspace_id, agent_config_id, role, status, current_node_execution_id,
       process_id, started_at, last_activity_at, error
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
@@ -472,7 +472,7 @@ function insertSession(database: DatabaseSync, session: AgentSession): void {
       agent_config_id = excluded.agent_config_id,
       role = excluded.role,
       status = excluded.status,
-      current_task_id = excluded.current_task_id,
+      current_node_execution_id = excluded.current_node_execution_id,
       process_id = excluded.process_id,
       started_at = excluded.started_at,
       last_activity_at = excluded.last_activity_at,
@@ -483,7 +483,7 @@ function insertSession(database: DatabaseSync, session: AgentSession): void {
     session.agentConfigId,
     session.role,
     session.status,
-    session.currentTaskId ?? null,
+    session.currentNodeExecutionId ?? null,
     session.processId ?? null,
     session.startedAt,
     session.lastActivityAt,
@@ -498,7 +498,7 @@ function mapSessionRow(row: Record<string, unknown>): AgentSession {
     agentConfigId: String(row.agent_config_id),
     role: row.role as AgentSession['role'],
     status: row.status as AgentSession['status'],
-    currentTaskId: typeof row.current_task_id === 'string' ? row.current_task_id : undefined,
+    currentNodeExecutionId: typeof row.current_node_execution_id === 'string' ? row.current_node_execution_id : undefined,
     processId: typeof row.process_id === 'number' ? row.process_id : undefined,
     startedAt: String(row.started_at),
     lastActivityAt: String(row.last_activity_at),

@@ -56,6 +56,8 @@ export function IssueMessage({
   const linkedChannelId = comment.metadata?.channelId;
   const linkedMessageId = comment.metadata?.messageId;
   const phase = comment.metadata?.phase;
+  const nodeExecutionId = comment.metadata?.nodeExecutionId
+    ?? (comment.metadata as { taskId?: string } | undefined)?.taskId;
   const t = useTranslations('issue');
   const tc = useTranslations('common');
 
@@ -131,6 +133,7 @@ export function IssueMessage({
     { key: 'sender-role', label: comment.senderRole },
     { key: 'model', label: comment.metadata?.model },
     { key: 'phase', label: phase?.replace('_', ' ') },
+    { key: 'node-execution', label: nodeExecutionId ? t('message.nodeExecution', { nodeExecutionId: nodeExecutionId.slice(0, 8) }) : undefined },
   ].filter((item): item is { key: string; label: string } => Boolean(item.label));
 
   return (

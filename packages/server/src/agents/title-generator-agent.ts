@@ -15,7 +15,7 @@ const TITLE_GENERATOR_CONSTRAINTS = [
   '- Do not inspect files, call tools, ask questions, or describe implementation steps.',
   '- Do not include a subject such as I, you, user, assistant, 我, 你, 用户, 助手.',
   '- Do not include greetings, questions, offers to help, or conversational replies.',
-  '- The title must be a noun phrase that names the scenario, task, intent, problem, discussion, or analysis.',
+  '- The title must be a noun phrase that names the scenario, work item, intent, problem, discussion, or analysis.',
   '- For "你好", return "打招呼场景".',
   '- Return exactly one title and nothing else.',
 ].join('\n');

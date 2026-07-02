@@ -82,7 +82,7 @@ export function IssueDetailInfoPanel({
                 </div>
                 {issue.workflowExecutionId && (
                   <div className="flex justify-between py-1 border-b">
-                    <span className="text-muted-foreground">{t('detail.workflow', { defaultValue: 'Workflow' })}</span>
+                    <span className="text-muted-foreground">{t('detail.workflowExecution')}</span>
                     <span className="font-mono text-xs">{issue.workflowExecutionStatus ?? issue.status}</span>
                   </div>
                 )}

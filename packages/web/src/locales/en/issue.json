@@ -48,7 +48,7 @@
     "tabMembers": "Members",
     "infoStatus": "Status",
     "infoIssueId": "Issue ID",
-    "infoTaskCount": "Workflow Execution",
+    "infoWorkflowExecution": "Workflow Execution",
     "infoMemberCount": "Members",
     "infoCreatedAt": "Created",
     "infoUpdatedAt": "Updated",
@@ -74,6 +74,7 @@
     "executionLogLabel": "{startedAt} · {status}"
   },
   "message": {
+    "nodeExecution": "node {nodeExecutionId}",
     "openMessage": "Open message",
     "expandMore": "Show more",
     "collapse": "Collapse"

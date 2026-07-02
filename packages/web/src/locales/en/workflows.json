@@ -739,10 +739,10 @@
     },
     "agent_run": {
       "label": "AI Execute",
-      "description": "Initialize the Agent name, note, and task prompt before invoking the Agent",
+      "description": "Initialize the Agent name, note, and execution prompt before invoking the Agent",
       "props": {
         "agent": "Agent",
-        "prompt": "Task",
+        "prompt": "Instruction",
         "cwd": "Working Directory",
         "additionalDirectories": "Additional Directories",
         "additionalDirectories_tooltip": "One accessible directory per line, appended to Agent runtime's sandboxDirs/additionalDirectories.",

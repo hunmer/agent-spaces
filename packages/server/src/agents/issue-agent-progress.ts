@@ -1,4 +1,4 @@
-import type { AgentConfig, Issue, MessagePart } from '@agent-spaces/shared';
+import type { AgentConfig, Issue, IssueComment, MessageMetadata, MessagePart } from '@agent-spaces/shared';
 import { createAgentMessagePartsTracker, type AgentMessagePartsTracker } from './agent-message-parts.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as messageService from '../services/message.js';
@@ -54,26 +54,27 @@ export function createIssueAgentProgress(
   metadata: {
     runtime?: string;
     model?: string;
-    taskId?: string;
+    nodeExecutionId?: string;
     phase?: string;
   },
 ): IssueAgentProgress {
   const content = `${preset.name || preset.role} is processing...`;
+  const progressMetadata: MessageMetadata = {
+    agentSessionId,
+    runtime: metadata.runtime,
+    model: metadata.model,
+    summary: content,
+    duration: 0,
+    nodeExecutionId: metadata.nodeExecutionId,
+    phase: metadata.phase,
+  };
   const message = messageService.createMessage(workspaceId, issue.channelId, {
     senderId: preset.id,
     senderRole: preset.role,
     content,
     type: 'text',
     status: 'streaming',
-    metadata: {
-      agentSessionId,
-      runtime: metadata.runtime,
-      model: metadata.model,
-      summary: content,
-      duration: 0,
-      taskId: metadata.taskId,
-      phase: metadata.phase,
-    },
+    metadata: progressMetadata,
   });
   broadcastToWorkspace(workspaceId, 'channel.message', message);
 
@@ -85,14 +86,8 @@ export function createIssueAgentProgress(
     metadata: {
       channelId: issue.channelId,
       messageId: message.id,
-      agentSessionId,
-      runtime: metadata.runtime,
-      model: metadata.model,
-      summary: content,
-      duration: 0,
-      taskId: metadata.taskId,
-      phase: metadata.phase,
-    },
+      ...progressMetadata,
+    } as IssueComment['metadata'],
   });
   if (comment) broadcastToWorkspace(workspaceId, 'issue.comment.created', comment);
 

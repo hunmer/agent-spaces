@@ -44,7 +44,7 @@ export interface IssueComment {
     model?: string;
     summary?: string;
     duration?: number;
-    taskId?: string;
+    nodeExecutionId?: string;
     mentions?: string[];
     phase?: string;
   };

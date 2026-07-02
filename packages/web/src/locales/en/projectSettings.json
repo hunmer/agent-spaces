@@ -50,8 +50,8 @@
     "nativeTestFailed": "Failed to send system notification",
     "nativePermissionGrantedToast": "Notification permission granted",
     "nativePermissionDeniedToast": "Notification permission denied",
-    "androidOngoingTaskNotification": "Ongoing workflow notification",
-    "androidOngoingTaskNotificationDescription": "Update an ongoing notification in the system notification panel when workflow execution changes. Android only; foreground service support may be required.",
+    "androidOngoingWorkflowNotification": "Ongoing workflow notification",
+    "androidOngoingWorkflowNotificationDescription": "Update an ongoing notification in the system notification panel when workflow execution changes. Android only; foreground service support may be required.",
     "selectRobotAccount": "Select Robot Account",
     "noRobotAccount": "No accounts yet. Add one in Settings first.",
     "addRobotAccount": "Add Account"

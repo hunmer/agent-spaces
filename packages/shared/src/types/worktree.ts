@@ -6,7 +6,7 @@ export interface WorktreeInfo {
   path: string;
   agentId?: string;
   issueId?: string;
-  taskId?: string;
+  nodeExecutionId?: string;
   prUrl?: string;
   status: WorktreeStatus;
   createdAt: string;
@@ -20,5 +20,5 @@ export interface CreateWorktreeInput {
   branch?: string;
   agentId?: string;
   issueId?: string;
-  taskId?: string;
+  nodeExecutionId?: string;
 }

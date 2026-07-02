@@ -121,7 +121,7 @@ export type ClientEventMap = {
   'miniApp.clientResponse': { requestId: string; ok: boolean; result?: unknown; error?: string };
 };
 
-// ---- Workflow UI Task Events ----
+// ---- Workflow UI Async Run Events ----
 
 export type MiniAppTaskStatus = 'running' | 'completed' | 'failed';
 

@@ -11,24 +11,24 @@ type LegacyExecutorResult = {
 };
 
 /**
- * Workflow task execution completes tasks directly. Review steps should be
+ * Workflow node execution completes directly. Review steps should be
  * modeled as workflow nodes instead of this hardcoded hook.
  */
 export async function onExecutorComplete(
   workspaceId: string,
-  taskId: string,
+  nodeExecutionId: string,
   issueId: string,
   result: LegacyExecutorResult,
   _ctx: AgentContext,
 ): Promise<void> {
   console.log(
-    `[hook:onExecutorComplete] entered workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} success=${result.success} summary=${JSON.stringify(result.summary)}`,
+    `[hook:onExecutorComplete] entered workspaceId=${workspaceId} nodeExecutionId=${nodeExecutionId} issueId=${issueId} success=${result.success} summary=${JSON.stringify(result.summary)}`,
   );
 
   if (!result.success) {
-    console.warn(`[hook:onExecutorComplete] workflow node ${taskId} failed: ${result.error}`);
+    console.warn(`[hook:onExecutorComplete] workflow node ${nodeExecutionId} failed: ${result.error}`);
     return;
   }
 
-  console.log(`[hook:onExecutorComplete] reviewer hook skipped; workflow controls node order taskId=${taskId} issueId=${issueId}`);
+  console.log(`[hook:onExecutorComplete] reviewer hook skipped; workflow controls node order nodeExecutionId=${nodeExecutionId} issueId=${issueId}`);
 }

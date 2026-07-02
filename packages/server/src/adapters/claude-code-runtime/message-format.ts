@@ -120,10 +120,10 @@ export function extractClaudeHookEvents(message: SDKMessage): Array<{ event: Cla
 
   for (const toolUse of extractToolUseEvents(message)) {
     if (toolUse.name === 'TaskCreate') {
-      events.push({ event: 'TaskCreated', matcher: toolUse.name, payload: toolUse });
+      events.push({ event: 'NodeExecutionCreated', matcher: toolUse.name, payload: toolUse });
     }
     if (toolUse.name === 'TaskCompleted') {
-      events.push({ event: 'TaskCompleted', matcher: toolUse.name, payload: toolUse });
+      events.push({ event: 'NodeExecutionCompleted', matcher: toolUse.name, payload: toolUse });
     }
   }
 

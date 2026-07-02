@@ -56,7 +56,7 @@ export interface WorkspaceNotificationSettings {
   };
   native?: {
     permissionGranted?: boolean;
-    androidOngoingTaskNotification?: boolean;
+    androidOngoingWorkflowNotification?: boolean;
   };
 }
 

@@ -155,6 +155,6 @@ export interface MessageMetadata {
   model?: string;
   summary?: string;
   duration?: number;
-  taskId?: string;
+  nodeExecutionId?: string;
   phase?: string;
 }

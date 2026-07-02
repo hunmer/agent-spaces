@@ -56,7 +56,7 @@ export async function createWorkspaceWorktree(
   const now = new Date().toISOString();
   const info: WorktreeInfo = {
     id, workspaceId, name: input.name, branch, path: wtPath,
-    agentId: input.agentId, issueId: input.issueId, taskId: input.taskId,
+    agentId: input.agentId, issueId: input.issueId, nodeExecutionId: input.nodeExecutionId,
     status: 'active', createdAt: now, updatedAt: now,
   };
 

@@ -1,6 +1,6 @@
 /**
  * Shared agent context — passed between agents and hooks.
- * Provides broadcast, task/issue mutation, and runtime creation.
+ * Provides broadcast, issue mutation, and runtime creation.
  */
 
 import type { AgentSession } from '@agent-spaces/shared';

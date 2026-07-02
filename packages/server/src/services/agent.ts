@@ -993,7 +993,7 @@ export function getDefaultTitleGeneratorPreset(): AgentConfig {
     systemPrompt: [
       'You generate objective scene titles for Agent Spaces channels and issues.',
       'Return exactly one title and nothing else.',
-      'The title must describe the scenario, task, or intent objectively.',
+      'The title must describe the scenario, work item, or intent objectively.',
       'Do not include a speaking subject, assistant identity, user identity, first-person wording, second-person wording, greetings, replies, questions, or conversational text.',
       'For Chinese, prefer a short noun phrase ending with 场景, 任务, 问题, 需求, 讨论, or 分析 when appropriate.',
       'Examples: user says "你好" -> "打招呼场景"; user says "帮我修复登录报错" -> "登录报错修复"; user says "分析这段代码" -> "代码分析任务".',
@@ -1165,7 +1165,7 @@ export function getOrCreateSessionForConfig(
   if (!existing) return create(workspaceId, config.role, config.id);
 
   return updateStatus(workspaceId, existing.id, 'idle', {
-    currentTaskId: undefined,
+    currentNodeExecutionId: undefined,
     error: undefined,
   }) ?? existing;
 }
@@ -1186,12 +1186,12 @@ export function updateStatus(
   return session;
 }
 
-export function assignTask(
+export function assignNodeExecution(
   workspaceId: string,
   sessionId: string,
-  taskId: string,
+  nodeExecutionId: string,
 ): AgentSession | null {
-  return updateStatus(workspaceId, sessionId, 'active', { currentTaskId: taskId });
+  return updateStatus(workspaceId, sessionId, 'active', { currentNodeExecutionId: nodeExecutionId });
 }
 
 export function complete(
@@ -1201,7 +1201,7 @@ export function complete(
   details?: AgentCompletionDetails,
 ): AgentSession | null {
   const session = updateStatus(workspaceId, sessionId, error ? 'crashed' : 'completed', {
-    currentTaskId: undefined,
+    currentNodeExecutionId: undefined,
     error,
   });
   if (!session) return null;

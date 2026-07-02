@@ -21,7 +21,7 @@ import { normalizeChannelMembersToAgentIds, getMemberDisplayName } from '@/lib/a
 import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
 import { workflowApi, executionLogApi } from '@/lib/workflow-api';
-import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
+import { IssueDetailWorkflowPanel } from './issue-detail-workflow-panel';
 import { ExecutionInputDialog } from '@/components/workflow/workflow-execution-input-dialog';
 import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
@@ -369,7 +369,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             className="flex min-h-full flex-col xl:h-full xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch"
           >
 
-            {/* Scrollable meta + commands + tasks + attachments */}
+            {/* Scrollable meta + commands + workflow + attachments */}
             <div className="shrink-0 space-y-5 p-6 pb-2 xl:min-h-full xl:min-w-0">
               {/* Meta Info Grid — project-detail-view style */}
               <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
@@ -425,7 +425,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </motion.div>
 
               <motion.div variants={itemVariants}>
-                <IssueDetailTasksPanel
+                <IssueDetailWorkflowPanel
                   issue={normalizedIssue}
                   workspaceId={workspaceId}
                   t={t}
@@ -566,7 +566,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                       </motion.div>
 
                       <motion.div variants={itemVariants}>
-                        <IssueDetailTasksPanel
+                        <IssueDetailWorkflowPanel
                           issue={normalizedIssue}
                           workspaceId={workspaceId}
                           t={t}

@@ -65,8 +65,8 @@ export async function sendNativeNotification(title: string, body: string, option
   return sendWebNotification(title, body);
 }
 
-/** Update the Android ongoing task notification by reusing a stable notification id. */
-export async function sendAndroidOngoingTaskNotification(body: string): Promise<void> {
+/** Update the Android ongoing workflow notification by reusing a stable notification id. */
+export async function sendAndroidOngoingWorkflowNotification(body: string): Promise<void> {
   if (!isNativeAndroidEnvironment()) return;
   return sendNativeNotification('Agent Spaces', body, {
     id: ANDROID_ONGOING_TASK_NOTIFICATION_ID,

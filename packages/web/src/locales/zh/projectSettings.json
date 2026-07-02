@@ -50,8 +50,8 @@
     "nativeTestFailed": "发送系统通知失败",
     "nativePermissionGrantedToast": "通知权限已授权",
     "nativePermissionDeniedToast": "通知权限被拒绝",
-    "androidOngoingTaskNotification": "常驻工作流通知",
-    "androidOngoingTaskNotificationDescription": "工作流执行状态变化时更新系统通知面板中的常驻通知。仅 Android 生效，可能需要前台服务支持。",
+    "androidOngoingWorkflowNotification": "常驻工作流通知",
+    "androidOngoingWorkflowNotificationDescription": "工作流执行状态变化时更新系统通知面板中的常驻通知。仅 Android 生效，可能需要前台服务支持。",
     "selectRobotAccount": "选择 Robot 账号",
     "noRobotAccount": "暂无账号，请先在设置中添加",
     "addRobotAccount": "去添加"
