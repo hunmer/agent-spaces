@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,17 @@ const CONTEXT_OPTIONS = [
 ];
 
 const THINKING_EFFORT_OPTIONS = ["low", "medium", "high"] as const;
+
+// 提取 url 的 host（含端口），用于按 baseUrl 匹配相同 host 的模型列表
+function normalizeHost(url: string): string {
+  if (!url) return "";
+  try {
+    const u = new URL(url.startsWith("http") ? url : `http://${url}`);
+    return u.host.toLowerCase();
+  } catch {
+    return "";
+  }
+}
 
 function groupByProvider(models: LLMModel[]): Record<string, LLMModel[]> {
   const groups: Record<string, LLMModel[]> = {};
@@ -286,7 +298,7 @@ export function ModelsDialog({
         {loading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">{t("dialog.loading")}</div>
         ) : draft ? (
-          <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} catalog={catalog} />
+          <ModelForm draft={draft} providerNames={providerNames} providers={providers} onChange={updateDraft} catalog={catalog} />
         ) : (
           <ModelList groups={groups} providers={providers} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
         )}
@@ -460,17 +472,20 @@ function ModelList({
 function ModelForm({
   draft,
   providerNames,
+  providers,
   onChange,
   catalog,
 }: {
   draft: Partial<LLMModel>;
   providerNames: string[];
+  providers: { id: string; name: string; apiBase?: string; modelProvider?: string }[];
   onChange: (key: string, value: unknown) => void;
   catalog: ReturnType<typeof useLLMStore.getState>["catalog"];
 }) {
   const t = useTranslations("models");
   const nameEditedByUser = useRef(false);
   const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
+  const [showAllModels, setShowAllModels] = useState(false);
   const options = providerNames.length > 0 ? [...providerNames, "Other"] : ["Other"];
   // 当前模型是否支持 reasoning（不支持时禁用 thinking 开关）
   const supportsReasoning = draft.reasoning === true;
@@ -478,12 +493,33 @@ function ModelForm({
   const catalogModels = catalog?.models ?? {};
   const catalogProviders = catalog?.providers ?? {};
 
+  // 当前 provider 对应的 apiBase（用于按 host 匹配 catalog 模型）
+  const currentApiBase = useMemo(() => {
+    if (!draft.provider) return "";
+    return providers.find(p => p.name === draft.provider)?.apiBase ?? "";
+  }, [providers, draft.provider]);
+
+  // catalog 是否存在任何模型（用于决定渲染 SearchSelect 还是 Input）
+  const hasCatalogModels = useMemo(() => {
+    for (const pid of Object.keys(catalogProviders)) {
+      const pModels = catalogProviders[pid]?.models;
+      if (pModels && Object.keys(pModels).length > 0) return true;
+    }
+    return false;
+  }, [catalogProviders]);
+
   // 选项为去重的模型名称列表（不分组）：遍历 providers.models（含 cost）
+  // showAllModels 关闭时仅展示与当前 provider 同 host 的模型
   const modelOptions = useMemo(() => {
+    const targetHost = currentApiBase ? normalizeHost(currentApiBase) : "";
     const seen = new Set<string>();
     const opts: { value: string; label?: string }[] = [];
     for (const pid of Object.keys(catalogProviders)) {
       const p = catalogProviders[pid];
+      if (!showAllModels && targetHost) {
+        const host = normalizeHost(p.api ?? "");
+        if (host !== targetHost) continue;
+      }
       const pModels = p.models ?? {};
       for (const mid of Object.keys(pModels)) {
         if (seen.has(mid)) continue;
@@ -493,7 +529,7 @@ function ModelForm({
       }
     }
     return opts.sort((a, b) => (a.label || a.value).localeCompare(b.label || b.value));
-  }, [catalogProviders]);
+  }, [catalogProviders, showAllModels, currentApiBase]);
 
   // 从 catalog 查模型：优先在 providers.models 里查（含 cost），其次顶层 models
   const findCatalogModel = useCallback((modelId: string): { model?: CatalogModel; providerName?: string } => {
@@ -536,8 +572,14 @@ function ModelForm({
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.details")}</div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">{t("form.modelId")}</label>
-          {modelOptions.length > 0 ? (
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-muted-foreground">{t("form.modelId")}</label>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <Checkbox checked={showAllModels} onCheckedChange={v => setShowAllModels(v === true)} />
+              <span className="text-xs text-muted-foreground">{t("form.showAllModels")}</span>
+            </label>
+          </div>
+          {hasCatalogModels ? (
             <SearchSelect
               value={draft.modelId || ""}
               onChange={handleModelIdChange}

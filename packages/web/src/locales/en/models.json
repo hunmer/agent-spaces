@@ -33,6 +33,7 @@
     "modelId": "Model ID",
     "modelIdPlaceholder": "e.g. gpt-4o",
     "modelIdSearch": "Search or enter model ID...",
+    "showAllModels": "Show all models",
     "displayName": "Display Name",
     "displayNamePlaceholder": "e.g. GPT-4o",
     "provider": "Provider",

@@ -33,6 +33,7 @@
     "modelId": "模型 ID",
     "modelIdPlaceholder": "例如 gpt-4o",
     "modelIdSearch": "搜索或输入模型 ID...",
+    "showAllModels": "展示所有模型",
     "displayName": "显示名称",
     "displayNamePlaceholder": "例如 GPT-4o",
     "provider": "供应商",
