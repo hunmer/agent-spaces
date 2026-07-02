@@ -2,6 +2,9 @@ import type { AgentConfig } from "@agent-spaces/shared";
 import type { CatalogProvider, ModelCatalog } from "@/stores/llm";
 
 type ApiMessageType = AgentConfig["modelProvider"] | "";
+const HOST_ALIAS: Record<string, string> = {
+  "api.minimaxi.com": "api.minimax.io",
+};
 
 function normalizeUrl(value?: string): URL | null {
   if (!value) return null;
@@ -12,9 +15,8 @@ function normalizeUrl(value?: string): URL | null {
   }
 }
 
-function normalizePathname(pathname: string): string {
-  const normalized = pathname.replace(/\/+$/, "");
-  return normalized || "/";
+function normalizeHostname(hostname: string): string {
+  return HOST_ALIAS[hostname.toLowerCase()] || hostname.toLowerCase();
 }
 
 export function findCatalogProviderByApiBase(
@@ -23,15 +25,11 @@ export function findCatalogProviderByApiBase(
 ): { id: string; provider: CatalogProvider } | null {
   const target = normalizeUrl(apiBase);
   if (!catalog?.providers || !target) return null;
-  const targetPath = normalizePathname(target.pathname);
   for (const [id, provider] of Object.entries(catalog.providers)) {
     const providerUrl = normalizeUrl(provider.api);
     if (!providerUrl) continue;
-    if (providerUrl.hostname.toLowerCase() !== target.hostname.toLowerCase()) continue;
-    const providerPath = normalizePathname(providerUrl.pathname);
-    if (targetPath === providerPath || targetPath.startsWith(`${providerPath}/`) || providerPath === "/") {
-      return { id, provider };
-    }
+    if (normalizeHostname(providerUrl.hostname) !== normalizeHostname(target.hostname)) continue;
+    return { id, provider };
   }
   return null;
 }

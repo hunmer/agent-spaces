@@ -20,6 +20,17 @@ import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { ModelProviderIcon } from "@/components/common/model-provider-icon"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn, textColorClass } from "@/lib/utils"
@@ -189,6 +200,16 @@ export function AgentRunsTable({ days, formatRelative }: { days: number; formatR
     }
   }, [records.length, pagination.pageIndex, t])
 
+  const handleClearAll = useCallback(async () => {
+    try {
+      await sdk.agent.clearAllUsageRecords()
+      setPagination(p => ({ ...p, pageIndex: 0 }))
+      setRefreshTick(tick => tick + 1)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('filter.error'))
+    }
+  }, [t])
+
   const handleFiltersChange = useCallback((next: Filter[]) => {
     setFilters(next)
     setPagination(p => ({ ...p, pageIndex: 0 })) // 过滤变化回到首页
@@ -236,6 +257,23 @@ export function AgentRunsTable({ days, formatRelative }: { days: number; formatR
           onClear={() => handleFiltersChange([])}
           clearLabel={t('filter.clear')}
         />
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={<Button variant="ghost" size="sm" className="ml-auto h-8 gap-1 text-xs text-destructive hover:text-destructive" disabled={total === 0} />}
+          />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('filter.clearAllTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('filter.clearAllConfirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('sessionDetail.cancel')}</AlertDialogCancel>
+              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleClearAll}>
+                {t('filter.clearAll')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       <div>
         <Table>

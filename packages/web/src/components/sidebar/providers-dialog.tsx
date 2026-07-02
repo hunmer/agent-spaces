@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchSelect } from "@/components/ui/search-select";
+import { AgentIcon } from "@/components/common/agent-icon";
 import {
   ArrowLeft,
   Server,
@@ -240,9 +241,13 @@ function ProviderList({
             onClick={() => onEdit(provider)}
           >
             <div className="flex items-center gap-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                <Server className="size-4 text-primary" />
-              </div>
+              <AgentIcon
+                name={provider.name}
+                apiBase={provider.apiBase}
+                className="size-8 rounded-lg"
+                bordered={false}
+                textSize="text-[10px]"
+              />
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium">{provider.name}</span>
                 <p className="text-xs text-muted-foreground truncate">{provider.apiBase || t("list.noApiBase")}</p>
@@ -262,9 +267,9 @@ function ProviderList({
             {models.length > 0 && (
               <div className="mt-2 ml-11 flex flex-wrap gap-1">
                 {models.map(m => (
-                  <span key={m.id} className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                  <Badge key={m.id} variant="secondary" className="text-[11px] h-5 gap-1 px-1.5 font-normal">
                     <Brain className="size-3" />
-                    {m.name}
+                    <span className="max-w-[120px] truncate">{m.name}</span>
                     {(["vision", "reasoning", "embedding"] as const).map(cap =>
                       m[cap] ? (
                         <span key={cap} className={`inline-block rounded px-1 text-[9px] font-medium border ${CAP_CLS[cap]}`}>
@@ -272,7 +277,7 @@ function ProviderList({
                         </span>
                       ) : null
                     )}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             )}

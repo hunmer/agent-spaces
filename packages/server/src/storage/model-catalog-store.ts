@@ -10,6 +10,9 @@ const LOGO_URL = (providerId: string) => `https://models.dev/logos/${providerId}
 const PREFIX_FIX: Record<string, string> = {
   tencent: "tencent-cloud",
 };
+const HOST_ALIAS: Record<string, string> = {
+  "api.minimaxi.com": "api.minimax.io",
+};
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -81,9 +84,8 @@ function normalizeUrl(value?: string): URL | null {
   }
 }
 
-function normalizePathname(pathname: string): string {
-  const normalized = pathname.replace(/\/+$/, "");
-  return normalized || "/";
+function normalizeHostname(hostname: string): string {
+  return HOST_ALIAS[hostname.toLowerCase()] || hostname.toLowerCase();
 }
 
 function normalizeCatalog(raw: Record<string, RawCatalogProvider>): Catalog {
@@ -227,15 +229,11 @@ export async function refreshProviderIcons(): Promise<{
 export function getCatalogProviderIdByApiBase(catalog: Catalog, apiBase?: string): string {
   const target = normalizeUrl(apiBase);
   if (!target) return "";
-  const targetPath = normalizePathname(target.pathname);
   for (const [providerId, provider] of Object.entries(catalog.providers ?? {})) {
     const providerUrl = normalizeUrl(provider.api);
     if (!providerUrl) continue;
-    if (providerUrl.hostname.toLowerCase() !== target.hostname.toLowerCase()) continue;
-    const providerPath = normalizePathname(providerUrl.pathname);
-    if (targetPath === providerPath || targetPath.startsWith(`${providerPath}/`) || providerPath === "/") {
-      return providerId;
-    }
+    if (normalizeHostname(providerUrl.hostname) !== normalizeHostname(target.hostname)) continue;
+    return providerId;
   }
   return "";
 }
@@ -257,7 +255,7 @@ export function getCatalogProviderIdByCatalogModel(
 ): string {
   const targetModel = modelId?.trim().toLowerCase();
   if (!targetModel) return "";
-  const targetHost = normalizeUrl(apiBase)?.hostname.toLowerCase() ?? "";
+  const targetHost = normalizeHostname(normalizeUrl(apiBase)?.hostname ?? "");
   const hostMatches: string[] = [];
   const matches: string[] = [];
 
@@ -270,7 +268,7 @@ export function getCatalogProviderIdByCatalogModel(
     });
     if (!hit) continue;
     matches.push(providerId);
-    const providerHost = normalizeUrl(provider.api)?.hostname.toLowerCase() ?? "";
+    const providerHost = normalizeHostname(normalizeUrl(provider.api)?.hostname ?? "");
     if (targetHost && providerHost === targetHost) {
       hostMatches.push(providerId);
     }

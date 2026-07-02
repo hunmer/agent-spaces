@@ -36,7 +36,7 @@ export function createAgentApi(http: HttpClient) {
 
     /** 清空所有用量记录 */
     clearAllUsageRecords: (): Promise<{ deleted: number }> =>
-      http.delete(`/api/agents/usage`),
+      http.deleteOf(`/api/agents/usage`),
 
     sessionDetail: (agentSessionId: string): Promise<AgentUsageSessionDetail> =>
       http.get(`/api/agents/sessions/${agentSessionId}/detail`),

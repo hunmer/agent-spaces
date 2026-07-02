@@ -5,6 +5,9 @@ const PREFIX_FIX: Record<string, string> = {
   tencent: "tencent-cloud",
   meta: "meta",
 };
+const HOST_ALIAS: Record<string, string> = {
+  "api.minimaxi.com": "api.minimax.io",
+};
 
 let providerEntityMap: Map<string, { name?: string; apiBase?: string }> | null = null;
 let cachedCatalog: ModelCatalog | null = null;
@@ -19,9 +22,8 @@ function normalizeUrl(value?: string): URL | null {
   }
 }
 
-function normalizePathname(pathname: string): string {
-  const normalized = pathname.replace(/\/+$/, "");
-  return normalized || "/";
+function normalizeHostname(hostname: string): string {
+  return HOST_ALIAS[hostname.toLowerCase()] || hostname.toLowerCase();
 }
 
 export function setProviderEntities(
@@ -74,15 +76,11 @@ export function getCatalogProviderById(providerId?: string): CatalogProvider | n
 export function getProviderIdByApiBase(apiBase?: string): string {
   const target = normalizeUrl(apiBase);
   if (!target || !cachedCatalog?.providers) return "";
-  const targetPath = normalizePathname(target.pathname);
   for (const [providerId, provider] of Object.entries(cachedCatalog.providers)) {
     const providerUrl = normalizeUrl(provider.api);
     if (!providerUrl) continue;
-    if (providerUrl.hostname.toLowerCase() !== target.hostname.toLowerCase()) continue;
-    const providerPath = normalizePathname(providerUrl.pathname);
-    if (targetPath === providerPath || targetPath.startsWith(`${providerPath}/`) || providerPath === "/") {
-      return providerId;
-    }
+    if (normalizeHostname(providerUrl.hostname) !== normalizeHostname(target.hostname)) continue;
+    return providerId;
   }
   return "";
 }
