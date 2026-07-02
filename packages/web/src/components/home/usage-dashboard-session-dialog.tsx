@@ -195,7 +195,7 @@ function UserMessageCard({ message }: { message: AgentUsageSessionMessage }) {
         </span>
       </div>
       <div className="rounded-md bg-background/80 px-3 py-2 text-sm">
-        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        <Markdown content={message.content} />
       </div>
       <SessionMessageMeta message={message} />
     </div>
