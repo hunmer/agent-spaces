@@ -87,6 +87,16 @@ export function UsageDashboardSessionDialog({
                   <span>{t("sessionDetail.duration")}: {formatDuration(record?.durationMs ?? 0)}</span>
                   {record?.agentSessionId ? <span className="font-mono">{record.agentSessionId}</span> : null}
                 </DialogDescription>
+                {detail?.systemPrompt ? (
+                  <div className="mt-2 rounded-md border bg-muted/30 p-3">
+                    <div className="mb-2 text-[11px] font-medium text-muted-foreground">
+                      {t("sessionDetail.systemPrompt")}
+                    </div>
+                    <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-foreground">
+                      {detail.systemPrompt}
+                    </pre>
+                  </div>
+                ) : null}
               </div>
               <TabsList variant="line" className="shrink-0 px-0 me-5">
                 <TabsTrigger value="messages" className="rounded-none px-3 text-xs">

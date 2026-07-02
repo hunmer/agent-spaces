@@ -164,9 +164,7 @@
           "tools": [
             "CreateCurrentChannelIssue",
             "ViewCurrentChannelIssue",
-            "AddCurrentChannelComment",
-            "SearchWorkspaceFiles",
-            "ReadWorkspaceFile"
+            "AddCurrentChannelComment"
           ],
           "systemPrompt": "你是公众号主编 Agent。任务：基于上游选题 Agent 的选题报告，撰写一篇完整的公众号文章，并通过 channel 把稿件同步给审批 Agent。\n\n上游输入变量（必须使用，不可编造）：\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 风格偏好：{{ __data__[\"start_1782815018956\"].style }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告（来自选题 Agent）：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n\n要求：\n1. 严格按照选题报告中的推荐大纲展开写作，不可偏离主线；事实线索需要自然融入正文。\n2. 风格：若 style 未提供，默认采用深度长文；面向 targetAudience 调整用词。\n3. 字数 1800-2500 字，使用 Markdown。\n4. 结尾给出 1 个引导互动的开放问题。\n5. 完成后必须通过 channel 同步给审批 Agent：明确告知稿件已就绪，标题为《...》，请审批。\n\n输出格式（Markdown）：\n---\n标题：《...》\n字数：xxx\n摘要：一句话总结\n正文：\n（完整正文）\n引导问题：...\n---\n同步状态：已通过 channel 通知审批 Agent。",
           "outputStyle": "",
@@ -405,10 +403,10 @@
     }
   ],
   "createdAt": 1782821632696,
-  "updatedAt": 1782965056798,
+  "updatedAt": 1782972603086,
   "published": false,
   "name": "公众号编写 (Copy)",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
-  "lastRunAt": 1782964412636
+  "lastRunAt": 1782973387244
 }

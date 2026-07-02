@@ -38,6 +38,7 @@ export type SubMenuItem = {
   link: string;
   icon?: React.ReactNode;
   onClick?: () => void;
+  closeParentOnClick?: boolean;
   menuItems?: {
     label: string;
     icon?: React.ReactNode;
@@ -196,7 +197,19 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
 
                   <CollapsibleContent>
                     <SidebarMenuSub className="my-1 ml-3.5">
-                      {route.subs?.map((subRoute) => (
+                      {route.subs?.map((subRoute) => {
+                        const handleSubClick = () => {
+                          if (subRoute.closeParentOnClick !== false) {
+                            setOpenSet((prev) => {
+                              const next = new Set(prev);
+                              next.delete(route.id);
+                              return next;
+                            });
+                          }
+                          if (subRoute.onClick) subRoute.onClick();
+                          else navigate(subRoute.link);
+                        };
+                        return (
                         <SidebarMenuSubItem
                           key={`${route.id}-${subRoute.title}`}
                           className="h-auto"
@@ -204,23 +217,16 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
                           <div className="group/sub relative flex items-center">
                             <SidebarMenuSubButton
                               render={
-                                subRoute.onClick
-                                  ? <button
-                                    type="button"
-                                    onClick={subRoute.onClick}
-                                    className={cn(
-                                      "flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium cursor-pointer",
-                                      pathname === subRoute.link
-                                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                        : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
-                                    )}
-                                  />
-                                  : <button type="button" onClick={() => navigate(subRoute.link)} className={cn(
+                                <button
+                                  type="button"
+                                  onClick={handleSubClick}
+                                  className={cn(
                                     "flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium cursor-pointer",
                                     pathname === subRoute.link
                                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                                       : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
-                                  )} />
+                                  )}
+                                />
                               }
                             >{subRoute.title}</SidebarMenuSubButton>
 
@@ -248,7 +254,8 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
                             )}
                           </div>
                         </SidebarMenuSubItem>
-                      ))}
+                        );
+                      })}
                       {route.onAdd && (
                         <SidebarMenuSubItem>
                           <button

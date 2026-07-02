@@ -125,6 +125,7 @@
     "raw": "原始 JSON",
     "loading": "正在加载会话详情...",
     "empty": "未找到会话消息",
+    "systemPrompt": "系统提示词",
     "promptInfo": "上下文详情",
     "requests": "Tokens",
     "cost": "费用",

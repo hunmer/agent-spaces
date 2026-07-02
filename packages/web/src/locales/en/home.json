@@ -125,6 +125,7 @@
     "raw": "Raw JSON",
     "loading": "Loading session detail...",
     "empty": "No session messages found.",
+    "systemPrompt": "System Prompt",
     "promptInfo": "Context Detail",
     "requests": "Tokens",
     "cost": "Cost",

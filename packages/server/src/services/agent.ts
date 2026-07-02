@@ -10,6 +10,7 @@ import type {
   AgentUsageFilterOptions,
   AgentUsageRecentQuery,
   AgentUsageRecentResult,
+  AgentUsageRecord,
   AgentUsageSessionDetail,
   AgentUsageSessionMessage,
   LLMProvider,
@@ -1280,10 +1281,18 @@ export function getSessionDetail(agentSessionId: string): AgentUsageSessionDetai
     source = 'cli_history';
   }
 
+  const systemPrompt = resolveSessionSystemPrompt({
+    session,
+    usage,
+    messages,
+    rawSession,
+  });
+
   return {
     session,
     usage,
     messages,
+    systemPrompt,
     source,
     cliHistoryPath: rawSession ? cliHistoryPath : undefined,
     rawSession,
@@ -1299,6 +1308,7 @@ export function persistSessionCliHistory(agentSessionId: string): void {
     session: detail.session,
     usage: detail.usage,
     messages: detail.messages,
+    systemPrompt: detail.systemPrompt,
     generatedAt: new Date().toISOString(),
   });
 }
@@ -1340,6 +1350,83 @@ function listSessionDetailMessages(workspaceId: string, agentSessionId: string):
   }
 
   return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function resolveSessionSystemPrompt(input: {
+  session: AgentSession | null;
+  usage: AgentUsageRecord | null;
+  messages: AgentUsageSessionMessage[];
+  rawSession: unknown;
+}): string | undefined {
+  const rawRecord = input.rawSession && typeof input.rawSession === 'object' && !Array.isArray(input.rawSession)
+    ? input.rawSession as Record<string, unknown>
+    : null;
+  const rawPrompt = typeof rawRecord?.systemPrompt === 'string' ? rawRecord.systemPrompt.trim() : '';
+  if (rawPrompt) return rawPrompt;
+
+  for (const message of input.messages) {
+    const prompt = message.contextPart?.agentContext?.systemPrompt?.trim();
+    if (prompt) return prompt;
+  }
+
+  const agentConfigId = input.session?.agentConfigId ?? input.usage?.agentConfigId;
+  const presetPrompt = agentConfigId ? readAgentTemplate(agentConfigId)?.systemPrompt?.trim() : '';
+  if (presetPrompt) return presetPrompt;
+
+  const agentSessionId = input.session?.id ?? input.usage?.agentSessionId;
+  return agentSessionId ? findWorkflowExecutionSystemPrompt(agentSessionId) : undefined;
+}
+
+function findWorkflowExecutionSystemPrompt(agentSessionId: string): string | undefined {
+  const workflowsDir = join(getDataDir(), 'workflows');
+  if (!existsSync(workflowsDir)) return undefined;
+
+  for (const workflowEntry of readdirSync(workflowsDir, { withFileTypes: true })) {
+    if (!workflowEntry.isDirectory()) continue;
+    const executionHistoryDir = join(workflowsDir, workflowEntry.name, 'execution_history');
+    if (!existsSync(executionHistoryDir)) continue;
+
+    for (const historyEntry of readdirSync(executionHistoryDir, { withFileTypes: true })) {
+      if (!historyEntry.isFile() || !historyEntry.name.endsWith('.json')) continue;
+      const historyPath = join(executionHistoryDir, historyEntry.name);
+      const history = readJsonFile<{
+        steps?: Array<{
+          input?: {
+            agent?: {
+              systemPrompt?: string;
+            };
+          };
+          output?: {
+            sessionId?: string;
+          };
+        }>;
+        nodes?: Array<{
+          input?: {
+            agent?: {
+              systemPrompt?: string;
+            };
+          };
+          output?: {
+            sessionId?: string;
+          };
+        }>;
+      }>(historyPath);
+      const candidates = Array.isArray(history?.steps)
+        ? history.steps
+        : Array.isArray(history?.nodes)
+          ? history.nodes
+          : [];
+      if (candidates.length === 0) continue;
+
+      for (const node of candidates) {
+        if (node?.output?.sessionId !== agentSessionId) continue;
+        const prompt = node.input?.agent?.systemPrompt?.trim();
+        if (prompt) return prompt;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 function mapSessionDetailMessage(

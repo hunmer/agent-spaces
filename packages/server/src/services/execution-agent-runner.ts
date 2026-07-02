@@ -212,6 +212,7 @@ function persistWorkflowAgentSessionHistory(
     session: detail?.session ?? null,
     usage: detail?.usage ?? null,
     messages,
+    systemPrompt: typeof preset.systemPrompt === 'string' ? preset.systemPrompt : detail?.systemPrompt,
     generatedAt: now,
   };
   agentService.writeWorkflowAgentSessionHistory(agentSessionId, payload);

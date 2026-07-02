@@ -534,12 +534,10 @@ export function IssueDetailTasksPanel({
               </SelectContent>
             </Select>
           </div>
-          <div
-            key={`${issue.id}:${issue.workflowId}:${view}:${selectedExecutionLog?.id ?? 'none'}`}
-            className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]"
-          >
+          <div className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]">
           {view === 'workflow' ? (
             <WorkflowPreview
+              key={`${issue.workflowId}:${selectedExecutionLog?.id ?? 'none'}`}
               workflowId={issue.workflowId}
               workspaceId={workspaceId}
               issueId={issue.id}
@@ -547,7 +545,13 @@ export function IssueDetailTasksPanel({
               embeddedMode="issue"
             />
           ) : (
-            <AgentRunsView workflowId={issue.workflowId} workspaceId={workspaceId} executionLog={selectedExecutionLog} t={t} />
+            <AgentRunsView
+              key={`${issue.workflowId}:${selectedExecutionLog?.id ?? 'none'}`}
+              workflowId={issue.workflowId}
+              workspaceId={workspaceId}
+              executionLog={selectedExecutionLog}
+              t={t}
+            />
           )}
           </div>
         </>
