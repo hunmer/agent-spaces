@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { LLMProvider, LLMModel } from "@agent-spaces/shared";
 import {
@@ -23,7 +23,9 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
+import type { ModelCatalog } from "@/stores/llm";
 import { sdk } from "@/lib/sdk";
+import { findCatalogProviderByApiBase, inferApiMessageTypeFromCatalogProvider } from "@/lib/model-catalog";
 import { PROVIDER_OPTIONS } from "./agent-shared";
 
 const CAP_CLS: Record<string, string> = {
@@ -45,7 +47,16 @@ export function ProvidersDialog({
 }) {
   const t = useTranslations("providers");
   const tc = useTranslations("common");
-  const { models: allModels, providers, ensure, addProvider, updateProvider, removeProvider } = useLLMStore();
+  const {
+    models: allModels,
+    providers,
+    catalog,
+    ensure,
+    loadCatalog,
+    addProvider,
+    updateProvider,
+    removeProvider,
+  } = useLLMStore();
   const [selected, setSelected] = useState<LLMProvider | null>(null);
   const [draft, setDraft] = useState<Partial<LLMProvider> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,7 +68,8 @@ export function ProvidersDialog({
     setLoading(true);
     setError(null);
     ensure().finally(() => setLoading(false));
-  }, [open, ensure]);
+    void loadCatalog();
+  }, [open, ensure, loadCatalog]);
 
   const handleBack = () => { setSelected(null); setDraft(null); };
 
@@ -166,7 +178,7 @@ export function ProvidersDialog({
         {loading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">{t("dialog.loading")}</div>
         ) : draft ? (
-          <ProviderForm draft={draft} onChange={updateDraft} />
+          <ProviderForm draft={draft} catalog={catalog} onChange={updateDraft} />
         ) : (
           <ProviderList
             providers={providers}
@@ -288,17 +300,63 @@ function ProviderList({
 
 function ProviderForm({
   draft,
+  catalog,
   onChange,
 }: {
   draft: Partial<LLMProvider>;
+  catalog: ModelCatalog | null;
   onChange: (key: string, value: unknown) => void;
 }) {
   const t = useTranslations("providers");
   const ta = useTranslations("agent");
+  const selectedCatalogProviderId = useMemo(
+    () => {
+      const byApiBase = findCatalogProviderByApiBase(catalog, draft.apiBase)?.id;
+      if (byApiBase) return byApiBase;
+      if (!catalog?.providers || !draft.name) return "";
+      const lowerName = draft.name.toLowerCase();
+      return Object.entries(catalog.providers).find(([, provider]) => String(provider.name ?? "").toLowerCase() === lowerName)?.[0] ?? "";
+    },
+    [catalog, draft.apiBase, draft.name],
+  );
+  const catalogOptions = useMemo(() => {
+    if (!catalog?.providers) return [];
+    return Object.entries(catalog.providers).map(([id, provider]) => {
+      const modelProvider = inferApiMessageTypeFromCatalogProvider(provider);
+      const group = modelProvider
+        ? ta(`provider.${PROVIDER_OPTIONS.find((option) => option.value === modelProvider)?.labelKey ?? "openaiChatCompletions"}`)
+        : undefined;
+      return {
+        value: id,
+        label: provider.name ?? id,
+        description: provider.api ?? provider.npm ?? id,
+        keywords: [id, provider.name ?? "", provider.api ?? "", provider.npm ?? ""],
+        group,
+      };
+    });
+  }, [catalog, ta]);
+
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.connection")}</div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">{t("form.vendor")}</label>
+          <SearchSelect
+            value={selectedCatalogProviderId}
+            onChange={(providerId) => {
+              const provider = catalog?.providers?.[providerId];
+              if (!provider) return;
+              onChange("name", provider.name || draft.name || "");
+              onChange("apiBase", provider.api || "");
+              onChange("modelProvider", inferApiMessageTypeFromCatalogProvider(provider) || undefined);
+            }}
+            options={catalogOptions}
+            placeholder={t("form.vendorPlaceholder")}
+            searchPlaceholder={t("form.vendorPlaceholder")}
+            allowCustom={false}
+          />
+        </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">{t("form.name")}</label>
           <Input value={draft.name || ""} onChange={e => onChange("name", e.target.value)} placeholder={t("form.namePlaceholder")} />

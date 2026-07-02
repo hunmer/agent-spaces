@@ -231,8 +231,11 @@ export function ModelCatalogTab() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-medium">{p.name ?? id}</div>
                       <div className="truncate text-[10px] text-muted-foreground">
-                        {count > 0 ? t("catalogProviderModels", { count }) : id}
+                        {p.api || (count > 0 ? t("catalogProviderModels", { count }) : id)}
                       </div>
+                      {p.npm ? (
+                        <div className="truncate text-[10px] text-muted-foreground/80">{p.npm}</div>
+                      ) : null}
                     </div>
                   </div>
                 );

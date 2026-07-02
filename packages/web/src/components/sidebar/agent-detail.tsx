@@ -47,6 +47,7 @@ import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
 import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
+import { inferApiMessageTypeFromApiBase } from "@/lib/model-catalog";
 import {
   type AgentPreset,
   type AgentRole,
@@ -99,7 +100,7 @@ export function AgentDetail({
   const tools = agent.tools ?? [];
   const { items: discoveredRuntimeCliItems } = useRuntimeCliSettings();
 
-  const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
+  const { models: allLlmModels, providers: llmProviders, catalog, ensure: ensureLLM, loadCatalog } = useLLMStore();
   const llmModels = allLlmModels.filter((m) => !m.embedding);
   const uniqueRoleOptions = Array.from(new Set(roleOptions));
   const selectedProvider = llmProviders.find((p) => p.id === agent.providerId)
@@ -137,7 +138,8 @@ export function AgentDetail({
 
   useEffect(() => {
     ensureLLM();
-  }, [ensureLLM]);
+    void loadCatalog();
+  }, [ensureLLM, loadCatalog]);
 
   // 当 provider 确定后（自动匹配或手动选择），将其连接字段同步到 agent。
   // apiBase / apiKey / modelProvider 在 UI 上是 disabled，只能由 provider 决定，
@@ -153,24 +155,29 @@ export function AgentDetail({
     if (agent.apiKey !== selectedProvider.apiKey) {
       onChange("apiKey", selectedProvider.apiKey);
     }
-    const nextModelProvider = (selectedProvider.modelProvider || "") as AgentPreset["modelProvider"];
+    const nextModelProvider = (
+      selectedProvider.modelProvider || inferApiMessageTypeFromApiBase(catalog, selectedProvider.apiBase) || ""
+    ) as AgentPreset["modelProvider"];
     if (agent.modelProvider !== nextModelProvider) {
       onChange("modelProvider", nextModelProvider);
     }
-  }, [agent.providerId, agent.apiBase, agent.apiKey, agent.modelProvider, onChange, selectedProvider]);
+  }, [agent.providerId, agent.apiBase, agent.apiKey, agent.modelProvider, catalog, onChange, selectedProvider]);
 
   const handleSelectProvider = useCallback(
     (provider: LLMProvider) => {
       onChange("providerId", provider.id);
       onChange("apiBase", provider.apiBase);
       onChange("apiKey", provider.apiKey);
-      onChange("modelProvider", (provider.modelProvider || "") as AgentPreset["modelProvider"]);
+      onChange(
+        "modelProvider",
+        (provider.modelProvider || inferApiMessageTypeFromApiBase(catalog, provider.apiBase) || "") as AgentPreset["modelProvider"],
+      );
       const providerModels = llmModels.filter((m) => m.provider === provider.name);
       if (providerModels.length > 0) {
         onChange("modelId", providerModels[0].modelId);
       }
     },
-    [llmModels, onChange],
+    [catalog, llmModels, onChange],
   );
 
   const handleOptimizePrompt = async () => {
@@ -507,7 +514,12 @@ export function AgentDetail({
                   const provider = llmProviders.find((p) => p.name === v);
                   if (provider) handleSelectProvider(provider);
                 }}
-                options={llmProviders.map((p) => ({ value: p.name, label: p.name }))}
+                options={llmProviders.map((p) => ({
+                  value: p.name,
+                  label: p.name,
+                  description: p.apiBase || undefined,
+                  keywords: [p.id, p.apiBase || "", p.modelProvider || ""],
+                }))}
                 placeholder={t("detail.providerPlaceholder")}
                 searchPlaceholder={t("detail.providerSearchPlaceholder")}
                 allowCustom={false}

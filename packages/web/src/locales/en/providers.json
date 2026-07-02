@@ -23,6 +23,8 @@
   },
   "form": {
     "connection": "Connection",
+    "vendor": "Vendor",
+    "vendorPlaceholder": "Select a vendor to auto-fill...",
     "name": "Name",
     "namePlaceholder": "e.g. Anthropic",
     "apiBase": "API Base",

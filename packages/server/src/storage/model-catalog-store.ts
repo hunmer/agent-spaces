@@ -1,32 +1,26 @@
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { existsSync, statSync } from 'node:fs';
-import { writeFile, mkdir, readdir, unlink } from 'node:fs/promises';
-import { getDataDir, ensureDir, readJsonFile, writeJsonFile } from './json-store.js';
+import { existsSync, statSync } from "node:fs";
+import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { AgentConfig } from "@agent-spaces/shared";
+import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from "./json-store.js";
 
-/**
- * models.dev 模型目录存储
- *
- * 数据来源：https://models.dev/catalog.json （含 providers + models）
- * 落盘位置：<dataDir>/llm/catalog.json
- * 首次访问若文件不存在，自动下载并保存（满足「首次默认保存」）。
- */
-
-const CATALOG_URL = 'https://models.dev/catalog.json';
+const CATALOG_URL = "https://models.dev/api.json";
 const LOGO_URL = (providerId: string) => `https://models.dev/logos/${providerId}.svg`;
+const PREFIX_FIX: Record<string, string> = {
+  tencent: "tencent-cloud",
+};
 
-// 找到运行时 public 目录（与 app.ts 中 resolveRuntimeDir 同逻辑）
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
 function resolvePublicDir(): string {
-  // storage/ 编译后在 dist/storage/，public 在 dist/public（生产）或 ../public（开发 src/ 下）
   const candidates = [
-    join(__dirname, '..', 'public'), // dist/public 或 src/../public
-    join(__dirname, '..', '..', 'public'), // 开发：src/storage -> ../../public
+    join(__dirname, "..", "public"),
+    join(__dirname, "..", "..", "public"),
   ];
-  for (const c of candidates) {
-    if (existsSync(c)) return c;
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
   }
-  // 兜底：返回第一个候选（后续 mkdir 兜底创建）
   return candidates[0];
 }
 
@@ -38,20 +32,28 @@ export interface CatalogModel {
   modalities?: { input?: string[]; output?: string[] };
   attachment?: boolean;
   reasoning?: boolean;
-  [k: string]: unknown;
+  [key: string]: unknown;
 }
 
 export interface CatalogProvider {
   id: string;
   name?: string;
   api?: string;
-  [k: string]: unknown;
+  npm?: string;
+  env?: string[];
+  doc?: string;
   models?: Record<string, CatalogModel>;
+  [key: string]: unknown;
 }
 
 export interface Catalog {
   providers: Record<string, CatalogProvider>;
   models: Record<string, CatalogModel>;
+}
+
+interface RawCatalogProvider extends Omit<CatalogProvider, "id" | "models"> {
+  id?: string;
+  models?: Record<string, CatalogModel>;
 }
 
 export interface CatalogMeta {
@@ -60,39 +62,81 @@ export interface CatalogMeta {
   models: number;
 }
 
-function catalogFile() {
-  return join(getDataDir(), 'llm', 'catalog.json');
+export interface ResolvedAgentIcon {
+  kind: "image" | "emoji";
+  value: string;
+  providerId?: string;
 }
 
-/** 拉取远端 catalog.json */
+function catalogFile(): string {
+  return join(getDataDir(), "llm", "catalog.json");
+}
+
+function normalizeUrl(value?: string): URL | null {
+  if (!value) return null;
+  try {
+    return new URL(value.includes("://") ? value : `https://${value}`);
+  } catch {
+    return null;
+  }
+}
+
+function normalizePathname(pathname: string): string {
+  const normalized = pathname.replace(/\/+$/, "");
+  return normalized || "/";
+}
+
+function normalizeCatalog(raw: Record<string, RawCatalogProvider>): Catalog {
+  const providers: Record<string, CatalogProvider> = {};
+  const models: Record<string, CatalogModel> = {};
+
+  for (const [providerId, provider] of Object.entries(raw)) {
+    const normalizedModels: Record<string, CatalogModel> = {};
+    for (const [modelKey, model] of Object.entries(provider.models ?? {})) {
+      const normalizedModel = {
+        ...model,
+        id: model.id ?? modelKey,
+        name: model.name ?? model.id ?? modelKey,
+      };
+      normalizedModels[normalizedModel.id] = normalizedModel;
+      models[normalizedModel.id] = normalizedModel;
+    }
+    providers[providerId] = {
+      ...provider,
+      id: provider.id ?? providerId,
+      name: typeof provider.name === "string" ? provider.name : providerId,
+      models: normalizedModels,
+    };
+  }
+
+  return { providers, models };
+}
+
 async function fetchCatalog(): Promise<Catalog> {
-  const res = await fetch(CATALOG_URL, {
+  const response = await fetch(CATALOG_URL, {
     signal: AbortSignal.timeout(20_000),
-    headers: { Accept: 'application/json' },
+    headers: { Accept: "application/json" },
   });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch catalog: ${res.status} ${res.statusText}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch catalog: ${response.status} ${response.statusText}`);
   }
-  const data = (await res.json()) as Catalog;
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid catalog payload');
+  const raw = (await response.json()) as Record<string, RawCatalogProvider>;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("Invalid catalog payload");
   }
-  return data;
+  return normalizeCatalog(raw);
 }
 
-/** 读取本地 catalog；首次不存在则自动下载保存 */
 export async function getCatalog(): Promise<Catalog> {
   const file = catalogFile();
   const local = readJsonFile<Catalog>(file);
   if (local) return local;
-  // 首次：下载并默认保存
   const fresh = await fetchCatalog();
   ensureDir(dirname(file));
   writeJsonFile(file, fresh);
   return fresh;
 }
 
-/** 强制刷新（重新请求远端） */
 export async function refreshCatalog(): Promise<Catalog> {
   const fresh = await fetchCatalog();
   ensureDir(dirname(catalogFile()));
@@ -104,7 +148,11 @@ export async function getCatalogMeta(): Promise<CatalogMeta> {
   const file = catalogFile();
   let updatedAt: string | null = null;
   if (existsSync(file)) {
-    try { updatedAt = statSync(file).mtime.toISOString(); } catch { updatedAt = null; }
+    try {
+      updatedAt = statSync(file).mtime.toISOString();
+    } catch {
+      updatedAt = null;
+    }
   }
   const catalog = readJsonFile<Catalog>(file);
   return {
@@ -114,25 +162,23 @@ export async function getCatalogMeta(): Promise<CatalogMeta> {
   };
 }
 
-/** 下载一个 provider 图标，成功返回 true */
 async function downloadIcon(providerId: string, publicDir: string): Promise<boolean> {
   try {
-    const res = await fetch(LOGO_URL(providerId), {
+    const response = await fetch(LOGO_URL(providerId), {
       signal: AbortSignal.timeout(15_000),
     });
-    if (!res.ok) return false;
-    const text = await res.text();
-    if (!text || !text.trim()) return false;
-    const dir = join(publicDir, 'provider-icons');
-    if (!existsSync(dir)) await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, `${providerId}.svg`), text, 'utf-8');
+    if (!response.ok) return false;
+    const text = await response.text();
+    if (!text.trim()) return false;
+    const iconDir = join(publicDir, "provider-icons");
+    if (!existsSync(iconDir)) await mkdir(iconDir, { recursive: true });
+    await writeFile(join(iconDir, `${providerId}.svg`), text, "utf-8");
     return true;
   } catch {
     return false;
   }
 }
 
-/** 一键更新所有 provider 图标到 packages/server/public/provider-icons/ */
 export async function refreshProviderIcons(): Promise<{
   saved: string[];
   failed: string[];
@@ -140,37 +186,97 @@ export async function refreshProviderIcons(): Promise<{
   total: number;
 }> {
   const catalog = await getCatalog();
-  const ids = catalog.providers ? Object.keys(catalog.providers) : [];
-  const validSet = new Set(ids.map(id => `${id}.svg`));
+  const providerIds = Object.keys(catalog.providers ?? {});
+  const validSet = new Set(providerIds.map((providerId) => `${providerId}.svg`));
   const publicDir = resolvePublicDir();
-
   const saved: string[] = [];
   const failed: string[] = [];
-
-  // 限制并发为 8
-  const CONCURRENCY = 8;
+  const concurrency = 8;
   let cursor = 0;
+
   async function worker() {
-    while (cursor < ids.length) {
-      const i = cursor++;
-      const ok = await downloadIcon(ids[i], publicDir);
-      if (ok) saved.push(ids[i]);
-      else failed.push(ids[i]);
+    while (cursor < providerIds.length) {
+      const current = providerIds[cursor++];
+      const success = await downloadIcon(current, publicDir);
+      if (success) saved.push(current);
+      else failed.push(current);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker));
 
-  // 清理目录中不属于当前 catalog 的旧图标（统一为 provider id 体系）
+  await Promise.all(Array.from({ length: Math.min(concurrency, providerIds.length) }, worker));
+
   const removed: string[] = [];
-  const iconDir = join(publicDir, 'provider-icons');
+  const iconDir = join(publicDir, "provider-icons");
   if (existsSync(iconDir)) {
     const files = await readdir(iconDir);
-    for (const f of files) {
-      if (!f.endsWith('.svg')) continue;
-      if (validSet.has(f)) continue;
-      try { await unlink(join(iconDir, f)); removed.push(f); } catch { /* ignore */ }
+    for (const file of files) {
+      if (!file.endsWith(".svg")) continue;
+      if (validSet.has(file)) continue;
+      try {
+        await unlink(join(iconDir, file));
+        removed.push(file);
+      } catch {
+        // ignore stale file cleanup failures
+      }
     }
   }
 
-  return { saved, failed, removed, total: ids.length };
+  return { saved, failed, removed, total: providerIds.length };
+}
+
+export function getCatalogProviderIdByApiBase(catalog: Catalog, apiBase?: string): string {
+  const target = normalizeUrl(apiBase);
+  if (!target) return "";
+  const targetPath = normalizePathname(target.pathname);
+  for (const [providerId, provider] of Object.entries(catalog.providers ?? {})) {
+    const providerUrl = normalizeUrl(provider.api);
+    if (!providerUrl) continue;
+    if (providerUrl.hostname.toLowerCase() !== target.hostname.toLowerCase()) continue;
+    const providerPath = normalizePathname(providerUrl.pathname);
+    if (targetPath === providerPath || targetPath.startsWith(`${providerPath}/`) || providerPath === "/") {
+      return providerId;
+    }
+  }
+  return "";
+}
+
+export function getCatalogProviderIdByModelId(catalog: Catalog, modelId?: string): string {
+  if (!modelId) return "";
+  const slashIndex = modelId.indexOf("/");
+  if (slashIndex <= 0) return "";
+  const prefix = modelId.slice(0, slashIndex).toLowerCase();
+  if (catalog.providers[prefix]) return prefix;
+  const fixed = PREFIX_FIX[prefix];
+  return fixed && catalog.providers[fixed] ? fixed : "";
+}
+
+function isLikelyImageValue(value: string): boolean {
+  return /^(https?:)?\/\//.test(value) || value.startsWith("/");
+}
+
+export function resolveAgentIcon(
+  catalog: Catalog,
+  agent: Partial<Pick<AgentConfig, "avatarUrl" | "icon" | "apiBase" | "modelId">>,
+): ResolvedAgentIcon | null {
+  const avatarUrl = agent.avatarUrl?.trim();
+  if (avatarUrl) {
+    return { kind: "image", value: avatarUrl };
+  }
+
+  const icon = agent.icon?.trim();
+  if (icon) {
+    return {
+      kind: isLikelyImageValue(icon) ? "image" : "emoji",
+      value: icon,
+    };
+  }
+
+  const providerId = getCatalogProviderIdByApiBase(catalog, agent.apiBase)
+    || getCatalogProviderIdByModelId(catalog, agent.modelId);
+  if (!providerId) return null;
+  return {
+    kind: "image",
+    value: `/static/provider-icons/${providerId}.svg`,
+    providerId,
+  };
 }

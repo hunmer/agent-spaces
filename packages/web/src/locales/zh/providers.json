@@ -23,6 +23,8 @@
   },
   "form": {
     "connection": "连接",
+    "vendor": "供应商",
+    "vendorPlaceholder": "选择供应商并自动填充...",
     "name": "名称",
     "namePlaceholder": "例如 Anthropic",
     "apiBase": "API 地址",

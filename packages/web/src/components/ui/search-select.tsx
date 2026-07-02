@@ -9,7 +9,8 @@ import { Check, ChevronDown, Plus } from "lucide-react";
 export interface SearchSelectOption {
   value: string;
   label?: string;
-  /** 分组名；同名的选项会被归到同一组下渲染。省略则归入无标题区（排在分组之前）。 */
+  description?: string;
+  keywords?: string[];
   group?: string;
 }
 
@@ -25,9 +26,7 @@ export interface SearchSelectProps {
 }
 
 interface GroupedOptions {
-  /** 无分组选项（置顶） */
   ungrouped: SearchSelectOption[];
-  /** 有分组选项，按出现顺序去重 */
   groups: { name: string; items: SearchSelectOption[] }[];
 }
 
@@ -35,20 +34,27 @@ function groupOptions(options: SearchSelectOption[]): GroupedOptions {
   const ungrouped: SearchSelectOption[] = [];
   const groups: { name: string; items: SearchSelectOption[] }[] = [];
   const index = new Map<string, number>();
-  for (const o of options) {
-    if (!o.group) {
-      ungrouped.push(o);
+  for (const option of options) {
+    if (!option.group) {
+      ungrouped.push(option);
       continue;
     }
-    let gi = index.get(o.group);
-    if (gi === undefined) {
-      gi = groups.length;
-      index.set(o.group, gi);
-      groups.push({ name: o.group, items: [] });
+    let groupIndex = index.get(option.group);
+    if (groupIndex === undefined) {
+      groupIndex = groups.length;
+      index.set(option.group, groupIndex);
+      groups.push({ name: option.group, items: [] });
     }
-    groups[gi].items.push(o);
+    groups[groupIndex].items.push(option);
   }
   return { ungrouped, groups };
+}
+
+function matchesQuery(option: SearchSelectOption, query: string): boolean {
+  return [option.value, option.label ?? "", option.description ?? "", ...(option.keywords ?? [])]
+    .join("\n")
+    .toLowerCase()
+    .includes(query);
 }
 
 export function SearchSelect({
@@ -65,47 +71,47 @@ export function SearchSelect({
   const [query, setQuery] = useState("");
 
   const { ungrouped, groups } = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return groupOptions(options);
-    const filtered = options.filter((o) =>
-      (o.label ?? o.value).toLowerCase().includes(q),
-    );
-    return groupOptions(filtered);
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return groupOptions(options);
+    return groupOptions(options.filter((option) => matchesQuery(option, normalizedQuery)));
   }, [options, query]);
 
-  const exactMatch = options.some(
-    (o) => o.value.toLowerCase() === query.toLowerCase(),
-  );
-  const selected = options.find((o) => o.value === value);
-  const isCustom = value && !options.some((o) => o.value === value);
+  const exactMatch = options.some((option) => option.value.toLowerCase() === query.toLowerCase());
+  const selected = options.find((option) => option.value === value);
+  const isCustom = value && !options.some((option) => option.value === value);
 
-  const select = (v: string) => {
-    onChange(v);
+  const select = (nextValue: string) => {
+    onChange(nextValue);
     setOpen(false);
     setQuery("");
   };
 
   const hasGrouped = groups.length > 0;
   const hasUngrouped = ungrouped.length > 0;
-  const noResults = !hasUngrouped && !hasGrouped && !query.trim();
+  const noResults = !hasUngrouped && !hasGrouped && !(allowCustom && query.trim() && !exactMatch);
 
-  const renderItem = (o: SearchSelectOption) => (
+  const renderItem = (option: SearchSelectOption) => (
     <button
-      key={o.value}
+      key={option.value}
       type="button"
       className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/50",
-        value === o.value && "bg-muted",
+        "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/50",
+        value === option.value && "bg-muted",
       )}
-      onClick={() => select(o.value)}
+      onClick={() => select(option.value)}
     >
       <Check
         className={cn(
-          "size-3 shrink-0",
-          value === o.value ? "opacity-100" : "opacity-0",
+          "mt-0.5 size-3 shrink-0",
+          value === option.value ? "opacity-100" : "opacity-0",
         )}
       />
-      <span className="truncate">{o.label ?? o.value}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{option.label ?? option.value}</span>
+        {option.description ? (
+          <span className="block truncate text-[10px] text-muted-foreground">{option.description}</span>
+        ) : null}
+      </span>
     </button>
   );
 
@@ -156,23 +162,21 @@ export function SearchSelect({
           <div className="mt-1 max-h-64 overflow-y-auto">
             {hasUngrouped && ungrouped.map(renderItem)}
 
-            {hasGrouped && hasUngrouped && (
-              <div className="my-1 h-px bg-border" />
-            )}
+            {hasGrouped && hasUngrouped && <div className="my-1 h-px bg-border" />}
 
-            {hasGrouped && groups.map((g) => (
-              <div key={g.name} className="mb-0.5">
+            {hasGrouped && groups.map((group) => (
+              <div key={group.name} className="mb-0.5">
                 <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {g.name}
+                  {group.name}
                 </div>
-                {g.items.map(renderItem)}
+                {group.items.map(renderItem)}
               </div>
             ))}
 
             {allowCustom && query.trim() && !exactMatch && (
               <button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-primary hover:bg-muted/50 cursor-pointer"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-primary hover:bg-muted/50"
                 onClick={() => select(query.trim())}
               >
                 <Plus className="size-3 shrink-0" />

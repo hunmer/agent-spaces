@@ -18,6 +18,9 @@ export interface CatalogProvider {
   id: string;
   name?: string;
   api?: string;
+  npm?: string;
+  env?: string[];
+  doc?: string;
   models?: Record<string, CatalogModel>;
   [k: string]: unknown;
 }
@@ -76,7 +79,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ catalog, catalogLoaded: true });
   },
   addModel: (model) => set(s => ({ models: [...s.models, model] })),
-  updateModel: (model) => set(s => ({ models: s.models.map(m => m.id === model.id ? model : m) })),
+  updateModel: (model) => set((state) => ({ models: state.models.map(m => m.id === model.id ? model : m) })),
   removeModel: (id) => set(s => ({ models: s.models.filter(m => m.id !== id) })),
   addProvider: (provider) => {
     setProviderEntities([...get().providers, provider]);
@@ -85,11 +88,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   updateProvider: (provider) => {
     const providers = get().providers.map(p => p.id === provider.id ? provider : p);
     setProviderEntities(providers);
-    set(s => ({ providers: providers }));
+    set({ providers });
   },
   removeProvider: (id) => {
     const providers = get().providers.filter(p => p.id !== id);
     setProviderEntities(providers);
-    set(s => ({ providers }));
+    set({ providers });
   },
 }));

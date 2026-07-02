@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import type { AgentConfig } from '@agent-spaces/shared';
 import * as store from '../storage/llm-store.js';
+import { getCatalog, resolveAgentIcon } from '../storage/model-catalog-store.js';
 
 const router = Router();
 
@@ -99,6 +101,23 @@ router.delete('/providers/:id', (req, res) => {
     return;
   }
   res.status(204).end();
+});
+
+router.post('/agent-icon', async (req, res) => {
+  try {
+    const input = req.body as Partial<AgentConfig>;
+    const provider = input.providerId ? store.getProvider(input.providerId) : undefined;
+    const catalog = await getCatalog();
+    const icon = resolveAgentIcon(catalog, {
+      avatarUrl: input.avatarUrl,
+      icon: input.icon,
+      apiBase: input.apiBase || provider?.apiBase,
+      modelId: input.modelId,
+    });
+    res.json(icon);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to resolve agent icon' });
+  }
 });
 
 export default router;
