@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { useTranslations } from 'next-intl'
-import { ArrowDown, ArrowUp, Clock3, Cpu, DollarSign, Zap, type LucideIcon } from "lucide-react"
+import { ArrowDown, ArrowUp, type LucideIcon } from "lucide-react"
 import { subDays } from "date-fns"
 import { Label, Pie, PieChart } from "recharts"
 
@@ -11,10 +10,20 @@ import { Calendar } from "@/components/ui/calendar"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Card } from "@/components/ui/card"
+import { ModelProviderIcon } from "@/components/common/model-provider-icon"
 import { cn, textColorClass, textToColor } from "@/lib/utils"
 import { ActivityGraph } from "@/components/viewers/activity-graph"
 import type { AgentUsageDashboard as AgentUsageDashboardData } from "@agent-spaces/shared"
-import { formatCurrency, formatNumber, formatTokens, getModelIconUrl, PERIOD_KEYS, type PeriodKey } from "./usage-dashboard-utils"
+import { formatCurrency, formatNumber, formatTokens, PERIOD_KEYS, type PeriodKey } from "./usage-dashboard-utils"
+
+function isDateRange(value: unknown): value is { from: Date; to: Date } {
+  return Boolean(
+    value
+    && typeof value === "object"
+    && (value as { from?: unknown }).from instanceof Date
+    && (value as { to?: unknown }).to instanceof Date,
+  )
+}
 
 // ── period selector ──
 
@@ -51,8 +60,8 @@ export function PeriodSelector({ period, customRange, onPeriodChange }: {
             mode="range"
             defaultMonth={customRange?.from ?? subDays(new Date(), 30)}
             selected={customRange ? { from: customRange.from, to: customRange.to } : undefined}
-            onSelect={(range: any) => {
-              if (range?.from && range?.to) {
+            onSelect={(range) => {
+              if (isDateRange(range)) {
                 onPeriodChange('custom', { from: range.from, to: range.to })
               }
             }}
@@ -183,13 +192,7 @@ export function CostByModelChart({ byModel, maxModelCost }: {
           <div key={item.model} className="rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                {(() => { const iconUrl = getModelIconUrl(item.model); return iconUrl ? (
-                  <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
-                ) : (
-                  <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold", textColorClass(item.model ?? '?'))}>
-                    {item.model?.charAt(0).toUpperCase() ?? '?'}
-                  </span>
-                )})()}
+                <ModelProviderIcon modelId={item.model} fallbackClassName={cn(textColorClass(item.model ?? '?'))} />
                 <span className="truncate text-xs">{item.model}</span>
               </div>
               <span className="font-mono text-xs font-semibold tabular-nums">{formatCurrency(item.costUsd)}</span>

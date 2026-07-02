@@ -18,8 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
 import { AvatarGroup as CollapsibleAvatarGroup } from '@/components/ui/avatar-group';
-import { getProviderIconUrl } from '@/lib/provider-icon';
-import { resolveServerAssetUrl } from '@/lib/server';
+import { AgentIcon } from '@/components/common/agent-icon';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
 import { sdk } from '@/lib/sdk';
@@ -59,8 +58,22 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
         avatarUrls={visible.map((agentId) => {
           const agent = agents.find((a) => a.id === agentId);
           return {
-            imageUrl: resolveServerAssetUrl(agent?.avatarUrl) || getProviderIconUrl(agent?.apiBase) || '',
+            imageUrl: '',
             name: agent?.name || agentId,
+            avatarNode: (
+              <AgentIcon
+                agentId={agentId}
+                name={agent?.name || agentId}
+                avatarUrl={agent?.avatarUrl}
+                icon={agent?.icon}
+                apiBase={agent?.apiBase}
+                modelId={agent?.modelId}
+                providerId={agent?.providerId}
+                modelProvider={agent?.modelProvider}
+                className="size-5 rounded-full border object-cover"
+                rounded="rounded-full"
+              />
+            ),
           };
         })}
       />
@@ -113,7 +126,18 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
 
   const currentChannelId = channelId ?? activeChannelId;
   const isExternalChannelId = channelId && !channels.some((c) => c.id === channelId);
-  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: (isExternalChannelId ? 'mini-apps' : 'agent') as Channel['type'], members: [], issueId: undefined, workspaceId: '', createdAt: '' } as Channel;
+  const channel = useMemo(
+    () => channels.find((c) => c.id === currentChannelId) ?? {
+      id: currentChannelId!,
+      name: currentChannelId!,
+      type: (isExternalChannelId ? 'mini-apps' : 'agent') as Channel['type'],
+      members: [],
+      issueId: undefined,
+      workspaceId: '',
+      createdAt: '',
+    } as Channel,
+    [channels, currentChannelId, isExternalChannelId],
+  );
   const msgs = useMemo(
     () => currentChannelId ? (messages[currentChannelId] || []) : [],
     [currentChannelId, messages],

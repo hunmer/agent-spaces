@@ -20,11 +20,12 @@ import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { ModelProviderIcon } from "@/components/common/model-provider-icon"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn, textColorClass } from "@/lib/utils"
 import { sdk } from "@/lib/sdk"
 import { SessionDetailButton, UsageDashboardSessionDialog } from "./usage-dashboard-session-dialog"
-import { formatCurrency, formatDuration, formatTokens, getModelIconUrl } from "./usage-dashboard-utils"
+import { formatCurrency, formatDuration, formatTokens } from "./usage-dashboard-utils"
 import { FilterPanel } from "@/components/table/filter-panel"
 import type { Filter, FilterFieldConfig, CustomRendererProps } from "@/components/reui/filters"
 
@@ -453,16 +454,9 @@ function useTableColumns(t: ReturnType<typeof useTranslations<'home'>>, formatRe
       header: t('table.model'),
       cell: ({ row }) => {
         const model = row.original.model
-        const iconUrl = getModelIconUrl(model)
         return (
           <div className="flex items-center gap-2">
-            {iconUrl ? (
-              <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
-            ) : (
-              <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold", textColorClass(model ?? '?'))}>
-                {model?.charAt(0).toUpperCase() ?? '?'}
-              </span>
-            )}
+            <ModelProviderIcon modelId={model} fallbackClassName={cn(textColorClass(model ?? '?'))} />
             <span className="truncate text-xs max-w-40">{model || t('table.modelUnknown')}</span>
           </div>
         )

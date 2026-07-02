@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 interface Avatar {
   imageUrl: string;
   name: string;
+  avatarNode?: ReactNode;
 }
 
 type AvatarSize = 'sm' | 'md';
@@ -93,7 +94,9 @@ const AvatarGroup = ({ className, avatarUrls = [], size = 'md', renderHoverCard 
             )}
           >
             <div className='relative shrink-0'>
-              {avatar.imageUrl ? (
+              {avatar.avatarNode ? (
+                avatar.avatarNode
+              ) : avatar.imageUrl ? (
                 <img
                   src={avatar.imageUrl}
                   alt={avatar.name}

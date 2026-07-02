@@ -1,8 +1,3 @@
-import { resolveServerAssetUrl } from "@/lib/server"
-import { getProviderIdByModelId, getProviderIconUrlById } from "@/lib/provider-icon"
-
-// ── period types ──
-
 export type PeriodKey = 'today' | '7d' | '30d' | '1y' | 'custom'
 
 export const PERIOD_KEYS: Array<{ key: PeriodKey; days: number }> = [
@@ -11,14 +6,6 @@ export const PERIOD_KEYS: Array<{ key: PeriodKey; days: number }> = [
   { key: '30d', days: 30 },
   { key: '1y', days: 365 },
 ]
-
-// model -> provider icon（基于 catalog 的 provider id 体系）
-export function getModelIconUrl(model?: string): string {
-  if (!model) return ''
-  return getProviderIconUrlById(getProviderIdByModelId(model))
-}
-
-// ── formatters ──
 
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value)

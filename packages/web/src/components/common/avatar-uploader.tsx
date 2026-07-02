@@ -82,11 +82,14 @@ export function AvatarUploader({
               />
             }
           >
-            {icon ? (
-              <span className="text-2xl">{icon}</span>
-            ) : (
-              <span className="text-lg text-muted-foreground">{name?.charAt(0).toUpperCase() || "?"}</span>
-            )}
+            <AgentIcon
+              name={name}
+              avatarUrl={avatarUrl}
+              icon={icon}
+              apiBase={apiBase}
+              className="size-16 rounded-xl border border-input"
+              bordered={false}
+            />
           </PopoverTrigger>
           <PopoverContent side="bottom" align="center" className="w-auto p-0">
             {/* Tab header */}
