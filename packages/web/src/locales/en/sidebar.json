@@ -37,8 +37,8 @@
     "type": {
       "issue_completed": "Issue Completed",
       "issue_failed": "Issue Failed",
-      "task_completed": "Task Completed",
-      "task_failed": "Task Failed",
+      "workflow_completed": "Workflow Completed",
+      "workflow_failed": "Workflow Failed",
       "channel_agent_completed": "Agent Completed"
     },
     "delete": "Delete",

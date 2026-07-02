@@ -19,24 +19,24 @@ import { useState, useEffect, useMemo } from "react";
 const typeIcon: Record<string, string> = {
   issue_completed: "✓",
   issue_failed: "✕",
-  task_completed: "✓",
-  task_failed: "✕",
+  workflow_completed: "✓",
+  workflow_failed: "✕",
   channel_agent_completed: "✓",
 };
 
 const typeColor: Record<string, string> = {
   issue_completed: "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400",
   issue_failed: "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400",
-  task_completed: "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400",
-  task_failed: "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400",
+  workflow_completed: "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400",
+  workflow_failed: "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400",
   channel_agent_completed: "text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400",
 };
 
 const NOTIFICATION_TYPES: NotificationType[] = [
   "issue_completed",
   "issue_failed",
-  "task_completed",
-  "task_failed",
+  "workflow_completed",
+  "workflow_failed",
   "channel_agent_completed",
 ];
 

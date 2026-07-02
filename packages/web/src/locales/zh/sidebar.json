@@ -37,8 +37,8 @@
     "type": {
       "issue_completed": "Issue 完成",
       "issue_failed": "Issue 失败",
-      "task_completed": "Task 完成",
-      "task_failed": "Task 失败",
+      "workflow_completed": "Workflow 完成",
+      "workflow_failed": "Workflow 失败",
       "channel_agent_completed": "Agent 执行完成"
     },
     "delete": "删除",

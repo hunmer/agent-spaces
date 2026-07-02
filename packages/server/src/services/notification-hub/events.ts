@@ -152,17 +152,17 @@ function persistInAppNotification(workspaceId: string, wsEvent: string, data: un
 
     if (payload.to === 'done') {
       notificationCenter.createNotification(
-        workspaceId, 'task_completed',
-        `任务完成: ${task.title}`,
+        workspaceId, 'workflow_completed',
+        `工作流完成: ${task.title}`,
         task.description || undefined,
-        { taskId: task.id, issueId: task.issueId, status: 'done' },
+        { workflowId: task.id, issueId: task.issueId, status: 'done' },
       );
     } else if (payload.to === 'failed') {
       notificationCenter.createNotification(
-        workspaceId, 'task_failed',
-        `任务失败: ${task.title}`,
+        workspaceId, 'workflow_failed',
+        `工作流失败: ${task.title}`,
         task.description || undefined,
-        { taskId: task.id, issueId: task.issueId, status: 'failed' },
+        { workflowId: task.id, issueId: task.issueId, status: 'failed' },
       );
     }
   }
