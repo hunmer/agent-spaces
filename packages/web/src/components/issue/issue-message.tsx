@@ -13,6 +13,7 @@ import { useChannelStore } from '@/stores/channel';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
 import type { Attachment as MessageAttachment, IssueComment, MessageReply } from '@agent-spaces/shared';
 import { copyToClipboard } from '@/lib/utils';
+import { Markdown } from '@/components/ui/markdown';
 
 interface IssueMessageProps {
   comment: IssueComment;
@@ -192,9 +193,9 @@ export function IssueMessage({
             <div className="relative">
               <div
                 ref={contentRef}
-                className={`mt-1 text-sm leading-relaxed whitespace-pre-wrap break-words ${!expanded ? 'max-h-[300px] overflow-hidden' : ''}`}
+                className={`mt-1 text-sm leading-relaxed break-words ${!expanded ? 'max-h-[300px] overflow-hidden' : ''}`}
               >
-                {comment.content}
+                <Markdown content={comment.content} workspaceId={workspaceId} />
               </div>
               {overflowing && !expanded && (
                 <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent flex items-end justify-center pb-1">
@@ -276,10 +277,10 @@ export function IssueMessage({
               />
             </div>
           ) : null}
-          {repliesExpanded && replies.length > 0 ? (
+              {repliesExpanded && replies.length > 0 ? (
             <div className="space-y-0">
               {replies.map((reply) => (
-                <IssueReply key={reply.id} reply={reply} level={1} />
+                <IssueReply key={reply.id} reply={reply} level={1} workspaceId={workspaceId} />
               ))}
             </div>
           ) : null}
@@ -289,7 +290,7 @@ export function IssueMessage({
   );
 }
 
-function IssueReply({ reply, level }: { reply: MessageReply; level: number }) {
+function IssueReply({ reply, level, workspaceId }: { reply: MessageReply; level: number; workspaceId: string }) {
   const tc = useTranslations('common');
   const agents = useAgentStore((s) => s.agents);
   const userAvatarUrl = useUserAvatar();
@@ -327,15 +328,12 @@ function IssueReply({ reply, level }: { reply: MessageReply; level: number }) {
               <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{reply.senderRole}</Badge>
             ) : null}
           </div>
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
-            {stripHtml(reply.content)}
-          </p>
+          <div className="mt-1 text-sm leading-relaxed">
+            <Markdown content={reply.content} workspaceId={workspaceId} />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function stripHtml(content: string): string {
-  return /<[a-z][\s\S]*>/i.test(content) ? content.replace(/<[^>]*>/g, '') : content;
-}

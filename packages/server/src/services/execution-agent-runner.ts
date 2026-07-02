@@ -1,9 +1,9 @@
-import { BUILT_IN_AGENT_TOOLS, type WorkflowNode, type ExecutionLogEntry, type AgentSession } from '@agent-spaces/shared';
+import { BUILT_IN_AGENT_TOOLS, type WorkflowNode, type ExecutionLogEntry, type AgentSession, type AgentUsageSessionToolCall } from '@agent-spaces/shared';
 import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
 import { listProviders } from '../storage/llm-store.js';
 import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import * as workspaceService from './workspace.js';
-import { buildAgentPrompt } from '../ws/agent-prompt.js';
+import { buildAgentPrompt, buildBuiltInTools } from '../ws/agent-prompt.js';
 import type { ExecutionSession } from './execution-types.js';
 import {
   createCommandFunctionTools,
@@ -12,6 +12,8 @@ import {
   createWorkspaceFileFunctionTools,
   createWorkflowExecutionFunctionTools,
 } from './builtin-tools/index.js';
+import * as channelService from './channel.js';
+import * as issueService from './issue.js';
 
 type AppendLog = (level: ExecutionLogEntry['level'], message: string) => void;
 
@@ -67,8 +69,8 @@ async function executeAgentWithRuntime(
       ? `工作流描述:\n${session.workflow.description.trim()}`
       : '',
   ].filter(Boolean).join('\n\n');
-  const issueContext = buildIssueContext(session);
-  const fullPrompt = [workflowContext, issueContext, prompt]
+  const promptIssueContext = buildIssueContext(session);
+  const fullPrompt = [workflowContext, promptIssueContext, prompt]
     .map(part => typeof part === 'string' ? part.trim() : '')
     .filter(Boolean)
     .join('\n\n');
@@ -84,11 +86,27 @@ async function executeAgentWithRuntime(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const tools = Array.isArray(preset.tools) ? [...preset.tools] : undefined;
   const enabledToolNames = new Set(tools ?? []);
+  const issueRuntimeContext = resolveExecutionIssueContext(workspaceId, session);
+  const issueFunctionTools = createIssueFunctionTools(
+    workspaceId,
+    issueRuntimeContext.channel,
+    { senderId: preset.id, senderRole: preset.role },
+    tools,
+  );
   const builtInTools = BUILT_IN_AGENT_TOOLS
     .filter((tool) => enabledToolNames.has(tool.name))
     .map((tool) => ({ name: tool.name, description: tool.description }));
+  const issueBuiltInTools = buildBuiltInTools(
+    issueFunctionTools,
+    issueRuntimeContext.channel,
+    issueRuntimeContext.issue,
+  );
+  const mergedBuiltInTools = builtInTools.map((tool) => {
+    const issueTool = issueBuiltInTools.find((candidate) => candidate.name === tool.name);
+    return issueTool ?? tool;
+  });
   const functionTools = [
-    ...createIssueFunctionTools(workspaceId, undefined, { senderId: preset.id, senderRole: preset.role }, tools),
+    ...issueFunctionTools,
     ...createCommandFunctionTools(workspaceId, tools),
     ...createDatabaseFunctionTools(workspaceId, tools),
     ...createWorkspaceFileFunctionTools(workspaceId, tools, () => workspace ?? null),
@@ -99,6 +117,8 @@ async function executeAgentWithRuntime(
   if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
 
   const startTime = Date.now();
+  const toolCalls: AgentUsageSessionToolCall[] = [];
+  const toolCallsByUseId = new Map<string, AgentUsageSessionToolCall>();
   const result = await runtime.execute(
     buildAgentPrompt(workspaceId, preset.systemPrompt, fullPrompt, [], {
       runtimeKind: preset.runtimeKind,
@@ -107,7 +127,7 @@ async function executeAgentWithRuntime(
       boundDirs: workspace?.boundDirs ?? [],
       workingDir,
       excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
-      builtInTools,
+      builtInTools: mergedBuiltInTools,
     }),
     workingDir,
     {
@@ -125,7 +145,25 @@ async function executeAgentWithRuntime(
         if (event.type === 'output') {
           appendLog('info', event.line);
         } else if (event.type === 'tool_use') {
+          const toolCall: AgentUsageSessionToolCall = {
+            id: event.id,
+            title: event.name,
+            raw: event.line,
+            toolName: event.name,
+            status: 'running',
+            input: event.input,
+            createdAt: new Date().toISOString(),
+          };
+          toolCalls.push(toolCall);
+          toolCallsByUseId.set(event.id, toolCall);
           appendLog('info', `Tool: ${event.name}`);
+        } else if (event.type === 'tool_result') {
+          const toolCall = event.toolUseId ? toolCallsByUseId.get(event.toolUseId) : undefined;
+          if (toolCall) {
+            toolCall.result = event.result;
+            toolCall.status = 'success';
+            toolCall.updatedAt = new Date().toISOString();
+          }
         }
       },
     },
@@ -149,7 +187,7 @@ async function executeAgentWithRuntime(
         usage: result.usage,
         costUsd: result.costUsd,
       });
-      persistWorkflowAgentSessionHistory(agentService, agentSessionId, preset, prompt, result);
+      persistWorkflowAgentSessionHistory(agentService, agentSessionId, preset, prompt, result, toolCalls);
     }
     throw new Error(result.summary || 'Agent execution failed');
   }
@@ -167,7 +205,7 @@ async function executeAgentWithRuntime(
       usage: result.usage,
       costUsd: result.costUsd,
     });
-    persistWorkflowAgentSessionHistory(agentService, agentSessionId, preset, prompt, result);
+    persistWorkflowAgentSessionHistory(agentService, agentSessionId, preset, prompt, result, toolCalls);
   }
 
   return {
@@ -194,9 +232,10 @@ function persistWorkflowAgentSessionHistory(
   preset: Record<string, unknown>,
   userPrompt: string,
   result: { success: boolean; summary: string; output: string[]; error?: string; usage?: unknown; costUsd?: number },
+  toolCalls: AgentUsageSessionToolCall[],
 ): void {
   const now = new Date().toISOString();
-  const messages = [
+  const fallbackMessages = [
     { id: `${agentSessionId}-user`, role: 'user', content: userPrompt, createdAt: now, senderId: 'workflow' },
     {
       id: `${agentSessionId}-agent`,
@@ -205,9 +244,17 @@ function persistWorkflowAgentSessionHistory(
       createdAt: now,
       senderId: typeof preset.id === 'string' ? preset.id : 'agent',
       senderRole: typeof preset.role === 'string' ? preset.role : 'assistant',
+      toolCalls,
     },
   ];
   const detail = agentService.getSessionDetail(agentSessionId);
+  const messages = (detail?.messages?.length ? detail.messages : fallbackMessages).map((message) => {
+    if (message.id !== `${agentSessionId}-agent`) return message;
+    return {
+      ...message,
+      toolCalls: message.toolCalls?.length ? message.toolCalls : toolCalls,
+    };
+  });
   const payload = {
     session: detail?.session ?? null,
     usage: detail?.usage ?? null,
@@ -239,6 +286,25 @@ function buildIssueContext(session: ExecutionSession): string {
     `- Description: ${issueDescription || '(empty)'}`,
     issueMembers.length ? `- Members: ${issueMembers.join(', ')}` : '',
   ].filter(Boolean).join('\n');
+}
+
+function resolveExecutionIssueContext(
+  workspaceId: string,
+  session: ExecutionSession,
+): {
+  channel: ReturnType<typeof channelService.getChannel>;
+  issue: ReturnType<typeof issueService.getById>;
+} {
+  const contextIssueId = typeof session.context.issueId === 'string' ? session.context.issueId.trim() : '';
+  const contextChannelId = typeof session.context.channelId === 'string' ? session.context.channelId.trim() : '';
+  const channel = contextChannelId ? channelService.getChannel(workspaceId, contextChannelId) : undefined;
+  const issue = contextIssueId
+    ? issueService.getById(workspaceId, contextIssueId)
+    : channel?.issueId
+      ? issueService.getById(workspaceId, channel.issueId)
+      : null;
+
+  return { channel, issue };
 }
 
 function normalizeStringList(value: unknown): string[] {

@@ -63,6 +63,7 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
   const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const router = useRouter();
   const tc = useTranslations('common');
 
@@ -82,16 +83,21 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
           <SidebarMenuItem key={route.id}>
             {useCollapsible ? (
               isCollapsed ? (
-                <Popover>
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                   <PopoverTrigger render={<SidebarMenuButton className="justify-center text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" tooltip={route.title} />}>{route.icon}</PopoverTrigger>
                   <PopoverContent side="right" sideOffset={8} className="w-56 p-1.5">
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mb-1">{route.title}</div>
-                    {route.subs?.map((subRoute) => (
+                    {route.subs?.map((subRoute) => {
+                      const handleSubClick = () => {
+                        setPopoverOpen(false);
+                        if (subRoute.onClick) subRoute.onClick();
+                        else navigate(subRoute.link);
+                      };
+                      return (
                       <div key={`${route.id}-${subRoute.title}`} className="group/sub relative flex items-center">
-                        {subRoute.onClick ? (
                           <button
                             type="button"
-                            onClick={subRoute.onClick}
+                            onClick={handleSubClick}
                             className={cn(
                               "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer",
                               pathname === subRoute.link
@@ -102,21 +108,6 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
                             {subRoute.icon}
                             {subRoute.title}
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => navigate(subRoute.link)}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer",
-                              pathname === subRoute.link
-                                ? "bg-accent text-accent-foreground font-medium"
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                            )}
-                          >
-                            {subRoute.icon}
-                            {subRoute.title}
-                          </button>
-                        )}
                         {subRoute.menuItems && subRoute.menuItems.length > 0 && (
                           <DropdownMenu>
                             <DropdownMenuTrigger
@@ -140,11 +131,12 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
                           </DropdownMenu>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                     {route.onAdd && (
                       <button
                         type="button"
-                        onClick={route.onAdd}
+                        onClick={() => { setPopoverOpen(false); route.onAdd?.(); }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
                       >
                         <Plus className="size-3.5" />
@@ -154,7 +146,7 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
                     {route.manageLink && (
                       <button
                         type="button"
-                        onClick={() => navigate(route.manageLink!)}
+                        onClick={() => { setPopoverOpen(false); navigate(route.manageLink!); }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
                       >
                         <LayoutGrid className="size-3.5" />
