@@ -12,7 +12,7 @@ router.get('/models', (_req, res) => {
   res.json(store.listModels());
 });
 
-router.post('/models', (req, res) => {
+router.post('/models', async (req, res) => {
   const {
     modelId,
     name,
@@ -24,24 +24,70 @@ router.post('/models', (req, res) => {
     maxContextTokens,
     thinkingEnabled,
     thinkingEffort,
+    autoFill,
   } = req.body;
-  if (!modelId || !name || !provider) {
-    res.status(400).json({ error: 'modelId, name, and provider are required' });
+  if (!modelId || !provider) {
+    res.status(400).json({ error: 'modelId and provider are required' });
     return;
   }
-  const model = store.createModel({
-    modelId,
-    name,
-    provider,
-    cost: normalizeModelCost(cost),
-    maxContextTokens: normalizeTokenLimit(maxContextTokens),
-    thinkingEnabled: normalizeThinkingEnabled(thinkingEnabled),
-    thinkingEffort: normalizeThinkingEffort(thinkingEffort),
-    vision: Boolean(vision),
-    reasoning: Boolean(reasoning),
-    embedding: Boolean(embedding),
+  // modelId 支持逗号拆分，单次添加多个模型
+  const modelIds = String(modelId)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (modelIds.length === 0) {
+    res.status(400).json({ error: 'modelId is required' });
+    return;
+  }
+  const names = String(name ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const shouldAutoFill = autoFill === true;
+  const catalog = shouldAutoFill ? await getCatalog() : null;
+  const created = modelIds.map((mid, i) => {
+    const base: {
+      provider: string;
+      cost?: { inputPerMillion: number; outputPerMillion: number };
+      maxContextTokens?: number;
+      thinkingEnabled?: boolean;
+      thinkingEffort?: 'low' | 'medium' | 'high';
+      vision?: boolean;
+      reasoning?: boolean;
+      embedding?: boolean;
+    } = {
+      provider,
+      vision: typeof vision === 'boolean' ? vision : undefined,
+      reasoning: typeof reasoning === 'boolean' ? reasoning : undefined,
+      embedding: typeof embedding === 'boolean' ? embedding : undefined,
+      maxContextTokens: normalizeTokenLimit(maxContextTokens),
+      thinkingEnabled: typeof thinkingEnabled === 'boolean' ? thinkingEnabled : undefined,
+      thinkingEffort: normalizeThinkingEffort(thinkingEffort),
+    };
+    const normalizedCost = normalizeModelCost(cost);
+    // 用户显式传了非零 cost 才采用，否则留给 autoFill/默认
+    if (normalizedCost.inputPerMillion > 0 || normalizedCost.outputPerMillion > 0) {
+      base.cost = normalizedCost;
+    }
+    const filled = catalog ? applyCatalogDefaults(catalog, {
+      modelId: mid,
+      name: names[i] || mid,
+      ...base,
+    }, true) : { modelId: mid, name: names[i] || mid, ...base };
+    return store.createModel({
+      modelId: mid,
+      name: names[i] || mid,
+      provider,
+      cost: filled.cost ?? { inputPerMillion: 0, outputPerMillion: 0 },
+      maxContextTokens: filled.maxContextTokens,
+      thinkingEnabled: filled.thinkingEnabled ?? false,
+      thinkingEffort: filled.thinkingEffort ?? 'medium',
+      vision: filled.vision ?? false,
+      reasoning: filled.reasoning ?? false,
+      embedding: filled.embedding ?? false,
+    });
   });
-  res.status(201).json(model);
+  res.status(201).json(created.length === 1 ? created[0] : created);
 });
 
 router.put('/models/:id', (req, res) => {
@@ -186,6 +232,50 @@ function findCatalogModelCost(catalog: Catalog, modelId: string): { input?: numb
 
 function hasModelCost(cost: { input?: number; output?: number } | null): cost is { input: number; output: number } {
   return !!cost && typeof cost.input === 'number' && typeof cost.output === 'number';
+}
+
+// 从 catalog 查找完整模型信息（含 limit/modalities/reasoning）
+function findCatalogModel(catalog: Catalog, modelId: string): CatalogModel | null {
+  for (const pid of Object.keys(catalog.providers)) {
+    const m = catalog.providers[pid]?.models?.[modelId];
+    if (m) return m;
+  }
+  return catalog.models[modelId] ?? null;
+}
+
+// 从 catalog 自动填充模型属性（cost/context/vision/reasoning/thinking），未传字段才回填
+function applyCatalogDefaults(catalog: Catalog, data: {
+  modelId: string;
+  name: string;
+  cost?: { inputPerMillion: number; outputPerMillion: number };
+  maxContextTokens?: number;
+  vision?: boolean;
+  reasoning?: boolean;
+  embedding?: boolean;
+  thinkingEnabled?: boolean;
+  thinkingEffort?: 'low' | 'medium' | 'high';
+}, autoFill: boolean) {
+  if (!autoFill) return data;
+  const cm = findCatalogModel(catalog, data.modelId);
+  if (!cm) return data;
+  const result = { ...data };
+  // 价格：catalog 有有效 cost 时回填
+  if (hasModelCost(cm.cost ?? null) && !result.cost) {
+    result.cost = { inputPerMillion: cm.cost!.input!, outputPerMillion: cm.cost!.output! };
+  }
+  // 上下文
+  if (typeof cm.limit?.context === 'number' && cm.limit.context > 0 && result.maxContextTokens === undefined) {
+    result.maxContextTokens = cm.limit.context;
+  }
+  // 能力
+  const inputs = cm.modalities?.input ?? [];
+  if (result.vision === undefined) result.vision = cm.attachment === true || inputs.includes('image');
+  if (result.reasoning === undefined) result.reasoning = cm.reasoning === true;
+  // thinking 跟随 reasoning
+  if (result.thinkingEnabled === undefined && result.reasoning !== undefined) {
+    result.thinkingEnabled = result.reasoning;
+  }
+  return result;
 }
 
 interface SyncResult {

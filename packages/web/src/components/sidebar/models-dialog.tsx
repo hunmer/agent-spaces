@@ -167,10 +167,20 @@ export function ModelsDialog({
     setError(null);
     try {
       const isNew = !selected;
-      const saved: LLMModel = isNew
-        ? await sdk.llm.createModel(draft)
-        : await sdk.llm.updateModel(selected!.id, draft);
-      if (isNew) addModel(saved); else updateModel(saved);
+      const isMulti = draft.modelId.includes(",");
+      if (isNew) {
+        // 多选：仅传必要字段，其余由后端按 catalog 自动填充
+        const payload = isMulti
+          ? { modelId: draft.modelId, name: draft.name, provider: draft.provider, autoFill: true }
+          : draft;
+        const saved = await sdk.llm.createModel(payload);
+        // 后端按 modelId 逗号拆分，可能返回单个或数组
+        const list: LLMModel[] = Array.isArray(saved) ? saved : [saved];
+        list.forEach((m) => addModel(m));
+      } else {
+        const saved: LLMModel = await sdk.llm.updateModel(selected!.id, draft);
+        updateModel(saved);
+      }
       handleBack();
     } catch {
       setError(t("error.saveFailed"));
@@ -298,7 +308,7 @@ export function ModelsDialog({
         {loading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">{t("dialog.loading")}</div>
         ) : draft ? (
-          <ModelForm draft={draft} providerNames={providerNames} providers={providers} onChange={updateDraft} catalog={catalog} />
+          <ModelForm draft={draft} providerNames={providerNames} providers={providers} editing={!!selected} onChange={updateDraft} catalog={catalog} />
         ) : (
           <ModelList groups={groups} providers={providers} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
         )}
@@ -473,12 +483,14 @@ function ModelForm({
   draft,
   providerNames,
   providers,
+  editing,
   onChange,
   catalog,
 }: {
   draft: Partial<LLMModel>;
   providerNames: string[];
   providers: { id: string; name: string; apiBase?: string; modelProvider?: string }[];
+  editing: boolean;
   onChange: (key: string, value: unknown) => void;
   catalog: ReturnType<typeof useLLMStore.getState>["catalog"];
 }) {
@@ -487,6 +499,8 @@ function ModelForm({
   const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
   const [showAllModels, setShowAllModels] = useState(false);
   const options = providerNames.length > 0 ? [...providerNames, "Other"] : ["Other"];
+  // 多选模式：modelId 含逗号，隐藏表单细节字段，交由后端按 catalog 自动填充
+  const isMulti = (draft.modelId ?? "").includes(",");
   // 当前模型是否支持 reasoning（不支持时禁用 thinking 开关）
   const supportsReasoning = draft.reasoning === true;
 
@@ -543,19 +557,28 @@ function ModelForm({
   }, [catalogModels, catalogProviders]);
 
   // 选择 modelId（含自定义输入）后自动填充属性
+  // 多选时 value 为逗号拼接，属性交由后端按 catalog 自动填充，前端仅回退名称
   const handleModelIdChange = useCallback((value: string) => {
     onChange("modelId", value);
-    const { model, providerName } = findCatalogModel(value);
+    const ids = value.split(",").map((s) => s.trim()).filter(Boolean);
+    const firstId = ids[0] ?? value;
+    if (!nameEditedByUser.current) {
+      const { model } = findCatalogModel(firstId);
+      onChange("name", model?.name || firstId);
+    }
+    // 多选：其余字段由后端按 catalog 自动填充
+    if (value.includes(",")) return;
+    const { model, providerName } = findCatalogModel(firstId);
     if (!model) return;
-    if (!nameEditedByUser.current) onChange("name", model.name || value);
     if (typeof model.limit?.context === "number" && model.limit.context > 0) {
       onChange("maxContextTokens", model.limit.context);
       setContextIdx(getContextSliderIndex(model.limit.context));
     }
     if (model.cost) {
+      // catalog 价格优先；缺失项回退到 0（而非旧 draft，避免显示陈旧值）
       onChange("cost", {
-        inputPerMillion: typeof model.cost.input === "number" ? model.cost.input : (draft.cost?.inputPerMillion ?? 0),
-        outputPerMillion: typeof model.cost.output === "number" ? model.cost.output : (draft.cost?.outputPerMillion ?? 0),
+        inputPerMillion: typeof model.cost.input === "number" ? model.cost.input : 0,
+        outputPerMillion: typeof model.cost.output === "number" ? model.cost.output : 0,
       });
     }
     const inputs = model.modalities?.input ?? [];
@@ -565,7 +588,9 @@ function ModelForm({
     onChange("reasoning", supportsReasoning);
     // thinking 仅在模型支持 reasoning 时启用；不支持则关闭并禁用开关
     onChange("thinkingEnabled", supportsReasoning);
-    if (providerName) onChange("provider", providerName);
+    // 仅在未选择 provider 时回填 catalog 的 providerName，避免覆盖用户已选的本地 provider
+    // 覆盖会导致 provider 名与本地 provider 不匹配，进而 host 过滤失效（回退展示全部）
+    if (providerName && !draft.provider) onChange("provider", providerName);
   }, [onChange, findCatalogModel, draft.cost]);
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -587,6 +612,7 @@ function ModelForm({
               placeholder={t("form.modelIdPlaceholder")}
               searchPlaceholder={t("form.modelIdSearch")}
               allowCustom
+              multiple={!editing}
             />
           ) : (
             <Input value={draft.modelId || ""} onChange={e => {
@@ -612,6 +638,7 @@ function ModelForm({
         </div>
       </div>
 
+      {!isMulti && (
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.context")}</div>
         <div className="flex flex-col gap-1">
@@ -649,7 +676,9 @@ function ModelForm({
           </div>
         </div>
       </div>
+      )}
 
+      {!isMulti && (
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.thinking")}</div>
         <div className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2">
@@ -679,7 +708,9 @@ function ModelForm({
           </select>
         </div>
       </div>
+      )}
 
+      {!isMulti && (
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.cost")}</div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -713,7 +744,9 @@ function ModelForm({
           </div>
         </div>
       </div>
+      )}
 
+      {!isMulti && (
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.capabilities")}</div>
         <div className="flex items-center gap-1.5">
@@ -736,6 +769,7 @@ function ModelForm({
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }

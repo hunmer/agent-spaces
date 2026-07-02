@@ -23,6 +23,8 @@ export interface SearchSelectProps {
   allowCustom?: boolean;
   className?: string;
   disabled?: boolean;
+  /** 多选模式：value 为逗号拼接的已选值，单击已选项可取消选中 */
+  multiple?: boolean;
 }
 
 interface GroupedOptions {
@@ -66,6 +68,7 @@ export function SearchSelect({
   allowCustom = true,
   className,
   disabled = false,
+  multiple = false,
 }: SearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -77,14 +80,46 @@ export function SearchSelect({
   }, [options, query]);
 
   const exactMatch = options.some((option) => option.value.toLowerCase() === query.toLowerCase());
-  const selected = options.find((option) => option.value === value);
-  const isCustom = value && !options.some((option) => option.value === value);
+  const selectedValues = useMemo(
+    () => (multiple ? value.split(",").map((s) => s.trim()).filter(Boolean) : []),
+    [multiple, value],
+  );
+  const isSelected = (val: string) => (multiple ? selectedValues.includes(val) : value === val);
+  const selected = multiple ? undefined : options.find((option) => option.value === value);
+  const isCustom = !multiple && value && !options.some((option) => option.value === value);
 
   const select = (nextValue: string) => {
     onChange(nextValue);
-    setOpen(false);
+    if (!multiple) {
+      setOpen(false);
+    }
     setQuery("");
   };
+
+  const toggle = (val: string) => {
+    if (!multiple) {
+      select(val);
+      return;
+    }
+    const set = new Set(selectedValues);
+    if (set.has(val)) {
+      set.delete(val);
+    } else {
+      set.add(val);
+    }
+    onChange(Array.from(set).join(","));
+  };
+
+  const triggerLabel = (() => {
+    if (!multiple) {
+      return selected ? (selected.label ?? selected.value) : isCustom ? value : placeholder;
+    }
+    if (selectedValues.length === 0) return placeholder;
+    const labels = selectedValues.map(
+      (v) => options.find((o) => o.value === v)?.label ?? v,
+    );
+    return labels.join(", ");
+  })();
 
   const hasGrouped = groups.length > 0;
   const hasUngrouped = ungrouped.length > 0;
@@ -94,16 +129,18 @@ export function SearchSelect({
     <button
       key={option.value}
       type="button"
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
       className={cn(
         "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/50",
-        value === option.value && "bg-muted",
+        isSelected(option.value) && "bg-muted",
       )}
-      onClick={() => select(option.value)}
+      onClick={() => (multiple ? toggle(option.value) : select(option.value))}
     >
       <Check
         className={cn(
           "mt-0.5 size-3 shrink-0",
-          value === option.value ? "opacity-100" : "opacity-0",
+          isSelected(option.value) ? "opacity-100" : "opacity-0",
         )}
       />
       <span className="min-w-0 flex-1">
@@ -135,7 +172,7 @@ export function SearchSelect({
               )}
             >
               <span className={cn("truncate", !value && "text-muted-foreground")}>
-                {selected ? (selected.label ?? selected.value) : isCustom ? value : placeholder}
+                {triggerLabel}
               </span>
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>
@@ -154,7 +191,12 @@ export function SearchSelect({
             onKeyDown={(e) => {
               if (e.key === "Enter" && allowCustom && query.trim()) {
                 e.preventDefault();
-                select(query.trim());
+                if (multiple) {
+                  toggle(query.trim());
+                  setQuery("");
+                } else {
+                  select(query.trim());
+                }
               }
             }}
             autoFocus
@@ -176,8 +218,10 @@ export function SearchSelect({
             {allowCustom && query.trim() && !exactMatch && (
               <button
                 type="button"
+                tabIndex={-1}
+                onMouseDown={(e) => e.preventDefault()}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-primary hover:bg-muted/50"
-                onClick={() => select(query.trim())}
+                onClick={() => (multiple ? toggle(query.trim()) : select(query.trim()))}
               >
                 <Plus className="size-3 shrink-0" />
                 <span className="truncate">Use &quot;{query.trim()}&quot;</span>
