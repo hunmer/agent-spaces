@@ -20,12 +20,12 @@ interface MemberPickerProps {
   searchPlaceholder?: string;
   emptyText?: string;
   label?: string;
-  /** 过滤候选成员，默认排除 scheduler/task_creator/bot */
+  /** 过滤候选成员，默认排除 scheduler/bot */
   filter?: (candidate: MemberCandidate) => boolean;
 }
 
 const DEFAULT_FILTER = (c: MemberCandidate) =>
-  !['scheduler', 'task_creator', 'bot'].includes(c.description || '')
+  !['scheduler', 'bot'].includes(c.description || '')
   && !['agent-generator', 'commit-agent', 'title-generator'].includes(c.id);
 
 function uniqueById<T extends { id: string }>(items: T[]): T[] {

@@ -1,7 +1,6 @@
-import type { Workspace } from '@agent-spaces/shared';
+﻿import type { Workspace } from '@agent-spaces/shared';
 import * as workspaceService from '../workspace.js';
 import * as issueService from '../issue.js';
-import * as taskService from '../task.js';
 import * as agentService from '../agent.js';
 import * as issueCommentService from '../issue-comment.js';
 import { gitCommit, gitGenerateCommitMsg, gitPull, gitPush, gitStatus } from '../../adapters/git.js';
@@ -123,11 +122,6 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
     const issue = getCurrentIssue(workspaceId, context.issueId);
     return issue ? formatIssueDetail(workspaceId, issue.id) : 'No current issue. Use /issue [id/index] first.';
   }
-
-  if (command === '/task') {
-    return formatCurrentTask(workspaceId, context.issueId);
-  }
-
   if (command === '/comment') {
     const content = getRawCommandTail(text).trim();
     if (!content) return 'Usage: /comment [msg]';
@@ -320,7 +314,6 @@ function formatIssueSummary(issue: NonNullable<ReturnType<typeof issueService.ge
 function formatIssueDetail(workspaceId: string, issueId: string): string {
   const issue = issueService.getById(workspaceId, issueId);
   if (!issue) return 'Issue not found.';
-  const tasks = taskService.list(workspaceId, issue.id);
   const comments = issueCommentService.listIssueComments(workspaceId, issue.id);
   const members = issue.members.length ? issue.members.join(', ') : '-';
   return [
@@ -328,8 +321,8 @@ function formatIssueDetail(workspaceId: string, issueId: string): string {
     `ID: ${issue.id}`,
     issue.description ? `Desc: ${issue.description}` : undefined,
     `Members: ${members}`,
-    `Tasks: ${tasks.length}`,
-    ...tasks.map((task) => `- ${task.title} [${task.status}] ${task.id}`),
+    issue.workflowId ? `Workflow: ${issue.workflowId}` : 'Workflow: -',
+    issue.workflowExecutionId ? `Execution: ${issue.workflowExecutionId} [${issue.workflowExecutionStatus ?? issue.status}]` : undefined,
     `Comments: ${comments.length}`,
     ...comments.slice(-5).map((comment) => `- ${comment.senderId}: ${truncateLine(comment.content, 120)}`),
   ].filter(Boolean).join('\n');
@@ -342,34 +335,6 @@ function getCurrentIssue(workspaceId: string, issueId?: string): NonNullable<Ret
   }
   return issueService.list(workspaceId)
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
-}
-
-function formatCurrentTask(workspaceId: string, issueId?: string): string {
-  const botAgent = getConfiguredBotAgent(workspaceId);
-  const sessions = botAgent
-    ? agentService.list(workspaceId).filter((session) => session.agentConfigId === botAgent.id)
-    : [];
-  const currentTaskIds = new Set(sessions.map((session) => session.currentTaskId).filter((id): id is string => Boolean(id)));
-  const currentTasks = [...currentTaskIds]
-    .map((taskId) => taskService.getById(workspaceId, taskId))
-    .filter((task): task is NonNullable<ReturnType<typeof taskService.getById>> => Boolean(task));
-
-  if (currentTasks.length) {
-    return [
-      botAgent ? `Current tasks for ${botAgent.name}:` : 'Current tasks:',
-      ...currentTasks.map((task) => `- ${task.title} [${task.status}] ${task.id}`),
-    ].join('\n');
-  }
-
-  const issue = getCurrentIssue(workspaceId, issueId);
-  if (!issue) return 'No current task.';
-  const tasks = taskService.list(workspaceId, issue.id).filter((task) =>
-    !botAgent || task.agentConfigId === botAgent.id || task.assignedAgentId === botAgent.id);
-  if (!tasks.length) return botAgent ? `No task for ${botAgent.name}.` : 'No current task.';
-  return [
-    botAgent ? `Tasks for ${botAgent.name}:` : `Tasks for ${issue.title}:`,
-    ...tasks.map((task) => `- ${task.title} [${task.status}] ${task.id}`),
-  ].join('\n');
 }
 
 function formatComments(workspaceId: string, issueId: string): string {
@@ -394,7 +359,6 @@ function buildCommandHelp(): string {
     '/issue [id/index] agent agent_id,agent_id,...',
     '/issue start',
     '/issue close',
-    '/task',
     '/comment [msg]',
     '/comments',
     '/markdown [on/off]',
@@ -405,3 +369,4 @@ function buildCommandHelp(): string {
     '/pull',
   ].join('\n');
 }
+

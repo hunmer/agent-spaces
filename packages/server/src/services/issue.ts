@@ -2,7 +2,6 @@ import { v4 as uuid } from 'uuid';
 import type { Issue, IssueStatus, CreateIssueInput } from '@agent-spaces/shared';
 import { listIssues, getIssue, createIssue, updateIssue, deleteIssue } from '../storage/issue-store.js';
 import * as channelService from '../services/channel.js';
-import * as taskService from '../services/task.js';
 
 function ensureChannel(workspaceId: string, issue: Issue): void {
   ensureRetryDefaults(workspaceId, issue);
@@ -71,7 +70,6 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     title: input.title,
     description: input.description,
     status: input.status ?? 'draft',
-    tasks: [],
     members: input.members || [],
     workflowId: input.workflowId,
     workflowExecutionId: undefined,
@@ -103,7 +101,6 @@ export function createForChannel(
     title: input.title,
     description: input.description,
     status: input.status ?? 'draft',
-    tasks: [],
     members: [...issueMembers],
     workflowExecutionId: undefined,
     workflowExecutionStatus: undefined,
@@ -197,26 +194,6 @@ export function save(workspaceId: string, issue: Issue): Issue {
   return issue;
 }
 
-export function addTask(workspaceId: string, issueId: string, taskId: string): Issue | null {
-  const issue = getIssue(workspaceId, issueId);
-  if (!issue) return null;
-
-  if (!issue.tasks.includes(taskId)) issue.tasks.push(taskId);
-  issue.updatedAt = new Date().toISOString();
-  updateIssue(issue);
-  return issue;
-}
-
-export function replaceTasks(workspaceId: string, issueId: string, taskIds: string[]): Issue | null {
-  const issue = getIssue(workspaceId, issueId);
-  if (!issue) return null;
-
-  issue.tasks = [...new Set(taskIds.map((id) => id.trim()).filter(Boolean))];
-  issue.updatedAt = new Date().toISOString();
-  updateIssue(issue);
-  return issue;
-}
-
 export function addAgent(workspaceId: string, issueId: string, agentId: string): Issue | null {
   const issue = getIssue(workspaceId, issueId);
   if (!issue) return null;
@@ -232,12 +209,6 @@ export function addAgent(workspaceId: string, issueId: string, agentId: string):
 export function remove(workspaceId: string, issueId: string): boolean {
   const issue = getIssue(workspaceId, issueId);
   if (!issue) return false;
-
-  // 删除关联的 tasks
-  const tasks = taskService.list(workspaceId, issueId);
-  for (const task of tasks) {
-    taskService.remove(workspaceId, task.id);
-  }
 
   // 删除绑定的 channel
   if (issue.channelId) {

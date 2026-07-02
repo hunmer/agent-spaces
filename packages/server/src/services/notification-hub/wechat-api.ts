@@ -75,7 +75,7 @@ export async function pollWeChatLoginStatus(workspaceId: string): Promise<WeChat
     const settings = workspace?.notificationSettings ?? {
       enabled: true,
       provider: 'wechat' as const,
-      events: ['issue_started', 'issue_completed', 'issue_task_completed'] as const,
+      events: ['issue_started', 'issue_completed'] as const,
     };
     const baseUrl = status.baseurl || WECHAT_BASE_URL;
     const updated = workspaceService.update(workspaceId, {

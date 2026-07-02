@@ -195,7 +195,7 @@ export function WorkflowCanvasStylePanel({
       {sections.map(section => (
         <div key={section.id} className="space-y-2">
           <h3 className="text-xs font-medium text-muted-foreground">{section.title}</h3>
-          <Select value={section.value} onValueChange={section.onChange}>
+          <Select value={section.value} onValueChange={(value) => { if (value) section.onChange(value); }}>
             <SelectTrigger className="h-8 w-full text-sm">
               <SelectValue />
             </SelectTrigger>

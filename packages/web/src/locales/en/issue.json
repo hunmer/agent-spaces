@@ -1,4 +1,4 @@
-{
+﻿{
   "status": {
     "draft": "Draft",
     "in_progress": "In Progress",
@@ -12,7 +12,6 @@
     "emptyTitle": "No issues yet",
     "emptyDescription": "Create an issue to start collaborating",
     "addIssue": "Add Issue",
-    "taskCount": "{count, plural, one {# task} other {# tasks}}",
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archived": "Archived",
@@ -22,6 +21,8 @@
     "multiSelect": "Multi select"
   },
   "detail": {
+    "workflow": "Workflow",
+    "workflowExecution": "Workflow Execution",
     "selectIssue": "Select an issue to view details",
     "commentPlaceholder": "Write a comment... Use @ to mention agents, / for commands",
     "openChatChannel": "Open chat channel",
@@ -32,16 +33,11 @@
     "start": "Start",
     "rerun": "Rerun",
     "interrupt": "Interrupt",
-    "resumeFailed": "Resume failed tasks",
+    "resumeFailed": "Resume failed workflow nodes",
     "retryPaused": "Automatic retry paused after {failed}/{total} attempts.",
-    "tasks": "Tasks ({count})",
     "viewWorkflow": "Workflow view",
     "viewAgents": "Agents view",
-    "editTask": "Edit Task",
-    "addTask": "Add Task",
-    "taskTitlePlaceholder": "Task title",
-    "taskDescriptionPlaceholder": "Description (optional)",
-    "noTasks": "No tasks yet",
+    "noWorkflow": "No workflow attached",
     "noAgent": "No agent assigned",
     "comments": "Comments ({count})",
     "noComments": "No comments yet",
@@ -52,7 +48,7 @@
     "tabMembers": "Members",
     "infoStatus": "Status",
     "infoIssueId": "Issue ID",
-    "infoTaskCount": "Tasks",
+    "infoTaskCount": "Workflow Execution",
     "infoMemberCount": "Members",
     "infoCreatedAt": "Created",
     "infoUpdatedAt": "Updated",
@@ -78,7 +74,6 @@
     "executionLogLabel": "{startedAt} · {status}"
   },
   "message": {
-    "task": "task {taskId}",
     "openMessage": "Open message",
     "expandMore": "Show more",
     "collapse": "Collapse"

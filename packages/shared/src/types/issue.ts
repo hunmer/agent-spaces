@@ -1,4 +1,4 @@
-export type IssueStatus =
+﻿export type IssueStatus =
   | 'draft'
   | 'in_progress'
   | 'completed'
@@ -14,7 +14,6 @@ export interface Issue {
   description: string;
   status: IssueStatus;
   planFile?: string;
-  tasks: string[];
   members: string[];
   workflowId?: string;
   workflowExecutionId?: string;

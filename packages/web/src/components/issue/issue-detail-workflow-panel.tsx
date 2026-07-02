@@ -507,7 +507,7 @@ export function IssueDetailTasksPanel({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">{t('detail.tasks', { count: issue.workflowId ? 1 : 0 })}</h3>
+        <h3 className="font-semibold">{t('detail.workflowExecution')}</h3>
         {issue.workflowId ? (
           <ToggleGroup
             value={[view]}
@@ -525,7 +525,7 @@ export function IssueDetailTasksPanel({
         ) : null}
       </div>
       {!issue.workflowId ? (
-        <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
+        <div className="text-sm text-muted-foreground">{t('detail.noWorkflow')}</div>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">

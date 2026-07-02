@@ -19,7 +19,6 @@ import issueRouter from './routes/issue.js';
 import workflowRouter, { setWorkflowTriggerService, setWorkflowExecutionManager as setRouteWorkflowExecutionManager } from './routes/workflow.js';
 import pluginRouter from './routes/plugin.js';
 import agentRouter from './routes/agent.js';
-import taskRouter from './routes/task.js';
 import gitRouter from './routes/git.js';
 import llmRouter from './routes/llm.js';
 import modelCatalogRouter from './routes/model-catalog.js';
@@ -281,7 +280,6 @@ app.use('/api/workspaces/:id/commands', commandRouter);
 app.use('/api/workspaces/:id/code-favorites', codeFavoritesRouter);
 app.use('/api/workspaces/:id/hooks', hooksRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);
-app.use('/api/workspaces/:id/tasks', taskRouter);
 app.use('/api/workspaces/:id/git', gitRouter);
 
 // Global git config (no workspace context needed)

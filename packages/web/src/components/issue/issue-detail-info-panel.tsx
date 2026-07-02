@@ -11,14 +11,13 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { getAgentDisplayName, getMemberDisplayName } from '@/lib/agent-members';
 import { ISSUE_STATUS_COLOR } from './issue-status-colors';
-import type { AgentConfig, Issue, Task } from '@agent-spaces/shared';
+import type { AgentConfig, Issue } from '@agent-spaces/shared';
 
 interface IssueDetailInfoPanelProps {
   issue: Issue;
   workspaceId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  issueTasks: Task[];
   members: string[];
   enabledAgents: AgentConfig[];
   onAddMembers: (newMembers: string[]) => Promise<void>;
@@ -31,7 +30,6 @@ export function IssueDetailInfoPanel({
   workspaceId: _workspaceId,
   open,
   onOpenChange,
-  issueTasks,
   members,
   enabledAgents,
   onAddMembers,
@@ -82,10 +80,12 @@ export function IssueDetailInfoPanel({
                   <span className="text-muted-foreground">{t('detail.infoIssueId')}</span>
                   <span className="font-mono text-xs">{issue.id.slice(0, 8)}...</span>
                 </div>
-                <div className="flex justify-between py-1 border-b">
-                  <span className="text-muted-foreground">{t('detail.infoTaskCount')}</span>
-                  <span>{issueTasks.length}</span>
-                </div>
+                {issue.workflowExecutionId && (
+                  <div className="flex justify-between py-1 border-b">
+                    <span className="text-muted-foreground">{t('detail.workflow', { defaultValue: 'Workflow' })}</span>
+                    <span className="font-mono text-xs">{issue.workflowExecutionStatus ?? issue.status}</span>
+                  </div>
+                )}
                 <div className="flex justify-between py-1 border-b">
                   <span className="text-muted-foreground">{t('detail.infoMemberCount')}</span>
                   <span>{members.length}</span>

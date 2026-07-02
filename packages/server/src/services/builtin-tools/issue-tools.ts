@@ -1,9 +1,8 @@
-import { BUILT_IN_AGENT_TOOLS, type AgentConfig, type BuiltInAgentToolName, type Channel, type Issue, type IssueComment, type IssueStatus, type Task } from '@agent-spaces/shared';
+import { BUILT_IN_AGENT_TOOLS, type AgentConfig, type BuiltInAgentToolName, type Channel, type Issue, type IssueComment, type IssueStatus } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import * as issueService from '../issue.js';
 import * as issueCommentService from '../issue-comment.js';
 import * as channelService from '../channel.js';
-import * as taskService from '../task.js';
 import * as agentService from '../agent.js';
 import { broadcastToWorkspace } from '../../ws/connection-manager.js';
 
@@ -125,7 +124,6 @@ export function isBuiltInIssueToolName(name: string): boolean {
 interface CurrentIssueContext {
   issue: Issue;
   comments: IssueComment[];
-  tasks: Task[];
   channel: Pick<Channel, 'id' | 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'todos'>;
   assignableAgents: Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description' | 'enabled' | 'sandboxDirs'>>;
   validAgentConfigIds: string[];
@@ -165,7 +163,6 @@ function viewCurrentChannelIssue(workspaceId: string, channel: Channel, input: u
   return {
     issue,
     comments: issueCommentService.listIssueComments(workspaceId, issue.id),
-    tasks: taskService.list(workspaceId, issue.id),
     channel: {
       id: currentChannel.id,
       name: currentChannel.name,

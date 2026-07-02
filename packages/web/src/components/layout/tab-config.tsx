@@ -78,7 +78,7 @@ export function getTabBadge(
   gitStatus: { clean: boolean; insertions: number; deletions: number; files: unknown[]; ahead: number } | null | undefined,
   terminalSessions: unknown[],
   channelMessages: Record<string, { status?: string }[]>,
-  tasks: { status: string }[],
+  issues: { status: string; workflowExecutionStatus?: string }[],
 ): BadgeResult {
   if (comp === 'git-commits' && gitStatus && !gitStatus.clean) {
     const hasStat = gitStatus.insertions > 0 || gitStatus.deletions > 0;
@@ -131,8 +131,8 @@ export function getTabBadge(
   }
 
   if (comp === 'issue-list') {
-    const hasRunning = tasks.some((t) =>
-      t.status === 'pending' || t.status === 'running' || t.status === 'retrying' || t.status === 'waiting_review'
+    const hasRunning = issues.some((issue) =>
+      issue.status === 'in_progress' || issue.workflowExecutionStatus === 'running' || issue.workflowExecutionStatus === 'paused'
     );
     if (hasRunning) {
       return { trailing: null, badge: runningBadge };
@@ -148,11 +148,11 @@ export function renderTabIcon(
   gitStatus: Parameters<typeof getTabBadge>[1],
   terminalSessions: Parameters<typeof getTabBadge>[2],
   channelMessages: Parameters<typeof getTabBadge>[3],
-  tasks: Parameters<typeof getTabBadge>[4],
+  issues: Parameters<typeof getTabBadge>[4],
 ) {
   const icon = TAB_ICONS[comp];
   if (!icon) return null;
-  const { trailing, badge } = getTabBadge(comp, gitStatus, terminalSessions, channelMessages, tasks);
+  const { trailing, badge } = getTabBadge(comp, gitStatus, terminalSessions, channelMessages, issues);
   return (
     <span title={name} className="flex items-center justify-center">
       <span className="relative">

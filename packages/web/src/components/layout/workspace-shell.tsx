@@ -9,7 +9,6 @@ import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 import { LAYOUT_STORAGE_KEY } from "@/lib/layout-templates";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
-import { useTaskStore } from "@/stores/task";
 import { useEditorStore } from "@/stores/editor";
 import { useChannelStore } from "@/stores/channel";
 import { useGitStore } from "@/stores/git";
@@ -19,10 +18,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useTerminalStore } from "@/stores/terminal";
 import { useAgentStore } from "@/stores/agent";
-import { sendAndroidOngoingTaskNotification, sendNativeNotification } from "@/lib/native-notification";
+import { sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
-import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
+import type { Issue, IssueStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
 
 const panelLoader = () => <PanelLoading />;
 
@@ -182,8 +181,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const setChannelCreateOpen = useChannelStore((s) => s.setCreateDialogOpen);
   const issueCreateOpen = useIssueStore((s) => s.createDialogOpen);
   const setIssueCreateOpen = useIssueStore((s) => s.setCreateDialogOpen);
-  const upsertTask = useTaskStore((s) => s.upsertTask);
-  const loadTasks = useTaskStore((s) => s.loadTasks);
+  const issues = useIssueStore((s) => s.issues);
   const agents = useAgentStore((s) => s.agents);
   const createChannel = useChannelStore((s) => s.createChannel);
   const createIssue = useIssueStore((s) => s.createIssue);
@@ -386,14 +384,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     return ns;
   }, [workspaceId]);
 
-  const formatOngoingTaskNotificationBody = useCallback((task: Task) => {
-    const statusText = task.status.replace(/_/g, " ");
-    if (task.result?.summary) {
-      return `${task.title}: ${statusText} - ${task.result.summary}`;
-    }
-    return `${task.title}: ${statusText}`;
-  }, []);
-
   useEffect(() => {
     const ws = getWS(workspaceId);
     startActivityLogListeners(workspaceId);
@@ -412,40 +402,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
             (to === 'completed' && events.includes('issue_completed'));
           if (shouldNotify) {
             const title = 'Issue Status Updated';
-            const body = `Status changed: ${from} → ${to}`;
-            sendNativeNotification(title, body);
-          }
-        }
-      }),
-      ws.on('task.created', (data) => {
-        const task = data as Task;
-        upsertTask(task);
-        const ns = getNativeNotificationConfig();
-        if (ns?.native?.androidOngoingTaskNotification) {
-          sendAndroidOngoingTaskNotification(formatOngoingTaskNotificationBody(task));
-        }
-      }),
-      ws.on('task.updated', (data) => {
-        const task = data as Task;
-        upsertTask(task);
-        const ns = getNativeNotificationConfig();
-        if (ns?.native?.androidOngoingTaskNotification) {
-          sendAndroidOngoingTaskNotification(formatOngoingTaskNotificationBody(task));
-        }
-      }),
-      ws.on('task.status_changed', (data) => {
-        const activeIssueId = useIssueStore.getState().activeIssueId;
-        if (activeIssueId) {
-          loadTasks(workspaceId, activeIssueId);
-        }
-        const ns = getNativeNotificationConfig();
-        if (ns) {
-          const { from, to } = data as TaskStatusChangedPayload;
-          const events = ns.events ?? [];
-          const shouldNotify =
-            to === 'completed' && events.includes('issue_task_completed');
-          if (shouldNotify) {
-            const title = 'Task Status Updated';
             const body = `Status changed: ${from} → ${to}`;
             sendNativeNotification(title, body);
           }
@@ -490,7 +446,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       unsubs.forEach((u) => u());
       stopActivityLogListeners(workspaceId);
     };
-  }, [workspaceId, upsertIssue, upsertTask, loadTasks, getNativeNotificationConfig, formatOngoingTaskNotificationBody]);
+  }, [workspaceId, upsertIssue, getNativeNotificationConfig]);
 
   const factory = useCallback(
     (node: TabNode) => {
@@ -527,13 +483,12 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     [boundDirs, workspaceId],
   );
 
-  const tasks = useTaskStore((s) => s.tasks);
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const comp = node.getComponent();
     if (!comp) return;
-    const content = renderTabIcon(comp, node.getName(), gitStatus, terminalSessions, channelMessages, tasks);
+    const content = renderTabIcon(comp, node.getName(), gitStatus, terminalSessions, channelMessages, issues);
     if (content) renderValues.content = content;
-  }, [gitStatus, terminalSessions, channelMessages, tasks]);
+  }, [gitStatus, terminalSessions, channelMessages, issues]);
 
   const onModelChange = useCallback(
     (_model: Model, action: Action) => {

@@ -12,6 +12,17 @@ import { isPlainObject } from './workflow-properties-utils';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
 import { WorkflowVariableInput } from './workflow-variable-input';
 
+type ConditionDraft = ConditionItem & {
+  field?: string;
+  compareMode?: 'value' | 'length';
+};
+
+type ConditionGroupDraft = {
+  id: string;
+  joiner?: 'and' | 'or';
+  conditions: ConditionDraft[];
+};
+
 const LENGTH_COMPARE_OPERATORS = new Set([
   'greater_than',
   'greater_than_or_equal',
@@ -37,19 +48,19 @@ function createConditionGroup(): ConditionGroup {
   };
 }
 
-function normalizeConditionGroups(value: unknown): Record<string, unknown>[] {
+function normalizeConditionGroups(value: unknown): ConditionGroupDraft[] {
   if (!Array.isArray(value)) return [];
 
   return value
     .filter(isPlainObject)
-    .map((item, index) => {
+    .map<ConditionGroupDraft>((item, index) => {
       if (Array.isArray(item.conditions)) {
         return {
           id: typeof item.id === 'string' ? item.id : `group_${index}`,
           joiner: item.joiner === 'or' ? 'or' : 'and',
           conditions: item.conditions
             .filter(isPlainObject)
-            .map((condition, conditionIndex) => ({
+            .map<ConditionDraft>((condition, conditionIndex) => ({
               id: typeof condition.id === 'string' ? condition.id : `cond_${index}_${conditionIndex}`,
               variable: String(condition.variable ?? condition.field ?? ''),
               field: String(condition.field ?? condition.variable ?? ''),
@@ -82,19 +93,19 @@ export function ConditionsEditor({
   variableContext,
 }: {
   value: unknown;
-  onChange: (v: Record<string, unknown>[]) => void;
+  onChange: (v: ConditionGroupDraft[]) => void;
   variableContext?: WorkflowVariableContext;
 }) {
   const t = useTranslations('workflows');
   const conditionGroups = normalizeConditionGroups(value);
 
-  const updateGroup = (groupIndex: number, patch: Record<string, unknown>) => {
+  const updateGroup = (groupIndex: number, patch: Partial<ConditionGroupDraft>) => {
     const next = [...conditionGroups];
     next[groupIndex] = { ...next[groupIndex], ...patch };
     onChange(next);
   };
 
-  const updateCondition = (groupIndex: number, conditionIndex: number, patch: Record<string, unknown>) => {
+  const updateCondition = (groupIndex: number, conditionIndex: number, patch: Partial<ConditionDraft>) => {
     const group = conditionGroups[groupIndex];
     const groupConditions = Array.isArray(group?.conditions) ? group.conditions.filter(isPlainObject) : [];
     const nextConditions = [...groupConditions];
@@ -133,7 +144,7 @@ export function ConditionsEditor({
                     {conditionIndex > 0 ? (
                       <Select
                         value={joiner}
-                        onValueChange={(nextJoiner) => updateGroup(groupIndex, { joiner: nextJoiner })}
+                        onValueChange={(nextJoiner) => updateGroup(groupIndex, { joiner: (nextJoiner === 'or' ? 'or' : 'and') })}
                       >
                         <SelectTrigger className="h-6 w-20 text-[11px]">
                           <SelectValue />
@@ -162,7 +173,7 @@ export function ConditionsEditor({
                       <Select
                         value={compareMode}
                         onValueChange={(nextCompareMode) => updateCondition(groupIndex, conditionIndex, {
-                          compareMode: nextCompareMode,
+                          compareMode: nextCompareMode === 'length' ? 'length' : 'value',
                           operator: nextCompareMode === 'length' && !LENGTH_COMPARE_OPERATORS.has(operator)
                             ? 'greater_than'
                             : operator,
@@ -183,7 +194,7 @@ export function ConditionsEditor({
 
                       <Select
                         value={operator}
-                        onValueChange={(nextOperator) => updateCondition(groupIndex, conditionIndex, { operator: nextOperator })}
+                        onValueChange={(nextOperator) => updateCondition(groupIndex, conditionIndex, { operator: nextOperator ?? 'equals' })}
                       >
                         <SelectTrigger className="h-6 flex-1 text-[11px]">
                           <SelectValue />

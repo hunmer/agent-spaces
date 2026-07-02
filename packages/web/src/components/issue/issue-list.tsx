@@ -111,7 +111,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate">{issue.title}</div>
           <div className="text-xs text-muted-foreground">
-            {t('list.taskCount', { count: issue.tasks.length })}
+            {issue.workflowId ? t('detail.workflow') : t('detail.noWorkflow')}
           </div>
         </div>
         <Badge variant="outline" className={`text-[10px] shrink-0 border-none ${STATUS_STYLE[issue.status]}`}>
@@ -155,7 +155,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate">{issue.title}</div>
           <div className="text-xs text-muted-foreground">
-            {t('list.taskCount', { count: issue.tasks.length })}
+            {issue.workflowId ? t('detail.workflow') : t('detail.noWorkflow')}
           </div>
         </div>
         <Badge variant="outline" className={`text-[10px] shrink-0 border-none ${STATUS_STYLE['archived']}`}>

@@ -1,4 +1,4 @@
-{
+﻿{
   "provider": {
     "anthropicMessages": "Anthropic Messages",
     "openaiChatCompletions": "OpenAI Chat Completions",
@@ -16,33 +16,14 @@
     "ohMyPi": "Oh My Pi"
   },
   "role": {
-    "agent": {
-      "name": "Agent"
-    },
-    "scheduler": {
-      "name": "Scheduler"
-    },
-    "task_creator": {
-      "name": "Task Creator"
-    },
-    "bot": {
-      "name": "Bot Agent"
-    },
-    "planner": {
-      "name": "Planner"
-    },
-    "executor": {
-      "name": "Executor"
-    },
-    "reviewer": {
-      "name": "Reviewer"
-    },
-    "commit": {
-      "name": "Commit Agent"
-    },
-    "custom": {
-      "name": "Custom"
-    }
+    "agent": { "name": "Agent" },
+    "scheduler": { "name": "Scheduler" },
+    "bot": { "name": "Bot Agent" },
+    "planner": { "name": "Planner" },
+    "executor": { "name": "Executor" },
+    "reviewer": { "name": "Reviewer" },
+    "commit": { "name": "Commit Agent" },
+    "custom": { "name": "Custom" }
   },
   "defaultName": "New Agent",
   "error": {

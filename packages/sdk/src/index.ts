@@ -29,7 +29,6 @@ export { createWorkspaceApi } from './modules/workspace';
 export { createAgentApi } from './modules/agent';
 export { createChannelApi } from './modules/channel';
 export { createIssueApi } from './modules/issue';
-export { createTaskApi } from './modules/task';
 export { createGitApi } from './modules/git';
 export { createEditorApi } from './modules/editor';
 export { createLlmApi } from './modules/llm';
@@ -74,7 +73,6 @@ import { createWorkspaceApi } from './modules/workspace';
 import { createAgentApi } from './modules/agent';
 import { createChannelApi } from './modules/channel';
 import { createIssueApi } from './modules/issue';
-import { createTaskApi } from './modules/task';
 import { createGitApi } from './modules/git';
 import { createEditorApi } from './modules/editor';
 import { createLlmApi } from './modules/llm';
@@ -122,7 +120,6 @@ export interface SDK {
   readonly agent: ReturnType<typeof createAgentApi>;
   readonly channel: ReturnType<typeof createChannelApi>;
   readonly issue: ReturnType<typeof createIssueApi>;
-  readonly task: ReturnType<typeof createTaskApi>;
   readonly git: ReturnType<typeof createGitApi>;
   readonly editor: ReturnType<typeof createEditorApi>;
   readonly llm: ReturnType<typeof createLlmApi>;
@@ -178,7 +175,6 @@ export function createSDK(config: SDKConfig): SDK {
     agent: createAgentApi(http),
     channel: createChannelApi(http),
     issue: createIssueApi(http),
-    task: createTaskApi(http),
     git: createGitApi(http),
     editor: createEditorApi(http),
     llm: createLlmApi(http),

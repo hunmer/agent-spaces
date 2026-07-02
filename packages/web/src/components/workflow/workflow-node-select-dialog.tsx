@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState } from 'react';
 import type { ComponentType } from 'react';
@@ -32,7 +32,6 @@ function getCreatableNodes(workflow: Workflow, nodes: NodeTypeDefinition[]): Nod
   return nodes.filter(node => node.manualCreate !== false && canCreateNode(workflow, node));
 }
 
-// 内置分类 -> 图标组件（按原始 i18n category key 映射）
 const BUILTIN_CATEGORY_ICONS: Partial<Record<string, ComponentType<{ className?: string }>>> = {
   'nodes.categories.flowControl': WorkflowIcon,
   'nodes.categories.ai': Sparkles,
@@ -58,7 +57,7 @@ export function WorkflowNodeSelectDialog({
 
   const categories = useMemo(() => Object.keys(allCategories), [open, allCategories]);
 
-  // 翻译后的分类名 -> 原始 category key（用于内置分类图标映射）
+  // 缈昏瘧鍚庣殑鍒嗙被鍚?-> 鍘熷 category key锛堢敤浜庡唴缃垎绫诲浘鏍囨槧灏勶級
   const rawCategoryByTranslated = useMemo(() => {
     const map: Record<string, string> = {};
     const toTranslated = (raw: string) => {
@@ -77,10 +76,15 @@ export function WorkflowNodeSelectDialog({
   }, [t]);
 
   const renderCategoryIcon = (category: string) => {
-    // 插件分类：取该分类下任一带 pluginId 的节点显示插件图标
-    const pluginNode = (allCategories[category] || []).find(
-      node => Boolean((node as WorkflowNodeIconDefinition).pluginId),
-    ) as WorkflowNodeIconDefinition | undefined;
+    const categoryNodes = allCategories[category] ?? [];
+    let pluginNode: WorkflowNodeIconDefinition | undefined;
+    for (const node of categoryNodes) {
+      const candidate = node as WorkflowNodeIconDefinition;
+      if (candidate?.pluginId) {
+        pluginNode = candidate;
+        break;
+      }
+    }
     const pluginId = pluginNode?.pluginId;
     if (pluginId) {
       return (
@@ -90,7 +94,7 @@ export function WorkflowNodeSelectDialog({
         />
       );
     }
-    // 内置分类：按原始 category key 命中图标
+    // 鍐呯疆鍒嗙被锛氭寜鍘熷 category key 鍛戒腑鍥炬爣
     const Icon = BUILTIN_CATEGORY_ICONS[rawCategoryByTranslated[category] ?? ''];
     return Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null;
   };
@@ -98,7 +102,6 @@ export function WorkflowNodeSelectDialog({
   const filteredNodes = useMemo(() => {
     const query = searchQuery.trim();
     if (query) {
-      // 文本匹配（label/type）+ 拼音匹配（label 全拼/首字母），结果合并去重
       const q = query.toLowerCase();
       const textMatches = getCreatableNodes(workflow, searchResults);
       const matchedTypes = new Set(textMatches.map(node => node.type));
@@ -208,3 +211,4 @@ export function WorkflowNodeSelectDialog({
     </Dialog>
   );
 }
+

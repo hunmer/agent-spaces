@@ -1,6 +1,6 @@
 import type { BuiltInAgentToolName } from './tool.js';
 
-export type BuiltInAgentRole = 'agent' | 'scheduler' | 'task_creator' | 'bot';
+export type BuiltInAgentRole = 'agent' | 'scheduler' | 'bot';
 export type AgentRole = BuiltInAgentRole | (string & {});
 
 export interface Workspace {
@@ -21,7 +21,7 @@ export interface Workspace {
 
 export type NotificationProvider = 'lark' | 'wechat' | 'native';
 
-export type NotificationEventKey = 'issue_started' | 'issue_completed' | 'issue_task_completed' | 'channel_agent_completed';
+export type NotificationEventKey = 'issue_started' | 'issue_completed' | 'channel_agent_completed';
 
 export interface RobotAccount {
   id: string;

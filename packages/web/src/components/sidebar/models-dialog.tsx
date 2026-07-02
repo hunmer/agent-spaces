@@ -194,7 +194,7 @@ export function ModelsDialog({
             </DialogDescription>
           </DialogHeader>
           {!draft && (
-            <Button variant="outline" size="sm" onClick={handleAdd} className="mr-6">
+            <Button variant="outline" size="sm" onClick={() => handleAdd()} className="mr-6">
               <Plus className="size-3.5" />
               {t("dialog.add")}
             </Button>
@@ -203,7 +203,7 @@ export function ModelsDialog({
       )}
       {standalone && !draft && (
         <div className="flex items-center justify-end px-5 py-3 border-b">
-          <Button variant="outline" size="sm" onClick={handleAdd}>
+          <Button variant="outline" size="sm" onClick={() => handleAdd()}>
             <Plus className="size-3.5" />
             {t("dialog.add")}
           </Button>

@@ -424,10 +424,11 @@ export function useCanvasData({
     const normalReachableNodePairKeys = nodeDisplayMode === 'normal'
       ? createNormalReachableNodePairKeys(createNormalNodeLevelAdjacency(workflow.edges))
       : null;
-    const mappedEdges = workflow.edges.filter(edge => (
+    const mappedEdges: Edge[] = [];
+    workflow.edges.filter(edge => (
       !isHiddenWorkflowEdge(edge)
       && (nodeDisplayMode === 'properties' || !isGeneratedReferenceRuntimeEdge(edge))
-    )).map(e => {
+    )).forEach((e) => {
       const sourceNode = nodeById.get(e.source);
       const targetNode = nodeById.get(e.target);
       const displaySourceHandle = getNormalizedSourceHandle(sourceNode, e.sourceHandle, nodeDisplayMode);
@@ -442,9 +443,9 @@ export function useCanvasData({
         && (e.edgeKind === 'reference' || isFieldHandleEdge)
         && normalReachableNodePairKeys.has(getNormalDisplayEdgeKey(e))
       ) {
-        return null;
+        return;
       }
-      return {
+      mappedEdges.push({
         id: e.id,
         source: e.source,
         target: e.target,
@@ -468,8 +469,8 @@ export function useCanvasData({
           preferDashedLine: shouldPreferDashedLine,
           isFieldHandleEdge,
         } as Record<string, unknown>,
-      };
-    }).filter((edge): edge is Edge => edge !== null);
+      });
+    });
     if (nodeDisplayMode === 'properties') return mappedEdges;
 
     const edgeByNormalKey = new Map<string, Edge>();

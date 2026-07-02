@@ -1,10 +1,8 @@
-import type { TaskResult, WorkspaceNotificationSettings } from '@agent-spaces/shared';
+import type { WorkspaceNotificationSettings } from '@agent-spaces/shared';
 
 export type NotificationBroadcastEvent =
   | 'issuse_status_change'
   | 'issue_status_change'
-  | 'issue_task_start'
-  | 'issue_task_done'
   | 'channel_agent_completed';
 
 export interface BroadcastEnvelope {

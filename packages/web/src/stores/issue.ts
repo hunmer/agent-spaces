@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { Issue, IssueStatus } from '@agent-spaces/shared';
 import { useChannelStore } from './channel';
-import { useTaskStore } from './task';
 import { sdk } from '@/lib/sdk';
 import { ApiError } from '@agent-spaces/sdk';
 
@@ -131,16 +130,10 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     await sdk.issue.delete_(workspaceId, issueId).catch(() => {});
     get().removeIssue(issueId);
 
-    // 同步清理关联的 channel 和 tasks
+    // 同步清理关联的 channel
     if (issue?.channelId) {
       const { removeChannelLocal } = useChannelStore.getState();
       removeChannelLocal(issue.channelId);
-    }
-    const { tasks } = useTaskStore.getState();
-    const relatedTasks = tasks.filter((t) => t.issueId === issueId);
-    if (relatedTasks.length > 0) {
-      const relatedIds = new Set(relatedTasks.map((t) => t.id));
-      useTaskStore.setState((s) => ({ tasks: s.tasks.filter((t) => !relatedIds.has(t.id)) }));
     }
   },
 

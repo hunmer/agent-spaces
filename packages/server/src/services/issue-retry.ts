@@ -1,25 +1,17 @@
 import type { AgentContext } from '../agents/agent-context.js';
 import * as issueService from './issue.js';
-import * as taskService from './task.js';
 import * as channelService from './channel.js';
 import * as messageService from './message.js';
-import { scheduleRunnableIssueTasks } from '../agents/issue-task-controller.js';
+import { startIssueWorkflowExecution } from '../agents/issue-agent-runner.js';
 import { listWorkspaces } from '../storage/workspace-store.js';
 
-const RECOVERY_ERROR = 'Server restarted while task was running';
+const RECOVERY_ERROR = 'Server restarted while workflow execution was running';
 
 export function recoverRunningWorkOnStartup(ctxFactory?: (workspaceId: string) => AgentContext): void {
   for (const workspace of listWorkspaces()) {
     const ctx = ctxFactory?.(workspace.id);
 
-    // 1. Mark running tasks as failed
-    const failedTasks = taskService.markRunningTasksFailed(workspace.id, RECOVERY_ERROR);
-    for (const task of failedTasks) {
-      ctx?.broadcast('task.status_changed', { taskId: task.id, from: 'running', to: task.status });
-      ctx?.broadcast('task.updated', task);
-    }
-
-    // 2. Mark in_progress issues as error
+    // 1. Mark in_progress issues as error
     const inProgressIssues = issueService.list(workspace.id)
       .filter((issue) => issue.status === 'in_progress');
     for (const issue of inProgressIssues) {
@@ -29,7 +21,7 @@ export function recoverRunningWorkOnStartup(ctxFactory?: (workspaceId: string) =
       ctx?.broadcast('issue.updated', updated);
     }
 
-    // 3. Mark streaming/pending/waiting_for_user channel messages as error
+    // 2. Mark streaming/pending/waiting_for_user channel messages as error
     const channels = channelService.listChannels(workspace.id);
     for (const channel of channels) {
       const messages = messageService.listMessages(workspace.id, channel.id);
@@ -76,21 +68,11 @@ export async function retryIssue(
     return { issue: paused, retried: false, reason: 'issue retry limit reached' };
   }
 
-  const RETRYABLE_STATUSES = ['failed', 'running', 'reviewing', 'retrying', 'waiting_review'];
-  const issueTasks = taskService.list(workspaceId, issueId);
-  for (const task of issueTasks) {
-    if (!RETRYABLE_STATUSES.includes(task.status)) continue;
-    const reset = taskService.resetForRetry(workspaceId, task.id, { resetRetryCount: true });
-    if (!reset) continue;
-    ctx.broadcast('task.status_changed', { taskId: task.id, from: task.status, to: reset.status });
-    ctx.broadcast('task.updated', reset);
-  }
-
   const updated = issueService.prepareRetry(workspaceId, issueId, { manual: options.manual });
   if (!updated) return { issue: null, retried: false, reason: 'issue not found' };
   ctx.broadcast('issue.status_changed', { issueId, from: issue.status, to: updated.status });
   ctx.broadcast('issue.updated', updated);
 
-  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+  await startIssueWorkflowExecution(workspaceId, issueId, ctx);
   return { issue: issueService.getById(workspaceId, issueId), retried: true };
 }

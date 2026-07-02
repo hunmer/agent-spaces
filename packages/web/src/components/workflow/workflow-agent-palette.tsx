@@ -13,7 +13,7 @@ type CommandNodeData = { label: string; script: string };
 type PaletteNode = Node<AgentNodeData, 'agent'> | Node<CommandNodeData, 'command'>;
 
 const ROLE_LABELS: Record<string, string> = {
-  agent: 'Agent', scheduler: 'Scheduler', task_creator: 'Task Creator', bot: 'Bot',
+  agent: 'Agent', scheduler: 'Scheduler', bot: 'Bot',
 };
 
 function groupByRole(agents: AgentConfig[]): Record<string, AgentConfig[]> {

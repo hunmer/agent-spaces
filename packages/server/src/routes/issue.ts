@@ -8,7 +8,6 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { stopChannelRuns } from '../ws/agent-runner.js';
 
 import * as agentService from '../services/agent.js';
-import * as taskService from '../services/task.js';
 import { retryIssue } from '../services/issue-retry.js';
 import { hasActiveIssueAutomation, runIssueAutomation, startIssueWorkflowExecution } from '../agents/issue-agent-runner.js';
 import * as workflowService from '../services/workflow.js';

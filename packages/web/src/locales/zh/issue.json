@@ -1,4 +1,4 @@
-{
+﻿{
   "status": {
     "draft": "草稿",
     "in_progress": "进行中",
@@ -12,7 +12,6 @@
     "emptyTitle": "暂无议题",
     "emptyDescription": "创建一个议题开始协作",
     "addIssue": "添加议题",
-    "taskCount": "{count} 个任务",
     "archive": "归档",
     "unarchive": "取消归档",
     "archived": "已归档",
@@ -23,6 +22,7 @@
   },
   "detail": {
     "workflow": "工作流",
+    "workflowExecution": "工作流执行",
     "selectIssue": "选择一个议题查看详情",
     "commentPlaceholder": "写评论... 使用 @ 提及 Agent，输入 / 打开命令",
     "openChatChannel": "打开聊天频道",
@@ -33,16 +33,11 @@
     "start": "开始",
     "rerun": "重新运行",
     "interrupt": "中断",
-    "resumeFailed": "重试失败任务",
+    "resumeFailed": "重试失败的工作流节点",
     "retryPaused": "自动重试已在 {failed}/{total} 次尝试后暂停。",
-    "tasks": "任务 ({count})",
     "viewWorkflow": "工作流视图",
     "viewAgents": "Agents 视图",
-    "editTask": "编辑任务",
-    "addTask": "添加任务",
-    "taskTitlePlaceholder": "任务标题",
-    "taskDescriptionPlaceholder": "描述（可选）",
-    "noTasks": "暂无任务",
+    "noWorkflow": "未关联工作流",
     "noAgent": "未分配 Agent",
     "comments": "评论 ({count})",
     "noComments": "暂无评论",
@@ -53,7 +48,7 @@
     "tabMembers": "成员",
     "infoStatus": "状态",
     "infoIssueId": "议题 ID",
-    "infoTaskCount": "任务数",
+    "infoTaskCount": "工作流执行",
     "infoMemberCount": "成员数",
     "infoCreatedAt": "创建时间",
     "infoUpdatedAt": "更新时间",
@@ -79,7 +74,6 @@
     "executionLogLabel": "{startedAt} · {status}"
   },
   "message": {
-    "task": "任务 {taskId}",
     "openMessage": "打开消息",
     "expandMore": "展开更多",
     "collapse": "收起"

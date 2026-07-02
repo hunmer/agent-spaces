@@ -278,7 +278,7 @@ export function WorkflowEditorToolbar({
 
       {workflowErrorMessage && (
         <Popover>
-          <PopoverTrigger asChild>
+          <PopoverTrigger>
             <Button
               variant="outline"
               size="sm"

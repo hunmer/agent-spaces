@@ -695,7 +695,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         workspaceId={workspaceId}
         open={infoOpen}
         onOpenChange={setInfoOpen}
-        issueTasks={[]}
         members={members}
         enabledAgents={enabledAgents}
         onAddMembers={handleAddMembers}

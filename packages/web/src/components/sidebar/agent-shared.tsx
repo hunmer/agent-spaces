@@ -1,4 +1,4 @@
-import {
+﻿import {
   BUILT_IN_AGENT_TOOLS,
   type AgentConfig,
   type BuiltInAgentToolName,
@@ -52,10 +52,6 @@ export type AgentDetailLockedFields = Partial<Record<
   boolean
 >>;
 
-/**
- * 隐藏整段 UI（不渲染），与 lockedFields（仅 disable）正交、可叠加。
- * key 集合是 lockedFields 的超集（多 background / outputStyle）。
- */
 export type AgentDetailHiddenFields = Partial<Record<
   | "role"
   | "runtimeKind"
@@ -69,7 +65,6 @@ export type AgentDetailHiddenFields = Partial<Record<
   boolean
 >>;
 
-/** mini-app agent 设置场景：隐藏不适用区块，保留 name/avatar/description/systemPrompt/model */
 export const MINI_APP_HIDDEN_FIELDS: AgentDetailHiddenFields = {
   role: true,
   runtimeKind: true,
@@ -82,12 +77,11 @@ export const MINI_APP_HIDDEN_FIELDS: AgentDetailHiddenFields = {
 };
 
 export type AgentRole = AgentConfig["role"];
-export type BuiltInRole = "agent" | "scheduler" | "task_creator" | "bot";
+export type BuiltInRole = "agent" | "scheduler" | "bot";
 
 export const ROLE_COLORS: Record<string, string> = {
   agent: "bg-gray-500/10 text-gray-600 border-gray-200",
   scheduler: "bg-blue-500/10 text-blue-600 border-blue-200",
-  task_creator: "bg-green-500/10 text-green-600 border-green-200",
   bot: "bg-cyan-500/10 text-cyan-600 border-cyan-200",
 };
 
@@ -109,7 +103,7 @@ export const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKin
   { value: "oh-my-pi", labelKey: "ohMyPi" },
 ];
 
-export const ROLE_OPTIONS: BuiltInRole[] = ["agent", "scheduler", "task_creator", "bot"];
+export const ROLE_OPTIONS: BuiltInRole[] = ["agent", "scheduler", "bot"];
 export const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = [];
 export const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
@@ -170,30 +164,6 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
-    outputStyle: "",
-    temperature: 0.3,
-    maxTokens: 4096,
-    enabled: true,
-  },
-  task_creator: {
-    name: "Task Creator",
-    role: "task_creator",
-    description: "任务创建者，负责把 issue 拆成可执行任务",
-    avatarUrl: "",
-    icon: "",
-    backgroundUrl: "",
-    runtimeKind: "claude-code",
-    modelProvider: "anthropic-messages",
-    providerId: "",
-    modelId: "claude-sonnet-4-6",
-    apiBase: "",
-    apiKey: "",
-    workingDir: "",
-    mcps: defaultMcpConfig([]),
-    skills: defaultSkills(["planning", "task-split"]),
-    tools: DEFAULT_AGENT_TOOLS,
-    systemPrompt:
-      "你是任务创建者 Agent。负责读取 issue 上下文，把需求拆分为少量可执行任务，并用系统工具写入任务列表。只创建真正需要独立执行的任务，避免把细碎步骤拆成任务。",
     outputStyle: "",
     temperature: 0.3,
     maxTokens: 4096,
@@ -344,7 +314,7 @@ export function isAnthropicBridgeProvider(provider: AgentPreset["modelProvider"]
 export function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2.5">
-       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         {icon}
         {title}
       </div>

@@ -5,7 +5,6 @@ import { useTerminalStore } from '@/stores/terminal';
 import { getTerminalRegistryStats } from '@/lib/terminal-registry';
 import { useChannelStore } from '@/stores/channel';
 import { useIssueStore } from '@/stores/issue';
-import { useTaskStore } from '@/stores/task';
 import { useAgentStore } from '@/stores/agent';
 import { useNotificationStore } from '@/stores/notification';
 import { useCommandStore } from '@/stores/command';
@@ -35,7 +34,7 @@ export interface ContentUsageSnapshot {
     workspaces: number;
     agents: number;
     issues: number;
-    tasks: number;
+    workflowExecutions: number;
     channels: number;
     channelMessages: number;
     channelMessageBytes: number;
@@ -141,7 +140,6 @@ export function captureContentUsageSnapshot(): ContentUsageSnapshot {
   const terminal = useTerminalStore.getState();
   const channel = useChannelStore.getState();
   const issue = useIssueStore.getState();
-  const task = useTaskStore.getState();
   const agent = useAgentStore.getState();
   const notification = useNotificationStore.getState();
   const command = useCommandStore.getState();
@@ -167,7 +165,7 @@ export function captureContentUsageSnapshot(): ContentUsageSnapshot {
       workspaces: useWorkspaceStore.getState().workspaces.length,
       agents: agent.agents.length,
       issues: issue.issues.length,
-      tasks: task.tasks.length,
+      workflowExecutions: issue.issues.filter((item) => Boolean(item.workflowExecutionId)).length,
       channels: channel.channels.length,
       channelMessages: channelUsage.count,
       channelMessageBytes: channelUsage.bytes,
@@ -209,7 +207,7 @@ export function formatContentUsageSnapshot(report: ContentUsageSnapshot): string
     `Terminal: ${report.counts.terminalSessions} sessions, ${report.counts.terminalRegistrySessions} tracked, ${bytesToString(report.counts.terminalOutputBytes)} buffered output`,
     `Terminal sessions: ${report.terminalDetails.length > 0 ? report.terminalDetails.map((session) => `${session.sessionId.slice(0, 8)} ${bytesToString(session.outputBytes)} ${session.bufferLines} lines ${session.cols}x${session.rows}`).join('; ') : 'none'}`,
     `Chat: ${report.counts.channels} channels, ${report.counts.channelMessages} messages, ${bytesToString(report.counts.channelMessageBytes)} text`,
-    `Work items: ${report.counts.issues} issues, ${report.counts.tasks} tasks`,
+    `Work items: ${report.counts.issues} issues, ${report.counts.workflowExecutions} workflow executions`,
     `Automation: ${report.counts.commands} commands, ${report.counts.runningCommands} running`,
     `Events: ${report.counts.notifications} notifications, ${report.counts.activityLogEntries} activity log entries, ${bytesToString(report.counts.activityLogBytes)} log text`,
     `History: ${report.counts.inspectorHistoryEntries} inspector jumps, ${report.counts.gitLogEntries} git log entries, ${report.counts.gitBranchEntries} git branches, ${report.counts.gitDiffEntries} open diffs`,

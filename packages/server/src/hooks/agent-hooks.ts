@@ -2,8 +2,13 @@
  * Agent hooks retained for legacy callers.
  */
 
-import type { TaskResult } from '@agent-spaces/shared';
 import type { AgentContext } from '../agents/agent-context.js';
+
+type LegacyExecutorResult = {
+  success: boolean;
+  summary?: unknown;
+  error?: string;
+};
 
 /**
  * Workflow task execution completes tasks directly. Review steps should be
@@ -13,7 +18,7 @@ export async function onExecutorComplete(
   workspaceId: string,
   taskId: string,
   issueId: string,
-  result: TaskResult,
+  result: LegacyExecutorResult,
   _ctx: AgentContext,
 ): Promise<void> {
   console.log(
@@ -21,9 +26,9 @@ export async function onExecutorComplete(
   );
 
   if (!result.success) {
-    console.warn(`[hook:onExecutorComplete] task ${taskId} failed: ${result.error}`);
+    console.warn(`[hook:onExecutorComplete] workflow node ${taskId} failed: ${result.error}`);
     return;
   }
 
-  console.log(`[hook:onExecutorComplete] reviewer hook skipped; workflow controls task order taskId=${taskId} issueId=${issueId}`);
+  console.log(`[hook:onExecutorComplete] reviewer hook skipped; workflow controls node order taskId=${taskId} issueId=${issueId}`);
 }

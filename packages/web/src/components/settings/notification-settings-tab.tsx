@@ -33,7 +33,6 @@ interface NotificationSettingsTabProps {
 const NOTIFICATION_EVENTS: Array<{ value: NotificationEventKey; labelKey: string }> = [
   { value: 'issue_started', labelKey: 'events.issueStarted' },
   { value: 'issue_completed', labelKey: 'events.issueCompleted' },
-  { value: 'issue_task_completed', labelKey: 'events.taskCompleted' },
   { value: 'channel_agent_completed', labelKey: 'events.channelAgentCompleted' },
 ];
 
@@ -41,7 +40,7 @@ function defaultNotificationSettings(): WorkspaceNotificationSettings {
   return {
     enabled: false,
     provider: 'lark',
-    events: ['issue_started', 'issue_completed', 'issue_task_completed'],
+    events: ['issue_started', 'issue_completed'],
     lark: {},
     wechat: {},
   };

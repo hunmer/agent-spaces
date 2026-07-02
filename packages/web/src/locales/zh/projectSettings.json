@@ -1,4 +1,4 @@
-{
+﻿{
   "title": "项目设置",
   "loading": "加载中...",
   "workspaceNotFound": "未找到工作空间",
@@ -22,7 +22,7 @@
   "notifications": {
     "title": "通知",
     "messageNotifications": "消息通知",
-    "messageNotificationsDescription": "将议题进度和最终任务结果推送到外部聊天平台",
+    "messageNotificationsDescription": "将议题进度和工作流执行状态推送到外部聊天平台",
     "lark": "飞书",
     "wechat": "微信",
     "appId": "app_id",
@@ -39,7 +39,7 @@
     "testSuccess": "测试通知已发送",
     "testFailed": "发送测试通知失败",
     "native": "系统通知",
-    "nativeDescription": "通过操作系统原生通知在本地推送议题进度和任务结果",
+    "nativeDescription": "通过操作系统原生通知在本地推送议题进度和工作流更新",
     "nativePermissionGranted": "已授权",
     "nativePermissionDenied": "已拒绝",
     "nativePermissionDefault": "未授权",
@@ -50,8 +50,8 @@
     "nativeTestFailed": "发送系统通知失败",
     "nativePermissionGrantedToast": "通知权限已授权",
     "nativePermissionDeniedToast": "通知权限被拒绝",
-    "androidOngoingTaskNotification": "常驻任务通知",
-    "androidOngoingTaskNotificationDescription": "任务变化时更新系统通知面板中的常驻通知。仅 Android 生效，可能需要前台服务支持。",
+    "androidOngoingTaskNotification": "常驻工作流通知",
+    "androidOngoingTaskNotificationDescription": "工作流执行状态变化时更新系统通知面板中的常驻通知。仅 Android 生效，可能需要前台服务支持。",
     "selectRobotAccount": "选择 Robot 账号",
     "noRobotAccount": "暂无账号，请先在设置中添加",
     "addRobotAccount": "去添加"
@@ -79,7 +79,6 @@
     "title": "通知事件",
     "issueStarted": "议题开始",
     "issueCompleted": "议题完成",
-    "taskCompleted": "任务完成",
     "channelAgentCompleted": "频道 Agent 回复完成"
   },
   "prompt": {

@@ -1,4 +1,4 @@
-{
+﻿{
   "title": "Project Settings",
   "loading": "Loading...",
   "workspaceNotFound": "Workspace not found",
@@ -22,7 +22,7 @@
   "notifications": {
     "title": "Notifications",
     "messageNotifications": "Message Notifications",
-    "messageNotificationsDescription": "Push issue progress and final task results to external chat platforms",
+    "messageNotificationsDescription": "Push issue progress and workflow completion to external chat platforms",
     "lark": "Feishu",
     "wechat": "WeChat",
     "appId": "app_id",
@@ -39,7 +39,7 @@
     "testSuccess": "Test notification sent",
     "testFailed": "Failed to send test notification",
     "native": "System",
-    "nativeDescription": "Push issue progress and task results via native OS notifications",
+    "nativeDescription": "Push issue progress and workflow updates via native OS notifications",
     "nativePermissionGranted": "Granted",
     "nativePermissionDenied": "Denied",
     "nativePermissionDefault": "Not granted",
@@ -50,8 +50,8 @@
     "nativeTestFailed": "Failed to send system notification",
     "nativePermissionGrantedToast": "Notification permission granted",
     "nativePermissionDeniedToast": "Notification permission denied",
-    "androidOngoingTaskNotification": "Ongoing task notification",
-    "androidOngoingTaskNotificationDescription": "Update an ongoing notification in the system notification panel when tasks change. Android only; foreground service support may be required.",
+    "androidOngoingTaskNotification": "Ongoing workflow notification",
+    "androidOngoingTaskNotificationDescription": "Update an ongoing notification in the system notification panel when workflow execution changes. Android only; foreground service support may be required.",
     "selectRobotAccount": "Select Robot Account",
     "noRobotAccount": "No accounts yet. Add one in Settings first.",
     "addRobotAccount": "Add Account"
@@ -79,7 +79,6 @@
     "title": "Notification Events",
     "issueStarted": "Issue Started",
     "issueCompleted": "Issue Completed",
-    "taskCompleted": "Task Completed",
     "channelAgentCompleted": "Channel Agent Reply Completed"
   },
   "prompt": {

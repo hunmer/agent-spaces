@@ -67,7 +67,12 @@ export interface AgentOutputPayload {
 
 export interface AgentCompletedPayload {
   agentId: string;
-  result?: import('./task.js').TaskResult;
+  result?: {
+    success: boolean;
+    summary: string;
+    artifacts: string[];
+    error?: string;
+  };
   error?: string;
 }
 
@@ -83,19 +88,6 @@ export interface IssueCommentDeletedPayload {
   workspaceId: string;
   issueId: string;
   commentId: string;
-}
-
-// ---- Task Events ----
-
-export interface TaskStatusChangedPayload {
-  taskId: string;
-  from: string;
-  to: string;
-}
-
-export interface TaskOutputPayload {
-  taskId: string;
-  data: string;
 }
 
 export interface MiniAppMessageContext {
@@ -180,10 +172,6 @@ export type ServerEventMap = {
   'issue.comment.created': import('./issue.js').IssueComment;
   'issue.comment.updated': import('./issue.js').IssueComment;
   'issue.comment.deleted': IssueCommentDeletedPayload;
-  'task.created': import('./task.js').Task;
-  'task.updated': import('./task.js').Task;
-  'task.status_changed': TaskStatusChangedPayload;
-  'task.output': TaskOutputPayload;
   'workflow.created': { workflow: Workflow };
   'workflow.updated': { workflow: Workflow };
   'workflow.deleted': { workflowId: string };

@@ -7,7 +7,6 @@ import type {
   AgentStatusChangedPayload,
   AgentCompletedPayload,
   IssueStatusChangedPayload,
-  TaskStatusChangedPayload,
 } from "@agent-spaces/shared"
 
 const MAX_ENTRIES = 2000
@@ -66,7 +65,7 @@ export function startActivityLogListeners(workspaceId: string) {
     ws.on("agent.status_changed", (data) => {
       const { agentId, from, to } = data as AgentStatusChangedPayload
       const level = to === "crashed" ? "error" : to === "blocked" ? "warn" : "info"
-      store.getState().append({ level, timestamp: ts(), message: `${wsLabel(workspaceId)}Agent "${agentName(agentId)}" status: ${from} → ${to}` })
+      store.getState().append({ level, timestamp: ts(), message: `${wsLabel(workspaceId)}Agent "${agentName(agentId)}" status: ${from} -> ${to}` })
     }),
 
     ws.on("agent.completed", (data) => {
@@ -90,22 +89,35 @@ export function startActivityLogListeners(workspaceId: string) {
 
     ws.on("issue.status_changed", (data) => {
       const { from, to } = data as IssueStatusChangedPayload
-      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Issue status: ${from} → ${to}` })
+      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Issue status: ${from} -> ${to}` })
     }),
 
-    ws.on("task.created", (data) => {
-      const t = data as { id: string; title?: string }
-      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Task created: ${t.title ?? t.id}` })
+    ws.on("workflow:started", (data) => {
+      const event = data as { workflowId?: string; executionId?: string }
+      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow started: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
     }),
 
-    ws.on("task.status_changed", (data) => {
-      const { from, to } = data as TaskStatusChangedPayload
-      const level = to === "failed" ? "error" : "info"
-      store.getState().append({ level, timestamp: ts(), message: `${wsLabel(workspaceId)}Task status: ${from} → ${to}` })
+    ws.on("workflow:paused", (data) => {
+      const event = data as { workflowId?: string; executionId?: string }
+      store.getState().append({ level: "warn", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow paused: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
+    }),
+
+    ws.on("workflow:resumed", (data) => {
+      const event = data as { workflowId?: string; executionId?: string }
+      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow resumed: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
+    }),
+
+    ws.on("workflow:completed", (data) => {
+      const event = data as { workflowId?: string; executionId?: string }
+      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow completed: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
+    }),
+
+    ws.on("workflow:error", (data) => {
+      const event = data as { workflowId?: string; executionId?: string; error?: { message?: string } }
+      store.getState().append({ level: "error", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow failed: ${event.workflowId ?? "-"} (${event.executionId ?? "-"}) ${event.error?.message ?? ""}`.trim() })
     }),
   ]
 
-  // Store cleanup on the ws object
   const wsAny = ws as unknown as Record<string, unknown>
   wsAny._activityLogCleanup = () => {
     handlers.forEach((h) => h())
