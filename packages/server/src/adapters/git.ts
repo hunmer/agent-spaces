@@ -35,11 +35,23 @@ function getGitOptions(): Partial<import('simple-git').SimpleGitOptions> {
 }
 
 async function ensureRepo(git: SimpleGit, dir: string): Promise<void> {
+  let initialized = false;
   try {
     const isRepo = await git.checkIsRepo();
-    if (!isRepo) await git.init(false);
+    if (!isRepo) { await git.init(false); initialized = true; }
   } catch {
-    try { await git.init(false); } catch {}
+    try { await git.init(false); initialized = true; } catch {}
+  }
+  if (initialized) {
+    const gitignorePath = join(dir, '.gitignore');
+    try {
+      const existing = await readFile(gitignorePath, 'utf-8');
+      if (!existing.includes('.agentspace')) {
+        await writeFile(gitignorePath, existing.trimEnd() + '\n\n# Agent Spaces\n.agentspace/\n', 'utf-8');
+      }
+    } catch {
+      await writeFile(gitignorePath, DEFAULT_GITIGNORE, 'utf-8');
+    }
   }
 }
 

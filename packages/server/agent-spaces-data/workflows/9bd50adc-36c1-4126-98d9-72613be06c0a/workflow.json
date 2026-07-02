@@ -403,10 +403,11 @@
     }
   ],
   "createdAt": 1782821632696,
-  "updatedAt": 1782972603086,
+  "updatedAt": 1782986758319,
   "published": false,
   "name": "公众号编写 (Copy)",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
-  "lastRunAt": 1782979325157
+  "lastRunAt": 1782979325157,
+  "lastOpenedAt": 1782986745886
 }
