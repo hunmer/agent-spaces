@@ -157,6 +157,16 @@ router.post('/:workflowId/duplicate', (req: Request<{ workflowId: string }>, res
   }
 });
 
+// 记录工作流被打开的时间（进入编辑器时由前端调用）
+router.post('/:workflowId/open', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    const workflow = ws.recordWorkflowOpen(req.params.workflowId);
+    res.json(workflow);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // ---- Versions ----
 
 router.get('/:workflowId/versions', (req: Request<{ workflowId: string }>, res: Response) => {

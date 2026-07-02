@@ -293,6 +293,15 @@ export function updateWorkflow(
   return updated;
 }
 
+/** 记录工作流被打开（进入编辑器）的时间，不影响其他字段。 */
+export function recordWorkflowOpen(workflowId: string): Workflow {
+  const existing = store.getWorkflow(workflowId);
+  if (!existing) throw new Error('Workflow not found');
+  const updated: Workflow = { ...existing, lastOpenedAt: Date.now() };
+  store.updateWorkflow(updated);
+  return updated;
+}
+
 export function deleteWorkflow(workflowId: string): void {
   const existing = store.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');

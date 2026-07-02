@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WorkflowPreview } from '@/components/workflow/workflow-preview';
@@ -114,6 +113,19 @@ function getStatusVariant(status: AgentRunCard['status']): 'default' | 'secondar
       return 'destructive';
     default:
       return 'outline';
+  }
+}
+
+function getExecutionLogStatusColor(status: IssueExecutionLog['status']): string {
+  switch (status) {
+    case 'running':
+      return 'bg-blue-500';
+    case 'completed':
+      return 'bg-green-500';
+    case 'paused':
+      return 'bg-yellow-500';
+    default:
+      return 'bg-red-500';
   }
 }
 
@@ -516,23 +528,24 @@ export function IssueDetailTasksPanel({
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (
         <>
-          <div className="flex items-center gap-2">
-            <Select
-              value={selectedLogId}
-              onValueChange={(value) => setSelectedLogId(value ?? '')}
-              disabled={logsLoading || issueLogs.length === 0}
-            >
-              <SelectTrigger className="h-8 w-full text-xs sm:max-w-[360px]">
-                <SelectValue placeholder={logsLoading ? t('detail.loadingLogs') : t('detail.selectExecutionLog')} />
-              </SelectTrigger>
-              <SelectContent>
-                {issueLogs.map((log) => (
-                  <SelectItem key={log.id} value={log.id} className="text-xs">
-                    {formatExecutionLogLabel(log, t)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            {issueLogs.map((log) => {
+              const active = log.id === selectedLogId;
+              return (
+                <Button
+                  key={log.id}
+                  variant={active ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  disabled={logsLoading}
+                  onClick={() => setSelectedLogId(log.id)}
+                  title={formatExecutionLogLabel(log, t)}
+                >
+                  <span className={`size-2 rounded-full ${getExecutionLogStatusColor(log.status)}`} />
+                  {new Date(log.startedAt).toLocaleString()}
+                </Button>
+              );
+            })}
           </div>
           <div className="h-[420px] overflow-hidden rounded-xl border bg-background lg:h-[480px]">
           {view === 'workflow' ? (

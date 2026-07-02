@@ -15,6 +15,7 @@
     "createdAt": "Created time",
     "updatedAt": "Last updated",
     "lastRunAt": "Last run",
+    "lastOpenedAt": "Last opened",
     "asc": "Ascending",
     "desc": "Descending",
     "selectMode": "Select",

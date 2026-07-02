@@ -39,7 +39,7 @@ export function WorkflowsPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [scheduleFilter, setScheduleFilter] = useState<'all' | 'scheduled' | 'unscheduled'>('all');
   const [typeFilter, setTypeFilter] = useState<'normal' | 'workspace'>('normal');
-  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'lastRunAt'>('createdAt');
+  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'lastRunAt' | 'lastOpenedAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -186,10 +186,16 @@ export function WorkflowsPage() {
     [loadWorkflows],
   );
 
+  const handleRecordOpen = useCallback((wf: WorkflowTemplate) => {
+    // 进入工作流时通知后端记录打开时间（fire-and-forget）
+    workflowApi.recordOpen(wf.id).then(updated => upsertWorkflow(updated)).catch(() => {});
+  }, [upsertWorkflow]);
+
   const handleListOpen = useCallback((wf: WorkflowTemplate) => {
+    handleRecordOpen(wf);
     nativeNavigate(router, `/workflows/${wf.id}`);
     setListDialogOpen(false);
-  }, [router]);
+  }, [router, handleRecordOpen]);
 
   const handleListCreate = useCallback(async () => {
     const created = await workflowApi.create({
@@ -201,9 +207,10 @@ export function WorkflowsPage() {
       edges: [],
     });
     upsertWorkflow(created);
+    handleRecordOpen(created);
     nativeNavigate(router, `/workflows/${created.id}`);
     setListDialogOpen(false);
-  }, [upsertWorkflow, router, t]);
+  }, [upsertWorkflow, router, t, handleRecordOpen]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -342,6 +349,13 @@ export function WorkflowsPage() {
                 {sortField === 'lastRunAt' && <span className="text-primary">✓</span>}
                 {t('page.lastRunAt')}
               </button>
+              <button
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'lastOpenedAt' ? 'font-medium' : ''}`}
+                onClick={() => setSortField('lastOpenedAt')}
+              >
+                {sortField === 'lastOpenedAt' && <span className="text-primary">✓</span>}
+                {t('page.lastOpenedAt')}
+              </button>
               <div className="border-t my-1" />
               <button
                 className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortOrder === 'asc' ? 'font-medium' : ''}`}
@@ -455,6 +469,7 @@ export function WorkflowsPage() {
               selectionMode={selectionMode}
               selected={selectedIds.has(workflow.id)}
               onToggleSelect={() => toggleSelect(workflow.id)}
+              onRecordOpen={handleRecordOpen}
             />
           ))}
         </div>
@@ -493,6 +508,7 @@ export function WorkflowsPage() {
             edges: [],
           });
           upsertWorkflow(created);
+          handleRecordOpen(created);
           nativeNavigate(router, `/workflows/${created.id}`);
         }}
       />

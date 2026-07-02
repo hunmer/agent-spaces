@@ -63,7 +63,6 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
   const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
-  const [popoverOpen, setPopoverOpen] = useState(false);
   const router = useRouter();
   const tc = useTranslations('common');
 
@@ -83,78 +82,12 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
           <SidebarMenuItem key={route.id}>
             {useCollapsible ? (
               isCollapsed ? (
-                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                  <PopoverTrigger render={<SidebarMenuButton className="justify-center text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" tooltip={route.title} />}>{route.icon}</PopoverTrigger>
-                  <PopoverContent side="right" sideOffset={8} className="w-56 p-1.5">
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mb-1">{route.title}</div>
-                    {route.subs?.map((subRoute) => {
-                      const handleSubClick = () => {
-                        setPopoverOpen(false);
-                        if (subRoute.onClick) subRoute.onClick();
-                        else navigate(subRoute.link);
-                      };
-                      return (
-                      <div key={`${route.id}-${subRoute.title}`} className="group/sub relative flex items-center">
-                          <button
-                            type="button"
-                            onClick={handleSubClick}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer",
-                              pathname === subRoute.link
-                                ? "bg-accent text-accent-foreground font-medium"
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                            )}
-                          >
-                            {subRoute.icon}
-                            {subRoute.title}
-                          </button>
-                        {subRoute.menuItems && subRoute.menuItems.length > 0 && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              className="absolute right-1 flex items-center justify-center rounded-md p-0.5 opacity-0 group-hover/sub:opacity-100 hover:bg-accent transition-opacity cursor-pointer"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className="size-3.5 text-muted-foreground" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" side="right">
-                              {subRoute.menuItems.map((item) => (
-                                <DropdownMenuItem
-                                  key={item.label}
-                                  variant={item.variant}
-                                  onClick={item.onClick}
-                                >
-                                  {item.icon}
-                                  {item.label}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                      );
-                    })}
-                    {route.onAdd && (
-                      <button
-                        type="button"
-                        onClick={() => { setPopoverOpen(false); route.onAdd?.(); }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
-                      >
-                        <Plus className="size-3.5" />
-                        {route.addLabel ?? tc('add')}
-                      </button>
-                    )}
-                    {route.manageLink && (
-                      <button
-                        type="button"
-                        onClick={() => { setPopoverOpen(false); navigate(route.manageLink!); }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
-                      >
-                        <LayoutGrid className="size-3.5" />
-                        {tc('manage')}
-                      </button>
-                    )}
-                  </PopoverContent>
-                </Popover>
+                <CollapsedRoutePopover
+                  route={route}
+                  pathname={pathname}
+                  navigate={navigate}
+                  tc={tc}
+                />
               ) : (
                 <Collapsible
                   open={isOpen}
@@ -290,5 +223,94 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
         );
       })}
     </SidebarMenu>
+  );
+}
+
+function CollapsedRoutePopover({
+  route,
+  pathname,
+  navigate,
+  tc,
+}: {
+  route: Route;
+  pathname?: string;
+  navigate: (href: string) => void;
+  tc: (key: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<SidebarMenuButton className="justify-center text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" tooltip={route.title} />}>{route.icon}</PopoverTrigger>
+      <PopoverContent side="right" sideOffset={8} className="w-56 p-1.5">
+        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mb-1">{route.title}</div>
+        {route.subs?.map((subRoute) => {
+          const handleSubClick = () => {
+            setOpen(false);
+            if (subRoute.onClick) subRoute.onClick();
+            else navigate(subRoute.link);
+          };
+          return (
+            <div key={`${route.id}-${subRoute.title}`} className="group/sub relative flex items-center">
+              <button
+                type="button"
+                onClick={handleSubClick}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer",
+                  pathname === subRoute.link
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                {subRoute.icon}
+                {subRoute.title}
+              </button>
+              {subRoute.menuItems && subRoute.menuItems.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="absolute right-1 flex items-center justify-center rounded-md p-0.5 opacity-0 group-hover/sub:opacity-100 hover:bg-accent transition-opacity cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="size-3.5 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" side="right">
+                    {subRoute.menuItems.map((item) => (
+                      <DropdownMenuItem
+                        key={item.label}
+                        variant={item.variant}
+                        onClick={item.onClick}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          );
+        })}
+        {route.onAdd && (
+          <button
+            type="button"
+            onClick={() => { setOpen(false); route.onAdd?.(); }}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
+          >
+            <Plus className="size-3.5" />
+            {route.addLabel ?? tc('add')}
+          </button>
+        )}
+        {route.manageLink && (
+          <button
+            type="button"
+            onClick={() => { setOpen(false); navigate(route.manageLink!); }}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
+          >
+            <LayoutGrid className="size-3.5" />
+            {tc('manage')}
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

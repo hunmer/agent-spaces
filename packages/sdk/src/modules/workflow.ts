@@ -28,6 +28,9 @@ export function createWorkflowApi(http: HttpClient) {
     duplicate: (id: string): Promise<WorkflowTemplate> =>
       http.post(`/api/workflows/${id}/duplicate`),
 
+    recordOpen: (id: string): Promise<WorkflowTemplate> =>
+      http.post(`/api/workflows/${id}/open`),
+
     execute: (workflowId: string, body?: { input?: Record<string, unknown>; snapshot?: { nodes: WorkflowNode[]; edges: WorkflowTemplate['edges']; groups?: WorkflowTemplate['groups'] }; startNodeId?: string }): Promise<Response> =>
       http.sse(`/api/workflows/${workflowId}/execute`, body),
 

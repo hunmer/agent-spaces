@@ -23,11 +23,13 @@ interface WorkflowCardProps {
   selectionMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  /** 点击进入工作流时触发，用于父组件上报打开记录 */
+  onRecordOpen?: (wf: WorkflowTemplate) => void;
   /** 全部插件清单（由父组件加载，用于展示已启用插件的图标） */
   allPlugins?: { id: string; name: string; iconPath?: string }[];
 }
 
-export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport, selectionMode, selected, onToggleSelect, allPlugins }: WorkflowCardProps) {
+export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport, selectionMode, selected, onToggleSelect, onRecordOpen, allPlugins }: WorkflowCardProps) {
   const router = useRouter();
   const t = useTranslations('workflows');
 
@@ -57,6 +59,7 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
         if (selectionMode) {
           onToggleSelect?.();
         } else {
+          onRecordOpen?.(workflow);
           nativeNavigate(router, `/workflows/${workflow.id}`);
         }
       }}

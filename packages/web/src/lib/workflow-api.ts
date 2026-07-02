@@ -110,6 +110,10 @@ export const workflowApi = {
     return sdk.workflow.duplicate(id);
   },
 
+  recordOpen(id: string): Promise<Workflow> {
+    return sdk.workflow.recordOpen(id);
+  },
+
   execute(
     workflowId: string,
     input?: Record<string, unknown>,
