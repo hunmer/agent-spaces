@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import type { AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from "@agent-spaces/shared"
+import type { AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage, AgentUsageSessionToolCall } from "@agent-spaces/shared"
 import { Loader2, Trash2 } from "lucide-react"
 
 import { ContextPartChatView } from "@/components/chat/message-context-to-chat"
@@ -163,9 +163,9 @@ export function UsageDashboardSessionDialog({
 function SessionMessageCard({
   message,
 }: {
-  message: Pick<AgentUsageSessionMessage, "content" | "createdAt" | "role" | "contextPart" | "sourceChannelName" | "metadata">
+  message: Pick<AgentUsageSessionMessage, "content" | "createdAt" | "role" | "contextPart" | "sourceChannelName" | "metadata" | "toolCalls">
 }) {
-  const hasExtras = !!message.contextPart || !!message.sourceChannelName || !!message.metadata?.runtimeSessionId || !!message.metadata?.runtime
+  const hasExtras = !!message.contextPart || !!message.sourceChannelName || !!message.metadata?.runtimeSessionId || !!message.metadata?.runtime || (message.toolCalls?.length ?? 0) > 0
 
   return (
     <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
@@ -196,9 +196,10 @@ function SessionMessageExtras({
     contextPart?: AgentUsageSessionMessage["contextPart"]
     sourceChannelName?: string
     metadata?: AgentUsageSessionMessage["metadata"]
+    toolCalls?: AgentUsageSessionMessage["toolCalls"]
   }
 }) {
-  if (!message.contextPart && !message.sourceChannelName && !message.metadata?.runtimeSessionId) {
+  if (!message.contextPart && !message.sourceChannelName && !message.metadata?.runtimeSessionId && !(message.toolCalls?.length)) {
     return null
   }
 
@@ -209,8 +210,65 @@ function SessionMessageExtras({
         {message.metadata?.runtime ? <Badge variant="outline">{message.metadata.runtime}</Badge> : null}
         {message.metadata?.runtimeSessionId ? <span className="font-mono">{message.metadata.runtimeSessionId}</span> : null}
       </div>
+      {message.toolCalls?.length ? <SessionToolCalls toolCalls={message.toolCalls} /> : null}
       {message.contextPart ? <ContextPartChatView part={message.contextPart} /> : null}
     </div>
+  )
+}
+
+function SessionToolCalls({ toolCalls }: { toolCalls: AgentUsageSessionToolCall[] }) {
+  const t = useTranslations("home")
+
+  return (
+    <div className="space-y-2 rounded-md border bg-background/60 p-3">
+      <div className="text-[11px] font-medium text-muted-foreground">
+        {t("sessionDetail.toolCalls")}
+      </div>
+      <div className="space-y-2">
+        {toolCalls.map((toolCall) => (
+          <div key={toolCall.id} className="rounded-md border bg-muted/20 p-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="outline">{toolCall.toolName || toolCall.title}</Badge>
+              {toolCall.status ? <Badge variant={toolCall.status === "success" ? "secondary" : "outline"}>{toolCall.status}</Badge> : null}
+            </div>
+            {toolCall.title && toolCall.title !== toolCall.toolName ? (
+              <div className="mt-2 text-xs text-muted-foreground">{toolCall.title}</div>
+            ) : null}
+            {toolCall.input !== undefined ? (
+              <div className="mt-2">
+                <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolInput")}</div>
+                <ToolCallValue value={toolCall.input} rootName="input" />
+              </div>
+            ) : null}
+            {toolCall.result !== undefined ? (
+              <div className="mt-2">
+                <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolResult")}</div>
+                <ToolCallValue value={toolCall.result} rootName="result" />
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ToolCallValue({ value, rootName }: { value: unknown; rootName: string }) {
+  if (typeof value === "string") {
+    return (
+      <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 text-xs leading-5">
+        {value}
+      </pre>
+    )
+  }
+
+  return (
+    <JsonViewer
+      data={(value ?? null) as never}
+      title={rootName}
+      defaultExpanded={1}
+      rootName={rootName}
+    />
   )
 }
 

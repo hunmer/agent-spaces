@@ -13,6 +13,7 @@ import type {
   AgentUsageRecord,
   AgentUsageSessionDetail,
   AgentUsageSessionMessage,
+  AgentUsageSessionToolCall,
   LLMProvider,
   Message,
   MessagePart,
@@ -41,7 +42,7 @@ import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 import { listModels, listProviders } from '../storage/llm-store.js';
 import { extractUsageFromOutput } from '../storage/usage.js';
-import { getToolDetail } from './tool-detail.js';
+import { getToolDetail, listToolDetailsForMessage } from './tool-detail.js';
 
 const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
 export const AGENT_GENERATOR_PRESET_ID = 'agent-generator';
@@ -1448,10 +1449,53 @@ function mapSessionDetailMessage(
     metadata: message.metadata,
     parts: message.parts,
     contextPart,
+    toolCalls: buildSessionMessageToolCalls(workspaceId, channelId, message),
     timeline: buildSessionMessageTimeline(workspaceId, channelId, message),
     sourceChannelId: channelId,
     sourceChannelName: channelName,
   };
+}
+
+function buildSessionMessageToolCalls(
+  workspaceId: string,
+  channelId: string,
+  message: Message,
+): AgentUsageSessionToolCall[] {
+  const allDetails = listToolDetailsForMessage(workspaceId, channelId, message.id);
+  const detailsById = new Map(allDetails.map((detail) => [detail.id, detail]));
+  const toolCalls: AgentUsageSessionToolCall[] = [];
+
+  for (const part of message.parts ?? []) {
+    if (part.type !== 'chain') continue;
+    for (const chain of part.chains) {
+      if (chain.kind !== 'tool') continue;
+      const detail = chain.detailId ? detailsById.get(chain.detailId) : undefined;
+      toolCalls.push({
+        id: detail?.id ?? chain.id,
+        title: detail?.title ?? chain.title,
+        raw: detail?.raw,
+        toolName: detail?.title ? undefined : chain.toolName,
+        status: detail?.output === undefined ? 'running' : 'success',
+        input: detail?.input,
+        result: detail?.output,
+        createdAt: detail?.createdAt,
+        updatedAt: detail?.updatedAt,
+      });
+    }
+  }
+
+  if (toolCalls.length > 0) return toolCalls;
+
+  return allDetails.map((detail) => ({
+    id: detail.id,
+    title: detail.title,
+    raw: detail.raw,
+    status: detail.output === undefined ? 'running' : 'success',
+    input: detail.input,
+    result: detail.output,
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+  }));
 }
 
 function buildSessionMessageTimeline(

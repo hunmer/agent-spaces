@@ -39,3 +39,12 @@ export function getToolDetail(
   const details = readJsonFile<ToolDetail[]>(detailFilePath(workspaceId, channelId)) || [];
   return details.find((detail) => detail.messageId === messageId && detail.id === detailId) ?? null;
 }
+
+export function listToolDetailsForMessage(
+  workspaceId: string,
+  channelId: string,
+  messageId: string,
+): ToolDetail[] {
+  const details = readJsonFile<ToolDetail[]>(detailFilePath(workspaceId, channelId)) || [];
+  return details.filter((detail) => detail.messageId === messageId);
+}

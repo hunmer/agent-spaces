@@ -134,8 +134,21 @@ export interface AgentUsageSessionMessage {
   parts?: MessagePart[];
   contextPart?: Extract<MessagePart, { type: 'context' }>;
   timeline?: WorkflowAgentTimelineItem[];
+  toolCalls?: AgentUsageSessionToolCall[];
   sourceChannelId?: string;
   sourceChannelName?: string;
+}
+
+export interface AgentUsageSessionToolCall {
+  id: string;
+  title: string;
+  raw?: string;
+  toolName?: string;
+  status?: 'running' | 'success';
+  input?: unknown;
+  result?: unknown;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AgentUsageSessionDetail {
