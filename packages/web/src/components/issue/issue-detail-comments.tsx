@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IssueMessage } from '@/components/issue/issue-message';
+import { Empty, EmptyDescription } from '@/components/ui/empty';
+import { MessageSquare } from 'lucide-react';
 import { useChannelStore } from '@/stores/channel';
 import { getWS } from '@/lib/ws';
 import type { Attachment as MessageAttachment, IssueComment, Issue, Message } from '@agent-spaces/shared';
@@ -121,7 +123,16 @@ export function IssueDetailComments({
           ))}
           <div className="h-20 pointer-events-none" />
         </div>
-      ) : null}
+      ) : (
+        <div ref={commentsViewportRef} className="relative xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+          <Empty className="border-0 py-6">
+            <EmptyDescription className="flex flex-col items-center gap-2 text-muted-foreground">
+              <MessageSquare className="size-5 opacity-40" />
+              <span>{t('detail.noComments')}</span>
+            </EmptyDescription>
+          </Empty>
+        </div>
+      )}
     </div>
   );
 }

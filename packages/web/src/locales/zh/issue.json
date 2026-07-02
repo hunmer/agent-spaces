@@ -44,6 +44,7 @@
     "noTasks": "暂无任务",
     "noAgent": "未分配 Agent",
     "comments": "评论 ({count})",
+    "noComments": "暂无评论",
     "author": "作者",
     "commented": "评论了",
     "comment": "评论",

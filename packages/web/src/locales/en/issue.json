@@ -44,6 +44,7 @@
     "noTasks": "No tasks yet",
     "noAgent": "No agent assigned",
     "comments": "Comments ({count})",
+    "noComments": "No comments yet",
     "author": "Author",
     "commented": "commented",
     "comment": "Comment",

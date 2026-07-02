@@ -231,8 +231,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const canRerun = issue.status === 'completed';
   const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
   const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
-  const canPause = isWorkflowRunning;
-  const canStop = isWorkflowRunning || isWorkflowPaused;
+  const isError = issue.status === 'error';
+  const canPause = isWorkflowRunning && !isError;
+  const canStop = (isWorkflowRunning || isWorkflowPaused) && !isError;
 
   const statusDotColor = issue.status === 'completed' ? 'bg-green-500'
     : issue.status === 'in_progress' ? 'bg-blue-500'

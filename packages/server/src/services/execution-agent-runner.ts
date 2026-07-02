@@ -67,7 +67,8 @@ async function executeAgentWithRuntime(
       ? `工作流描述:\n${session.workflow.description.trim()}`
       : '',
   ].filter(Boolean).join('\n\n');
-  const fullPrompt = [workflowContext, prompt]
+  const issueContext = buildIssueContext(session);
+  const fullPrompt = [workflowContext, issueContext, prompt]
     .map(part => typeof part === 'string' ? part.trim() : '')
     .filter(Boolean)
     .join('\n\n');
@@ -214,6 +215,29 @@ function persistWorkflowAgentSessionHistory(
     generatedAt: now,
   };
   agentService.writeWorkflowAgentSessionHistory(agentSessionId, payload);
+}
+
+function buildIssueContext(session: ExecutionSession): string {
+  const issueId = typeof session.context.issueId === 'string' ? session.context.issueId.trim() : '';
+  const issueTitle = typeof session.context.issueTitle === 'string' ? session.context.issueTitle.trim() : '';
+  const issueDescription = typeof session.context.issueDescription === 'string' ? session.context.issueDescription.trim() : '';
+  const channelId = typeof session.context.channelId === 'string' ? session.context.channelId.trim() : '';
+  const issueMembers = Array.isArray(session.context.issueMembers)
+    ? session.context.issueMembers.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+
+  if (!issueId && !issueTitle && !issueDescription && !channelId && issueMembers.length === 0) {
+    return '';
+  }
+
+  return [
+    'Current issue:',
+    issueId ? `- Issue id: ${issueId}` : '',
+    channelId ? `- Channel id: ${channelId}` : '',
+    issueTitle ? `- Title: ${issueTitle}` : '',
+    `- Description: ${issueDescription || '(empty)'}`,
+    issueMembers.length ? `- Members: ${issueMembers.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
 }
 
 function normalizeStringList(value: unknown): string[] {

@@ -35,6 +35,9 @@ type AgentRunCard = {
   nodeId: string;
   title: string;
   agentId?: string;
+  avatarUrl?: string;
+  icon?: string;
+  apiBase?: string;
   model?: string;
   providerId?: string;
   modelProvider?: string;
@@ -217,6 +220,9 @@ function AgentRunsView({
         nodeId: node.id,
         title: typeof agent?.name === 'string' && agent.name.trim() ? agent.name : node.label,
         agentId: typeof agent?.id === 'string' ? agent.id : undefined,
+        avatarUrl: typeof agent?.avatarUrl === 'string' && agent.avatarUrl.trim() ? agent.avatarUrl : undefined,
+        icon: typeof agent?.icon === 'string' && agent.icon.trim() ? agent.icon : undefined,
+        apiBase: typeof agent?.apiBase === 'string' ? agent.apiBase : undefined,
         model: typeof agent?.modelId === 'string' ? agent.modelId : undefined,
         providerId: typeof agent?.providerId === 'string' ? agent.providerId : undefined,
         modelProvider: typeof agent?.modelProvider === 'string' ? agent.modelProvider : undefined,
@@ -255,6 +261,9 @@ function AgentRunsView({
                 <AgentIcon
                   agentId={card.agentId}
                   name={card.title}
+                  avatarUrl={card.avatarUrl}
+                  icon={card.icon}
+                  apiBase={card.apiBase}
                   modelId={card.model}
                   providerId={card.providerId}
                   modelProvider={card.modelProvider}
