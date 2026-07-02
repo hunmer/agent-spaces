@@ -1257,6 +1257,10 @@ export function deleteUsageRecord(id: string): boolean {
   return deleteAgentUsageRecord(id);
 }
 
+export function clearAllUsageRecords(): number {
+  return clearAllAgentUsageRecords();
+}
+
 export function getSessionDetail(agentSessionId: string): AgentUsageSessionDetail | null {
   const session = getAgentSessionById(agentSessionId);
   const usage = getLatestAgentUsageBySessionId(agentSessionId);
