@@ -1,7 +1,6 @@
 import type { AgentConfig, Issue, MessagePart } from '@agent-spaces/shared';
 import { createAgentMessagePartsTracker, type AgentMessagePartsTracker } from './agent-message-parts.js';
 import * as issueCommentService from '../services/issue-comment.js';
-import * as issueService from '../services/issue.js';
 import * as messageService from '../services/message.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
@@ -95,7 +94,7 @@ export function createIssueAgentProgress(
       phase: metadata.phase,
     },
   });
-  if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
+  if (comment) broadcastToWorkspace(workspaceId, 'issue.comment.created', comment);
 
   return { message, comment };
 }
@@ -148,5 +147,5 @@ export function completeIssueAgentProgress(
       },
     })
     : null;
-  if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
+  if (comment) broadcastToWorkspace(workspaceId, 'issue.comment.updated', comment);
 }

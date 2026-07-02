@@ -11,6 +11,7 @@ import { truncateLine } from './format.js';
 import { getBotSettings, persistBotMarkdown } from './helpers.js';
 import { startIssueAutomation, getConfiguredBotAgent } from './bot-agent.js';
 import { hasActiveIssueAutomation } from '../../agents/issue-agent-runner.js';
+import { broadcastToWorkspace } from '../../ws/connection-manager.js';
 
 export function isBuiltInCommand(text: string): boolean {
   const command = text.trim().split(/\s+/, 1)[0];
@@ -137,6 +138,7 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
       content,
       source: 'user',
     });
+    if (comment) broadcastToWorkspace(workspaceId, 'issue.comment.created', comment);
     if (comment && !hasActiveIssueAutomation(workspaceId)) startIssueAutomation(workspaceId, issue.id);
     return comment ? `Comment added to ${issue.title}.` : 'Issue not found.';
   }

@@ -5,6 +5,7 @@ import * as issueCommentService from '../issue-comment.js';
 import * as channelService from '../channel.js';
 import * as taskService from '../task.js';
 import * as agentService from '../agent.js';
+import { broadcastToWorkspace } from '../../ws/connection-manager.js';
 
 interface IssueToolActor {
   senderId: string;
@@ -200,6 +201,7 @@ function addCurrentChannelComment(
     },
   });
   if (!comment) throw new Error(`Bound issue not found: ${issue.id}`);
+  broadcastToWorkspace(workspaceId, 'issue.comment.created', comment);
   return comment;
 }
 

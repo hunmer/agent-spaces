@@ -60,7 +60,21 @@
     "infoDescription": "描述",
     "description": "描述",
     "addMember": "添加成员",
-    "deleteIssue": "删除议题"
+    "deleteIssue": "删除议题",
+    "statusRunning": "运行中",
+    "statusCompleted": "已完成",
+    "statusFailed": "失败",
+    "statusSkipped": "已跳过",
+    "statusIdle": "未执行",
+    "statusPaused": "已暂停",
+    "noAgentRunNodes": "当前工作流没有 agent_run 节点",
+    "viewMessages": "查看消息列表",
+    "noSession": "暂无会话记录",
+    "fullscreen": "全屏查看",
+    "noOutput": "暂无输出",
+    "loadingLogs": "加载执行记录中...",
+    "selectExecutionLog": "选择当前 issue 的 workflow 执行记录",
+    "executionLogLabel": "{startedAt} · {status}"
   },
   "message": {
     "task": "任务 {taskId}",

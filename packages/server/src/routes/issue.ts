@@ -307,6 +307,8 @@ router.post('/:issueId/comments', (req: Request<{ id: string; issueId: string }>
     return;
   }
 
+  broadcastToWorkspace(workspaceId, 'issue.comment.created', comment);
+
   if (issue.status !== 'draft') {
     const updatedIssue = issueService.updateStatus(workspaceId, issueId, 'draft');
     if (updatedIssue) {
@@ -343,6 +345,7 @@ router.put('/:issueId/comments/:commentId', (req: Request<{ id: string; issueId:
     res.status(404).json({ error: 'comment not found' });
     return;
   }
+  broadcastToWorkspace(req.params.id, 'issue.comment.updated', comment);
   res.json(comment);
 });
 
@@ -352,6 +355,11 @@ router.delete('/:issueId/comments/:commentId', (req: Request<{ id: string; issue
     res.status(404).json({ error: 'comment not found' });
     return;
   }
+  broadcastToWorkspace(req.params.id, 'issue.comment.deleted', {
+    workspaceId: req.params.id,
+    issueId: req.params.issueId,
+    commentId: req.params.commentId,
+  });
   res.status(204).send();
 });
 

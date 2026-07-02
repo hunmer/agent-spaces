@@ -79,6 +79,12 @@ export interface IssueStatusChangedPayload {
   to: string;
 }
 
+export interface IssueCommentDeletedPayload {
+  workspaceId: string;
+  issueId: string;
+  commentId: string;
+}
+
 // ---- Task Events ----
 
 export interface TaskStatusChangedPayload {
@@ -171,6 +177,9 @@ export type ServerEventMap = {
   'issue.created': import('./issue.js').Issue;
   'issue.updated': import('./issue.js').Issue;
   'issue.status_changed': IssueStatusChangedPayload;
+  'issue.comment.created': import('./issue.js').IssueComment;
+  'issue.comment.updated': import('./issue.js').IssueComment;
+  'issue.comment.deleted': IssueCommentDeletedPayload;
   'task.created': import('./task.js').Task;
   'task.updated': import('./task.js').Task;
   'task.status_changed': TaskStatusChangedPayload;

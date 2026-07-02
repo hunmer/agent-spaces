@@ -60,7 +60,21 @@
     "infoDescription": "Description",
     "description": "Description",
     "addMember": "Add member",
-    "deleteIssue": "Delete Issue"
+    "deleteIssue": "Delete Issue",
+    "statusRunning": "Running",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusSkipped": "Skipped",
+    "statusIdle": "Not started",
+    "statusPaused": "Paused",
+    "noAgentRunNodes": "No agent_run nodes in current workflow",
+    "viewMessages": "View messages",
+    "noSession": "No session records",
+    "fullscreen": "Fullscreen",
+    "noOutput": "No output",
+    "loadingLogs": "Loading execution logs...",
+    "selectExecutionLog": "Select a workflow execution log for this issue",
+    "executionLogLabel": "{startedAt} · {status}"
   },
   "message": {
     "task": "task {taskId}",

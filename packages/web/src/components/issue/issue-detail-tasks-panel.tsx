@@ -86,18 +86,18 @@ function extractSessionId(step?: ExecutionStep): string | undefined {
   return typeof sessionId === 'string' && sessionId.trim() ? sessionId.trim() : undefined;
 }
 
-function getStatusLabel(status: AgentRunCard['status']) {
+function getStatusLabel(status: AgentRunCard['status'], t: (key: string, params?: Record<string, string | number | Date>) => string) {
   switch (status) {
     case 'running':
-      return '运行中';
+      return t('detail.statusRunning');
     case 'completed':
-      return '已完成';
+      return t('detail.statusCompleted');
     case 'error':
-      return '失败';
+      return t('detail.statusFailed');
     case 'skipped':
-      return '已跳过';
+      return t('detail.statusSkipped');
     default:
-      return '未执行';
+      return t('detail.statusIdle');
   }
 }
 
@@ -114,16 +114,16 @@ function getStatusVariant(status: AgentRunCard['status']): 'default' | 'secondar
   }
 }
 
-function formatExecutionLogLabel(log: IssueExecutionLog): string {
+function formatExecutionLogLabel(log: IssueExecutionLog, t: (key: string, params?: Record<string, string | number | Date>) => string): string {
   const startedAt = new Date(log.startedAt).toLocaleString();
   const status = log.status === 'running'
-    ? '运行中'
+    ? t('detail.statusRunning')
     : log.status === 'completed'
-      ? '已完成'
+      ? t('detail.statusCompleted')
       : log.status === 'paused'
-        ? '已暂停'
-        : '失败';
-  return `${startedAt} · ${status}`;
+        ? t('detail.statusPaused')
+        : t('detail.statusFailed');
+  return t('detail.executionLogLabel', { startedAt, status });
 }
 
 function sortIssueExecutionLogs(logs: IssueExecutionLog[]): IssueExecutionLog[] {
@@ -138,10 +138,12 @@ function AgentRunsView({
   workflowId,
   workspaceId,
   executionLog,
+  t,
 }: {
   workflowId: string;
   workspaceId: string;
   executionLog?: ExecutionLog | null;
+  t: (key: string, params?: Record<string, string | number | Date>) => string;
 }) {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [fullscreenCard, setFullscreenCard] = useState<AgentRunCard | null>(null);
@@ -236,7 +238,7 @@ function AgentRunsView({
   }
 
   if (cards.length === 0) {
-    return <div className="p-4 text-sm text-muted-foreground">当前工作流没有 agent_run 节点</div>;
+    return <div className="p-4 text-sm text-muted-foreground">{t('detail.noAgentRunNodes')}</div>;
   }
 
   return (
@@ -267,7 +269,7 @@ function AgentRunsView({
                   </Badge>
                 ) : null}
               </div>
-              <Badge variant={getStatusVariant(card.status)}>{getStatusLabel(card.status)}</Badge>
+              <Badge variant={getStatusVariant(card.status)}>{getStatusLabel(card.status, t)}</Badge>
             </div>
             <AgentContent className="flex min-h-0 flex-1 flex-col space-y-2 bg-background/95 p-3">
               <div className="flex items-center justify-between gap-2">
@@ -284,8 +286,8 @@ function AgentRunsView({
                     size="icon"
                     className="size-6"
                     disabled={!card.sessionId}
-                    aria-label="查看消息列表"
-                    title={card.sessionId ? '查看消息列表' : '暂无会话记录'}
+                    aria-label={t('detail.viewMessages')}
+                    title={card.sessionId ? t('detail.viewMessages') : t('detail.noSession')}
                     onClick={() => openSessionDialog(card)}
                   >
                     <MessageSquare className="size-3.5" />
@@ -294,8 +296,8 @@ function AgentRunsView({
                     variant="ghost"
                     size="icon"
                     className="size-6"
-                    aria-label="全屏查看"
-                    title="全屏查看"
+                    aria-label={t('detail.fullscreen')}
+                    title={t('detail.fullscreen')}
                     onClick={() => setFullscreenCard(card)}
                   >
                     <Maximize2 className="size-3.5" />
@@ -306,7 +308,7 @@ function AgentRunsView({
                 {card.outputText ? (
                   <Markdown content={card.outputText} workspaceId={workspaceId} />
                 ) : (
-                  '暂无输出'
+                  t('detail.noOutput')
                 )}
               </div>
             </AgentContent>
@@ -328,7 +330,7 @@ function AgentRunsView({
             {fullscreenCard?.outputText ? (
               <Markdown content={fullscreenCard.outputText} workspaceId={workspaceId} />
             ) : (
-              '暂无输出'
+              t('detail.noOutput')
             )}
           </div>
         </DialogContent>
@@ -512,20 +514,16 @@ export function IssueDetailTasksPanel({
               disabled={logsLoading || issueLogs.length === 0}
             >
               <SelectTrigger className="h-8 w-full text-xs sm:max-w-[360px]">
-                <SelectValue placeholder={logsLoading ? '加载执行记录中...' : '选择当前 issue 的 workflow 执行记录'} />
+                <SelectValue placeholder={logsLoading ? t('detail.loadingLogs') : t('detail.selectExecutionLog')} />
               </SelectTrigger>
               <SelectContent>
                 {issueLogs.map((log) => (
                   <SelectItem key={log.id} value={log.id} className="text-xs">
-                    {formatExecutionLogLabel(log)}
+                    {formatExecutionLogLabel(log, t)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Badge variant="outline" className="gap-1 text-xs">
-              <ChevronDown className="size-3" />
-              {issueLogs.length}
-            </Badge>
           </div>
           <div
             key={`${issue.id}:${issue.workflowId}:${view}:${selectedExecutionLog?.id ?? 'none'}`}
@@ -540,7 +538,7 @@ export function IssueDetailTasksPanel({
               embeddedMode="issue"
             />
           ) : (
-            <AgentRunsView workflowId={issue.workflowId} workspaceId={workspaceId} executionLog={selectedExecutionLog} />
+            <AgentRunsView workflowId={issue.workflowId} workspaceId={workspaceId} executionLog={selectedExecutionLog} t={t} />
           )}
           </div>
         </>

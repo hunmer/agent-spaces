@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Markdown } from "@/components/ui/markdown"
 import { JsonViewer } from "@/components/viewers/json-viewer"
 import { sdk } from "@/lib/sdk"
 
@@ -116,7 +117,7 @@ export function UsageDashboardSessionDialog({
               ) : (
                 <div className="flex flex-col gap-3 py-3">
                   {messages.map((message) => (
-                    <SessionMessageExtras
+                    <SessionMessageCard
                       key={message.id}
                       message={message}
                     />
@@ -146,6 +147,35 @@ export function UsageDashboardSessionDialog({
         </Tabs>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function SessionMessageCard({
+  message,
+}: {
+  message: Pick<AgentUsageSessionMessage, "content" | "createdAt" | "role" | "contextPart" | "sourceChannelName" | "metadata">
+}) {
+  const hasExtras = !!message.contextPart || !!message.sourceChannelName || !!message.metadata?.runtimeSessionId || !!message.metadata?.runtime
+
+  return (
+    <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <Badge variant={message.role === "user" ? "secondary" : "default"}>
+          {message.role === "user" ? "user" : "agent"}
+        </Badge>
+        <span className="text-[10px] text-muted-foreground">
+          {new Date(message.createdAt).toLocaleString()}
+        </span>
+      </div>
+      <div className="rounded-md bg-background/80 px-3 py-2 text-sm">
+        {message.role === "user" ? (
+          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        ) : (
+          <Markdown content={message.content} />
+        )}
+      </div>
+      {hasExtras ? <SessionMessageExtras message={message} /> : null}
+    </div>
   )
 }
 

@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import type { IssueComment, OutputField, Workflow } from '@agent-spaces/shared';
+import type { IssueComment, IssueCommentDeletedPayload, OutputField, Workflow } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import {
   MessageSquare, X, MoreHorizontal, Users, Calendar, Paperclip, Plus,
   ArrowRight, Pencil, Info, MessagesSquare, Play, Pause, Square,
-  RotateCcw, ArrowLeft, GitBranch,
+  RotateCcw, ArrowLeft, GitBranch, Workflow as WorkflowIcon,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { nativeNavigate } from '@/lib/navigate';
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useAgentStore } from '@/stores/agent';
@@ -65,6 +67,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue, pauseIssue, resumeIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
+  const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
@@ -79,6 +82,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const tw = useTranslations('workflows');
 
   const issue = issues.find((i) => i.id === activeIssueId);
+  const issueId = issue?.id;
 
   const loadComments = useCallback(async (targetIssueId: string) => {
     setCommentsLoading(true);
@@ -90,11 +94,24 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     }
   }, [workspaceId]);
 
+  const upsertComment = useCallback((nextComment: IssueComment) => {
+    setComments((current) => {
+      const index = current.findIndex((comment) => comment.id === nextComment.id);
+      if (index === -1) return [...current, nextComment];
+      const next = [...current];
+      next[index] = nextComment;
+      return next;
+    });
+  }, []);
+
+  const removeComment = useCallback((commentId: string) => {
+    setComments((current) => current.filter((comment) => comment.id !== commentId));
+  }, []);
+
   useEffect(() => {
-    if (issue) {
-      void Promise.resolve().then(() => loadComments(issue.id));
-    }
-  }, [issue, workspaceId, loadComments]);
+    if (!issueId) return;
+    void loadComments(issueId);
+  }, [issueId, loadComments]);
 
   useEffect(() => {
     ensureAgents();
@@ -117,15 +134,26 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }, [issue?.workflowId]);
 
   useEffect(() => {
-    if (!issue) return;
+    if (!issueId) return;
     const ws = getWS(workspaceId);
-    const issueId = issue.id;
-    const unsubIssueUpdated = ws.on('issue.updated', (data: unknown) => {
-      const updatedIssue = data as { id?: string };
-      if (updatedIssue.id === issueId) loadComments(issueId);
+    const unsubCreated = ws.on('issue.comment.created', (data: unknown) => {
+      const comment = data as IssueComment;
+      if (comment.issueId === issueId) upsertComment(comment);
     });
-    return () => { unsubIssueUpdated(); };
-  }, [issue, workspaceId, loadComments]);
+    const unsubUpdated = ws.on('issue.comment.updated', (data: unknown) => {
+      const comment = data as IssueComment;
+      if (comment.issueId === issueId) upsertComment(comment);
+    });
+    const unsubDeleted = ws.on('issue.comment.deleted', (data: unknown) => {
+      const payload = data as IssueCommentDeletedPayload;
+      if (payload.issueId === issueId) removeComment(payload.commentId);
+    });
+    return () => {
+      unsubCreated();
+      unsubUpdated();
+      unsubDeleted();
+    };
+  }, [issueId, workspaceId, upsertComment, removeComment]);
 
   const handleSendComment = useCallback(async (content: string, mentions: string[]) => {
     if (!issue) return;
@@ -133,7 +161,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!text) return;
     try {
       const comment = await sdk.issue.addComment(workspaceId, issue.id, text, mentions);
-      setComments((current) => [...current, comment]);
+      upsertComment(comment);
       setTimeout(() => {
         commentsViewportRef.current?.scrollTo({
           top: commentsViewportRef.current.scrollHeight,
@@ -141,7 +169,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         });
       }, 50);
     } catch { /* ignore */ }
-  }, [issue, workspaceId]);
+  }, [issue, workspaceId, upsertComment]);
 
   const handleAddMembers = async (newMembers: string[]) => {
     if (!issue) return;
@@ -154,8 +182,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const handleDeleteComment = useCallback(async (commentId: string) => {
     if (!issue) return;
     await sdk.issue.deleteComment(workspaceId, issue.id, commentId);
-    setComments((current) => current.filter((comment) => comment.id !== commentId));
-  }, [issue, workspaceId]);
+    removeComment(commentId);
+  }, [issue, workspaceId, removeComment]);
 
   const handleCommentExpandedChange = useCallback((commentId: string, expanded: boolean) => {
     setExpandedCommentIds((current) => {
@@ -170,9 +198,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!issue) return;
     try {
       const updated = await sdk.issue.updateComment(wsId, issue.id, commentId, content);
-      setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
+      upsertComment(updated);
     } catch { /* ignore */ }
-  }, [issue]);
+  }, [issue, upsertComment]);
 
   const scrollToComment = useCallback((index: number) => {
     const comment = comments[index];
@@ -470,6 +498,22 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                             </p>
                           </div>
                         </div>
+                        {issue.workflowId && startWorkflow && (
+                          <button
+                            type="button"
+                            onClick={() => nativeNavigate(router, `/workflows/${issue.workflowId}`)}
+                            className="group flex items-start gap-3 rounded-md text-left transition-colors hover:bg-muted/40"
+                          >
+                            <WorkflowIcon className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                            <div className="min-w-0">
+                              <p className="text-muted-foreground">{t('detail.workflow', { defaultValue: 'Workflow' })}</p>
+                              <p className="mt-1 flex items-center gap-1 truncate text-xs font-medium">
+                                <span className="truncate">{startWorkflow.name}</span>
+                                <ArrowRight className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+                              </p>
+                            </div>
+                          </button>
+                        )}
                         {issue.branch && (
                           <div className="flex items-start gap-3">
                             <GitBranch className="h-5 w-5 mt-0.5 text-muted-foreground" />
