@@ -13,8 +13,10 @@ import { useNotificationStore } from "@/stores/notification";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { AppNotification, NotificationType } from "@agent-spaces/shared";
+import type { AppNotification, Issue, NotificationType } from "@agent-spaces/shared";
 import { useState, useEffect, useMemo } from "react";
+import { sdk } from "@/lib/sdk";
+import { IssueDetailWorkflowPanel } from "@/components/issue/issue-detail-workflow-panel";
 
 const typeIcon: Record<string, string> = {
   issue_completed: "✓",
@@ -182,10 +184,13 @@ export function NotificationCenterDialog({
                   <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(show.createdAt), { addSuffix: true })}
                   </p>
-                  {Object.keys(show.data).length > 0 && (
-                    <pre className="mt-3 text-xs bg-muted rounded p-3 overflow-auto">
-                      {JSON.stringify(show.data, null, 2)}
-                    </pre>
+                  {isIssueNotification(show) && (show.data.issueId as string) && (
+                    <div className="mt-4">
+                      <NotificationIssueWorkflow
+                        workspaceId={activeWsId}
+                        issueId={show.data.issueId as string}
+                      />
+                    </div>
                   )}
                 </div>
               ) : filtered.length === 0 ? (
@@ -257,5 +262,32 @@ export function NotificationCenterDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function isIssueNotification(n: AppNotification): boolean {
+  return n.type === 'issue_completed' || n.type === 'issue_failed';
+}
+
+function NotificationIssueWorkflow({ workspaceId, issueId }: { workspaceId: string; issueId: string }) {
+  const t = useTranslations('issue');
+  const [issue, setIssue] = useState<Issue | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setIssue(null);
+    sdk.issue.get(workspaceId, issueId)
+      .then((res) => { if (active) setIssue(res); })
+      .catch(() => { if (active) setIssue(null); });
+    return () => { active = false; };
+  }, [workspaceId, issueId]);
+
+  if (!issue) return null;
+  return (
+    <IssueDetailWorkflowPanel
+      issue={issue}
+      workspaceId={workspaceId}
+      t={t}
+    />
   );
 }
