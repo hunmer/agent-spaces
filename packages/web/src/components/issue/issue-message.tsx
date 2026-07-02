@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { ChatComposerInput } from '@/components/chat/chat-composer-input';
-import { MemberHoverCard } from '@/components/chat/member-hover-card';
 import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
@@ -154,13 +153,20 @@ export function IssueMessage({
       )}
       <div className="flex gap-3 items-start">
         {!isUser ? (
-          <MemberHoverCard agentId={comment.senderId} displayName={senderName} side="right" align="start">
-            <AgentIcon
-              agentId={comment.senderId}
-              name={senderName}
-              className="size-7 rounded-full"
-            />
-          </MemberHoverCard>
+          <AgentIcon
+            agentId={comment.senderId}
+            name={senderName}
+            avatarUrl={agent?.avatarUrl}
+            icon={agent?.icon}
+            apiBase={agent?.apiBase}
+            modelId={agent?.modelId}
+            providerId={agent?.providerId}
+            modelProvider={agent?.modelProvider}
+            className="size-7 shrink-0"
+            bordered={false}
+            hoverCard
+            hoverSide="right"
+          />
         ) : (
           <AgentIcon
             name={senderName}
@@ -303,13 +309,20 @@ function IssueReply({ reply, level, workspaceId }: { reply: MessageReply; level:
       <div className="absolute left-4 top-0 h-full w-px bg-border" />
       <div className="flex gap-3">
         {!isUser ? (
-          <MemberHoverCard agentId={reply.senderId} displayName={senderName} side="right" align="start">
-            <AgentIcon
-              agentId={reply.senderId}
-              name={senderName}
-              className="size-7 rounded-full"
-            />
-          </MemberHoverCard>
+          <AgentIcon
+            agentId={reply.senderId}
+            name={senderName}
+            avatarUrl={agent?.avatarUrl}
+            icon={agent?.icon}
+            apiBase={agent?.apiBase}
+            modelId={agent?.modelId}
+            providerId={agent?.providerId}
+            modelProvider={agent?.modelProvider}
+            className="size-7 shrink-0"
+            bordered={false}
+            hoverCard
+            hoverSide="right"
+          />
         ) : (
           <AgentIcon
             name={senderName}

@@ -66,17 +66,17 @@ export function UsageDashboardSessionDialog({
     }
   }, [open, record])
 
-  const messages = useMemo(() => detail?.messages ?? [], [detail])
+  const items = useMemo(() => buildTimelineItems(detail?.messages ?? []), [detail])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] !w-[min(1120px,calc(100vw-2rem))] !max-w-[min(1120px,calc(100vw-2rem))] gap-3 overflow-hidden p-0">
-        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
+      <DialogContent className="flex h-[85vh] flex-col !w-[min(1120px,calc(100vw-2rem))] !max-w-[min(1120px,calc(100vw-2rem))] gap-3 overflow-hidden p-0">
+        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <DialogHeader className="border-b px-4 pt-4 pb-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex flex-col gap-1 min-w-0">
                 <DialogTitle className="flex flex-wrap items-center gap-2">
-                  <span>{record?.summary || t("sessionDetail.title")}</span>
+                  <span>{ t("sessionDetail.title")}</span>
                   {record?.runtime ? <Badge variant="outline">{record.runtime}</Badge> : null}
                   {record?.model ? <Badge variant="outline">{record.model}</Badge> : null}
                   {record?.status ? <Badge variant="secondary">{record.status}</Badge> : null}
@@ -87,16 +87,6 @@ export function UsageDashboardSessionDialog({
                   <span>{t("sessionDetail.duration")}: {formatDuration(record?.durationMs ?? 0)}</span>
                   {record?.agentSessionId ? <span className="font-mono">{record.agentSessionId}</span> : null}
                 </DialogDescription>
-                {detail?.systemPrompt ? (
-                  <div className="mt-2 rounded-md border bg-muted/30 p-3">
-                    <div className="mb-2 text-[11px] font-medium text-muted-foreground">
-                      {t("sessionDetail.systemPrompt")}
-                    </div>
-                    <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-foreground">
-                      {detail.systemPrompt}
-                    </pre>
-                  </div>
-                ) : null}
               </div>
               <TabsList variant="line" className="shrink-0 px-0 me-5">
                 <TabsTrigger value="messages" className="rounded-none px-3 text-xs">
@@ -109,8 +99,18 @@ export function UsageDashboardSessionDialog({
             </div>
           </DialogHeader>
 
-          <TabsContent value="messages" className="mt-0 min-h-0 px-4 pb-4">
-            <ScrollArea className="h-[65vh]" viewportClassName="pr-3">
+          <TabsContent value="messages" className="mt-0 flex min-h-0 flex-1 flex-col px-4 pb-4">
+            <ScrollArea className="flex-1 min-h-0" viewportClassName="pr-3">
+              {detail?.systemPrompt ? (
+                <div className="mb-3 rounded-md border bg-muted/30 p-3">
+                  <div className="mb-2 text-[11px] font-medium text-muted-foreground">
+                    {t("sessionDetail.systemPrompt")}
+                  </div>
+                  <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-foreground">
+                    {detail.systemPrompt}
+                  </pre>
+                </div>
+              ) : null}
               {loading ? (
                 <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
                   <Loader2 className="mr-2 size-4 animate-spin" />
@@ -120,25 +120,22 @@ export function UsageDashboardSessionDialog({
                 <div className="flex h-40 items-center justify-center text-sm text-destructive">
                   {error}
                 </div>
-              ) : messages.length === 0 ? (
+              ) : items.length === 0 ? (
                 <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
                   {t("sessionDetail.empty")}
                 </div>
               ) : (
                 <div className="flex flex-col gap-3 py-3">
-                  {messages.map((message) => (
-                    <SessionMessageCard
-                      key={message.id}
-                      message={message}
-                    />
+                  {items.map((item) => (
+                    <SessionTimelineItem key={item.key} item={item} />
                   ))}
                 </div>
               )}
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="raw" className="mt-0 min-h-0 px-4 pb-4">
-            <ScrollArea className="h-[65vh]" viewportClassName="pr-3">
+          <TabsContent value="raw" className="mt-0 flex min-h-0 flex-1 flex-col px-4 pb-4">
+            <ScrollArea className="flex-1 min-h-0" viewportClassName="pr-3">
               <div className="space-y-3 py-3">
                 {detail?.cliHistoryPath ? (
                   <div className="rounded-md border bg-muted/30 px-3 py-2 font-mono text-xs text-muted-foreground">
@@ -160,95 +157,119 @@ export function UsageDashboardSessionDialog({
   )
 }
 
-function SessionMessageCard({
-  message,
-}: {
-  message: Pick<AgentUsageSessionMessage, "content" | "createdAt" | "role" | "contextPart" | "sourceChannelName" | "metadata" | "toolCalls">
-}) {
-  const hasExtras = !!message.contextPart || !!message.sourceChannelName || !!message.metadata?.runtimeSessionId || !!message.metadata?.runtime || (message.toolCalls?.length ?? 0) > 0
+type TimelineItem =
+  | { kind: "user"; key: string; message: AgentUsageSessionMessage }
+  | { kind: "tool"; key: string; toolCall: AgentUsageSessionToolCall; message: AgentUsageSessionMessage }
+  | { kind: "agent"; key: string; message: AgentUsageSessionMessage }
 
+function buildTimelineItems(messages: AgentUsageSessionMessage[]): TimelineItem[] {
+  const items: TimelineItem[] = []
+  for (const message of messages) {
+    if (message.role === "user") {
+      items.push({ kind: "user", key: `u-${message.id}`, message })
+      continue
+    }
+    for (const toolCall of message.toolCalls ?? []) {
+      items.push({ kind: "tool", key: `t-${toolCall.id}`, toolCall, message })
+    }
+    if (message.content && message.content.trim().length > 0) {
+      items.push({ kind: "agent", key: `a-${message.id}`, message })
+    }
+  }
+  return items
+}
+
+function SessionTimelineItem({ item }: { item: TimelineItem }) {
+  if (item.kind === "user") return <UserMessageCard message={item.message} />
+  if (item.kind === "tool") return <ToolCallCard toolCall={item.toolCall} message={item.message} />
+  return <AgentFinalMessageCard message={item.message} />
+}
+
+function UserMessageCard({ message }: { message: AgentUsageSessionMessage }) {
   return (
     <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
       <div className="flex items-center justify-between gap-2">
-        <Badge variant={message.role === "user" ? "secondary" : "default"}>
-          {message.role === "user" ? "user" : "agent"}
-        </Badge>
+        <Badge variant="secondary">user</Badge>
         <span className="text-[10px] text-muted-foreground">
           {new Date(message.createdAt).toLocaleString()}
         </span>
       </div>
       <div className="rounded-md bg-background/80 px-3 py-2 text-sm">
-        {message.role === "user" ? (
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
-        ) : (
-          <Markdown content={message.content} />
-        )}
+        <p className="whitespace-pre-wrap break-words">{message.content}</p>
       </div>
-      {hasExtras ? <SessionMessageExtras message={message} /> : null}
+      <SessionMessageMeta message={message} />
     </div>
   )
 }
 
-function SessionMessageExtras({
+function ToolCallCard({
+  toolCall,
   message,
 }: {
-  message: {
-    contextPart?: AgentUsageSessionMessage["contextPart"]
-    sourceChannelName?: string
-    metadata?: AgentUsageSessionMessage["metadata"]
-    toolCalls?: AgentUsageSessionMessage["toolCalls"]
-  }
+  toolCall: AgentUsageSessionToolCall
+  message: AgentUsageSessionMessage
 }) {
-  if (!message.contextPart && !message.sourceChannelName && !message.metadata?.runtimeSessionId && !(message.toolCalls?.length)) {
-    return null
-  }
-
+  const t = useTranslations("home")
   return (
-    <div className="mt-2 flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-        {message.sourceChannelName ? <Badge variant="outline">{message.sourceChannelName}</Badge> : null}
-        {message.metadata?.runtime ? <Badge variant="outline">{message.metadata.runtime}</Badge> : null}
-        {message.metadata?.runtimeSessionId ? <span className="font-mono">{message.metadata.runtimeSessionId}</span> : null}
+    <div className="ml-6 space-y-2 rounded-lg border bg-background/60 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline">tool</Badge>
+          <Badge variant="outline">{toolCall.toolName || toolCall.title}</Badge>
+          {toolCall.status ? (
+            <Badge variant={toolCall.status === "success" ? "secondary" : "outline"}>{toolCall.status}</Badge>
+          ) : null}
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          {toolCall.createdAt ? new Date(toolCall.createdAt).toLocaleString() : new Date(message.createdAt).toLocaleString()}
+        </span>
       </div>
-      {message.toolCalls?.length ? <SessionToolCalls toolCalls={message.toolCalls} /> : null}
-      {message.contextPart ? <ContextPartChatView part={message.contextPart} /> : null}
+      {toolCall.title && toolCall.title !== toolCall.toolName ? (
+        <div className="text-xs text-muted-foreground">{toolCall.title}</div>
+      ) : null}
+      {toolCall.input !== undefined ? (
+        <div>
+          <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolInput")}</div>
+          <ToolCallValue value={toolCall.input} rootName="input" />
+        </div>
+      ) : null}
+      {toolCall.result !== undefined ? (
+        <div className="mt-2">
+          <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolResult")}</div>
+          <ToolCallValue value={toolCall.result} rootName="result" />
+        </div>
+      ) : null}
     </div>
   )
 }
 
-function SessionToolCalls({ toolCalls }: { toolCalls: AgentUsageSessionToolCall[] }) {
-  const t = useTranslations("home")
-
+function AgentFinalMessageCard({ message }: { message: AgentUsageSessionMessage }) {
   return (
-    <div className="space-y-2 rounded-md border bg-background/60 p-3">
-      <div className="text-[11px] font-medium text-muted-foreground">
-        {t("sessionDetail.toolCalls")}
+    <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <Badge variant="default">agent</Badge>
+        <span className="text-[10px] text-muted-foreground">
+          {new Date(message.createdAt).toLocaleString()}
+        </span>
       </div>
-      <div className="space-y-2">
-        {toolCalls.map((toolCall) => (
-          <div key={toolCall.id} className="rounded-md border bg-muted/20 p-2">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="outline">{toolCall.toolName || toolCall.title}</Badge>
-              {toolCall.status ? <Badge variant={toolCall.status === "success" ? "secondary" : "outline"}>{toolCall.status}</Badge> : null}
-            </div>
-            {toolCall.title && toolCall.title !== toolCall.toolName ? (
-              <div className="mt-2 text-xs text-muted-foreground">{toolCall.title}</div>
-            ) : null}
-            {toolCall.input !== undefined ? (
-              <div className="mt-2">
-                <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolInput")}</div>
-                <ToolCallValue value={toolCall.input} rootName="input" />
-              </div>
-            ) : null}
-            {toolCall.result !== undefined ? (
-              <div className="mt-2">
-                <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolResult")}</div>
-                <ToolCallValue value={toolCall.result} rootName="result" />
-              </div>
-            ) : null}
-          </div>
-        ))}
+      <div className="rounded-md bg-background/80 px-3 py-2 text-sm">
+        <Markdown content={message.content} />
       </div>
+      {message.contextPart ? <ContextPartChatView part={message.contextPart} /> : null}
+      <SessionMessageMeta message={message} />
+    </div>
+  )
+}
+
+function SessionMessageMeta({ message }: { message: AgentUsageSessionMessage }) {
+  if (!message.sourceChannelName && !message.metadata?.runtimeSessionId && !message.metadata?.runtime) {
+    return null
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] text-muted-foreground">
+      {message.sourceChannelName ? <Badge variant="outline">{message.sourceChannelName}</Badge> : null}
+      {message.metadata?.runtime ? <Badge variant="outline">{message.metadata.runtime}</Badge> : null}
+      {message.metadata?.runtimeSessionId ? <span className="font-mono">{message.metadata.runtimeSessionId}</span> : null}
     </div>
   )
 }
