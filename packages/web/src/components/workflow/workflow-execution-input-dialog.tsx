@@ -370,6 +370,7 @@ function saveValues(workflowId: string, startNodeLabel: string, values: Record<s
 
 export function ExecutionInputDialog({
   open, fields, variableFields = [], startNodeLabel, onOpenChange, onSubmit, workflowId, restoreSavedValues = true,
+  initialInputValues, initialEnvValues,
 }: {
   open: boolean;
   fields: OutputField[];
@@ -377,12 +378,16 @@ export function ExecutionInputDialog({
   startNodeLabel: string;
   workflowId?: string | null;
   restoreSavedValues?: boolean;
+  initialInputValues?: Record<string, string>;
+  initialEnvValues?: Record<string, string>;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: Record<string, unknown>, env?: Record<string, unknown>) => void | Promise<void>;
 }) {
   const t = useTranslations('workflows');
   const savedValues = restoreSavedValues && workflowId ? loadSavedValues(workflowId, startNodeLabel) : undefined;
   const savedEnvValues = restoreSavedValues && workflowId ? loadSavedValues(workflowId, `${startNodeLabel}:__env__`) : undefined;
+  const effectiveInputValues = initialInputValues ?? savedValues;
+  const effectiveEnvValues = initialEnvValues ?? savedEnvValues;
   const hasInputFields = fields.length > 0;
   const hasVariableFields = variableFields.length > 0;
   const formKey = useMemo(
@@ -408,7 +413,7 @@ export function ExecutionInputDialog({
           <ExecutionInputForm
             key={formKey}
             fields={fields}
-            initialValues={savedValues}
+            initialValues={effectiveInputValues}
             onSubmit={(values) => submit(values)}
             submitLabel={<><Play className="h-3 w-3 mr-1" /> {t('execution.startExecution')}</>}
           />
@@ -416,7 +421,7 @@ export function ExecutionInputDialog({
           <ExecutionInputForm
             key={formKey}
             fields={variableFields}
-            initialValues={savedEnvValues}
+            initialValues={effectiveEnvValues}
             onSubmit={(env) => submit({}, env)}
             submitLabel={<><Play className="h-3 w-3 mr-1" /> {t('execution.startExecution')}</>}
           />
@@ -425,8 +430,8 @@ export function ExecutionInputDialog({
             key={formKey}
             fields={fields}
             variableFields={variableFields}
-            initialValues={savedValues}
-            initialEnvValues={savedEnvValues}
+            initialValues={effectiveInputValues}
+            initialEnvValues={effectiveEnvValues}
             onSubmit={submit}
           />
         )}

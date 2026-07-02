@@ -16,6 +16,7 @@ import {
   LOOP_BODY_NODE_TYPE,
 } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { cn } from '@/lib/utils';
 import { getWorkflowNodeSize, getWorkflowNodeVariableReferences } from './workflow-node-size';
 import {
@@ -202,6 +203,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     () => Array.from(new Set(getWorkflowNodeVariableReferences(nodeData))),
     [nodeData],
   );
+  const embeddedMode = nodeData.embeddedMode === 'issue' ? 'issue' : null;
   const variableContext = useMemo(() => ({
     nodes: workflowNodes.map((node): SharedWorkflowNode => {
       const currentData = node.data as Record<string, unknown>;
@@ -603,6 +605,17 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     window.dispatchEvent(new CustomEvent('workflow:cancel-debug-node', { detail: { nodeId: id } }));
   }, [id]);
 
+  const propertiesPanelNode = useMemo(() => ({
+    id,
+    type: workflowNodeType || 'unknown',
+    label: displayLabel,
+    position: { x: 0, y: 0 },
+    data: nodeData,
+    nodeState: currentNodeState,
+    breakpoint: currentBreakpoint ?? undefined,
+    nodeColor: typeof nodeData.nodeColor === 'string' ? nodeData.nodeColor : undefined,
+  }), [currentBreakpoint, currentNodeState, displayLabel, id, nodeData, workflowNodeType]);
+
   const {
     propertyModeLeftHandles,
     propertyModeRightHandles,
@@ -768,16 +781,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               }}
             >
               <WorkflowPropertiesPanel
-                node={{
-                  id,
-                  type: workflowNodeType || 'unknown',
-                  label: displayLabel,
-                  position: { x: 0, y: 0 },
-                  data: nodeData,
-                  nodeState: currentNodeState,
-                  breakpoint: currentBreakpoint ?? undefined,
-                  nodeColor: typeof nodeData.nodeColor === 'string' ? nodeData.nodeColor : undefined,
-                }}
+                node={propertiesPanelNode}
                 nodes={variableContext.nodes}
                 edges={variableContext.edges}
                 variableContextWorkflow={variableContext}
@@ -869,6 +873,35 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     </div>
   );
 
+  const hoverCardPanel = embeddedMode === 'issue' && !isLoopBody ? (
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger render={nodeBody} />
+      <HoverCardContent
+        side="right"
+        align="start"
+        sideOffset={10}
+        className="w-[440px] max-w-[min(440px,calc(100vw-2rem))] p-0"
+      >
+        <div className="max-h-[70vh] overflow-y-auto">
+          <WorkflowPropertiesPanel
+            node={propertiesPanelNode}
+            nodes={variableContext.nodes}
+            edges={variableContext.edges}
+            variableContextWorkflow={variableContext}
+            isPreview={nodeData.isPreview === true}
+            onUpdateData={(_nodeId, _data) => undefined}
+            onPreviewUpdateData={(_nodeId, _data) => undefined}
+            debugNodeId={typeof nodeData.debugNodeId === 'string' ? nodeData.debugNodeId : null}
+            debugStatus={nodeData.debugStatus}
+            contentScrollable={false}
+            usePopoverSelect
+            readOnly
+          />
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  ) : null;
+
   return (
     <>
       <WorkflowNodeToolbar
@@ -911,7 +944,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         onMergeToGroup={actions.handleMergeToGroup}
         onBatchDelete={actions.handleBatchDelete}
       >
-        {nodeBody}
+        {hoverCardPanel ?? nodeBody}
       </WorkflowNodeContextMenu>
 
       {/* Collapsible execution log card below the node */}

@@ -25,6 +25,7 @@ interface ToolbarProps {
   onCancelDebug: () => void;
   onOpenTestDialog: () => void;
   onResetToDefaults?: () => void;
+  readOnly?: boolean;
 }
 
 export function Toolbar({
@@ -44,6 +45,7 @@ export function Toolbar({
   onCancelDebug,
   onOpenTestDialog,
   onResetToDefaults,
+  readOnly = false,
 }: ToolbarProps) {
   const t = useTranslations('workflows');
 
@@ -55,7 +57,8 @@ export function Toolbar({
       {showRunResultAnchor && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('run-result-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.runResult')}</Badge>}
       {showRunLogsAnchor && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('run-logs-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.runLogs')}</Badge>}
       {showJsonPresetAnchor && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('json-preset-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.jsonPresetAnchor')}</Badge>}
-      <div className="ml-auto flex items-center gap-1">
+      {!readOnly && (
+        <div className="ml-auto flex items-center gap-1">
         {onResetToDefaults && (
           <Button
             variant="ghost"
@@ -118,7 +121,8 @@ export function Toolbar({
             </PopoverContent>
           </Popover>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

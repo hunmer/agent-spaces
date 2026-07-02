@@ -226,6 +226,7 @@ interface UseCanvasDataParams {
   propertyModeBadgePosition?: WorkflowPropertyModeBadgePosition;
   edgePathType?: string;
   edgeLineStyle?: string;
+  embeddedMode?: 'issue' | null;
   onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
   layoutEngine?: string;
@@ -252,6 +253,7 @@ export function useCanvasData({
   propertyModeBadgePosition = 'center',
   edgePathType = 'bezier',
   edgeLineStyle = 'solid',
+  embeddedMode = null,
   onAutoLayout,
   onFieldKeyRename,
   layoutEngine = 'dagre',
@@ -371,6 +373,7 @@ export function useCanvasData({
           executionLogData: n.data,
           label: n.data?.label || n.label,
           nodeType: n.type,
+          embeddedMode,
           workflowEdges: workflow.edges,
           selectedNodeIds,
           nodeState: n.nodeState,
@@ -403,7 +406,7 @@ export function useCanvasData({
       };
     });
     },
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, propertyModeBadgePosition, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, onFieldKeyRename, layoutEngine],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, propertyModeBadgePosition, executionStepByNodeId, executionStepsByNodeId, embeddedMode, onAutoLayout, onFieldKeyRename, layoutEngine],
   );
 
   const runningEdgeIds = useMemo(() => {

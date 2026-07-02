@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { LLMModel, LLMProvider } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
-import { setProviderCatalog } from '@/lib/provider-icon';
+import { setProviderCatalog, setProviderEntities } from '@/lib/provider-icon';
 
 export interface CatalogModel {
   id: string;
@@ -57,6 +57,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         sdk.llm.listModels(),
         sdk.llm.listProviders(),
       ]);
+      setProviderEntities(providers);
       set({ models, providers, loaded: true });
     } catch { /* ignore */ }
   },
@@ -77,7 +78,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   addModel: (model) => set(s => ({ models: [...s.models, model] })),
   updateModel: (model) => set(s => ({ models: s.models.map(m => m.id === model.id ? model : m) })),
   removeModel: (id) => set(s => ({ models: s.models.filter(m => m.id !== id) })),
-  addProvider: (provider) => set(s => ({ providers: [...s.providers, provider] })),
-  updateProvider: (provider) => set(s => ({ providers: s.providers.map(p => p.id === provider.id ? provider : p) })),
-  removeProvider: (id) => set(s => ({ providers: s.providers.filter(p => p.id !== id) })),
+  addProvider: (provider) => {
+    setProviderEntities([...get().providers, provider]);
+    set(s => ({ providers: [...s.providers, provider] }));
+  },
+  updateProvider: (provider) => {
+    const providers = get().providers.map(p => p.id === provider.id ? provider : p);
+    setProviderEntities(providers);
+    set(s => ({ providers: providers }));
+  },
+  removeProvider: (id) => {
+    const providers = get().providers.filter(p => p.id !== id);
+    setProviderEntities(providers);
+    set(s => ({ providers }));
+  },
 }));

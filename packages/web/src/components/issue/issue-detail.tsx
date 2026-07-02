@@ -20,7 +20,7 @@ import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { normalizeChannelMembersToAgentIds, getMemberDisplayName } from '@/lib/agent-members';
 import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
-import { workflowApi } from '@/lib/workflow-api';
+import { workflowApi, executionLogApi } from '@/lib/workflow-api';
 import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
 import { ExecutionInputDialog } from '@/components/workflow/workflow-execution-input-dialog';
 import { IssueDetailComments } from './issue-detail-comments';
@@ -76,6 +76,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [startInputOpen, setStartInputOpen] = useState(false);
   const [startWorkflow, setStartWorkflow] = useState<Workflow | null>(null);
+  const [retryInputValues, setRetryInputValues] = useState<Record<string, string> | undefined>(undefined);
+  const [retryEnvValues, setRetryEnvValues] = useState<Record<string, string> | undefined>(undefined);
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const t = useTranslations('issue');
@@ -246,6 +248,31 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const workflowVariableFields = (Array.isArray(startWorkflow?.variables) ? startWorkflow.variables : []) as OutputField[];
   const startNodeLabel = startNode?.label || t('detail.start');
 
+  const stringifyValues = (values: Record<string, unknown> | undefined): Record<string, string> | undefined => {
+    if (!values) return undefined;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(values)) {
+      if (v == null) continue;
+      out[k] = typeof v === 'string' ? v : JSON.stringify(v);
+    }
+    return out;
+  };
+
+  const handleRetryFailed = useCallback(async () => {
+    if (!issue?.workflowId) return;
+    try {
+      const logs = await executionLogApi.list(issue.workflowId);
+      const last = logs
+        .filter((log) => log.issueId === issue.id)
+        .sort((a, b) => b.startedAt - a.startedAt)[0];
+      const startStep = last?.steps?.find((step) => step.nodeLabel === startNodeLabel);
+      const input = (startStep?.input ?? undefined) as Record<string, unknown> | undefined;
+      setRetryInputValues(stringifyValues(input));
+      setRetryEnvValues(undefined);
+      setStartInputOpen(true);
+    } catch { /* ignore */ }
+  }, [issue?.id, issue?.workflowId, startNodeLabel]);
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* Main content */}
@@ -300,7 +327,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     </Button>
                   )}
                   {issue.status === 'error' && issue.workflowExecutionStatus !== 'paused' && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={handleRetryFailed}>
                       <RotateCcw className="h-3 w-3 mr-1" />
                       {t('detail.resumeFailed')}
                     </Button>
@@ -693,7 +720,12 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           startNodeLabel={startNodeLabel}
           workflowId={issue.workflowId}
           restoreSavedValues={false}
-          onOpenChange={setStartInputOpen}
+          initialInputValues={retryInputValues}
+          initialEnvValues={retryEnvValues}
+          onOpenChange={(open) => {
+            setStartInputOpen(open);
+            if (!open) { setRetryInputValues(undefined); setRetryEnvValues(undefined); }
+          }}
           onSubmit={(values, env) => startIssue(workspaceId, issue.id, values, env)}
         />
       )}

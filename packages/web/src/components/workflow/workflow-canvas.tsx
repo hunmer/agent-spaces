@@ -579,6 +579,7 @@ export function WorkflowCanvas({
     logPanelLayout: canvasPrefs.logPanelLayout === 'tabs' ? 'tabs' : 'vertical',
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
     edgeLineStyle: (canvasPrefs.edgeLineStyle as string) || 'solid',
+    embeddedMode,
     onAutoLayout: isCanvasLocked ? undefined : onAutoLayout,
     layoutEngine,
   });

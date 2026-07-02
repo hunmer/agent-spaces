@@ -59,6 +59,7 @@ interface PropertiesPanelProps {
   dragHandleClassName?: string;
   contentScrollable?: boolean;
   usePopoverSelect?: boolean;
+  readOnly?: boolean;
 }
 
 export function WorkflowPropertiesPanel({
@@ -83,6 +84,7 @@ export function WorkflowPropertiesPanel({
   dragHandleClassName,
   contentScrollable = true,
   usePopoverSelect = false,
+  readOnly = false,
 }: PropertiesPanelProps) {
   const t = useTranslations('workflows');
   const [importOpen, setImportOpen] = useState(false);
@@ -105,10 +107,10 @@ export function WorkflowPropertiesPanel({
     ? data[SELECTED_JSON_PRESET_KEY] as string
     : '';
   const selectedJsonPreset = jsonPresets.find(preset => preset.id === selectedJsonPresetId) ?? null;
-  const canEditInputFields = Boolean(definition?.allowInputFields && node?.type !== 'end');
-  const canEditOutputFields = Boolean(node && node.type !== 'start' && definition?.readonlyOutputs !== true);
-  const canEditDelay = Boolean(node && node.type !== 'start' && node.type !== 'end');
-  const canDebugSelectedNode = Boolean(node && definition?.debuggable !== false && node.type !== 'start' && node.type !== 'end');
+  const canEditInputFields = !readOnly && Boolean(definition?.allowInputFields && node?.type !== 'end');
+  const canEditOutputFields = !readOnly && Boolean(node && node.type !== 'start' && definition?.readonlyOutputs !== true);
+  const canEditDelay = !readOnly && Boolean(node && node.type !== 'start' && node.type !== 'end');
+  const canDebugSelectedNode = !readOnly && Boolean(node && definition?.debuggable !== false && node.type !== 'start' && node.type !== 'end');
   const isDebugging = Boolean(node && debugNodeId === node.id && debugStatus === 'running');
   const visibleDebugResult = previewResult ?? (node && debugNodeId === node.id ? debugResult : null);
   const hasDebugOutput = Boolean(node && visibleDebugResult);
@@ -161,6 +163,7 @@ export function WorkflowPropertiesPanel({
     });
   }, []);
   const handleDataChange = useCallback((key: string, value: unknown) => {
+    if (readOnly) return;
     if (!nodeId) return;
     if (node?.type === 'set_variable' && key === 'variables') {
       onUpdateData(nodeId, {
@@ -170,11 +173,12 @@ export function WorkflowPropertiesPanel({
       return;
     }
     onUpdateData(nodeId, { [key]: value });
-  }, [data.outputs, node?.type, nodeId, onUpdateData]);
+  }, [data.outputs, node?.type, nodeId, onUpdateData, readOnly]);
   const handlePreviewDataChange = useCallback((key: string, value: unknown) => {
+    if (readOnly) return;
     if (!nodeId) return;
     onPreviewUpdateData?.(nodeId, { [key]: value });
-  }, [nodeId, onPreviewUpdateData]);
+  }, [nodeId, onPreviewUpdateData, readOnly]);
   const handleCopyNodeJson = useCallback(() => {
     if (!node) return;
     copyToClipboard(JSON.stringify(node, null, 2));
@@ -193,6 +197,7 @@ export function WorkflowPropertiesPanel({
   }, [handleDataChange]);
 
   const handleResetToDefaults = useCallback(() => {
+    if (readOnly) return;
     if (!nodeId) return;
     const defaults: Record<string, unknown> = {};
     for (const prop of visibleProperties) {
@@ -203,7 +208,7 @@ export function WorkflowPropertiesPanel({
     if (Object.keys(defaults).length > 0) {
       onUpdateData(nodeId, defaults);
     }
-  }, [nodeId, visibleProperties, onUpdateData]);
+  }, [nodeId, visibleProperties, onUpdateData, readOnly]);
 
   const openAddPresetDialog = () => {
     setEditingPreset(null);
@@ -267,6 +272,7 @@ export function WorkflowPropertiesPanel({
         onEditPreset={openEditPresetDialog}
         onUpdatePresets={updateJsonPresets}
         dragHandleClassName={dragHandleClassName}
+        readOnly={readOnly}
       />
 
       <Toolbar
@@ -285,7 +291,8 @@ export function WorkflowPropertiesPanel({
         onDebug={onDebugNode ?? (() => {})}
         onCancelDebug={onCancelDebug ?? (() => {})}
         onOpenTestDialog={() => setNodeTestDialogOpen(true)}
-        onResetToDefaults={handleResetToDefaults}
+        onResetToDefaults={readOnly ? undefined : handleResetToDefaults}
+        readOnly={readOnly}
       />
 
       {(() => {
@@ -427,6 +434,7 @@ export function WorkflowPropertiesPanel({
                     dropTargetNodeId={nodeId}
                     usePopoverSelect={usePopoverSelect}
                     onFieldKeyRename={onFieldKeyRename}
+                    readOnly={readOnly}
                   />
               </CardContent>
             </Card>
@@ -461,7 +469,7 @@ export function WorkflowPropertiesPanel({
         ) : content;
       })()}
 
-      {node && (
+      {!readOnly && node && (
         <div className="flex shrink-0 items-center gap-2 border-t px-3 py-2">
           <Button
             variant="outline"
@@ -486,22 +494,26 @@ export function WorkflowPropertiesPanel({
         </div>
       )}
 
-      <ImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onImport={(outputs) => handleDataChange('outputs', outputs)}
-      />
+      {!readOnly && (
+        <ImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImport={(outputs) => handleDataChange('outputs', outputs)}
+        />
+      )}
 
-      <PresetDialog
-        open={presetOpen}
-        onOpenChange={setPresetOpen}
-        editingPreset={editingPreset}
-        jsonPresets={jsonPresets}
-        selectedJsonPresetId={selectedJsonPresetId}
-        onSave={handlePresetSave}
-      />
+      {!readOnly && (
+        <PresetDialog
+          open={presetOpen}
+          onOpenChange={setPresetOpen}
+          editingPreset={editingPreset}
+          jsonPresets={jsonPresets}
+          selectedJsonPresetId={selectedJsonPresetId}
+          onSave={handlePresetSave}
+        />
+      )}
 
-      {node && (
+      {!readOnly && node && (
         <ExecutionNodeDialog
           open={nodeTestDialogOpen}
           inputFields={getOutputFields(data.inputFields)}

@@ -18,6 +18,41 @@ const PREFIX_FIX: Record<string, string> = {
   meta: "meta",
 };
 
+// 本地 LLMProvider（UUID id）→ catalog slug 的映射
+// 数据来源：用户在「设置 → 模型」新建的 provider，其 id 是 UUID，
+// 但图标文件以 catalog slug 命名，需要先反查到 slug 才能命中图标。
+let providerEntityMap: Map<string, { name?: string; apiBase?: string }> | null = null;
+
+/** 注入本地 LLMProvider 列表（id 为 UUID），用于把 UUID 翻译为 catalog slug */
+export function setProviderEntities(
+  providers: { id: string; name?: string; apiBase?: string }[] | null,
+): void {
+  if (!providers || providers.length === 0) {
+    providerEntityMap = null;
+    return;
+  }
+  const map = new Map<string, { name?: string; apiBase?: string }>();
+  for (const p of providers) {
+    map.set(p.id, { name: p.name, apiBase: p.apiBase });
+  }
+  providerEntityMap = map;
+}
+
+/** 由本地 provider UUID 解析出 catalog slug（先转 name/apiBase 再走 catalog 反查） */
+function resolveProviderEntityToSlug(providerId: string): string {
+  if (!providerEntityMap) return "";
+  // UUID 形态才需要翻译（catalog slug 都是短名）
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(providerId);
+  if (!isUuid) return "";
+  const entity = providerEntityMap.get(providerId);
+  if (!entity) return "";
+  return (
+    (entity.apiBase && getProviderIdByApiBase(entity.apiBase)) ||
+    (entity.name && getProviderIdByName(entity.name)) ||
+    ""
+  );
+}
+
 let cachedCatalog: ModelCatalog | null = null;
 let apiBaseMap: Map<string, string> | null = null; // host -> providerId
 let nameMap: Map<string, string> | null = null; // providerName(lower) -> providerId
@@ -80,10 +115,11 @@ export function getProviderIdByName(name?: string): string {
   return nameMap.get(name.toLowerCase()) || "";
 }
 
-/** 由 providerId 取图标 URL */
+/** 由 providerId 取图标 URL（自动把 UUID 形态的本地 provider id 翻译为 catalog slug） */
 export function getProviderIconUrlById(providerId?: string): string {
   if (!providerId) return "";
-  return resolveServerAssetUrl(`/static/provider-icons/${providerId}.svg`);
+  const slug = resolveProviderEntityToSlug(providerId) || providerId;
+  return resolveServerAssetUrl(`/static/provider-icons/${slug}.svg`);
 }
 
 /** 兼容旧入口：apiBase → providerId → 图标 URL */

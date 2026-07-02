@@ -29,6 +29,7 @@ interface PropertiesListProps {
   dropTargetNodeId?: string;
   usePopoverSelect?: boolean;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
+  readOnly?: boolean;
 }
 
 function getOldFieldPath(oldKey: string, newKey: string, newPath: string) {
@@ -55,6 +56,7 @@ export function PropertiesList({
   dropTargetNodeId,
   usePopoverSelect = false,
   onFieldKeyRename,
+  readOnly = false,
 }: PropertiesListProps) {
   // Cascade reset: when a dependency source (e.g. databaseId) changes, clear the
   // dependent keys (table -> '', columns -> '*') so stale values never survive a
@@ -104,6 +106,7 @@ export function PropertiesList({
             dropTargetNodeId={dropTargetNodeId}
             usePopoverSelect={usePopoverSelect}
             onFieldKeyRename={onFieldKeyRename}
+            readOnly={readOnly}
           />
         );
       })}
@@ -130,6 +133,7 @@ const PropertyItem = memo(function PropertyItem({
   dropTargetNodeId,
   usePopoverSelect,
   onFieldKeyRename,
+  readOnly,
 }: {
   prop: NodeProperty;
   value: unknown;
@@ -149,6 +153,7 @@ const PropertyItem = memo(function PropertyItem({
   dropTargetNodeId?: string;
   usePopoverSelect: boolean;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
+  readOnly: boolean;
 }) {
   const variableValue = useMemo(() => toVariableInputValue(value), [toVariableInputValue, value]);
   const variableOnly = prop.inputMode === 'variable';
@@ -194,7 +199,7 @@ const PropertyItem = memo(function PropertyItem({
             </Tooltip>
           </TooltipProvider>
         )}
-        {!variableOnly && (
+        {!variableOnly && !readOnly && (
           <button
             type="button"
             className={`rounded p-0.5 transition-colors hover:bg-accent ${effectiveVariableMode ? 'text-primary' : 'text-muted-foreground'}`}
@@ -223,7 +228,7 @@ const PropertyItem = memo(function PropertyItem({
           />
         ) : (
           <PropertyField
-            prop={prop}
+            prop={readOnly ? { ...prop, readonly: true } : prop}
             value={value}
             onChange={(nextValue) => onDataChange(prop.key, nextValue)}
             onPreviewChange={(nextValue) => onPreviewDataChange?.(prop.key, nextValue)}

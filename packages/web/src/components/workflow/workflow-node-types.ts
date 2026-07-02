@@ -10,6 +10,7 @@ export type WorkflowNodeDisplayMode = 'normal' | 'properties';
 export type WorkflowPropertyModeBadgePosition = 'top' | 'center' | 'bottom';
 
 export type WorkflowNodeData = Record<string, unknown> & {
+  embeddedMode?: 'issue' | null;
   label?: string;
   nodeType?: string;
   selectedNodeIds?: string[];
