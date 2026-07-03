@@ -1,10 +1,12 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { MultiServerMCPClient } from '@langchain/mcp-adapters';
 import type { Connection } from '@langchain/mcp-adapters';
 import { MemorySaver } from '@langchain/langgraph';
 import { createAgent, initChatModel, tool } from 'langchain';
 import type { CreateAgentParams } from 'langchain';
+import type { Message } from '@agent-spaces/shared';
 import type {
   AgentFunctionTool,
   AgentRunOptions,
@@ -21,6 +23,7 @@ const STREAM_EVENT_THROTTLE_MS = 100;
 const STREAM_NO_PROGRESS_TIMEOUT_MS = 30_000;
 const EMPTY_AI_CHUNK_LOG_INTERVAL = 20;
 const TOOL_RESULT_FINAL_RESPONSE_RETRY_COUNT = 5;
+const SERVER_PUBLIC_DIR = join(fileURLToPath(new URL('../../public/', import.meta.url)));
 
 /**
  * Runtime backed by LangChain.js.
@@ -104,8 +107,11 @@ export class LangChainRuntime implements AgentRuntime {
           'Use the existing conversation and tool results in this session to provide the final answer now.',
           'Do not repeat tool calls unless the existing tool results are insufficient.',
         ].join('\n');
+        const attemptMessageContent = attempt === 1
+          ? await buildUserMessageContent(attemptPrompt, runtimeOptions?.userAttachments)
+          : attemptPrompt;
         const stream = await agent.stream(
-          { messages: [{ role: 'user', content: attemptPrompt }] },
+          { messages: [{ role: 'user', content: attemptMessageContent }] },
           {
             signal: this.abortController?.signal,
             recursionLimit,
@@ -966,6 +972,74 @@ export function extractTextFromToken(token: Record<string, unknown>): string {
   return stringifyMessageContent(token.content);
 }
 
+type LangChainUserContent =
+  | string
+  | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
+
+async function buildUserMessageContent(
+  prompt: string,
+  attachments: Message['attachments'] | undefined,
+): Promise<LangChainUserContent> {
+  const imageParts = buildImageAttachmentParts(attachments);
+  if (imageParts.length === 0) return prompt;
+
+  return [
+    { type: 'text', text: prompt },
+    ...imageParts,
+  ];
+}
+
+function buildImageAttachmentParts(
+  attachments: Message['attachments'] | undefined,
+): Array<{ type: 'image_url'; image_url: { url: string } }> {
+  if (!attachments?.length) return [];
+
+  return attachments
+    .filter((attachment) => attachment?.type?.startsWith('image/'))
+    .map((attachment) => {
+      const dataUrl = toAttachmentDataUrl(attachment);
+      if (!dataUrl) return null;
+      return {
+        type: 'image_url' as const,
+        image_url: { url: dataUrl },
+      };
+    })
+    .filter((part): part is { type: 'image_url'; image_url: { url: string } } => Boolean(part));
+}
+
+function toAttachmentDataUrl(attachment: NonNullable<Message['attachments']>[number]): string | undefined {
+  const candidatePaths = [
+    attachment.path,
+    attachment.url?.startsWith('/static/')
+      ? join(getDataDir(), 'public', ...attachment.url.replace(/^\/static\/+/, '').split('/'))
+      : undefined,
+    attachment.url?.startsWith('/static/')
+      ? join(SERVER_PUBLIC_DIR, ...attachment.url.replace(/^\/static\/+/, '').split('/'))
+      : undefined,
+  ].filter((value): value is string => Boolean(value));
+
+  for (const filePath of candidatePaths) {
+    if (!existsSync(filePath) || !statSync(filePath).isFile()) continue;
+    const mimeType = attachment.type || inferImageMimeType(filePath);
+    if (!mimeType?.startsWith('image/')) return undefined;
+    const buffer = readFileSync(filePath);
+    return `data:${mimeType};base64,${buffer.toString('base64')}`;
+  }
+
+  return undefined;
+}
+
+function inferImageMimeType(filePath: string): string | undefined {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.bmp')) return 'image/bmp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  return undefined;
+}
+
 export function extractReasoningFromToken(token: Record<string, unknown>): string {
   const blocks = Array.isArray(token.contentBlocks) ? token.contentBlocks : [];
   const reasoning = blocks
@@ -1060,6 +1134,9 @@ function removeUndefined<T extends Record<string, unknown>>(value: T): T {
 }
 
 export const __testables = {
+  buildUserMessageContent,
+  buildImageAttachmentParts,
+  toAttachmentDataUrl,
   extractStateMessages,
   extractUpdateMessages,
   splitLangChainStreamChunk,

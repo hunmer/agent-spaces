@@ -131,7 +131,13 @@
     "attachment": "Attachment",
     "imageAlt": "Image",
     "remove": "Remove",
-    "noAttachments": "No attachments"
+    "noAttachments": "No attachments",
+    "fileName": "File name",
+    "title": "Title",
+    "mediaType": "Type",
+    "url": "URL",
+    "open": "Open",
+    "download": "Download"
   },
   "askUser": {
     "placeholder": "Type an answer..."

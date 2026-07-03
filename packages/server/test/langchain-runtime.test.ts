@@ -135,6 +135,65 @@ test('LangChain stream text extraction falls back to message content', () => {
   }), 'first\n second');
 });
 
+test('buildUserMessageContent converts image attachments into multimodal image_url parts', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'langchain-image-data-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const uploadsDir = join(dataDir, 'public', 'uploads');
+    mkdirSync(uploadsDir, { recursive: true });
+    writeFileSync(join(uploadsDir, 'sample.png'), Buffer.from('png-binary'));
+
+    const content = await __testables.buildUserMessageContent('描述这张图', [
+      {
+        name: 'sample.png',
+        path: '/static/uploads/sample.png',
+        url: '/static/uploads/sample.png',
+        type: 'image/png',
+      },
+    ]);
+
+    assert.deepEqual(content, [
+      { type: 'text', text: '描述这张图' },
+      { type: 'image_url', image_url: { url: `data:image/png;base64,${Buffer.from('png-binary').toString('base64')}` } },
+    ]);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('buildUserMessageContent resolves images from server public uploads directory', async () => {
+  const uploadPath = join(process.cwd(), 'public', 'uploads', 'langchain-runtime-test.png');
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = join(tmpdir(), 'langchain-unused-data-dir');
+
+  try {
+    mkdirSync(join(process.cwd(), 'public', 'uploads'), { recursive: true });
+    writeFileSync(uploadPath, Buffer.from('server-public-image'));
+
+    const content = await __testables.buildUserMessageContent('识别图片', [
+      {
+        name: 'langchain-runtime-test.png',
+        path: '/static/uploads/langchain-runtime-test.png',
+        url: '/static/uploads/langchain-runtime-test.png',
+        type: 'image/png',
+      },
+    ]);
+
+    assert.deepEqual(content, [
+      { type: 'text', text: '识别图片' },
+      { type: 'image_url', image_url: { url: `data:image/png;base64,${Buffer.from('server-public-image').toString('base64')}` } },
+    ]);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(uploadPath, { force: true });
+  }
+});
+
 test('LangChain stream token filter skips tool results', () => {
   assert.equal(isAiStreamToken({ type: 'ai', contentBlocks: [{ type: 'text', text: 'hello' }] }), true);
   assert.equal(isAiStreamToken({ role: 'assistant', contentBlocks: [{ type: 'reasoning', reasoning: 'thinking' }] }), true);

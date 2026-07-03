@@ -114,6 +114,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
       void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
         messageId: updated.id,
         appendUserMessage: stripHtml(content),
+        userAttachments: attachments,
         resumeSessionId: normalizedContextLength > 0 ? updated.metadata?.runtimeSessionId : undefined,
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
         contextLength: normalizedContextLength,
@@ -142,6 +143,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
   for (const agentId of agentIds) {
     void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
+      userAttachments: attachments,
       excludeHistoryMessageIds: [message.id],
       contextLength: normalizedContextLength,
       agentOverride,

@@ -47,7 +47,14 @@ import {
   stripSimpleParagraphs,
   type MentionedAgent,
 } from "./chat-input-utils";
-import { localAttachmentToData, type LocalAttachment, uploadAttachment } from "./chat-input-attachments";
+import {
+  composerAttachmentToData,
+  isRestoredAttachment,
+  restoreAttachments,
+  uploadComposerAttachment,
+  type ComposerAttachment,
+  type LocalAttachment,
+} from "./chat-input-attachments";
 
 type AgentCommandItem = {
   name: string;
@@ -74,6 +81,7 @@ export interface ChatComposerInputState {
 
 export interface ChatComposerInputHandle {
   setContent: (html: string, agents?: MentionedAgent[]) => void;
+  setAttachments: (attachments?: MessageAttachment[]) => void;
   focus: () => void;
   setMentionAgent: (agent: MentionedAgent) => void;
   insertText: (text: string) => void;
@@ -140,7 +148,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const t = useTranslations("chat");
   const { isRecording: isVoiceRecording, start: startVoice, stop: stopVoice } = useSpeechRecognition();
   const [mentionedAgentIds, setMentionedAgentIds] = useState<string[]>([]);
-  const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
+  const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const [contextLength, setContextLength] = useState(DEFAULT_CONTEXT_LENGTH);
@@ -349,7 +357,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       draftTimerRef.current = null;
     }
     try {
-      const uploaded = enableAttachments ? await Promise.all(attachments.map(uploadAttachment)) : [];
+      const uploaded = enableAttachments ? await Promise.all(attachments.map(uploadComposerAttachment)) : [];
       await onSubmitRef.current(
         text ? stripSimpleParagraphs(currentEditor.getHTML()) : "",
         mentions,
@@ -358,7 +366,11 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         selectedModelOverride,
       );
       setAttachments((prev) => {
-        prev.forEach((item) => URL.revokeObjectURL(item.preview));
+        prev.forEach((item) => {
+          if (!isRestoredAttachment(item) && item.preview.startsWith("blob:")) {
+            URL.revokeObjectURL(item.preview);
+          }
+        });
         return [];
       });
       // Restore active agent mention after send for continuous conversation
@@ -518,6 +530,16 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         setMentionedAgentIds(collectMentionIds(editor.getJSON()));
         editor.commands.focus("end");
       },
+      setAttachments: (next?: MessageAttachment[]) => {
+        setAttachments((prev) => {
+          prev.forEach((item) => {
+            if (!isRestoredAttachment(item) && item.preview.startsWith("blob:")) {
+              URL.revokeObjectURL(item.preview);
+            }
+          });
+          return restoreAttachments(next);
+        });
+      },
       focus: () => { editor?.commands.focus("end"); },
       setMentionAgent,
       insertText: (text: string) => { editor?.chain().focus().insertContent(text).run(); },
@@ -540,13 +562,20 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     onDrop: (files) => {
       setAttachments((prev) => [
         ...prev,
-        ...files.map((file) => ({ file, preview: URL.createObjectURL(file) })),
+        ...files.map((file) => ({ file, preview: URL.createObjectURL(file) }) satisfies LocalAttachment),
       ]);
     },
   });
 
   useEffect(() => {
-    return () => { attachments.forEach((item) => URL.revokeObjectURL(item.preview)); };
+    return () => {
+      attachments.forEach((item) => {
+        // 仅本地 blob 预览需要释放；编辑回填的远程 url 跳过
+        if (!isRestoredAttachment(item) && item.preview.startsWith("blob:")) {
+          URL.revokeObjectURL(item.preview);
+        }
+      });
+    };
   }, [attachments]);
 
 
@@ -560,7 +589,9 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     setAttachments((prev) => {
       const next = [...prev];
       const [removed] = next.splice(index, 1);
-      if (removed) URL.revokeObjectURL(removed.preview);
+      if (removed && !isRestoredAttachment(removed) && removed.preview.startsWith("blob:")) {
+        URL.revokeObjectURL(removed.preview);
+      }
       return next;
     });
   }, []);
@@ -658,8 +689,8 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         <Attachments variant="inline" className="mt-2 justify-start">
           {attachments.map((item, index) => (
             <Attachment
-              key={`${item.file.name}-${item.file.lastModified}-${index}`}
-              data={localAttachmentToData(item)}
+              key={`${index}-${item.preview}`}
+              data={composerAttachmentToData(item)}
               onRemove={() => removeAttachment(index)}
             >
               <AttachmentPreview />

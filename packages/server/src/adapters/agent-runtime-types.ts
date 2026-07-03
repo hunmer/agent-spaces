@@ -1,5 +1,6 @@
 import type { AgentOptions, ApiType } from '@codeany/open-agent-sdk';
 import type { ClaudeHookEventName, MessageTokenUsage } from '@agent-spaces/shared';
+import type { Message } from '@agent-spaces/shared';
 import { resolveOutputStyleContent } from '../services/output-style.js';
 
 export interface AgentRunResult {
@@ -22,6 +23,7 @@ export interface AgentRunOptions {
   maxTurns?: number;
   tools?: string[];
   functionTools?: AgentFunctionTool[];
+  userAttachments?: Message['attachments'];
   mcpServers?: Record<string, unknown>;
   skills?: string[];
   configDir?: string;

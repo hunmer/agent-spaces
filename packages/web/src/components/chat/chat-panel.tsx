@@ -261,6 +261,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
 
   const handleEditMessage = useCallback((msg: Message) => {
     chatInputRef.current?.setContent(msg.content, mentionAgents);
+    chatInputRef.current?.setAttachments(msg.attachments);
   }, [mentionAgents]);
 
   const handleDeleteMessage = useCallback((msg: Message) => {

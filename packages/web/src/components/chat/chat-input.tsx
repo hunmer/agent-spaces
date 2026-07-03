@@ -43,6 +43,7 @@ interface ChatInputProps {
 
 export interface ChatInputHandle {
   setContent: (html: string, agents?: MentionedAgent[]) => void;
+  setAttachments: (attachments?: MessageAttachment[]) => void;
   focus: () => void;
 }
 
@@ -94,6 +95,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     () => ({
       setContent: (html: string, nextAgents?: MentionedAgent[]) => {
         composerRef.current?.setContent(html, nextAgents);
+      },
+      setAttachments: (attachments?: MessageAttachment[]) => {
+        composerRef.current?.setAttachments(attachments);
       },
       focus: () => {
         composerRef.current?.focus();

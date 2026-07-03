@@ -136,7 +136,8 @@
     "title": "标题",
     "mediaType": "类型",
     "url": "地址",
-    "open": "打开"
+    "open": "打开",
+    "download": "下载"
   },
   "askUser": {
     "placeholder": "输入回答..."

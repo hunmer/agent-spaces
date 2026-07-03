@@ -60,6 +60,7 @@ interface RunMentionedAgentOptions {
   appendUserMessage?: string;
   resumeSessionId?: string;
   contextLength?: number;
+  userAttachments?: Message['attachments'];
   excludeHistoryMessageIds?: string[];
   excludeHistoryReplyIds?: string[];
   agentOverride?: AgentModelOverride;
@@ -422,6 +423,7 @@ export async function runMentionedAgent(
     const result = await runtime.execute(agentPrompt, workingDir, {
       maxTurns: 100,
       functionTools,
+      userAttachments: options.userAttachments,
       mcpServers,
       skills,
       configDir,

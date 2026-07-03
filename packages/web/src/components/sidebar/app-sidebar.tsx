@@ -191,7 +191,6 @@ export function DashboardSidebar() {
             userToggled ? { duration: 0.8 } : { duration: 0 }
           }
         >
-          <AnimatedThemeToggler />
           <button
             className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => useCommandPalette.getState().toggle()}
@@ -214,6 +213,9 @@ export function DashboardSidebar() {
       </SidebarHeader>
       <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto gap-2 mx-2 my-2 rounded-xl border border-sidebar-border bg-sidebar p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <DashboardNavigation routes={dashboardRoutes} pathname={pathname} />
+        <div className="mt-auto pt-2">
+          <AnimatedThemeToggler />
+        </div>
       </SidebarContent>
       <SidebarFooter className="shrink-0 mx-2 mb-2 rounded-xl border border-sidebar-border bg-sidebar p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <ServerSwitcher />

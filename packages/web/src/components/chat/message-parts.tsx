@@ -1,7 +1,7 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { AlertCircleIcon, HelpCircleIcon, CheckCircle2Icon } from "lucide-react"
+import { AlertCircleIcon, CheckCircle2Icon, DownloadIcon, HelpCircleIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useState } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -287,7 +287,7 @@ function MessageAttachmentItem({ data }: { data: AttachmentData }) {
 
   return (
     <AttachmentHoverCard openDelay={200}>
-      <AttachmentHoverCardTrigger asChild>
+      <AttachmentHoverCardTrigger className="inline-flex">
         <Attachment
           data={data}
           className="h-10 cursor-pointer gap-2 rounded-lg px-2.5 text-sm"
@@ -384,7 +384,13 @@ function AttachmentFullDetail({ data }: { data: AttachmentData }) {
       </div>
 
       {url ? (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href={url} download={filename || undefined} target="_blank" rel="noopener noreferrer">
+              <DownloadIcon className="size-4" />
+              {t("attachments.download")}
+            </a>
+          </Button>
           <Button variant="outline" size="sm" onClick={openExternal}>
             {t("attachments.open")}
           </Button>
