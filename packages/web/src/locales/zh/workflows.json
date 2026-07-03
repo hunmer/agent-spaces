@@ -340,7 +340,9 @@
     "pasteCopiedNodes": "粘贴",
     "moveCopiedNodesToStaging": "移动到暂存",
     "clearCopiedNodes": "清空",
-    "recordCount": "{count} 个节点"
+    "recordCount": "{count} 个节点",
+    "clickConnect": "点击连接",
+    "clickConnectTooltip": "点击两个连接点创建连线"
   },
   "canvas": {
     "mergeToWorkflow": "合并为工作流",

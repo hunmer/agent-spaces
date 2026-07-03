@@ -141,6 +141,33 @@ function getWorkflowBadgeHandleTarget(clientPosition: { x: number; y: number }):
   return { nodeId, handleId, handleType };
 }
 
+function getWorkflowClickedHandleTarget(target: EventTarget | null): WorkflowBadgeHandleTarget | null {
+  if (!(target instanceof HTMLElement)) return null;
+
+  const workflowHandle = target.closest<HTMLElement>(
+    '[data-workflow-node-id][data-workflow-handle-id][data-workflow-handle-type]',
+  );
+  if (workflowHandle) {
+    const nodeId = workflowHandle.dataset.workflowNodeId;
+    const handleId = workflowHandle.dataset.workflowHandleId;
+    const handleType = workflowHandle.dataset.workflowHandleType;
+    if (nodeId && handleId && (handleType === 'target' || handleType === 'source')) {
+      return { nodeId, handleId, handleType };
+    }
+  }
+
+  const reactFlowHandle = target.closest<HTMLElement>('.react-flow__handle[data-nodeid][data-handleid]');
+  if (!reactFlowHandle) return null;
+
+  const nodeId = reactFlowHandle.dataset.nodeid;
+  const handleId = reactFlowHandle.dataset.handleid;
+  const handleType = reactFlowHandle.classList.contains('source')
+    ? 'source'
+    : reactFlowHandle.classList.contains('target') ? 'target' : null;
+  if (!nodeId || !handleId || !handleType) return null;
+  return { nodeId, handleId, handleType };
+}
+
 type CanvasViewportRef = {
   exportCanvas: (format: 'png' | 'jpeg') => void;
   getViewportCenter: () => { x: number; y: number };
@@ -305,6 +332,7 @@ export function WorkflowCanvas({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
   const connectSucceededRef = useRef(false);
+  const clickConnectSourceRef = useRef<WorkflowBadgeHandleTarget | null>(null);
   const isRangeSelectingRef = useRef(false);
   const pendingRangeSelectionRef = useRef<string[] | null>(null);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
@@ -316,6 +344,7 @@ export function WorkflowCanvas({
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
   const [lassoSelectionActive, setLassoSelectionActive] = useState(false);
   const [logsCollapsed, setLogsCollapsed] = useState(true);
+  const [clickConnectEnabled, setClickConnectEnabled] = useState(true);
   const { screenToFlowPosition, fitView, getViewport } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -1016,6 +1045,37 @@ export function WorkflowCanvas({
     onConnect(connection);
   }, [isCanvasLocked, onConnect]);
 
+  const handleCanvasClickCapture = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (isCanvasLocked || !isMobile || !clickConnectEnabled) return;
+
+    const handleTarget = getWorkflowClickedHandleTarget(event.target);
+    if (!handleTarget) {
+      clickConnectSourceRef.current = null;
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (handleTarget.handleType === 'source') {
+      clickConnectSourceRef.current = handleTarget;
+      return;
+    }
+
+    const source = clickConnectSourceRef.current;
+    clickConnectSourceRef.current = null;
+    if (!source || source.handleType !== 'source' || source.nodeId === handleTarget.nodeId) return;
+
+    const connection: Connection = {
+      source: source.nodeId,
+      sourceHandle: source.handleId,
+      target: handleTarget.nodeId,
+      targetHandle: handleTarget.handleId,
+    };
+    if (!isValidConnection(connection)) return;
+    handleConnect(connection);
+  }, [clickConnectEnabled, handleConnect, isCanvasLocked, isMobile, isValidConnection]);
+
   const handleConnectStart: OnConnectStart = useCallback((_, params) => {
     if (!isCanvasLocked) {
       setIsConnecting(true);
@@ -1147,6 +1207,7 @@ export function WorkflowCanvas({
       ref={reactFlowWrapper}
       className={`relative flex-1 h-full w-full ${floatingHandles && isConnecting ? 'workflow-canvas-show-floating-handles' : ''}`}
       onContextMenuCapture={handleSelectionContextMenu}
+      onClickCapture={handleCanvasClickCapture}
     >
       <WorkflowLogsCollapsedContext.Provider value={{ collapsed: logsCollapsed, toggle: () => setLogsCollapsed(c => !c) }}>
       <ReactFlow
@@ -1184,7 +1245,7 @@ export function WorkflowCanvas({
         panActivationKeyCode={null}
         nodesDraggable={!isCanvasLocked}
         nodesConnectable={!isCanvasLocked}
-        connectOnClick={!isCanvasLocked}
+        connectOnClick={!isCanvasLocked && (!isMobile || clickConnectEnabled)}
         edgesReconnectable={!isCanvasLocked}
         elevateNodesOnSelect={false}
         defaultEdgeOptions={{ type: 'custom' }}
@@ -1277,6 +1338,8 @@ export function WorkflowCanvas({
               }
         }
         onToggleMinimap={toggleMinimap}
+        clickConnectEnabled={clickConnectEnabled}
+        onClickConnectEnabledChange={isMobile && !isCanvasLocked ? setClickConnectEnabled : undefined}
         logsCollapsed={logsCollapsed}
         onToggleLogsCollapsed={() => setLogsCollapsed(c => !c)}
       />

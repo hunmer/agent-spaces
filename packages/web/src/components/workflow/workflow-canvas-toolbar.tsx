@@ -17,6 +17,7 @@ import {
   PanelBottomClose, PanelBottomOpen,
   ExternalLink,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 export interface WorkflowClipboardRecord {
   id: string;
@@ -60,6 +61,8 @@ export function CanvasToolbar({
   onToggleRectangleDraw,
   onToggleLassoSelection,
   onToggleMinimap,
+  clickConnectEnabled = true,
+  onClickConnectEnabledChange,
   logsCollapsed,
   onToggleLogsCollapsed,
   embeddedMode = null,
@@ -86,6 +89,8 @@ export function CanvasToolbar({
   onToggleRectangleDraw?: () => void;
   onToggleLassoSelection?: () => void;
   onToggleMinimap: () => void;
+  clickConnectEnabled?: boolean;
+  onClickConnectEnabledChange?: (enabled: boolean) => void;
   logsCollapsed: boolean;
   onToggleLogsCollapsed: () => void;
   embeddedMode?: 'issue' | null;
@@ -245,6 +250,24 @@ export function CanvasToolbar({
         >
           <MapIcon className="h-3.5 w-3.5" />
         </CanvasToolbarButton>
+
+        {onClickConnectEnabledChange && (
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <label className="flex h-7 items-center gap-1.5 rounded-md px-1.5 md:hidden">
+                  <span className="text-[10px] text-muted-foreground">{t('canvasToolbar.clickConnect')}</span>
+                  <Switch
+                    size="sm"
+                    checked={clickConnectEnabled}
+                    onCheckedChange={onClickConnectEnabledChange}
+                  />
+                </label>
+              )}
+            />
+            <TooltipContent side="top" className="text-xs">{t('canvasToolbar.clickConnectTooltip')}</TooltipContent>
+          </Tooltip>
+        )}
 
       </TooltipProvider>
     </div>

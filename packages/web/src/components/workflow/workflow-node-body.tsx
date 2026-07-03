@@ -303,7 +303,7 @@ export function NodeBodySourceHandles(props: NodeBodySourceHandlesProps) {
             SOURCE_HANDLE_KEY,
             <Handle
               id="source" type="source" position={handlePositions.source}
-              className={cn('!z-10 !w-3 !h-3 !border-2 handle-dot', floatingHandleClassName)}
+              className={cn('!z-10 !w-3 !h-3 max-md:!w-5 max-md:!h-5 !border-2 handle-dot', floatingHandleClassName)}
               style={getSourceHandleStyle(SOURCE_HANDLE_KEY, DEFAULT_SOURCE_HANDLE_COLOR, handlePositions.source, 0, 1)}
               onContextMenu={(event) => openHandleColorMenu(event, SOURCE_HANDLE_KEY)}
             />,
@@ -324,7 +324,7 @@ export function NodeBodySourceHandles(props: NodeBodySourceHandlesProps) {
                   h.id,
                   <Handle
                     id={h.id} type="source" position={handlePositions.source}
-                    className={cn('!z-10 !w-2.5 !h-2.5 !border-2 handle-dot', floatingHandleClassName)}
+                    className={cn('!z-10 !w-2.5 !h-2.5 max-md:!w-5 max-md:!h-5 !border-2 handle-dot', floatingHandleClassName)}
                     style={getSourceHandleStyle(
                       h.id,
                       h.id === LOOP_BODY_SOURCE_HANDLE ? LOOP_BODY_SOURCE_HANDLE_COLOR : DEFAULT_SOURCE_HANDLE_COLOR,
@@ -358,7 +358,7 @@ export function NodeBodySourceHandles(props: NodeBodySourceHandlesProps) {
                 h.id,
                 <Handle
                   id={h.id} type="source" position={handlePositions.source}
-                  className={cn('!z-10 !w-2.5 !h-2.5 !border-2 handle-dot', floatingHandleClassName)}
+                  className={cn('!z-10 !w-2.5 !h-2.5 max-md:!w-5 max-md:!h-5 !border-2 handle-dot', floatingHandleClassName)}
                   style={getSourceHandleStyle(
                     h.id,
                     h.id === 'default' ? DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR : DEFAULT_DYNAMIC_HANDLE_COLOR,
@@ -416,7 +416,7 @@ export function NodeBodyTargetHandles(props: NodeBodyTargetHandlesProps) {
         <Handle
           id="target" type="target" position={handlePositions.target}
           isConnectable={isTargetConnectable}
-          className={cn('!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
+          className={cn('!z-10 !w-3 !h-3 max-md:!w-5 max-md:!h-5 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
           style={getTargetHandleStyle(handlePositions.target, handleCtx)}
         />
       )}

@@ -340,7 +340,9 @@
     "pasteCopiedNodes": "Paste",
     "moveCopiedNodesToStaging": "Move to Staging",
     "clearCopiedNodes": "Clear",
-    "recordCount": "{count} nodes"
+    "recordCount": "{count} nodes",
+    "clickConnect": "Tap link",
+    "clickConnectTooltip": "Connect nodes by tapping two handles"
   },
   "canvas": {
     "mergeToWorkflow": "Merge to Workflow",
