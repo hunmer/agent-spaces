@@ -129,7 +129,7 @@ export function InlineChatPanel({
   return (
     <div className="flex h-full w-full min-w-0 flex-col">
       {/* Header */}
-      <div className="flex min-w-0 items-center gap-3 border-b px-4 py-3">
+      <div className="flex min-w-0 shrink-0 items-center gap-3 border-b px-4 py-3">
         <button
           className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden text-left hover:opacity-80 transition-opacity"
           onClick={() => onEditAgent(agentId)}
@@ -271,7 +271,7 @@ export function InlineChatPanel({
 
       {/* Input */}
       {!archived && (
-        <div className="border-t p-3">
+        <div className="shrink-0 border-t p-3">
           <ChatComposerInput
             ref={composerRef}
             workspaceId={workspaceId || ""}
