@@ -20,6 +20,7 @@ import {
   Bot,
   Braces,
   ChevronDown,
+  Download,
   FileJson,
   Plus,
   RefreshCw,
@@ -54,6 +55,7 @@ interface AgentDialogHeaderProps {
   setImportOpen?: (open: boolean) => void;
   openJsonImport?: () => void;
   openTextImport?: () => void;
+  openExternalImport?: () => void;
 }
 
 export function AgentDialogHeader({
@@ -74,9 +76,11 @@ export function AgentDialogHeader({
   setImportOpen,
   openJsonImport,
   openTextImport,
+  openExternalImport,
 }: AgentDialogHeaderProps) {
   const t = useTranslations("agent");
   const tc = useTranslations("common");
+  const ti = useTranslations("import");
 
   const addDropdown = (compact?: boolean) => (
     <DropdownMenu>
@@ -128,6 +132,12 @@ export function AgentDialogHeader({
           <Braces className="size-3.5" />
           <span>{t("dialog.importFromText")}</span>
         </DropdownMenuItem>
+        {openExternalImport && (
+          <DropdownMenuItem className="gap-2" onClick={openExternalImport}>
+            <Download className="size-3.5" />
+            <span>{ti("importFromExternal")}</span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   ) : null;

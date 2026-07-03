@@ -294,6 +294,7 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
           onBind={openBindDialog}
           onImportBatch={actions.importBatch}
           onImportFromGit={actions.importFromGit}
+          onExternalImported={fetchSkills}
           onBindAll={openBindAllDialog}
         />
       ) : (

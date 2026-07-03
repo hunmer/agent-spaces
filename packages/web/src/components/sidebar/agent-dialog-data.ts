@@ -111,17 +111,21 @@ export function useAgentDialogData({
     setStoreLoading(false);
   }, []);
 
+  const refreshAgents = useCallback(async () => {
+    const list = await sdk.agent.listPresets();
+    const normalized = (list as AgentConfig[]).map(normalizeAgent);
+    setAgents(normalized);
+    return normalized;
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     queueMicrotask(() => {
       setLoading(true);
       setError(null);
     });
-    sdk.agent.listPresets()
-      .then((data) => {
-        const list = data as AgentConfig[];
-        const normalized = list.map(normalizeAgent);
-        setAgents(normalized);
+    refreshAgents()
+      .then((normalized) => {
         if (initialAgentId) {
           const target = normalized.find((a) => a.id === initialAgentId);
           if (target) setSelectedAgent(target);
@@ -134,7 +138,7 @@ export function useAgentDialogData({
       })
       .finally(() => setLoading(false));
     fetchStoreAgents();
-  }, [open, initialAgentId, presetBasePath, singleAgent, t, fetchStoreAgents]);
+  }, [open, initialAgentId, presetBasePath, singleAgent, t, fetchStoreAgents, refreshAgents]);
 
   const handleSelectAgent = (agent: AgentPreset) => {
     setSelectedAgent(agent);
@@ -181,8 +185,7 @@ export function useAgentDialogData({
     setImportOpen(false);
     setTextDialogOpen(false);
     if (count > 0) {
-      const list = await sdk.agent.listPresets();
-      setAgents(list.map(normalizeAgent));
+      await refreshAgents();
       setError(null);
     } else {
       setImportError(t("dialog.importFailed"));
@@ -291,8 +294,7 @@ export function useAgentDialogData({
         enabled: true,
       };
       await sdk.agent.createPreset(payload);
-      const list = await sdk.agent.listPresets();
-      setAgents(list.map(normalizeAgent));
+      await refreshAgents();
     } catch { /* ignore */ }
     setImportingIds((prev) => {
       const next = new Set(prev);
@@ -311,6 +313,7 @@ export function useAgentDialogData({
     setSelectedAgent, setAutoGenerate, setActiveTab, setRoleFilterLocal, setLocalSearch,
     handleSelectAgent, handleBack, handleAddAgent, handleToggleEnabled,
     handleDeleteAgent, handleEditorSaved, handleSyncTemplates, importFromStore,
+    refreshAgents,
     importOpen, setImportOpen, textDialogOpen, setTextDialogOpen,
     importText, setImportText, importError, setImportError,
     jsonInputRef, handleImportAgentFile, runAgentImport,

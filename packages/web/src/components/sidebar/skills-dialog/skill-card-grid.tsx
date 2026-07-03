@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { sdk } from '@/lib/sdk';
 import { Button } from '@/components/ui/button';
@@ -23,9 +24,11 @@ import {
   FileText,
   FileArchive,
   GitBranch,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ImportButton } from '../import-button';
+import { ExternalImportDialog } from '../external-import-dialog';
 import type { FilterMode, SkillInfo } from './types';
 
 interface SkillCardGridProps {
@@ -45,6 +48,7 @@ interface SkillCardGridProps {
   onImportFolder: () => void;
   onImportZip: () => void;
   onImportGit: () => void;
+  onExternalImported: () => void;
   gitLoading: boolean;
 }
 
@@ -65,12 +69,16 @@ export function SkillCardGrid({
   onImportFolder,
   onImportZip,
   onImportGit,
+  onExternalImported,
   gitLoading,
 }: SkillCardGridProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
+  const ti = useTranslations('import');
+  const [externalImportOpen, setExternalImportOpen] = useState(false);
 
   return (
+    <>
     <div className="flex-1 min-w-0 flex flex-col gap-3 min-h-0">
       {/* Mobile: Top filters */}
       <div className="flex md:hidden flex-col gap-2">
@@ -111,14 +119,41 @@ export function SkillCardGrid({
       </div>
 
       {/* Desktop: Search bar */}
-      <div className="hidden md:block relative">
-        <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={t('search')}
-          className="pl-8"
-        />
+      <div className="hidden md:flex items-center gap-2 relative">
+        <div className="relative flex-1">
+          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={t('search')}
+            className="pl-8"
+          />
+        </div>
+        <ImportButton
+          label={t('import')}
+          align="start"
+        >
+          <DropdownMenuItem onClick={onImportMd}>
+            <FileText className="size-3.5 mr-1.5" />
+            {t('importFromMd')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImportFolder}>
+            <FolderOpen className="size-3.5 mr-1.5" />
+            {t('importFromFolder')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImportZip}>
+            <FileArchive className="size-3.5 mr-1.5" />
+            {t('importFromZip')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImportGit} disabled={gitLoading}>
+            <GitBranch className="size-3.5 mr-1.5" />
+            {t('importFromGit')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setExternalImportOpen(true)}>
+            <Download className="size-3.5 mr-1.5" />
+            {ti('importFromExternal')}
+          </DropdownMenuItem>
+        </ImportButton>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
@@ -146,29 +181,8 @@ export function SkillCardGrid({
         )}
       </ScrollArea>
 
-      {/* Desktop: Footer with import and apply all */}
-      <div className="hidden md:flex items-center justify-between gap-3 pt-2 border-t shrink-0">
-        <ImportButton
-          label={t('import')}
-          align="start"
-        >
-          <DropdownMenuItem onClick={onImportMd}>
-            <FileText className="size-3.5 mr-1.5" />
-            {t('importFromMd')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onImportFolder}>
-            <FolderOpen className="size-3.5 mr-1.5" />
-            {t('importFromFolder')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onImportZip}>
-            <FileArchive className="size-3.5 mr-1.5" />
-            {t('importFromZip')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onImportGit} disabled={gitLoading}>
-            <GitBranch className="size-3.5 mr-1.5" />
-            {t('importFromGit')}
-          </DropdownMenuItem>
-        </ImportButton>
+      {/* Desktop: Footer with apply all */}
+      <div className="hidden md:flex items-center justify-end gap-3 pt-2 border-t shrink-0">
         <Button
           variant="outline"
           size="sm"
@@ -180,6 +194,14 @@ export function SkillCardGrid({
         </Button>
       </div>
     </div>
+    <ExternalImportDialog
+      open={externalImportOpen}
+      onOpenChange={setExternalImportOpen}
+      kinds={['skills']}
+      defaultKind="skills"
+      onImported={onExternalImported}
+    />
+    </>
   );
 }
 

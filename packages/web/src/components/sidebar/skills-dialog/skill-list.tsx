@@ -21,6 +21,7 @@ interface SkillListProps {
   onBind: (skill: SkillInfo) => void;
   onImportBatch: (items: ImportItem[]) => void;
   onImportFromGit: (url: string) => Promise<{ name: string; content: string }[] | null>;
+  onExternalImported: () => void;
   onBindAll: () => void;
 }
 
@@ -34,6 +35,7 @@ export function SkillList({
   onBind,
   onImportBatch,
   onImportFromGit,
+  onExternalImported,
   onBindAll,
 }: SkillListProps) {
   const t = useTranslations('skills');
@@ -123,6 +125,7 @@ export function SkillList({
             onImportFolder={importState.openFolderPicker}
             onImportZip={importState.openZipPicker}
             onImportGit={importState.openGitDialog}
+            onExternalImported={onExternalImported}
             gitLoading={importState.gitLoading}
           />
         </div>

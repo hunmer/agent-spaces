@@ -37,10 +37,12 @@ import {
   Download,
   FileText,
   Braces,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
 import { ImportButton, useFileImportPicker } from './import-button';
+import { ExternalImportDialog } from './external-import-dialog';
 
 interface McpServerConfig {
   command?: string;
@@ -94,6 +96,7 @@ type FilterMode = 'all' | 'favorites' | 'agent';
 export function McpsDialog({ open, onOpenChange, standalone, selectable, selectedMcps: externalSelected, onSelectedMcpsChange }: McpsDialogProps) {
   const t = useTranslations('mcps');
   const tc = useTranslations('common');
+  const ti = useTranslations('import');
 
   const [activeTab, setActiveTab] = useState<TabType>('local');
   const [mcps, setMcps] = useState<McpServerInfo[]>([]);
@@ -103,6 +106,7 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterAgentId, setFilterAgentId] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
+  const [externalImportOpen, setExternalImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
   const [textDialogOpen, setTextDialogOpen] = useState(false);
@@ -698,6 +702,10 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
                     <Braces className="size-3.5 mr-1.5" />
                     {t('importFromText')}
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setExternalImportOpen(true)}>
+                    <Link2 className="size-3.5 mr-1.5" />
+                    {ti('importFromExternal')}
+                  </DropdownMenuItem>
                 </ImportButton>
                 {importFileInput}
               </>
@@ -772,6 +780,14 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
           </div>
         </DialogContent>
       </Dialog>
+
+      <ExternalImportDialog
+        open={externalImportOpen}
+        onOpenChange={setExternalImportOpen}
+        kinds={['mcps']}
+        defaultKind="mcps"
+        onImported={fetchMcps}
+      />
 
       {/* Edit MCP Dialog */}
       <Dialog open={!!editMcp} onOpenChange={(v) => { if (!v) setEditMcp(null); }}>

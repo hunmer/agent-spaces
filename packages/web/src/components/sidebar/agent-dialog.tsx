@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { type AgentRole } from "@agent-spaces/shared";
 import {
@@ -23,6 +24,7 @@ import { AgentList } from "./agent-list";
 import { AgentEditor } from "./agent-editor";
 import { useAgentDialogData, type StoreAgentItem, type TabType } from "./agent-dialog-data";
 import { AgentDialogHeader } from "./agent-dialog-header";
+import { ExternalImportDialog } from "./external-import-dialog";
 
 export function AgentDialog({
   open,
@@ -52,6 +54,7 @@ export function AgentDialog({
     roleFilter,
     onOpenChange,
   });
+  const [externalImportOpen, setExternalImportOpen] = useState(false);
 
   const handleAutoGenerate = () => {
     const draft = data.addRoleOptions[0]
@@ -191,6 +194,7 @@ export function AgentDialog({
         setImportOpen={data.setImportOpen}
         openJsonImport={() => data.jsonInputRef.current?.click()}
         openTextImport={() => { data.setImportError(""); data.setTextDialogOpen(true); }}
+        openExternalImport={() => setExternalImportOpen(true)}
       />
 
       {/* Hidden json file input for agent import */}
@@ -307,6 +311,13 @@ export function AgentDialog({
         </div>
       </DialogContent>
     </Dialog>
+    <ExternalImportDialog
+      open={externalImportOpen}
+      onOpenChange={setExternalImportOpen}
+      kinds={["agents"]}
+      defaultKind="agents"
+      onImported={data.refreshAgents}
+    />
     </>
   );
 }
