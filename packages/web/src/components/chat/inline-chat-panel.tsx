@@ -127,7 +127,7 @@ export function InlineChatPanel({
   });
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-col">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
       {/* Header */}
       <div className="flex min-w-0 shrink-0 items-center gap-3 border-b px-4 py-3">
         <button
@@ -178,7 +178,7 @@ export function InlineChatPanel({
       </div>
 
       {/* Messages */}
-      <div ref={listRef} className="flex-1 overflow-y-auto p-4">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-4">
         <div className="flex min-h-full flex-col gap-3">
           {messages.length === 0 && !sending && (
             <Empty className="border-0">

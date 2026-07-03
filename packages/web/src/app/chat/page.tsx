@@ -420,9 +420,9 @@ function ChatPageInner() {
   );
 
   const chatMainPanel = (
-    <div className="flex h-full w-full flex-col rounded-xl border border-border/40 bg-background shadow-sm">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm">
       {/* Tab content */}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {showFileViewer && activeFile ? (
           <ChatFileViewer path={activeFile.path} content={activeFile.content} />
         ) : activeSession && activeAgent ? (
@@ -472,7 +472,7 @@ function ChatPageInner() {
 
   if (isMobile) {
     return (
-      <div className="relative h-full bg-muted/30 p-2">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-muted/30 p-2">
         {/* 边缘切换按钮：左/右，始终可见 */}
         <Button
           aria-label="Toggle left panel"
@@ -528,7 +528,7 @@ function ChatPageInner() {
 
       <ResizableHandle withHandle />
 
-      <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%">
+      <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%" className="min-w-0 overflow-hidden">
         {chatMainPanel}
       </ResizablePanel>
 

@@ -74,6 +74,9 @@ export interface ChatPanelProps {
   /** Panel size */
   width?: number;
   height?: number;
+  className?: string;
+  messageListClassName?: string;
+  style?: React.CSSProperties;
 }
 
 const containerVariants: Variants = {
@@ -135,6 +138,9 @@ export function ChatPanel({
   onRerunTool,
   width = 400,
   height = 360,
+  className,
+  messageListClassName,
+  style,
 }: ChatPanelProps) {
   const widgetId = useId();
   const listRef = useRef<HTMLDivElement>(null);
@@ -190,8 +196,11 @@ export function ChatPanel({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="relative overflow-hidden rounded-2xl border border-border/40 bg-background/60 shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
-      style={{ width, maxHeight: height + 220 }}
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-border/40 bg-background/60 shadow-2xl backdrop-blur-xl ring-1 ring-white/10",
+        className
+      )}
+      style={{ width, maxHeight: height + 220, ...style }}
     >
       {/* Header */}
       <div className="relative border-b border-border/40 bg-muted/30 p-4 overflow-hidden">
@@ -232,7 +241,10 @@ export function ChatPanel({
       {/* Messages */}
       <div
         ref={listRef}
-        className="flex flex-col gap-3 overflow-y-auto p-4 bg-gradient-to-b from-background/20 to-background/40"
+        className={cn(
+          "flex flex-col gap-3 overflow-y-auto p-4 bg-gradient-to-b from-background/20 to-background/40",
+          messageListClassName
+        )}
         style={{ height }}
       >
         <ChatMessageList

@@ -107,6 +107,9 @@ export function FloatingChatPanel({
       onRerunTool={onRerunTool}
       width={width}
       height={height}
+      className={isMobile ? "flex h-full w-full max-w-none flex-col rounded-none border-0" : undefined}
+      messageListClassName={isMobile ? "min-h-0 flex-1" : undefined}
+      style={isMobile ? { width: '100%', maxHeight: 'none' } : undefined}
     />
   );
 
@@ -117,7 +120,8 @@ export function FloatingChatPanel({
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
           <DialogContent
             showCloseButton={false}
-            className="flex h-[100dvh] w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-[100dvh] sm:max-w-full"
+            className="fixed inset-0 left-0 top-0 flex h-[100dvh] w-full max-w-full translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-[100dvh] sm:max-w-full"
+            style={{ maxHeight: '100dvh' }}
           >
             {chatPanel}
           </DialogContent>
