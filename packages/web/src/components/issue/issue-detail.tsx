@@ -221,31 +221,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
   })();
 
-  if (!issue || !normalizedIssue) {
-    return (
-      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-        {t('detail.selectIssue')}
-      </div>
-    );
-  }
-
-  const canStart = issue.status === 'draft' || issue.status === 'stopped';
-  const canRerun = issue.status === 'completed';
-  const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
-  const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
-  const isError = issue.status === 'error';
-  const canPause = isWorkflowRunning && !isError;
-  const canStop = (isWorkflowRunning || isWorkflowPaused) && !isError;
-
-  const statusDotColor = issue.status === 'completed' ? 'bg-green-500'
-    : issue.status === 'in_progress' ? 'bg-blue-500'
-    : issue.status === 'stopped' ? 'bg-slate-500'
-    : issue.status === 'error' ? 'bg-red-500'
-    : 'bg-yellow-500';
-
   const startNode = startWorkflow?.nodes.find((node) => node.type === 'start') ?? null;
-  const startInputFields = (Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields : []) as OutputField[];
-  const workflowVariableFields = (Array.isArray(startWorkflow?.variables) ? startWorkflow.variables : []) as OutputField[];
   const startNodeLabel = startNode?.label || t('detail.start');
 
   const stringifyValues = (values: Record<string, unknown> | undefined): Record<string, string> | undefined => {
@@ -274,7 +250,33 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       setRetryEnvValues(undefined);
       setStartInputOpen(true);
     } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issue?.id, issue?.workflowId, startNode?.id, startNodeLabel]);
+
+  if (!issue || !normalizedIssue) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+        {t('detail.selectIssue')}
+      </div>
+    );
+  }
+
+  const canStart = issue.status === 'draft' || issue.status === 'stopped';
+  const canRerun = issue.status === 'completed';
+  const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
+  const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
+  const isError = issue.status === 'error';
+  const canPause = isWorkflowRunning && !isError;
+  const canStop = (isWorkflowRunning || isWorkflowPaused) && !isError;
+
+  const statusDotColor = issue.status === 'completed' ? 'bg-green-500'
+    : issue.status === 'in_progress' ? 'bg-blue-500'
+    : issue.status === 'stopped' ? 'bg-slate-500'
+    : issue.status === 'error' ? 'bg-red-500'
+    : 'bg-yellow-500';
+
+  const startInputFields = (Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields : []) as OutputField[];
+  const workflowVariableFields = (Array.isArray(startWorkflow?.variables) ? startWorkflow.variables : []) as OutputField[];
 
   return (
     <div className="flex h-full overflow-hidden">

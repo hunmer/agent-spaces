@@ -166,7 +166,7 @@ function startDataGridColumnResizeOnEnd<TData>(
   const updateOffset = (clientXPos?: number, commit = false) => {
     if (typeof clientXPos !== "number") return
 
-    let nextColumnSizing: Record<string, number> = {}
+    const nextColumnSizing: Record<string, number> = {}
     const deltaOffset = (clientXPos - dragStartClientX) * directionMultiplier
     const deltaPercentage = Math.max(deltaOffset / startSize, -0.999999)
 
@@ -405,8 +405,10 @@ function DataGridTableBase({ children }: { children: ReactNode }) {
    * handles width propagation without per-cell getSize() calls or React
    * re-renders of the body.
    */
+  const columnsResizable = props.tableLayout?.columnsResizable
+  const columnSizing = table.getState().columnSizing
   const columnSizeVars = useMemo(() => {
-    if (!props.tableLayout?.columnsResizable) return undefined
+    if (!columnsResizable) return undefined
     const headers = table.getFlatHeaders()
     const colSizes: Record<string, number> = {}
     for (let i = 0; i < headers.length; i++) {
@@ -417,9 +419,8 @@ function DataGridTableBase({ children }: { children: ReactNode }) {
     return colSizes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    props.tableLayout?.columnsResizable,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    table.getState().columnSizing,
+    columnsResizable,
+    columnSizing,
   ])
 
   return (

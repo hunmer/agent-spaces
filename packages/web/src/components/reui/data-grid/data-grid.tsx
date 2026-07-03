@@ -138,6 +138,8 @@ function DataGridProvider<TData extends object>({
   // Memoize context value so consumers don't re-render during column resize.
   // Column sizing state is intentionally excluded from deps -- CSS variables
   // on the <table> element handle width updates without React re-renders.
+  const tableLayoutKey = JSON.stringify(props.tableLayout)
+  const tableClassNamesKey = JSON.stringify(props.tableClassNames)
   const value = useMemo(
     () => ({
       props,
@@ -145,7 +147,6 @@ function DataGridProvider<TData extends object>({
       recordCount: props.recordCount,
       isLoading: props.isLoading || false,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       table,
       props.recordCount,
@@ -157,10 +158,8 @@ function DataGridProvider<TData extends object>({
       props.emptyMessage,
       props.onRowClick,
       props.className,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      JSON.stringify(props.tableLayout),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      JSON.stringify(props.tableClassNames),
+      tableLayoutKey,
+      tableClassNamesKey,
       tableState.sorting,
       tableState.pagination,
       tableState.columnFilters,

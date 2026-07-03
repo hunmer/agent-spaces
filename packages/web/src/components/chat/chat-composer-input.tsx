@@ -114,6 +114,7 @@ interface ChatComposerInputProps {
   enableAutoMode?: boolean;
   enableSlashCommands?: boolean;
   enableAgentResources?: boolean;
+  implicitActiveAgentId?: string;
   onStateChange?: (state: ChatComposerInputState) => void;
 }
 
@@ -140,6 +141,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     enableAutoMode = true,
     enableSlashCommands = true,
     enableAgentResources = true,
+    implicitActiveAgentId,
     onStateChange,
   },
   ref,
@@ -166,13 +168,18 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
   useEffect(() => { onSubmitRef.current = onSubmit; }, [onSubmit]);
 
+  const effectiveMentionedAgentIds = useMemo(() => {
+    if (mentionedAgentIds.length > 0) return mentionedAgentIds;
+    return implicitActiveAgentId ? [implicitActiveAgentId] : [];
+  }, [mentionedAgentIds, implicitActiveAgentId]);
+
   const mentionedAgents = useMemo(() => {
-    if (mentionedAgentIds.length === 0) return [];
+    if (effectiveMentionedAgentIds.length === 0) return [];
     const byId = new Map(agents.map((agent) => [agent.id, agent]));
-    return mentionedAgentIds
+    return effectiveMentionedAgentIds
       .map((id) => byId.get(id))
       .filter((agent): agent is MentionedAgent => Boolean(agent));
-  }, [agents, mentionedAgentIds]);
+  }, [agents, effectiveMentionedAgentIds]);
 
   const activeAgent = mentionedAgents[0];
   const activeMcps = useMemo(() => getMcpLabels(activeAgent?.mcps), [activeAgent?.mcps]);
@@ -186,8 +193,8 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   }, [activeAgent?.tools]);
 
   useEffect(() => {
-    onStateChange?.({ mentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools });
-  }, [mentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools, onStateChange]);
+    onStateChange?.({ mentionedAgentIds: effectiveMentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools });
+  }, [effectiveMentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools, onStateChange]);
 
   useEffect(() => {
     activeSkillsRef.current = activeSkills;
@@ -347,7 +354,8 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     if (!currentEditor || isProcessingRef.current || submittingRef.current) return;
     const text = currentEditor.getText().trim();
     if (!text && attachments.length === 0) return;
-    const mentions = collectMentionIds(currentEditor.getJSON());
+    const editorMentions = collectMentionIds(currentEditor.getJSON());
+    const mentions = editorMentions.length > 0 || !implicitActiveAgentId ? editorMentions : [implicitActiveAgentId];
     submittingRef.current = true;
     setSubmitting(true);
     if (draftTimerRef.current) {
@@ -372,7 +380,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         return [];
       });
       // Restore active agent mention after send for continuous conversation
-      const activeMentionId = mentions[0];
+      const activeMentionId = editorMentions[0];
       const activeAgent = activeMentionId ? agentsRef.current.find((a) => a.id === activeMentionId) : undefined;
       if (activeAgent) {
         const restoreContent: JSONContent = {
@@ -397,7 +405,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [attachments, contextLength, enableAttachments, onCancelReply, onDraftClear, selectedModelOverride]);
+  }, [attachments, contextLength, enableAttachments, implicitActiveAgentId, onCancelReply, onDraftClear, selectedModelOverride]);
 
   const submitRef = useRef(submitCurrentMessage);
   submitRef.current = submitCurrentMessage;

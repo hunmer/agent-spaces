@@ -53,7 +53,8 @@ export default function RotatingText({
   onNext,
 }: RotatingTextProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const memoTexts = useMemo(() => texts, [texts.join('')])
+  const textsKey = texts.join('')
+  const memoTexts = useMemo(() => texts, [textsKey])
 
   const getStaggerDelay = useCallback(
     (index: number, total: number) => {

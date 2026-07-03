@@ -407,6 +407,9 @@ function ChatPageInner() {
                 agentAvatar={activeAgent.avatar}
                 agentIcon={activeAgent.icon}
                 agentDescription={activeAgent.description}
+                agentMcps={activeAgent.mcps}
+                agentSkills={activeAgent.skills?.map((skill) => typeof skill === "string" ? skill : skill.name)}
+                agentTools={activeAgent.tools}
                 messages={activeMessages}
                 sending={isSending}
                 error={activeError}
@@ -435,14 +438,10 @@ function ChatPageInner() {
         </div>
       </ResizablePanel>
 
-      {activeAgent && (
-        <>
-          <ResizableHandle withHandle />
-          <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
-            <ChatRightPanel agentId={activeAgent.id} onFileSelect={handleFileSelect} />
-          </ResizablePanel>
-        </>
-      )}
+      <ResizableHandle withHandle />
+      <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
+        <ChatRightPanel agentId={activeAgent?.id} onFileSelect={handleFileSelect} />
+      </ResizablePanel>
 
       {/* Agent picker for new session */}
       <AddMemberDialog

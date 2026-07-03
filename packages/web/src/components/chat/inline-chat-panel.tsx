@@ -7,12 +7,13 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Eraser, MessageSquare, PanelRightOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useEffect, useMemo, useState } from "react";
-import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
+import type { Attachment as MessageAttachment, BuiltInAgentToolName } from "@agent-spaces/shared";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { ChatComposerInput, type ChatComposerInputHandle, type ChatComposerInputState } from "./chat-composer-input";
 import { ChatInputInfoBar } from "./chat-input-info-bar";
 import { ChatMessageList } from "./chat-message-list";
 import type { ChatMessage } from "@agent-spaces/sdk";
+import type { MentionedAgent } from "./chat-input-utils";
 
 const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
   mentionedAgentIds: [],
@@ -27,6 +28,9 @@ interface InlineChatPanelProps {
   agentAvatar?: string;
   agentIcon?: string;
   agentDescription?: string;
+  agentMcps?: Record<string, unknown>;
+  agentSkills?: string[];
+  agentTools?: BuiltInAgentToolName[];
   messages: ChatMessage[];
   sending: boolean;
   error?: string;
@@ -50,6 +54,9 @@ export function InlineChatPanel({
   agentAvatar,
   agentIcon,
   agentDescription,
+  agentMcps,
+  agentSkills,
+  agentTools,
   messages,
   sending,
   error = "",
@@ -73,6 +80,17 @@ export function InlineChatPanel({
   const [regenerationStartedAt, setRegenerationStartedAt] = useState<string | null>(null);
   const [contextLength, setContextLength] = useState(0);
   const [composerState, setComposerState] = useState<ChatComposerInputState>(EMPTY_COMPOSER_STATE);
+  const composerAgents = useMemo<MentionedAgent[]>(() => [{
+    id: agentId,
+    name: agentName,
+    role: "agent",
+    description: agentDescription,
+    enabled: true,
+    mcps: agentMcps,
+    skills: agentSkills,
+    tools: agentTools,
+    avatarUrl: agentAvatar,
+  }], [agentId, agentName, agentDescription, agentMcps, agentSkills, agentTools, agentAvatar]);
   const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);
   const t = useTranslations('chat.inlineChat');
   const isRegenerating = sending && regeneratingVersionKey !== null;
@@ -257,7 +275,7 @@ export function InlineChatPanel({
           <ChatComposerInput
             ref={composerRef}
             workspaceId={workspaceId || ""}
-            agents={[]}
+            agents={composerAgents}
             placeholder={t('messagePlaceholder', { name: agentName })}
             contextLength={contextLength}
             onSubmit={handleSend}
@@ -269,6 +287,7 @@ export function InlineChatPanel({
             enableAutoMode={false}
             enableSlashCommands={false}
             enableAgentResources={false}
+            implicitActiveAgentId={agentId}
             onStateChange={setComposerState}
           />
           <ChatInputInfoBar
