@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Server } from 'node:http';
 
 export type AnthropicBridgeProvider =
+  | 'anthropic-messages'
   | 'openai-responses-to-anthropic-messages'
   | 'openai-chat-completions-to-anthropic-messages';
 
@@ -108,6 +109,10 @@ export type OpenAIChatRequest = {
 export function isAnthropicBridgeProvider(provider?: string): provider is AnthropicBridgeProvider {
   return provider === 'openai-responses-to-anthropic-messages'
     || provider === 'openai-chat-completions-to-anthropic-messages';
+}
+
+export function needsClaudeCodeAdapter(provider?: string): provider is AnthropicBridgeProvider {
+  return provider === 'anthropic-messages' || isAnthropicBridgeProvider(provider);
 }
 
 export function formatBridgeProvider(provider?: string): string {

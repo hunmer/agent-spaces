@@ -66,6 +66,10 @@ async function handleAnthropicBridgeRequest(
 
   try {
     const anthropicRequest = await readJson(req) as import('./types.js').AnthropicRequest;
+    if (config.provider === 'anthropic-messages') {
+      await handleAnthropicPassthrough(req, res, config, anthropicRequest);
+      return;
+    }
     const openAIRequest = convertAnthropicToOpenAI(anthropicRequest, config.model, {
       maxTokens: config.maxTokens,
       thinkingEnabled: config.thinkingEnabled,
@@ -81,6 +85,12 @@ async function handleAnthropicBridgeRequest(
       provider: config.provider,
       sourceModel: anthropicRequest.model,
       targetModel: config.model,
+      sourceMaxTokens: anthropicRequest.max_tokens,
+      configuredMaxTokens: config.maxTokens,
+      forwardedMaxTokens: 'max_tokens' in requestBody ? (requestBody as { max_tokens?: unknown }).max_tokens : undefined,
+      forwardedMaxOutputTokens: 'max_output_tokens' in requestBody
+        ? (requestBody as { max_output_tokens?: unknown }).max_output_tokens
+        : undefined,
       stream: Boolean(anthropicRequest.stream),
       inputItems: Array.isArray((requestBody as { input?: unknown }).input) ? (requestBody as { input: unknown[] }).input.length : undefined,
       messages: Array.isArray((requestBody as { messages?: unknown }).messages) ? (requestBody as { messages: unknown[] }).messages.length : undefined,
@@ -137,6 +147,67 @@ async function handleAnthropicBridgeRequest(
       },
     });
   }
+}
+
+async function handleAnthropicPassthrough(
+  _req: IncomingMessage,
+  res: ServerResponse,
+  config: AnthropicBridgeConfig,
+  anthropicRequest: import('./types.js').AnthropicRequest,
+): Promise<void> {
+  const requestBody = {
+    ...anthropicRequest,
+    max_tokens: normalizeAnthropicMaxTokens(anthropicRequest.max_tokens, config.maxTokens),
+  };
+  console.info('[anthropic-adapter] request', {
+    provider: config.provider,
+    sourceModel: anthropicRequest.model,
+    targetModel: config.model,
+    sourceMaxTokens: anthropicRequest.max_tokens,
+    configuredMaxTokens: config.maxTokens,
+    forwardedMaxTokens: requestBody.max_tokens,
+    stream: Boolean(requestBody.stream),
+    messages: requestBody.messages.length,
+    tools: requestBody.tools?.length ?? 0,
+  });
+
+  const upstream = await fetch(joinUrl(config.baseUrl, '/v1/messages'), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!upstream.ok) {
+    const text = await upstream.text();
+    console.warn('[anthropic-adapter] upstream failed', {
+      provider: config.provider,
+      status: upstream.status,
+      targetModel: config.model,
+      sourceMaxTokens: anthropicRequest.max_tokens,
+      configuredMaxTokens: config.maxTokens,
+      forwardedMaxTokens: requestBody.max_tokens,
+      body: truncate(text, 2000),
+    });
+    sendJson(res, upstream.status, {
+      error: {
+        type: upstream.status >= 500 ? 'api_error' : 'invalid_request_error',
+        message: text || `Anthropic messages request failed with status ${upstream.status}`,
+      },
+    });
+    return;
+  }
+
+  if (requestBody.stream) {
+    await pipeUpstreamStream(res, upstream);
+    return;
+  }
+
+  const body = await upstream.json();
+  sendJson(res, 200, body);
 }
 
 function joinUrl(base: string, path: string): string {
@@ -230,4 +301,30 @@ function sendAnthropicStream(res: ServerResponse, message: Record<string, unknow
 function sendSse(res: ServerResponse, event: string, data: unknown): void {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function normalizeAnthropicMaxTokens(maxTokens: number | undefined, configuredMaxTokens: number | undefined): number | undefined {
+  if (maxTokens === undefined) return undefined;
+  if (typeof configuredMaxTokens === 'number' && configuredMaxTokens > 0) {
+    return Math.min(maxTokens, configuredMaxTokens);
+  }
+  return maxTokens;
+}
+
+async function pipeUpstreamStream(res: ServerResponse, upstream: Response): Promise<void> {
+  addCorsHeaders(res);
+  res.writeHead(upstream.status, {
+    'Content-Type': upstream.headers.get('content-type') || 'text/event-stream',
+    'Cache-Control': upstream.headers.get('cache-control') || 'no-cache',
+    Connection: upstream.headers.get('connection') || 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  if (!upstream.body) {
+    res.end();
+    return;
+  }
+  for await (const chunk of upstream.body) {
+    res.write(Buffer.from(chunk));
+  }
+  res.end();
 }

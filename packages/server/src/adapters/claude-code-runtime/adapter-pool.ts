@@ -1,16 +1,19 @@
 import type { AgentRuntimeConfig } from '../agent-runtime-types.js';
 import type { ClaudeAdapterRun, SharedClaudeAdapter } from './types.js';
-import { isAnthropicBridgeProvider, formatBridgeProvider } from './types.js';
+import { needsClaudeCodeAdapter, isAnthropicBridgeProvider, formatBridgeProvider } from './types.js';
 import { createAnthropicBridgeServer, findAvailablePort, listen, closeServer } from './anthropic-bridge.js';
 
 const activeClaudeAdapters = new Map<string, SharedClaudeAdapter>();
 
 export async function startClaudeAdapterIfNeeded(config: AgentRuntimeConfig): Promise<ClaudeAdapterRun | null> {
-  if (!isAnthropicBridgeProvider(config.provider)) return null;
+  if (!needsClaudeCodeAdapter(config.provider)) return null;
   const adapterBaseURL = config.adapterBaseURL?.trim() || config.baseURL?.trim();
-  if (!adapterBaseURL) throw new Error(`apiBase is required for ${formatBridgeProvider(config.provider)}`);
-  if (!config.apiKey?.trim()) throw new Error(`apiKey is required for ${formatBridgeProvider(config.provider)}`);
-  if (!config.model?.trim()) throw new Error(`modelId is required for ${formatBridgeProvider(config.provider)}`);
+  const providerLabel = config.provider === 'anthropic-messages'
+    ? 'Anthropic Messages Adapter'
+    : formatBridgeProvider(config.provider);
+  if (!adapterBaseURL) throw new Error(`apiBase is required for ${providerLabel}`);
+  if (!config.apiKey?.trim()) throw new Error(`apiKey is required for ${providerLabel}`);
+  if (!config.model?.trim()) throw new Error(`modelId is required for ${providerLabel}`);
 
   const adapterConfig = {
     provider: config.provider,
