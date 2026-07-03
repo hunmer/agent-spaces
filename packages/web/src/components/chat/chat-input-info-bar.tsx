@@ -58,6 +58,7 @@ interface ChatInputInfoBarProps {
   contextLength: number;
   onContextLengthChange: (contextLength: number) => void;
   enableContextControl?: boolean;
+  enableRecentCode?: boolean;
   onClearTodos?: () => void;
   onInsertText?: (text: string) => void;
 }
@@ -71,6 +72,7 @@ export function ChatInputInfoBar({
   contextLength,
   onContextLengthChange,
   enableContextControl = true,
+  enableRecentCode = true,
   onClearTodos,
   onInsertText,
 }: ChatInputInfoBarProps) {
@@ -93,6 +95,7 @@ export function ChatInputInfoBar({
 
   return (
     <div className="flex items-center gap-0 pt-2">
+      {enableRecentCode ? (
       <Popover
         open={historyOpen}
         onOpenChange={(open) => {
@@ -150,6 +153,7 @@ export function ChatInputInfoBar({
           )}
         </PopoverContent>
       </Popover>
+      ) : null}
 
       {enableContextControl ? (
         <Popover open={contextOpen} onOpenChange={setContextOpen}>

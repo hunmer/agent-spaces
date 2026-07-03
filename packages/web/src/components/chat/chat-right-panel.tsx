@@ -165,6 +165,7 @@ function MultiDirectoryFileTreePanel({
   const [sidebarTab, setSidebarTab] = useState<'files' | 'search'>('files');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [folderInput, setFolderInput] = useState("");
+  const [localActiveTab, setLocalActiveTab] = useState("");
 
   const tabs = useMemo(() => directoryTabs.map((tab) => ({
     id: tab.id,
@@ -174,16 +175,30 @@ function MultiDirectoryFileTreePanel({
 
   const activeTab = tabs.some((tab) => tab.id === activeDirectoryTabId)
     ? activeDirectoryTabId
-    : (tabs[0]?.id ?? "");
+    : localActiveTab && tabs.some((tab) => tab.id === localActiveTab)
+      ? localActiveTab
+      : (tabs[0]?.id ?? "");
+
+  useEffect(() => {
+    if (activeDirectoryTabId && tabs.some((tab) => tab.id === activeDirectoryTabId)) {
+      setLocalActiveTab(activeDirectoryTabId);
+      return;
+    }
+    if (!localActiveTab || !tabs.some((tab) => tab.id === localActiveTab)) {
+      setLocalActiveTab(tabs[0]?.id ?? "");
+    }
+  }, [activeDirectoryTabId, localActiveTab, tabs]);
 
   const addDirectory = useCallback(() => {
     const dir = folderInput.trim();
     if (!dir || !sessionId) return;
     const existing = directoryTabs.find((tab) => tab.path === dir);
     if (existing) {
+      setLocalActiveTab(existing.id);
       onDirectoryTabsChange(sessionId, { activeEditorDirectoryTabId: existing.id });
     } else {
       const id = `custom-dir-${Date.now()}`;
+      setLocalActiveTab(id);
       onDirectoryTabsChange(sessionId, {
         editorDirectoryTabs: [...directoryTabs, { id, path: dir }],
         activeEditorDirectoryTabId: id,
@@ -196,13 +211,16 @@ function MultiDirectoryFileTreePanel({
   const removeDirectory = useCallback((id: string) => {
     if (!sessionId) return;
     const next = directoryTabs.filter((tab) => tab.id !== id);
+    const nextActiveTab = activeTab === id ? (next.at(-1)?.id ?? "") : activeTab;
+    setLocalActiveTab(nextActiveTab);
     onDirectoryTabsChange(sessionId, {
       editorDirectoryTabs: next,
-      activeEditorDirectoryTabId: activeTab === id ? (next.at(-1)?.id ?? "") : activeTab,
+      activeEditorDirectoryTabId: nextActiveTab,
     });
   }, [activeTab, directoryTabs, onDirectoryTabsChange, sessionId]);
 
   const handleActiveTabChange = useCallback((id: string) => {
+    setLocalActiveTab(id);
     if (!sessionId) return;
     onDirectoryTabsChange(sessionId, { activeEditorDirectoryTabId: id });
   }, [onDirectoryTabsChange, sessionId]);
@@ -226,15 +244,15 @@ function MultiDirectoryFileTreePanel({
           {enabled ? "请添加目录" : emptyTitle}
         </div>
       ) : (
-        <Tabs value={activeTab} onValueChange={handleActiveTabChange} className="min-h-0 flex-1 gap-0 overflow-hidden">
-          <TabsList variant="line" className="h-8 w-full justify-start overflow-x-auto rounded-none border-b bg-transparent px-1 py-0">
+        <Tabs value={activeTab} onValueChange={handleActiveTabChange} className="flex h-full min-h-0 flex-1 flex-col gap-0 overflow-hidden">
+          <TabsList variant="line" className="h-8 w-full shrink-0 justify-start overflow-x-auto rounded-none border-b bg-transparent px-1 py-0">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
                 value={tab.id}
-                className="max-w-40 shrink-0 rounded-none border-b-2 border-transparent px-2 text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:text-foreground"
+                className="w-auto flex-none shrink-0 rounded-none border-b-2 border-transparent px-2 text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:text-foreground"
               >
-                <span className="truncate">{tab.label}</span>
+                <span className="max-w-56 truncate">{tab.label}</span>
                 <span
                   role="button"
                   tabIndex={0}
@@ -258,7 +276,7 @@ function MultiDirectoryFileTreePanel({
           </TabsList>
 
           {tabs.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id} className="m-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent key={tab.id} value={tab.id} className="m-0 flex h-full min-h-0 flex-1 flex-col overflow-hidden">
               <WorkspaceEditorPanel
                 enabled={enabled}
                 emptyTitle={emptyTitle}
@@ -402,7 +420,7 @@ function WorkspaceEditorPanel({
   }, [reloadTree]);
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden">
+    <div className="h-full min-h-0 flex-1 overflow-hidden">
       {!enabled ? (
         <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
           {emptyTitle}

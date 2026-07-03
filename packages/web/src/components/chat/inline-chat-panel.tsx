@@ -298,6 +298,7 @@ export function InlineChatPanel({
             todos={[]}
             contextLength={contextLength}
             onContextLengthChange={setContextLength}
+            enableRecentCode={false}
             onInsertText={(text) => composerRef.current?.insertText(text)}
           />
         </div>
