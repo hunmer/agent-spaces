@@ -109,6 +109,24 @@ export function getAgentWorkspace(agentId: string) {
   };
 }
 
+export function getChatWorkspaceRoot(workspaceId: string) {
+  const workspace = store.findWorkspace(workspaceId);
+  if (!workspace) return null;
+  const dir = store.workspaceDir(workspaceId);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const now = new Date().toISOString();
+  return {
+    id: `chat-workspace:${workspaceId}`,
+    name: workspace.name,
+    boundDirs: [dir],
+    agentspaceDir: dir,
+    createdAt: workspace.createdAt ?? now,
+    updatedAt: workspace.updatedAt ?? now,
+    activeChannels: [],
+    activeIssues: [],
+  };
+}
+
 // --- Workspace CRUD ---
 
 export function listWorkspaces(): ChatWorkspace[] {

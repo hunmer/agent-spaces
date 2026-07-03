@@ -68,6 +68,27 @@ router.delete('/workspaces/:wsId', (req, res) => {
   }
 });
 
+// GET /api/chat/workspaces/:wsId/tree - read current chat workspace storage tree
+router.get('/workspaces/:wsId/tree', async (req, res) => {
+  const { wsId } = req.params;
+  if (!wsId) {
+    res.status(400).json({ error: 'wsId is required' });
+    return;
+  }
+  try {
+    const workspace = svc.getChatWorkspaceRoot(wsId);
+    if (!workspace) {
+      res.status(404).json({ error: 'Chat workspace not found' });
+      return;
+    }
+    const relPath = typeof req.query.path === 'string' ? req.query.path : '';
+    const depth = req.query.depth ? Number(req.query.depth) : Infinity;
+    res.json(await fileService.readTree(workspace, relPath, depth));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/chat/workspaces/:wsId/state
 router.get('/workspaces/:wsId/state', (req, res) => {
   const { wsId } = req.params;

@@ -207,13 +207,6 @@ export function ChatInputInfoBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
-            <DropdownMenuItem
-              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
-              onClick={() => setMcpsManageOpen(true)}
-            >
-              <IconSettings size={16} className="shrink-0" />
-              {tCommon("manage")}
-            </DropdownMenuItem>
             {mcps.length ? (
               mcps.map((mcp) => (
                 <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use mcp: ${mcp}]`)}>
@@ -227,6 +220,13 @@ export function ChatInputInfoBar({
                 {t("input.noMcp")}
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem
+              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
+              onClick={() => setMcpsManageOpen(true)}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -247,13 +247,6 @@ export function ChatInputInfoBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
-            <DropdownMenuItem
-              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
-              onClick={() => setSkillsManageOpen(true)}
-            >
-              <IconSettings size={16} className="shrink-0" />
-              {tCommon("manage")}
-            </DropdownMenuItem>
             {skills.length ? (
               skills.map((skill) => (
                 <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use skill: ${skill}]`)}>
@@ -267,6 +260,13 @@ export function ChatInputInfoBar({
                 {t("input.noSkills")}
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem
+              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
+              onClick={() => setSkillsManageOpen(true)}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -287,13 +287,6 @@ export function ChatInputInfoBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
-            <DropdownMenuItem
-              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
-              onClick={() => setToolsManageOpen(true)}
-            >
-              <IconSettings size={16} className="shrink-0" />
-              {tCommon("manage")}
-            </DropdownMenuItem>
             {tools.length ? (
               tools.map(({ name, label, icon: Icon }) => (
                 <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use tool: ${name}]`)}>
@@ -307,6 +300,13 @@ export function ChatInputInfoBar({
                 {t("input.noTools")}
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem
+              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
+              onClick={() => setToolsManageOpen(true)}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>

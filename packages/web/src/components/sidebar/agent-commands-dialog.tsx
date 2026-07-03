@@ -223,7 +223,14 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
         <FileImportMenu
           label={t('import')}
           triggers={importState}
-          enabled={{ md: true, folder: true, zip: true }}
+          enabled={{ md: true, folder: true, zip: true, external: true }}
+          external={{
+            kinds: ['commands'],
+            defaultKind: 'commands',
+            targetAgentId: filterAgentId || agents[0]?.agentId || '',
+            agents: agents.map((agent) => ({ id: agent.agentId, name: agent.agentName })),
+            onImported: fetchAllCommands,
+          }}
           open={importOpen}
           onOpenChange={setImportOpen}
         />

@@ -97,6 +97,13 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
       return http.get(`/api/chat/agents/${agentId}/workspace/tree${qs.size ? `?${qs}` : ''}`);
     },
 
+    chatWorkspaceTree: (workspaceId: string, opts?: { path?: string; depth?: number }): Promise<FileNode[]> => {
+      const qs = new URLSearchParams();
+      if (opts?.path) qs.set('path', opts.path);
+      if (opts?.depth != null) qs.set('depth', String(opts.depth));
+      return http.get(`/api/chat/workspaces/${workspaceId}/tree${qs.size ? `?${qs}` : ''}`);
+    },
+
     workspaceFileContent: (agentId: string, path: string): Promise<{ content: string; encoding: string }> =>
       http.get(`/api/chat/agents/${agentId}/workspace/content?path=${encodeURIComponent(path)}`),
 

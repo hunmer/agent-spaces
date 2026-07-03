@@ -267,7 +267,7 @@ function workspacesFile(): string {
   return path.join(chatDir(), 'workspaces.json');
 }
 
-function workspaceDir(wsId: string): string {
+export function workspaceDir(wsId: string): string {
   return path.join(chatDir(), 'workspaces', wsId);
 }
 

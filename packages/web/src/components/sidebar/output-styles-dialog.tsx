@@ -342,7 +342,12 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
           <FileImportMenu
             label={t('import')}
             triggers={importState}
-            enabled={{ md: true, folder: true, zip: true }}
+            enabled={{ md: true, folder: true, zip: true, external: true }}
+            external={{
+              kinds: ['output-styles'],
+              defaultKind: 'output-styles',
+              onImported: fetchTemplates,
+            }}
             open={importOpen}
             onOpenChange={setImportOpen}
           />
