@@ -7,6 +7,25 @@ import { formatBridgeProvider } from './types.js';
 import { convertAnthropicToOpenAI, convertOpenAIChatRequestToResponses, convertResponsesToAnthropic, convertChatCompletionsToAnthropic } from './protocol-converter.js';
 import { truncate } from './message-format.js';
 
+/**
+ * Single local adapter entry for Claude Code runtime.
+ *
+ * This file serves two different provider families that both expose an
+ * Anthropic-compatible `/v1/messages` surface to the Claude SDK:
+ *
+ * 1. `anthropic-messages`
+ *    - Real upstream is also Anthropic-compatible `/v1/messages`.
+ *    - We only proxy/log/clamp request fields before forwarding.
+ *    - No protocol conversion happens in this branch.
+ *
+ * 2. `openai-*-to-anthropic-messages`
+ *    - Upstream is OpenAI `/chat/completions` or `/responses`.
+ *    - We must translate Anthropic request/response shapes both ways.
+ *
+ * Keep these two concepts separate. "anthropic adapter" means passthrough
+ * proxying to an Anthropic-compatible upstream; "anthropic bridge" means
+ * protocol conversion between Anthropic and OpenAI wire formats.
+ */
 export function createAnthropicBridgeServer(config: AnthropicBridgeConfig) {
   return createHttpServer((req, res) => {
     void handleAnthropicBridgeRequest(req, res, config);
@@ -66,10 +85,16 @@ async function handleAnthropicBridgeRequest(
 
   try {
     const anthropicRequest = await readJson(req) as import('./types.js').AnthropicRequest;
+    // `anthropic-messages` is the real Claude Code runtime path for providers
+    // like `https://open.bigmodel.cn/api/anthropic`. This branch is only a
+    // passthrough proxy with logging/clamping, not an OpenAI protocol bridge.
     if (config.provider === 'anthropic-messages') {
       await handleAnthropicPassthrough(req, res, config, anthropicRequest);
       return;
     }
+
+    // All remaining providers are OpenAI-backed adapters. From here on we are
+    // doing actual request/response protocol conversion.
     const openAIRequest = convertAnthropicToOpenAI(anthropicRequest, config.model, {
       maxTokens: config.maxTokens,
       thinkingEnabled: config.thinkingEnabled,
@@ -149,6 +174,13 @@ async function handleAnthropicBridgeRequest(
   }
 }
 
+/**
+ * Passthrough adapter for Anthropic-compatible upstreams.
+ *
+ * Input and output both stay in Anthropic `/v1/messages` format. The only
+ * intentional mutations here are operational: debug logging and `max_tokens`
+ * clamping to the agent-configured limit.
+ */
 async function handleAnthropicPassthrough(
   _req: IncomingMessage,
   res: ServerResponse,
@@ -303,6 +335,12 @@ function sendSse(res: ServerResponse, event: string, data: unknown): void {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+/**
+ * Used only by the Anthropic passthrough branch above.
+ *
+ * Do not reuse this as an OpenAI compatibility rule: OpenAI-backed providers
+ * are normalized in `protocol-converter.ts` instead.
+ */
 function normalizeAnthropicMaxTokens(maxTokens: number | undefined, configuredMaxTokens: number | undefined): number | undefined {
   if (maxTokens === undefined) return undefined;
   if (typeof configuredMaxTokens === 'number' && configuredMaxTokens > 0) {
