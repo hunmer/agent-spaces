@@ -13,7 +13,7 @@ type OutputItem = NonNullable<NonNullable<Extract<MessagePart, { type: "context"
  * 把 context part 的 agentContext（systemPrompt / userPrompt / fullPrompt / output / outputItems）
  * 拆解成会话消息列表，工具调用展开为独立的 tool call，最终输出作为 agent 回复。
  */
-export function contextPartToSessionMessages(part: ContextPart): AgentUsageSessionMessage[] {
+function contextPartToSessionMessages(part: ContextPart): AgentUsageSessionMessage[] {
   const agent = part.agentContext
   const messages: AgentUsageSessionMessage[] = []
   const zeroTs = new Date(0).toISOString()
@@ -85,25 +85,45 @@ export function ContextPartChatView({ part }: { part: ContextPart }) {
 function outputItemsToToolCalls(items?: OutputItem[]): NonNullable<AgentUsageSessionMessage["toolCalls"]> {
   if (!items?.length) return []
   const result: NonNullable<AgentUsageSessionMessage["toolCalls"]> = []
+  const byToolUseId = new Map<string, NonNullable<AgentUsageSessionMessage["toolCalls"]>[number]>()
   for (const item of items) {
     if (item.type === "tool_use") {
-      result.push({
-        id: item.toolUseId || item.id,
-        title: item.title || item.toolName || "tool",
-        toolName: item.toolName,
-        status: "success",
-        input: safeParseJson(item.text),
-      })
+      const id = item.toolUseId || item.id
+      const existing = item.toolUseId ? byToolUseId.get(item.toolUseId) : undefined
+      const value = safeParseJson(item.text)
+      if (existing) {
+        existing.input = value
+        if (!existing.toolName && item.toolName) existing.toolName = item.toolName
+      } else {
+        const toolCall = {
+          id,
+          title: item.title || item.toolName || "tool",
+          toolName: item.toolName,
+          status: "success" as const,
+          input: value,
+        }
+        result.push(toolCall)
+        if (item.toolUseId) byToolUseId.set(item.toolUseId, toolCall)
+      }
     } else if (item.type === "tool_result") {
       const value = safeParseJson(item.text)
-      result.push({
+      if (item.toolUseId) {
+        const existing = byToolUseId.get(item.toolUseId)
+        if (existing) {
+          existing.result = value
+          continue
+        }
+      }
+      const toolCall = {
         id: item.toolUseId || item.id,
         title: item.title || "tool_result",
         toolName: item.toolName || "tool_result",
-        status: "success",
+        status: "success" as const,
         input: value,
         result: value,
-      })
+      }
+      result.push(toolCall)
+      if (item.toolUseId) byToolUseId.set(item.toolUseId, toolCall)
     }
   }
   return result

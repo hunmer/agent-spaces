@@ -9,7 +9,7 @@ import { JsonViewer } from "@/components/viewers/json-viewer"
 
 type ContextPart = Extract<MessagePart, { type: "context" }>
 
-export type SessionTimelineItem =
+type SessionTimelineItem =
   | { kind: "user"; key: string; message: AgentUsageSessionMessage }
   | { kind: "tool"; key: string; toolCall: AgentUsageSessionToolCall; message: AgentUsageSessionMessage }
   | { kind: "agent"; key: string; message: AgentUsageSessionMessage }
@@ -19,7 +19,7 @@ export type SessionTimelineItem =
  * - user 消息原样保留
  * - agent 消息的 toolCalls 展开为独立的 tool 条目，剩余 content 作为 agent 最终回复
  */
-export function buildSessionTimelineItems(messages: AgentUsageSessionMessage[]): SessionTimelineItem[] {
+function buildSessionTimelineItems(messages: AgentUsageSessionMessage[]): SessionTimelineItem[] {
   const items: SessionTimelineItem[] = []
   for (const message of messages) {
     if (message.role === "user") {

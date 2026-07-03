@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import AdmZip from 'adm-zip';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { Options, Query, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { Base64ImageSource, Base64PDFSource, DocumentBlockParam, ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages';
@@ -538,6 +539,19 @@ function toClaudeAttachmentPart(
     };
   }
 
+  const officeText = extractOfficeDocumentText(buffer, mimeType);
+  if (officeText) {
+    return {
+      type: 'document',
+      title: attachment.name,
+      source: {
+        type: 'text',
+        media_type: 'text/plain',
+        data: officeText,
+      },
+    };
+  }
+
   return undefined;
 }
 
@@ -577,6 +591,8 @@ function inferAttachmentMimeType(filePath: string): string | undefined {
   if (lower.endsWith('.webp')) return 'image/webp';
   if (lower.endsWith('.gif')) return 'image/gif';
   if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (lower.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.log')) return 'text/plain';
   if (lower.endsWith('.json')) return 'application/json';
   if (lower.endsWith('.csv')) return 'text/csv';
@@ -603,6 +619,102 @@ function isSupportedTextAttachmentMimeType(mimeType: string | undefined): boolea
     'application/typescript',
     'text/typescript',
   ].includes(mimeType);
+}
+
+function extractOfficeDocumentText(buffer: Buffer, mimeType: string | undefined): string | undefined {
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    return extractDocxText(buffer);
+  }
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+    return extractXlsxText(buffer);
+  }
+  return undefined;
+}
+
+function extractDocxText(buffer: Buffer): string | undefined {
+  try {
+    const zip = new AdmZip(buffer);
+    const documentXml = zip.getEntry('word/document.xml')?.getData().toString('utf-8');
+    if (!documentXml) return undefined;
+    const paragraphs = [...documentXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)]
+      .map((match) => decodeXmlText(extractXmlText(match[0], 'w:t')))
+      .map((text) => text.trim())
+      .filter(Boolean);
+    if (paragraphs.length) return paragraphs.join('\n\n');
+
+    const fallback = decodeXmlText(extractXmlText(documentXml, 'w:t')).trim();
+    return fallback || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function extractXlsxText(buffer: Buffer): string | undefined {
+  try {
+    const zip = new AdmZip(buffer);
+    const sharedStringsXml = zip.getEntry('xl/sharedStrings.xml')?.getData().toString('utf-8') ?? '';
+    const sharedStrings = [...sharedStringsXml.matchAll(/<si\b[\s\S]*?<\/si>/g)]
+      .map((match) => decodeXmlText(extractXmlText(match[0], 't')).trim());
+    const worksheetEntries = zip.getEntries()
+      .filter((entry) => /^xl\/worksheets\/sheet\d+\.xml$/.test(entry.entryName))
+      .sort((a, b) => a.entryName.localeCompare(b.entryName));
+
+    const sheetTexts = worksheetEntries
+      .map((entry, index) => extractWorksheetText(entry.getData().toString('utf-8'), sharedStrings, index + 1))
+      .filter(Boolean);
+
+    return sheetTexts.length ? sheetTexts.join('\n\n') : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function extractWorksheetText(xml: string, sharedStrings: string[], sheetIndex: number): string | undefined {
+  const rowTexts = [...xml.matchAll(/<row\b[\s\S]*?<\/row>/g)]
+    .map((match) => extractWorksheetRowText(match[0], sharedStrings))
+    .filter(Boolean);
+  if (!rowTexts.length) return undefined;
+  return [`Sheet ${sheetIndex}:`, ...rowTexts].join('\n');
+}
+
+function extractWorksheetRowText(rowXml: string, sharedStrings: string[]): string {
+  const values = [...rowXml.matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)]
+    .map((match) => {
+      const attrs = match[1] ?? '';
+      const cellXml = match[2] ?? '';
+      const typeMatch = attrs.match(/\bt="([^"]+)"/);
+      const cellType = typeMatch?.[1];
+      if (cellType === 's') {
+        const sharedIndex = Number(extractXmlText(cellXml, 'v').trim());
+        return sharedStrings[sharedIndex] ?? '';
+      }
+      if (cellType === 'inlineStr') {
+        return decodeXmlText(extractXmlText(cellXml, 't')).trim();
+      }
+      return decodeXmlText(extractXmlText(cellXml, 'v')).trim();
+    })
+    .filter(Boolean);
+  return values.join(' | ');
+}
+
+function extractXmlText(xml: string, localName: string): string {
+  const matcher = new RegExp(`<(?:(?:\\w+:)?${localName})\\b[^>]*>([\\s\\S]*?)<\\/(?:(?:\\w+:)?${localName})>`, 'g');
+  return [...xml.matchAll(matcher)]
+    .map((match) => match[1] ?? '')
+    .join('');
+}
+
+function decodeXmlText(text: string): string {
+  return text
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#10;/g, '\n')
+    .replace(/&#13;/g, '\r')
+    .replace(/&#9;/g, '\t');
 }
 
 function buildAttachmentDebugReasoning(
@@ -641,4 +753,7 @@ export const __testables = {
   buildAttachmentDebugReasoning,
   inferAttachmentMimeType,
   isSupportedTextAttachmentMimeType,
+  extractOfficeDocumentText,
+  extractDocxText,
+  extractXlsxText,
 };

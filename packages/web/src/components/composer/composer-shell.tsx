@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { EditorContent, type Editor } from '@tiptap/react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -49,6 +50,7 @@ export function ComposerShell({
   replyLabel,
   onCancelReply,
 }: ComposerShellProps) {
+  const t = useTranslations('composer');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -68,14 +70,14 @@ export function ComposerShell({
         <div className="absolute inset-0 bg-black/10 backdrop-blur-xs" onClick={() => setFullscreen(false)} />
         <div className="relative z-10 flex h-full max-w-3xl w-full mx-auto flex-col rounded-xl bg-popover ring-1 ring-foreground/10 m-4 overflow-hidden">
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <span className="text-base font-medium">全屏编辑</span>
+            <span className="text-base font-medium">{t('shell.fullscreen')}</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setFullscreen(false)}
               >
-                取消
+                {t('shell.cancel')}
               </Button>
               <Button
                 size="sm"
@@ -83,7 +85,7 @@ export function ComposerShell({
                 onClick={() => { setFullscreen(false); onSubmit(contextLength); }}
               >
                 <Send className="size-3.5 mr-1.5" />
-                发送
+                {t('shell.send')}
               </Button>
             </div>
           </div>
@@ -104,12 +106,12 @@ export function ComposerShell({
         {hiddenInput}
         {replyLabel ? (
           <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5 text-xs text-muted-foreground">
-            <span className="min-w-0 truncate">回复给 {replyLabel}</span>
+            <span className="min-w-0 truncate">{t('shell.replyTo', { name: replyLabel })}</span>
             <button
               type="button"
               onClick={onCancelReply}
               className="inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted hover:text-foreground cursor-pointer"
-              title="取消回复"
+              title={t('shell.cancelReply')}
             >
               <X className="size-3" />
             </button>
@@ -121,7 +123,7 @@ export function ComposerShell({
             type="button"
             onClick={() => setFullscreen(true)}
             className="absolute top-2 right-2 inline-flex size-6 items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
-            title="全屏编辑"
+            title={t('shell.fullscreen')}
           >
             <Maximize2 className="size-3.5" />
           </button>
@@ -143,7 +145,7 @@ export function ComposerShell({
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent text-muted-foreground"
-                    title="最近定位代码"
+                    title={t('shell.recentCode')}
                   />
                 }
               >
@@ -151,18 +153,18 @@ export function ComposerShell({
               </PopoverTrigger>
               <PopoverContent align="start" sideOffset={6} className="w-80 p-1.5 gap-0">
                 <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">最近定位代码</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t('shell.recentCode')}</span>
                   <button
                     type="button"
                     onClick={() => clearHistory(workspaceId)}
                     disabled={history.length === 0}
                     className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                   >
-                    清空
+                    {t('shell.clear')}
                   </button>
                 </div>
                 {history.length === 0 ? (
-                  <div className="px-2 py-6 text-center text-xs text-muted-foreground">暂无记录</div>
+                  <div className="px-2 py-6 text-center text-xs text-muted-foreground">{t('shell.noRecords')}</div>
                 ) : (
                   <div className="max-h-72 overflow-y-auto">
                     {history.map((item) => {
@@ -194,7 +196,7 @@ export function ComposerShell({
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 rounded-full border border-border hover:bg-accent text-muted-foreground"
-                      title={contextLength === 0 ? '全新 Agent' : `上下文 ${contextLength} 条`}
+                      title={contextLength === 0 ? t('shell.newAgent') : t('shell.contextN', { count: contextLength })}
                     />
                   }
                 >
@@ -203,9 +205,9 @@ export function ComposerShell({
                 </PopoverTrigger>
                 <PopoverContent align="start" sideOffset={6} className="w-64 p-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">上下文长度</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t('shell.contextLength')}</span>
                     <span className="text-xs font-mono text-foreground">
-                      {contextLength === 0 ? '全新 Agent' : `${contextLength} 条`}
+                      {contextLength === 0 ? t('shell.newAgent') : t('shell.contextCount', { count: contextLength })}
                     </span>
                   </div>
                   <Slider

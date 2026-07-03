@@ -11,5 +11,19 @@
   "sending": "Sending...",
   "uploadFailed": "Upload failed: {name}",
   "noMatch": "No matches",
-  "selectOption": "Select an option"
+  "selectOption": "Select an option",
+  "shell": {
+    "fullscreen": "Fullscreen Edit",
+    "cancel": "Cancel",
+    "send": "Send",
+    "replyTo": "Reply to {name}",
+    "cancelReply": "Cancel reply",
+    "recentCode": "Recent Code Locations",
+    "clear": "Clear",
+    "noRecords": "No records",
+    "newAgent": "New Agent",
+    "contextN": "Context {count}",
+    "contextCount": "{count}",
+    "contextLength": "Context length"
+  }
 }

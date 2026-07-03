@@ -11,5 +11,19 @@
   "sending": "发送中...",
   "uploadFailed": "上传失败: {name}",
   "noMatch": "无匹配结果",
-  "selectOption": "选择一个选项"
+  "selectOption": "选择一个选项",
+  "shell": {
+    "fullscreen": "全屏编辑",
+    "cancel": "取消",
+    "send": "发送",
+    "replyTo": "回复给 {name}",
+    "cancelReply": "取消回复",
+    "recentCode": "最近定位代码",
+    "clear": "清空",
+    "noRecords": "暂无记录",
+    "newAgent": "全新 Agent",
+    "contextN": "上下文 {count} 条",
+    "contextCount": "{count} 条",
+    "contextLength": "上下文长度"
+  }
 }

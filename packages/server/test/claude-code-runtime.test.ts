@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import AdmZip from 'adm-zip';
 import { __testables } from '../src/adapters/claude-code-runtime/index.js';
 
 const SERVER_PUBLIC_UPLOADS_DIR = join(fileURLToPath(new URL('../public/uploads/', import.meta.url)));
@@ -239,5 +240,106 @@ test('buildAttachmentDebugReasoning exposes ignored attachment diagnostics', () 
   } finally {
     if (previousDebug === undefined) delete process.env.AGENT_SPACES_DEBUG_ATTACHMENTS;
     else process.env.AGENT_SPACES_DEBUG_ATTACHMENTS = previousDebug;
+  }
+});
+
+test('buildClaudeUserMessageContent pre-parses docx attachments into document text', () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'claude-docx-data-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const uploadsDir = join(dataDir, 'public', 'uploads');
+    mkdirSync(uploadsDir, { recursive: true });
+    const zip = new AdmZip();
+    zip.addFile('word/document.xml', Buffer.from([
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+      '<w:body>',
+      '<w:p><w:r><w:t>First paragraph</w:t></w:r></w:p>',
+      '<w:p><w:r><w:t>Second paragraph</w:t></w:r></w:p>',
+      '</w:body>',
+      '</w:document>',
+    ].join(''), 'utf-8'));
+    writeFileSync(join(uploadsDir, 'sample.docx'), zip.toBuffer());
+
+    const content = __testables.buildClaudeUserMessageContent('read docx', __testables.buildClaudeAttachmentContext([
+      {
+        name: 'sample.docx',
+        path: '/static/uploads/sample.docx',
+        url: '/static/uploads/sample.docx',
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      },
+    ]));
+
+    assert.deepEqual(content, [
+      { type: 'text', text: 'read docx' },
+      {
+        type: 'document',
+        title: 'sample.docx',
+        source: {
+          type: 'text',
+          media_type: 'text/plain',
+          data: 'First paragraph\n\nSecond paragraph',
+        },
+      },
+    ]);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('buildClaudeUserMessageContent pre-parses xlsx attachments into document text', () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'claude-xlsx-data-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const uploadsDir = join(dataDir, 'public', 'uploads');
+    mkdirSync(uploadsDir, { recursive: true });
+    const zip = new AdmZip();
+    zip.addFile('xl/sharedStrings.xml', Buffer.from([
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<si><t>Name</t></si>',
+      '<si><t>Alice</t></si>',
+      '</sst>',
+    ].join(''), 'utf-8'));
+    zip.addFile('xl/worksheets/sheet1.xml', Buffer.from([
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>',
+      '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>42</v></c></row>',
+      '<row r="2"><c r="A2" t="s"><v>1</v></c><c r="B2" t="inlineStr"><is><t>Active</t></is></c></row>',
+      '</sheetData></worksheet>',
+    ].join(''), 'utf-8'));
+    writeFileSync(join(uploadsDir, 'sample.xlsx'), zip.toBuffer());
+
+    const content = __testables.buildClaudeUserMessageContent('read xlsx', __testables.buildClaudeAttachmentContext([
+      {
+        name: 'sample.xlsx',
+        path: '/static/uploads/sample.xlsx',
+        url: '/static/uploads/sample.xlsx',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+    ]));
+
+    assert.deepEqual(content, [
+      { type: 'text', text: 'read xlsx' },
+      {
+        type: 'document',
+        title: 'sample.xlsx',
+        source: {
+          type: 'text',
+          media_type: 'text/plain',
+          data: 'Sheet 1:\nName | 42\nAlice | Active',
+        },
+      },
+    ]);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
   }
 });
