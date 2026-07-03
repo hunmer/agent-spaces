@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import type { AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage, AgentUsageSessionToolCall } from "@agent-spaces/shared"
+import type { AgentUsageRecord, AgentUsageSessionDetail } from "@agent-spaces/shared"
 import { Loader2, Trash2 } from "lucide-react"
 
+import { AgentSessionMessagesView } from "@/components/chat/agent-session-messages-view"
 import { ContextPartChatView } from "@/components/chat/message-context-to-chat"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,7 +23,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Markdown } from "@/components/ui/markdown"
 import { JsonViewer } from "@/components/viewers/json-viewer"
 import { sdk } from "@/lib/sdk"
 
@@ -65,8 +65,6 @@ export function UsageDashboardSessionDialog({
       cancelled = true
     }
   }, [open, record])
-
-  const items = useMemo(() => buildTimelineItems(detail?.messages ?? []), [detail])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -120,16 +118,16 @@ export function UsageDashboardSessionDialog({
                 <div className="flex h-40 items-center justify-center text-sm text-destructive">
                   {error}
                 </div>
-              ) : items.length === 0 ? (
+              ) : !detail?.messages?.length ? (
                 <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
                   {t("sessionDetail.empty")}
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 py-3">
-                  {items.map((item) => (
-                    <SessionTimelineItem key={item.key} item={item} />
-                  ))}
-                </div>
+                <AgentSessionMessagesView
+                  className="flex flex-col gap-3 py-3"
+                  messages={detail.messages}
+                  renderContextPart={(part) => <ContextPartChatView part={part} />}
+                />
               )}
             </ScrollArea>
           </TabsContent>
@@ -154,142 +152,6 @@ export function UsageDashboardSessionDialog({
         </Tabs>
       </DialogContent>
     </Dialog>
-  )
-}
-
-type TimelineItem =
-  | { kind: "user"; key: string; message: AgentUsageSessionMessage }
-  | { kind: "tool"; key: string; toolCall: AgentUsageSessionToolCall; message: AgentUsageSessionMessage }
-  | { kind: "agent"; key: string; message: AgentUsageSessionMessage }
-
-function buildTimelineItems(messages: AgentUsageSessionMessage[]): TimelineItem[] {
-  const items: TimelineItem[] = []
-  for (const message of messages) {
-    if (message.role === "user") {
-      items.push({ kind: "user", key: `u-${message.id}`, message })
-      continue
-    }
-    for (const toolCall of message.toolCalls ?? []) {
-      items.push({ kind: "tool", key: `t-${toolCall.id}`, toolCall, message })
-    }
-    if (message.content && message.content.trim().length > 0) {
-      items.push({ kind: "agent", key: `a-${message.id}`, message })
-    }
-  }
-  return items
-}
-
-function SessionTimelineItem({ item }: { item: TimelineItem }) {
-  if (item.kind === "user") return <UserMessageCard message={item.message} />
-  if (item.kind === "tool") return <ToolCallCard toolCall={item.toolCall} message={item.message} />
-  return <AgentFinalMessageCard message={item.message} />
-}
-
-function UserMessageCard({ message }: { message: AgentUsageSessionMessage }) {
-  return (
-    <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <Badge variant="secondary">user</Badge>
-        <span className="text-[10px] text-muted-foreground">
-          {new Date(message.createdAt).toLocaleString()}
-        </span>
-      </div>
-      <div className="rounded-md bg-background/80 px-3 py-2 text-sm">
-        <Markdown content={message.content} />
-      </div>
-      <SessionMessageMeta message={message} />
-    </div>
-  )
-}
-
-function ToolCallCard({
-  toolCall,
-  message,
-}: {
-  toolCall: AgentUsageSessionToolCall
-  message: AgentUsageSessionMessage
-}) {
-  const t = useTranslations("home")
-  return (
-    <div className="ml-6 space-y-2 rounded-lg border bg-background/60 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="outline">tool</Badge>
-          <Badge variant="outline">{toolCall.toolName || toolCall.title}</Badge>
-          {toolCall.status ? (
-            <Badge variant={toolCall.status === "success" ? "secondary" : "outline"}>{toolCall.status}</Badge>
-          ) : null}
-        </div>
-        <span className="text-[10px] text-muted-foreground">
-          {toolCall.createdAt ? new Date(toolCall.createdAt).toLocaleString() : new Date(message.createdAt).toLocaleString()}
-        </span>
-      </div>
-      {toolCall.title && toolCall.title !== toolCall.toolName ? (
-        <div className="text-xs text-muted-foreground">{toolCall.title}</div>
-      ) : null}
-      {toolCall.input !== undefined ? (
-        <div>
-          <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolInput")}</div>
-          <ToolCallValue value={toolCall.input} rootName="input" />
-        </div>
-      ) : null}
-      {toolCall.result !== undefined ? (
-        <div className="mt-2">
-          <div className="mb-1 text-[11px] text-muted-foreground">{t("sessionDetail.toolResult")}</div>
-          <ToolCallValue value={toolCall.result} rootName="result" />
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function AgentFinalMessageCard({ message }: { message: AgentUsageSessionMessage }) {
-  return (
-    <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <Badge variant="default">agent</Badge>
-        <span className="text-[10px] text-muted-foreground">
-          {new Date(message.createdAt).toLocaleString()}
-        </span>
-      </div>
-      <div className="rounded-md bg-background/80 px-3 py-2 text-sm">
-        <Markdown content={message.content} />
-      </div>
-      {message.contextPart ? <ContextPartChatView part={message.contextPart} /> : null}
-      <SessionMessageMeta message={message} />
-    </div>
-  )
-}
-
-function SessionMessageMeta({ message }: { message: AgentUsageSessionMessage }) {
-  if (!message.sourceChannelName && !message.metadata?.runtimeSessionId && !message.metadata?.runtime) {
-    return null
-  }
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] text-muted-foreground">
-      {message.sourceChannelName ? <Badge variant="outline">{message.sourceChannelName}</Badge> : null}
-      {message.metadata?.runtime ? <Badge variant="outline">{message.metadata.runtime}</Badge> : null}
-      {message.metadata?.runtimeSessionId ? <span className="font-mono">{message.metadata.runtimeSessionId}</span> : null}
-    </div>
-  )
-}
-
-function ToolCallValue({ value, rootName }: { value: unknown; rootName: string }) {
-  if (typeof value === "string") {
-    return (
-      <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 text-xs leading-5">
-        {value}
-      </pre>
-    )
-  }
-
-  return (
-    <JsonViewer
-      data={(value ?? null) as never}
-      title={rootName}
-      defaultExpanded={1}
-      rootName={rootName}
-    />
   )
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,8 @@ export interface SearchSelectProps {
   disabled?: boolean;
   /** 多选模式：value 为逗号拼接的已选值，单击已选项可取消选中 */
   multiple?: boolean;
+  /** 显示在触发器 label 前的节点（如图标） */
+  triggerPrefix?: ReactNode;
 }
 
 interface GroupedOptions {
@@ -69,6 +72,7 @@ export function SearchSelect({
   className,
   disabled = false,
   multiple = false,
+  triggerPrefix,
 }: SearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -171,8 +175,11 @@ export function SearchSelect({
                 disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
               )}
             >
-              <span className={cn("truncate", !value && "text-muted-foreground")}>
-                {triggerLabel}
+              <span className="flex min-w-0 items-center gap-1.5">
+                {triggerPrefix}
+                <span className={cn("truncate", !value && "text-muted-foreground")}>
+                  {triggerLabel}
+                </span>
               </span>
               <ChevronDown className="size-3.5 shrink-0 opacity-50" />
             </button>

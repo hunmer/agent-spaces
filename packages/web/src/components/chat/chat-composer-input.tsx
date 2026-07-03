@@ -600,26 +600,26 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const actions = (
     <>
       {activeAgent ? (
-        <>
-          <AgentIcon
-            agentId={activeAgent.id}
-            name={activeAgent.name || activeAgent.role}
-            avatarUrl={activeAgent.avatarUrl}
-            className="size-7"
-            bordered={false}
-            rounded="rounded-full"
-          />
-          <SearchSelect
-            value={selectedModelId}
-            onChange={setSelectedModelId}
-            options={temporaryModelOptions}
-            placeholder="临时模型"
-            searchPlaceholder="搜索模型"
-            allowCustom={false}
-            disabled={isProcessing || submitting}
-            className="w-52"
-          />
-        </>
+        <SearchSelect
+          value={selectedModelId}
+          onChange={setSelectedModelId}
+          options={temporaryModelOptions}
+          placeholder="临时模型"
+          searchPlaceholder="搜索模型"
+          allowCustom={false}
+          disabled={isProcessing || submitting}
+          className="w-52"
+          triggerPrefix={
+            <AgentIcon
+              agentId={activeAgent.id}
+              name={activeAgent.name || activeAgent.role}
+              avatarUrl={activeAgent.avatarUrl}
+              className="size-4"
+              bordered={false}
+              rounded="rounded-full"
+            />
+          }
+        />
       ) : null}
 
       {enableAttachments ? (

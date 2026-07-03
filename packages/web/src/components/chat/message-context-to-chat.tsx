@@ -2,26 +2,26 @@
 
 import { useMemo } from "react"
 import { useTranslations } from "next-intl"
-import type { MessagePart, WorkflowAgentTimelineItem } from "@agent-spaces/shared"
-import { ChatMessageList, type DisplayChatMessage } from "@/components/chat/chat-message-list"
+import type { AgentUsageSessionMessage, MessagePart } from "@agent-spaces/shared"
 import { Badge } from "@/components/ui/badge"
+import { AgentSessionMessagesView } from "./agent-session-messages-view"
 import { TokenMetric, formatPercent, toContextUsage, type ContextPart } from "./message-context-panel"
 
 type OutputItem = NonNullable<NonNullable<Extract<MessagePart, { type: "context" }>["agentContext"]>["outputItems"]>[number]
 
 /**
  * 把 context part 的 agentContext（systemPrompt / userPrompt / fullPrompt / output / outputItems）
- * 拆解成 ChatMessageList 可渲染的 message item，工具按顺序调用展示在 timeline 中。
+ * 拆解成会话消息列表，工具调用展开为独立的 tool call，最终输出作为 agent 回复。
  */
-export function contextPartToChatMessages(part: ContextPart): DisplayChatMessage[] {
+export function contextPartToSessionMessages(part: ContextPart): AgentUsageSessionMessage[] {
   const agent = part.agentContext
-  const messages: DisplayChatMessage[] = []
+  const messages: AgentUsageSessionMessage[] = []
   const zeroTs = new Date(0).toISOString()
 
   const pushText = (content: string | undefined, role: "user" | "agent", suffix: string) => {
     const text = content?.trim()
     if (!text) return
-    messages.push({ id: `${part.id}-${suffix}`, role, content: text, timestamp: zeroTs })
+    messages.push({ id: `${part.id}-${suffix}`, role, content: text, createdAt: zeroTs })
   }
 
   pushText(agent?.systemPrompt, "agent", "system")
@@ -29,16 +29,16 @@ export function contextPartToChatMessages(part: ContextPart): DisplayChatMessage
   pushText(agent?.fullPrompt, "agent", "full")
 
   const outputItems = agent?.outputItems
-  const toolTimeline = outputItemsToTimeline(outputItems)
+  const toolCalls = outputItemsToToolCalls(outputItems)
   const outputText = collectOutputText(outputItems) ?? agent?.output?.trim()
 
-  if (outputText || toolTimeline.length) {
+  if (outputText || toolCalls.length) {
     messages.push({
       id: `${part.id}-output`,
       role: "agent",
       content: outputText || "",
-      timestamp: zeroTs,
-      timeline: toolTimeline,
+      createdAt: zeroTs,
+      toolCalls,
     })
   }
 
@@ -46,14 +46,14 @@ export function contextPartToChatMessages(part: ContextPart): DisplayChatMessage
 }
 
 /**
- * 单个 context part 的统一展示：顶部 agent 信息 + token 网格 + ChatMessageList（工具按顺序调用）。
+ * 单个 context part 的统一展示：顶部 agent 信息 + token 网格 + 会话消息时间线（工具按顺序调用）。
  */
 export function ContextPartChatView({ part }: { part: ContextPart }) {
   const t = useTranslations("home")
   const usage = toContextUsage(part)
   const effectiveTokens = usage.inputTokens + usage.outputTokens + usage.reasoningTokens
   const cacheShare = usage.totalTokens > 0 ? usage.cachedInputTokens / usage.totalTokens : 0
-  const messages = useMemo(() => contextPartToChatMessages(part), [part])
+  const messages = useMemo(() => contextPartToSessionMessages(part), [part])
 
   return (
     <div className="rounded-md border p-3">
@@ -72,7 +72,7 @@ export function ContextPartChatView({ part }: { part: ContextPart }) {
         <TokenMetric label={t("sessionDetail.cachedInput")} value={usage.cachedInputTokens} helper={`${formatPercent(cacheShare)} of total`} />
       </div>
       {messages.length ? (
-        <ChatMessageList messages={messages} markdown />
+        <AgentSessionMessagesView messages={messages} />
       ) : (
         <div className="flex h-20 items-center justify-center text-sm text-muted-foreground">
           {t("sessionDetail.empty")}
@@ -82,27 +82,27 @@ export function ContextPartChatView({ part }: { part: ContextPart }) {
   )
 }
 
-function outputItemsToTimeline(items?: OutputItem[]): WorkflowAgentTimelineItem[] {
+function outputItemsToToolCalls(items?: OutputItem[]): NonNullable<AgentUsageSessionMessage["toolCalls"]> {
   if (!items?.length) return []
-  const result: WorkflowAgentTimelineItem[] = []
+  const result: NonNullable<AgentUsageSessionMessage["toolCalls"]> = []
   for (const item of items) {
     if (item.type === "tool_use") {
       result.push({
         id: item.toolUseId || item.id,
-        type: "tool",
-        name: item.toolName || item.title || "tool",
-        input: safeParseJson(item.text),
+        title: item.title || item.toolName || "tool",
+        toolName: item.toolName,
         status: "success",
+        input: safeParseJson(item.text),
       })
     } else if (item.type === "tool_result") {
       const value = safeParseJson(item.text)
       result.push({
         id: item.toolUseId || item.id,
-        type: "tool",
-        name: item.toolName || "tool_result",
+        title: item.title || "tool_result",
+        toolName: item.toolName || "tool_result",
+        status: "success",
         input: value,
         result: value,
-        status: "success",
       })
     }
   }
