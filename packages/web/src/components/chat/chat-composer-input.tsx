@@ -47,6 +47,7 @@ import {
   stripSimpleParagraphs,
   type MentionedAgent,
 } from "./chat-input-utils";
+import { AgentIcon } from "@/components/common/agent-icon";
 import {
   composerAttachmentToData,
   isRestoredAttachment,
@@ -599,16 +600,26 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const actions = (
     <>
       {activeAgent ? (
-        <SearchSelect
-          value={selectedModelId}
-          onChange={setSelectedModelId}
-          options={temporaryModelOptions}
-          placeholder="临时模型"
-          searchPlaceholder="搜索模型"
-          allowCustom={false}
-          disabled={isProcessing || submitting}
-          className="w-52"
-        />
+        <>
+          <AgentIcon
+            agentId={activeAgent.id}
+            name={activeAgent.name || activeAgent.role}
+            avatarUrl={activeAgent.avatarUrl}
+            className="size-7"
+            bordered={false}
+            rounded="rounded-full"
+          />
+          <SearchSelect
+            value={selectedModelId}
+            onChange={setSelectedModelId}
+            options={temporaryModelOptions}
+            placeholder="临时模型"
+            searchPlaceholder="搜索模型"
+            allowCustom={false}
+            disabled={isProcessing || submitting}
+            className="w-52"
+          />
+        </>
       ) : null}
 
       {enableAttachments ? (

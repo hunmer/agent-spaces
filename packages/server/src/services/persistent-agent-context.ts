@@ -138,7 +138,7 @@ function collectInstructionFiles(
   boundDirs?: string[],
   options: Pick<PersistentAgentContextOptions, 'excludeNativeClaudeMd'> = {},
 ): InstructionFile[] {
-  const cwd = resolve(workingDir || process.cwd());
+  const cwd = resolveInstructionSearchBase(workingDir, boundDirs);
   const seen = new Set<string>();
   const files: InstructionFile[] = [];
   const filenames = getInstructionFilenames(options);
@@ -155,6 +155,17 @@ function collectInstructionFiles(
   }
 
   return files;
+}
+
+function resolveInstructionSearchBase(workingDir: string, boundDirs?: string[]): string {
+  const cwd = resolve(workingDir || process.cwd());
+  const roots = (boundDirs ?? [])
+    .map((dir) => safeResolve(dir))
+    .filter((dir): dir is string => Boolean(dir));
+
+  if (roots.length === 0) return cwd;
+  if (roots.some((dir) => isPathWithin(cwd, dir))) return cwd;
+  return roots[0];
 }
 
 function globalInstructionPaths(options: Pick<PersistentAgentContextOptions, 'excludeNativeClaudeMd'>): string[] {

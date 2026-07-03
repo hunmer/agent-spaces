@@ -12,26 +12,6 @@ import {
 import type { ComponentProps, HTMLAttributes, ReactNode } from "react"
 import { createContext, useContext, useMemo } from "react"
 import { useTranslations } from "next-intl"
-/**
- * @title React AI Attachments
- * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
- * @description React AI attachments component for displaying file attachments with previews and actions
- * @opening Display file attachments in your AI chat—images, documents, audio, video, or source references. Three layout variants: grid (thumbnails), inline (compact chips), or list (detailed rows). Each attachment shows a preview, filename, and optional remove button. Perfect for file upload interfaces, message attachments, or document references in AI conversations.
- * @related [
- *   {"href":"/ai/message","title":"React AI Message","description":"Chat message bubbles"},
- *   {"href":"/ai/context","title":"React AI Context","description":"File context display"},
- *   {"href":"/ai/file-tree","title":"React AI File Tree","description":"File structure display"},
- *   {"href":"/ai/artifact","title":"React AI Artifact","description":"Generated content container"},
- *   {"href":"/ai/tool","title":"React AI Tool","description":"Tool execution display"},
- *   {"href":"/ai/audio-player","title":"React AI Audio Player","description":"Audio playback control"}
- * ]
- * @questions [
- *   {"id":"attachments-variant","title":"What layout variants are available?","answer":"Three variants: 'grid' shows square thumbnails (96x96), 'inline' shows compact chips for quick display, 'list' shows full rows with details. Set via variant prop on Attachments container."},
- *   {"id":"attachments-preview","title":"How do image previews work?","answer":"AttachmentPreview auto-detects media type from the data prop. Images/videos show thumbnails, other types show icons (document, audio, source). Pass fallbackIcon for custom icons."},
- *   {"id":"attachments-remove","title":"How do I add remove buttons?","answer":"Pass onRemove callback to Attachment component. AttachmentRemove renders a button that calls it. Remove button auto-shows on hover for grid/inline variants."},
- *   {"id":"attachments-hover","title":"Can I show hover previews?","answer":"Use AttachmentHoverCard wrapper with AttachmentHoverCardTrigger and AttachmentHoverCardContent for hover-to-preview functionality on inline attachments."}
- * ]
- */
 import { Button } from "@/components/ui/button"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { cn } from "@/lib/utils"
@@ -318,7 +298,7 @@ export const AttachmentInfo = ({
     <div className={cn("min-w-0 flex-1", className)} {...props}>
       <span className="block truncate">{label}</span>
       {showMediaType && data.mediaType && (
-        <span className="block truncate text-muted-foreground text-xs">{data.mediaType}</span>
+        <span className="block truncate text-xs">{data.mediaType}</span>
       )}
     </div>
   )

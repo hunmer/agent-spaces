@@ -1,13 +1,17 @@
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { Options, Query } from '@anthropic-ai/claude-agent-sdk';
-import type { ClaudeHookEventName } from '@agent-spaces/shared';
+import type { Options, Query, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { Base64ImageSource, Base64PDFSource, DocumentBlockParam, ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages';
+import type { ClaudeHookEventName, Message } from '@agent-spaces/shared';
 import type { AgentRunOptions, AgentRunResult, AgentRuntime, AgentRuntimeConfig } from '../agent-runtime-types.js';
 import { summarizeResult } from '../agent-runtime-types.js';
 import { prepareClaudeOutputStyleFile } from '../../services/output-style.js';
 import { normalizeAdditionalDirectories, normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
 import { extractClaudeHookEvents, extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, normalizeUsage } from './message-format.js';
+import { getDataDir } from '../../storage/json-store.js';
 
 type ClaudeQueryOptions = Options & {
   outputStyle?: string;
@@ -15,6 +19,7 @@ type ClaudeQueryOptions = Options & {
 
 const isSourceRuntime = /[\\/]src[\\/]adapters[\\/]claude-code-runtime$/.test(import.meta.dirname);
 const isDev = process.env.NODE_ENV === 'development' || (!process.env.NODE_ENV && isSourceRuntime);
+const SERVER_PUBLIC_DIR = join(fileURLToPath(new URL('../../../public/', import.meta.url)));
 
 export class ClaudeCodeRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
@@ -115,7 +120,16 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         },
       };
 
-      this.activeQuery = query({ prompt, options: queryOptions });
+      const attachmentContext = buildClaudeAttachmentContext(options?.userAttachments);
+      if (options?.userAttachments?.length) {
+        d(`attachments | total=${options.userAttachments.length} supported=${attachmentContext.supportedCount} ignored=${attachmentContext.ignoredCount} kinds=${attachmentContext.summary || '-'}`);
+        for (const line of attachmentContext.debugLines) d(`attachments | ${line}`);
+        const attachmentDebugText = buildAttachmentDebugReasoning(attachmentContext, options.userAttachments.length);
+        if (attachmentDebugText) {
+          options?.onEvent?.({ type: 'reasoning', text: attachmentDebugText, status: 'completed' });
+        }
+      }
+      this.activeQuery = query({ prompt: buildClaudePrompt(prompt, attachmentContext), options: queryOptions });
       d(`sdk query created | startupTimeoutMs=${startupTimeoutMs}`);
       startupWatchdog = setTimeout(() => {
         if (sawFirstSdkMessage) return;
@@ -392,3 +406,239 @@ function appendUnique(target: string[], lines: string[]): void {
     target.push(line);
   }
 }
+
+type ClaudePromptInput = string | AsyncIterable<SDKUserMessage>;
+
+type ClaudeAttachmentContext = {
+  parts: ClaudeAttachmentPart[];
+  supportedCount: number;
+  ignoredCount: number;
+  summary: string;
+  debugLines: string[];
+};
+
+type ClaudeUserContent = string | Array<TextBlockParam | ClaudeAttachmentPart>;
+
+type ClaudeAttachmentPart = ImageBlockParam | DocumentBlockParam;
+
+type ClaudeImageMimeType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+function buildClaudePrompt(
+  prompt: string,
+  attachmentContext: ClaudeAttachmentContext,
+): ClaudePromptInput {
+  const content = buildClaudeUserMessageContent(prompt, attachmentContext);
+  if (typeof content === 'string') return content;
+  return singleUserMessage(content);
+}
+
+function buildClaudeUserMessageContent(
+  prompt: string,
+  attachmentContext: ClaudeAttachmentContext,
+): ClaudeUserContent {
+  if (attachmentContext.parts.length === 0) return prompt;
+
+  return [
+    { type: 'text', text: prompt },
+    ...attachmentContext.parts,
+  ];
+}
+
+function buildClaudeAttachmentContext(
+  attachments: Message['attachments'] | undefined,
+): ClaudeAttachmentContext {
+  if (!attachments?.length) {
+    return { parts: [], supportedCount: 0, ignoredCount: 0, summary: '', debugLines: [] };
+  }
+
+  const parts: ClaudeAttachmentPart[] = [];
+  const debugLines: string[] = [];
+  let ignoredCount = 0;
+
+  for (const attachment of attachments) {
+    const resolved = resolveAttachmentFile(attachment);
+    if (!resolved) {
+      ignoredCount += 1;
+      debugLines.push(`ignored name=${attachment.name} type=${attachment.type || '-'} reason=file-not-found path=${attachment.path} url=${attachment.url ?? '-'}`);
+      continue;
+    }
+
+    const part = toClaudeAttachmentPart(attachment, resolved.filePath, resolved.buffer);
+    if (!part) {
+      ignoredCount += 1;
+      debugLines.push(`ignored name=${attachment.name} type=${attachment.type || '-'} reason=unsupported-mime file=${resolved.filePath}`);
+      continue;
+    }
+
+    parts.push(part);
+    debugLines.push(`accepted name=${attachment.name} type=${attachment.type || '-'} part=${part.type} file=${resolved.filePath}`);
+  }
+
+  const kinds = new Set(parts.map((part) => part.type));
+  return {
+    parts,
+    supportedCount: parts.length,
+    ignoredCount,
+    summary: Array.from(kinds).join(','),
+    debugLines,
+  };
+}
+
+function toClaudeAttachmentPart(
+  attachment: NonNullable<Message['attachments']>[number],
+  filePath: string,
+  buffer: Buffer,
+): ClaudeAttachmentPart | undefined {
+  const mimeType = attachment.type || inferAttachmentMimeType(filePath);
+  const imageMimeType = normalizeClaudeImageMimeType(mimeType);
+  if (imageMimeType) {
+    return {
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: imageMimeType,
+        data: buffer.toString('base64'),
+      } satisfies Base64ImageSource,
+    };
+  }
+
+  if (mimeType === 'application/pdf') {
+    return {
+      type: 'document',
+      title: attachment.name,
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: buffer.toString('base64'),
+      } satisfies Base64PDFSource,
+    };
+  }
+
+  if (mimeType === 'text/plain') {
+    return {
+      type: 'document',
+      title: attachment.name,
+      source: {
+        type: 'text',
+        media_type: 'text/plain',
+        data: buffer.toString('utf-8'),
+      },
+    };
+  }
+
+  if (isSupportedTextAttachmentMimeType(mimeType)) {
+    return {
+      type: 'document',
+      title: attachment.name,
+      source: {
+        type: 'text',
+        media_type: 'text/plain',
+        data: buffer.toString('utf-8'),
+      },
+    };
+  }
+
+  return undefined;
+}
+
+function resolveAttachmentFile(
+  attachment: NonNullable<Message['attachments']>[number],
+): { filePath: string; buffer: Buffer } | undefined {
+  const candidatePaths = [
+    attachment.path,
+    attachment.url?.startsWith('/static/')
+      ? join(getDataDir(), 'public', ...attachment.url.replace(/^\/static\/+/, '').split('/'))
+      : undefined,
+    attachment.url?.startsWith('/static/')
+      ? join(SERVER_PUBLIC_DIR, ...attachment.url.replace(/^\/static\/+/, '').split('/'))
+      : undefined,
+  ].filter((value): value is string => Boolean(value));
+
+  for (const filePath of candidatePaths) {
+    if (!existsSync(filePath) || !statSync(filePath).isFile()) continue;
+    return { filePath, buffer: readFileSync(filePath) };
+  }
+
+  return undefined;
+}
+
+function normalizeClaudeImageMimeType(mimeType: string | undefined): ClaudeImageMimeType | undefined {
+  if (mimeType === 'image/png' || mimeType === 'image/jpeg' || mimeType === 'image/gif' || mimeType === 'image/webp') {
+    return mimeType;
+  }
+  if (mimeType === 'image/jpg') return 'image/jpeg';
+  return undefined;
+}
+
+function inferAttachmentMimeType(filePath: string): string | undefined {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.log')) return 'text/plain';
+  if (lower.endsWith('.json')) return 'application/json';
+  if (lower.endsWith('.csv')) return 'text/csv';
+  if (lower.endsWith('.xml')) return 'application/xml';
+  if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return 'application/yaml';
+  if (lower.endsWith('.js')) return 'application/javascript';
+  if (lower.endsWith('.ts')) return 'application/typescript';
+  return undefined;
+}
+
+function isSupportedTextAttachmentMimeType(mimeType: string | undefined): boolean {
+  if (!mimeType) return false;
+  return [
+    'text/markdown',
+    'text/csv',
+    'text/xml',
+    'application/json',
+    'application/ld+json',
+    'application/xml',
+    'application/yaml',
+    'text/yaml',
+    'application/javascript',
+    'text/javascript',
+    'application/typescript',
+    'text/typescript',
+  ].includes(mimeType);
+}
+
+function buildAttachmentDebugReasoning(
+  attachmentContext: ClaudeAttachmentContext,
+  totalAttachments: number,
+): string | undefined {
+  const debugEnabled = /^(1|true|yes|on)$/i.test(process.env.AGENT_SPACES_DEBUG_ATTACHMENTS ?? '');
+  if (!debugEnabled && attachmentContext.ignoredCount === 0) return undefined;
+  const summary = [
+    `[AttachmentContext] total=${totalAttachments}`,
+    `supported=${attachmentContext.supportedCount}`,
+    `ignored=${attachmentContext.ignoredCount}`,
+    `kinds=${attachmentContext.summary || '-'}`,
+  ].join(' ');
+  const details = attachmentContext.debugLines.length ? `\n${attachmentContext.debugLines.join('\n')}` : '';
+  return `${summary}${details}`;
+}
+
+async function* singleUserMessage(content: Exclude<ClaudeUserContent, string>): AsyncIterable<SDKUserMessage> {
+  yield {
+    type: 'user',
+    message: {
+      role: 'user',
+      content,
+    },
+    parent_tool_use_id: null,
+  };
+}
+
+export const __testables = {
+  buildClaudePrompt,
+  buildClaudeUserMessageContent,
+  buildClaudeAttachmentContext,
+  toClaudeAttachmentPart,
+  resolveAttachmentFile,
+  buildAttachmentDebugReasoning,
+  inferAttachmentMimeType,
+  isSupportedTextAttachmentMimeType,
+};
