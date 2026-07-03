@@ -232,7 +232,15 @@
     "model": "Model",
     "workingDir": "Working Dir",
     "searchFiles": "Search files…",
-    "noResults": "No results"
+    "noResults": "No results",
+    "agentWorkspace": "Agent Workspace",
+    "extraDirectories": "Extra Directories",
+    "noChatTab": "No chat tab selected",
+    "addDirectory": "Add Directory",
+    "pleaseAddDirectory": "Please add a directory",
+    "cancel": "Cancel",
+    "add": "Add",
+    "directory": "Directory"
   },
   "agentList": {
     "title": "Agents",

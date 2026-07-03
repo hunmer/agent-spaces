@@ -114,6 +114,7 @@ interface ChatComposerInputProps {
   enableAutoMode?: boolean;
   enableSlashCommands?: boolean;
   enableAgentResources?: boolean;
+  enableModelSelector?: boolean;
   implicitActiveAgentId?: string;
   onStateChange?: (state: ChatComposerInputState) => void;
 }
@@ -139,8 +140,9 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     enableAttachments = true,
     enableVoice = true,
     enableAutoMode = true,
-    enableSlashCommands = true,
-    enableAgentResources = true,
+  enableSlashCommands = true,
+  enableAgentResources = true,
+  enableModelSelector = true,
     implicitActiveAgentId,
     onStateChange,
   },
@@ -625,7 +627,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
 
   const actions = (
     <>
-      {activeAgent ? (
+      {enableModelSelector && activeAgent ? (
         <SearchSelect
           value={selectedModelId}
           onChange={setSelectedModelId}

@@ -232,7 +232,15 @@
     "model": "模型",
     "workingDir": "工作目录",
     "searchFiles": "搜索文件…",
-    "noResults": "无匹配结果"
+    "noResults": "无匹配结果",
+    "agentWorkspace": "Agent 工作区",
+    "extraDirectories": "额外的目录",
+    "noChatTab": "未选择聊天 Tab",
+    "addDirectory": "添加目录",
+    "pleaseAddDirectory": "请添加目录",
+    "cancel": "取消",
+    "add": "添加",
+    "directory": "目录"
   },
   "agentList": {
     "title": "Agents",

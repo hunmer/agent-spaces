@@ -287,6 +287,7 @@ export function InlineChatPanel({
             enableAutoMode={false}
             enableSlashCommands={false}
             enableAgentResources={false}
+            enableModelSelector={false}
             implicitActiveAgentId={agentId}
             onStateChange={setComposerState}
           />

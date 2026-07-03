@@ -41,7 +41,7 @@ function searchTree(nodes: FileNode[], query: string): FileSearchResult[] {
 }
 
 function getDirectoryName(path: string) {
-  return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || path || "目录";
+  return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || path || "";
 }
 
 export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
@@ -68,7 +68,7 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
       <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
         <ResizablePanel id="chat-agent-workspace-tree" defaultSize={50} minSize={20}>
           <WorkspaceFileTreePanel
-            title={"Agent \u5de5\u4f5c\u533a"}
+            title={t("agentWorkspace")}
             emptyTitle={t("noAgent")}
             enabled={!!agentId}
             loadTree={loadAgentTree}
@@ -80,8 +80,8 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
         <ResizableHandle withHandle />
         <ResizablePanel id="chat-current-workspace-tree" defaultSize={50} minSize={20}>
           <MultiDirectoryFileTreePanel
-            title={"\u5f53\u524d Tab \u5de5\u4f5c\u533a"}
-            emptyTitle={"\u672a\u9009\u62e9\u804a\u5929 Tab"}
+            title={t("extraDirectories")}
+            emptyTitle={t("noChatTab")}
             enabled={!!activeWorkspaceId && !!activeSessionId}
             loadTree={loadCurrentTabTree}
             workspaceId={activeWorkspaceId ? `chat-workspace:${activeWorkspaceId}:custom-dirs` : undefined}
@@ -162,6 +162,7 @@ function MultiDirectoryFileTreePanel({
     data: { editorDirectoryTabs?: DirectoryTab[]; activeEditorDirectoryTabId?: string },
   ) => Promise<void>;
 }) {
+  const t = useTranslations("chat.rightPanel");
   const [sidebarTab, setSidebarTab] = useState<'files' | 'search'>('files');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [folderInput, setFolderInput] = useState("");
@@ -233,15 +234,15 @@ function MultiDirectoryFileTreePanel({
           type="button"
           onClick={() => setAddDialogOpen(true)}
           className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          title="添加目录"
+          title={t("addDirectory")}
         >
           <FolderPlusIcon className="size-3.5" />
         </button>
       </div>
 
       {tabs.length === 0 ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
-          {enabled ? "请添加目录" : emptyTitle}
+          <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
+          {enabled ? t("pleaseAddDirectory") : emptyTitle}
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={handleActiveTabChange} className="flex h-full min-h-0 flex-1 flex-col gap-0 overflow-hidden">
@@ -296,7 +297,7 @@ function MultiDirectoryFileTreePanel({
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>添加目录</DialogTitle>
+            <DialogTitle>{t("addDirectory")}</DialogTitle>
           </DialogHeader>
           <FolderPicker
             value={folderInput}
@@ -304,8 +305,8 @@ function MultiDirectoryFileTreePanel({
             placeholder="/path/to/project"
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>取消</Button>
-            <Button onClick={addDirectory} disabled={!folderInput.trim()}>添加</Button>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>{t("cancel")}</Button>
+            <Button onClick={addDirectory} disabled={!folderInput.trim()}>{t("add")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
