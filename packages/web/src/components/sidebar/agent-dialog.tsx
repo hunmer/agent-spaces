@@ -5,10 +5,13 @@ import { type AgentRole } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import { Bot, Download, FileText, Store } from "lucide-react";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import {
@@ -184,6 +187,19 @@ export function AgentDialog({
         onSyncTemplates={data.handleSyncTemplates}
         onAutoGenerate={handleAutoGenerate}
         handleAddAgent={data.handleAddAgent}
+        importOpen={data.importOpen}
+        setImportOpen={data.setImportOpen}
+        openJsonImport={() => data.jsonInputRef.current?.click()}
+        openTextImport={() => { data.setImportError(""); data.setTextDialogOpen(true); }}
+      />
+
+      {/* Hidden json file input for agent import */}
+      <input
+        ref={data.jsonInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={data.handleImportAgentFile}
       />
 
       {data.error && !data.selectedAgent && (
@@ -257,10 +273,40 @@ export function AgentDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { if (!o && !singleAgent) data.handleBack(); onOpenChange(o); }}>
       <DialogContent className="sm:max-w-[80vw] max-h-[85vh] flex flex-col p-0 gap-0">
         {content}
       </DialogContent>
     </Dialog>
+
+    {/* Import agents from JSON text */}
+    <Dialog open={data.textDialogOpen} onOpenChange={data.setTextDialogOpen}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>{t("dialog.importTitle")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Textarea
+            value={data.importText}
+            onChange={(e) => { data.setImportText(e.target.value); data.setImportError(""); }}
+            placeholder={t("dialog.importPlaceholder")}
+            className="font-mono text-xs min-h-[200px] resize-none"
+          />
+          {data.importError && (
+            <p className="text-xs text-destructive">{data.importError}</p>
+          )}
+          <Button
+            size="sm"
+            onClick={() => data.runAgentImport(data.importText)}
+            disabled={!data.importText.trim()}
+            className="w-full"
+          >
+            {t("dialog.importConfirm")}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

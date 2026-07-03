@@ -41,15 +41,6 @@ export interface SkillSyncItem {
   agentMtime: string;
 }
 
-export interface ImportSkillItem {
-  id: string;
-  name: string;
-  group: string;
-  content: string;
-  selected: boolean;
-  sourceName: string;
-}
-
 export interface StoreSkillItem {
   id: string;
   name: string;

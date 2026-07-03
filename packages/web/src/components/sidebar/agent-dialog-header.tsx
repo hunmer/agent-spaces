@@ -18,10 +18,13 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   Bot,
+  Braces,
   ChevronDown,
+  FileJson,
   Plus,
   RefreshCw,
   RotateCcw,
+  Upload,
   WandSparkles,
 } from "lucide-react";
 import {
@@ -47,6 +50,10 @@ interface AgentDialogHeaderProps {
   onSyncTemplates: () => void;
   onAutoGenerate: () => void;
   handleAddAgent: (role: BuiltInRole | "empty") => void;
+  importOpen?: boolean;
+  setImportOpen?: (open: boolean) => void;
+  openJsonImport?: () => void;
+  openTextImport?: () => void;
 }
 
 export function AgentDialogHeader({
@@ -63,6 +70,10 @@ export function AgentDialogHeader({
   onSyncTemplates,
   onAutoGenerate,
   handleAddAgent,
+  importOpen,
+  setImportOpen,
+  openJsonImport,
+  openTextImport,
 }: AgentDialogHeaderProps) {
   const t = useTranslations("agent");
   const tc = useTranslations("common");
@@ -96,6 +107,30 @@ export function AgentDialogHeader({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+
+  const importDropdown = openJsonImport && openTextImport ? (
+    <DropdownMenu open={importOpen} onOpenChange={setImportOpen}>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="outline" size="sm">
+            <Upload className="size-3.5" />
+            {t("dialog.import")}
+            <ChevronDown className="size-3.5" />
+          </Button>
+        }
+      />
+      <DropdownMenuContent side="bottom" align="end" className="w-44">
+        <DropdownMenuItem className="gap-2" onClick={openJsonImport}>
+          <FileJson className="size-3.5" />
+          <span>{t("dialog.importFromJson")}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem className="gap-2" onClick={openTextImport}>
+          <Braces className="size-3.5" />
+          <span>{t("dialog.importFromText")}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
 
   const syncButton = (
     <Button variant="outline" size="sm" onClick={onSyncTemplates} disabled={syncingTemplates}>
@@ -156,6 +191,7 @@ export function AgentDialogHeader({
           <div className="flex items-center gap-2">
             {syncButton}
             {smartCreateButton}
+            {importDropdown}
             {addDropdown()}
           </div>
         )}
@@ -169,6 +205,7 @@ export function AgentDialogHeader({
       <div className="flex items-center justify-end gap-2 px-5 py-3 border-b">
         {syncButton}
         {smartCreateButton}
+        {importDropdown}
         {addDropdown()}
       </div>
     );

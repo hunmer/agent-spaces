@@ -13,8 +13,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +26,6 @@ import {
   Trash2,
   Save,
   Plus,
-  Upload,
   FileText,
   Folder,
   Rocket,
@@ -36,6 +33,10 @@ import {
 import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { cn } from '@/lib/utils';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
+import { useImport } from './import-panel/use-import';
+import { FileImportMenu } from './import-panel/import-menu';
+import { ImportPreviewPanel } from './import-panel/import-preview-panel';
+import { ImportFileInputs } from './import-panel/import-file-inputs';
 
 interface AgentInfo {
   agentId: string;
@@ -69,7 +70,17 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const [filterGroup, setFilterGroup] = useState('');
 
   const [importOpen, setImportOpen] = useState(false);
-  const [uploadFiles, setUploadFiles] = useState<FileUploadFile[]>([]);
+  const importState = useImport({
+    onImportBatch: async (items) => {
+      const targetAgentId = filterAgentId || (agents.length > 0 ? agents[0].agentId : '');
+      if (!targetAgentId) return;
+      for (const item of items) {
+        await sdk.agentCommands.create(targetAgentId, { name: item.name, content: item.content });
+      }
+      setImportOpen(false);
+      fetchAllCommands();
+    },
+  });
 
   const [editCommand, setEditCommand] = useState<CommandItem | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -127,35 +138,6 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const getAgentAvatarUrl = (agentId: string) => {
     const agent = agents.find((a) => a.agentId === agentId);
     return agent?.avatarUrl;
-  };
-
-  const handleImport = async () => {
-    if (uploadFiles.length === 0) return;
-    const targetAgentId = filterAgentId || (agents.length > 0 ? agents[0].agentId : '');
-    if (!targetAgentId) return;
-
-    if (uploadFiles.length === 1) {
-      const content = await uploadFiles[0].file.text();
-      const name = uploadFiles[0].file.name.replace(/\.(md|txt|markdown)$/i, '');
-      setUploadFiles([]);
-      setImportOpen(false);
-      setEditCommand(null);
-      setIsCreating(true);
-      setEditName(name);
-      setEditContent(content);
-      setEditAgentId(targetAgentId);
-      setEditGroup('');
-      return;
-    }
-
-    for (const item of uploadFiles) {
-      const content = await item.file.text();
-      const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
-      await sdk.agentCommands.create(targetAgentId, { name, content });
-    }
-    setUploadFiles([]);
-    setImportOpen(false);
-    fetchAllCommands();
   };
 
   const handleCreate = () => {
@@ -238,40 +220,36 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
       </DialogHeader>
 
       <div className="flex items-center gap-2 ml-auto shrink-0">
-        <Popover open={importOpen} onOpenChange={setImportOpen}>
-          <PopoverTrigger render={
-            <Button variant="outline" size="sm">
-              <Upload className="size-3.5 mr-1" />
-              {t('import')}
-            </Button>
-          } />
-          <PopoverContent className="w-80" align="end">
-            <div className="space-y-3">
-              <p className="text-sm font-medium">{t('importTitle')}</p>
-              <FileUpload
-                value={uploadFiles}
-                onChange={setUploadFiles}
-                accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
-                placeholder={t('importPlaceholder')}
-                maxFiles={10}
-              />
-              <Button
-                size="sm"
-                onClick={handleImport}
-                disabled={uploadFiles.length === 0}
-                className="w-full"
-              >
-                {t('importConfirm')}
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <FileImportMenu
+          label={t('import')}
+          triggers={importState}
+          enabled={{ md: true, folder: true, zip: true }}
+          open={importOpen}
+          onOpenChange={setImportOpen}
+        />
+        <ImportFileInputs
+          mdInputRef={importState.mdInputRef}
+          folderInputRef={importState.folderInputRef}
+          zipInputRef={importState.zipInputRef}
+          handleMdSelect={importState.handleMdSelect}
+          handleFolderSelect={importState.handleFolderSelect}
+          handleZipSelect={importState.handleZipSelect}
+        />
         <Button variant="outline" size="sm" onClick={handleCreate}>
           <Plus className="size-3.5 mr-1" />
           {t('create')}
         </Button>
       </div>
 
+      {importState.importDialogOpen ? (
+        <ImportPreviewPanel
+          items={importState.importItems}
+          onItemsChange={importState.setImportItems}
+          onConfirm={importState.handleImportConfirm}
+          onCancel={importState.handleImportCancel}
+          defaultGroup={importState.importDefaultGroup}
+        />
+      ) : (
       <div className="flex flex-1 min-h-0 gap-4 pt-2">
         {/* Left: Filters */}
         <ScrollArea className="hidden md:block w-44 shrink-0">
@@ -454,6 +432,7 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
           </ScrollArea>
         </div>
       </div>
+      )}
     </>
   );
 

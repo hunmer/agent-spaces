@@ -10,6 +10,7 @@ import editor from './editor.json';
 import folderPicker from './folderPicker.json';
 import git from './git.json';
 import home from './home.json';
+import importNs from './import.json';
 import issue from './issue.json';
 import knowledgeBase from './knowledgeBase.json';
 import login from './login.json';
@@ -46,6 +47,7 @@ const messages = {
   folderPicker,
   git,
   home,
+  import: importNs,
   issue,
   knowledgeBase,
   login,

@@ -9,9 +9,17 @@ import { useTranslations } from "next-intl";
 import { useRef, useEffect, useMemo, useState } from "react";
 import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
-import { ChatComposerInput, type ChatComposerInputHandle } from "./chat-composer-input";
+import { ChatComposerInput, type ChatComposerInputHandle, type ChatComposerInputState } from "./chat-composer-input";
+import { ChatInputInfoBar } from "./chat-input-info-bar";
 import { ChatMessageList } from "./chat-message-list";
 import type { ChatMessage } from "@agent-spaces/sdk";
+
+const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
+  mentionedAgentIds: [],
+  activeMcps: [],
+  activeSkills: [],
+  activeTools: [],
+};
 
 interface InlineChatPanelProps {
   agentId: string;
@@ -63,6 +71,8 @@ export function InlineChatPanel({
   const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({});
   const [regeneratingVersionKey, setRegeneratingVersionKey] = useState<string | null>(null);
   const [regenerationStartedAt, setRegenerationStartedAt] = useState<string | null>(null);
+  const [contextLength, setContextLength] = useState(0);
+  const [composerState, setComposerState] = useState<ChatComposerInputState>(EMPTY_COMPOSER_STATE);
   const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);
   const t = useTranslations('chat.inlineChat');
   const isRegenerating = sending && regeneratingVersionKey !== null;
@@ -249,16 +259,27 @@ export function InlineChatPanel({
             workspaceId={workspaceId || ""}
             agents={[]}
             placeholder={t('messagePlaceholder', { name: agentName })}
-            contextLength={0}
+            contextLength={contextLength}
             onSubmit={handleSend}
             isProcessing={sending}
             onStop={onStop}
             disableMentionSuggestions
-            enableAttachments={false}
-            enableVoice={false}
+            enableAttachments
+            enableVoice
             enableAutoMode={false}
             enableSlashCommands={false}
             enableAgentResources={false}
+            onStateChange={setComposerState}
+          />
+          <ChatInputInfoBar
+            workspaceId={workspaceId || ""}
+            mcps={composerState.activeMcps}
+            skills={composerState.activeSkills}
+            tools={composerState.activeTools}
+            todos={[]}
+            contextLength={contextLength}
+            onContextLengthChange={setContextLength}
+            onInsertText={(text) => composerRef.current?.insertText(text)}
           />
         </div>
       )}

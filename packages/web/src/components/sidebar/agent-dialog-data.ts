@@ -67,6 +67,12 @@ export function useAgentDialogData({
   const [storeLoading, setStoreLoading] = useState(false);
   const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
 
+  // Import state
+  const [importOpen, setImportOpen] = useState(false);
+  const [textDialogOpen, setTextDialogOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState("");
+
   const roleFilterSet = roleFilter
     ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
     : null;
@@ -137,6 +143,58 @@ export function useAgentDialogData({
   const handleBack = () => {
     setSelectedAgent(null);
     setAutoGenerate(false);
+  };
+
+  const jsonInputRef = useRef<HTMLInputElement>(null);
+
+  // Parse a JSON string (single object or array) into AgentConfig-ish presets.
+  const parseAgentsJson = (text: string): Partial<AgentConfig>[] | null => {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return parsed as Partial<AgentConfig>[];
+      if (parsed && typeof parsed === "object") {
+        // support { agents: [...] } wrapper
+        if (Array.isArray((parsed as any).agents)) return (parsed as any).agents;
+        return [parsed as Partial<AgentConfig>];
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const runAgentImport = async (text: string) => {
+    setImportError("");
+    const configs = parseAgentsJson(text);
+    if (!configs) {
+      setImportError(t("dialog.importInvalidJson"));
+      return;
+    }
+    let count = 0;
+    for (const cfg of configs) {
+      try {
+        await sdk.agent.createPreset(cfg);
+        count++;
+      } catch { /* skip invalid */ }
+    }
+    setImportText("");
+    setImportOpen(false);
+    setTextDialogOpen(false);
+    if (count > 0) {
+      const list = await sdk.agent.listPresets();
+      setAgents(list.map(normalizeAgent));
+      setError(null);
+    } else {
+      setImportError(t("dialog.importFailed"));
+    }
+  };
+
+  const handleImportAgentFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    await runAgentImport(text);
+    e.target.value = "";
   };
 
   const handleAddAgent = (role: BuiltInRole | "empty") => {
@@ -253,6 +311,9 @@ export function useAgentDialogData({
     setSelectedAgent, setAutoGenerate, setActiveTab, setRoleFilterLocal, setLocalSearch,
     handleSelectAgent, handleBack, handleAddAgent, handleToggleEnabled,
     handleDeleteAgent, handleEditorSaved, handleSyncTemplates, importFromStore,
+    importOpen, setImportOpen, textDialogOpen, setTextDialogOpen,
+    importText, setImportText, importError, setImportError,
+    jsonInputRef, handleImportAgentFile, runAgentImport,
     t, tc,
   };
 }

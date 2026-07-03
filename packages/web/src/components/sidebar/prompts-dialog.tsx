@@ -37,7 +37,10 @@ import {
 import { AgentIcon } from '@/components/common/agent-icon';
 import { StoreTabPanel } from '@/components/common/store-tab-panel';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
-import { ImportButton, useFileImportPicker } from './import-button';
+import { useImport } from './import-panel/use-import';
+import { FileImportMenu } from './import-panel/import-menu';
+import { ImportPreviewPanel } from './import-panel/import-preview-panel';
+import { ImportFileInputs } from './import-panel/import-file-inputs';
 
 interface PromptTemplate {
   id: string;
@@ -89,6 +92,15 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
+  const importState = useImport({
+    onImportBatch: async (items) => {
+      for (const item of items) {
+        await sdk.prompts.create({ name: item.name, content: item.content });
+      }
+      setImportOpen(false);
+      fetchTemplates();
+    },
+  });
 
   // Apply dialog state
   const [applyTemplate, setApplyTemplate] = useState<PromptTemplate | null>(null);
@@ -135,35 +147,6 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   // Track which store ids are already imported locally
   const importedStoreIds = new Set(templates.filter((t) => t.storeId).map((t) => t.storeId));
 
-  const importFiles = async (files: File[]) => {
-    if (files.length === 0) return;
-
-    if (files.length === 1) {
-      const content = await files[0].text();
-      const name = files[0].name.replace(/\.(md|txt|markdown)$/i, '');
-      setImportOpen(false);
-      setEditTemplate(null);
-      setIsCreating(true);
-      setEditName(name);
-      setEditContent(content);
-      return;
-    }
-
-    for (const file of files) {
-      const content = await file.text();
-      const name = file.name.replace(/\.(md|txt|markdown)$/i, '');
-      await sdk.prompts.create({ name, content });
-    }
-    setImportOpen(false);
-    fetchTemplates();
-  };
-
-  const { openFileDialog: openImportPicker, fileInput: importFileInput } =
-    useFileImportPicker({
-      accept: '.md,.txt,.markdown',
-      multiple: true,
-      onFiles: importFiles,
-    });
 
   const handleStoreImport = async (store: StoreTemplate) => {
     if (importedStoreIds.has(store.id) || importingIds.has(store.id)) return;
@@ -331,22 +314,35 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
               className="pl-8"
             />
           </div>
-          <ImportButton
+          <FileImportMenu
             label={t('import')}
+            triggers={importState}
+            enabled={{ md: true, folder: true, zip: true }}
             open={importOpen}
             onOpenChange={setImportOpen}
-          >
-            <DropdownMenuItem onClick={openImportPicker}>
-              <FileText className="size-3.5 mr-1.5" />
-              {t('importFromFile')}
-            </DropdownMenuItem>
-          </ImportButton>
-          {importFileInput}
+          />
+          <ImportFileInputs
+            mdInputRef={importState.mdInputRef}
+            folderInputRef={importState.folderInputRef}
+            zipInputRef={importState.zipInputRef}
+            handleMdSelect={importState.handleMdSelect}
+            handleFolderSelect={importState.handleFolderSelect}
+            handleZipSelect={importState.handleZipSelect}
+          />
           <Button variant="outline" size="sm" onClick={handleCreate}>
             <Plus className="size-3.5 mr-1" />
             {t('create')}
           </Button>
         </div>
+        {importState.importDialogOpen ? (
+          <ImportPreviewPanel
+            items={importState.importItems}
+            onItemsChange={importState.setImportItems}
+            onConfirm={importState.handleImportConfirm}
+            onCancel={importState.handleImportCancel}
+            defaultGroup={importState.importDefaultGroup}
+          />
+        ) : (
         <ScrollArea className="flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
@@ -415,6 +411,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
             </div>
           )}
         </ScrollArea>
+        )}
       </div>
     </div>
   );

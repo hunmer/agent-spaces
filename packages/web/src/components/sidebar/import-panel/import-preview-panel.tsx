@@ -7,28 +7,28 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { ImportSkillItem } from './types';
+import type { ImportItem } from './types';
 
-interface SkillImportPanelProps {
-  items: ImportSkillItem[];
-  onItemsChange: (items: ImportSkillItem[]) => void;
-  onConfirm: (items: ImportSkillItem[]) => void;
+interface ImportPreviewPanelProps {
+  items: ImportItem[];
+  onItemsChange: (items: ImportItem[]) => void;
+  onConfirm: (items: ImportItem[]) => void;
   onCancel: () => void;
   defaultGroup?: string;
 }
 
-export function SkillImportPanel({
+export function ImportPreviewPanel({
   items,
   onItemsChange,
   onConfirm,
   onCancel,
   defaultGroup,
-}: SkillImportPanelProps) {
-  const t = useTranslations('skills');
+}: ImportPreviewPanelProps) {
+  const t = useTranslations('import');
   const [globalGroup, setGlobalGroup] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const updateItem = (id: string, patch: Partial<ImportSkillItem>) => {
+  const updateItem = (id: string, patch: Partial<ImportItem>) => {
     onItemsChange(items.map((item) => item.id === id ? { ...item, ...patch } : item));
   };
 

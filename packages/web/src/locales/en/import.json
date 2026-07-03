@@ -1,0 +1,16 @@
+{
+  "importFromMd": "Import .md File",
+  "importFromFolder": "Import Folder",
+  "importFromZip": "Import ZIP",
+  "importFromGit": "Import from Git",
+  "importFromGitDesc": "Enter a Git repository URL; it will be cloned and scanned for SKILL.md files",
+  "importPlaceholder": "https://github.com/user/skills-repo.git",
+  "importPreviewTitle": "Import Preview",
+  "importPreviewGroupPlaceholder": "Group name (optional)",
+  "importPreviewNamePlaceholder": "Name",
+  "importPreviewSelectAll": "Select All",
+  "importPreviewDeselectAll": "Deselect All",
+  "importPreviewConfirm": "Confirm Import ({selected}/{total})",
+  "importPreviewCancel": "Cancel",
+  "importPreviewEmpty": "Nothing to import"
+}

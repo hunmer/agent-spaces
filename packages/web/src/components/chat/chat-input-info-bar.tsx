@@ -13,6 +13,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
+import { McpsDialog } from "@/components/sidebar/mcps-dialog";
+import { SkillsDialog } from "@/components/sidebar/skills-dialog";
+import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { cn } from "@/lib/utils";
 import {
   IconChevronDown,
@@ -23,6 +26,7 @@ import {
   IconLoader2,
   IconPlug,
   IconPuzzle,
+  IconSettings,
   IconTools,
   IconTrash,
 } from "@tabler/icons-react";
@@ -72,8 +76,12 @@ export function ChatInputInfoBar({
 }: ChatInputInfoBarProps) {
   const t = useTranslations("chat");
   const tc = useTranslations("composer");
+  const tCommon = useTranslations("common");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
+  const [mcpsManageOpen, setMcpsManageOpen] = useState(false);
+  const [skillsManageOpen, setSkillsManageOpen] = useState(false);
+  const [toolsManageOpen, setToolsManageOpen] = useState(false);
   const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
   const loadHistory = useInspectorHistoryStore((s) => s.loadHistory);
   const clearHistory = useInspectorHistoryStore((s) => s.clearHistory);
@@ -199,6 +207,13 @@ export function ChatInputInfoBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
+            <DropdownMenuItem
+              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
+              onClick={() => setMcpsManageOpen(true)}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </DropdownMenuItem>
             {mcps.length ? (
               mcps.map((mcp) => (
                 <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use mcp: ${mcp}]`)}>
@@ -232,6 +247,13 @@ export function ChatInputInfoBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
+            <DropdownMenuItem
+              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
+              onClick={() => setSkillsManageOpen(true)}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </DropdownMenuItem>
             {skills.length ? (
               skills.map((skill) => (
                 <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use skill: ${skill}]`)}>
@@ -265,6 +287,13 @@ export function ChatInputInfoBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
+            <DropdownMenuItem
+              className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
+              onClick={() => setToolsManageOpen(true)}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </DropdownMenuItem>
             {tools.length ? (
               tools.map(({ name, label, icon: Icon }) => (
                 <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use tool: ${name}]`)}>
@@ -339,6 +368,10 @@ export function ChatInputInfoBar({
       )}
 
       <div className="flex-1" />
+
+      <McpsDialog open={mcpsManageOpen} onOpenChange={setMcpsManageOpen} />
+      <SkillsDialog open={skillsManageOpen} onOpenChange={setSkillsManageOpen} />
+      <ToolsDialog open={toolsManageOpen} onOpenChange={setToolsManageOpen} />
     </div>
   );
 }

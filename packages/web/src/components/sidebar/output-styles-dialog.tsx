@@ -35,7 +35,10 @@ import {
   FileText,
 } from 'lucide-react';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
-import { ImportButton, useFileImportPicker } from './import-button';
+import { useImport } from './import-panel/use-import';
+import { FileImportMenu } from './import-panel/import-menu';
+import { ImportPreviewPanel } from './import-panel/import-preview-panel';
+import { ImportFileInputs } from './import-panel/import-file-inputs';
 
 interface OutputStyleTemplate {
   id: string;
@@ -88,6 +91,21 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
+  const importState = useImport({
+    onImportBatch: async (items) => {
+      for (const item of items) {
+        const parsed = parseFrontmatter(item.content);
+        const name = parsed.name || item.name;
+        await sdk.outputStyles.create({
+          name,
+          content: parsed.content || item.content,
+          description: parsed.description,
+        });
+      }
+      setImportOpen(false);
+      fetchTemplates();
+    },
+  });
 
   // Create/Edit state
   const [editTemplate, setEditTemplate] = useState<OutputStyleTemplate | null>(null);
@@ -149,38 +167,6 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     };
   }
 
-  const importFiles = async (files: File[]) => {
-    if (files.length === 0) return;
-
-    if (files.length === 1) {
-      const raw = await files[0].text();
-      const parsed = parseFrontmatter(raw);
-      const name = parsed.name || files[0].name.replace(/\.(md|txt|markdown)$/i, '');
-      setImportOpen(false);
-      setEditTemplate(null);
-      setIsCreating(true);
-      setEditName(name);
-      setEditDescription(parsed.description || '');
-      setEditContent(parsed.content || raw);
-      return;
-    }
-
-    for (const file of files) {
-      const raw = await file.text();
-      const parsed = parseFrontmatter(raw);
-      const name = parsed.name || file.name.replace(/\.(md|txt|markdown)$/i, '');
-      await sdk.outputStyles.create({ name, content: parsed.content || raw, description: parsed.description });
-    }
-    setImportOpen(false);
-    fetchTemplates();
-  };
-
-  const { openFileDialog: openImportPicker, fileInput: importFileInput } =
-    useFileImportPicker({
-      accept: '.md,.txt,.markdown',
-      multiple: true,
-      onFiles: importFiles,
-    });
 
   const handleStoreImport = async (store: StoreTemplate) => {
     if (importedStoreIds.has(store.id) || importingIds.has(store.id)) return;
@@ -353,22 +339,35 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
               className="pl-8"
             />
           </div>
-          <ImportButton
+          <FileImportMenu
             label={t('import')}
+            triggers={importState}
+            enabled={{ md: true, folder: true, zip: true }}
             open={importOpen}
             onOpenChange={setImportOpen}
-          >
-            <DropdownMenuItem onClick={openImportPicker}>
-              <FileText className="size-3.5 mr-1.5" />
-              {t('importFromFile')}
-            </DropdownMenuItem>
-          </ImportButton>
-          {importFileInput}
+          />
+          <ImportFileInputs
+            mdInputRef={importState.mdInputRef}
+            folderInputRef={importState.folderInputRef}
+            zipInputRef={importState.zipInputRef}
+            handleMdSelect={importState.handleMdSelect}
+            handleFolderSelect={importState.handleFolderSelect}
+            handleZipSelect={importState.handleZipSelect}
+          />
           <Button variant="outline" size="sm" onClick={handleCreate}>
             <Plus className="size-3.5 mr-1" />
             {t('create')}
           </Button>
         </div>
+        {importState.importDialogOpen ? (
+          <ImportPreviewPanel
+            items={importState.importItems}
+            onItemsChange={importState.setImportItems}
+            onConfirm={importState.handleImportConfirm}
+            onCancel={importState.handleImportCancel}
+            defaultGroup={importState.importDefaultGroup}
+          />
+        ) : (
         <ScrollArea className="flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
@@ -437,6 +436,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
             </div>
           )}
         </ScrollArea>
+        )}
       </div>
     </div>
   );

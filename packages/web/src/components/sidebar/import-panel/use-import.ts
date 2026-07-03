@@ -1,25 +1,48 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import type { ImportSkillItem } from './types';
+import type { ImportItem } from './types';
 
-export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void, onImportFromGit: (url: string) => Promise<ImportSkillItem[] | null>) {
+interface UseImportOptions {
+  /** Called with the user-confirmed, selected items. */
+  onImportBatch: (items: ImportItem[]) => void;
+  /**
+   * Optional git importer. When provided, git import is enabled and the
+   * returned items feed the preview panel. Returns parsed items or null.
+   */
+  onImportFromGit?: (url: string) => Promise<{ name: string; content: string }[] | null>;
+}
+
+/**
+ * Generic import orchestrator: parses .md / folder / zip / (git) sources
+ * into {@link ImportItem}s and drives the preview panel open/close state.
+ *
+ * Mirrors the original skills-only `useSkillImport` but is source-agnostic;
+ * the caller decides how `onImportBatch` persists items.
+ */
+export function useImport({ onImportBatch, onImportFromGit }: UseImportOptions) {
   const mdInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
 
-  const [importItems, setImportItems] = useState<ImportSkillItem[]>([]);
+  const [importItems, setImportItems] = useState<ImportItem[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importDefaultGroup, setImportDefaultGroup] = useState('');
   const [gitUrl, setGitUrl] = useState('');
   const [gitLoading, setGitLoading] = useState(false);
   const [gitDialogOpen, setGitDialogOpen] = useState(false);
 
+  const openPreview = (items: ImportItem[], defaultGroup = '') => {
+    setImportItems(items);
+    setImportDefaultGroup(defaultGroup);
+    setImportDialogOpen(true);
+  };
+
   const handleMdSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const items: ImportSkillItem[] = [];
+    const items: ImportItem[] = [];
     for (const file of Array.from(files)) {
       const content = await file.text();
       const name = file.name.replace(/\.md$/i, '');
@@ -32,9 +55,7 @@ export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void
         sourceName: file.name,
       });
     }
-    setImportItems(items);
-    setImportDefaultGroup('');
-    setImportDialogOpen(true);
+    openPreview(items);
     e.target.value = '';
   };
 
@@ -50,7 +71,7 @@ export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void
       folderMap.get(folderName)!.push(file);
     }
 
-    const items: ImportSkillItem[] = [];
+    const items: ImportItem[] = [];
     for (const [folderName, folderFiles] of folderMap) {
       let skillFile = folderFiles.find((f) => f.name === 'SKILL.md');
       if (!skillFile) skillFile = folderFiles.find((f) => f.name.endsWith('.md'));
@@ -66,9 +87,7 @@ export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void
         sourceName: folderName,
       });
     }
-    setImportItems(items);
-    setImportDefaultGroup('');
-    setImportDialogOpen(true);
+    openPreview(items);
     e.target.value = '';
   };
 
@@ -102,7 +121,7 @@ export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void
         folderMap.get(topFolder)!.push({ file: fileName, path: relativePath });
       });
 
-      const items: ImportSkillItem[] = [];
+      const items: ImportItem[] = [];
       for (const [folderName, entries] of folderMap) {
         let skillEntry = entries.find((e) => e.file === 'SKILL.md');
         if (!skillEntry) skillEntry = entries.find((e) => e.file.endsWith('.md'));
@@ -119,16 +138,14 @@ export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void
         });
       }
 
-      setImportItems(items);
-      setImportDefaultGroup(zipName);
-      setImportDialogOpen(true);
+      openPreview(items, zipName);
     } catch (err) {
       console.error('Failed to extract ZIP:', err);
     }
     e.target.value = '';
   };
 
-  const handleImportConfirm = (items: ImportSkillItem[]) => {
+  const handleImportConfirm = (items: ImportItem[]) => {
     onImportBatch(items);
     setImportDialogOpen(false);
     setImportItems([]);
@@ -140,16 +157,23 @@ export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void
   };
 
   const handleGitImport = async () => {
+    if (!onImportFromGit) return;
     const url = gitUrl.trim();
     if (!url) return;
     setGitLoading(true);
-    const items = await onImportFromGit(url);
+    const result = await onImportFromGit(url);
     setGitLoading(false);
-    if (items && items.length > 0) {
+    if (result && result.length > 0) {
       const repoName = url.split('/').pop()?.replace(/\.git$/i, '') || '';
-      setImportItems(items);
-      setImportDefaultGroup(repoName);
-      setImportDialogOpen(true);
+      const items: ImportItem[] = result.map((s) => ({
+        id: `git-${s.name}-${Math.random().toString(36).slice(2, 8)}`,
+        name: s.name,
+        group: '',
+        content: s.content,
+        selected: true,
+        sourceName: s.name,
+      }));
+      openPreview(items, repoName);
       setGitDialogOpen(false);
     }
     setGitUrl('');
@@ -174,5 +198,10 @@ export function useSkillImport(onImportBatch: (items: ImportSkillItem[]) => void
     handleImportConfirm,
     handleImportCancel,
     handleGitImport,
+    /** Trigger callbacks for the menu items. */
+    openMdPicker: () => mdInputRef.current?.click(),
+    openFolderPicker: () => folderInputRef.current?.click(),
+    openZipPicker: () => zipInputRef.current?.click(),
+    openGitDialog: () => setGitDialogOpen(true),
   };
 }

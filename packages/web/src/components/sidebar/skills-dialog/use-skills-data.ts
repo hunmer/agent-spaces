@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { sdk } from '@/lib/sdk';
 import { fetchStoreIndex } from '@/lib/agent-store';
 import { isBuiltinAgent } from '@agent-spaces/shared';
-import type { AgentCandidate, ImportSkillItem, SkillInfo, SkillSyncItem, StoreSkillItem } from './types';
+import type { AgentCandidate, SkillInfo, SkillSyncItem, StoreSkillItem } from './types';
+import type { ImportItem } from '../import-panel/types';
 
 export function useSkillsData(open: boolean, standalone?: boolean) {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
@@ -104,7 +105,7 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     return false;
   };
 
-  const importBatch = async (items: ImportSkillItem[]) => {
+  const importBatch = async (items: ImportItem[]) => {
     const batchItems = items.map((item) => ({
       name: item.name,
       content: item.content,
@@ -116,17 +117,9 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     } catch { /* ignore */ }
   };
 
-  const importFromGit = async (url: string): Promise<ImportSkillItem[] | null> => {
+  const importFromGit = async (url: string): Promise<{ name: string; content: string }[] | null> => {
     try {
-      const result = (await sdk.skills.importGit(url)) as Array<{ name: string; content: string }>;
-      return result.map((s) => ({
-        id: `git-${s.name}-${Math.random().toString(36).slice(2, 8)}`,
-        name: s.name,
-        group: '',
-        content: s.content,
-        selected: true,
-        sourceName: s.name,
-      }));
+      return (await sdk.skills.importGit(url)) as Array<{ name: string; content: string }>;
     } catch { /* ignore */ }
     return null;
   };

@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { SkillImportPanel } from './skill-import-dialog';
+import { useTranslations } from 'next-intl';
 import { SkillFilterSidebar } from './skill-filter-sidebar';
 import { SkillCardGrid } from './skill-card-grid';
-import { SkillGitImportDialog } from './skill-git-import-dialog';
-import { useSkillImport } from './use-skill-import';
-import type { AgentCandidate, FilterMode, SkillInfo, ImportSkillItem } from './types';
+import { useImport } from '../import-panel/use-import';
+import { ImportPreviewPanel } from '../import-panel/import-preview-panel';
+import { ImportGitDialog } from '../import-panel/import-git-dialog';
+import { ImportFileInputs } from '../import-panel/import-file-inputs';
+import type { AgentCandidate, FilterMode, SkillInfo } from './types';
+import type { ImportItem } from '../import-panel/types';
 
 interface SkillListProps {
   skills: SkillInfo[];
@@ -16,8 +19,8 @@ interface SkillListProps {
   onDelete: (skill: SkillInfo) => void;
   onEdit: (skill: SkillInfo) => void;
   onBind: (skill: SkillInfo) => void;
-  onImportBatch: (items: ImportSkillItem[]) => void;
-  onImportFromGit: (url: string) => Promise<ImportSkillItem[] | null>;
+  onImportBatch: (items: ImportItem[]) => void;
+  onImportFromGit: (url: string) => Promise<{ name: string; content: string }[] | null>;
   onBindAll: () => void;
 }
 
@@ -33,12 +36,13 @@ export function SkillList({
   onImportFromGit,
   onBindAll,
 }: SkillListProps) {
+  const t = useTranslations('skills');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterAgentId, setFilterAgentId] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
 
-  const importState = useSkillImport(onImportBatch, onImportFromGit);
+  const importState = useImport({ onImportBatch, onImportFromGit });
 
   const groups = Array.from(new Set(skills.map((s) => s.group).filter(Boolean)));
 
@@ -64,34 +68,18 @@ export function SkillList({
   return (
     <>
       {/* Hidden file inputs */}
-      <input
-        ref={importState.mdInputRef}
-        type="file"
-        accept=".md"
-        multiple
-        className="hidden"
-        onChange={importState.handleMdSelect}
-      />
-      <input
-        ref={importState.folderInputRef}
-        type="file"
-        className="hidden"
-        onChange={importState.handleFolderSelect}
-        // @ts-expect-error webkitdirectory is not in React types
-        webkitdirectory=""
-        directory=""
-      />
-      <input
-        ref={importState.zipInputRef}
-        type="file"
-        accept=".zip"
-        className="hidden"
-        onChange={importState.handleZipSelect}
+      <ImportFileInputs
+        mdInputRef={importState.mdInputRef}
+        folderInputRef={importState.folderInputRef}
+        zipInputRef={importState.zipInputRef}
+        handleMdSelect={importState.handleMdSelect}
+        handleFolderSelect={importState.handleFolderSelect}
+        handleZipSelect={importState.handleZipSelect}
       />
 
 
       {importState.importDialogOpen ? (
-        <SkillImportPanel
+        <ImportPreviewPanel
           items={importState.importItems}
           onItemsChange={importState.setImportItems}
           onConfirm={importState.handleImportConfirm}
@@ -131,22 +119,23 @@ export function SkillList({
             onEdit={onEdit}
             onBind={onBind}
             onBindAll={onBindAll}
-            onImportMd={() => importState.mdInputRef.current?.click()}
-            onImportFolder={() => importState.folderInputRef.current?.click()}
-            onImportZip={() => importState.zipInputRef.current?.click()}
-            onImportGit={() => importState.setGitDialogOpen(true)}
+            onImportMd={importState.openMdPicker}
+            onImportFolder={importState.openFolderPicker}
+            onImportZip={importState.openZipPicker}
+            onImportGit={importState.openGitDialog}
             gitLoading={importState.gitLoading}
           />
         </div>
       )}
 
-      <SkillGitImportDialog
+      <ImportGitDialog
         open={importState.gitDialogOpen}
         onOpenChange={importState.setGitDialogOpen}
         gitUrl={importState.gitUrl}
         onGitUrlChange={importState.setGitUrl}
         loading={importState.gitLoading}
         onImport={importState.handleGitImport}
+        confirmLabel={t('import')}
       />
     </>
   );

@@ -12,24 +12,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 
-interface SkillGitImportDialogProps {
+interface ImportGitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   gitUrl: string;
   onGitUrlChange: (url: string) => void;
   loading: boolean;
   onImport: () => void;
+  confirmLabel: string;
 }
 
-export function SkillGitImportDialog({
+export function ImportGitDialog({
   open,
   onOpenChange,
   gitUrl,
   onGitUrlChange,
   loading,
   onImport,
-}: SkillGitImportDialogProps) {
-  const t = useTranslations('skills');
+  confirmLabel,
+}: ImportGitDialogProps) {
+  const t = useTranslations('import');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,13 +44,13 @@ export function SkillGitImportDialog({
           <Input
             value={gitUrl}
             onChange={(e) => onGitUrlChange(e.target.value)}
-            placeholder="https://github.com/user/skills-repo.git"
+            placeholder={t('importPlaceholder')}
             onKeyDown={(e) => { if (e.key === 'Enter') onImport(); }}
             disabled={loading}
             autoFocus
           />
           <Button onClick={onImport} disabled={loading || !gitUrl.trim()}>
-            {loading ? <Loader2 className="size-4 animate-spin" /> : t('import')}
+            {loading ? <Loader2 className="size-4 animate-spin" /> : confirmLabel}
           </Button>
         </div>
       </DialogContent>
