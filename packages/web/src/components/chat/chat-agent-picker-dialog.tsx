@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AgentIcon } from "@/components/common/agent-icon";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import { Switch } from "@/components/ui/switch";
 import { Bot, FileText, Store, Plus, Check, WandSparkles, Trash2, Pencil, Star } from "lucide-react";
@@ -20,6 +19,7 @@ import { fetchStoreIndex } from "@/lib/agent-store";
 import { sdk } from "@/lib/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 import type { ChatAgent } from "@agent-spaces/sdk";
+import { AgentCard } from "@/components/sidebar/agent-card";
 
 type TabType = "local" | "store";
 
@@ -291,87 +291,77 @@ export function ChatAgentPickerDialog({
             {filteredAgents.map((agent) => {
               const added = addedIds.has(agent.id);
               return (
-                <div
+                <AgentCard
                   key={agent.id}
-                  className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors"
-                >
-                  <AgentIcon
-                    agentId={agent.id}
-                    name={agent.name}
-                    avatarUrl={agent.avatar}
-                    icon={agent.icon}
-                    className="size-8"
-                  />
-                  <div
-                    className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => onEditAgent?.(agent)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{agent.name}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        {agent.model}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {agent.description || t("dialog.noDescription")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {onToggleFavorite && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className={`size-7 opacity-0 group-hover:opacity-100 transition-opacity ${favoriteIds?.has(agent.id) ? '!opacity-100 text-yellow-500' : ''}`}
-                        onClick={() => onToggleFavorite(agent.id)}
-                      >
-                        <Star className={`size-3.5 ${favoriteIds?.has(agent.id) ? 'fill-current' : ''}`} />
-                      </Button>
-                    )}
-                    {onEditAgent && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
-                        onClick={() => onEditAgent(agent)}
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                    )}
-                    <Switch
-                      size="sm"
-                      checked={added}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          handleAdd(agent);
-                        } else {
-                          setAddedIds((prev) => {
-                            const next = new Set(prev);
-                            next.delete(agent.id);
-                            return next;
-                          });
-                          onRemoveFromChat?.(agent.id);
-                        }
-                      }}
-                    />
-                    {onRemoveAgent && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                        onClick={() => {
-                          setAddedIds((prev) => {
-                            const next = new Set(prev);
-                            next.delete(agent.id);
-                            return next;
-                          });
-                          onRemoveAgent(agent.id);
+                  agentId={agent.id}
+                  name={agent.name}
+                  description={agent.description || t("dialog.noDescription")}
+                  avatarUrl={agent.avatar}
+                  icon={agent.icon}
+                  onContentClick={onEditAgent ? () => onEditAgent(agent) : undefined}
+                  meta={
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {agent.model}
+                    </span>
+                  }
+                  actions={
+                    <>
+                      {onToggleFavorite && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={`size-7 opacity-0 group-hover:opacity-100 transition-opacity ${favoriteIds?.has(agent.id) ? '!opacity-100 text-yellow-500' : ''}`}
+                          onClick={() => onToggleFavorite(agent.id)}
+                        >
+                          <Star className={`size-3.5 ${favoriteIds?.has(agent.id) ? 'fill-current' : ''}`} />
+                        </Button>
+                      )}
+                      {onEditAgent && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
+                          onClick={() => onEditAgent(agent)}
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                      )}
+                      <Switch
+                        size="sm"
+                        checked={added}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            handleAdd(agent);
+                          } else {
+                            setAddedIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(agent.id);
+                              return next;
+                            });
+                            onRemoveFromChat?.(agent.id);
+                          }
                         }}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                      />
+                      {onRemoveAgent && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                          onClick={() => {
+                            setAddedIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(agent.id);
+                              return next;
+                            });
+                            onRemoveAgent(agent.id);
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
+                    </>
+                  }
+                />
               );
             })}
           </div>

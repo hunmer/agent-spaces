@@ -43,16 +43,6 @@ const featureCardColorVariants: Record<FeatureCardColor, Record<string, string>>
   default: {},
 };
 
-/**
- * Generic animated card with optional background image and color-tinted gradient.
- *
- * Usage:
- * ```tsx
- * <FeatureCard backgroundImage={url} color="blue">
- *   <div>Card content here</div>
- * </FeatureCard>
- * ```
- */
 export const FeatureCard = React.forwardRef<HTMLDivElement, FeatureCardProps>(
   ({ className, backgroundImage, color = "default", centerIcon, children, contentClassName, height, style, ...props }, ref) => {
     const cardStyle = { ...featureCardColorVariants[color], ...style } as React.CSSProperties;
