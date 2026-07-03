@@ -284,7 +284,7 @@ export function ChatAgentPickerDialog({
         {filteredAgents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Bot className="size-10 mb-2 opacity-30" />
-            <p className="text-sm">No agents available</p>
+            <p className="text-sm">{t("dialog.noAgentsAvailable")}</p>
           </div>
         ) : (
           <div className="flex flex-col p-2">
@@ -313,7 +313,7 @@ export function ChatAgentPickerDialog({
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
-                      {agent.description || "No description"}
+                      {agent.description || t("dialog.noDescription")}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -411,7 +411,7 @@ export function ChatAgentPickerDialog({
               {isAdded && !isImporting ? (
                 <div className="flex items-center gap-1 text-green-500 text-xs shrink-0">
                   <Check className="size-4" />
-                  <span>Added</span>
+                  <span>{t("dialog.added")}</span>
                 </div>
               ) : (
                 <Button
@@ -446,9 +446,9 @@ export function ChatAgentPickerDialog({
               <Bot className="size-4 text-primary" />
             </div>
             <DialogHeader className="flex-1 space-y-0">
-              <DialogTitle className="text-base">Add Agent to Chat</DialogTitle>
+              <DialogTitle className="text-base">{t("dialog.addToChatTitle")}</DialogTitle>
               <DialogDescription className="text-xs">
-                Select an agent to add to your chat
+                {t("dialog.addToChatDesc")}
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2">

@@ -62,7 +62,12 @@
     "storeEmpty": "No agent templates in store",
     "importTo": "Import",
     "imported": "Imported",
-    "importing": "Importing..."
+    "importing": "Importing...",
+    "noAgentsAvailable": "No agents available",
+    "noDescription": "No description",
+    "added": "Added",
+    "addToChatTitle": "Add Agent to Chat",
+    "addToChatDesc": "Select an agent to add to your chat"
   },
   "list": {
     "noDescription": "No description",

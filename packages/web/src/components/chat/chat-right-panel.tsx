@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FilesIcon, FolderPlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { FileNode, FileSearchResult } from "@agent-spaces/shared";
@@ -53,6 +53,33 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
   const updateSessionEditorDirectories = useChatStore((s) => s.updateSessionEditorDirectories);
   const boundDir = agent?.workingDir ?? "";
 
+  // 顶部/底部面板尺寸持久化（百分比 Layout，见 docs/ui/react-resizable-panels-size-units.md）
+  const layoutKey = "chat-right-panel:layout";
+  const defaultLayout: Record<string, number> = {
+    "chat-agent-workspace-tree": 50,
+    "chat-current-workspace-tree": 50,
+  };
+  const [savedLayout, setSavedLayout] = useState<Record<string, number>>(() => {
+    if (typeof window === "undefined") return defaultLayout;
+    try {
+      const raw = window.localStorage.getItem(layoutKey);
+      const parsed = raw ? JSON.parse(raw) as Record<string, number> : null;
+      return parsed ?? defaultLayout;
+    } catch {
+      return defaultLayout;
+    }
+  });
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleLayoutChange = useCallback((layout: Record<string, number>) => {
+    setSavedLayout(layout);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      try {
+        window.localStorage.setItem(layoutKey, JSON.stringify(layout));
+      } catch {}
+    }, 200);
+  }, []);
+
   const loadAgentTree = useCallback((path?: string) => {
     if (!agentId) return Promise.resolve([]);
     return sdk.chat.workspaceTree(agentId, path ? { path } : undefined);
@@ -65,8 +92,13 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm">
-      <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
-        <ResizablePanel id="chat-agent-workspace-tree" defaultSize={50} minSize={20}>
+      <ResizablePanelGroup
+        orientation="vertical"
+        className="min-h-0 flex-1"
+        defaultLayout={savedLayout}
+        onLayoutChange={handleLayoutChange}
+      >
+        <ResizablePanel id="chat-agent-workspace-tree" defaultSize="50%" minSize="20%">
           <WorkspaceFileTreePanel
             title={t("agentWorkspace")}
             emptyTitle={t("noAgent")}
@@ -78,7 +110,7 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel id="chat-current-workspace-tree" defaultSize={50} minSize={20}>
+        <ResizablePanel id="chat-current-workspace-tree" defaultSize="50%" minSize="20%">
           <MultiDirectoryFileTreePanel
             title={t("extraDirectories")}
             emptyTitle={t("noChatTab")}
