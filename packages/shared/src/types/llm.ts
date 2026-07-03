@@ -12,6 +12,7 @@ export interface LLMModel {
   vision: boolean;
   reasoning: boolean;
   embedding: boolean;
+  image: boolean;
 }
 
 export type LLMThinkingEffort = 'low' | 'medium' | 'high';

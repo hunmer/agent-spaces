@@ -273,6 +273,7 @@ export function IssueMessage({
                 workspaceId={workspaceId}
                 agents={agents.filter((item) => item.enabled !== false)}
                 placeholder="回复此消息"
+                contextLength={0}
                 onSubmit={handleReplySubmit}
                 replyLabel={senderName}
                 onCancelReply={onReplyCancel}

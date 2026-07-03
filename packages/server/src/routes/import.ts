@@ -242,6 +242,7 @@ router.post('/cc-switch/execute', (req, res) => {
           vision: false,
           reasoning: false,
           embedding: false,
+          image: false,
         });
         results.models.push(modelId);
       }

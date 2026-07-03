@@ -4,5 +4,10 @@
   "placeholder": "Type a command or search...",
   "empty": "No results found.",
   "noResults": "No search results",
-  "typeKeyword": "Type a keyword to search..."
+  "typeKeyword": "Type a keyword to search...",
+  "groups": {
+    "view": "View",
+    "navigation": "Navigation",
+    "settings": "Settings"
+  }
 }

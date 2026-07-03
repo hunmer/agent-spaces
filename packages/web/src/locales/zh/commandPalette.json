@@ -4,5 +4,10 @@
   "placeholder": "输入命令或搜索...",
   "empty": "未找到匹配结果",
   "noResults": "无搜索结果",
-  "typeKeyword": "输入关键词搜索..."
+  "typeKeyword": "输入关键词搜索...",
+  "groups": {
+    "view": "视图",
+    "navigation": "导航",
+    "settings": "设置"
+  }
 }

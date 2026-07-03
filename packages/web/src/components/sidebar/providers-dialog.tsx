@@ -28,12 +28,7 @@ import type { ModelCatalog } from "@/stores/llm";
 import { sdk } from "@/lib/sdk";
 import { findCatalogProviderByApiBase, inferApiMessageTypeFromCatalogProvider } from "@/lib/model-catalog";
 import { PROVIDER_OPTIONS } from "./agent-shared";
-
-const CAP_CLS: Record<string, string> = {
-  vision: "bg-blue-500/10 text-blue-600 border-blue-200",
-  reasoning: "bg-purple-500/10 text-purple-600 border-purple-200",
-  embedding: "bg-green-500/10 text-green-600 border-green-200",
-};
+import { CAP_CLS, getModelCapabilities } from "./model-capabilities";
 
 export function ProvidersDialog({
   open,
@@ -234,6 +229,7 @@ function ProviderList({
       {providers.map(provider => {
         const pm = providerModels.find(p => p.id === provider.id);
         const models = pm?.models ?? [];
+        const capabilities = getModelCapabilities(provider.modelProvider);
         return (
           <div
             key={provider.id}
@@ -269,7 +265,7 @@ function ProviderList({
                 {models.map(m => (
                   <Badge key={m.id} variant="secondary" className="text-[11px] h-5 gap-1 px-1.5 font-normal">
                     <span className="max-w-[120px] truncate">{m.name}</span>
-                    {(["vision", "reasoning", "embedding"] as const).map(cap =>
+                    {capabilities.map(cap =>
                       m[cap] ? (
                         <span key={cap} className={`inline-block rounded px-1 text-[9px] font-medium border ${CAP_CLS[cap]}`}>
                           {cap[0].toUpperCase()}

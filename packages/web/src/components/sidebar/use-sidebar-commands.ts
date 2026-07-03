@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Bot,
   Brain,
@@ -37,6 +38,8 @@ export function useSidebarCommands({
   dialogs: ReturnType<typeof useSidebarDialogs>;
 }) {
   const registerCommands = useCommandPalette((s) => s.registerMany);
+  const tSidebar = useTranslations("sidebar");
+  const tPalette = useTranslations("commandPalette");
 
   useEffect(() => {
     const openSettingsPage = (path: string, setter?: React.Dispatch<React.SetStateAction<boolean>>) => {
@@ -50,15 +53,15 @@ export function useSidebarCommands({
     const cmds = [
       {
         id: "toggle-sidebar",
-        label: "Toggle Sidebar",
-        group: "View",
+        label: tSidebar("commands.toggleSidebar"),
+        group: tPalette("groups.view"),
         icon: PanelLeftClose,
         action: () => toggleSidebarWithAnimation(),
       },
       {
         id: "latest-channel",
-        label: "Open Latest Channel",
-        group: "Navigation",
+        label: tSidebar("commands.openLatestChannel"),
+        group: tPalette("groups.navigation"),
         icon: Hash,
         action: () => {
           const { channels, setActiveChannel } = useChannelStore.getState();
@@ -70,8 +73,8 @@ export function useSidebarCommands({
       },
       {
         id: "latest-issue",
-        label: "Open Latest Issue",
-        group: "Navigation",
+        label: tSidebar("commands.openLatestIssue"),
+        group: tPalette("groups.navigation"),
         icon: CircleDot,
         action: () => {
           const { issues, setActiveIssue } = useIssueStore.getState();
@@ -83,50 +86,50 @@ export function useSidebarCommands({
       },
       {
         id: "open-settings",
-        label: "Open General Settings",
-        group: "Settings",
+        label: tSidebar("commands.openGeneralSettings"),
+        group: tPalette("groups.settings"),
         icon: Settings,
         action: () => openSettingsPage("/settings", dialogs.setSettingsDialogOpen),
       },
       {
         id: "open-agents",
-        label: "Open Agent Settings",
-        group: "Settings",
+        label: tSidebar("commands.openAgentSettings"),
+        group: tPalette("groups.settings"),
         icon: Bot,
         action: () => openSettingsPage("/settings/agents", dialogs.setAgentDialogOpen),
       },
       {
         id: "open-skills",
-        label: "Open Skills Settings",
-        group: "Settings",
+        label: tSidebar("commands.openSkillsSettings"),
+        group: tPalette("groups.settings"),
         icon: Sparkles,
         action: () => openSettingsPage("/settings/skills", dialogs.setSkillsDialogOpen),
       },
       {
         id: "open-prompts",
-        label: "Open Prompt Settings",
-        group: "Settings",
+        label: tSidebar("commands.openPromptSettings"),
+        group: tPalette("groups.settings"),
         icon: MessageSquare,
         action: () => openSettingsPage("/settings/prompts", dialogs.setPromptsDialogOpen),
       },
       {
         id: "open-output-styles",
-        label: "Open Output Style Settings",
-        group: "Settings",
+        label: tSidebar("commands.openOutputStyleSettings"),
+        group: tPalette("groups.settings"),
         icon: Pencil,
         action: () => openSettingsPage("/settings/output-styles", dialogs.setOutputStylesDialogOpen),
       },
       {
         id: "open-mcps",
-        label: "Open MCP Settings",
-        group: "Settings",
+        label: tSidebar("commands.openMcpSettings"),
+        group: tPalette("groups.settings"),
         icon: Plug,
         action: () => openSettingsPage("/settings/mcps", dialogs.setMcpsDialogOpen),
       },
       {
         id: "open-models",
-        label: "Open Model Settings",
-        group: "Settings",
+        label: tSidebar("commands.openModelSettings"),
+        group: tPalette("groups.settings"),
         icon: Brain,
         action: () => {
           if (isMobile) {
@@ -139,15 +142,15 @@ export function useSidebarCommands({
       },
       {
         id: "open-providers",
-        label: "Open Provider Settings",
-        group: "Settings",
+        label: tSidebar("commands.openProviderSettings"),
+        group: tPalette("groups.settings"),
         icon: Server,
         action: () => openSettingsPage("/settings/providers", dialogs.setProvidersDialogOpen),
       },
       {
         id: "open-hooks",
-        label: "Open Hook Settings",
-        group: "Settings",
+        label: tSidebar("commands.openHookSettings"),
+        group: tPalette("groups.settings"),
         icon: Zap,
         action: () => {
           if (isMobile) {
@@ -159,8 +162,8 @@ export function useSidebarCommands({
       },
       {
         id: "open-commands",
-        label: "Open Agent Commands",
-        group: "Settings",
+        label: tSidebar("commands.openAgentCommands"),
+        group: tPalette("groups.settings"),
         icon: Terminal,
         action: () => {
           if (isMobile) {
@@ -172,8 +175,8 @@ export function useSidebarCommands({
       },
       {
         id: "open-tools",
-        label: "Open Tools Settings",
-        group: "Settings",
+        label: tSidebar("commands.openToolsSettings"),
+        group: tPalette("groups.settings"),
         icon: Wrench,
         action: () => {
           if (isMobile) {
@@ -185,8 +188,8 @@ export function useSidebarCommands({
       },
       {
         id: "open-workflows",
-        label: "Open Workflow Settings",
-        group: "Navigation",
+        label: tSidebar("commands.openWorkflowSettings"),
+        group: tPalette("groups.navigation"),
         icon: GitBranch,
         action: () => {
           router.push("/workflows");
@@ -194,5 +197,5 @@ export function useSidebarCommands({
       },
     ];
     return registerCommands(cmds);
-  }, [registerCommands, toggleSidebarWithAnimation, isMobile, dialogs, router]);
+  }, [registerCommands, toggleSidebarWithAnimation, isMobile, dialogs, router, tSidebar, tPalette]);
 }

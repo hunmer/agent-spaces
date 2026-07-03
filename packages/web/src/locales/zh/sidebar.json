@@ -62,5 +62,22 @@
   },
   "logout": "退出登录",
   "layoutManagement": "布局管理",
-  "commandPalette": "命令面板"
+  "commandPalette": "命令面板",
+  "commands": {
+    "toggleSidebar": "切换侧边栏",
+    "openLatestChannel": "打开最新频道",
+    "openLatestIssue": "打开最新 Issue",
+    "openGeneralSettings": "打开通用设置",
+    "openAgentSettings": "打开智能体设置",
+    "openSkillsSettings": "打开技能管理设置",
+    "openPromptSettings": "打开提示词管理设置",
+    "openOutputStyleSettings": "打开输出风格设置",
+    "openMcpSettings": "打开 MCP 服务器设置",
+    "openModelSettings": "打开模型设置",
+    "openProviderSettings": "打开供应商设置",
+    "openHookSettings": "打开 Hook 设置",
+    "openAgentCommands": "打开智能体命令",
+    "openToolsSettings": "打开工具管理设置",
+    "openWorkflowSettings": "打开工作流设置"
+  }
 }

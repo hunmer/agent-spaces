@@ -2,7 +2,8 @@
   "capability": {
     "vision": "Vision",
     "reasoning": "Reasoning",
-    "embedding": "Embedding"
+    "embedding": "Embedding",
+    "image": "Image"
   },
   "error": {
     "saveFailed": "Failed to save model",

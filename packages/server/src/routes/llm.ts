@@ -20,6 +20,7 @@ router.post('/models', async (req, res) => {
     vision,
     reasoning,
     embedding,
+    image,
     cost,
     maxContextTokens,
     thinkingEnabled,
@@ -55,11 +56,13 @@ router.post('/models', async (req, res) => {
       vision?: boolean;
       reasoning?: boolean;
       embedding?: boolean;
+      image?: boolean;
     } = {
       provider,
       vision: typeof vision === 'boolean' ? vision : undefined,
       reasoning: typeof reasoning === 'boolean' ? reasoning : undefined,
       embedding: typeof embedding === 'boolean' ? embedding : undefined,
+      image: typeof image === 'boolean' ? image : undefined,
       maxContextTokens: normalizeTokenLimit(maxContextTokens),
       thinkingEnabled: typeof thinkingEnabled === 'boolean' ? thinkingEnabled : undefined,
       thinkingEffort: normalizeThinkingEffort(thinkingEffort),
@@ -85,6 +88,7 @@ router.post('/models', async (req, res) => {
       vision: filled.vision ?? false,
       reasoning: filled.reasoning ?? false,
       embedding: filled.embedding ?? false,
+      image: filled.image ?? false,
     });
   });
   res.status(201).json(created.length === 1 ? created[0] : created);
@@ -247,11 +251,13 @@ function findCatalogModel(catalog: Catalog, modelId: string): CatalogModel | nul
 function applyCatalogDefaults(catalog: Catalog, data: {
   modelId: string;
   name: string;
+  provider: string;
   cost?: { inputPerMillion: number; outputPerMillion: number };
   maxContextTokens?: number;
   vision?: boolean;
   reasoning?: boolean;
   embedding?: boolean;
+  image?: boolean;
   thinkingEnabled?: boolean;
   thinkingEffort?: 'low' | 'medium' | 'high';
 }, autoFill: boolean) {
@@ -269,13 +275,20 @@ function applyCatalogDefaults(catalog: Catalog, data: {
   }
   // 能力
   const inputs = cm.modalities?.input ?? [];
+  const outputs = cm.modalities?.output ?? [];
   if (result.vision === undefined) result.vision = cm.attachment === true || inputs.includes('image');
   if (result.reasoning === undefined) result.reasoning = cm.reasoning === true;
+  if (result.image === undefined) result.image = isOpenAIResponsesProviderName(result.provider) && outputs.includes('image');
   // thinking 跟随 reasoning
   if (result.thinkingEnabled === undefined && result.reasoning !== undefined) {
     result.thinkingEnabled = result.reasoning;
   }
   return result;
+}
+
+function isOpenAIResponsesProviderName(providerName: string): boolean {
+  const provider = store.listProviders().find((item) => item.name === providerName);
+  return provider?.modelProvider === 'openai-responses';
 }
 
 interface SyncResult {

@@ -37,12 +37,7 @@ import { SearchSelect } from "@/components/ui/search-select";
 import { useResolvedAgentIcon } from "@/hooks/use-resolved-agent-icon";
 import { resolveServerAssetUrl } from "@/lib/server";
 import { getProviderIconUrlById } from "@/lib/provider-icon";
-
-const CAP_CLS: Record<string, string> = {
-  vision: "bg-blue-500/10 text-blue-600 border-blue-200",
-  reasoning: "bg-purple-500/10 text-purple-600 border-purple-200",
-  embedding: "bg-green-500/10 text-green-600 border-green-200",
-};
+import { CAP_CLS, getModelCapabilities, isOpenAIResponsesModelProvider, supportsCatalogImageCapability } from "./model-capabilities";
 
 const CONTEXT_OPTIONS = [
   { label: "8K", value: 8_192 },
@@ -128,6 +123,7 @@ export function ModelsDialog({
           vision: false,
           reasoning: false,
           embedding: false,
+          image: false,
         });
       });
     }
@@ -149,6 +145,7 @@ export function ModelsDialog({
       vision: false,
       reasoning: false,
       embedding: false,
+      image: false,
     });
   };
 
@@ -399,6 +396,7 @@ function ModelList({
     <div className="flex flex-col p-4 gap-4">
       {sorted.map(provider => {
         const entity = providers.find(p => p.name === provider);
+        const capabilities = getModelCapabilities(entity?.modelProvider);
         return (
         <div key={provider}>
           <div className="group flex items-center gap-2 mb-2 px-1">
@@ -446,7 +444,7 @@ function ModelList({
                     ) : null}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1 flex-wrap">
-                    {(["vision", "reasoning", "embedding"] as const).map(cap =>
+                    {capabilities.map(cap =>
                       model[cap] ? (
                         <Badge key={cap} variant="outline" className={`text-[10px] h-5 px-1.5 ${CAP_CLS[cap]}`}>
                           {t(`capability.${cap}`)}
@@ -506,12 +504,15 @@ function ModelForm({
 
   const catalogModels = catalog?.models ?? {};
   const catalogProviders = catalog?.providers ?? {};
+  const currentProvider = useMemo(
+    () => providers.find((provider) => provider.name === draft.provider),
+    [providers, draft.provider],
+  );
+  const currentModelProvider = currentProvider?.modelProvider;
+  const availableCapabilities = getModelCapabilities(currentModelProvider);
+  const resolvedCurrentApiBase = currentProvider?.apiBase ?? "";
 
   // 当前 provider 对应的 apiBase（用于按 host 匹配 catalog 模型）
-  const currentApiBase = useMemo(() => {
-    if (!draft.provider) return "";
-    return providers.find(p => p.name === draft.provider)?.apiBase ?? "";
-  }, [providers, draft.provider]);
 
   // catalog 是否存在任何模型（用于决定渲染 SearchSelect 还是 Input）
   const hasCatalogModels = useMemo(() => {
@@ -525,7 +526,7 @@ function ModelForm({
   // 选项为去重的模型名称列表（不分组）：遍历 providers.models（含 cost）
   // showAllModels 关闭时仅展示与当前 provider 同 host 的模型
   const modelOptions = useMemo(() => {
-    const targetHost = currentApiBase ? normalizeHost(currentApiBase) : "";
+    const targetHost = resolvedCurrentApiBase ? normalizeHost(resolvedCurrentApiBase) : "";
     const seen = new Set<string>();
     const opts: { value: string; label?: string }[] = [];
     for (const pid of Object.keys(catalogProviders)) {
@@ -543,7 +544,7 @@ function ModelForm({
       }
     }
     return opts.sort((a, b) => (a.label || a.value).localeCompare(b.label || b.value));
-  }, [catalogProviders, showAllModels, currentApiBase]);
+  }, [catalogProviders, showAllModels, resolvedCurrentApiBase]);
 
   // 从 catalog 查模型：优先在 providers.models 里查（含 cost），其次顶层 models
   const findCatalogModel = useCallback((modelId: string): { model?: CatalogModel; providerName?: string } => {
@@ -555,6 +556,12 @@ function ModelForm({
     const top = catalogModels[modelId];
     return top ? { model: top } : {};
   }, [catalogModels, catalogProviders]);
+
+  useEffect(() => {
+    if (!isOpenAIResponsesModelProvider(currentModelProvider) && draft.image) {
+      onChange("image", false);
+    }
+  }, [currentModelProvider, draft.image, onChange]);
 
   // 选择 modelId（含自定义输入）后自动填充属性
   // 多选时 value 为逗号拼接，属性交由后端按 catalog 自动填充，前端仅回退名称
@@ -582,16 +589,19 @@ function ModelForm({
       });
     }
     const inputs = model.modalities?.input ?? [];
+    const outputs = model.modalities?.output ?? [];
     const supportsVision = model.attachment === true || inputs.includes("image");
     const supportsReasoning = model.reasoning === true;
+    const supportsImage = supportsCatalogImageCapability(currentModelProvider, outputs);
     onChange("vision", supportsVision);
     onChange("reasoning", supportsReasoning);
+    onChange("image", supportsImage);
     // thinking 仅在模型支持 reasoning 时启用；不支持则关闭并禁用开关
     onChange("thinkingEnabled", supportsReasoning);
     // 仅在未选择 provider 时回填 catalog 的 providerName，避免覆盖用户已选的本地 provider
     // 覆盖会导致 provider 名与本地 provider 不匹配，进而 host 过滤失效（回退展示全部）
     if (providerName && !draft.provider) onChange("provider", providerName);
-  }, [onChange, findCatalogModel, draft.cost]);
+  }, [onChange, findCatalogModel, currentModelProvider, draft.cost]);
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">
@@ -750,7 +760,7 @@ function ModelForm({
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.capabilities")}</div>
         <div className="flex items-center gap-1.5">
-          {(["vision", "reasoning", "embedding"] as const).map(cap => {
+          {availableCapabilities.map(cap => {
             const active = Boolean(draft[cap]);
             return (
               <button

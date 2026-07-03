@@ -63,8 +63,6 @@ type AgentCommandItem = {
   group?: string;
 };
 
-const DEFAULT_CONTEXT_LENGTH = 20;
-
 export interface ChatComposerModelOverride {
   apiBase: string;
   apiKey: string;
@@ -92,6 +90,7 @@ interface ChatComposerInputProps {
   workspaceId: string;
   agents: MentionedAgent[];
   placeholder: string;
+  contextLength: number;
   onSubmit: (
     content: string,
     mentions: string[],
@@ -113,7 +112,6 @@ interface ChatComposerInputProps {
   enableAttachments?: boolean;
   enableVoice?: boolean;
   enableAutoMode?: boolean;
-  enableContextControl?: boolean;
   enableSlashCommands?: boolean;
   enableAgentResources?: boolean;
   onStateChange?: (state: ChatComposerInputState) => void;
@@ -124,6 +122,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     workspaceId,
     agents,
     placeholder,
+    contextLength,
     onSubmit,
     className,
     isProcessing = false,
@@ -139,7 +138,6 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     enableAttachments = true,
     enableVoice = true,
     enableAutoMode = true,
-    enableContextControl = true,
     enableSlashCommands = true,
     enableAgentResources = true,
     onStateChange,
@@ -152,7 +150,6 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
-  const [contextLength, setContextLength] = useState(DEFAULT_CONTEXT_LENGTH);
   const [selectedModelId, setSelectedModelId] = useState("");
   const editorRef = useRef<Editor | null>(null);
   const agentsRef = useRef(agents);
@@ -680,12 +677,9 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   return (
     <div className={className}>
       <ComposerShell
-        workspaceId={workspaceId}
         editor={editor}
         canSubmit={canSubmit}
         contextLength={contextLength}
-        onContextLengthChange={setContextLength}
-        enableContextControl={enableContextControl}
         onSubmit={(contextLength) => { void submitCurrentMessage(contextLength); }}
         onStop={onStop}
         isProcessing={isProcessing || submitting}

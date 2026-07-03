@@ -641,9 +641,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     workspaceId={workspaceId}
                     agents={enabledAgents}
                     placeholder={t('detail.commentPlaceholder')}
+                    contextLength={0}
                     onSubmit={(content, mentions) => handleSendComment(content, mentions)}
                     enableAutoMode={false}
-                    enableContextControl={false}
                     enableAgentResources={false}
                   />
                 </div>
@@ -675,9 +675,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 workspaceId={workspaceId}
                 agents={enabledAgents}
                 placeholder={t('detail.commentPlaceholder')}
+                contextLength={0}
                 onSubmit={(content, mentions) => handleSendComment(content, mentions)}
                 enableAutoMode={false}
-                enableContextControl={false}
                 enableAgentResources={false}
               />
             </div>

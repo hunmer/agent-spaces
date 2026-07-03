@@ -2,7 +2,8 @@
   "capability": {
     "vision": "视觉",
     "reasoning": "推理",
-    "embedding": "嵌入"
+    "embedding": "嵌入",
+    "image": "图片"
   },
   "error": {
     "saveFailed": "保存模型失败",
@@ -33,7 +34,7 @@
     "modelId": "模型 ID",
     "modelIdPlaceholder": "例如 gpt-4o",
     "modelIdSearch": "搜索或输入模型 ID...",
-    "showAllModels": "展示所有模型",
+    "showAllModels": "显示所有模型",
     "displayName": "显示名称",
     "displayNamePlaceholder": "例如 GPT-4o",
     "provider": "供应商",

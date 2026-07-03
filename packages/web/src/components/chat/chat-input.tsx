@@ -54,6 +54,8 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
   activeTools: [],
 };
 
+const DEFAULT_CONTEXT_LENGTH = 20;
+
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
   { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated },
   ref,
@@ -61,6 +63,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const t = useTranslations("chat");
   const [collapsed, setCollapsed] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [contextLength, setContextLength] = useState(DEFAULT_CONTEXT_LENGTH);
   const [composerState, setComposerState] = useState<ChatComposerInputState>(EMPTY_COMPOSER_STATE);
   const composerRef = useRef<ChatComposerInputHandle>(null);
   const { saveDraft, clearDraft, updateChannel } = useChannelStore();
@@ -154,6 +157,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             workspaceId={workspaceId}
             agents={agents}
             placeholder={t("input.placeholder", { channel: channelName })}
+            contextLength={contextLength}
             onSubmit={handleSubmit}
             isProcessing={isProcessing}
             onStop={onStop}
@@ -169,10 +173,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           />
 
           <ChatInputInfoBar
+            workspaceId={workspaceId}
             mcps={composerState.activeMcps}
             skills={composerState.activeSkills}
             tools={composerState.activeTools}
             todos={channel.todos}
+            contextLength={contextLength}
+            onContextLengthChange={setContextLength}
             onClearTodos={() => updateChannel(workspaceId, channelId, { todos: [] })}
             onInsertText={(text) => composerRef.current?.insertText(text)}
           />

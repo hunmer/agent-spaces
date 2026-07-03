@@ -249,6 +249,7 @@ export function InlineChatPanel({
             workspaceId={workspaceId || ""}
             agents={[]}
             placeholder={t('messagePlaceholder', { name: agentName })}
+            contextLength={0}
             onSubmit={handleSend}
             isProcessing={sending}
             onStop={onStop}
@@ -256,7 +257,6 @@ export function InlineChatPanel({
             enableAttachments={false}
             enableVoice={false}
             enableAutoMode={false}
-            enableContextControl={false}
             enableSlashCommands={false}
             enableAgentResources={false}
           />

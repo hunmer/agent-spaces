@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,11 +10,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+import { useInspectorHistoryStore } from "@/stores/inspector-history";
 import { cn } from "@/lib/utils";
 import {
   IconChevronDown,
   IconCircleCheck,
   IconCircleDashed,
+  IconCode,
+  IconHistory,
   IconLoader2,
   IconPlug,
   IconPuzzle,
@@ -23,6 +29,9 @@ import {
 import { useTranslations } from "next-intl";
 import type { Icon } from "@tabler/icons-react";
 import type { Channel, TodoItem } from "@agent-spaces/shared";
+
+const EMPTY_HISTORY: never[] = [];
+const DEFAULT_CONTEXT_LENGTH = 20;
 
 type DisplayTodoItem = TodoItem & { title?: string; content?: string };
 
@@ -37,19 +46,143 @@ interface ToolEntry {
 }
 
 interface ChatInputInfoBarProps {
+  workspaceId: string;
   mcps: string[];
   skills: string[];
   tools: ToolEntry[];
   todos: Channel["todos"];
+  contextLength: number;
+  onContextLengthChange: (contextLength: number) => void;
+  enableContextControl?: boolean;
   onClearTodos?: () => void;
   onInsertText?: (text: string) => void;
 }
 
-export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos, onInsertText }: ChatInputInfoBarProps) {
+export function ChatInputInfoBar({
+  workspaceId,
+  mcps,
+  skills,
+  tools,
+  todos,
+  contextLength,
+  onContextLengthChange,
+  enableContextControl = true,
+  onClearTodos,
+  onInsertText,
+}: ChatInputInfoBarProps) {
   const t = useTranslations("chat");
+  const tc = useTranslations("composer");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
+  const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
+  const loadHistory = useInspectorHistoryStore((s) => s.loadHistory);
+  const clearHistory = useInspectorHistoryStore((s) => s.clearHistory);
+
+  const insertCodeLocation = (path: string, line: number, column: number) => {
+    onInsertText?.(`${path}:${line}:${column}`);
+    setHistoryOpen(false);
+  };
 
   return (
     <div className="flex items-center gap-0 pt-2">
+      <Popover
+        open={historyOpen}
+        onOpenChange={(open) => {
+          setHistoryOpen(open);
+          if (open) loadHistory(workspaceId);
+        }}
+      >
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+              title={tc("shell.recentCode")}
+            />
+          }
+        >
+          <IconCode className="size-3" />
+          <span>{tc("shell.recentCode")}{history.length ? ` ${history.length}` : ""}</span>
+        </PopoverTrigger>
+        <PopoverContent align="start" sideOffset={6} className="w-80 p-1.5 gap-0">
+          <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+            <span className="text-xs font-medium text-muted-foreground">{tc("shell.recentCode")}</span>
+            <button
+              type="button"
+              onClick={() => clearHistory(workspaceId)}
+              disabled={history.length === 0}
+              className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            >
+              {tc("shell.clear")}
+            </button>
+          </div>
+          {history.length === 0 ? (
+            <div className="px-2 py-6 text-center text-xs text-muted-foreground">{tc("shell.noRecords")}</div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto">
+              {history.map((item) => {
+                const label = item.name || item.path.split("/").pop() || item.path;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => insertCodeLocation(item.path, item.line, item.column)}
+                    className="flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-accent"
+                  >
+                    <span className="w-full truncate text-xs font-medium">{label}</span>
+                    <span className="w-full truncate font-mono text-[11px] text-muted-foreground">
+                      {item.path}:{item.line}:{item.column}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+
+      {enableContextControl ? (
+        <Popover open={contextOpen} onOpenChange={setContextOpen}>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+                title={contextLength === 0 ? tc("shell.newAgent") : tc("shell.contextN", { count: contextLength })}
+              />
+            }
+          >
+            <IconHistory className="size-3" />
+            <span>{contextLength === 0 ? tc("shell.newAgent") : tc("shell.contextN", { count: contextLength })}</span>
+          </PopoverTrigger>
+          <PopoverContent align="start" sideOffset={6} className="w-64 p-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">{tc("shell.contextLength")}</span>
+              <span className="text-xs font-mono text-foreground">
+                {contextLength === 0 ? tc("shell.newAgent") : tc("shell.contextCount", { count: contextLength })}
+              </span>
+            </div>
+            <Slider
+              value={contextLength}
+              min={0}
+              max={20}
+              step={1}
+              onValueChange={(value) => {
+                const nextValue = Array.isArray(value) ? value[0] : value;
+                onContextLengthChange(nextValue ?? DEFAULT_CONTEXT_LENGTH);
+              }}
+            />
+            <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+              <span>0</span>
+              <span>20</span>
+            </div>
+          </PopoverContent>
+        </Popover>
+      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={

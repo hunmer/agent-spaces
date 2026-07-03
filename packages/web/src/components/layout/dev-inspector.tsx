@@ -99,6 +99,9 @@ export function DevInspector() {
   return (
     <>
       <Inspector
+        keys={mounted && /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
+          ? ["Ctrl", "Shift", "Command", "C"]
+          : ["Ctrl", "Shift", "Alt", "C"]}
         active={active}
         onActiveChange={setActive}
         onClickElement={() => {}}

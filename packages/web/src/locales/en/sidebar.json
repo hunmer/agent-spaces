@@ -62,5 +62,22 @@
   },
   "logout": "Log out",
   "layoutManagement": "Layout Management",
-  "commandPalette": "Command Palette"
+  "commandPalette": "Command Palette",
+  "commands": {
+    "toggleSidebar": "Toggle Sidebar",
+    "openLatestChannel": "Open Latest Channel",
+    "openLatestIssue": "Open Latest Issue",
+    "openGeneralSettings": "Open General Settings",
+    "openAgentSettings": "Open Agent Settings",
+    "openSkillsSettings": "Open Skills Settings",
+    "openPromptSettings": "Open Prompt Settings",
+    "openOutputStyleSettings": "Open Output Style Settings",
+    "openMcpSettings": "Open MCP Settings",
+    "openModelSettings": "Open Model Settings",
+    "openProviderSettings": "Open Provider Settings",
+    "openHookSettings": "Open Hook Settings",
+    "openAgentCommands": "Open Agent Commands",
+    "openToolsSettings": "Open Tools Settings",
+    "openWorkflowSettings": "Open Workflow Settings"
+  }
 }
