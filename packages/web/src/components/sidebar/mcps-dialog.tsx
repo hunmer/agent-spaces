@@ -21,7 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SearchSelect } from '@/components/ui/search-select';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
@@ -36,10 +35,12 @@ import {
   Save,
   Store,
   Download,
+  FileText,
+  Braces,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
-import { ImportButton } from './import-button';
+import { ImportButton, useFileImportPicker } from './import-button';
 
 interface McpServerConfig {
   command?: string;
@@ -104,6 +105,17 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
+  const [textDialogOpen, setTextDialogOpen] = useState(false);
+  const { openFileDialog: openImportPicker, fileInput: importFileInput } =
+    useFileImportPicker({
+      accept: '.json,application/json',
+      multiple: false,
+      onFiles: async (files) => {
+        const text = await files[0].text();
+        setImportText(text);
+        await runImport(text);
+      },
+    });
   const [bindDialogMcp, setBindDialogMcp] = useState<McpServerInfo | null>(null);
   const [editMcp, setEditMcp] = useState<McpServerInfo | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -159,23 +171,26 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
     } catch { /* ignore */ }
   };
 
-  const handleImport = async () => {
+  const runImport = async (text: string) => {
     setImportError('');
     try {
-      JSON.parse(importText);
+      JSON.parse(text);
     } catch {
       setImportError(t('importInvalidJson'));
       return;
     }
     try {
-      await sdk.mcps.importJson(importText);
+      await sdk.mcps.importJson(text);
       setImportText('');
       setImportOpen(false);
+      setTextDialogOpen(false);
       fetchMcps();
     } catch {
       setImportError(t('importFailed'));
     }
   };
+
+  const handleImport = () => runImport(importText);
 
   const openBindDialog = (mcp: McpServerInfo) => {
     setBindDialogMcp(mcp);
@@ -664,31 +679,28 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
           </div>
           <div className="flex items-center gap-2">
             {!selectable && activeTab === 'local' && (
-              <Popover open={importOpen} onOpenChange={setImportOpen}>
-                <PopoverTrigger render={<ImportButton label={t('import')} />} />
-                <PopoverContent className="w-96" align="end">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">{t('importTitle')}</p>
-                    <Textarea
-                      value={importText}
-                      onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
-                      placeholder={'{\n  "mcpServers": {\n    "server-name": {\n      "command": "npx",\n      "args": ["-y", "package"],\n      "env": {}\n    }\n  }\n}'}
-                      className="font-mono text-xs min-h-[180px] resize-none"
-                    />
-                    {importError && (
-                      <p className="text-xs text-destructive">{importError}</p>
-                    )}
-                    <Button
-                      size="sm"
-                      onClick={handleImport}
-                      disabled={!importText.trim()}
-                      className="w-full"
-                    >
-                      {t('importConfirm')}
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <>
+                <ImportButton
+                  label={t('import')}
+                  open={importOpen}
+                  onOpenChange={setImportOpen}
+                >
+                  <DropdownMenuItem onClick={openImportPicker}>
+                    <FileText className="size-3.5 mr-1.5" />
+                    {t('importFromFile')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setImportError('');
+                      setTextDialogOpen(true);
+                    }}
+                  >
+                    <Braces className="size-3.5 mr-1.5" />
+                    {t('importFromText')}
+                  </DropdownMenuItem>
+                </ImportButton>
+                {importFileInput}
+              </>
             )}
           </div>
         </div>
@@ -732,6 +744,34 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Import from JSON text Dialog */}
+      <Dialog open={textDialogOpen} onOpenChange={setTextDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>{t('importTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={importText}
+              onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+              placeholder={'{\n  "mcpServers": {\n    "server-name": {\n      "command": "npx",\n      "args": ["-y", "package"],\n      "env": {}\n    }\n  }\n}'}
+              className="font-mono text-xs min-h-[200px] resize-none"
+            />
+            {importError && (
+              <p className="text-xs text-destructive">{importError}</p>
+            )}
+            <Button
+              size="sm"
+              onClick={handleImport}
+              disabled={!importText.trim()}
+              className="w-full"
+            >
+              {t('importConfirm')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit MCP Dialog */}
       <Dialog open={!!editMcp} onOpenChange={(v) => { if (!v) setEditMcp(null); }}>

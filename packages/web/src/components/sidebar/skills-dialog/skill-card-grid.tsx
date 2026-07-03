@@ -148,29 +148,27 @@ export function SkillCardGrid({
 
       {/* Desktop: Footer with import and apply all */}
       <div className="hidden md:flex items-center justify-between gap-3 pt-2 border-t shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<ImportButton label={t('import')} />}
-          />
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={onImportMd}>
-              <FileText className="size-3.5 mr-1.5" />
-              {t('importFromMd')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onImportFolder}>
-              <FolderOpen className="size-3.5 mr-1.5" />
-              {t('importFromFolder')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onImportZip}>
-              <FileArchive className="size-3.5 mr-1.5" />
-              {t('importFromZip')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onImportGit} disabled={gitLoading}>
-              <GitBranch className="size-3.5 mr-1.5" />
-              {t('importFromGit')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ImportButton
+          label={t('import')}
+          align="start"
+        >
+          <DropdownMenuItem onClick={onImportMd}>
+            <FileText className="size-3.5 mr-1.5" />
+            {t('importFromMd')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImportFolder}>
+            <FolderOpen className="size-3.5 mr-1.5" />
+            {t('importFromFolder')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImportZip}>
+            <FileArchive className="size-3.5 mr-1.5" />
+            {t('importFromZip')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImportGit} disabled={gitLoading}>
+            <GitBranch className="size-3.5 mr-1.5" />
+            {t('importFromGit')}
+          </DropdownMenuItem>
+        </ImportButton>
         <Button
           variant="outline"
           size="sm"

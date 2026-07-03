@@ -19,6 +19,7 @@
   "importTitle": "导入提示词文件",
   "importPlaceholder": "拖拽 .md 或 .txt 文件到此处，或点击选择",
   "importConfirm": "确认导入",
+  "importFromFile": "从文件导入",
   "tabLocal": "本地",
   "tabStore": "商店",
   "storeEmpty": "商店暂无提示词",

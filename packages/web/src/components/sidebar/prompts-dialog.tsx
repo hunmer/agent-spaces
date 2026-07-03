@@ -15,8 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
-import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +37,7 @@ import {
 import { AgentIcon } from '@/components/common/agent-icon';
 import { StoreTabPanel } from '@/components/common/store-tab-panel';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
-import { ImportButton } from './import-button';
+import { ImportButton, useFileImportPicker } from './import-button';
 
 interface PromptTemplate {
   id: string;
@@ -91,7 +89,6 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
-  const [uploadFiles, setUploadFiles] = useState<FileUploadFile[]>([]);
 
   // Apply dialog state
   const [applyTemplate, setApplyTemplate] = useState<PromptTemplate | null>(null);
@@ -138,13 +135,12 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   // Track which store ids are already imported locally
   const importedStoreIds = new Set(templates.filter((t) => t.storeId).map((t) => t.storeId));
 
-  const handleImport = async () => {
-    if (uploadFiles.length === 0) return;
+  const importFiles = async (files: File[]) => {
+    if (files.length === 0) return;
 
-    if (uploadFiles.length === 1) {
-      const content = await uploadFiles[0].file.text();
-      const name = uploadFiles[0].file.name.replace(/\.(md|txt|markdown)$/i, '');
-      setUploadFiles([]);
+    if (files.length === 1) {
+      const content = await files[0].text();
+      const name = files[0].name.replace(/\.(md|txt|markdown)$/i, '');
       setImportOpen(false);
       setEditTemplate(null);
       setIsCreating(true);
@@ -153,15 +149,21 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
       return;
     }
 
-    for (const item of uploadFiles) {
-      const content = await item.file.text();
-      const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
+    for (const file of files) {
+      const content = await file.text();
+      const name = file.name.replace(/\.(md|txt|markdown)$/i, '');
       await sdk.prompts.create({ name, content });
     }
-    setUploadFiles([]);
     setImportOpen(false);
     fetchTemplates();
   };
+
+  const { openFileDialog: openImportPicker, fileInput: importFileInput } =
+    useFileImportPicker({
+      accept: '.md,.txt,.markdown',
+      multiple: true,
+      onFiles: importFiles,
+    });
 
   const handleStoreImport = async (store: StoreTemplate) => {
     if (importedStoreIds.has(store.id) || importingIds.has(store.id)) return;
@@ -329,29 +331,17 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
               className="pl-8"
             />
           </div>
-          <Popover open={importOpen} onOpenChange={setImportOpen}>
-            <PopoverTrigger render={<ImportButton label={t('import')} />} />
-            <PopoverContent className="w-80" align="end">
-              <div className="space-y-3">
-                <p className="text-sm font-medium">{t('importTitle')}</p>
-                <FileUpload
-                  value={uploadFiles}
-                  onChange={setUploadFiles}
-                  accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
-                  placeholder={t('importPlaceholder')}
-                  maxFiles={10}
-                />
-                <Button
-                  size="sm"
-                  onClick={handleImport}
-                  disabled={uploadFiles.length === 0}
-                  className="w-full"
-                >
-                  {t('importConfirm')}
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <ImportButton
+            label={t('import')}
+            open={importOpen}
+            onOpenChange={setImportOpen}
+          >
+            <DropdownMenuItem onClick={openImportPicker}>
+              <FileText className="size-3.5 mr-1.5" />
+              {t('importFromFile')}
+            </DropdownMenuItem>
+          </ImportButton>
+          {importFileInput}
           <Button variant="outline" size="sm" onClick={handleCreate}>
             <Plus className="size-3.5 mr-1" />
             {t('create')}

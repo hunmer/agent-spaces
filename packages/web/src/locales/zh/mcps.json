@@ -6,6 +6,8 @@
   "import": "导入",
   "importTitle": "导入 MCP 配置",
   "importConfirm": "确认导入",
+  "importFromFile": "从文件导入",
+  "importFromText": "从 JSON 文本导入",
   "importInvalidJson": "JSON 格式无效",
   "importFailed": "导入失败",
   "filterAll": "全部",

@@ -6,6 +6,8 @@
   "import": "Import",
   "importTitle": "Import MCP Config",
   "importConfirm": "Confirm Import",
+  "importFromFile": "Import from File",
+  "importFromText": "Import from JSON Text",
   "importInvalidJson": "Invalid JSON format",
   "importFailed": "Import failed",
   "filterAll": "All",

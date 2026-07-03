@@ -19,6 +19,7 @@
   "importTitle": "Import Prompt Files",
   "importPlaceholder": "Drag .md or .txt files here, or click to select",
   "importConfirm": "Confirm Import",
+  "importFromFile": "Import from File",
   "tabLocal": "Local",
   "tabStore": "Store",
   "storeEmpty": "No prompts in store",
