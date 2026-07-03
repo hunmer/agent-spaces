@@ -19,23 +19,25 @@ export interface ShortcutBinding {
   enabled: boolean
 }
 
+// label / group label 为 i18n key（命名空间 `shortcuts`），由渲染层用 next-intl 翻译。
+// 主进程等无法调用 i18n 的场景按 key 作为 fallback 处理。
 export const SHORTCUT_GROUPS: { key: ShortcutGroup; label: string }[] = [
-  { key: 'tab', label: '标签页' },
-  { key: 'navigation', label: '导航' },
-  { key: 'view', label: '视图' },
-  { key: 'tools', label: '工具' },
-  { key: 'window', label: '窗口' },
+  { key: 'tab', label: 'shortcuts.group.tab' },
+  { key: 'navigation', label: 'shortcuts.group.navigation' },
+  { key: 'view', label: 'shortcuts.group.view' },
+  { key: 'tools', label: 'shortcuts.group.tools' },
+  { key: 'window', label: 'shortcuts.group.window' },
 ]
 
 export const SHORTCUT_ACTIONS: ShortcutAction[] = [
-  { id: 'new-tab', label: '新建标签页', defaultAccelerator: 'CmdOrCtrl+T', supportsGlobal: true, group: 'tab' },
-  { id: 'close-tab', label: '关闭当前标签页', defaultAccelerator: 'CmdOrCtrl+W', supportsGlobal: true, group: 'tab' },
-  { id: 'next-tab', label: '下一个标签页', defaultAccelerator: 'CmdOrCtrl+Tab', supportsGlobal: true, group: 'tab' },
-  { id: 'prev-tab', label: '上一个标签页', defaultAccelerator: 'CmdOrCtrl+Shift+Tab', supportsGlobal: true, group: 'tab' },
-  { id: 'reload-tab', label: '刷新当前页', defaultAccelerator: 'CmdOrCtrl+R', supportsGlobal: true, group: 'navigation' },
-  { id: 'force-reload', label: '强制刷新', defaultAccelerator: 'CmdOrCtrl+Shift+R', supportsGlobal: true, group: 'navigation' },
-  { id: 'toggle-fullscreen', label: '切换全屏', defaultAccelerator: 'F11', supportsGlobal: true, group: 'view' },
-  { id: 'command-palette', label: '打开命令面板', defaultAccelerator: 'CmdOrCtrl+K', supportsGlobal: false, group: 'tools' },
+  { id: 'new-tab', label: 'shortcuts.action.newTab', defaultAccelerator: 'CmdOrCtrl+T', supportsGlobal: true, group: 'tab' },
+  { id: 'close-tab', label: 'shortcuts.action.closeTab', defaultAccelerator: 'CmdOrCtrl+W', supportsGlobal: true, group: 'tab' },
+  { id: 'next-tab', label: 'shortcuts.action.nextTab', defaultAccelerator: 'CmdOrCtrl+Tab', supportsGlobal: true, group: 'tab' },
+  { id: 'prev-tab', label: 'shortcuts.action.prevTab', defaultAccelerator: 'CmdOrCtrl+Shift+Tab', supportsGlobal: true, group: 'tab' },
+  { id: 'reload-tab', label: 'shortcuts.action.reloadTab', defaultAccelerator: 'CmdOrCtrl+R', supportsGlobal: true, group: 'navigation' },
+  { id: 'force-reload', label: 'shortcuts.action.forceReload', defaultAccelerator: 'CmdOrCtrl+Shift+R', supportsGlobal: true, group: 'navigation' },
+  { id: 'toggle-fullscreen', label: 'shortcuts.action.toggleFullscreen', defaultAccelerator: 'F11', supportsGlobal: true, group: 'view' },
+  { id: 'command-palette', label: 'shortcuts.action.commandPalette', defaultAccelerator: 'CmdOrCtrl+K', supportsGlobal: false, group: 'tools' },
 ]
 
 export function getMergedBindings(stored: ShortcutBinding[]): ShortcutBinding[] {

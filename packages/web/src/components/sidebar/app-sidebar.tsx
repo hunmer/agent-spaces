@@ -20,7 +20,7 @@ import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { AnimatedThemeToggler } from "@/components/decorations/animated-theme-toggler";
-import { LayoutTemplateIcon } from "lucide-react";
+import { LayoutTemplateIcon, CommandIcon } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useNotificationStore } from "@/stores/notification";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
@@ -31,6 +31,7 @@ import { sdk } from "@/lib/sdk";
 import { useSidebarDialogs } from "./use-sidebar-dialogs";
 import { useSidebarEvents } from "./use-sidebar-events";
 import { useSidebarCommands } from "./use-sidebar-commands";
+import { useCommandPalette } from "@/stores/command-palette";
 import { buildDashboardRoutes } from "./sidebar-dashboard-routes";
 import { SidebarDialogGroup } from "./sidebar-dialog-group";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -191,11 +192,18 @@ export function DashboardSidebar() {
           }
         >
           <AnimatedThemeToggler />
+          <button
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={() => useCommandPalette.getState().toggle()}
+            title={ts("commandPalette")}
+          >
+            <CommandIcon className="size-4" />
+          </button>
           {currentWorkspaceId && (
             <button
               className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => dialogs.setLayoutDialogOpen(true)}
-              title="布局管理"
+              title={ts("layoutManagement")}
             >
               <LayoutTemplateIcon className="size-4" />
             </button>

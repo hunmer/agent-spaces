@@ -131,7 +131,12 @@
     "attachment": "附件",
     "imageAlt": "图片",
     "remove": "移除",
-    "noAttachments": "无附件"
+    "noAttachments": "无附件",
+    "fileName": "文件名",
+    "title": "标题",
+    "mediaType": "类型",
+    "url": "地址",
+    "open": "打开"
   },
   "askUser": {
     "placeholder": "输入回答..."

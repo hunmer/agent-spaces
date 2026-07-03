@@ -73,6 +73,7 @@ function openDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_agent_usage_completed ON agent_usage(completed_at DESC);
     CREATE INDEX IF NOT EXISTS idx_agent_usage_workspace_completed ON agent_usage(workspace_id, completed_at DESC);
   `);
+  ensureAgentSessionSchema(db);
   return db;
 }
 
@@ -489,6 +490,14 @@ function insertSession(database: DatabaseSync, session: AgentSession): void {
     session.lastActivityAt,
     session.error ?? null,
   );
+}
+
+function ensureAgentSessionSchema(database: DatabaseSync): void {
+  const columns = database.prepare(`PRAGMA table_info('agent_sessions')`).all() as Array<{ name?: unknown }>;
+  const names = new Set(columns.map((column) => String(column.name ?? '')));
+  if (!names.has('current_node_execution_id')) {
+    database.exec('ALTER TABLE agent_sessions ADD COLUMN current_node_execution_id TEXT;');
+  }
 }
 
 function mapSessionRow(row: Record<string, unknown>): AgentSession {

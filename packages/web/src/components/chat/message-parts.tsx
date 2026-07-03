@@ -3,9 +3,19 @@
 import type { Message, MessagePart } from "@agent-spaces/shared"
 import { AlertCircleIcon, HelpCircleIcon, CheckCircle2Icon } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { useState } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
+import { cn } from "@/lib/utils"
 import {
   Agent,
   AgentContent,
@@ -16,6 +26,9 @@ import {
 } from "./subagent"
 import {
   Attachment,
+  AttachmentHoverCard,
+  AttachmentHoverCardContent,
+  AttachmentHoverCardTrigger,
   AttachmentInfo,
   AttachmentPreview,
   Attachments,
@@ -260,14 +273,124 @@ function normalizeApproval(id: string, approval: Extract<MessagePart, { type: "c
 
 function MessageAttachments({ attachments, isUser }: { attachments: NonNullable<Message["attachments"]>; isUser: boolean }) {
   return (
-    <Attachments variant="inline" className={isUser ? "justify-end" : "justify-start"}>
+    <Attachments variant="inline" className={cn("gap-1.5", isUser ? "justify-end" : "justify-start")}>
       {attachments.map((attachment, index) => (
-        <Attachment key={`${attachment.path}-${index}`} data={attachmentToData(attachment, index)}>
+        <MessageAttachmentItem key={`${attachment.path}-${index}`} data={attachmentToData(attachment, index)} />
+      ))}
+    </Attachments>
+  )
+}
+
+function MessageAttachmentItem({ data }: { data: AttachmentData }) {
+  const [open, setOpen] = useState(false)
+  const filename = data.filename || data.title || data.url || ""
+
+  return (
+    <AttachmentHoverCard openDelay={200}>
+      <AttachmentHoverCardTrigger asChild>
+        <Attachment
+          data={data}
+          className="h-10 cursor-pointer gap-2 rounded-lg px-2.5 text-sm"
+          onClick={() => setOpen(true)}
+        >
           <AttachmentPreview />
           <AttachmentInfo showMediaType />
         </Attachment>
-      ))}
-    </Attachments>
+      </AttachmentHoverCardTrigger>
+      <AttachmentHoverCardContent className="w-72 p-3">
+        <AttachmentDetail data={data} />
+      </AttachmentHoverCardContent>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="truncate pr-8">{filename}</DialogTitle>
+            {data.mediaType ? (
+              <DialogDescription className="truncate">{data.mediaType}</DialogDescription>
+            ) : null}
+          </DialogHeader>
+          <AttachmentFullDetail data={data} />
+        </DialogContent>
+      </Dialog>
+    </AttachmentHoverCard>
+  )
+}
+
+function AttachmentDetail({ data }: { data: AttachmentData }) {
+  const filename = data.filename || data.title || data.url || ""
+  const url = data.url || ""
+  const isImage = (data.mediaType ?? "").startsWith("image/")
+  return (
+    <div className="flex flex-col gap-2">
+      {isImage && url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={filename} className="max-h-48 w-full rounded object-contain" />
+      ) : null}
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium">{filename}</div>
+        {data.mediaType ? (
+          <div className="truncate text-xs text-muted-foreground">{data.mediaType}</div>
+        ) : null}
+        {url && url !== filename ? (
+          <div className="truncate text-xs text-muted-foreground">{url}</div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function AttachmentFullDetail({ data }: { data: AttachmentData }) {
+  const t = useTranslations("chat")
+  const filename = data.filename || data.title || ""
+  const url = data.url || ""
+  const isImage = (data.mediaType ?? "").startsWith("image/")
+  const isVideo = (data.mediaType ?? "").startsWith("video/")
+  const isAudio = (data.mediaType ?? "").startsWith("audio/")
+  const rows = [
+    data.filename && [t("attachments.fileName"), data.filename],
+    data.title && [t("attachments.title"), data.title],
+    data.mediaType && [t("attachments.mediaType"), data.mediaType],
+    data.url && [t("attachments.url"), data.url],
+  ].filter(Boolean) as [string, string][]
+
+  const openExternal = () => {
+    if (!url) return
+    if (url.startsWith("http")) window.open(url, "_blank", "noopener,noreferrer")
+    else window.location.href = url
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {(isImage || isVideo || isAudio) && url ? (
+        <div className="flex max-h-80 items-center justify-center overflow-hidden rounded-lg bg-muted/40">
+          {isImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt={filename} className="max-h-80 w-full object-contain" />
+          ) : isVideo ? (
+            <video src={url} controls className="max-h-80 w-full" />
+          ) : (
+            <audio src={url} controls className="w-full" />
+          )}
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-2">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex flex-col gap-0.5 text-sm">
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <span className="break-all">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {url ? (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={openExternal}>
+            {t("attachments.open")}
+          </Button>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

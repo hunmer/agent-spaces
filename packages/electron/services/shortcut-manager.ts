@@ -55,7 +55,9 @@ export function updateShortcutBinding(id: string, accelerator: string, isGlobal:
     const conflict = mergedBindings.find(b => b.id !== id && b.accelerator === accelerator && b.enabled)
     if (conflict) {
       const conflictAction = SHORTCUT_ACTIONS.find(a => a.id === conflict.id)
-      return { success: false, error: `快捷键已被「${conflictAction?.label}」占用`, conflictId: conflict.id }
+      // conflictAction.label 现在是 i18n key（如 shortcuts.action.newTab），由渲染层翻译。
+      // 主进程返回 key，前端可自行本地化；这里给出 key 作为 fallback。
+      return { success: false, error: conflictAction?.label ?? conflict.id, conflictId: conflict.id }
     }
   }
 

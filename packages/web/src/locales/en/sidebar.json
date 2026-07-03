@@ -60,5 +60,7 @@
     "newServer": "New Server",
     "switch": "Switch"
   },
-  "logout": "Log out"
+  "logout": "Log out",
+  "layoutManagement": "Layout Management",
+  "commandPalette": "Command Palette"
 }

@@ -21,6 +21,7 @@ import prompts from './prompts.json';
 import providers from './providers.json';
 import robotAccounts from './robotAccounts.json';
 import settings from './settings.json';
+import shortcuts from './shortcuts.json';
 import sidebar from './sidebar.json';
 import skills from './skills.json';
 import sqlite from './sqlite.json';
@@ -56,6 +57,7 @@ const messages = {
   providers,
   robotAccounts,
   settings,
+  shortcuts,
   sidebar,
   skills,
   sqlite,

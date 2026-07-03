@@ -60,5 +60,7 @@
     "newServer": "新服务器",
     "switch": "切换"
   },
-  "logout": "退出登录"
+  "logout": "退出登录",
+  "layoutManagement": "布局管理",
+  "commandPalette": "命令面板"
 }

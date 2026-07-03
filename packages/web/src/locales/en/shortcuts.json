@@ -1,0 +1,19 @@
+{
+  "group": {
+    "tab": "Tabs",
+    "navigation": "Navigation",
+    "view": "View",
+    "tools": "Tools",
+    "window": "Window"
+  },
+  "action": {
+    "newTab": "New Tab",
+    "closeTab": "Close Current Tab",
+    "nextTab": "Next Tab",
+    "prevTab": "Previous Tab",
+    "reloadTab": "Reload Page",
+    "forceReload": "Force Reload",
+    "toggleFullscreen": "Toggle Fullscreen",
+    "commandPalette": "Open Command Palette"
+  }
+}
