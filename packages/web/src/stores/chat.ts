@@ -12,6 +12,16 @@ export interface ChatFileTab {
   agentId: string;
 }
 
+export interface ChatEditorDirectoryTab {
+  id: string;
+  path: string;
+}
+
+export type ChatSessionWithEditorDirectories = ChatSession & {
+  editorDirectoryTabs?: ChatEditorDirectoryTab[];
+  activeEditorDirectoryTabId?: string;
+};
+
 export type ChatTab =
   | { type: 'session'; id: string; label: string; agentId: string }
   | { type: 'file'; id: string; path: string; name: string };
@@ -40,7 +50,7 @@ interface ChatStore {
 
   workspaces: ChatWorkspace[];
   activeWorkspaceId: string | null;
-  sessions: ChatSession[];
+  sessions: ChatSessionWithEditorDirectories[];
   activeSessionId: string | null;
 
   loadAgents: () => Promise<void>;
@@ -73,6 +83,13 @@ interface ChatStore {
   archiveSession: (sessionId: string) => Promise<void>;
   unarchiveSession: (sessionId: string) => Promise<void>;
   selectSession: (id: string) => void;
+  updateSessionEditorDirectories: (
+    sessionId: string,
+    data: {
+      editorDirectoryTabs?: ChatEditorDirectoryTab[];
+      activeEditorDirectoryTabId?: string;
+    },
+  ) => Promise<void>;
 
   // Session messages
   loadSessionMessages: (workspaceId: string, sessionId: string) => Promise<void>;
@@ -82,8 +99,8 @@ interface ChatStore {
   clearSessionMessages: () => void;
   clearAllSessionMessages: () => Promise<void>;
 
-  // File tabs
-  openFileTabs: ChatFileTab[];
+  // File tabs (grouped by sessionId)
+  sessionFileTabs: Record<string, ChatFileTab[]>;
   activeFileTabPath: string | null;
   openChatFile: (agentId: string, path: string) => Promise<void>;
   closeChatFile: (path: string) => void;
@@ -112,7 +129,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   sessions: [],
   activeSessionId: null,
 
-  openFileTabs: [],
+  sessionFileTabs: {},
   activeFileTabPath: null,
   openSessionTabIds: [],
 
@@ -240,7 +257,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   selectWorkspace: (id) => {
-    set({ activeWorkspaceId: id, sessions: [], activeSessionId: null, openFileTabs: [], activeFileTabPath: null, openSessionTabIds: [] });
+    set({ activeWorkspaceId: id, sessions: [], activeSessionId: null, sessionFileTabs: {}, activeFileTabPath: null, openSessionTabIds: [] });
     get().loadSessions(id);
     get().loadWorkspaceState(id);
   },
@@ -273,8 +290,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const activeSessionId = s.activeSessionId === sessionId
         ? (sessions[0]?.id ?? null)
         : s.activeSessionId;
-      return { sessions, activeSessionId };
+      const hadFileTabs = Boolean(s.sessionFileTabs[sessionId]?.length);
+      const { [sessionId]: _removedTabs, ...restFileTabs } = s.sessionFileTabs;
+      const activeFileTabPath = hadFileTabs ? null : s.activeFileTabPath;
+      return {
+        sessions,
+        activeSessionId,
+        sessionFileTabs: restFileTabs,
+        openSessionTabIds: s.openSessionTabIds.filter((id) => id !== sessionId),
+        activeFileTabPath,
+      };
     });
+    debouncedSaveState();
   },
 
   archiveSession: async (sessionId) => {
@@ -300,6 +327,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ activeSessionId: id });
     const wsId = get().activeWorkspaceId;
     if (wsId) get().loadSessionMessages(wsId, id);
+  },
+
+  updateSessionEditorDirectories: async (sessionId, data) => {
+    const wsId = get().activeWorkspaceId;
+    if (!wsId) return;
+    const updated = await sdk.http.patch<ChatSessionWithEditorDirectories>(
+      `/api/chat/workspaces/${wsId}/sessions/${sessionId}`,
+      data,
+    );
+    set((s) => ({
+      sessions: s.sessions.map((session) => session.id === sessionId ? updated : session),
+    }));
   },
 
   // --- Session Messages ---
@@ -395,73 +434,97 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }));
   },
 
-  // --- File Tabs ---
+  // --- File Tabs (grouped by sessionId) ---
   openChatFile: async (agentId, path) => {
-    const existing = get().openFileTabs.find((f) => f.path === path && f.agentId === agentId);
+    const sessionId = get().activeSessionId;
+    if (!sessionId) return; // file tabs belong to a session
+    const existing = (get().sessionFileTabs[sessionId] ?? []).find((f) => f.path === path);
     if (existing) {
-      set({ activeFileTabPath: path, activeSessionId: null });
+      set({ activeFileTabPath: path });
       return;
     }
     try {
       const result = await sdk.chat.workspaceFileContent(agentId, path);
       const name = path.split('/').pop() || path;
       set((s) => ({
-        openFileTabs: [...s.openFileTabs, { path, name, content: result.content, agentId }],
+        sessionFileTabs: {
+          ...s.sessionFileTabs,
+          [sessionId]: [...(s.sessionFileTabs[sessionId] ?? []), { path, name, content: result.content, agentId }],
+        },
         activeFileTabPath: path,
-        activeSessionId: null,
       }));
       debouncedSaveState();
     } catch { /* ignore */ }
   },
 
   closeChatFile: (path) => {
+    const sessionId = get().activeSessionId;
+    if (!sessionId) return;
     set((s) => {
-      const openFileTabs = s.openFileTabs.filter((f) => f.path !== path);
+      const tabs = (s.sessionFileTabs[sessionId] ?? []).filter((f) => f.path !== path);
+      const { [sessionId]: _kept, ...rest } = s.sessionFileTabs;
+      const sessionFileTabs = tabs.length > 0 ? { ...rest, [sessionId]: tabs } : rest;
       const activeFileTabPath = s.activeFileTabPath === path
-        ? (openFileTabs[openFileTabs.length - 1]?.path ?? null)
+        ? (tabs[tabs.length - 1]?.path ?? null)
         : s.activeFileTabPath;
-      return { openFileTabs, activeFileTabPath };
+      return { sessionFileTabs, activeFileTabPath };
     });
     debouncedSaveState();
   },
 
   setActiveFileTab: (path) => {
-    set({ activeFileTabPath: path, activeSessionId: null });
+    set({ activeFileTabPath: path });
     debouncedSaveState();
   },
 
   // --- Workspace State Persistence ---
   loadWorkspaceState: async (workspaceId) => {
     try {
-      const state = await sdk.chat.getWorkspaceState(workspaceId);
+      const state = await sdk.chat.getWorkspaceState(workspaceId) as {
+        openSessionTabIds?: string[];
+        sessionFileTabs?: Record<string, Array<{ path: string; agentId: string }>>;
+        activeTab?: { type: string; id: string } | null;
+      };
       set({
         openSessionTabIds: state.openSessionTabIds ?? [],
-        openFileTabs: [], // file content loaded on demand
+        sessionFileTabs: {}, // file content loaded on demand
         activeFileTabPath: state.activeTab?.type === 'file' ? state.activeTab.id : null,
         activeSessionId: state.activeTab?.type === 'session' ? state.activeTab.id : null,
       });
-      // Pre-load file tab contents
-      for (const ft of (state.openFileTabs ?? [])) {
-        try {
-          const result = await sdk.chat.workspaceFileContent(ft.agentId, ft.path);
-          const name = ft.path.split('/').pop() || ft.path;
-          set((s) => ({ openFileTabs: [...s.openFileTabs, { path: ft.path, name, content: result.content, agentId: ft.agentId }] }));
-        } catch { /* skip files that can't be loaded */ }
+      // Pre-load file tab contents (per session); legacy flat openFileTabs is dropped
+      const persisted = state.sessionFileTabs ?? {};
+      for (const [sid, tabs] of Object.entries(persisted)) {
+        for (const ft of tabs) {
+          try {
+            const result = await sdk.chat.workspaceFileContent(ft.agentId, ft.path);
+            const name = ft.path.split('/').pop() || ft.path;
+            set((s) => ({
+              sessionFileTabs: {
+                ...s.sessionFileTabs,
+                [sid]: [...(s.sessionFileTabs[sid] ?? []), { path: ft.path, name, content: result.content, agentId: ft.agentId }],
+              },
+            }));
+          } catch { /* skip files that can't be loaded */ }
+        }
       }
     } catch { /* ignore */ }
   },
 
   saveWorkspaceState: () => {
-    const { activeWorkspaceId, openSessionTabIds, openFileTabs, activeSessionId, activeFileTabPath } = get();
+    const { activeWorkspaceId, openSessionTabIds, sessionFileTabs, activeSessionId, activeFileTabPath } = get();
     if (!activeWorkspaceId) return;
     const activeTab = activeSessionId
       ? { type: 'session' as const, id: activeSessionId }
       : activeFileTabPath
         ? { type: 'file' as const, id: activeFileTabPath }
         : null;
+    const persistedFileTabs: Record<string, Array<{ path: string; agentId: string }>> = {};
+    for (const [sid, tabs] of Object.entries(sessionFileTabs)) {
+      persistedFileTabs[sid] = tabs.map((f) => ({ path: f.path, agentId: f.agentId }));
+    }
     const state = {
       openSessionTabIds,
-      openFileTabs: openFileTabs.map((f) => ({ path: f.path, agentId: f.agentId })),
+      sessionFileTabs: persistedFileTabs,
       activeTab,
     };
     sdk.chat.saveWorkspaceState(activeWorkspaceId, state).catch(() => {});

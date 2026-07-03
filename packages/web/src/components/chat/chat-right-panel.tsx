@@ -1,17 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FilesIcon, SearchIcon } from "lucide-react";
+import { FilesIcon, FolderPlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { FileNode, FileSearchResult } from "@agent-spaces/shared";
 import { CommonEditorPanel } from "@/components/editor/editor-panel";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FolderPicker } from "@/components/ui/folder-picker";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sdk } from "@/lib/sdk";
 import { useChatStore } from "@/stores/chat";
 
 interface ChatRightPanelProps {
   agentId?: string;
   onFileSelect?: (path: string) => void;
+}
+
+interface DirectoryTab {
+  id: string;
+  path: string;
 }
 
 function searchTree(nodes: FileNode[], query: string): FileSearchResult[] {
@@ -31,11 +40,17 @@ function searchTree(nodes: FileNode[], query: string): FileSearchResult[] {
   return results;
 }
 
+function getDirectoryName(path: string) {
+  return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || path || "目录";
+}
+
 export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
   const t = useTranslations("chat.rightPanel");
   const agent = useChatStore((s) => s.agents.find((item) => item.id === agentId));
   const activeWorkspaceId = useChatStore((s) => s.activeWorkspaceId);
   const activeSessionId = useChatStore((s) => s.activeSessionId);
+  const activeSession = useChatStore((s) => s.sessions.find((item) => item.id === s.activeSessionId));
+  const updateSessionEditorDirectories = useChatStore((s) => s.updateSessionEditorDirectories);
   const boundDir = agent?.workingDir ?? "";
 
   const loadAgentTree = useCallback((path?: string) => {
@@ -44,10 +59,9 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
   }, [agentId]);
 
   const loadCurrentTabTree = useCallback((path?: string) => {
-    if (!activeWorkspaceId || !activeSessionId) return Promise.resolve([]);
-    const sessionPath = `sessions/${activeSessionId}`;
-    return sdk.chat.chatWorkspaceTree(activeWorkspaceId, { path: path || sessionPath });
-  }, [activeWorkspaceId, activeSessionId]);
+    if (!activeWorkspaceId || !path) return Promise.resolve([]);
+    return sdk.chat.chatWorkspaceTree(activeWorkspaceId, { path });
+  }, [activeWorkspaceId]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm">
@@ -65,13 +79,16 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel id="chat-current-workspace-tree" defaultSize={50} minSize={20}>
-          <WorkspaceFileTreePanel
+          <MultiDirectoryFileTreePanel
             title={"\u5f53\u524d Tab \u5de5\u4f5c\u533a"}
             emptyTitle={"\u672a\u9009\u62e9\u804a\u5929 Tab"}
             enabled={!!activeWorkspaceId && !!activeSessionId}
             loadTree={loadCurrentTabTree}
-            workspaceId={activeWorkspaceId && activeSessionId ? `chat-workspace:${activeWorkspaceId}:sessions/${activeSessionId}` : undefined}
-            boundDir=""
+            workspaceId={activeWorkspaceId ? `chat-workspace:${activeWorkspaceId}:custom-dirs` : undefined}
+            sessionId={activeSessionId ?? undefined}
+            directoryTabs={activeSession?.editorDirectoryTabs ?? []}
+            activeDirectoryTabId={activeSession?.activeEditorDirectoryTabId ?? ""}
+            onDirectoryTabsChange={updateSessionEditorDirectories}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -96,10 +113,251 @@ function WorkspaceFileTreePanel({
   boundDir: string;
   onFileSelect?: (path: string) => void;
 }) {
+  const [sidebarTab, setSidebarTab] = useState<'files' | 'search'>('files');
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <PanelHeader
+        title={title}
+        sidebarTab={sidebarTab}
+        onSidebarTabChange={setSidebarTab}
+      />
+
+      <WorkspaceEditorPanel
+        enabled={enabled}
+        emptyTitle={emptyTitle}
+        loadTree={loadTree}
+        workspaceId={workspaceId}
+        storageKey={workspaceId}
+        boundDir={boundDir}
+        sidebarTab={sidebarTab}
+        onSidebarTabChange={setSidebarTab}
+        onFileSelect={onFileSelect}
+      />
+    </div>
+  );
+}
+
+function MultiDirectoryFileTreePanel({
+  title,
+  emptyTitle,
+  enabled,
+  loadTree,
+  workspaceId,
+  sessionId,
+  directoryTabs,
+  activeDirectoryTabId,
+  onDirectoryTabsChange,
+}: {
+  title: string;
+  emptyTitle: string;
+  enabled: boolean;
+  loadTree: (path?: string) => Promise<FileNode[]>;
+  workspaceId?: string;
+  sessionId?: string;
+  directoryTabs: DirectoryTab[];
+  activeDirectoryTabId: string;
+  onDirectoryTabsChange: (
+    sessionId: string,
+    data: { editorDirectoryTabs?: DirectoryTab[]; activeEditorDirectoryTabId?: string },
+  ) => Promise<void>;
+}) {
+  const [sidebarTab, setSidebarTab] = useState<'files' | 'search'>('files');
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [folderInput, setFolderInput] = useState("");
+
+  const tabs = useMemo(() => directoryTabs.map((tab) => ({
+    id: tab.id,
+    label: getDirectoryName(tab.path),
+    path: tab.path,
+  })), [directoryTabs]);
+
+  const activeTab = tabs.some((tab) => tab.id === activeDirectoryTabId)
+    ? activeDirectoryTabId
+    : (tabs[0]?.id ?? "");
+
+  const addDirectory = useCallback(() => {
+    const dir = folderInput.trim();
+    if (!dir || !sessionId) return;
+    const existing = directoryTabs.find((tab) => tab.path === dir);
+    if (existing) {
+      onDirectoryTabsChange(sessionId, { activeEditorDirectoryTabId: existing.id });
+    } else {
+      const id = `custom-dir-${Date.now()}`;
+      onDirectoryTabsChange(sessionId, {
+        editorDirectoryTabs: [...directoryTabs, { id, path: dir }],
+        activeEditorDirectoryTabId: id,
+      });
+    }
+    setFolderInput("");
+    setAddDialogOpen(false);
+  }, [directoryTabs, folderInput, onDirectoryTabsChange, sessionId]);
+
+  const removeDirectory = useCallback((id: string) => {
+    if (!sessionId) return;
+    const next = directoryTabs.filter((tab) => tab.id !== id);
+    onDirectoryTabsChange(sessionId, {
+      editorDirectoryTabs: next,
+      activeEditorDirectoryTabId: activeTab === id ? (next.at(-1)?.id ?? "") : activeTab,
+    });
+  }, [activeTab, directoryTabs, onDirectoryTabsChange, sessionId]);
+
+  const handleActiveTabChange = useCallback((id: string) => {
+    if (!sessionId) return;
+    onDirectoryTabsChange(sessionId, { activeEditorDirectoryTabId: id });
+  }, [onDirectoryTabsChange, sessionId]);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border/40 px-2">
+        <div className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">{title}</div>
+        <button
+          type="button"
+          onClick={() => setAddDialogOpen(true)}
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          title="添加目录"
+        >
+          <FolderPlusIcon className="size-3.5" />
+        </button>
+      </div>
+
+      {tabs.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
+          {enabled ? "请添加目录" : emptyTitle}
+        </div>
+      ) : (
+        <Tabs value={activeTab} onValueChange={handleActiveTabChange} className="min-h-0 flex-1 gap-0 overflow-hidden">
+          <TabsList variant="line" className="h-8 w-full justify-start overflow-x-auto rounded-none border-b bg-transparent px-1 py-0">
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="max-w-40 shrink-0 rounded-none border-b-2 border-transparent px-2 text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:text-foreground"
+              >
+                <span className="truncate">{tab.label}</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-destructive"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeDirectory(tab.id);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      removeDirectory(tab.id);
+                    }
+                  }}
+                >
+                  <XIcon className="size-3" />
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {tabs.map((tab) => (
+            <TabsContent key={tab.id} value={tab.id} className="m-0 min-h-0 flex-1 overflow-hidden">
+              <WorkspaceEditorPanel
+                enabled={enabled}
+                emptyTitle={emptyTitle}
+                loadTree={loadTree}
+                workspaceId={workspaceId}
+                storageKey={workspaceId ? `${workspaceId}:${tab.id}` : tab.id}
+                boundDir=""
+                rootPath={tab.path}
+                sidebarTab={sidebarTab}
+                onSidebarTabChange={setSidebarTab}
+              />
+            </TabsContent>
+          ))}
+        </Tabs>
+      )}
+
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>添加目录</DialogTitle>
+          </DialogHeader>
+          <FolderPicker
+            value={folderInput}
+            onChange={setFolderInput}
+            placeholder="/path/to/project"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>取消</Button>
+            <Button onClick={addDirectory} disabled={!folderInput.trim()}>添加</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function PanelHeader({
+  title,
+  sidebarTab,
+  onSidebarTabChange,
+  children,
+}: {
+  title: string;
+  sidebarTab: 'files' | 'search';
+  onSidebarTabChange: (value: 'files' | 'search') => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border/40 px-2">
+      <div className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">{title}</div>
+      {children}
+      <button
+        type="button"
+        onClick={() => onSidebarTabChange('files')}
+        className={`inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground ${
+          sidebarTab === 'files' ? 'text-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        <FilesIcon className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onSidebarTabChange('search')}
+        className={`inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground ${
+          sidebarTab === 'search' ? 'text-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        <SearchIcon className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function WorkspaceEditorPanel({
+  emptyTitle,
+  enabled,
+  loadTree,
+  workspaceId,
+  storageKey,
+  boundDir,
+  rootPath,
+  sidebarTab,
+  onSidebarTabChange,
+  onFileSelect,
+}: {
+  emptyTitle: string;
+  enabled: boolean;
+  loadTree: (path?: string) => Promise<FileNode[]>;
+  workspaceId?: string;
+  storageKey?: string;
+  boundDir: string;
+  rootPath?: string;
+  sidebarTab: 'files' | 'search';
+  onSidebarTabChange: (value: 'files' | 'search') => void;
+  onFileSelect?: (path: string) => void;
+}) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [sidebarTab, setSidebarTab] = useState<'files' | 'search'>('files');
 
   const reloadTree = useCallback(async () => {
     if (!enabled) {
@@ -110,13 +368,13 @@ function WorkspaceFileTreePanel({
     setLoading(true);
     setError("");
     try {
-      setTree(await loadTree());
+      setTree(await loadTree(rootPath));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load workspace");
     } finally {
       setLoading(false);
     }
-  }, [enabled, loadTree]);
+  }, [enabled, loadTree, rootPath]);
 
   const editorApi = useMemo(() => ({
     tree,
@@ -144,51 +402,27 @@ function WorkspaceFileTreePanel({
   }, [reloadTree]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border/40 px-2">
-        <div className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">{title}</div>
-        <button
-          type="button"
-          onClick={() => setSidebarTab('files')}
-          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground ${
-            sidebarTab === 'files' ? 'text-foreground' : 'text-muted-foreground'
-          }`}
-        >
-          <FilesIcon className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setSidebarTab('search')}
-          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground ${
-            sidebarTab === 'search' ? 'text-foreground' : 'text-muted-foreground'
-          }`}
-        >
-          <SearchIcon className="size-3.5" />
-        </button>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {!enabled ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {emptyTitle}
-          </div>
-        ) : error ? (
-          <div className="p-3 text-xs text-destructive">{error}</div>
-        ) : (
-          <CommonEditorPanel
-            workspaceId={workspaceId}
-            storageKey={workspaceId}
-            boundDir={boundDir}
-            variant="project"
-            api={editorApi}
-            sidebarTab={sidebarTab}
-            onSidebarTabChange={setSidebarTab}
-            hideSidebarTabs
-            hideBottomTabs
-            showImport={false}
-          />
-        )}
-      </div>
+    <div className="min-h-0 flex-1 overflow-hidden">
+      {!enabled ? (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          {emptyTitle}
+        </div>
+      ) : error ? (
+        <div className="p-3 text-xs text-destructive">{error}</div>
+      ) : (
+        <CommonEditorPanel
+          workspaceId={workspaceId}
+          storageKey={storageKey}
+          boundDir={boundDir}
+          variant="project"
+          api={editorApi}
+          sidebarTab={sidebarTab}
+          onSidebarTabChange={onSidebarTabChange}
+          hideSidebarTabs
+          hideBottomTabs
+          showImport={false}
+        />
+      )}
     </div>
   );
 }

@@ -155,7 +155,16 @@ export function createSession(workspaceId: string, agentId: string): ChatSession
   return store.createSession(workspaceId, agentId);
 }
 
-export function updateSession(workspaceId: string, sessionId: string, data: { title?: string; archived?: boolean }): ChatSession | null {
+export function updateSession(
+  workspaceId: string,
+  sessionId: string,
+  data: {
+    title?: string;
+    archived?: boolean;
+    editorDirectoryTabs?: Array<{ id: string; path: string }>;
+    activeEditorDirectoryTabId?: string;
+  },
+): ChatSession | null {
   return store.updateSession(workspaceId, sessionId, data);
 }
 

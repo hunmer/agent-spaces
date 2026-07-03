@@ -192,8 +192,29 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       .map((tool) => ({ ...tool, icon: getToolIcon(tool.name) }));
   }, [activeAgent?.tools]);
 
+  const prevStateRef = useRef<ChatComposerInputState | null>(null);
   useEffect(() => {
-    onStateChange?.({ mentionedAgentIds: effectiveMentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools });
+    const next: ChatComposerInputState = {
+      mentionedAgentIds: effectiveMentionedAgentIds,
+      activeAgent,
+      activeMcps,
+      activeSkills,
+      activeTools,
+    };
+    const prev = prevStateRef.current;
+    // Only notify parent when something actually changed to avoid update loops
+    if (
+      prev &&
+      prev.activeAgent === next.activeAgent &&
+      prev.activeMcps === next.activeMcps &&
+      prev.activeSkills === next.activeSkills &&
+      prev.activeTools === next.activeTools &&
+      prev.mentionedAgentIds === next.mentionedAgentIds
+    ) {
+      return;
+    }
+    prevStateRef.current = next;
+    onStateChange?.(next);
   }, [effectiveMentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools, onStateChange]);
 
   useEffect(() => {

@@ -10,13 +10,15 @@ import {
 } from "@/components/ui/workspaces";
 import { cn } from "@/lib/utils";
 import { AgentIcon } from "@/components/common/agent-icon";
+import { FileIconImg } from "@/components/editor/file-icon";
 import {
-  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore, Eraser, FolderX,
+  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore, Eraser, FolderX, X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback } from "react";
 import type { ChatAgent, ChatWorkspace, ChatSession } from "@agent-spaces/sdk";
 import { formatDistanceToNow } from "date-fns";
+import type { ChatFileTab } from "@/stores/chat";
 
 interface ChatSessionListProps {
   workspaces: ChatWorkspace[];
@@ -35,6 +37,10 @@ interface ChatSessionListProps {
   onUnarchiveSession: (sessionId: string) => void;
   onClearAllMessages: () => void;
   onDeleteWorkspace: () => void;
+  fileTabs: ChatFileTab[];
+  activeFileTabPath: string | null;
+  onSelectFileTab: (path: string) => void;
+  onCloseFileTab: (path: string) => void;
   className?: string;
 }
 
@@ -129,6 +135,10 @@ export function ChatAgentList({
   onUnarchiveSession,
   onClearAllMessages,
   onDeleteWorkspace,
+  fileTabs,
+  activeFileTabPath,
+  onSelectFileTab,
+  onCloseFileTab,
   className,
 }: ChatSessionListProps) {
   const [search, setSearch] = useState("");
@@ -307,6 +317,52 @@ export function ChatAgentList({
           </>
         )}
       </div>
+
+      {/* File tabs of the active session */}
+      {fileTabs.length > 0 && (
+        <div className="shrink-0 border-t">
+          <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            {t("files")}
+          </div>
+          <div className="flex flex-col gap-0.5 px-1 pb-1.5">
+            {fileTabs.map((file) => {
+              const isActive = activeFileTabPath === file.path;
+              return (
+                <div
+                  key={file.path}
+                  role="button"
+                  tabIndex={0}
+                  className={cn(
+                    "group flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                    isActive && "bg-accent"
+                  )}
+                  onClick={() => onSelectFileTab(file.path)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectFileTab(file.path);
+                    }
+                  }}
+                >
+                  <FileIconImg name={file.name} />
+                  <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                  <button
+                    type="button"
+                    aria-label="close file"
+                    className="flex-shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseFileTab(file.path);
+                    }}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Bottom: Manage Agents */}
       <div className="border-t px-3 py-2">

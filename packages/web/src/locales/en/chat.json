@@ -259,7 +259,8 @@
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archived": "Archived",
-    "delete": "Delete"
+    "delete": "Delete",
+    "files": "Files"
   },
   "navigator": {
     "you": "You"

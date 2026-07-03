@@ -259,7 +259,8 @@
     "archive": "封存",
     "unarchive": "取消封存",
     "archived": "已封存",
-    "delete": "删除"
+    "delete": "删除",
+    "files": "文件"
   },
   "navigator": {
     "you": "你"

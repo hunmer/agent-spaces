@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useChatStore, type ChatTab } from "@/stores/chat";
+import { useChatStore, type ChatFileTab } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
 import { ChatRightPanel } from "@/components/chat/chat-right-panel";
@@ -11,16 +11,16 @@ import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { AddMemberDialog } from "@/components/chat/add-member-dialog";
 import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { MessageSquare, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { FileIconImg } from "@/components/editor/file-icon";
-import { AgentIcon } from "@/components/common/agent-icon";
+import { MessageSquare } from "lucide-react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 
 const PANEL_ID_AGENT_LIST = "chat-agent-list";
 const PANEL_ID_CHAT = "chat-main";
 const PANEL_ID_RIGHT = "chat-right";
+
+// Stable empty array reference to avoid re-rendering when a session has no file tabs
+const EMPTY_FILE_TABS: ChatFileTab[] = [];
 
 const LAYOUT_KEY = "agent-spaces:chat-layout";
 type Layout = Record<string, number>;
@@ -70,20 +70,17 @@ function ChatPageInner() {
     deleteSession,
     archiveSession,
     unarchiveSession,
-    selectSession,
     sendSessionMessage,
     regenerateSessionMessage,
     stopSession,
     clearSessionMessages,
     clearAllSessionMessages,
-    openFileTabs,
+    sessionFileTabs,
     activeFileTabPath,
     openChatFile,
     closeChatFile,
     setActiveFileTab,
-    openSessionTabIds,
     selectSessionTab,
-    removeSessionTab,
   } = useChatStore();
 
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
@@ -104,42 +101,26 @@ function ChatPageInner() {
 
   const activeWorkspace = workspaces.find((ws) => ws.id === activeWorkspaceId);
   const activeSession = sessions.find((s) => s.id === activeSessionId);
+  // File tabs belong to the active session (stable empty array when none)
+  const activeFileTabs: ChatFileTab[] = activeSessionId ? (sessionFileTabs[activeSessionId] ?? EMPTY_FILE_TABS) : EMPTY_FILE_TABS;
+  const activeFile = activeFileTabPath
+    ? activeFileTabs.find((f) => f.path === activeFileTabPath)
+    : undefined;
+  const showFileViewer = Boolean(activeFile);
   const activeAgent = activeSession
     ? agents.find((a) => a.id === activeSession.agentId)
-    : activeFileTabPath
-      ? agents.find((a) => openFileTabs.some((f) => f.path === activeFileTabPath && f.agentId === a.id))
-      : undefined;
+    : undefined;
+  // Stable derived skill names to avoid re-creating arrays every render
+  const activeAgentSkills = useMemo(
+    () => activeAgent?.skills?.map((skill) => (typeof skill === "string" ? skill : skill.name)),
+    [activeAgent?.skills],
+  );
   const activeMessages = activeSessionId ? (messages[activeSessionId] ?? []) : [];
   const isSending = activeSessionId ? (sending[activeSessionId] ?? false) : false;
   const activeError = activeSessionId ? (errors[activeSessionId] ?? "") : "";
   const activeStreamingContent = activeSessionId ? (streamingContent[activeSessionId] ?? "") : "";
   const activeStreamingThinking = activeSessionId ? (streamingThinking[activeSessionId] ?? "") : "";
   const activeStreamingTimeline = activeSessionId ? (streamingTimeline[activeSessionId] ?? []) : [];
-
-  // Build tabs: sessions + open files
-  const openSessionTabIdSet = useMemo(() => new Set(openSessionTabIds), [openSessionTabIds]);
-  const tabs: ChatTab[] = useMemo(() => {
-    const sessionTabs: ChatTab[] = sessions
-      .filter((s) => !s.archived && openSessionTabIdSet.has(s.id))
-      .map((s) => {
-        const agent = agents.find((a) => a.id === s.agentId);
-        return {
-          type: 'session' as const,
-          id: s.id,
-          label: s.title || agent?.name || 'Chat',
-          agentId: s.agentId,
-        };
-      });
-    const fileTabs: ChatTab[] = openFileTabs.map((f) => ({
-      type: 'file' as const,
-      id: `file:${f.path}`,
-      path: f.path,
-      name: f.name,
-    }));
-    return [...sessionTabs, ...fileTabs];
-  }, [sessions, agents, openFileTabs, openSessionTabIdSet]);
-
-  const activeTabId = activeSessionId ?? (activeFileTabPath ? `file:${activeFileTabPath}` : null);
 
   useEffect(() => {
     loadAgents();
@@ -153,13 +134,16 @@ function ChatPageInner() {
     const [type, ...rest] = tabParam.split(':');
     const id = rest.join(':');
     if (type === 'session' && id) {
+      // Skip if already active to avoid update loops
+      if (activeSessionId === id) return;
       const session = sessions.find((s) => s.id === id && !s.archived);
       if (session) selectSessionTab(id);
     } else if (type === 'file' && id) {
-      const fileTab = openFileTabs.find((f) => f.path === id);
-      if (fileTab) setActiveFileTab(id);
+      // Only restore if the file belongs to the active session's tabs and isn't already active
+      if (activeFileTabPath === id) return;
+      if (activeFileTabs.some((f) => f.path === id)) setActiveFileTab(id);
     }
-  }, [searchParams, sessions, openFileTabs, selectSessionTab, setActiveFileTab]);
+  }, [searchParams, sessions, activeSessionId, activeFileTabPath, activeFileTabs, selectSessionTab, setActiveFileTab]);
 
   const handleSend = useCallback(
     (content: string) => {
@@ -258,46 +242,28 @@ function ChatPageInner() {
     [selectSessionTab, syncUrl]
   );
 
-  const handleTabClick = useCallback(
-    (tab: ChatTab) => {
-      if (tab.type === 'session') {
-        selectSession(tab.id);
-        syncUrl({ type: 'session', id: tab.id });
-      } else {
-        setActiveFileTab(tab.path);
-        syncUrl({ type: 'file', id: tab.path });
-      }
+  // 左侧 file tab 点击：选中并切回文件视图
+  const handleSelectFileTab = useCallback(
+    (path: string) => {
+      setActiveFileTab(path);
+      syncUrl({ type: 'file', id: path });
     },
-    [selectSession, setActiveFileTab, syncUrl]
+    [setActiveFileTab, syncUrl]
   );
 
-  const handleTabClose = useCallback(
-    (e: React.MouseEvent, tab: ChatTab) => {
-      e.stopPropagation();
-      if (tab.type === 'session') {
-        removeSessionTab(tab.id);
-        if (activeSessionId === tab.id) {
-          const remaining = sessions.filter((s) => openSessionTabIdSet.has(s.id) && s.id !== tab.id);
-          if (remaining.length > 0) {
-            selectSession(remaining[0].id);
-            syncUrl({ type: 'session', id: remaining[0].id });
-          } else {
-            syncUrl(null);
-          }
-        }
-      } else {
-        closeChatFile(tab.path);
-        if (activeFileTabPath === tab.path) {
-          const remainingFiles = openFileTabs.filter((f) => f.path !== tab.path);
-          if (remainingFiles.length > 0) {
-            syncUrl({ type: 'file', id: remainingFiles[remainingFiles.length - 1].path });
-          } else {
-            syncUrl(null);
-          }
+  const handleCloseFileTab = useCallback(
+    (path: string) => {
+      closeChatFile(path);
+      if (activeFileTabPath === path) {
+        const remaining = activeFileTabs.filter((f) => f.path !== path);
+        if (remaining.length > 0) {
+          syncUrl({ type: 'file', id: remaining[remaining.length - 1].path });
+        } else {
+          syncUrl(activeSessionId ? { type: 'session', id: activeSessionId } : null);
         }
       }
     },
-    [activeSessionId, activeFileTabPath, sessions, openSessionTabIdSet, openFileTabs, selectSession, removeSessionTab, closeChatFile, syncUrl]
+    [activeFileTabPath, activeFileTabs, activeSessionId, closeChatFile, syncUrl]
   );
 
   const handleFileSelect = useCallback(
@@ -317,10 +283,6 @@ function ChatPageInner() {
     label: a.name,
     description: a.description,
   }));
-
-  const activeFile = activeFileTabPath
-    ? openFileTabs.find((f) => f.path === activeFileTabPath)
-    : null;
 
   return (
     <ResizablePanelGroup
@@ -347,6 +309,10 @@ function ChatPageInner() {
           onUnarchiveSession={unarchiveSession}
           onClearAllMessages={clearAllSessionMessages}
           onDeleteWorkspace={() => activeWorkspaceId && deleteWorkspace(activeWorkspaceId)}
+          fileTabs={activeFileTabs}
+          activeFileTabPath={activeFileTabPath}
+          onSelectFileTab={handleSelectFileTab}
+          onCloseFileTab={handleCloseFileTab}
           className="h-full rounded-xl border border-border/40 bg-background shadow-sm"
         />
       </ResizablePanel>
@@ -355,52 +321,11 @@ function ChatPageInner() {
 
       <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%">
         <div className="flex h-full w-full flex-col rounded-xl border border-border/40 bg-background shadow-sm">
-          {/* Tab bar */}
-          {tabs.length > 0 && (
-            <div className="flex items-center border-b bg-muted/30 overflow-x-auto shrink-0">
-              {tabs.map((tab) => {
-                const isActive = activeTabId === (tab.type === 'session' ? tab.id : tab.id);
-                return (
-                  <div
-                    key={tab.id}
-                    className={cn(
-                      "flex items-center gap-1 px-3 py-1.5 text-xs border-r cursor-pointer shrink-0 select-none",
-                      isActive
-                        ? "bg-background text-foreground border-b-2 border-b-primary"
-                        : "text-muted-foreground hover:bg-accent"
-                    )}
-                    onClick={() => handleTabClick(tab)}
-                  >
-                    {tab.type === 'session' ? (
-                      <AgentIcon
-                        agentId={tab.agentId}
-                        name={agents.find((a) => a.id === tab.agentId)?.name ?? ''}
-                        avatarUrl={agents.find((a) => a.id === tab.agentId)?.avatar}
-                        icon={agents.find((a) => a.id === tab.agentId)?.icon}
-                        className="size-4 shrink-0"
-                        rounded=""
-                      />
-                    ) : (
-                      <FileIconImg name={tab.name} />
-                    )}
-                    <span className="truncate max-w-28">
-                      {tab.type === 'session' ? tab.label : tab.name}
-                    </span>
-                    <button
-                      className="ml-1 hover:bg-accent rounded p-0.5"
-                      onClick={(e) => handleTabClose(e, tab)}
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
           {/* Tab content */}
           <div className="min-h-0 flex-1">
-            {activeSession && activeAgent ? (
+            {showFileViewer && activeFile ? (
+              <ChatFileViewer path={activeFile.path} content={activeFile.content} />
+            ) : activeSession && activeAgent ? (
               <InlineChatPanel
                 agentId={activeAgent.id}
                 agentName={activeAgent.name}
@@ -408,7 +333,7 @@ function ChatPageInner() {
                 agentIcon={activeAgent.icon}
                 agentDescription={activeAgent.description}
                 agentMcps={activeAgent.mcps}
-                agentSkills={activeAgent.skills?.map((skill) => typeof skill === "string" ? skill : skill.name)}
+                agentSkills={activeAgentSkills}
                 agentTools={activeAgent.tools}
                 messages={activeMessages}
                 sending={isSending}

@@ -122,43 +122,42 @@ function WorkspaceTrigger({
 
     if (renderTrigger) {
         return (
-            <PopoverTrigger className="flex-1 min-w-0" {...props}>
-                <button className={cn('w-full', className)}>
-                    {renderTrigger(selectedWorkspace, open)}
-                </button>
+            <PopoverTrigger
+                className={cn('flex w-full min-w-0 items-center', className)}
+                {...props}
+            >
+                {renderTrigger(selectedWorkspace, open)}
             </PopoverTrigger>
         );
     }
 
     return (
-        <PopoverTrigger className="w-full">
-            <button
-                data-state={open ? 'open' : 'closed'}
-                className={cn(
-                    'border-input bg-background ring-offset-background flex h-12 w-full items-center justify-between rounded-md border px-3 py-2 text-sm',
-                    'placeholder:text-muted-foreground focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
-                    'disabled:cursor-not-allowed disabled:opacity-50',
-                    'hover:bg-accent hover:text-accent-foreground',
-                    className,
-                )}
-                {...props}
-            >
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                        <AvatarImage
-                            src={(selectedWorkspace as any).logo}
-                            alt={getWorkspaceName(selectedWorkspace)}
-                        />
-                        <AvatarFallback className="text-xs">
-                            {getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">
-                        {getWorkspaceName(selectedWorkspace)}
-                    </span>
-                </div>
-                <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />
-            </button>
+        <PopoverTrigger
+            data-state={open ? 'open' : 'closed'}
+            className={cn(
+                'border-input bg-background ring-offset-background flex h-12 w-full items-center justify-between rounded-md border px-3 py-2 text-sm',
+                'placeholder:text-muted-foreground focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
+                'disabled:cursor-not-allowed disabled:opacity-50',
+                'hover:bg-accent hover:text-accent-foreground',
+                className,
+            )}
+            {...props}
+        >
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Avatar className="h-6 w-6">
+                    <AvatarImage
+                        src={(selectedWorkspace as any).logo}
+                        alt={getWorkspaceName(selectedWorkspace)}
+                    />
+                    <AvatarFallback className="text-xs">
+                        {getWorkspaceName(selectedWorkspace).charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                </Avatar>
+                <span className="truncate">
+                    {getWorkspaceName(selectedWorkspace)}
+                </span>
+            </div>
+            <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />
         </PopoverTrigger>
     );
 }
