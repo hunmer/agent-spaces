@@ -43,10 +43,12 @@ interface SessionItemProps {
   isActive: boolean;
   isSending: boolean;
   onSelect: () => void;
+  onDelete: () => void;
   onContextMenu: (e: React.MouseEvent, sessionId: string, archived: boolean) => void;
 }
 
-function SessionItem({ session, isActive, isSending, onSelect, onContextMenu }: SessionItemProps) {
+function SessionItem({ session, isActive, isSending, onSelect, onDelete, onContextMenu }: SessionItemProps) {
+  const t = useTranslations("chat.agentList");
   return (
     <div
       role="button"
@@ -95,6 +97,17 @@ function SessionItem({ session, isActive, isSending, onSelect, onContextMenu }: 
           {formatDistanceToNow(new Date(session.updatedAt), { addSuffix: true })}
         </span>
       </div>
+      <button
+        type="button"
+        aria-label={t("delete")}
+        className="flex-shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        <Trash2 className="size-3.5" />
+      </button>
     </div>
   );
 }
@@ -265,6 +278,7 @@ export function ChatAgentList({
                     isActive={activeSessionId === session.id}
                     isSending={!!sending[session.id]}
                     onSelect={() => onSelectSession(session.id)}
+                    onDelete={() => onDeleteSession(session.id)}
                     onContextMenu={handleContextMenu}
                   />
                 ))}
@@ -284,6 +298,7 @@ export function ChatAgentList({
                     isActive={activeSessionId === session.id}
                     isSending={!!sending[session.id]}
                     onSelect={() => onSelectSession(session.id)}
+                    onDelete={() => onDeleteSession(session.id)}
                     onContextMenu={handleContextMenu}
                   />
                 ))}

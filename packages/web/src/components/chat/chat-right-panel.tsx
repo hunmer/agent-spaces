@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCwIcon, SearchIcon } from "lucide-react";
+import { FilesIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { FileNode } from "@agent-spaces/shared";
-import { Input } from "@/components/ui/input";
-import { FileTree, FileTreeNodes } from "@/components/editor/file-tree";
+import type { FileNode, FileSearchResult } from "@agent-spaces/shared";
+import { CommonEditorPanel } from "@/components/editor/editor-panel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { sdk } from "@/lib/sdk";
 import { useChatStore } from "@/stores/chat";
@@ -15,64 +14,50 @@ interface ChatRightPanelProps {
   onFileSelect?: (path: string) => void;
 }
 
-function filterTree(nodes: FileNode[], query: string): FileNode[] {
-  if (!query) return nodes;
+function searchTree(nodes: FileNode[], query: string): FileSearchResult[] {
   const lower = query.toLowerCase();
-  return nodes.reduce<FileNode[]>((acc, node) => {
-    if (node.name.toLowerCase().includes(lower)) {
-      acc.push(node);
-    } else if (node.type === "directory" && node.children) {
-      const filtered = filterTree(node.children, query);
-      if (filtered.length > 0) {
-        acc.push({ ...node, children: filtered });
+  const results: FileSearchResult[] = [];
+
+  const walk = (items: FileNode[]) => {
+    for (const item of items) {
+      if (item.name.toLowerCase().includes(lower)) {
+        results.push({ path: item.path, name: item.name, type: item.type });
       }
+      if (item.children) walk(item.children);
     }
-    return acc;
-  }, []);
+  };
+
+  walk(nodes);
+  return results;
 }
 
 export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
-  const t = useTranslations('chat.rightPanel');
-  const [search, setSearch] = useState("");
+  const t = useTranslations("chat.rightPanel");
   const agent = useChatStore((s) => s.agents.find((item) => item.id === agentId));
   const activeWorkspaceId = useChatStore((s) => s.activeWorkspaceId);
   const activeSessionId = useChatStore((s) => s.activeSessionId);
   const boundDir = agent?.workingDir ?? "";
 
-  const loadAgentTree = useCallback(() => {
+  const loadAgentTree = useCallback((path?: string) => {
     if (!agentId) return Promise.resolve([]);
-    return sdk.chat.workspaceTree(agentId);
+    return sdk.chat.workspaceTree(agentId, path ? { path } : undefined);
   }, [agentId]);
 
-  const loadCurrentWorkspaceTree = useCallback(() => {
+  const loadCurrentTabTree = useCallback((path?: string) => {
     if (!activeWorkspaceId || !activeSessionId) return Promise.resolve([]);
-    return sdk.chat.chatWorkspaceTree(activeWorkspaceId, { path: `sessions/${activeSessionId}` });
+    const sessionPath = `sessions/${activeSessionId}`;
+    return sdk.chat.chatWorkspaceTree(activeWorkspaceId, { path: path || sessionPath });
   }, [activeWorkspaceId, activeSessionId]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm">
-      <div className="flex items-center gap-1.5 border-b border-border/40 px-2 py-2">
-        <div className="relative flex-1">
-          <SearchIcon className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('searchFiles')}
-            className="h-7 pl-7 text-xs"
-          />
-        </div>
-      </div>
-
       <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
         <ResizablePanel id="chat-agent-workspace-tree" defaultSize={50} minSize={20}>
           <WorkspaceFileTreePanel
-            title="Agent 工作区"
-            emptyTitle={t('noAgent')}
-            emptyWorkspaceText={t('emptyWorkspace')}
-            noResultsText={t('noResults')}
+            title={"Agent \u5de5\u4f5c\u533a"}
+            emptyTitle={t("noAgent")}
             enabled={!!agentId}
             loadTree={loadAgentTree}
-            search={search}
             workspaceId={agentId ? `chat:${agentId}` : undefined}
             boundDir={boundDir}
             onFileSelect={onFileSelect}
@@ -81,14 +66,11 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
         <ResizableHandle withHandle />
         <ResizablePanel id="chat-current-workspace-tree" defaultSize={50} minSize={20}>
           <WorkspaceFileTreePanel
-            title="当前聊天工作区"
-            emptyTitle="未选择聊天工作区"
-            emptyWorkspaceText={t('emptyWorkspace')}
-            noResultsText={t('noResults')}
-            enabled={!!activeWorkspaceId}
-            loadTree={loadCurrentWorkspaceTree}
-            search={search}
-            workspaceId={activeWorkspaceId ? `chat-workspace:${activeWorkspaceId}` : undefined}
+            title={"\u5f53\u524d Tab \u5de5\u4f5c\u533a"}
+            emptyTitle={"\u672a\u9009\u62e9\u804a\u5929 Tab"}
+            enabled={!!activeWorkspaceId && !!activeSessionId}
+            loadTree={loadCurrentTabTree}
+            workspaceId={activeWorkspaceId && activeSessionId ? `chat-workspace:${activeWorkspaceId}:sessions/${activeSessionId}` : undefined}
             boundDir=""
           />
         </ResizablePanel>
@@ -100,22 +82,16 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
 function WorkspaceFileTreePanel({
   title,
   emptyTitle,
-  emptyWorkspaceText,
-  noResultsText,
   enabled,
   loadTree,
-  search,
   workspaceId,
   boundDir,
   onFileSelect,
 }: {
   title: string;
   emptyTitle: string;
-  emptyWorkspaceText: string;
-  noResultsText: string;
   enabled: boolean;
-  loadTree: () => Promise<FileNode[]>;
-  search: string;
+  loadTree: (path?: string) => Promise<FileNode[]>;
   workspaceId?: string;
   boundDir: string;
   onFileSelect?: (path: string) => void;
@@ -123,29 +99,43 @@ function WorkspaceFileTreePanel({
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [sidebarTab, setSidebarTab] = useState<'files' | 'search'>('files');
 
-  const reloadTree = useCallback(() => {
+  const reloadTree = useCallback(async () => {
     if (!enabled) {
       setTree([]);
-      setExpanded(new Set());
       return;
     }
 
     setLoading(true);
     setError("");
-    loadTree()
-      .then((nodes) => {
-        setTree(nodes);
-        setExpanded(new Set(nodes.filter((node) => node.type === "directory").map((node) => node.path)));
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load workspace");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    try {
+      setTree(await loadTree());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load workspace");
+    } finally {
+      setLoading(false);
+    }
   }, [enabled, loadTree]);
+
+  const editorApi = useMemo(() => ({
+    tree,
+    treeLoading: loading,
+    loadingDirs: new Set<string>(),
+    openFiles: [],
+    loadTree: async () => {
+      await reloadTree();
+    },
+    loadDirectory: async (_dirPath: string) => {},
+    openFile: (path: string) => {
+      onFileSelect?.(path);
+    },
+    searchFiles: async (query: string) => searchTree(tree, query),
+    saveEmptyFile: async (_path: string) => {},
+    deletePath: async (_path: string) => {},
+    renamePath: async (_oldPath: string, _newPath: string) => {},
+    copyPath: async (_srcPath: string, _destPath: string) => {},
+  }), [loading, onFileSelect, reloadTree, tree]);
 
   useEffect(() => {
     reloadTree();
@@ -153,19 +143,27 @@ function WorkspaceFileTreePanel({
     return () => clearInterval(timer);
   }, [reloadTree]);
 
-  const filteredTree = useMemo(() => filterTree(tree, search), [tree, search]);
-
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border/40 px-2">
         <div className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">{title}</div>
         <button
           type="button"
-          onClick={reloadTree}
-          disabled={loading}
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+          onClick={() => setSidebarTab('files')}
+          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground ${
+            sidebarTab === 'files' ? 'text-foreground' : 'text-muted-foreground'
+          }`}
         >
-          <RefreshCwIcon className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <FilesIcon className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setSidebarTab('search')}
+          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground ${
+            sidebarTab === 'search' ? 'text-foreground' : 'text-muted-foreground'
+          }`}
+        >
+          <SearchIcon className="size-3.5" />
         </button>
       </div>
 
@@ -176,22 +174,19 @@ function WorkspaceFileTreePanel({
           </div>
         ) : error ? (
           <div className="p-3 text-xs text-destructive">{error}</div>
-        ) : filteredTree.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {tree.length === 0 ? emptyWorkspaceText : noResultsText}
-          </div>
         ) : (
-          <FileTree
-            expanded={expanded}
-            onExpandedChange={setExpanded}
-            selectedPath={undefined}
-            onFileSelect={onFileSelect}
+          <CommonEditorPanel
             workspaceId={workspaceId}
+            storageKey={workspaceId}
             boundDir={boundDir}
-            className="h-full"
-          >
-            <FileTreeNodes nodes={filteredTree} />
-          </FileTree>
+            variant="project"
+            api={editorApi}
+            sidebarTab={sidebarTab}
+            onSidebarTabChange={setSidebarTab}
+            hideSidebarTabs
+            hideBottomTabs
+            showImport={false}
+          />
         )}
       </div>
     </div>

@@ -172,9 +172,25 @@ export interface EditorPanelProps {
   api?: FilePanelApi;
   showSearchPanel?: boolean;
   showImport?: boolean;
+  sidebarTab?: 'files' | 'search';
+  onSidebarTabChange?: (value: 'files' | 'search') => void;
+  hideSidebarTabs?: boolean;
+  hideBottomTabs?: boolean;
 }
 
-export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedBoundDir, variant = 'workspace', api, showSearchPanel = true, showImport = true }: EditorPanelProps) {
+export function CommonEditorPanel({
+  workspaceId,
+  storageKey,
+  boundDir: providedBoundDir,
+  variant = 'workspace',
+  api,
+  showSearchPanel = true,
+  showImport = true,
+  sidebarTab,
+  onSidebarTabChange,
+  hideSidebarTabs = false,
+  hideBottomTabs = false,
+}: EditorPanelProps) {
   const editorStore = useEditorStore();
   const workspace = useWorkspaceStore((s) => workspaceId ? s.workspaces.find((w) => w.id === workspaceId) : undefined);
   const panelKey = storageKey ?? workspaceId ?? 'default';
@@ -225,7 +241,16 @@ export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedB
   const loadTreeRef = useRef(loadTree);
   const loadDirectoryRef = useRef(loadDirectory);
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
-  const [sidebarTab, setSidebarTab] = useState('files');
+  const [internalSidebarTab, setInternalSidebarTab] = useState<'files' | 'search'>('files');
+  const activeSidebarTab = sidebarTab ?? internalSidebarTab;
+  const setActiveSidebarTab = useCallback((value: string) => {
+    const next = value === 'search' ? 'search' : 'files';
+    if (onSidebarTabChange) {
+      onSidebarTabChange(next);
+    } else {
+      setInternalSidebarTab(next);
+    }
+  }, [onSidebarTabChange]);
   const filteredTree = useMemo(() => filterTreeByName(tree, fileSearch), [tree, fileSearch]);
   const fileSizeMap = useMemo(() => buildFileSizeMap(tree), [tree]);
 
@@ -518,7 +543,7 @@ export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedB
     // Load each parent directory to ensure children are available
     (async () => {
       if (revealPath === '__search_panel__') {
-        setSidebarTab('search');
+        setActiveSidebarTab('search');
         clearRevealPath();
         return;
       }
@@ -528,19 +553,21 @@ export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedB
       setSelectedPath(revealPath);
       clearRevealPath();
     })();
-  }, [revealPath, panelKey, loadDirectory, clearRevealPath]);
+  }, [revealPath, panelKey, loadDirectory, clearRevealPath, setActiveSidebarTab]);
 
   return (
     <div className="relative flex flex-col h-full">
-      <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="flex flex-col h-full">
-        <TabsList className="w-full h-8 shrink-0 rounded-none border-b bg-transparent p-0">
-          <TabsTrigger value="files" className="flex-1 gap-1 rounded-none border border-b-2 border-transparent text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:bg-transparent data-[active]:text-foreground data-[active]:shadow-none">
-            {t('explorer')}
-          </TabsTrigger>
-          <TabsTrigger value="search" className="flex-1 gap-1 rounded-none border border-b-2 border-transparent text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:bg-transparent data-[active]:text-foreground data-[active]:shadow-none">
-            {t('search')}
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeSidebarTab} onValueChange={setActiveSidebarTab} className="flex flex-col h-full">
+        {!hideSidebarTabs ? (
+          <TabsList className="w-full h-8 shrink-0 rounded-none border-b bg-transparent p-0">
+            <TabsTrigger value="files" className="flex-1 gap-1 rounded-none border border-b-2 border-transparent text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:bg-transparent data-[active]:text-foreground data-[active]:shadow-none">
+              {t('explorer')}
+            </TabsTrigger>
+            <TabsTrigger value="search" className="flex-1 gap-1 rounded-none border border-b-2 border-transparent text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:bg-transparent data-[active]:text-foreground data-[active]:shadow-none">
+              {t('search')}
+            </TabsTrigger>
+          </TabsList>
+        ) : null}
 
         <TabsContent value="files" className="flex flex-col flex-1 min-h-0 mt-0">
           <div className="flex items-center gap-1 px-2 py-1 border-b shrink-0">
@@ -713,26 +740,28 @@ export function CommonEditorPanel({ workspaceId, storageKey, boundDir: providedB
               />
             )}
           </div>
-          <div className="shrink-0 border-t flex h-7">
-            {([['all', 'allFiles'], ['recent', 'recentlyAdded'], ['open', 'recentlyOpened']] as const).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setBottomTab(key as 'all' | 'recent' | 'open')}
-                className={`flex-1 text-[11px] border-b-2 transition-colors ${
-                  bottomTab === key
-                    ? 'border-b-primary text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t(label)}
-              </button>
-            ))}
-          </div>
+          {!hideBottomTabs ? (
+            <div className="shrink-0 border-t flex h-7">
+              {([['all', 'allFiles'], ['recent', 'recentlyAdded'], ['open', 'recentlyOpened']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setBottomTab(key as 'all' | 'recent' | 'open')}
+                  className={`flex-1 text-[11px] border-b-2 transition-colors ${
+                    bottomTab === key
+                      ? 'border-b-primary text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t(label)}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </TabsContent>
 
       </Tabs>
       {showSearchPanel && workspaceId ? (
-        <div className={cn("absolute inset-x-0 bottom-0 top-8 z-10", sidebarTab !== 'search' && "hidden")}>
+        <div className={cn("absolute inset-x-0 bottom-0 z-10", hideSidebarTabs ? "top-0" : "top-8", activeSidebarTab !== 'search' && "hidden")}>
           <SearchPanel workspaceId={workspaceId} />
         </div>
       ) : null}
