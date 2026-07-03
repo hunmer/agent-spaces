@@ -174,7 +174,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const bodyMessage = showTimelineMessages ? "" : message;
     const hasMessageBody =
       showStreamingPlaceholder || msg.role === "user" || thinking !== null || bodyMessage.trim().length > 0;
-    if (!hasMessageBody && !renderMessageExtras && !hasTimeline) return null;
+    if (!hasMessageBody && !renderMessageExtras && !showTimeline) return null;
 
     const versions = versionInfo?.(msg);
     const hasVersions = msg.role === "agent" && versions && versions.count > 1 && versions.onChange;

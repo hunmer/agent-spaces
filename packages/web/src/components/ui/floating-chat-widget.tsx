@@ -1,6 +1,8 @@
 'use client';
 
 import { ChatPanel, type ChatMessage, type ChatAgentInfo } from '@/components/ui/chat-panel';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -81,34 +83,50 @@ export function FloatingChatPanel({
   width,
   height,
 }: FloatingChatPanelProps) {
+  const isMobile = useIsMobile();
+
+  const chatPanel = (
+    <ChatPanel
+      onClose={onClose}
+      agent={agent}
+      messages={messages}
+      sending={sending}
+      input={input}
+      onInputChange={onInputChange}
+      onSend={onSend}
+      onStop={onStop}
+      inputPlaceholder={inputPlaceholder}
+      inputContext={inputContext}
+      markdown={markdown}
+      workspaceId={workspaceId}
+      headerActions={headerActions}
+      renderMessageContent={renderMessageContent}
+      renderMessageExtras={renderMessageExtras}
+      onDeleteMessage={onDeleteMessage}
+      serializeForCopy={serializeForCopy}
+      onRerunTool={onRerunTool}
+      width={width}
+      height={height}
+    />
+  );
+
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
-      <AnimatePresence>
-        {isOpen && (
-          <ChatPanel
-            onClose={onClose}
-            agent={agent}
-            messages={messages}
-            sending={sending}
-            input={input}
-            onInputChange={onInputChange}
-            onSend={onSend}
-            onStop={onStop}
-            inputPlaceholder={inputPlaceholder}
-            inputContext={inputContext}
-            markdown={markdown}
-            workspaceId={workspaceId}
-            headerActions={headerActions}
-            renderMessageContent={renderMessageContent}
-            renderMessageExtras={renderMessageExtras}
-            onDeleteMessage={onDeleteMessage}
-            serializeForCopy={serializeForCopy}
-            onRerunTool={onRerunTool}
-            width={width}
-            height={height}
-          />
-        )}
-      </AnimatePresence>
+      {/* 小屏：Dialog 全屏展示 */}
+      {isMobile ? (
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+          <DialogContent
+            showCloseButton={false}
+            className="flex h-[100dvh] w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-[100dvh] sm:max-w-full"
+          >
+            {chatPanel}
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <AnimatePresence>
+          {isOpen && chatPanel}
+        </AnimatePresence>
+      )}
 
       {/* Floating toggle button */}
       {onToggle && (

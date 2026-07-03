@@ -115,7 +115,7 @@ export function ChatInputInfoBar({
           }
         >
           <IconCode className="size-3" />
-          <span>{tc("shell.recentCode")}{history.length ? ` ${history.length}` : ""}</span>
+          <span className="hidden md:inline">{tc("shell.recentCode")}{history.length ? ` ${history.length}` : ""}</span>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={6} className="w-80 p-1.5 gap-0">
           <div className="flex items-center justify-between gap-2 px-2 py-1.5">
@@ -169,7 +169,7 @@ export function ChatInputInfoBar({
             }
           >
             <IconHistory className="size-3" />
-            <span>{contextLength === 0 ? tc("shell.newAgent") : tc("shell.contextN", { count: contextLength })}</span>
+            <span className="hidden md:inline">{contextLength === 0 ? tc("shell.newAgent") : tc("shell.contextN", { count: contextLength })}</span>
           </PopoverTrigger>
           <PopoverContent align="start" sideOffset={6} className="w-64 p-3">
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -206,7 +206,7 @@ export function ChatInputInfoBar({
           }
         >
           <IconPlug className="size-3" />
-          <span>{t("input.mcp")}{mcps.length ? ` ${mcps.length}` : ""}</span>
+          <span className="hidden md:inline">{t("input.mcp")}{mcps.length ? ` ${mcps.length}` : ""}</span>
           <IconChevronDown className="size-3" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
@@ -246,7 +246,7 @@ export function ChatInputInfoBar({
           }
         >
           <IconPuzzle className="size-3" />
-          <span>{t("input.skill")}{skills.length ? ` ${skills.length}` : ""}</span>
+          <span className="hidden md:inline">{t("input.skill")}{skills.length ? ` ${skills.length}` : ""}</span>
           <IconChevronDown className="size-3" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
@@ -286,7 +286,7 @@ export function ChatInputInfoBar({
           }
         >
           <IconTools className="size-3" />
-          <span>{t("input.tools")}{tools.length ? ` ${tools.length}` : ""}</span>
+          <span className="hidden md:inline">{t("input.tools")}{tools.length ? ` ${tools.length}` : ""}</span>
           <IconChevronDown className="size-3" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
@@ -327,7 +327,7 @@ export function ChatInputInfoBar({
             }
           >
             <IconCircleCheck className="size-3" />
-            <span>{t("input.todos")} {todos.length}</span>
+            <span className="hidden md:inline">{t("input.todos")} {todos.length}</span>
             <IconChevronDown className="size-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-80 rounded-2xl p-1.5 bg-popover border-border">
