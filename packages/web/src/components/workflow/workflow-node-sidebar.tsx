@@ -57,10 +57,12 @@ export function WorkflowNodeSidebar({
   workflow,
   onWorkflowChange,
   onOpenPluginPicker,
+  onNodeAdd,
 }: {
   workflow?: Workflow | null;
   onWorkflowChange?: (workflow: Workflow) => void;
   onOpenPluginPicker?: () => void;
+  onNodeAdd?: (nodeType: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
@@ -172,6 +174,10 @@ export function WorkflowNodeSidebar({
     event.dataTransfer.setData(WORKFLOW_NODE_DRAG_MIME, nodeType);
     event.dataTransfer.effectAllowed = 'move';
   }, []);
+
+  const handleNodeClick = useCallback((nodeType: string) => {
+    onNodeAdd?.(nodeType);
+  }, [onNodeAdd]);
 
   const selectedScheme = useCallback((pluginId: string) => {
     return workflow?.pluginConfigSchemes?.[pluginId] || '';
@@ -324,6 +330,7 @@ export function WorkflowNodeSidebar({
                             className={viewMode === 'grid'
                               ? 'flex flex-col items-center gap-1 px-2 py-2 text-xs rounded cursor-grab hover:bg-muted/50 active:cursor-grabbing text-center'
                               : 'flex items-center gap-2 px-2 py-1.5 text-xs rounded cursor-grab hover:bg-muted/50 active:cursor-grabbing'}
+                            onClick={() => handleNodeClick(node.type)}
                             onDragStart={(e) => onDragStart(e, node.type)}
                           >
                             <WorkflowNodeDefinitionIcon definition={node} className={viewMode === 'grid' ? 'h-5 w-5 shrink-0 text-muted-foreground' : 'h-3.5 w-3.5 shrink-0 text-muted-foreground'} />

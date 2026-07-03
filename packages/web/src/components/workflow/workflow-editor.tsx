@@ -988,6 +988,11 @@ function WorkflowEditorInner({
     }, 0);
   }, [canRunWorkflowTest, model]);
 
+  const handleAddNodeFromSidebar = useCallback((type: string) => {
+    if (isWorkflowReadOnly) return;
+    canvas.handleNodeAdd(type, getViewportCenter());
+  }, [canvas, getViewportCenter, isWorkflowReadOnly]);
+
   const onModelChange = useCallback((_model: Model, action: Action) => {
     try {
       localStorage.setItem(WORKFLOW_LAYOUT_KEY, JSON.stringify(_model.toJson()));
@@ -1026,6 +1031,7 @@ function WorkflowEditorInner({
               markEditorDirty();
             }}
             onOpenPluginPicker={() => state.setPluginPickerDialogOpen(true)}
+            onNodeAdd={handleAddNodeFromSidebar}
           />
         );
       case 'canvas':

@@ -183,19 +183,19 @@ export function WorkflowNodeSelectDialog({
           <div className="min-w-0 flex-1">
             <ScrollArea className="h-full">
               {filteredNodes.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2 p-3">
+                <div className="grid grid-cols-1 gap-2 p-3 md:grid-cols-3">
                   {filteredNodes.map(node => (
                     <Button
                       key={node.type}
                       type="button"
                       variant="outline"
-                      className="group h-auto min-h-24 flex-col gap-1.5 p-3 text-center hover:border-primary/50 hover:bg-primary/5"
+                      className="group h-auto min-h-0 flex-row justify-start gap-2.5 p-2.5 text-left hover:border-primary/50 hover:bg-primary/5 md:min-h-24 md:flex-col md:gap-1.5 md:p-3 md:text-center"
                       onClick={() => handleSelect(node.type)}
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-                        <WorkflowNodeDefinitionIcon definition={node} className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary" />
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary md:h-9 md:w-9">
+                        <WorkflowNodeDefinitionIcon definition={node} className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary md:h-5 md:w-5" />
                       </span>
-                      <span className="line-clamp-2 w-full text-[11px] leading-tight">{node.label}</span>
+                      <span className="truncate text-xs leading-tight md:line-clamp-2 md:w-full md:text-[11px]">{node.label}</span>
                     </Button>
                   ))}
                 </div>
