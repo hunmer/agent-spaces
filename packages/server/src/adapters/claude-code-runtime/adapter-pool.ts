@@ -17,6 +17,7 @@ export async function startClaudeAdapterIfNeeded(config: AgentRuntimeConfig): Pr
     baseUrl: adapterBaseURL,
     apiKey: config.apiKey,
     model: config.model,
+    maxTokens: config.maxTokens,
     thinkingEnabled: config.thinkingEnabled,
     thinkingEffort: config.thinkingEffort,
   };

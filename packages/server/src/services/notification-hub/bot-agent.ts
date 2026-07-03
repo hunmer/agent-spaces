@@ -26,6 +26,7 @@ export async function runBotAgent(workspaceId: string, preset: AgentConfig, mess
     model: preset.modelId,
     apiKey: preset.apiKey,
     baseURL: preset.apiBase,
+    maxTokens: preset.maxTokens,
     ...getThinkingRuntimeConfig(preset),
   });
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);

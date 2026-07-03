@@ -26,6 +26,7 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
     model: commitAgent.modelId,
     apiKey: commitAgent.apiKey,
     baseURL: commitAgent.apiBase,
+    maxTokens: commitAgent.maxTokens,
     ...getThinkingRuntimeConfig(commitAgent),
   });
 

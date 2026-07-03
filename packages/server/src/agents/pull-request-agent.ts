@@ -39,6 +39,7 @@ export async function runPullRequestAgent(
     model: agent.modelId,
     apiKey: agent.apiKey,
     baseURL: agent.apiBase,
+    maxTokens: agent.maxTokens,
     ...getThinkingRuntimeConfig(agent),
   });
 

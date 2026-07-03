@@ -325,6 +325,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     ...(creds.modelId ? { model: creds.modelId } : {}),
     ...(creds.apiKey ? { apiKey: creds.apiKey } : {}),
     ...(creds.apiBase ? { baseURL: creds.apiBase } : {}),
+    ...(typeof creds.maxTokens === 'number' ? { maxTokens: creds.maxTokens } : {}),
   };
   const runtime = createAgentRuntime(runtimeConfig);
   const onAbort = () => runtime.stop();

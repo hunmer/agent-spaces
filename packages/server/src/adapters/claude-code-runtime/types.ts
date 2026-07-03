@@ -22,6 +22,7 @@ export type AnthropicBridgeConfig = {
   baseUrl: string;
   apiKey: string;
   model: string;
+  maxTokens?: number;
   thinkingEnabled?: boolean;
   thinkingEffort?: 'low' | 'medium' | 'high';
 };

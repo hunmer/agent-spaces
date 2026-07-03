@@ -341,6 +341,7 @@ export async function runMentionedAgent(
       apiKey: runtimeApiKey,
       baseURL: getRuntimeBaseURL(runtimeModelProvider, runtimeApiBase),
       adapterBaseURL: runtimeApiBase,
+      maxTokens: preset.maxTokens,
       ...getThinkingRuntimeConfig(preset),
     });
     activeRun = {

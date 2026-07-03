@@ -64,6 +64,7 @@ export interface AgentRuntimeConfig {
   apiKey?: string;
   baseURL?: string;
   adapterBaseURL?: string;
+  maxTokens?: number;
   thinkingEnabled?: boolean;
   thinkingEffort?: 'low' | 'medium' | 'high';
   permissionMode?: AgentOptions['permissionMode'];

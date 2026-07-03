@@ -567,6 +567,7 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
         apiKey: preset.apiKey,
         baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
         adapterBaseURL: preset.apiBase,
+        maxTokens: preset.maxTokens,
         permissionMode,
         ...getThinkingRuntimeConfig(preset),
       };

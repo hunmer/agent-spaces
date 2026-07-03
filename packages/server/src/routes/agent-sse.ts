@@ -110,6 +110,7 @@ router.post('/run', async (req: Request, res: Response) => {
     apiKey: preset.apiKey,
     baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
     adapterBaseURL: preset.apiBase,
+    maxTokens: preset.maxTokens,
     ...getThinkingRuntimeConfig(preset),
   });
   let currentRuntime: ReturnType<typeof createAgentRuntime> | null = null;

@@ -9,7 +9,7 @@ import type {
 export function convertAnthropicToOpenAI(
   request: AnthropicRequest,
   model: string,
-  options: { thinkingEnabled?: boolean; thinkingEffort?: 'low' | 'medium' | 'high' } = {},
+  options: { maxTokens?: number; thinkingEnabled?: boolean; thinkingEffort?: 'low' | 'medium' | 'high' } = {},
 ): OpenAIChatRequest {
   const messages: Array<Record<string, unknown>> = [];
   const system = normalizeSystemPrompt(request.system);
@@ -22,7 +22,7 @@ export function convertAnthropicToOpenAI(
   return compactObject({
     model,
     messages,
-    max_tokens: request.max_tokens === 1 ? 32 : request.max_tokens,
+    max_tokens: normalizeMaxTokens(request.max_tokens, options.maxTokens),
     temperature: request.temperature,
     top_p: request.top_p,
     stop: request.stop_sequences,
@@ -39,6 +39,17 @@ export function convertAnthropicToOpenAI(
     })),
     tool_choice: convertOpenAIToolChoice(request.tool_choice),
   });
+}
+
+const OPENAI_COMPAT_MAX_TOKENS = 16_384;
+
+function normalizeMaxTokens(maxTokens: number | undefined, configuredMaxTokens: number | undefined): number | undefined {
+  if (maxTokens === undefined) return undefined;
+  const normalized = maxTokens === 1 ? 32 : maxTokens;
+  const configuredLimit = typeof configuredMaxTokens === 'number' && configuredMaxTokens > 0
+    ? configuredMaxTokens
+    : OPENAI_COMPAT_MAX_TOKENS;
+  return Math.min(normalized, configuredLimit, OPENAI_COMPAT_MAX_TOKENS);
 }
 
 export function convertAnthropicMessage(message: AnthropicRequest['messages'][number]): Array<Record<string, unknown>> {

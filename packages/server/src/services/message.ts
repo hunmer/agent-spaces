@@ -12,6 +12,39 @@ function messageFilePath(workspaceId: string, channelId: string): string {
   return join(getDataDir(), 'workspaces', workspaceId, 'channels', channelId, 'messages.json');
 }
 
+function stripOutputItemsFromMessage(message: Message): Message {
+  return {
+    ...message,
+    parts: message.parts?.map((part) => {
+      if (part.type !== 'context' || !part.agentContext) return part;
+      return {
+        ...part,
+        agentContext: {
+          ...part.agentContext,
+          outputItems: undefined,
+        },
+      };
+    }),
+    replies: message.replies?.map((reply) => ({
+      ...reply,
+      parts: reply.parts?.map((part) => {
+        if (part.type !== 'context' || !part.agentContext) return part;
+        return {
+          ...part,
+          agentContext: {
+            ...part.agentContext,
+            outputItems: undefined,
+          },
+        };
+      }),
+    })),
+  };
+}
+
+function writeMessages(path: string, messages: Message[]): void {
+  writeJsonFile(path, messages.map(stripOutputItemsFromMessage));
+}
+
 export function listMessages(workspaceId: string, channelId: string, opts: MessageListOptions = {}): Message[] {
   const all = readJsonFile<Message[]>(messageFilePath(workspaceId, channelId)) || [];
   const limit = opts.limit || 50;
@@ -55,7 +88,7 @@ export function createMessage(
     createdAt: new Date().toISOString(),
   };
   messages.push(message);
-  writeJsonFile(path, messages);
+  writeMessages(path, messages);
   return message;
 }
 
@@ -75,7 +108,7 @@ export function updateMessage(
     ...data,
   };
   messages[index] = updated;
-  writeJsonFile(path, messages);
+  writeMessages(path, messages);
   return updated;
 }
 
@@ -114,7 +147,7 @@ export function appendMessageReply(
     replies: [...(messages[index].replies ?? []), reply],
   };
   messages[index] = updated;
-  writeJsonFile(path, messages);
+  writeMessages(path, messages);
   return updated;
 }
 
@@ -128,7 +161,7 @@ export function deleteMessage(
   const index = messages.findIndex((message) => message.id === messageId);
   if (index === -1) return false;
   messages.splice(index, 1);
-  writeJsonFile(path, messages);
+  writeMessages(path, messages);
   return true;
 }
 
@@ -136,6 +169,6 @@ export function clearMessages(workspaceId: string, channelId: string): boolean {
   const path = messageFilePath(workspaceId, channelId);
   const messages = readJsonFile<Message[]>(path) || [];
   if (messages.length === 0) return false;
-  writeJsonFile(path, []);
+  writeMessages(path, []);
   return true;
 }
