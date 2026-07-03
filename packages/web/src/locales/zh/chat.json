@@ -251,6 +251,8 @@
     "workspaces": "Chat 工作区",
     "newWorkspace": "新建工作区",
     "newChat": "新对话",
+    "clearAllMessages": "清空所有消息",
+    "deleteWorkspace": "删除工作区",
     "noSessions": "暂无对话",
     "noSessionsDesc": "点击上方按钮开始新对话",
     "manageAgents": "管理 Agents",

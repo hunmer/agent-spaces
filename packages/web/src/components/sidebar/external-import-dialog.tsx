@@ -45,7 +45,12 @@ export function ExternalImportDialog({
   agents = [],
   onImported,
 }: ExternalImportDialogProps) {
-  const enabledKinds = useMemo<ExternalImportKind[]>(() => kinds.length ? kinds : ['skills'], [kinds]);
+  const enabledKindsKey = (kinds.length ? kinds : ['skills']).join('\0');
+  const enabledKinds = useMemo<ExternalImportKind[]>(
+    () => enabledKindsKey.split('\0') as ExternalImportKind[],
+    [enabledKindsKey],
+  );
+  const firstAgentId = agents[0]?.id || '';
   const [activeKind, setActiveKind] = useState<ExternalImportKind>(defaultKind || enabledKinds[0]);
   const [items, setItems] = useState<ExternalImportSource[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -57,27 +62,28 @@ export function ExternalImportDialog({
   const [error, setError] = useState('');
   const [resultText, setResultText] = useState('');
 
-  const scan = useCallback(async () => {
+  const scan = useCallback(async (selectionKind: ExternalImportKind) => {
     setLoading(true);
     setError('');
     try {
       const data = await sdk.externalImport.scan(enabledKinds);
       setItems(data);
-      setSelectedIds(new Set(data.filter((item) => item.kind === activeKind).map((item) => item.id)));
+      setSelectedIds(new Set(data.filter((item) => item.kind === selectionKind).map((item) => item.id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : '扫描失败');
     } finally {
       setLoading(false);
     }
-  }, [activeKind, enabledKinds]);
+  }, [enabledKinds]);
 
   useEffect(() => {
     if (!open) return;
-    setActiveKind(defaultKind || enabledKinds[0]);
-    setAgentId(targetAgentId || agents[0]?.id || '');
+    const nextKind = defaultKind || enabledKinds[0];
+    setActiveKind(nextKind);
+    setAgentId(targetAgentId || firstAgentId);
     setResultText('');
-    void scan();
-  }, [open, defaultKind, enabledKinds, targetAgentId, agents, scan]);
+    void scan(nextKind);
+  }, [open, defaultKind, enabledKinds, targetAgentId, firstAgentId, scan]);
 
   const visibleItems = items.filter((item) => {
     if (item.kind !== activeKind) return false;
@@ -133,7 +139,7 @@ export function ExternalImportDialog({
       const failed = results.length - ok;
       setResultText(failed ? `已导入 ${ok} 个，失败 ${failed} 个` : `已导入 ${ok} 个`);
       onImported?.();
-      await scan();
+      await scan(activeKind);
     } catch (err) {
       setError(err instanceof Error ? err.message : '导入失败');
     } finally {
@@ -143,7 +149,7 @@ export function ExternalImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[78vh] flex flex-col p-0 gap-0">
+      <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-5 py-4 border-b">
           <DialogTitle>从外部导入</DialogTitle>
           <DialogDescription>扫描用户目录中的 Codex、Claude、Gemini 配置并导入到当前环境。</DialogDescription>
@@ -170,7 +176,7 @@ export function ExternalImportDialog({
               软链
             </label>
           </RadioGroup>
-          <Button variant="outline" size="sm" onClick={scan} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => scan(activeKind)} disabled={loading}>
             <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
           </Button>
         </div>

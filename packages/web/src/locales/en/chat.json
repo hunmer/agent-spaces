@@ -251,6 +251,8 @@
     "workspaces": "Chat Workspaces",
     "newWorkspace": "New Workspace",
     "newChat": "New Chat",
+    "clearAllMessages": "Clear All Messages",
+    "deleteWorkspace": "Delete Workspace",
     "noSessions": "No sessions yet",
     "noSessionsDesc": "Click the button above to start a new chat",
     "manageAgents": "Manage Agents",

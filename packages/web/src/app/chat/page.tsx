@@ -64,6 +64,7 @@ function ChatPageInner() {
     updateAgent,
     createWorkspace,
     updateWorkspace,
+    deleteWorkspace,
     selectWorkspace,
     createSession,
     deleteSession,
@@ -74,6 +75,7 @@ function ChatPageInner() {
     regenerateSessionMessage,
     stopSession,
     clearSessionMessages,
+    clearAllSessionMessages,
     openFileTabs,
     activeFileTabPath,
     openChatFile,
@@ -343,6 +345,8 @@ function ChatPageInner() {
           onDeleteSession={deleteSession}
           onArchiveSession={archiveSession}
           onUnarchiveSession={unarchiveSession}
+          onClearAllMessages={clearAllSessionMessages}
+          onDeleteWorkspace={() => activeWorkspaceId && deleteWorkspace(activeWorkspaceId)}
           className="h-full rounded-xl border border-border/40 bg-background shadow-sm"
         />
       </ResizablePanel>

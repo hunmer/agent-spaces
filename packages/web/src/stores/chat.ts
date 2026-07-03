@@ -80,6 +80,7 @@ interface ChatStore {
   regenerateSessionMessage: (messageId: string) => void;
   stopSession: () => void;
   clearSessionMessages: () => void;
+  clearAllSessionMessages: () => Promise<void>;
 
   // File tabs
   openFileTabs: ChatFileTab[];
@@ -348,6 +349,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((s) => ({
       messages: { ...s.messages, [sessionId]: [] },
     }));
+  },
+
+  clearAllSessionMessages: async () => {
+    const { activeWorkspaceId: wsId, sessions } = get();
+    if (!wsId) return;
+    await Promise.all(
+      sessions.map((s) => sdk.chat.clearSessionMessages(wsId, s.id).catch(() => {}))
+    );
+    const cleared: Record<string, never[]> = {};
+    sessions.forEach((s) => { cleared[s.id] = []; });
+    set((s) => ({ messages: { ...s.messages, ...cleared } }));
   },
 
   onMessageSaved: (msg) => {

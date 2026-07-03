@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AgentIcon } from "@/components/common/agent-icon";
 import {
-  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore,
+  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore, Eraser, FolderX,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback } from "react";
@@ -33,6 +33,8 @@ interface ChatSessionListProps {
   onDeleteSession: (sessionId: string) => void;
   onArchiveSession: (sessionId: string) => void;
   onUnarchiveSession: (sessionId: string) => void;
+  onClearAllMessages: () => void;
+  onDeleteWorkspace: () => void;
   className?: string;
 }
 
@@ -112,6 +114,8 @@ export function ChatAgentList({
   onDeleteSession,
   onArchiveSession,
   onUnarchiveSession,
+  onClearAllMessages,
+  onDeleteWorkspace,
   className,
 }: ChatSessionListProps) {
   const [search, setSearch] = useState("");
@@ -187,14 +191,34 @@ export function ChatAgentList({
 
       {/* New Session + Search */}
       <div className="flex flex-col gap-2 px-3">
-        <Button
-          size="sm"
-          className="w-full justify-start gap-2"
-          onClick={onNewSession}
-        >
-          <MessageSquarePlus className="size-4" />
-          {t("newChat")}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            className="flex-1 justify-start gap-2"
+            onClick={onNewSession}
+          >
+            <MessageSquarePlus className="size-4" />
+            {t("newChat")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2"
+            title={t("clearAllMessages")}
+            onClick={onClearAllMessages}
+          >
+            <Eraser className="size-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2 text-destructive hover:text-destructive"
+            title={t("deleteWorkspace")}
+            onClick={onDeleteWorkspace}
+          >
+            <FolderX className="size-4" />
+          </Button>
+        </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
           <Input

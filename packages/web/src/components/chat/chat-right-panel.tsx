@@ -36,6 +36,7 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
   const [search, setSearch] = useState("");
   const agent = useChatStore((s) => s.agents.find((item) => item.id === agentId));
   const activeWorkspaceId = useChatStore((s) => s.activeWorkspaceId);
+  const activeSessionId = useChatStore((s) => s.activeSessionId);
   const boundDir = agent?.workingDir ?? "";
 
   const loadAgentTree = useCallback(() => {
@@ -44,9 +45,9 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
   }, [agentId]);
 
   const loadCurrentWorkspaceTree = useCallback(() => {
-    if (!activeWorkspaceId) return Promise.resolve([]);
-    return sdk.chat.chatWorkspaceTree(activeWorkspaceId);
-  }, [activeWorkspaceId]);
+    if (!activeWorkspaceId || !activeSessionId) return Promise.resolve([]);
+    return sdk.chat.chatWorkspaceTree(activeWorkspaceId, { path: `sessions/${activeSessionId}` });
+  }, [activeWorkspaceId, activeSessionId]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm">

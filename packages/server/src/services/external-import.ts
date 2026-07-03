@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -118,7 +119,7 @@ function scanSkillsRoot(root: { provider: ExternalImportSource['provider']; path
   return readdirSync(root.path, { withFileTypes: true }).flatMap((entry) => {
     if (entry.name.startsWith('.')) return [];
     const full = join(root.path, entry.name);
-    if (entry.isDirectory()) {
+    if (isDirectoryLike(full)) {
       const skillFile = join(full, SKILL_FILE);
       if (!existsSync(skillFile)) return [];
       const content = readTextPreview(skillFile);
@@ -128,6 +129,14 @@ function scanSkillsRoot(root: { provider: ExternalImportSource['provider']; path
     const content = readTextPreview(full);
     return [makeSource('skills', root, full, basename(entry.name, extname(entry.name)), false, content)];
   });
+}
+
+function isDirectoryLike(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 function scanMarkdownRoot(
