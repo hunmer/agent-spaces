@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AgentIcon } from "@/components/common/agent-icon";
+import { FeatureCard, type FeatureCardColor } from "@/components/ui/feature-card";
 import { cn } from "@/lib/utils";
 
 export interface AgentCardProps {
@@ -12,15 +13,17 @@ export interface AgentCardProps {
   icon?: string;
   apiBase?: string;
   className?: string;
+  /** 卡片渐变色 */
+  color?: FeatureCardColor;
   /** 名称旁的额外内容（如角色徽章、模型标识） */
   meta?: ReactNode;
-  /** 右侧操作区 */
+  /** 卡片底部操作区 */
   actions?: ReactNode;
-  /** 整行点击 */
+  /** 整卡点击 */
   onClick?: () => void;
-  /** 中间内容区点击（与 onClick 独立，用于编辑等场景） */
+  /** 名称/描述区点击（与 onClick 独立，用于编辑等场景） */
   onContentClick?: () => void;
-  /** 整行置灰（如禁用状态） */
+  /** 整卡置灰（如禁用状态） */
   muted?: boolean;
 }
 
@@ -32,6 +35,7 @@ export function AgentCard({
   icon,
   apiBase,
   className,
+  color = "default",
   meta,
   actions,
   onClick,
@@ -39,39 +43,47 @@ export function AgentCard({
   muted,
 }: AgentCardProps) {
   return (
-    <div
-      className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors",
-        onClick && "cursor-pointer",
-        muted && "opacity-50",
-        className,
-      )}
+    <FeatureCard
+      color={color}
       onClick={onClick}
+      className={cn("min-h-[176px] p-3", muted && "opacity-50", className)}
+      centerIcon={
+        <AgentIcon
+          agentId={agentId}
+          name={name}
+          avatarUrl={avatarUrl}
+          icon={icon}
+          apiBase={apiBase}
+          className="size-16"
+        />
+      }
     >
-      <AgentIcon
-        agentId={agentId}
-        name={name}
-        avatarUrl={avatarUrl}
-        icon={icon}
-        apiBase={apiBase}
-        className="size-8"
-      />
       <div
-        className={cn(
-          "flex-1 min-w-0",
-          onContentClick && "cursor-pointer",
-        )}
-        onClick={onContentClick ? (e) => { e.stopPropagation(); onContentClick(); } : undefined}
+        className={cn("mt-auto text-center", onContentClick && "cursor-pointer")}
+        onClick={
+          onContentClick
+            ? (e) => {
+                e.stopPropagation();
+                onContentClick();
+              }
+            : undefined
+        }
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2 flex-wrap">
           <span className="text-sm font-medium">{name}</span>
           {meta}
         </div>
-        <p className="text-xs text-muted-foreground truncate">
-          {description}
-        </p>
+        {description && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-1 min-h-[2rem]">
+            {description}
+          </p>
+        )}
       </div>
-      {actions && <div className="flex items-center gap-1.5">{actions}</div>}
-    </div>
+      {actions && (
+        <div className="mt-2 flex items-center justify-center gap-1.5">
+          {actions}
+        </div>
+      )}
+    </FeatureCard>
   );
 }

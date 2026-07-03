@@ -11,7 +11,10 @@ import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { AddMemberDialog } from "@/components/chat/add-member-dialog";
 import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { MessageSquare } from "lucide-react";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, PanelLeft, PanelRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 
@@ -90,6 +93,9 @@ function ChatPageInner() {
   const [createAgentPreset, setCreateAgentPreset] = useState<AgentPreset | undefined>(undefined);
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const isMobile = useIsMobile();
+  const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -284,90 +290,8 @@ function ChatPageInner() {
     description: a.description,
   }));
 
-  return (
-    <ResizablePanelGroup
-      orientation="horizontal"
-      defaultLayout={defaultLayout}
-      onLayoutChange={onLayoutChange}
-      className="h-full bg-muted/30 gap-3 p-2"
-    >
-      <ResizablePanel id={PANEL_ID_AGENT_LIST} defaultSize="22%" minSize="15%" maxSize="35%">
-        <ChatAgentList
-          workspaces={workspaces}
-          activeWorkspaceId={activeWorkspaceId}
-          agents={agents}
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          sending={sending}
-          onWorkspaceChange={selectWorkspace}
-          onCreateWorkspace={() => setNewWorkspaceOpen(true)}
-          onManageAgents={handleManageAgents}
-          onNewSession={() => setAgentPickerOpen(true)}
-          onSelectSession={handleSelectSession}
-          onDeleteSession={deleteSession}
-          onArchiveSession={archiveSession}
-          onUnarchiveSession={unarchiveSession}
-          onClearAllMessages={clearAllSessionMessages}
-          onDeleteWorkspace={() => activeWorkspaceId && deleteWorkspace(activeWorkspaceId)}
-          fileTabs={activeFileTabs}
-          activeFileTabPath={activeFileTabPath}
-          onSelectFileTab={handleSelectFileTab}
-          onCloseFileTab={handleCloseFileTab}
-          className="h-full rounded-xl border border-border/40 bg-background shadow-sm"
-        />
-      </ResizablePanel>
-
-      <ResizableHandle withHandle />
-
-      <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%">
-        <div className="flex h-full w-full flex-col rounded-xl border border-border/40 bg-background shadow-sm">
-          {/* Tab content */}
-          <div className="min-h-0 flex-1">
-            {showFileViewer && activeFile ? (
-              <ChatFileViewer path={activeFile.path} content={activeFile.content} />
-            ) : activeSession && activeAgent ? (
-              <InlineChatPanel
-                agentId={activeAgent.id}
-                agentName={activeAgent.name}
-                agentAvatar={activeAgent.avatar}
-                agentIcon={activeAgent.icon}
-                agentDescription={activeAgent.description}
-                agentMcps={activeAgent.mcps}
-                agentSkills={activeAgentSkills}
-                agentTools={activeAgent.tools}
-                messages={activeMessages}
-                sending={isSending}
-                error={activeError}
-                streamingContent={activeStreamingContent}
-                streamingThinking={activeStreamingThinking}
-                streamingTimeline={activeStreamingTimeline}
-                archived={!!activeSession.archived}
-                onSend={handleSend}
-                onStop={stopSession}
-                onClearMessages={clearSessionMessages}
-                onRegenerate={handleRegenerate}
-                onEditAgent={(id) => {
-                  const agent = agents.find((a) => a.id === id);
-                  if (agent) setEditAgent(agent);
-                }}
-              />
-            ) : activeFile ? (
-              <ChatFileViewer path={activeFile.path} content={activeFile.content} />
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
-                <MessageSquare className="size-12" />
-                <p className="text-sm">Select a session or start a new chat</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </ResizablePanel>
-
-      <ResizableHandle withHandle />
-      <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
-        <ChatRightPanel agentId={activeAgent?.id} onFileSelect={handleFileSelect} />
-      </ResizablePanel>
-
+  const dialogs = (
+    <>
       {/* Agent picker for new session */}
       <AddMemberDialog
         open={agentPickerOpen}
@@ -460,6 +384,160 @@ function ChatPageInner() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  const agentListPanel = (
+    <ChatAgentList
+      workspaces={workspaces}
+      activeWorkspaceId={activeWorkspaceId}
+      agents={agents}
+      sessions={sessions}
+      activeSessionId={activeSessionId}
+      sending={sending}
+      onWorkspaceChange={selectWorkspace}
+      onCreateWorkspace={() => setNewWorkspaceOpen(true)}
+      onManageAgents={handleManageAgents}
+      onNewSession={() => setAgentPickerOpen(true)}
+      onSelectSession={(id) => {
+        handleSelectSession(id);
+        setLeftDrawerOpen(false);
+      }}
+      onDeleteSession={deleteSession}
+      onArchiveSession={archiveSession}
+      onUnarchiveSession={unarchiveSession}
+      onClearAllMessages={clearAllSessionMessages}
+      onDeleteWorkspace={() => activeWorkspaceId && deleteWorkspace(activeWorkspaceId)}
+      fileTabs={activeFileTabs}
+      activeFileTabPath={activeFileTabPath}
+      onSelectFileTab={(path) => {
+        handleSelectFileTab(path);
+        setLeftDrawerOpen(false);
+      }}
+      onCloseFileTab={handleCloseFileTab}
+      className="h-full rounded-xl border border-border/40 bg-background shadow-sm"
+    />
+  );
+
+  const chatMainPanel = (
+    <div className="flex h-full w-full flex-col rounded-xl border border-border/40 bg-background shadow-sm">
+      {/* Tab content */}
+      <div className="min-h-0 flex-1">
+        {showFileViewer && activeFile ? (
+          <ChatFileViewer path={activeFile.path} content={activeFile.content} />
+        ) : activeSession && activeAgent ? (
+          <InlineChatPanel
+            agentId={activeAgent.id}
+            agentName={activeAgent.name}
+            agentAvatar={activeAgent.avatar}
+            agentIcon={activeAgent.icon}
+            agentDescription={activeAgent.description}
+            agentMcps={activeAgent.mcps}
+            agentSkills={activeAgentSkills}
+            agentTools={activeAgent.tools}
+            messages={activeMessages}
+            sending={isSending}
+            error={activeError}
+            streamingContent={activeStreamingContent}
+            streamingThinking={activeStreamingThinking}
+            streamingTimeline={activeStreamingTimeline}
+            archived={!!activeSession.archived}
+            onSend={handleSend}
+            onStop={stopSession}
+            onClearMessages={clearSessionMessages}
+            onRegenerate={handleRegenerate}
+            onEditAgent={(id) => {
+              const agent = agents.find((a) => a.id === id);
+              if (agent) setEditAgent(agent);
+            }}
+          />
+        ) : activeFile ? (
+          <ChatFileViewer path={activeFile.path} content={activeFile.content} />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
+            <MessageSquare className="size-12" />
+            <p className="text-sm">Select a session or start a new chat</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const rightPanel = (
+    <ChatRightPanel agentId={activeAgent?.id} onFileSelect={(path) => {
+      handleFileSelect(path);
+      setRightDrawerOpen(false);
+    }} />
+  );
+
+  if (isMobile) {
+    return (
+      <div className="relative h-full bg-muted/30 p-2">
+        {/* 边缘切换按钮：左/右，始终可见 */}
+        <Button
+          aria-label="Toggle left panel"
+          className="absolute top-1/2 left-0 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+          onClick={() => setLeftDrawerOpen(true)}
+          size="icon"
+          variant="ghost"
+          type="button"
+        >
+          <PanelLeft className="size-4" />
+        </Button>
+        <Button
+          aria-label="Toggle right panel"
+          className="absolute top-1/2 right-0 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+          onClick={() => setRightDrawerOpen(true)}
+          size="icon"
+          variant="ghost"
+          type="button"
+        >
+          <PanelRight className="size-4" />
+        </Button>
+        {chatMainPanel}
+
+        {/* 左 Drawer */}
+        <Drawer open={leftDrawerOpen} onOpenChange={setLeftDrawerOpen} direction="left">
+          <DrawerContent className="h-full w-4/5 max-w-sm p-2">
+            {agentListPanel}
+          </DrawerContent>
+        </Drawer>
+
+        {/* 右 Drawer */}
+        <Drawer open={rightDrawerOpen} onOpenChange={setRightDrawerOpen} direction="right">
+          <DrawerContent className="h-full w-4/5 max-w-sm p-2">
+            {rightPanel}
+          </DrawerContent>
+        </Drawer>
+
+        {dialogs}
+      </div>
+    );
+  }
+
+  return (
+    <ResizablePanelGroup
+      orientation="horizontal"
+      defaultLayout={defaultLayout}
+      onLayoutChange={onLayoutChange}
+      className="h-full bg-muted/30 gap-3 p-2"
+    >
+      <ResizablePanel id={PANEL_ID_AGENT_LIST} defaultSize="22%" minSize="15%" maxSize="35%">
+        {agentListPanel}
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
+
+      <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%">
+        {chatMainPanel}
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
+      <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
+        {rightPanel}
+      </ResizablePanel>
+
+      {dialogs}
     </ResizablePanelGroup>
   );
 }

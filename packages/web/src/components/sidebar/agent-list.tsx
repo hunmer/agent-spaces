@@ -8,6 +8,14 @@ import { Bot, Copy, Trash2 } from "lucide-react";
 import { copyToClipboard } from "@/lib/utils";
 import type { AgentPreset } from "./agent-shared";
 import { AgentCard } from "./agent-card";
+import type { FeatureCardColor } from "@/components/ui/feature-card";
+
+const AGENT_COLORS: FeatureCardColor[] = ["orange", "purple", "blue", "green"];
+function colorForAgent(id: string): FeatureCardColor {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return AGENT_COLORS[hash % AGENT_COLORS.length];
+}
 
 const AGENT_GENERATOR_PRESET_ID = "agent-generator";
 const AGENT_COMMIT_PRESET_ID = "commit-agent";
@@ -33,13 +41,14 @@ export function AgentList({
   const visibleAgents = agents.filter((agent) => !agent.hideInAgentList);
   const sortedAgents = [...visibleAgents].sort((a, b) => Number(!BUILT_IN_AGENT_IDS.has(a.id)) - Number(!BUILT_IN_AGENT_IDS.has(b.id)));
   return (
-    <div className="flex flex-col p-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-2">
       {sortedAgents.map((agent) => {
         const fixed = BUILT_IN_AGENT_IDS.has(agent.id);
         return (
           <AgentCard
             key={agent.id}
             agentId={agent.id}
+            color={fixed ? "default" : colorForAgent(agent.id)}
             name={agent.name}
             description={agent.description || t('list.noDescription')}
             avatarUrl={agent.avatarUrl}

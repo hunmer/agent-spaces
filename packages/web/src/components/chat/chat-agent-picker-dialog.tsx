@@ -287,7 +287,7 @@ export function ChatAgentPickerDialog({
             <p className="text-sm">{t("dialog.noAgentsAvailable")}</p>
           </div>
         ) : (
-          <div className="flex flex-col p-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-2">
             {filteredAgents.map((agent) => {
               const added = addedIds.has(agent.id);
               return (

@@ -71,8 +71,26 @@
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1782908424981_start-source-node_1782908448757_sdxsc6-target",
+      "source": "node_1782908424981_start",
+      "target": "node_1782908448757_sdxsc6",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782908448757_sdxsc6-source-node_1782908424981_end-target",
+      "source": "node_1782908448757_sdxsc6",
+      "target": "node_1782908424981_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1782908425007,
-  "updatedAt": 1782910156255,
-  "published": false
+  "updatedAt": 1783078273480,
+  "published": false,
+  "lastOpenedAt": 1783078159931
 }
