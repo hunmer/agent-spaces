@@ -288,6 +288,9 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
       getStatusGroups={getStatusGroups}
       renderItem={renderChannelItem}
       renderArchivedItem={renderArchivedChannel}
+      searchable
+      searchPlaceholder={t('channel.searchPlaceholder')}
+      getSearchText={ch => ch.name}
       renderSkeleton={i => (
         <div key={i} className="flex items-start gap-2.5 px-3 py-2">
           <Skeleton className="size-3.5 rounded shrink-0 mt-1" />

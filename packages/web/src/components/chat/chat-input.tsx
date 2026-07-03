@@ -9,7 +9,12 @@ import { useChannelStore } from "@/stores/channel";
 import { useAgentStore } from "@/stores/agent";
 import { getAgentDisplayName, normalizeChannelMembersToAgentIds } from "@/lib/agent-members";
 import { AddMemberDialog } from "./add-member-dialog";
-import { ChatComposerInput, type ChatComposerInputHandle, type ChatComposerInputState } from "./chat-composer-input";
+import {
+  ChatComposerInput,
+  type ChatComposerInputHandle,
+  type ChatComposerInputState,
+  type ChatComposerModelOverride,
+} from "./chat-composer-input";
 import { ChatInputAgentBar } from "./chat-input-agent-bar";
 import { ChatInputInfoBar } from "./chat-input-info-bar";
 import type { MentionedAgent } from "./chat-input-utils";
@@ -21,7 +26,14 @@ interface ChatInputProps {
   channel: Channel;
   agents: MentionedAgent[];
   messages?: Message[];
-  onSend: (message: string, mentions: string[], attachments?: MessageAttachment[], replyToMessageId?: string, contextLength?: number) => void;
+  onSend: (
+    message: string,
+    mentions: string[],
+    attachments?: MessageAttachment[],
+    replyToMessageId?: string,
+    contextLength?: number,
+    modelOverride?: ChatComposerModelOverride,
+  ) => void;
   isProcessing?: boolean;
   onStop?: () => void;
   replyTo?: { id: string; label: string } | null;
@@ -99,8 +111,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     updateChannel(workspaceId, channelId, { pinnedMentionId: agent.id });
   }, [workspaceId, channelId, updateChannel]);
 
-  const handleSubmit = useCallback((content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => {
-    onSend(content, mentions, attachments, replyTo?.id, contextLength);
+  const handleSubmit = useCallback((
+    content: string,
+    mentions: string[],
+    attachments: MessageAttachment[],
+    contextLength: number,
+    modelOverride?: ChatComposerModelOverride,
+  ) => {
+    onSend(content, mentions, attachments, replyTo?.id, contextLength, modelOverride);
   }, [onSend, replyTo?.id]);
 
   return (

@@ -1,7 +1,7 @@
 import type { WebSocket } from 'ws';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Channel, Message, MessageAgentOutputItem } from '@agent-spaces/shared';
+import type { AgentConfig, Channel, Message, MessageAgentOutputItem } from '@agent-spaces/shared';
 import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
@@ -45,6 +45,13 @@ interface MiniAppMessageContext {
   fileContent?: string;
 }
 
+interface AgentModelOverride {
+  apiBase: string;
+  apiKey: string;
+  model: string;
+  modelProvider: NonNullable<AgentConfig['modelProvider']>;
+}
+
 interface RunMentionedAgentOptions {
   agentSessionId?: string;
   messageId?: string;
@@ -55,6 +62,7 @@ interface RunMentionedAgentOptions {
   contextLength?: number;
   excludeHistoryMessageIds?: string[];
   excludeHistoryReplyIds?: string[];
+  agentOverride?: AgentModelOverride;
   miniAppContext?: MiniAppMessageContext;
 }
 
@@ -271,6 +279,10 @@ export async function runMentionedAgent(
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
     : undefined;
+  const runtimeModelProvider = options.agentOverride?.modelProvider ?? preset.modelProvider;
+  const runtimeModelId = options.agentOverride?.model ?? preset.modelId;
+  const runtimeApiKey = options.agentOverride?.apiKey ?? preset.apiKey;
+  const runtimeApiBase = options.agentOverride?.apiBase ?? preset.apiBase;
   const pending = existingMessage
     ? updateMessage(workspaceId, channelId, existingMessage.id, {
       status: 'streaming',
@@ -279,7 +291,7 @@ export async function runMentionedAgent(
         agentSessionId: nextSession.id,
         runtimeSessionId: options.resumeSessionId ?? existingMessage.metadata?.runtimeSessionId,
         runtime: preset.runtimeKind,
-        model: preset.modelId,
+        model: runtimeModelId,
         duration: 0,
       },
     }) ?? existingMessage
@@ -292,7 +304,7 @@ export async function runMentionedAgent(
       metadata: {
         agentSessionId: nextSession.id,
         runtime: preset.runtimeKind,
-        model: preset.modelId,
+        model: runtimeModelId,
         duration: 0,
       },
       parts: [
@@ -323,11 +335,11 @@ export async function runMentionedAgent(
   try {
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind,
-      provider: preset.modelProvider,
-      model: preset.modelId,
-      apiKey: preset.apiKey,
-      baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
-      adapterBaseURL: preset.apiBase,
+      provider: runtimeModelProvider,
+      model: runtimeModelId,
+      apiKey: runtimeApiKey,
+      baseURL: getRuntimeBaseURL(runtimeModelProvider, runtimeApiBase),
+      adapterBaseURL: runtimeApiBase,
       ...getThinkingRuntimeConfig(preset),
     });
     activeRun = {
@@ -376,7 +388,7 @@ export async function runMentionedAgent(
         role: preset.role,
         agentConfigId: preset.id,
         runtime: preset.runtimeKind,
-        model: preset.modelId,
+        model: runtimeModelId,
         systemPrompt: preset.systemPrompt,
         userPrompt: runtimeUserPrompt,
         fullPrompt: agentPrompt,
@@ -546,7 +558,7 @@ export async function runMentionedAgent(
         role: preset.role,
         agentConfigId: preset.id,
         runtime: preset.runtimeKind,
-        model: preset.modelId,
+        model: runtimeModelId,
         systemPrompt: preset.systemPrompt,
         userPrompt: runtimeUserPrompt,
         fullPrompt: agentPrompt,
@@ -568,7 +580,7 @@ export async function runMentionedAgent(
           agentSessionId: nextSession.id,
           runtimeSessionId: result.sessionId ?? runtimeSessionId,
           runtime: preset.runtimeKind,
-          model: preset.modelId,
+          model: runtimeModelId,
           summary: 'Waiting for user answer',
           duration: Date.now() - startTime,
         },
@@ -593,7 +605,7 @@ export async function runMentionedAgent(
 
     agentService.complete(workspaceId, nextSession.id, result.success ? undefined : result.error, {
       runtime: preset.runtimeKind,
-      model: preset.modelId,
+      model: runtimeModelId,
       summary: result.summary,
       output: displayOutput,
       durationMs: Date.now() - startTime,
@@ -619,7 +631,7 @@ export async function runMentionedAgent(
       role: preset.role,
       agentConfigId: preset.id,
       runtime: preset.runtimeKind,
-      model: preset.modelId,
+      model: runtimeModelId,
       usage: result.usage,
       systemPrompt: preset.systemPrompt,
       userPrompt: runtimeUserPrompt,
@@ -648,7 +660,7 @@ export async function runMentionedAgent(
         agentSessionId: nextSession.id,
         runtimeSessionId: result.sessionId ?? runtimeSessionId,
         runtime: preset.runtimeKind,
-        model: preset.modelId,
+        model: runtimeModelId,
         summary: result.summary,
         duration: Date.now() - startTime,
       },
@@ -661,7 +673,7 @@ export async function runMentionedAgent(
     const error = err instanceof Error ? err.message : String(err);
     agentService.complete(workspaceId, nextSession.id, error, {
       runtime: preset.runtimeKind,
-      model: preset.modelId,
+      model: runtimeModelId,
       summary: error,
       output: [error],
       durationMs: Date.now() - startTime,
@@ -674,7 +686,7 @@ export async function runMentionedAgent(
       role: preset.role,
       agentConfigId: preset.id,
       runtime: preset.runtimeKind,
-      model: preset.modelId,
+      model: runtimeModelId,
       systemPrompt: preset.systemPrompt,
       userPrompt: runtimeUserPrompt,
       fullPrompt: agentPrompt,
@@ -702,7 +714,7 @@ export async function runMentionedAgent(
         agentSessionId: nextSession.id,
         runtimeSessionId,
         runtime: preset.runtimeKind,
-        model: preset.modelId,
+        model: runtimeModelId,
         duration: Date.now() - startTime,
       },
       parts: errorParts,

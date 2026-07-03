@@ -26,7 +26,17 @@ interface ChannelStore {
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   loadChannelState: (workspaceId: string, channelId: string) => Promise<ChannelState | null>;
-  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number, miniAppContext?: MiniAppMessageContext) => void;
+  sendMessage: (
+    workspaceId: string,
+    channelId: string,
+    content: string,
+    mentions?: string[],
+    attachments?: Message['attachments'],
+    replyToMessageId?: string,
+    contextLength?: number,
+    agentOverride?: ChannelMessageAgentOverride,
+    miniAppContext?: MiniAppMessageContext,
+  ) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
   stopProcessingMessages: (channelId: string) => void;
@@ -50,6 +60,13 @@ export interface ChannelState {
     metadata?: Message['metadata'];
     hasPendingQuestion?: boolean;
   } | null;
+}
+
+export interface ChannelMessageAgentOverride {
+  apiBase: string;
+  apiKey: string;
+  model: string;
+  modelProvider: string;
 }
 
 const STORAGE_KEY_PREFIX = 'agent-spaces:channel:';
@@ -137,9 +154,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     }
   },
 
-  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength, miniAppContext) => {
+  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength, agentOverride, miniAppContext) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength, miniAppContext });
+    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength, agentOverride, miniAppContext });
   },
 
   addMessage: (channelId, message) => {

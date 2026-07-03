@@ -20,6 +20,7 @@
     "batchDeleteConfirm": "Delete {count} {count, plural, one {channel} other {channels}}? This cannot be undone.",
     "holdToDelete": "Hold to delete",
     "multiSelect": "Multi-select",
+    "searchPlaceholder": "Search channels",
     "namePlaceholder": "Channel name",
     "archive": "Archive",
     "unarchive": "Unarchive",

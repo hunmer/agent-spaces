@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Archive, ArrowUpDown, Check, CheckSquare, ChevronRight, MoreHorizontal, Square, Trash2 } from 'lucide-react';
+import { Archive, ArrowUpDown, Check, CheckSquare, ChevronRight, MoreHorizontal, Search, Square, Trash2, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -52,6 +52,11 @@ export interface ItemListPanelProps<T> {
   skeletonCount?: number;
   emptyState: ReactNode;
 
+  // Search
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  getSearchText?: (item: T) => string;
+
   // Archived
   archivedLabel: string;
   clearArchivedTitle: string;
@@ -90,6 +95,9 @@ export function ItemListPanel<T>({
   renderSkeleton,
   skeletonCount = 5,
   emptyState,
+  searchable = false,
+  searchPlaceholder,
+  getSearchText,
   archivedLabel,
   clearArchivedTitle,
   clearArchivedConfirm,
@@ -109,15 +117,28 @@ export function ItemListPanel<T>({
   const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+
+  const filteredItems = useMemo(() => {
+    if (!searchable || !search.trim() || !getSearchText) return items;
+    const kw = search.trim().toLowerCase();
+    return items.filter(item => getSearchText(item).toLowerCase().includes(kw));
+  }, [items, searchable, search, getSearchText]);
+
+  const filteredArchived = useMemo(() => {
+    if (!searchable || !search.trim() || !getSearchText) return archivedItems;
+    const kw = search.trim().toLowerCase();
+    return archivedItems.filter(item => getSearchText(item).toLowerCase().includes(kw));
+  }, [archivedItems, searchable, search, getSearchText]);
 
   const sortedItems = useMemo(() => {
-    const sorted = [...items];
+    const sorted = [...filteredItems];
     sorted.sort((a, b) => {
       const cmp = sortCompare(a, b, sortField);
       return sortOrder === 'desc' ? -cmp : cmp;
     });
     return sorted;
-  }, [items, sortField, sortOrder, sortCompare]);
+  }, [filteredItems, sortField, sortOrder, sortCompare]);
 
   const timeGroups = useMemo(() => {
     const groups: Record<string, T[]> = {};
@@ -226,6 +247,29 @@ export function ItemListPanel<T>({
         </div>
       </div>
 
+      {searchable && (
+        <div className="px-2 py-1.5 border-b">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={searchPlaceholder ?? tc('search')}
+              className="w-full pl-7 pr-7 py-1 text-xs rounded bg-background border border-input focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-accent rounded cursor-pointer"
+              >
+                <X className="size-3 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto min-h-0">
         {loading && (
           <div className="p-2 space-y-1">
@@ -234,19 +278,19 @@ export function ItemListPanel<T>({
             </SkeletonGroup>
           </div>
         )}
-        {!loading && items.length === 0 && archivedItems.length === 0 && emptyState}
+        {!loading && filteredItems.length === 0 && filteredArchived.length === 0 && emptyState}
         {!loading && groupMode === 'none' && sortedItems.map(item => renderItem(item, itemCtx(item)))}
         {!loading && currentGroups?.map(renderGroup)}
 
-        {!loading && archivedItems.length > 0 && (
+        {!loading && filteredArchived.length > 0 && (
           <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen}>
             <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
               <ChevronRight className={cn('size-3 transition-transform', archivedOpen && 'rotate-90')} />
               <Archive className="size-3" />
-              {archivedLabel} ({archivedItems.length})
+              {archivedLabel} ({filteredArchived.length})
             </CollapsibleTrigger>
             <CollapsibleContent>
-              {archivedItems.map(item => renderArchivedItem(item))}
+              {filteredArchived.map(item => renderArchivedItem(item))}
             </CollapsibleContent>
           </Collapsible>
         )}

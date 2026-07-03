@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
-import type { MiniAppMessageContext } from '@/stores/channel';
+import type { ChannelMessageAgentOverride, MiniAppMessageContext } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
@@ -237,9 +237,16 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
     };
   }, [currentChannelId, workspaceId, channelActive, lastMessageStatus, loadMessages, loadChannelState]);
 
-  const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number) => {
+  const handleSend = useCallback((
+    content: string,
+    mentions: string[],
+    attachments?: Message['attachments'],
+    replyToMessageId?: string,
+    contextLength?: number,
+    modelOverride?: ChannelMessageAgentOverride,
+  ) => {
     if (!currentChannelId) return;
-    sendMessage(workspaceId, currentChannelId, content, mentions, attachments, replyToMessageId, contextLength, miniAppContext);
+    sendMessage(workspaceId, currentChannelId, content, mentions, attachments, replyToMessageId, contextLength, modelOverride, miniAppContext);
   }, [workspaceId, currentChannelId, sendMessage, miniAppContext]);
 
   const isProcessing = channelActive || (msgs.length > 0
@@ -359,14 +366,14 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
                 ))}
               </div>
             ) : null}
-            {!messagesLoading && [...msgs].reverse().map((msg) => (
+            {!messagesLoading && msgs.map((msg) => (
               <div key={msg.id} id={`msg-${msg.id}`}>
                 <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} onReply={handleReplyMessage} />
               </div>
             ))}
             <div ref={bottomRef} />
           </div>
-          <MessageNavigator messages={msgs} reverse />
+          <MessageNavigator messages={msgs} />
         </div>
 
         {/* Input */}

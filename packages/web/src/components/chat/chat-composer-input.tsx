@@ -28,7 +28,10 @@ import { createFileSearchExtension } from "@/components/composer/create-file-sea
 import { cn } from "@/lib/utils";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { sdk } from '@/lib/sdk';
+import { useLLMStore } from "@/stores/llm";
 import { BUILT_IN_AGENT_TOOLS, type Attachment as MessageAttachment } from "@agent-spaces/shared";
+import type { AgentConfig } from "@agent-spaces/shared";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   Attachment,
   AttachmentInfo,
@@ -54,6 +57,13 @@ type AgentCommandItem = {
 
 const DEFAULT_CONTEXT_LENGTH = 20;
 
+export interface ChatComposerModelOverride {
+  apiBase: string;
+  apiKey: string;
+  model: string;
+  modelProvider: NonNullable<AgentConfig["modelProvider"]>;
+}
+
 export interface ChatComposerInputState {
   mentionedAgentIds: string[];
   activeAgent?: MentionedAgent;
@@ -73,7 +83,13 @@ interface ChatComposerInputProps {
   workspaceId: string;
   agents: MentionedAgent[];
   placeholder: string;
-  onSubmit: (content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => void | Promise<void>;
+  onSubmit: (
+    content: string,
+    mentions: string[],
+    attachments: MessageAttachment[],
+    contextLength: number,
+    modelOverride?: ChatComposerModelOverride,
+  ) => void | Promise<void>;
   className?: string;
   isProcessing?: boolean;
   onStop?: () => void;
@@ -128,6 +144,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const [contextLength, setContextLength] = useState(DEFAULT_CONTEXT_LENGTH);
+  const [selectedModelId, setSelectedModelId] = useState("");
   const editorRef = useRef<Editor | null>(null);
   const agentsRef = useRef(agents);
   const submittingRef = useRef(false);
@@ -154,6 +171,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const activeAgent = mentionedAgents[0];
   const activeMcps = useMemo(() => getMcpLabels(activeAgent?.mcps), [activeAgent?.mcps]);
   const activeSkills = useMemo(() => activeAgent?.skills ?? [], [activeAgent?.skills]);
+  const { models, providers, ensure: ensureLLM } = useLLMStore();
   const activeTools = useMemo(() => {
     const enabledNames = new Set(activeAgent?.tools ?? []);
     return (BUILT_IN_AGENT_TOOLS ?? [])
@@ -172,6 +190,57 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       tools: activeTools.map((tool) => ({ name: tool.name, label: tool.label })),
     };
   }, [activeMcps, activeSkills, activeTools]);
+
+  useEffect(() => {
+    void ensureLLM();
+  }, [ensureLLM]);
+
+  useEffect(() => {
+    setSelectedModelId("");
+  }, [activeAgent?.id]);
+
+  const temporaryModelMap = useMemo(() => {
+    const providerByName = new Map(providers.map((provider) => [provider.name, provider]));
+    return new Map(models.map((model) => {
+      const provider = providerByName.get(model.provider);
+      if (!provider?.apiBase || !provider?.apiKey || !provider.modelProvider) return null;
+      return [
+        model.id,
+        {
+          apiBase: provider.apiBase,
+          apiKey: provider.apiKey,
+          model: model.modelId,
+          modelProvider: provider.modelProvider,
+        } satisfies ChatComposerModelOverride,
+      ] as const;
+    }).filter((item): item is readonly [string, ChatComposerModelOverride] => Boolean(item)));
+  }, [models, providers]);
+
+  const temporaryModelOptions = useMemo(() => {
+    const providerByName = new Map(providers.map((provider) => [provider.name, provider]));
+    return [
+      {
+        value: "",
+        label: "跟随 Agent",
+        description: activeAgent ? `使用 ${activeAgent.name || activeAgent.role} 当前模型配置` : "未选择 Agent",
+      },
+      ...models
+        .map((model) => {
+          const provider = providerByName.get(model.provider);
+          if (!provider?.modelProvider) return null;
+          return {
+            value: model.id,
+            label: model.name || model.modelId,
+            description: `${provider.name} / ${model.modelId}`,
+            keywords: [model.modelId, model.provider, provider.apiBase],
+            group: provider.name,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    ];
+  }, [activeAgent, models, providers]);
+
+  const selectedModelOverride = selectedModelId ? temporaryModelMap.get(selectedModelId) : undefined;
 
   useEffect(() => {
     if (!activeAgent?.id || !enableSlashCommands) {
@@ -281,7 +350,13 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     }
     try {
       const uploaded = enableAttachments ? await Promise.all(attachments.map(uploadAttachment)) : [];
-      await onSubmitRef.current(text ? stripSimpleParagraphs(currentEditor.getHTML()) : "", mentions, uploaded, selectedContextLength);
+      await onSubmitRef.current(
+        text ? stripSimpleParagraphs(currentEditor.getHTML()) : "",
+        mentions,
+        uploaded,
+        selectedContextLength,
+        selectedModelOverride,
+      );
       setAttachments((prev) => {
         prev.forEach((item) => URL.revokeObjectURL(item.preview));
         return [];
@@ -312,7 +387,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [attachments, contextLength, enableAttachments, onCancelReply, onDraftClear]);
+  }, [attachments, contextLength, enableAttachments, onCancelReply, onDraftClear, selectedModelOverride]);
 
   const submitRef = useRef(submitCurrentMessage);
   submitRef.current = submitCurrentMessage;
@@ -492,6 +567,19 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
 
   const actions = (
     <>
+      {activeAgent ? (
+        <SearchSelect
+          value={selectedModelId}
+          onChange={setSelectedModelId}
+          options={temporaryModelOptions}
+          placeholder="临时模型"
+          searchPlaceholder="搜索模型"
+          allowCustom={false}
+          disabled={isProcessing || submitting}
+          className="w-52"
+        />
+      ) : null}
+
       {enableAttachments ? (
         <DropdownMenu>
           <DropdownMenuTrigger

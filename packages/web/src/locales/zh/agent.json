@@ -42,6 +42,7 @@
     "add": "添加",
     "addEmpty": "空白",
     "syncTemplates": "同步模板",
+    "smartCreate": "智能创建",
     "noWorkspace": "未选择工作空间",
     "loading": "加载 Agent 预设中...",
     "tabLocal": "本地",

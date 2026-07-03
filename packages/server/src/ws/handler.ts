@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
+import type { WSEvent, ClientEventName, Message, AgentConfig } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace, getClientId, handleClientNodeResponse, handleInteractionResponse, onClientConnected, getConnectionByClientId, sendToClient } from './connection-manager.js';
 import type { ClientNodeResponse, InteractionResponse } from '@agent-spaces/shared';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
@@ -21,6 +21,13 @@ interface MiniAppMessageContext {
   activeFilePath?: string;
   projectType?: 'react' | 'html';
   fileContent?: string;
+}
+
+interface AgentModelOverride {
+  apiBase: string;
+  apiKey: string;
+  model: string;
+  modelProvider: NonNullable<AgentConfig['modelProvider']>;
 }
 
 const handlers = new Map<string, EventHandler>();
@@ -77,7 +84,7 @@ for (const evt of terminalEvents) {
 
 // Register channel handlers
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength, miniAppContext } = data as {
+  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength, agentOverride, miniAppContext } = data as {
     channelId: string;
     content: string;
     type?: string;
@@ -85,6 +92,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     attachments?: Message['attachments'];
     replyToMessageId?: string;
     contextLength?: number;
+    agentOverride?: AgentModelOverride;
     miniAppContext?: MiniAppMessageContext;
   };
   const normalizedContextLength = normalizeContextLength(contextLength);
@@ -109,6 +117,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
         resumeSessionId: normalizedContextLength > 0 ? updated.metadata?.runtimeSessionId : undefined,
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
         contextLength: normalizedContextLength,
+        agentOverride,
         miniAppContext,
       });
     }
@@ -135,6 +144,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
       excludeHistoryMessageIds: [message.id],
       contextLength: normalizedContextLength,
+      agentOverride,
       miniAppContext,
     });
   }
