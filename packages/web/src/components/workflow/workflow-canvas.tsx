@@ -50,6 +50,7 @@ import type { HandlePositionMode } from './workflow-node-types';
 import { getWorkflowNodeVisualBounds, isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
 import type { WorkflowNodeSizeOverrides } from './workflow-canvas-groups';
 import { useTheme } from '@/components/layout/theme-provider';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { WorkflowSelectionConnectionLine } from './workflow-selection-connection-line';
 import { DragPreviewOverlay, RectangleOverlayRect } from './workflow-canvas-overlays';
 import { LassoSelectionTool, RectangleDrawTool } from './workflow-canvas-selection-tools';
@@ -300,6 +301,7 @@ export function WorkflowCanvas({
   onFieldKeyRename,
 }: WorkflowCanvasProps) {
   const { resolvedTheme } = useTheme();
+  const isMobile = useIsMobile();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
   const connectSucceededRef = useRef(false);
@@ -1148,7 +1150,7 @@ export function WorkflowCanvas({
     >
       <WorkflowLogsCollapsedContext.Provider value={{ collapsed: logsCollapsed, toggle: () => setLogsCollapsed(c => !c) }}>
       <ReactFlow
-        className="h-full w-full"
+        className={`h-full w-full ${isMobile ? 'touch-flow' : ''}`}
         colorMode={canvasThemeColorMode}
         style={canvasThemeStyle}
         nodes={canvasNodes}

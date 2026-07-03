@@ -669,6 +669,7 @@ function handleChatRunEvent(
     case 'output': {
       const data = payload.data as { chunk?: string };
       appendStreamingText(set, 'streamingContent', agentId, data.chunk);
+      appendStreamingTimelineMessage(set, agentId, data.chunk);
       break;
     }
     case 'thinking': {
@@ -682,7 +683,7 @@ function handleChatRunEvent(
         set((s) => ({
           messages: {
             ...s.messages,
-            [agentId]: [...(s.messages[agentId] ?? []), data.message!],
+            [agentId]: [...(s.messages[agentId] ?? []), withStreamingTimeline(data.message!, s.streamingTimeline[agentId])],
           },
           sending: { ...s.sending, [agentId]: false },
           errors: { ...s.errors, [agentId]: '' },
@@ -730,6 +731,39 @@ function appendStreamingText(
       [agentId]: (s[key][agentId] ?? '') + chunk,
     },
   }));
+}
+
+function appendStreamingTimelineMessage(
+  set: ChatSet,
+  agentId: string,
+  chunk?: string,
+): void {
+  if (!chunk) return;
+  set((s) => {
+    const timeline = [...(s.streamingTimeline[agentId] ?? [])];
+    const latest = timeline.at(-1);
+    if (latest?.type === 'message') {
+      timeline[timeline.length - 1] = { ...latest, content: `${latest.content}${chunk}` };
+    } else {
+      timeline.push({
+        id: `message-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: 'message',
+        content: chunk,
+      });
+    }
+    return {
+      streamingTimeline: {
+        ...s.streamingTimeline,
+        [agentId]: timeline,
+      },
+    };
+  });
+}
+
+function withStreamingTimeline(message: ChatMessage, streamingTimeline?: WorkflowAgentTimelineItem[]): ChatMessage {
+  if (message.timeline?.length || !streamingTimeline?.length) return message;
+  const timeline = streamingTimeline.filter((item) => item.type !== 'message');
+  return timeline.length ? { ...message, timeline } : message;
 }
 
 function appendStreamingToolUse(

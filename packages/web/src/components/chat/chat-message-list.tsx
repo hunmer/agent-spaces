@@ -163,14 +163,17 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
       msg.role === "agent" ? extractThinkingContent(msg.content) : { thinking: null, message: msg.content };
     const streaming = isStreamingMessage?.(msg) ?? false;
     const showStreamingPlaceholder = streaming && !thinking && !message;
-    const hasMessageBody =
-      showStreamingPlaceholder || msg.role === "user" || thinking !== null || message.trim().length > 0;
     const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
-    const hasTimeline = timeline.length > 0;
+    const hasTimelineMessage = timeline.some((item) => item.type === "message");
+    const showTimelineMessages = streaming && hasTimelineMessage;
+    const visibleTimeline = showTimelineMessages ? timeline : timeline.filter((item) => item.type !== "message");
     const hasToolTimeline = timeline.some((item) => item.type === "tool");
-    const showTools = streaming || visibleToolTimelineMessageIds[msg.id] !== false;
-    const showTimeline = hasTimeline;
+    const showTools = streaming || visibleToolTimelineMessageIds[msg.id] === true;
+    const showTimeline = visibleTimeline.some((item) => item.type !== "tool" || showTools);
     const canToggleTimeline = msg.role === "agent" && hasToolTimeline && !streaming;
+    const bodyMessage = showTimelineMessages ? "" : message;
+    const hasMessageBody =
+      showStreamingPlaceholder || msg.role === "user" || thinking !== null || bodyMessage.trim().length > 0;
     if (!hasMessageBody && !renderMessageExtras && !hasTimeline) return null;
 
     const versions = versionInfo?.(msg);
@@ -210,13 +213,13 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
                       <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.15s]" />
                       <span className="size-1.5 animate-bounce rounded-full bg-foreground/40" />
                     </div>
-                  ) : message.trim().length > 0 ? (
+                  ) : bodyMessage.trim().length > 0 ? (
                     renderMessageContent ? (
-                      renderMessageContent({ ...msg, content: message })
+                      renderMessageContent({ ...msg, content: bodyMessage })
                     ) : markdown ? (
-                      <Markdown content={message} workspaceId={workspaceId} />
+                      <Markdown content={bodyMessage} workspaceId={workspaceId} />
                     ) : (
-                      <p className="whitespace-pre-wrap break-words">{message}</p>
+                      <p className="whitespace-pre-wrap break-words">{bodyMessage}</p>
                     )
                   ) : null}
                 </>
@@ -225,7 +228,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
           ) : null}
           {showTimeline ? (
             <ChatToolTimeline
-              timeline={timeline}
+              timeline={visibleTimeline}
               workspaceId={workspaceId}
               onRerunTool={onRerunTool ? (item) => onRerunTool(msg, item) : undefined}
               showTools={showTools}
@@ -286,7 +289,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
                 onClick={() => {
                   setVisibleToolTimelineMessageIds((current) => ({
                     ...current,
-                    [msg.id]: current[msg.id] === false,
+                    [msg.id]: current[msg.id] !== true,
                   }));
                 }}
                 className={cn(

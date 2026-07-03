@@ -127,11 +127,11 @@ export function InlineChatPanel({
   });
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full min-w-0 flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3 border-b px-4 py-3">
         <button
-          className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+          className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden text-left hover:opacity-80 transition-opacity"
           onClick={() => onEditAgent(agentId)}
           type="button"
         >
@@ -144,8 +144,8 @@ export function InlineChatPanel({
               />
             </span>
           </div>
-          <div>
-            <h3 className="text-base font-semibold text-primary decoration-primary/30 hover:decoration-primary transition-colors">{agentName}</h3>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <h3 className="truncate text-base font-semibold text-primary decoration-primary/30 hover:decoration-primary transition-colors">{agentName}</h3>
             <span className="truncate text-xs text-muted-foreground">
               {agentDescription || (sending ? t('typing') : t('online'))}
             </span>

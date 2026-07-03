@@ -991,6 +991,27 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           width: auto;
           height: auto;
         }
+        .react-flow.touch-flow .react-flow__handle {
+          width: 20px;
+          height: 20px;
+        }
+        .touch-flow .react-flow__handle-right {
+          --translate: translate(50%, -50%);
+        }
+        .touch-flow .react-flow__handle-left {
+          --translate: translate(-50%, -50%);
+        }
+        @keyframes workflow-touch-handle-bounce {
+          0% {
+            transform: var(--translate) scale(1);
+          }
+          50% {
+            transform: var(--translate) scale(1.1);
+          }
+        }
+        .react-flow.touch-flow .react-flow__handle.clickconnecting {
+          animation: workflow-touch-handle-bounce 1600ms infinite ease-in;
+        }
         .source-handle-label { position: absolute; display: flex; align-items: center; pointer-events: none; }
       `}</style>
     </>

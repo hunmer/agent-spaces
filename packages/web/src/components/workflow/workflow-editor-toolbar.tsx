@@ -10,6 +10,7 @@ import {
   AlertTriangle, Clock, MessagesSquare, CircleDot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -96,6 +97,7 @@ export function WorkflowEditorToolbar({
   const [versionName, setVersionName] = useState('');
   const [savingPreview, setSavingPreview] = useState<'save' | 'version' | null>(null);
   const t = useTranslations('workflows');
+  const isMobile = useIsMobile();
   const hasTriggers = (workflow?.triggers?.length || 0) > 0;
 
   const handleSavePreview = async (createVersion: boolean) => {
@@ -143,6 +145,121 @@ export function WorkflowEditorToolbar({
         </ToolBtn>
       )}
 
+      {workflow && (
+        <button
+          className="h-7 px-2 text-sm font-medium hover:bg-muted/50 rounded cursor-pointer flex items-center gap-1.5 min-w-0"
+          onClick={() => setInfoOpen(true)}
+        >
+          {workflow.icon ? (
+            <span className="text-base leading-none shrink-0">{workflow.icon}</span>
+          ) : (
+            <span className="w-4 h-4 rounded bg-primary/10 text-[10px] font-bold flex items-center justify-center text-primary shrink-0">
+              {(workflow.name || t('card.defaultInitial')).charAt(0).toUpperCase()}
+            </span>
+          )}
+          <span className="truncate">{workflow.name || t('editor.untitled')}</span>
+          {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />}
+        </button>
+      )}
+
+      {isMobile && (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" />}>
+            <MoreVertical className="h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-[80vh] overflow-y-auto">
+            <DropdownMenuItem onClick={onSave} disabled={!isDirty}>
+              <Save className="h-4 w-4 mr-2" />{t('menubar.save')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onUndo} disabled={!canUndo}>
+              <RotateCcw className="h-4 w-4 mr-2" />{t('menubar.undo')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onRedo} disabled={!canRedo}>
+              <RotateCw className="h-4 w-4 mr-2" />{t('menubar.redo')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onSelectAll} disabled={!onSelectAll}>
+              <CheckSquare className="h-4 w-4 mr-2" />{t('menubar.selectAll')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onInvertSelection} disabled={!onInvertSelection}>
+              <FlipHorizontal2 className="h-4 w-4 mr-2" />{t('menubar.invertSelection')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onAutoLayout?.('LR')} disabled={!onAutoLayout}>
+              <ArrowRightLeft className="h-4 w-4 mr-2" />{t('menubar.horizontalLayout')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAutoLayout?.('TB')} disabled={!onAutoLayout}>
+              <ArrowDownUp className="h-4 w-4 mr-2" />{t('menubar.verticalLayout')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onExport('png')} disabled={isExporting}>
+              <FileImage className="h-4 w-4 mr-2" />{t('menubar.exportPng')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onExport('jpeg')} disabled={isExporting}>
+              <ImageIcon className="h-4 w-4 mr-2" />{t('menubar.exportJpeg')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onExportWorkflow} disabled={!workflow}>
+              <Download className="h-4 w-4 mr-2" />{t('card.export')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onImport}>
+              <Upload className="h-4 w-4 mr-2" />{t('editor.import')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onRunTest} disabled={!canRunTest}>
+              <Play className="h-4 w-4 mr-2" />{t('editor.runTest')}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
+              <LayoutTemplate className="h-4 w-4 mr-2" />{t('menubar.preview')}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!workflow} onClick={onOpenTriggerDialog}>
+              <Clock className="h-4 w-4 mr-2" />{hasTriggers ? t('editor.manageTriggers') : t('editor.triggerSettings')}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!workflow} onClick={onOpenPluginManager}>
+              <PackagePlus className="h-4 w-4 mr-2" />{t('editor.pluginManager')}
+            </DropdownMenuItem>
+            {isPreview && (
+              <>
+                {isPreviewDirty && (
+                  <DropdownMenuItem disabled={!workflow || savingPreview !== null} onClick={() => setSavePreviewOpen(true)}>
+                    {savingPreview ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    {t('editor.savePreviewEdits')}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => (isPreviewDirty ? setExitConfirmOpen(true) : onExitPreview())}>
+                  {t('editor.exitPreview')}
+                </DropdownMenuItem>
+              </>
+            )}
+            {(missingPluginCount > 0 || workflowErrorMessage) && <DropdownMenuSeparator />}
+            {missingPluginCount > 0 && (
+              <DropdownMenuItem className="text-orange-600" disabled={!workflow} onClick={onOpenPluginManager}>
+                <AlertTriangle className="h-4 w-4 mr-2" />{t('editor.missingPlugins', { count: missingPluginCount })}
+              </DropdownMenuItem>
+            )}
+            {workflowErrorMessage && (
+              <DropdownMenuItem className="text-red-600" disabled>
+                <AlertTriangle className="h-4 w-4 mr-2" />{t('editor.executionError')}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setLayoutOpen(true)} disabled={!workflow}>
+              <LayoutTemplate className="h-4 w-4 mr-2" />{t('editor.layoutManager')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenWorkflowLocation} disabled={!workflow}>
+              <FolderOpen className="h-4 w-4 mr-2" />{t('editor.openLocation')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              disabled={!workflow}
+              onClick={() => setClearNodesOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />{t('editor.clearNodes')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {!isMobile && (
+        <>
       <div className="w-px h-5 bg-border mx-1" />
 
       <ToolBtn tooltip={t('editor.pluginManager')} variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenPluginManager} disabled={!workflow}>
@@ -229,30 +346,6 @@ export function WorkflowEditorToolbar({
 
       <div className="w-px h-5 bg-border mx-1" />
 
-      {workflow && (
-        <button
-          className="h-7 px-2 text-sm font-medium hover:bg-muted/50 rounded cursor-pointer flex items-center gap-1.5"
-          onClick={() => setInfoOpen(true)}
-        >
-          {workflow.icon ? (
-            <span className="text-base leading-none">{workflow.icon}</span>
-          ) : (
-            <span className="w-4 h-4 rounded bg-primary/10 text-[10px] font-bold flex items-center justify-center text-primary">
-              {(workflow.name || t('card.defaultInitial')).charAt(0).toUpperCase()}
-            </span>
-          )}
-          {workflow.name || t('editor.untitled')}
-          {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
-        </button>
-      )}
-
-      <WorkflowInfoDialog
-        open={infoOpen}
-        onOpenChange={setInfoOpen}
-        workflow={workflow}
-        onSave={onWorkflowInfoChange}
-      />
-
       <div className="flex-1" />
 
       <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
@@ -302,46 +395,38 @@ export function WorkflowEditorToolbar({
 
       <div className="w-px h-5 bg-border mx-1" />
 
-      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!canRunTest} onClick={onRunTest}>
-        <Play className="h-3.5 w-3.5" />
-        {t('editor.runTest')}
-      </Button>
-
-      {isPreview && (
+      {!isMobile && (
         <>
-          {isPreviewDirty && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-blue-500"
-              onClick={() => setSavePreviewOpen(true)}
-              disabled={!workflow || savingPreview !== null}
-            >
-              {savingPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              {t('editor.savePreviewEdits')}
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={() => {
-            if (isPreviewDirty) {
-              setExitConfirmOpen(true);
-            } else {
-              onExitPreview();
-            }
-          }}>
-            {t('editor.exitPreview')}
+          <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!canRunTest} onClick={onRunTest}>
+            <Play className="h-3.5 w-3.5" />
+            {t('editor.runTest')}
           </Button>
-          <Dialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle>{t('editor.unsavedPreviewTitle')}</DialogTitle>
-              </DialogHeader>
-              <p className="text-sm text-muted-foreground">{t('editor.unsavedPreviewDesc')}</p>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" size="sm" onClick={() => setExitConfirmOpen(false)}>{t('editor.cancel')}</Button>
-                <Button variant="destructive" size="sm" onClick={() => { setExitConfirmOpen(false); onExitPreview(); }}>{t('editor.discard')}</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+
+          {isPreview && (
+            <>
+              {isPreviewDirty && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-blue-500"
+                  onClick={() => setSavePreviewOpen(true)}
+                  disabled={!workflow || savingPreview !== null}
+                >
+                  {savingPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  {t('editor.savePreviewEdits')}
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={() => {
+                if (isPreviewDirty) {
+                  setExitConfirmOpen(true);
+                } else {
+                  onExitPreview();
+                }
+              }}>
+                {t('editor.exitPreview')}
+              </Button>
+            </>
+          )}
         </>
       )}
 
@@ -372,6 +457,28 @@ export function WorkflowEditorToolbar({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </>
+      )}
+
+      <WorkflowInfoDialog
+        open={infoOpen}
+        onOpenChange={setInfoOpen}
+        workflow={workflow}
+        onSave={onWorkflowInfoChange}
+      />
+
+      <Dialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('editor.unsavedPreviewTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('editor.unsavedPreviewDesc')}</p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setExitConfirmOpen(false)}>{t('editor.cancel')}</Button>
+            <Button variant="destructive" size="sm" onClick={() => { setExitConfirmOpen(false); onExitPreview(); }}>{t('editor.discard')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={savePreviewOpen} onOpenChange={setSavePreviewOpen}>
         <DialogContent className="sm:max-w-md">

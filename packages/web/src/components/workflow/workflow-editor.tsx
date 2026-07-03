@@ -27,10 +27,13 @@ import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, History, Waypoints, Workflow, Play, Palette, ListTree } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, History, Waypoints, Workflow, Play, Palette, ListTree, PanelLeft, PanelRight } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, parseWorkflowClipboardText, type ClipboardRecord } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useWorkflowEditorState } from './use-workflow-editor-state';
 import { useWorkflowEditorCanvas } from './use-workflow-editor-canvas';
 import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
@@ -892,6 +895,13 @@ function WorkflowEditorInner({
     return Model.fromJson(defaultJson);
   });
 
+  // ---- 小屏响应式：左右 tabset 改为 Drawer ----
+  const isMobile = useIsMobile();
+  const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
+  const [leftDrawerTab, setLeftDrawerTab] = useState('node-sidebar');
+  const [rightDrawerTab, setRightDrawerTab] = useState('properties');
+
   // ---- Layout manager integration (save / apply / reset editor panel layout) ----
   const getEditorLayout = useCallback((): IJsonModel | null => {
     try {
@@ -1001,8 +1011,8 @@ function WorkflowEditorInner({
     }
   }, []);
 
-  const factory = useCallback((node: TabNode) => {
-    const comp = node.getComponent();
+  // 渲染单个 tab 内容（桌面 factory 与小屏 Drawer 共用）
+  const renderTab = (comp: string) => {
     const workflow = state.workflow;
     if (!workflow) return null;
 
@@ -1243,7 +1253,11 @@ function WorkflowEditorInner({
       default:
         return null;
     }
-  }, [
+  };
+
+  // renderTab 随 render 重建，每次都是最新闭包，故无需列入依赖
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const factory = useCallback((node: TabNode) => renderTab(node.getComponent() ?? ''), [
     state,
     execution,
     canvas,
@@ -1465,7 +1479,70 @@ function WorkflowEditorInner({
       />
 
       <div className="flex-1 min-h-0 relative">
-        <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
+        {isMobile ? (
+          <>
+            {/* 中间区域：仅 Canvas */}
+            <div className="h-full w-full overflow-hidden rounded-md border border-border/40 bg-background">
+              {renderTab('canvas')}
+            </div>
+
+            {/* 边缘切换按钮：左/右 */}
+            <Button
+              aria-label="Toggle left panel"
+              className="absolute top-1/2 left-0 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+              onClick={() => setLeftDrawerOpen(true)}
+              size="icon"
+              variant="ghost"
+              type="button"
+            >
+              <PanelLeft className="size-4" />
+            </Button>
+            <Button
+              aria-label="Toggle right panel"
+              className="absolute top-1/2 right-0 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+              onClick={() => setRightDrawerOpen(true)}
+              size="icon"
+              variant="ghost"
+              type="button"
+            >
+              <PanelRight className="size-4" />
+            </Button>
+
+            {/* 左 Drawer：Nodes / Canvas Style / Variables */}
+            <Drawer open={leftDrawerOpen} onOpenChange={setLeftDrawerOpen} direction="left">
+              <DrawerContent className="h-full w-4/5 max-w-sm p-0">
+                <Tabs value={leftDrawerTab} onValueChange={setLeftDrawerTab} className="flex h-full flex-col">
+                  <TabsList className="w-full justify-start rounded-none border-b bg-transparent">
+                    <TabsTrigger value="node-sidebar"><Waypoints size={16} className="mr-1" />Nodes</TabsTrigger>
+                    <TabsTrigger value="canvas-style"><Palette size={16} className="mr-1" />Style</TabsTrigger>
+                    <TabsTrigger value="variables"><Braces size={16} className="mr-1" />Vars</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="node-sidebar" className="mt-0 min-h-0 flex-1 overflow-auto">{renderTab('node-sidebar')}</TabsContent>
+                  <TabsContent value="canvas-style" className="mt-0 min-h-0 flex-1 overflow-auto">{renderTab('canvas-style')}</TabsContent>
+                  <TabsContent value="variables" className="mt-0 min-h-0 flex-1 overflow-auto">{renderTab('variables')}</TabsContent>
+                </Tabs>
+              </DrawerContent>
+            </Drawer>
+
+            {/* 右 Drawer：Properties / History / Node List */}
+            <Drawer open={rightDrawerOpen} onOpenChange={setRightDrawerOpen} direction="right">
+              <DrawerContent className="h-full w-4/5 max-w-sm p-0">
+                <Tabs value={rightDrawerTab} onValueChange={setRightDrawerTab} className="flex h-full flex-col">
+                  <TabsList className="w-full justify-start rounded-none border-b bg-transparent">
+                    <TabsTrigger value="properties"><Settings2 size={16} className="mr-1" />Props</TabsTrigger>
+                    <TabsTrigger value="history"><History size={16} className="mr-1" />History</TabsTrigger>
+                    <TabsTrigger value="node-list"><ListTree size={16} className="mr-1" />List</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="properties" className="mt-0 min-h-0 flex-1 overflow-auto">{renderTab('properties')}</TabsContent>
+                  <TabsContent value="history" className="mt-0 min-h-0 flex-1 overflow-auto">{renderTab('history')}</TabsContent>
+                  <TabsContent value="node-list" className="mt-0 min-h-0 flex-1 overflow-auto">{renderTab('node-list')}</TabsContent>
+                </Tabs>
+              </DrawerContent>
+            </Drawer>
+          </>
+        ) : (
+          <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
+        )}
       </div>
 
       {/* Trigger settings dialog */}
