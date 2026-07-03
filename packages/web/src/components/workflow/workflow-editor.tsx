@@ -1257,7 +1257,7 @@ function WorkflowEditorInner({
 
   // renderTab 随 render 重建，每次都是最新闭包，故无需列入依赖
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const factory = useCallback((node: TabNode) => renderTab(node.getComponent() ?? ''), [
+  const factory = useCallback((node: TabNode) => renderTab(node.getComponent()), [
     state,
     execution,
     canvas,
