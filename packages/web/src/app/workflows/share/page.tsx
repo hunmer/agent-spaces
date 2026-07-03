@@ -328,11 +328,11 @@ export default function WorkflowSharePage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex gap-3">
+      <div className="flex-1 min-h-0 flex flex-col gap-3 md:flex-row">
         {/* Left: entry tabs + input form */}
-        <div className="w-[360px] shrink-0 flex flex-col gap-2">
+        <div className="w-full shrink-0 flex flex-col gap-2 md:w-[360px]">
           {/* Input form */}
-          <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
+          <Card className="rounded-lg flex-1 min-h-0 flex flex-col md:flex-none">
             <CardHeader className="p-3 pb-2 shrink-0"><CardTitle className="text-xs">{t('share.params')}</CardTitle></CardHeader>
             <CardContent className="p-3 pt-0 flex-1 min-h-0 flex flex-col">
               {inputFields.length > 0 ? (
@@ -360,12 +360,12 @@ export default function WorkflowSharePage() {
         </div>
 
         {/* Right: results for active entry */}
-        <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-auto">
+        <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-auto md:overflow-visible">
           {activeEntry ? (
-              <div className="flex gap-3 min-h-0 flex-1">
+              <div className="flex flex-col gap-3 min-h-0 flex-1 md:flex-row md:gap-3">
                 {/* Steps - always visible */}
                 {hasResult && (
-                  <Card size="sm" className="m-px rounded-lg w-[320px] shrink-0 flex flex-col py-0">
+                  <Card size="sm" className="m-px rounded-lg w-full shrink-0 flex max-h-[40vh] flex-col py-0 md:w-[320px] md:max-h-none">
                     <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">Step</CardTitle></CardHeader>
                     <CardContent className="px-0 pb-0 flex-1 min-h-0 overflow-auto">
                       <ExecutionChecklist steps={activeEntry.log!.steps} />

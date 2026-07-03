@@ -991,9 +991,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           width: auto;
           height: auto;
         }
-        .react-flow.touch-flow .react-flow__handle {
-          width: 20px;
-          height: 20px;
+        .react-flow.touch-flow .react-flow__handle.handle-dot {
+          width: 20px !important;
+          height: 20px !important;
         }
         .touch-flow .react-flow__handle-right {
           --translate: translate(50%, -50%);

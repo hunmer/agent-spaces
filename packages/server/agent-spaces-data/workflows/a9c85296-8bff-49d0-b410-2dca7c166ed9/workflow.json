@@ -19,7 +19,7 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 250,
+        "x": 240,
         "y": 400
       },
       "data": {}
@@ -69,6 +69,30 @@
         },
         "prompt": "使用ListDatabases tools"
       }
+    },
+    {
+      "id": "node_1783082397618_msdall",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 525,
+        "y": -180
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
+      }
+    },
+    {
+      "id": "node_1783082406554_2yu825",
+      "type": "toast",
+      "label": "nodes.toast.label",
+      "position": {
+        "x": 660,
+        "y": -15
+      },
+      "data": {
+        "type": "info"
+      }
     }
   ],
   "edges": [
@@ -90,8 +114,8 @@
     }
   ],
   "createdAt": 1782908425007,
-  "updatedAt": 1783082345990,
+  "updatedAt": 1783082419482,
   "published": false,
-  "lastOpenedAt": 1783078159931,
+  "lastOpenedAt": 1783082644247,
   "groups": []
 }

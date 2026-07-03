@@ -1184,6 +1184,7 @@ export function WorkflowCanvas({
         panActivationKeyCode={null}
         nodesDraggable={!isCanvasLocked}
         nodesConnectable={!isCanvasLocked}
+        connectOnClick={!isCanvasLocked}
         edgesReconnectable={!isCanvasLocked}
         elevateNodesOnSelect={false}
         defaultEdgeOptions={{ type: 'custom' }}
