@@ -31,7 +31,6 @@ import {
   Save,
   Plus,
   MessageSquare,
-  Upload,
   Download,
   Store,
   FileText,
@@ -40,6 +39,7 @@ import {
 import { AgentIcon } from '@/components/common/agent-icon';
 import { StoreTabPanel } from '@/components/common/store-tab-panel';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
+import { ImportButton } from './import-button';
 
 interface PromptTemplate {
   id: string;
@@ -330,12 +330,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
             />
           </div>
           <Popover open={importOpen} onOpenChange={setImportOpen}>
-            <PopoverTrigger render={
-              <Button variant="outline" size="sm">
-                <Upload className="size-3.5 mr-1" />
-                {t('import')}
-              </Button>
-            } />
+            <PopoverTrigger render={<ImportButton label={t('import')} />} />
             <PopoverContent className="w-80" align="end">
               <div className="space-y-3">
                 <p className="text-sm font-medium">{t('importTitle')}</p>

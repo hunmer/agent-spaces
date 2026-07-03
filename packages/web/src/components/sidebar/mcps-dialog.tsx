@@ -28,7 +28,6 @@ import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import {
   Star,
   StarOff,
-  Upload,
   Search,
   Plug,
   MoreVertical,
@@ -40,6 +39,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
+import { ImportButton } from './import-button';
 
 interface McpServerConfig {
   command?: string;
@@ -665,12 +665,7 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
           <div className="flex items-center gap-2">
             {!selectable && activeTab === 'local' && (
               <Popover open={importOpen} onOpenChange={setImportOpen}>
-                <PopoverTrigger render={
-                  <Button variant="outline" size="sm">
-                    <Upload className="size-3.5 mr-1" />
-                    {t('import')}
-                  </Button>
-                } />
+                <PopoverTrigger render={<ImportButton label={t('import')} />} />
                 <PopoverContent className="w-96" align="end">
                   <div className="space-y-3">
                     <p className="text-sm font-medium">{t('importTitle')}</p>

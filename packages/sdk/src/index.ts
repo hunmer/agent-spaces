@@ -59,6 +59,7 @@ export { createFontApi } from './modules/font';
 export { createInspectorApi } from './modules/inspector';
 export { createAvatarApi } from './modules/avatar';
 export { createAgentCommandsApi } from './modules/agent-commands';
+export { createExternalImportApi, type ExternalImportKind, type ExternalImportMode, type ExternalImportSource, type ExternalImportResult } from './modules/external-import';
 export { createChatApi } from './modules/chat';
 export type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from './modules/chat';
 export { createMiniAppApi, type MiniAppProject, type MiniAppAgentConfig } from './modules/mini-apps';
@@ -103,6 +104,7 @@ import { createFontApi } from './modules/font';
 import { createInspectorApi } from './modules/inspector';
 import { createAvatarApi } from './modules/avatar';
 import { createAgentCommandsApi } from './modules/agent-commands';
+import { createExternalImportApi } from './modules/external-import';
 import { createChatApi } from './modules/chat';
 import { createMiniAppApi } from './modules/mini-apps';
 import { createSqliteApi } from './modules/sqlite';
@@ -150,6 +152,7 @@ export interface SDK {
   readonly inspector: ReturnType<typeof createInspectorApi>;
   readonly avatar: ReturnType<typeof createAvatarApi>;
   readonly agentCommands: ReturnType<typeof createAgentCommandsApi>;
+  readonly externalImport: ReturnType<typeof createExternalImportApi>;
   readonly chat: ReturnType<typeof createChatApi>;
   readonly miniApp: ReturnType<typeof createMiniAppApi>;
   readonly sqlite: ReturnType<typeof createSqliteApi>;
@@ -205,6 +208,7 @@ export function createSDK(config: SDKConfig): SDK {
     inspector: createInspectorApi(http),
     avatar: createAvatarApi(http),
     agentCommands: createAgentCommandsApi(http),
+    externalImport: createExternalImportApi(http),
     chat: createChatApi(http),
     miniApp: createMiniAppApi(http),
     sqlite: createSqliteApi(http),

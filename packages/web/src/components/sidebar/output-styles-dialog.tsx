@@ -31,13 +31,13 @@ import {
   Trash2,
   Plus,
   Pencil,
-  Upload,
   Download,
   Rocket,
   Store,
   FileText,
 } from 'lucide-react';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
+import { ImportButton } from './import-button';
 
 interface OutputStyleTemplate {
   id: string;
@@ -352,12 +352,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
             />
           </div>
           <Popover open={importOpen} onOpenChange={setImportOpen}>
-            <PopoverTrigger render={
-              <Button variant="outline" size="sm">
-                <Upload className="size-3.5 mr-1" />
-                {t('import')}
-              </Button>
-            } />
+            <PopoverTrigger render={<ImportButton label={t('import')} />} />
             <PopoverContent className="w-80" align="end">
               <div className="space-y-3">
                 <p className="text-sm font-medium">{t('importTitle')}</p>

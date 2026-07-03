@@ -20,12 +20,12 @@ import {
   Trash2,
   MoreVertical,
   FolderOpen,
-  Upload,
   FileText,
   FileArchive,
   GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ImportButton } from '../import-button';
 import type { FilterMode, SkillInfo } from './types';
 
 interface SkillCardGridProps {
@@ -150,12 +150,7 @@ export function SkillCardGrid({
       <div className="hidden md:flex items-center justify-between gap-3 pt-2 border-t shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={
-              <Button variant="outline" size="sm">
-                <Upload className="size-3.5 mr-1" />
-                {t('import')}
-              </Button>
-            }
+            render={<ImportButton label={t('import')} />}
           />
           <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={onImportMd}>
