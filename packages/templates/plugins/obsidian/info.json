@@ -1,0 +1,69 @@
+{
+  "id": "workflow.obsidian",
+  "name": "Obsidian",
+  "name_zh": "Obsidian",
+  "name_en": "Obsidian",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "通过 Obsidian Local REST API 操作 Vault：读写/搜索/补丁笔记，执行命令、管理标签与周期笔记",
+  "description_zh": "通过 Obsidian Local REST API 操作 Vault：读写/搜索/补丁笔记，执行命令、管理标签与周期笔记",
+  "description_en": "Operate Obsidian Vault via Local REST API: read/write/search/patch notes, execute commands, manage tags and periodic notes",
+  "author": { "name": "workflow" },
+  "tags": ["Obsidian", "笔记", "知识库", "API"],
+  "tags_zh": ["Obsidian", "笔记", "知识库", "API"],
+  "tags_en": ["Obsidian", "Notes", "Knowledge Base", "API"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "Obsidian Local REST API 的鉴权令牌。在 Obsidian 设置 → Local REST API 中查看",
+      "type": "string",
+      "value": "",
+      "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "required": true
+    },
+    {
+      "key": "scheme",
+      "label": "协议",
+      "desc": "默认 https（端口 27124，自签名证书）。若无法信任证书可在插件中开启 HTTP 端点（端口 27123）并改用 http",
+      "type": "string",
+      "value": "https"
+    },
+    {
+      "key": "host",
+      "label": "主机",
+      "desc": "Obsidian 所在主机，默认 127.0.0.1",
+      "type": "string",
+      "value": "127.0.0.1"
+    },
+    {
+      "key": "port",
+      "label": "端口",
+      "desc": "HTTPS 默认 27124，HTTP 默认 27123",
+      "type": "number",
+      "value": "27124"
+    },
+    {
+      "key": "rejectUnauthorized",
+      "label": "校验 TLS 证书",
+      "desc": "默认关闭。Obsidian 默认使用自签名证书；除非已信任其证书，否则保持关闭",
+      "type": "boolean",
+      "value": false
+    },
+    {
+      "key": "timeout",
+      "label": "超时(ms)",
+      "desc": "单次请求超时时间",
+      "type": "number",
+      "value": "30000"
+    }
+  ]
+}

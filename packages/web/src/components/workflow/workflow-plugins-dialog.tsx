@@ -432,7 +432,7 @@ export function WorkflowPluginsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex h-[85vh] max-h-[85vh] w-[calc(100vw-1rem)] max-w-none flex-col gap-0 overflow-x-hidden p-0 sm:w-auto sm:max-w-[80vw]">
+        <DialogContent className="flex h-[100dvh] max-h-none w-screen max-w-none flex-col gap-0 overflow-x-hidden rounded-none p-0 sm:h-[85vh] sm:w-[80vw] sm:max-h-[85vh] sm:max-w-none sm:rounded-xl">
           <DialogHeader className="flex flex-row flex-wrap items-center gap-2 border-b px-4 py-2 pr-10">
             <DialogTitle className="text-sm font-semibold">{t('title')}</DialogTitle>
             <div className="flex items-center gap-1 rounded-md bg-muted p-0.5">

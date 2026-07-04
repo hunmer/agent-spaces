@@ -149,7 +149,7 @@ export function MiniAppStoreDialog({ open, onOpenChange, onImported }: MiniAppSt
           ) : templates.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('store.empty')}</div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-2">
               {templates.map((item) => {
                 const status = getStatus(item);
                 const isImporting = importing === item.id;
