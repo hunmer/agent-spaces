@@ -10,7 +10,7 @@ function getConfig(args) {
   return {
     baseUrl: (args && args.baseUrl ? String(args.baseUrl) : '').trim() || DEFAULT_BASE_URL,
     timeout: Number(args && args.timeout) || 600000,
-    clientId: (args && args.clientId) || `workfox-${Math.random().toString(36).slice(2, 10)}`,
+    clientId: (args && args.clientId) || `workflow-${Math.random().toString(36).slice(2, 10)}`,
   }
 }
 

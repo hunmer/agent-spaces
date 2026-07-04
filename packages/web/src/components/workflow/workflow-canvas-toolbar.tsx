@@ -16,8 +16,8 @@ import {
   EyeOff, LassoSelect, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw, SquareDashedMousePointer,
   PanelBottomClose, PanelBottomOpen,
   ExternalLink,
+  MousePointerClick,
 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 
 export interface WorkflowClipboardRecord {
   id: string;
@@ -252,21 +252,13 @@ export function CanvasToolbar({
         </CanvasToolbarButton>
 
         {onClickConnectEnabledChange && (
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <label className="flex h-7 items-center gap-1.5 rounded-md px-1.5 md:hidden">
-                  <span className="text-[10px] text-muted-foreground">{t('canvasToolbar.clickConnect')}</span>
-                  <Switch
-                    size="sm"
-                    checked={clickConnectEnabled}
-                    onCheckedChange={onClickConnectEnabledChange}
-                  />
-                </label>
-              )}
-            />
-            <TooltipContent side="top" className="text-xs">{t('canvasToolbar.clickConnectTooltip')}</TooltipContent>
-          </Tooltip>
+          <CanvasToolbarButton
+            tooltip={t('canvasToolbar.clickConnectTooltip')}
+            className={`h-7 w-7 p-0 md:hidden ${clickConnectEnabled ? 'text-blue-500' : ''}`}
+            onClick={() => onClickConnectEnabledChange(!clickConnectEnabled)}
+          >
+            <MousePointerClick className="h-3.5 w-3.5" />
+          </CanvasToolbarButton>
         )}
 
       </TooltipProvider>

@@ -62,9 +62,9 @@ export function MiniAppDetail({ item, onBack }: { item: MiniAppIndexItem; onBack
         <ArrowLeft className="size-4 mr-1" />
         {t('detail.back')}
       </Button>
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* 左栏：插件信息 */}
-        <aside className="w-60 shrink-0 flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-background p-4 self-start">
+        <aside className="w-full lg:w-60 lg:shrink-0 flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-background p-4 lg:self-start">
           <AgentIcon
             name={item.name}
             avatarUrl={item.iconUrl ? resolveStoreUrl(item.iconUrl) : undefined}

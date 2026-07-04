@@ -64,13 +64,13 @@
         "y": 150
       },
       "data": {
-        "apiKey": "{{ __config__[\"workfox.minimax\"][\"apiKey\"] }}",
+        "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
         "model": "music-cover-free",
         "isInstrumental": "false",
         "lyricsOptimizer": "false",
         "outputFormat": "url",
         "audioFormat": "mp3",
-        "baseUrl": "{{ __config__[\"workfox.minimax\"][\"baseUrl\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.minimax\"][\"baseUrl\"] }}",
         "sourceNodeId": "node_1780553286539_start",
         "sourceHandle": "source",
         "prompt": "{{ __data__[\"node_1780553286539_start\"].music_desc }}",
@@ -129,7 +129,7 @@
   "createdAt": 1780553286552,
   "updatedAt": 1780890513770,
   "enabledPlugins": [
-    "workfox.fish-audio",
-    "workfox.minimax"
+    "workflow.fish-audio",
+    "workflow.minimax"
   ]
 }

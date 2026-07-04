@@ -1,6 +1,6 @@
 # Obsidian 插件
 
-通过 [Obsidian Local REST API](https://coddingtonbear.github.io/obsidian-local-rest-api/) 连接 Obsidian Vault，支持在 WorkFox 工作流和 Agent 工具中读写笔记、搜索、补丁、执行命令。
+通过 [Obsidian Local REST API](https://coddingtonbear.github.io/obsidian-local-rest-api/) 连接 Obsidian Vault，支持在 workflow 工作流和 Agent 工具中读写笔记、搜索、补丁、执行命令。
 
 ## 前置条件
 

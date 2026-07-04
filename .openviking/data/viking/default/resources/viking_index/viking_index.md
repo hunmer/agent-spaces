@@ -36,7 +36,7 @@
 
 ## 4. 插件系统 / 扩展开发
 - 插件系统（REST API、加载、商店、目录结构）→ `viking://resources/plugins.mdx/Plugin_插件系统/`
-- 插件开发指南（WorkFox）→ `viking://resources/plugin-guide/`
+- 插件开发指南（workflow）→ `viking://resources/plugin-guide/`
 - 本地测试环境 → `viking://resources/plugin-local-testing/`
 - 客户端插件运行时 → `viking://resources/client-plugin-runtime/`
 - mini-app（沙箱运行时 / RPC）→ `viking://resources/mini-app.mdx/Mini-app_沙箱/`

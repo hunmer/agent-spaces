@@ -341,7 +341,7 @@
     "workflow.aliyun-ai",
     "workflow.aliyun-oss",
     "workflow.qianyin",
-    "workfox.dingtalk",
+    "workflow.dingtalk",
     "workflow.fish-audio"
   ],
   "tags": [

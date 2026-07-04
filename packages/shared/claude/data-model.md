@@ -74,7 +74,7 @@ KanbanBoard
 | ISO 8601 字符串 | `string` | 大多数模型（Workspace, Issue, Task, Agent, Channel, Command 等） |
 | Unix 毫秒 | `number` | Workflow 相关模型（Workflow, WorkflowFolder, ExecutionLog, DocNode, KanbanBoard 等） |
 
-这是历史原因：原始 agent-spaces 模型使用 ISO 字符串，后来整合的 WorkFox Workflow 引擎使用 epoch 毫秒。
+这是历史原因：原始 agent-spaces 模型使用 ISO 字符串，后来整合的 workflow Workflow 引擎使用 epoch 毫秒。
 
 ## ID 策略
 

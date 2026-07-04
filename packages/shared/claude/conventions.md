@@ -32,7 +32,7 @@ export type TaskStatus = 'pending' | 'running' | 'done' | ...;
 ## 时间戳格式
 
 - **ISO 字符串**：大多数模型使用 `string` 类型（如 `createdAt: string`）
-- **Unix 毫秒**：Workflow 相关模型使用 `number` 类型（如 `createdAt: number`），这是 WorkFox 统一 Workflow 类型的设计决策
+- **Unix 毫秒**：Workflow 相关模型使用 `number` 类型（如 `createdAt: number`），这是 workflow 统一 Workflow 类型的设计决策
 
 ## 扩展性约定
 

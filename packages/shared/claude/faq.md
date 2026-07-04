@@ -28,7 +28,7 @@ A: 内置 `agent`（默认通用）、`scheduler`（后台调度）、`task_crea
 ## 时间戳
 
 **Q: 为什么有些模型用 `string` 时间戳，有些用 `number`？**
-A: 历史原因。原始 agent-spaces 模型使用 ISO 8601 字符串（`string`），后来整合的 WorkFox Workflow 引擎使用 Unix 毫秒（`number`）。
+A: 历史原因。原始 agent-spaces 模型使用 ISO 8601 字符串（`string`），后来整合的 workflow Workflow 引擎使用 Unix 毫秒（`number`）。
 
 ## Workflow
 

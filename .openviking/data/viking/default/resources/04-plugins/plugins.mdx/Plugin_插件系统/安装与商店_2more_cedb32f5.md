@@ -38,7 +38,7 @@
 
 **通知与通信**
 
-- `workfox.dingtalk` — 钉钉自定义机器人 Webhook（text/markdown/link/actionCard/feedCard）
+- `workflow.dingtalk` — 钉钉自定义机器人 Webhook（text/markdown/link/actionCard/feedCard）
 - `workflow.mail` — SMTP 邮件发送（HTML/纯文本、附件、抄送/密送）
 
 **音视频与文件处理**

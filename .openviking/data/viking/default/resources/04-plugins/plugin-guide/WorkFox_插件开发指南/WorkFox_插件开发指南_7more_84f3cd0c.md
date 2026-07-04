@@ -1,4 +1,4 @@
-# WorkFox 插件开发指南
+# workflow 插件开发指南
 
 本文档聚焦“如何按当前架构开发插件”，不再假设所有插件都运行在 Electron 主进程。
 
@@ -80,11 +80,11 @@ my-plugin/
 
 ```json
 {
-  "id": "workfox.my-plugin",
+  "id": "workflow.my-plugin",
   "name": "My Plugin",
   "version": "1.0.0",
   "description": "插件描述",
-  "author": { "name": "workfox" },
+  "author": { "name": "workflow" },
   "tags": ["AI"],
   "type": "server",
   "hasWorkflow": true,

@@ -25,105 +25,55 @@
       "data": {}
     },
     {
-      "id": "node_1782908448757_sdxsc6",
-      "type": "agent_run",
-      "label": "nodes.agent_run.label",
+      "id": "node_1783148814277_flu8er",
+      "type": "obsidian_status",
+      "label": "Obsidian 状态",
       "position": {
-        "x": 555,
-        "y": 225
+        "x": 690,
+        "y": 210
       },
       "data": {
-        "permissionMode": "bypassPermissions",
+        "apiKey": "{{ __config__[\"workflow.obsidian\"][\"apiKey\"]}}",
+        "scheme": "https",
+        "host": "{{ __config__[\"workflow.obsidian\"][\"host\"]}}",
+        "port": 27124,
+        "rejectUnauthorized": false,
+        "timeout": 30000,
         "outputs": [
           {
-            "key": "result",
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
             "type": "string"
           },
           {
-            "key": "usage",
-            "type": "object"
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
           }
-        ],
-        "agent": {
-          "id": "9f124a32-10b8-4ec7-b682-cf6d9def858b",
-          "name": "test",
-          "role": "agent",
-          "description": "",
-          "runtimeKind": "claude-code",
-          "modelProvider": "anthropic-messages",
-          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
-          "modelId": "GLM-5.1",
-          "apiBase": "https://open.bigmodel.cn/api/anthropic",
-          "workingDir": "",
-          "mcps": {},
-          "tools": [
-            "ListDatabases"
-          ],
-          "systemPrompt": "",
-          "outputStyle": "",
-          "temperature": 0.3,
-          "maxTokens": 4096,
-          "avatarUrl": "",
-          "icon": "",
-          "enabled": true
-        },
-        "prompt": "使用ListDatabases tools"
-      }
-    },
-    {
-      "id": "node_1783082397618_msdall",
-      "type": "run_code",
-      "label": "nodes.run_code.label",
-      "position": {
-        "x": 525,
-        "y": -180
-      },
-      "data": {
-        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
-      }
-    },
-    {
-      "id": "node_1783082406554_2yu825",
-      "type": "toast",
-      "label": "nodes.toast.label",
-      "position": {
-        "x": 720,
-        "y": 15
-      },
-      "data": {
-        "type": "info"
+        ]
       }
     }
   ],
   "edges": [
     {
-      "id": "e-node_1782908424981_start-source-node_1782908448757_sdxsc6-target",
+      "id": "e-node_1782908424981_start-source-node_1782908424981_end-target",
       "source": "node_1782908424981_start",
-      "target": "node_1782908448757_sdxsc6",
-      "edgeKind": "runtime",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1782908448757_sdxsc6-source-node_1782908424981_end-target",
-      "source": "node_1782908448757_sdxsc6",
       "target": "node_1782908424981_end",
-      "edgeKind": "runtime",
-      "sourceHandle": "source",
-      "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1783082397618_msdall-source-node_1783082406554_2yu825-target",
-      "source": "node_1783082397618_msdall",
-      "target": "node_1783082406554_2yu825",
-      "edgeKind": "runtime",
       "sourceHandle": "source",
       "targetHandle": "target"
     }
   ],
   "createdAt": 1782908425007,
-  "updatedAt": 1783083304171,
+  "updatedAt": 1783148940449,
   "published": false,
-  "lastOpenedAt": 1783082869797,
-  "groups": []
+  "lastOpenedAt": 1783148575976,
+  "groups": [],
+  "enabledPlugins": [
+    "workflow.obsidian"
+  ]
 }

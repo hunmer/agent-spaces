@@ -212,12 +212,12 @@
     ]
   },
   {
-    "id": "workfox.dingtalk",
+    "id": "workflow.dingtalk",
     "name": "DingTalk",
     "version": "1.0.0",
     "description": "通过钉钉自定义机器人 Webhook 发送群消息，支持 text/markdown/link/actionCard/feedCard 五种消息类型",
     "author": {
-      "name": "workfox"
+      "name": "workflow"
     },
     "tags": [
       "notification",
@@ -726,6 +726,39 @@
     "iconUrl": "plugins/notion/icon.png",
     "md5": "f49d80517e6aa8428fc6406371083e8e",
     "updatedAt": "2026-06-27T07:14:18.423Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.obsidian",
+    "name": "Obsidian",
+    "version": "1.0.0",
+    "description": "通过 Obsidian Local REST API 操作 Vault：读写/搜索/补丁笔记，执行命令、管理标签与周期笔记",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Obsidian",
+      "笔记",
+      "知识库",
+      "API"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "obsidian",
+    "iconUrl": "plugins/obsidian/icon.png",
+    "md5": "bdcd200a9f7b21af14ca396a72a0a151",
+    "updatedAt": "2026-07-04T07:05:47.276Z",
     "files": [
       "actions.js",
       "icon.png",

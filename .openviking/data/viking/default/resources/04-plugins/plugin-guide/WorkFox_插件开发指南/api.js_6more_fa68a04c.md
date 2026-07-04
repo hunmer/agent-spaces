@@ -47,11 +47,11 @@ Web client 插件需要单独 manifest。
 
 ```json
 {
-  "id": "workfox.test-plugin",
+  "id": "workflow.test-plugin",
   "name": "Test Plugin",
   "version": "1.0.0",
   "description": "Web client plugin",
-  "author": { "name": "workfox" },
+  "author": { "name": "workflow" },
   "type": "client",
   "runtimeTargets": ["web", "electron"],
   "iconUrl": "https://example.com/icon.png",
