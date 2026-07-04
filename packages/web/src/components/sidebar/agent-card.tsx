@@ -47,19 +47,22 @@ export function AgentCard({
       color={color}
       onClick={onClick}
       className={cn("min-h-[176px] p-3", muted && "opacity-50", className)}
-      centerIcon={
+    >
+      {/* 图标区：占据上半部分并居中，用文档流布局避免与底部文字重叠 */}
+      <div className="flex flex-1 items-center justify-center py-2">
         <AgentIcon
           agentId={agentId}
           name={name}
           avatarUrl={avatarUrl}
           icon={icon}
           apiBase={apiBase}
-          className="size-16"
+          className="size-16 transition-transform duration-300 group-hover:scale-125"
         />
-      }
-    >
+      </div>
+
+      {/* 文字区：底部，与图标区天然分离 */}
       <div
-        className={cn("mt-auto text-center", onContentClick && "cursor-pointer")}
+        className={cn("text-center", onContentClick && "cursor-pointer")}
         onClick={
           onContentClick
             ? (e) => {
@@ -79,6 +82,7 @@ export function AgentCard({
           </p>
         )}
       </div>
+
       {actions && (
         <div className="mt-2 flex items-center justify-center gap-1.5">
           {actions}

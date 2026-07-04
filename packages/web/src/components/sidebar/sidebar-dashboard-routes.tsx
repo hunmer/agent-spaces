@@ -118,7 +118,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
     },
     {
       id: "settings-manage",
-      title: isMobile ? ts("nav.general") : ts("nav.manage"),
+      title: ts("nav.manage"),
       icon: <LayoutGrid className="size-4" />,
       link: isMobile ? "/settings" : "#",
       subs: isMobile
