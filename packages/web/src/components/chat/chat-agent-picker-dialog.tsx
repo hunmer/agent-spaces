@@ -382,24 +382,24 @@ export function ChatAgentPickerDialog({
       searchPlaceholder={t("dialog.searchStore")}
       emptyText={t("dialog.storeEmpty")}
       loadingText={tc("loading")}
+      gridClassName="grid-cols-2 lg:grid-cols-3"
       renderItem={(agent) => {
         const isAdded = chatAgentNames.has(agent.name) || importingIds.has(agent.id);
         const isImporting = importingIds.has(agent.id);
         return (
-          <div className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base">{agent.emoji || "🤖"}</span>
-                  <span className="font-medium text-sm">{agent.name}</span>
-                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                    {agent.group}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{agent.description}</p>
-              </div>
-              {isAdded && !isImporting ? (
-                <div className="flex items-center gap-1 text-green-500 text-xs shrink-0">
+          <AgentCard
+            agentId={agent.id}
+            icon={agent.emoji || "🤖"}
+            name={agent.name}
+            description={agent.description}
+            meta={
+              <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+                {agent.group}
+              </Badge>
+            }
+            actions={
+              isAdded && !isImporting ? (
+                <div className="flex items-center gap-1 text-green-500 text-xs">
                   <Check className="size-4" />
                   <span>{t("dialog.added")}</span>
                 </div>
@@ -418,9 +418,9 @@ export function ChatAgentPickerDialog({
                     </>
                   )}
                 </Button>
-              )}
-            </div>
-          </div>
+              )
+            }
+          />
         );
       }}
     />

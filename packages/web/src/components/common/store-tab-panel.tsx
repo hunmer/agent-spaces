@@ -48,7 +48,7 @@ export function StoreTabPanel<T>({
   });
 
   return (
-    <div className="flex flex-1 min-h-0 gap-4 pt-2">
+    <div className="flex flex-1 min-h-0 gap-4 px-2 pt-2">
       {groups.length > 0 && (
         <ScrollArea className="hidden md:block w-44 shrink-0">
           <div className="flex flex-col gap-1 pr-2">
