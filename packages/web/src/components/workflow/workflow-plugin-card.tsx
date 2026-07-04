@@ -159,28 +159,28 @@ export function StorePluginCard({
         clickable
         onClick={() => setDetailOpen(true)}
       >
-        {plugin.type ? <Badge variant="secondary" className="text-[10px]">{plugin.type}</Badge> : null}
+        {plugin.type ? <Badge variant="secondary" className="max-w-full truncate text-[10px]">{plugin.type}</Badge> : null}
         <Button
           size="sm"
           variant={installed ? 'outline' : 'default'}
-          className="ml-auto h-7 text-xs"
+          className="ml-auto h-7 min-w-0 max-w-full gap-1 px-2 text-xs"
           disabled={installing}
           onClick={(e) => { e.stopPropagation(); onInstallAction(); }}
         >
           {installed ? (
             <>
-              <Download className="h-3.5 w-3.5" />
-              {t('pluginCard.reinstall')}
+              <Download className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{t('pluginCard.reinstall')}</span>
             </>
           ) : installing ? (
             <>
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              {t('pluginCard.installing')}
+              <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
+              <span className="truncate">{t('pluginCard.installing')}</span>
             </>
           ) : (
             <>
-              <Download className="h-3.5 w-3.5" />
-              {t('pluginCard.installAndAdd')}
+              <Download className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{t('pluginCard.installAndAdd')}</span>
             </>
           )}
         </Button>
@@ -241,10 +241,10 @@ function PluginCardShell({
 
   return (
     <div
-      className={`group flex min-h-[156px] flex-col rounded-md border bg-background p-3 ${clickable ? 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30' : ''} ${containerClassName || ''}`}
+      className={`group flex min-h-[156px] min-w-0 flex-col rounded-md border bg-background p-3 ${clickable ? 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30' : ''} ${containerClassName || ''}`}
       onClick={onClick}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex min-w-0 items-start gap-2">
         <div
           title={iconTitle}
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted ${iconClickable ? 'cursor-pointer ring-offset-1 transition-shadow hover:ring-2 hover:ring-primary/50' : ''}`}
@@ -264,14 +264,14 @@ function PluginCardShell({
             </div>
           </div>
         ) : (
-          <Badge variant={badgeVariant}>{badge}</Badge>
+          <Badge variant={badgeVariant} className="max-w-[45%] shrink-0 truncate">{badge}</Badge>
         )}
       </div>
       <p className="mt-2 line-clamp-3 min-h-[48px] text-xs text-muted-foreground">{description || t('pluginCard.noDescription')}</p>
-      <div className="mt-2 flex flex-wrap gap-1">
-        {(tags || []).slice(0, 4).map(item => <Badge key={item} variant="outline" className="text-[10px]">{item}</Badge>)}
+      <div className="mt-2 flex min-w-0 flex-wrap gap-1">
+        {(tags || []).slice(0, 4).map(item => <Badge key={item} variant="outline" className="max-w-full truncate text-[10px]">{item}</Badge>)}
       </div>
-      <div className="mt-auto flex items-center gap-2 pt-3">
+      <div className="mt-auto flex min-w-0 flex-wrap items-center gap-2 pt-3">
         {children}
       </div>
     </div>

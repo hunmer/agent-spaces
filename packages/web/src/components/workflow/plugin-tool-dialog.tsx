@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, PackagePlus, Play, Settings, Wrench } from 'lucide-react';
+import { Loader2, PackagePlus, Play, Settings, Wrench, Puzzle, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +13,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
 import { MiniAppToolExecuteDialog } from '@/components/mini-apps/mini-app-tool-execute-dialog';
@@ -49,6 +51,7 @@ export function PluginToolDialog({
   persistEnabledPlugins = true,
 }: PluginToolDialogProps) {
   const t = useTranslations('mini-apps');
+  const isMobile = useIsMobile();
   const rightScrollRef = useRef<HTMLDivElement>(null);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
   const [selectedPluginId, setSelectedPluginId] = useState<string | undefined>(defaultPluginId);
@@ -117,7 +120,7 @@ export function PluginToolDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="!w-[80vw] !h-[85vh] !max-h-[85vh] !max-w-none sm:!max-w-none !flex !flex-col !overflow-hidden !p-0"
+        className="!flex !flex-col !overflow-hidden !p-0 !h-[100dvh] !w-screen !max-w-none !max-h-none !rounded-none sm:!h-[85vh] sm:!w-[80vw] sm:!max-h-[85vh] sm:!max-w-none sm:!rounded-xl"
       >
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
@@ -137,10 +140,10 @@ export function PluginToolDialog({
           <div className="py-8 text-center text-sm text-muted-foreground">
             {t('pluginTools.noPlugins')}
           </div>
-        ) : (
-          <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Left: plugin list */}
-            <div className="w-56 shrink-0 border-r border-border bg-muted/20">
+        ) : (() => {
+          // 左：插件列表（两端共用）
+          const pluginsPanel = (
+            <div className={isMobile ? "h-full bg-muted/20" : "w-56 shrink-0 border-r border-border bg-muted/20"}>
               <ScrollArea className="h-full">
                 <div className="p-2 space-y-0.5">
                   {plugins.map((plugin) => {
@@ -189,9 +192,11 @@ export function PluginToolDialog({
                 </div>
               </ScrollArea>
             </div>
+          );
 
-            {/* Right: tools grid */}
-            <div className="flex-1 min-w-0" ref={rightScrollRef}>
+          // 右：工具网格（两端共用）
+          const toolsPanel = (
+            <div className="min-h-0 min-w-0 flex-1 overflow-hidden" ref={rightScrollRef}>
               <ScrollArea className="h-full">
                 <div className="space-y-4 p-4">
                   {plugins.map((plugin) => {
@@ -268,8 +273,39 @@ export function PluginToolDialog({
                 </div>
               </ScrollArea>
             </div>
-          </div>
-        )}
+          );
+
+          if (isMobile) {
+            return (
+              <Tabs defaultValue="plugins" className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-2">
+                <TabsList className="w-full">
+                  <TabsTrigger value="plugins">
+                    <Puzzle className="size-4" />
+                    {t('pluginTools.pluginsTab')}
+                  </TabsTrigger>
+                  <TabsTrigger value="tools">
+                    <Grid3x3 className="size-4" />
+                    {t('pluginTools.toolsTab')}
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="plugins" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  {pluginsPanel}
+                </TabsContent>
+                <TabsContent value="tools" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  {toolsPanel}
+                </TabsContent>
+              </Tabs>
+            );
+          }
+
+          return (
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              {pluginsPanel}
+              {toolsPanel}
+            </div>
+          );
+        })()}
+
 
       </DialogContent>
 

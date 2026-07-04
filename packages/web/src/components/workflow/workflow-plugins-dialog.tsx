@@ -432,8 +432,8 @@ export function WorkflowPluginsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[80vw]">
-          <DialogHeader className="flex-row items-center gap-2 border-b px-4 py-2 pr-10">
+        <DialogContent className="flex h-[85vh] max-h-[85vh] w-[calc(100vw-1rem)] max-w-none flex-col gap-0 overflow-x-hidden p-0 sm:w-auto sm:max-w-[80vw]">
+          <DialogHeader className="flex flex-row flex-wrap items-center gap-2 border-b px-4 py-2 pr-10">
             <DialogTitle className="text-sm font-semibold">{t('title')}</DialogTitle>
             <div className="flex items-center gap-1 rounded-md bg-muted p-0.5">
               <Button
@@ -496,8 +496,8 @@ export function WorkflowPluginsDialog({
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={query}
@@ -547,7 +547,7 @@ export function WorkflowPluginsDialog({
             </div>
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1" viewportClassName="overflow-x-hidden">
             <div className="grid gap-3 p-4 md:grid-cols-2 lg:grid-cols-3">
               {activeTab === 'local' && filteredLocal.map((plugin) => (
                 <LocalPluginCard

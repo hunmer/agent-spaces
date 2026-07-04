@@ -117,7 +117,9 @@
     "store": "Plugin Store",
     "noPlugins": "No plugins installed",
     "tools": "{count} tools",
-    "config": "Config"
+    "config": "Config",
+    "pluginsTab": "Plugins",
+    "toolsTab": "Tools"
   },
   "toolExecute": {
     "noParams": "This tool requires no parameters",

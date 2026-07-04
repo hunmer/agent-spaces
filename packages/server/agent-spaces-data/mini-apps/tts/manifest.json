@@ -6,11 +6,12 @@
   "tags": [],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-08T05:18:45.999Z",
-  "updatedAt": "2026-07-04T06:08:45.287Z",
+  "updatedAt": "2026-07-04T06:14:40.841Z",
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.fish-audio",
-    "workflow.qianyin"
+    "workflow.qianyin",
+    "workflow.fetch"
   ],
   "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
   "description": "配音界面",
