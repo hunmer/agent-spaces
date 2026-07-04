@@ -14,6 +14,10 @@ import {
 } from "@/lib/monaco-models";
 import { sdk } from "@/lib/sdk";
 import type { FileNode } from "@agent-spaces/shared";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { PanelLeft } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const DATA_EDITOR_ID = "data-files";
 
@@ -24,6 +28,8 @@ export default function DataFilesPage() {
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
   const [modifiedFileContents, setModifiedFileContents] = useState<Record<string, string>>({});
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const loadTree = useCallback(async () => {
     setTreeLoading(true);
@@ -58,6 +64,7 @@ export default function DataFilesPage() {
     const existing = openFiles.find((file) => file.path === path);
     if (existing) {
       setActiveFilePath(path);
+      setDrawerOpen(false);
       return;
     }
 
@@ -66,12 +73,14 @@ export default function DataFilesPage() {
     if (mediaType && mediaType !== "svg" && mediaType !== "markdown" && mediaType !== "mermaid") {
       setOpenFiles((prev) => [...prev, { path, name, content: "", modified: false, mediaType }]);
       setActiveFilePath(path);
+      setDrawerOpen(false);
       return;
     }
 
     const data = await sdk.data.content(path);
     setOpenFiles((prev) => [...prev, { path, name, content: data.content, modified: false, mediaType: mediaType || undefined }]);
     setActiveFilePath(path);
+    setDrawerOpen(false);
   }, [openFiles]);
 
   const activeFile = useMemo(
@@ -153,38 +162,71 @@ export default function DataFilesPage() {
     },
   }), [loadDirectory, loadTree, loadingDirs, openFile, openFiles, tree, treeLoading]);
 
+  // 面板内容抽成变量，桌面和小屏共用（参考 mobile-responsive-migration.md 模式一）
+  const asidePanel = (
+    <CommonEditorPanel
+      storageKey="data-files"
+      variant="project"
+      showImport={false}
+      showSearchPanel={false}
+      api={filePanelApi}
+    />
+  );
+
+  const mainPanel = (
+    <main className="min-w-0 flex-1">
+      <CommonCodeEditor
+        activeFile={activeFile}
+        activeFilePath={activeFilePath}
+        activeContent={activeContent}
+        modelPath={modelPath}
+        mediaType={mediaType}
+        mediaUrl={mediaUrl}
+        isCommitDiff={false}
+        commitDiffData={null}
+        pendingJump={null}
+        onChange={handleChange}
+        onSave={handleSave}
+        onRefreshActiveFile={handleRefreshActiveFile}
+        onClearPendingJump={() => undefined}
+        onGetExpectedModelPath={(path) => getModelUri(DATA_EDITOR_ID, path).path}
+        onGetModel={(path) => getModel(DATA_EDITOR_ID, path)}
+        onEnsureModel={(path, content) => getOrCreateModel(DATA_EDITOR_ID, path, content)}
+        onRegisterNavigation={() => undefined}
+      />
+    </main>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="relative flex h-full min-h-0 bg-background">
+        {mainPanel}
+        {/* 左下角抽屉触发按钮：始终可见 */}
+        <Button
+          aria-label="Toggle file panel"
+          className="absolute bottom-4 left-4 z-20 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+          onClick={() => setDrawerOpen(true)}
+          size="icon"
+          variant="ghost"
+          type="button"
+        >
+          <PanelLeft className="size-4" />
+        </Button>
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="left">
+          <DrawerContent className="h-full w-4/5 max-w-sm p-0">
+            {asidePanel}
+          </DrawerContent>
+        </Drawer>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0 bg-background">
       <aside className="h-full w-80 shrink-0 border-r bg-background">
-        <CommonEditorPanel
-          storageKey="data-files"
-          variant="project"
-          showImport={false}
-          showSearchPanel={false}
-          api={filePanelApi}
-        />
+        {asidePanel}
       </aside>
-      <main className="min-w-0 flex-1">
-        <CommonCodeEditor
-          activeFile={activeFile}
-          activeFilePath={activeFilePath}
-          activeContent={activeContent}
-          modelPath={modelPath}
-          mediaType={mediaType}
-          mediaUrl={mediaUrl}
-          isCommitDiff={false}
-          commitDiffData={null}
-          pendingJump={null}
-          onChange={handleChange}
-          onSave={handleSave}
-          onRefreshActiveFile={handleRefreshActiveFile}
-          onClearPendingJump={() => undefined}
-          onGetExpectedModelPath={(path) => getModelUri(DATA_EDITOR_ID, path).path}
-          onGetModel={(path) => getModel(DATA_EDITOR_ID, path)}
-          onEnsureModel={(path, content) => getOrCreateModel(DATA_EDITOR_ID, path, content)}
-          onRegisterNavigation={() => undefined}
-        />
-      </main>
+      {mainPanel}
     </div>
   );
 }
