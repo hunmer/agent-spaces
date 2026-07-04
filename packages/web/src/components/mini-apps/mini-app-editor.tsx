@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, Pencil, Share2, Puzzle, FolderOpen, Copy, Upload } from 'lucide-react';
+import { Loader2, Pencil, Share2, Puzzle, FolderOpen, Copy, Upload, Code2, Eye } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { MiniAppPreviewToolbar } from './mini-app-preview-toolbar';
@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { FileTree, FileTreeFile, FileTreeFolder } from '@/components/editor/file-tree';
 import { FileIconImg, FolderIconImg } from '@/components/editor/file-icon';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { copyToClipboard } from '@/lib/utils';
 
 const FILE_POLL_INTERVAL_MS = 2000;
@@ -122,6 +124,7 @@ interface MiniAppEditorProps {
 
 export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
     const t = useTranslations('mini-apps');
+    const isMobile = useIsMobile();
     const [project, setProject] = useState<MiniAppProject | null>(null);
     const [files, setFiles] = useState<string[]>([]);
     const [activeFile, setActiveFile] = useState<string>('');
@@ -487,162 +490,160 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
 
     const previewUrl = `/mini-apps-preview?id=${encodeURIComponent(project.id)}&embedded=1&refresh=${previewRefreshKey}`;
 
-    return (
-        <div className="flex flex-col h-full gap-2 p-2">
-            {/* Top toolbar */}
-            <div className="flex items-center gap-2 px-2 py-1 rounded-xl bg-muted/30 border border-border">
-                <BackButton />
-                <span className="text-sm font-medium truncate max-w-40">{project.name}</span>
-                <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">
-                    {project.type === 'react' ? 'React' : 'HTML'}
+    // 顶部工具栏（两端共用）
+    const toolbar = (
+        <div className="flex items-center gap-2 px-2 py-1 rounded-xl bg-muted/30 border border-border">
+            <BackButton />
+            <span className="text-sm font-medium truncate max-w-40">{project.name}</span>
+            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">
+                {project.type === 'react' ? 'React' : 'HTML'}
+            </span>
+            <div className="flex-1" />
+            {saveStatus === 'modified' && (
+                <span className="flex items-center gap-1 text-xs text-amber-500">
+                    <Pencil className="h-3 w-3" />
+                    {t('editor.modified')}
                 </span>
-                <div className="flex-1" />
-                {saveStatus === 'modified' && (
-                    <span className="flex items-center gap-1 text-xs text-amber-500">
-                        <Pencil className="h-3 w-3" />
-                        {t('editor.modified')}
-                    </span>
-                )}
-                {saveStatus === 'saving' && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        {t('editor.saving')}
-                    </span>
-                )}
-                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setPluginDialogOpen(true)}>
-                    <Puzzle className="size-4" />
+            )}
+            {saveStatus === 'saving' && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {t('editor.saving')}
+                </span>
+            )}
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setPluginDialogOpen(true)}>
+                <Puzzle className="size-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShareOpen(true)}>
+                <Share2 className="size-4" />
+            </Button>
+        </div>
+    );
+
+    // 左：文件树 + 编辑器（两端共用）
+    const editorPanel = (
+        <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
+            {/* Toolbar with file picker */}
+            <div className="flex items-center justify-between px-2 py-1 border-b border-border">
+                <div className="flex items-center gap-0.5 min-w-0 flex-1">
+                    <span className="text-xs text-muted-foreground truncate max-w-[60%]" title={activeFile}>{activeFile}</span>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-5 shrink-0"
+                        onClick={() => copyToClipboard(activeFile)}
+                    >
+                        <Copy className="size-3" />
+                    </Button>
+                </div>
+                <input
+                    ref={uploadInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                        handleUploadFiles(e.target.files);
+                        e.target.value = '';
+                    }}
+                />
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0"
+                    title={t('editor.upload')}
+                    onClick={() => uploadInputRef.current?.click()}
+                >
+                    <Upload className="size-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShareOpen(true)}>
-                    <Share2 className="size-4" />
-                </Button>
+                <Popover>
+                    <PopoverTrigger
+                        render={<Button variant="ghost" size="icon" className="size-6" />}
+                    >
+                        <FolderOpen className="size-3.5" />
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-56 p-0 max-h-64 overflow-auto">
+                        <FileTree
+                            variant="project"
+                            defaultExpanded={new Set(collectFolderPaths(buildFileTree(files)))}
+                            selectedPath={activeFile}
+                            onFileSelect={(path) => { handleFileSelect(path); }}
+                            onDelete={handleDeleteFile}
+                            onRename={handleRenameFile}
+                            onMove={handleMoveFile}
+                            onCopyItem={handleCopyFile}
+                            onCreateFile={handleCreateFile}
+                            onCreateFolder={handleCreateFolder}
+                        >
+                            {renderTreeNodes(buildFileTree(files))}
+                        </FileTree>
+                    </PopoverContent>
+                </Popover>
             </div>
+            {/* Code editor */}
+            <div className="flex-1 min-h-0">
+                <MonacoEditor
+                    height="100%"
+                    language="typescript"
+                    value={sourceCode}
+                    onChange={(v) => {
+                        const nextCode = v || '';
+                        const dirty = nextCode !== loadedFileContentRef.current;
+                        localDirtyRef.current = dirty;
+                        setSaveStatus(dirty ? 'modified' : 'saved');
+                        setSourceCode(nextCode);
+                    }}
+                    options={{
+                        minimap: { enabled: false },
+                        fontSize: 12,
+                        lineNumbers: 'on',
+                        scrollBeyondLastLine: false,
+                        wordWrap: 'on',
+                        padding: { top: 8 },
+                        overviewRulerBorder: false,
+                        hideCursorInOverviewRuler: true,
+                        scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
+                        "semanticHighlighting.enabled": false,
+                        renderWhitespace: 'none',
+                        wordBasedSuggestions: 'off',
+                    }}
+                    onMount={(editor, monaco) => {
+                        monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+                            noSemanticValidation: true,
+                            noSyntaxValidation: true,
+                        });
+                        editor.addCommand(
+                            monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+                            () => handleSaveRef.current(),
+                        );
+                    }}
+                />
+            </div>
+        </div>
+    );
 
-            {/* Main content */}
-            <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
-                {/* Left: file tree + editor */}
-                <ResizablePanel id="mini-app-editor" defaultSize="30%" minSize="15%" className="flex flex-col">
-                    <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
-                        {/* Toolbar with file picker */}
-                        <div className="flex items-center justify-between px-2 py-1 border-b border-border">
-                            <div className="flex items-center gap-0.5 min-w-0 flex-1">
-                                <span className="text-xs text-muted-foreground truncate max-w-[60%]" title={activeFile}>{activeFile}</span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-5 shrink-0"
-                                    onClick={() => copyToClipboard(activeFile)}
-                                >
-                                    <Copy className="size-3" />
-                                </Button>
-                            </div>
-                            <input
-                                ref={uploadInputRef}
-                                type="file"
-                                multiple
-                                className="hidden"
-                                onChange={(e) => {
-                                    handleUploadFiles(e.target.files);
-                                    e.target.value = '';
-                                }}
-                            />
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-6 shrink-0"
-                                title={t('editor.upload')}
-                                onClick={() => uploadInputRef.current?.click()}
-                            >
-                                <Upload className="size-3.5" />
-                            </Button>
-                            <Popover>
-                                <PopoverTrigger
-                                    render={<Button variant="ghost" size="icon" className="size-6" />}
-                                >
-                                    <FolderOpen className="size-3.5" />
-                                </PopoverTrigger>
-                                <PopoverContent align="end" className="w-56 p-0 max-h-64 overflow-auto">
-                                    <FileTree
-                                        variant="project"
-                                        defaultExpanded={new Set(collectFolderPaths(buildFileTree(files)))}
-                                        selectedPath={activeFile}
-                                        onFileSelect={(path) => { handleFileSelect(path); }}
-                                        onDelete={handleDeleteFile}
-                                        onRename={handleRenameFile}
-                                        onMove={handleMoveFile}
-                                        onCopyItem={handleCopyFile}
-                                        onCreateFile={handleCreateFile}
-                                        onCreateFolder={handleCreateFolder}
-                                    >
-                                        {renderTreeNodes(buildFileTree(files))}
-                                    </FileTree>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        {/* Code editor */}
-                        <div className="flex-1 min-h-0">
-                            <MonacoEditor
-                                height="100%"
-                                language="typescript"
-                                value={sourceCode}
-                                onChange={(v) => {
-                                    const nextCode = v || '';
-                                    const dirty = nextCode !== loadedFileContentRef.current;
-                                    localDirtyRef.current = dirty;
-                                    setSaveStatus(dirty ? 'modified' : 'saved');
-                                    setSourceCode(nextCode);
-                                }}
-                                options={{
-                                    minimap: { enabled: false },
-                                    fontSize: 12,
-                                    lineNumbers: 'on',
-                                    scrollBeyondLastLine: false,
-                                    wordWrap: 'on',
-                                    padding: { top: 8 },
-                                    overviewRulerBorder: false,
-                                    hideCursorInOverviewRuler: true,
-                                    scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
-                                    "semanticHighlighting.enabled": false,
-                                    renderWhitespace: 'none',
-                                    wordBasedSuggestions: 'off',
-                                }}
-                                onMount={(editor, monaco) => {
-                                    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-                                        noSemanticValidation: true,
-                                        noSyntaxValidation: true,
-                                    });
-                                    editor.addCommand(
-                                        monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-                                        () => handleSaveRef.current(),
-                                    );
-                                }}
-                            />
-                        </div>
-                    </div>
-                </ResizablePanel>
+    // 右：预览（两端共用）
+    const previewPanel = (
+        <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
+            <div className="flex items-center justify-between px-2 py-1 border-b border-border">
+                <MiniAppPreviewToolbar
+                    autoRefresh={autoRefresh}
+                    onAutoRefreshChange={setAutoRefresh}
+                    onRefresh={handleManualRefresh}
+                />
+            </div>
+            <iframe
+                key={previewUrl}
+                src={previewUrl}
+                ref={previewIframeRef}
+                title={project.name}
+                className="flex-1 min-h-0 w-full border-0 bg-background"
+            />
+        </div>
+    );
 
-                <ResizableHandle withHandle />
-
-                {/* Right: preview */}
-                <ResizablePanel id="mini-app-preview" defaultSize="70%" minSize="30%" className="flex flex-col">
-                    <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
-                        <div className="flex items-center justify-between px-2 py-1 border-b border-border">
-                            <MiniAppPreviewToolbar
-                                autoRefresh={autoRefresh}
-                                onAutoRefreshChange={setAutoRefresh}
-                                onRefresh={handleManualRefresh}
-                            />
-                        </div>
-                        <iframe
-                            key={previewUrl}
-                            src={previewUrl}
-                            ref={previewIframeRef}
-                            title={project.name}
-                            className="flex-1 min-h-0 w-full border-0 bg-background"
-                        />
-                    </div>
-                </ResizablePanel>
-            </ResizablePanelGroup>
-
+    // Chat + Dialog 等副作用组件两端共用，放到分支外
+    const dialogs = (
+        <>
             <MiniAppChat
                 project={project}
                 activeFilePath={activeFile}
@@ -690,6 +691,49 @@ export function MiniAppEditor({ projectId }: MiniAppEditorProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+        </>
+    );
+
+    if (isMobile) {
+        return (
+            <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
+                {toolbar}
+                <Tabs defaultValue="code" className="flex min-h-0 flex-1 flex-col gap-2">
+                    <TabsList className="w-full">
+                        <TabsTrigger value="code">
+                            <Code2 className="size-4" />
+                            {t('editor.code')}
+                        </TabsTrigger>
+                        <TabsTrigger value="preview">
+                            <Eye className="size-4" />
+                            {t('editor.preview')}
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="code" className="min-h-0 flex-1 overflow-hidden">
+                        {editorPanel}
+                    </TabsContent>
+                    <TabsContent value="preview" className="min-h-0 flex-1 overflow-hidden">
+                        {previewPanel}
+                    </TabsContent>
+                </Tabs>
+                {dialogs}
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col h-full gap-2 p-2">
+            {toolbar}
+            <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
+                <ResizablePanel id="mini-app-editor" defaultSize="30%" minSize="15%" className="flex flex-col">
+                    {editorPanel}
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel id="mini-app-preview" defaultSize="70%" minSize="30%" className="flex flex-col">
+                    {previewPanel}
+                </ResizablePanel>
+            </ResizablePanelGroup>
+            {dialogs}
         </div>
     );
 }

@@ -68,6 +68,8 @@
     "saving": "Saving...",
     "saved": "Saved",
     "upload": "Upload files to current folder",
+    "code": "Code",
+    "preview": "Preview",
     "pathDialog": {
       "newFileTitle": "New File",
       "newFileDesc": "Enter the file name; subdirectory paths are allowed.",

@@ -68,6 +68,8 @@
     "saving": "保存中...",
     "saved": "已保存",
     "upload": "上传文件到当前文件夹",
+    "code": "代码",
+    "preview": "预览",
     "pathDialog": {
       "newFileTitle": "新建文件",
       "newFileDesc": "输入文件名，可包含子目录路径。",
