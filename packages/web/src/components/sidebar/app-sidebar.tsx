@@ -43,7 +43,7 @@ function buildWorkspaceHref(id: string) {
 }
 
 export function DashboardSidebar() {
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, setOpenMobile } = useSidebar();
   const { matchesEvent } = useKeyboardShortcuts();
   const pathname = usePathname();
   const router = useRouter();
@@ -193,7 +193,10 @@ export function DashboardSidebar() {
         >
           <button
             className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            onClick={() => useCommandPalette.getState().toggle()}
+            onClick={() => {
+              if (isMobile) setOpenMobile(false);
+              useCommandPalette.getState().toggle();
+            }}
             title={ts("commandPalette")}
           >
             <CommandIcon className="size-4" />
@@ -201,7 +204,10 @@ export function DashboardSidebar() {
           {currentWorkspaceId && (
             <button
               className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-              onClick={() => dialogs.setLayoutDialogOpen(true)}
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+                dialogs.setLayoutDialogOpen(true);
+              }}
               title={ts("layoutManagement")}
             >
               <LayoutTemplateIcon className="size-4" />

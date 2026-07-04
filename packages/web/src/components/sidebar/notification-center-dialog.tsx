@@ -38,11 +38,13 @@ export function NotificationCenterDialog({
   onOpenChange,
   workspaceId,
   initialNotification,
+  standalone,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
   initialNotification?: AppNotification | null;
+  standalone?: boolean;
 }) {
   const t = useTranslations('sidebar.notifications');
   const notifications = useNotificationStore((s) => s.notifications);
@@ -75,13 +77,16 @@ export function NotificationCenterDialog({
   const show = initialNotification && !detail ? initialNotification : detail;
   const activeWsId = selectedWorkspaceId ?? workspaceId;
 
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) setDetail(null); onOpenChange(v); }}>
-      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0" style={{ maxWidth: '80vw', width: '80vw', height: '80vh' }}>
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
+  const content = (
+    <>
+      <DialogHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <DialogTitle>{t('centerTitle')}</DialogTitle>
+              {standalone ? (
+                <h2 className="text-lg font-semibold leading-none tracking-tight">{t('centerTitle')}</h2>
+              ) : (
+                <DialogTitle>{t('centerTitle')}</DialogTitle>
+              )}
               {notifications.some((n) => !n.read) && (
                 <span className="inline-flex items-center justify-center size-5 rounded-full bg-blue-500 text-[10px] font-medium text-white">
                   {notifications.filter((n) => !n.read).length}
@@ -251,6 +256,19 @@ export function NotificationCenterDialog({
             )}
           </div>
         </div>
+    </>
+  );
+
+  if (standalone) {
+    return (
+      <div className="flex flex-col h-full">{content}</div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) setDetail(null); onOpenChange(v); }}>
+      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0" style={{ maxWidth: '80vw', width: '80vw', height: '80vh' }}>
+        {content}
       </DialogContent>
     </Dialog>
   );

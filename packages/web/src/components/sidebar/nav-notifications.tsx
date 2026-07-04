@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,11 +16,14 @@ import { useTranslations } from 'next-intl';
 import { useNotificationStore } from "@/stores/notification";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { AppNotification } from "@agent-spaces/shared";
 import { NotificationCenterDialog } from "./notification-center-dialog";
 
 export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
   const t = useTranslations('sidebar.notifications');
+  const router = useRouter();
+  const isMobile = useIsMobile();
   const notifications = useNotificationStore((s) => s.notifications);
   const markRead = useNotificationStore((s) => s.markRead);
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -28,6 +32,8 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
+
+  const goToNotifications = () => router.push("/notifications");
 
   const handleNotificationClick = (n: AppNotification) => {
     if (!n.read) markRead(workspaceId, n.id);
@@ -40,6 +46,28 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
       if (!n.read) markRead(workspaceId, n.id);
     });
   };
+
+  const bellButton = (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="rounded-full relative cursor-pointer"
+      aria-label={t('openAriaLabel')}
+      onClick={isMobile ? goToNotifications : undefined}
+    >
+      <BellIcon className="size-5" />
+      {unreadCount > 0 && (
+        <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full p-0 flex items-center justify-center text-[10px]">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </Badge>
+      )}
+    </Button>
+  );
+
+  // On mobile, render a plain button that navigates to the full-screen route.
+  if (isMobile) {
+    return bellButton;
+  }
 
   return (
     <>
