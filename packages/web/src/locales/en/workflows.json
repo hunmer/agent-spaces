@@ -55,6 +55,8 @@
   },
   "pluginDetail": {
     "title": "Plugin details",
+    "tabInfo": "Info",
+    "tabTools": "Tools",
     "type": "Type",
     "version": "Version",
     "author": "Author",

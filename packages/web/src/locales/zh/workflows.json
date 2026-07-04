@@ -55,6 +55,8 @@
   },
   "pluginDetail": {
     "title": "插件详情",
+    "tabInfo": "基础信息",
+    "tabTools": "工具列表",
     "type": "类型",
     "version": "版本",
     "author": "作者",

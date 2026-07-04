@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, PackagePlus, Play, Settings, Wrench, Puzzle, Grid3x3 } from 'lucide-react';
+import { Loader2, PackagePlus, Settings, Puzzle, Grid3x3, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -21,13 +20,8 @@ import { MiniAppToolExecuteDialog } from '@/components/mini-apps/mini-app-tool-e
 import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { usePluginList } from '@/hooks/use-plugin-list';
+import { PluginToolsPanel, type PluginTool } from './plugin-tools-panel';
 import type { PluginConfigField, Workflow } from '@agent-spaces/shared';
-
-interface PluginTool {
-  name: string;
-  description: string;
-  input_schema?: Record<string, unknown>;
-}
 
 interface PluginToolDialogProps {
   open: boolean;
@@ -52,7 +46,6 @@ export function PluginToolDialog({
 }: PluginToolDialogProps) {
   const t = useTranslations('mini-apps');
   const isMobile = useIsMobile();
-  const rightScrollRef = useRef<HTMLDivElement>(null);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
   const [selectedPluginId, setSelectedPluginId] = useState<string | undefined>(defaultPluginId);
   const [executeDialog, setExecuteDialog] = useState<{
@@ -194,85 +187,17 @@ export function PluginToolDialog({
             </div>
           );
 
-          // 右：工具网格（两端共用）
+          // 右：工具网格（由通用组件渲染）
           const toolsPanel = (
-            <div className="min-h-0 min-w-0 flex-1 overflow-hidden" ref={rightScrollRef}>
-              <ScrollArea className="h-full">
-                <div className="space-y-4 p-4">
-                  {plugins.map((plugin) => {
-                    const isEnabled = enabledSet.has(plugin.id);
-                    const tools = toolsByPlugin[plugin.id] || [];
-                    const hasConfig = (plugin.config?.length ?? 0) > 0;
-                    return (
-                      <div key={plugin.id} id={`plugin-section-${plugin.id}`} className={`rounded-md border ${selectedPluginId === plugin.id ? 'ring-1 ring-primary/40' : ''}`}>
-                        {/* Group header */}
-                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/40">
-                          <PluginIcon
-                            source={plugin.iconPath
-                              ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) }
-                              : { type: 'builtin', variant: 'local' }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <span className="text-xs font-medium">{plugin.name}</span>
-                            <span className="ml-1.5 text-[10px] text-muted-foreground">{plugin.version}</span>
-                            {tools.length > 0 && (
-                              <Badge variant="secondary" className="ml-2 text-[10px]">{t('pluginTools.tools', { count: tools.length })}</Badge>
-                            )}
-                          </div>
-                          {hasConfig && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5"
-                              onClick={() => handleOpenConfig(plugin.id)}
-                            >
-                              <Settings className="h-3 w-3" />
-                            </Button>
-                          )}
-                          <Switch
-                            checked={isEnabled}
-                            onCheckedChange={() => togglePlugin(plugin.id)}
-                            className="scale-75"
-                          />
-                        </div>
-                        {/* Plugin description */}
-                        <div className="px-3 py-1 text-[11px] text-muted-foreground">{plugin.description}</div>
-                        {/* Tools cards grid */}
-                        {tools.length > 0 ? (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-3">
-                            {tools.map((tool) => (
-                              <div
-                                key={tool.name}
-                                className="group flex flex-col gap-1 rounded-md border p-2 hover:bg-muted cursor-pointer transition-colors"
-                                onClick={() => handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool)}
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                  <span className="font-mono text-xs font-medium truncate">{tool.name}</span>
-                                </div>
-                                {tool.description && (
-                                  <span className="text-[11px] text-muted-foreground line-clamp-2">{tool.description}</span>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="mt-auto h-5 self-end opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => { e.stopPropagation(); handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool); }}
-                                >
-                                  <Play className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="px-3 pb-3 text-[11px] text-muted-foreground">No tools available</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            </div>
+            <PluginToolsPanel
+              plugins={plugins}
+              toolsByPlugin={toolsByPlugin}
+              selectedPluginId={selectedPluginId}
+              enabledSet={enabledSet}
+              onToolClick={handleOpenToolDialog}
+              onTogglePlugin={togglePlugin}
+              onOpenConfig={handleOpenConfig}
+            />
           );
 
           if (isMobile) {

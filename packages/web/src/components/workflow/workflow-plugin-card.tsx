@@ -122,6 +122,7 @@ export function LocalPluginCard({
         updatedAt={plugin.installedAt ? new Date(plugin.installedAt).toISOString() : undefined}
         iconSrc={iconSrc}
         pluginId={plugin.id}
+        iconPath={plugin.iconPath}
       />
     </>
   );

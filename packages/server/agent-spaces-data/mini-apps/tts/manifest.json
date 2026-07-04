@@ -6,7 +6,7 @@
   "tags": [],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-08T05:18:45.999Z",
-  "updatedAt": "2026-07-04T06:14:40.841Z",
+  "updatedAt": "2026-07-04T07:36:45.925Z",
   "enabledPlugins": [
     "workflow.minimax",
     "workflow.fish-audio",

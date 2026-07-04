@@ -136,8 +136,8 @@
     "hasWorkflow": true,
     "path": "comfyui",
     "iconUrl": "plugins/comfyui/icon.png",
-    "md5": "7556749f869dff4b20426a7d3650dd33",
-    "updatedAt": "2026-06-29T06:45:26.243Z",
+    "md5": "00bbf6a706319a82a2b73fe636b261f8",
+    "updatedAt": "2026-07-04T07:12:44.709Z",
     "files": [
       "actions.js",
       "icon.png",
@@ -227,8 +227,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "dingtalk",
-    "md5": "00124aef1a9b04bb35548ce7571b87f5",
-    "updatedAt": "2026-06-18T01:06:04.304Z",
+    "md5": "a31e94e7ff4b71ea8deaf453b3eff956",
+    "updatedAt": "2026-07-04T07:12:44.707Z",
     "files": [
       "actions.js",
       "info.json",
@@ -756,8 +756,8 @@
     "hasWorkflow": true,
     "path": "obsidian",
     "iconUrl": "plugins/obsidian/icon.png",
-    "md5": "bdcd200a9f7b21af14ca396a72a0a151",
-    "updatedAt": "2026-07-04T07:05:47.276Z",
+    "md5": "30722f9270975cb2bf5bb14e0ea864e7",
+    "updatedAt": "2026-07-04T07:12:44.707Z",
     "files": [
       "actions.js",
       "icon.png",
