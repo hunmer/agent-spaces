@@ -7,6 +7,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Trash2Icon, CheckCheckIcon, ArrowLeftIcon } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { useNotificationStore } from "@/stores/notification";
@@ -96,9 +103,42 @@ export function NotificationCenterDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 flex">
-          {/* Left sidebar: filters */}
-          <div className="w-56 shrink-0 border-r bg-muted/30 flex flex-col">
+        <div className={cn("flex-1 min-h-0", standalone ? "flex flex-col" : "flex")}>
+          {standalone ? (
+            // Mobile: top filter bar with selects
+            <div className="shrink-0 border-b bg-muted/30 p-3 flex items-center gap-2">
+              <Select
+                value={selectedWorkspaceId ?? "all"}
+                onValueChange={(v) => { setSelectedWorkspaceId(v === "all" ? null : v); setDetail(null); }}
+              >
+                <SelectTrigger className="h-8 min-w-0 flex-1 text-xs">
+                  <SelectValue placeholder={t('workspaceFilter')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allWorkspaces')}</SelectItem>
+                  {workspaces.map((ws) => (
+                    <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={selectedType ?? "all"}
+                onValueChange={(v) => { setSelectedType(v === "all" ? null : v); setDetail(null); }}
+              >
+                <SelectTrigger className="h-8 min-w-0 flex-1 text-xs">
+                  <SelectValue placeholder={t('typeFilter')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allTypes')}</SelectItem>
+                  {NOTIFICATION_TYPES.map((nt) => (
+                    <SelectItem key={nt} value={nt}>{t(`type.${nt}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            // Desktop: left sidebar with filter buttons
+            <div className="w-56 shrink-0 border-r bg-muted/30 flex flex-col">
             {/* Workspace filter */}
             <div className="p-4 border-b">
               <p className="text-xs font-medium text-muted-foreground mb-2">{t('workspaceFilter')}</p>
@@ -158,6 +198,7 @@ export function NotificationCenterDialog({
               </div>
             </div>
           </div>
+          )}
 
           {/* Right: notification list / detail */}
           <div className="flex-1 min-w-0 flex flex-col">
