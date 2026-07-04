@@ -21,6 +21,7 @@ import {
   newEmptyAgent,
 } from "./agent-shared";
 import { AgentList } from "./agent-list";
+import { AgentCard } from "./agent-card";
 import { AgentEditor } from "./agent-editor";
 import { useAgentDialogData, type StoreAgentItem, type TabType } from "./agent-dialog-data";
 import { AgentDialogHeader } from "./agent-dialog-header";
@@ -133,22 +134,22 @@ export function AgentDialog({
       searchPlaceholder={t("dialog.searchStore")}
       emptyText={t("dialog.storeEmpty")}
       loadingText={tc("loading")}
+      gridClassName="grid-cols-2 lg:grid-cols-3"
       renderItem={(agent) => {
         const isImported = data.localAgentNames.has(agent.name);
         const isImporting = data.importingIds.has(agent.id);
         return (
-          <div className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base">{agent.emoji || "🤖"}</span>
-                  <span className="font-medium text-sm">{agent.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                    {agent.group}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{agent.description}</p>
-              </div>
+          <AgentCard
+            agentId={agent.id}
+            icon={agent.emoji || "🤖"}
+            name={agent.name}
+            description={agent.description}
+            meta={
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                {agent.group}
+              </span>
+            }
+            actions={
               <Button
                 variant={isImported ? "ghost" : "outline"}
                 size="sm"
@@ -167,8 +168,8 @@ export function AgentDialog({
                   </>
                 )}
               </Button>
-            </div>
-          </div>
+            }
+          />
         );
       }}
     />

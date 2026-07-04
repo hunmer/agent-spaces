@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Folder, FileText, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface StoreTabPanelProps<T> {
   items: T[];
@@ -16,6 +17,8 @@ export interface StoreTabPanelProps<T> {
   searchPlaceholder: string;
   emptyText: string;
   loadingText: string;
+  /** 自定义列表网格容器的 className，默认单列 */
+  gridClassName?: string;
 }
 
 export function StoreTabPanel<T>({
@@ -27,6 +30,7 @@ export function StoreTabPanel<T>({
   searchPlaceholder,
   emptyText,
   loadingText,
+  gridClassName,
 }: StoreTabPanelProps<T>) {
   const [groupFilter, setGroupFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -92,7 +96,7 @@ export function StoreTabPanel<T>({
               {emptyText}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 pr-2">
+            <div className={cn("grid grid-cols-1 gap-3 pr-2", gridClassName)}>
               {filtered.map((item, i) => (
                 <div key={i}>
                   {renderItem(item)}
