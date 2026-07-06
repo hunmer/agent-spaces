@@ -50,6 +50,7 @@
 | `/api/workflows` | Workflow CRUD + 执行 + Hook |
 | `/api/plugins` | 插件管理 |
 | `/api/mini-apps` | Mini App 管理 |
+| `/api/runtime` | 运行时发现/安装/更新（CLI/SDK） |
 | `/api/sqlite` | SQLite 查询 |
 | `/api/agent-sse` | Agent SSE 流 |
 | `/api/agents` | Agent 模板 |

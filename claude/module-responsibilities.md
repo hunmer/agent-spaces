@@ -17,16 +17,18 @@
 ## packages/server (`@agent-spaces/server`)
 
 后端服务。Express 5 + WebSocket，提供：
-- REST API（30+ 路由模块）
+- REST API（40+ 路由模块）
 - WebSocket 实时通信（聊天、终端、TypeScript LSP、Agent 执行流）
-- 多 AI Agent 运行时适配器（Claude Code/Codex/LangChain/Hermes/Oh-My-Pi/Open Agent SDK）
+- 多 AI Agent 运行时适配器（Claude Code/Codex/LangChain/Hermes/Oh-My-Pi/Open Agent SDK），`claude-code-runtime` 已独立为子模块
+- Runtime 管理（`routes/runtime.ts`：CLI 发现 / SDK 安装 / 版本检测）
 - Workflow 执行引擎（可视化节点编排 + HTTP 回调 + Webhook + 定时调度）
-- SQLite 存储（agent/chat/command/issue/workflow/mini-app 等表）
+- Issue 系统（任务跟踪 + 重试 + 自动化工作流 + 评论时间线）
+- SQLite 存储（20+ store：agent/chat/command/issue/workflow/mini-app 等）
 - 知识库 + 向量嵌入
 - Git 操作（simple-git）
 - PTY 终端管理（node-pty）
 - MCP 工具集成
-- 通知推送（微信/飞书/机器人）
+- Notification Hub（`services/notification-hub/`：微信/飞书 Bot + 命令路由）
 - 插件系统（运行时动态加载）
 - 语音识别
 

@@ -1,12 +1,13 @@
 # packages/sdk (`@agent-spaces/sdk`)
 
-前端统一 API SDK。封装所有后端 HTTP 调用，提供 `createSDK()` 工厂函数返回 35+ API 模块。依赖 `@agent-spaces/shared` 类型。纯逻辑层，无 UI 依赖。
+前端统一 API SDK。封装所有后端 HTTP 调用，提供 `createSDK()` 工厂函数返回 39 个 API 模块、200+ 方法。依赖 `@agent-spaces/shared` 类型。纯逻辑层，无 UI 依赖。
 
 ## 约定
 
 - 新增 API：在 `src/modules/` 创建模块，在 `src/index.ts` 注册。
 - 每个模块接收 `HttpClient`，返回 API 方法对象。
 - Token 通过 `getToken` 回调延迟获取。
+- 模块覆盖域：workspace / agent / channel / issue / chat / workflow / workflow-plugin / git / editor / llm / mini-apps / database / hooks / knowledge-base / worktree / notification / subscription / speech / search / skills / mcps / prompts / output-styles / tools / robot-accounts / agent-commands / version / font / avatar / data / auth / inspector / agent-store / npm-settings / code-favorites / command / external-import / sqlite / model-catalog 等。
 
 ## 文件索引
 
@@ -18,5 +19,5 @@
 
 ## 扫描状态
 
-- **更新时间**: 2026-06-27
-- **已扫描**: package.json、src/index.ts、src/modules/ 列表
+- **更新时间**: 2026-07-06
+- **已扫描**: package.json、src/index.ts、src/modules/（39 模块）

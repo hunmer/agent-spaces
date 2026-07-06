@@ -57,8 +57,8 @@ graph TD
 
 ## 扫描状态
 
-- **更新时间**: 2026-06-27
-- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层
+- **更新时间**: 2026-07-06
+- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 5 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps）
 - **已覆盖模块**: 9/9（web, server, electron, sdk, shared, templates, dom-inspector-hook, flutter, documents）
-- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data, build 缓存
-- **下一步建议**: 深挖 `packages/server/src/adapters/` 各运行时适配器细节、`packages/web/src/components/` 各组件域
+- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存
+- **下一步建议**: 深挖 `packages/server/src/services/notification-hub/`（微信/飞书 Bot 协议）、`packages/templates/plugins/obsidian`（新插件）

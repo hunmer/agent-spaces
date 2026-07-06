@@ -33,6 +33,7 @@
 | Workflow | `/api/workflows` | `routes/workflow.ts` |
 | Plugin | `/api/plugins` | `routes/plugin.ts` |
 | Mini App | `/api/mini-apps` | `routes/mini-apps.ts` |
+| Runtime | `/api/runtime`（discover-cli / install-cli / check-sdk-updates） | `routes/runtime.ts` |
 | SQLite | `/api/sqlite` | `routes/sqlite.ts` |
 | LLM | `/api/` (多个子路由) | `routes/llm.ts` |
 | Auth | `/api/auth` | `routes/auth.ts` |
