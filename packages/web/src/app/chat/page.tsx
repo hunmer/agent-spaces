@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useChatStore, type ChatFileTab } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
@@ -48,6 +49,7 @@ export default function ChatPage() {
 }
 
 function ChatPageInner() {
+  const t = useTranslations('chat');
   const {
     agents,
     workspaces,
@@ -456,7 +458,7 @@ function ChatPageInner() {
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
             <MessageSquare className="size-12" />
-            <p className="text-sm">Select a session or start a new chat</p>
+            <p className="text-sm">{t('emptySession')}</p>
           </div>
         )}
       </div>

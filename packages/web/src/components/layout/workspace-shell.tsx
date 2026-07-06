@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
@@ -159,7 +159,6 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) {
   const isMobile = useIsMobile();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
   const issueSelectSeq = useIssueStore((s) => s.issueSelectSeq);
@@ -532,9 +531,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         if (id) params.set("channelId", id);
       }
       const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      window.history.replaceState(window.history.state, "", qs ? `${pathname}?${qs}` : pathname);
     },
-    [workspaceId, router, pathname],
+    [workspaceId, pathname],
   );
 
   if (isMobile) {

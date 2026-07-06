@@ -40,6 +40,7 @@
     "mini-apps": "自定义页面"
   },
   "emptyState": "选择一个频道开始对话",
+  "emptySession": "选择一个会话或开始新对话",
   "status": {
     "idle": "空闲中",
     "waitingForUser": "等待用户确认",

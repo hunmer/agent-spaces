@@ -40,6 +40,7 @@
     "mini-apps": "Custom Page"
   },
   "emptyState": "Select a channel to start chatting",
+  "emptySession": "Select a session or start a new chat",
   "status": {
     "idle": "Idle",
     "waitingForUser": "Waiting for confirmation",
