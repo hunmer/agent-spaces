@@ -41,19 +41,27 @@ export default function useGeneration() {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    myIdRef.current = window.AgentSpaces.getExecutorId?.() || '';
+    const AS = window.AgentSpaces;
+    if (!AS) return;
+    myIdRef.current = AS.getExecutorId?.() || '';
 
-    // 初始快照（configSnapshot 已到则有值；未到则等 onConfigChanged 推送）
-    const initial = window.AgentSpaces.getConfig(CONFIG_PATH);
-    if (Array.isArray(initial)) setResults(initial);
+    const applyInitialResults = () => {
+      const initial = AS.getConfig(CONFIG_PATH);
+      if (Array.isArray(initial)) setResults(initial);
+    };
+    if (AS.isConfigReady?.()) applyInitialResults();
+    else if (!AS.onConfigReady) applyInitialResults();
 
     // results 全程由服务端 configChanged 驱动
-    const unsubConfig = window.AgentSpaces.onConfigChanged((path, value) => {
+    const unsubConfig = AS.onConfigChanged((path, value) => {
       if (path === CONFIG_PATH) setResults(Array.isArray(value) ? value : []);
     });
+    const unsubReady = !AS.isConfigReady?.() && AS.onConfigReady
+      ? AS.onConfigReady(() => applyInitialResults())
+      : () => {};
 
     // 主动请求当前 running 任务，按 executorId 过滤出自己发起的
-    window.AgentSpaces.invokeService('get_queue')
+    AS.invokeService('get_queue')
       .then((tasks) => {
         const mine = (Array.isArray(tasks) ? tasks : [])
           .filter((t) => t.executorId === myIdRef.current)
@@ -62,7 +70,7 @@ export default function useGeneration() {
       })
       .catch((e) => console.warn('get_queue failed:', e));
 
-    const unsubscribe = window.AgentSpaces.onTaskEvent((event, data) => {
+    const unsubscribe = AS.onTaskEvent((event, data) => {
       if (event === 'miniApp.taskSnapshot') {
         applySnapshot(data?.tasks);
       } else if (event === 'miniApp.taskStarted') {
@@ -75,6 +83,7 @@ export default function useGeneration() {
     });
 
     return () => {
+      unsubReady();
       unsubConfig();
       unsubscribe();
     };

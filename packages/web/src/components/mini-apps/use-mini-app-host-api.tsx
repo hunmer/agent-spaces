@@ -251,7 +251,9 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
   const executorIdRef = useRef<string>('');
   const runtimeContextRef = useRef<MiniAppRuntimeContext>(runtimeContext ?? { route: '/', params: {} });
   const configCacheRef = useRef<Map<string, unknown>>(new Map());
+  const configReadyRef = useRef(false);
   const configChangeCallbacksRef = useRef<Set<(path: string, value: unknown) => void>>(new Set());
+  const configReadyCallbacksRef = useRef<Set<(configs: Record<string, unknown>) => void>>(new Set());
 
   useEffect(() => {
     runtimeContextRef.current = runtimeContext ?? { route: '/', params: {} };
@@ -273,6 +275,11 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
 
   useEffect(() => {
     const encodedProjectId = encodeURIComponent(projectId);
+    configCacheRef.current = new Map();
+    configReadyRef.current = false;
+    configReadyCallbacksRef.current.clear();
+    const configChangeCallbacks = configChangeCallbacksRef.current;
+    const configReadyCallbacks = configReadyCallbacksRef.current;
 
     if (!executorIdRef.current) {
       // sessionStorage 标签级持久：同标签刷新/重连 executorId 不变，
@@ -326,14 +333,23 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     // ---- Config: 服务端为唯一写入方，UI 仅维护内存缓存 + 订阅变更 ----
     const emitConfigChange = (path: string, value: unknown) => {
       configCacheRef.current.set(path, value);
-      for (const cb of configChangeCallbacksRef.current) {
+      for (const cb of configChangeCallbacks) {
         try { cb(path, value); } catch { /* noop */ }
       }
+    };
+    const emitConfigReady = () => {
+      configReadyRef.current = true;
+      const configs = Object.fromEntries(configCacheRef.current);
+      for (const cb of configReadyCallbacks) {
+        try { cb(configs); } catch { /* noop */ }
+      }
+      configReadyCallbacks.clear();
     };
     const offConfigSnapshot = getWS(projectId).on('miniApp.configSnapshot', (data: any) => {
       const configs = (data?.configs ?? {}) as Record<string, unknown>;
       configCacheRef.current = new Map(Object.entries(configs));
       for (const [path, value] of Object.entries(configs)) emitConfigChange(path, value);
+      emitConfigReady();
     });
     const offConfigChanged = getWS(projectId).on('miniApp.configChanged', (data: any) => {
       if (data?.path) emitConfigChange(data.path, data.value);
@@ -344,9 +360,18 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       return v === undefined ? null : v;
     };
     const getAllConfigs = (): Record<string, unknown> => Object.fromEntries(configCacheRef.current);
+    const isConfigReady = (): boolean => configReadyRef.current;
     const onConfigChanged = (cb: (path: string, value: unknown) => void) => {
-      configChangeCallbacksRef.current.add(cb);
-      return () => { configChangeCallbacksRef.current.delete(cb); };
+      configChangeCallbacks.add(cb);
+      return () => { configChangeCallbacks.delete(cb); };
+    };
+    const onConfigReady = (cb: (configs: Record<string, unknown>) => void) => {
+      if (configReadyRef.current) {
+        cb(Object.fromEntries(configCacheRef.current));
+        return () => {};
+      }
+      configReadyCallbacks.add(cb);
+      return () => { configReadyCallbacks.delete(cb); };
     };
 
     const respondClientRequest = (requestId: string, result: unknown, ok = true, error?: string) => {
@@ -702,7 +727,9 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       getExecutorId: () => executorIdRef.current,
       getConfig,
       getAllConfigs,
+      isConfigReady,
       onConfigChanged,
+      onConfigReady,
       invokeService,
       openAgentEditor,
       localFileUrl,
@@ -766,9 +793,12 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     window.addEventListener('agent-spaces:open-file', handleOpenFile);
 
     return () => {
+      configCacheRef.current = new Map();
+      configReadyRef.current = false;
+      configReadyCallbacks.clear();
       offConfigSnapshot();
       offConfigChanged();
-      configChangeCallbacksRef.current.clear();
+      configChangeCallbacks.clear();
       configCacheRef.current = new Map();
       window.removeEventListener('agent-spaces:open-file', handleOpenFile);
       delete (window as any).AgentSpacesUI;

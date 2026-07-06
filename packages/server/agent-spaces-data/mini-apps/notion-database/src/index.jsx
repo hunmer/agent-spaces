@@ -15,20 +15,43 @@ export default function App() {
   const [prefs, setPrefs] = useState({ activeId: '', editorMode: 'notion', theme: 'sans', openFolders: {}, openTabs: [], recentIds: [] });
 
   useEffect(() => {
+    let cancelled = false;
+    const AS = window.AgentSpaces;
+    if (!AS) {
+      setReady(true);
+      return undefined;
+    }
+    const waitForConfigReady = () => new Promise((resolve) => {
+      if (!AS?.onConfigReady || AS.isConfigReady?.()) {
+        resolve(null);
+        return;
+      }
+      const offReady = AS.onConfigReady(() => {
+        try { offReady?.(); } catch {}
+        resolve(null);
+      });
+    });
+
     (async () => {
       await initSchema();
+      await waitForConfigReady();
+      if (cancelled) return;
       setNodes(await listNodes());
-      const p = window.AgentSpaces.getConfig('config.json');
+      const p = AS.getConfig('config.json');
       if (p) setPrefs((prev) => ({ ...prev, ...p }));
-      setReady(true);
+      if (!cancelled) setReady(true);
     })();
-    const off = window.AgentSpaces.onConfigChanged((path, value) => {
+    const off = AS.onConfigChanged((path, value) => {
       if (path === 'config.json' && value) setPrefs((prev) => ({ ...prev, ...value }));
     });
-    const offTask = window.AgentSpaces.onTaskEvent((event) => {
+    const offTask = AS.onTaskEvent((event) => {
       if (event === 'miniApp.nodeChanged') listNodes().then(setNodes);
     });
-    return () => { off && off(); offTask && offTask(); };
+    return () => {
+      cancelled = true;
+      off && off();
+      offTask && offTask();
+    };
   }, []);
 
   // Cmd/Ctrl+K 打开/关闭快速搜索

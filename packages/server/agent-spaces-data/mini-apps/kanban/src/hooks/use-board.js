@@ -7,24 +7,39 @@ export function useBoard() {
   const [board, setBoard] = React.useState(EMPTY_BOARD);
   const [loaded, setLoaded] = React.useState(false);
 
-  // 初始化：configSnapshot 建立缓存后 getConfig 拿到；轮询至就绪
+  // 初始化：等待配置快照就绪；即便没有 board.json，也应进入空白看板。
   React.useEffect(() => {
-    let timer;
-    const read = () => {
-      const b = window.AgentSpaces?.getConfig?.(BOARD_PATH);
-      if (b) { setBoard(b); setLoaded(true); clearInterval(timer); }
+    const AS = window.AgentSpaces;
+    if (!AS) {
+      setLoaded(true);
+      return;
+    }
+    const applyInitialBoard = () => {
+      const b = AS.getConfig?.(BOARD_PATH);
+      if (b) setBoard(b);
+      setLoaded(true);
     };
-    read();
-    timer = setInterval(read, 100);
-    return () => clearInterval(timer);
+    if (AS.isConfigReady?.()) {
+      applyInitialBoard();
+      return;
+    }
+    if (!AS.onConfigReady) {
+      applyInitialBoard();
+      return;
+    }
+    const offReady = AS.onConfigReady?.(applyInitialBoard);
+    return () => { try { offReady?.(); } catch {} };
   }, []);
 
-  // 订阅变更：service 写盘后自动广播 miniApp.configChanged → 多端同步
+  // 订阅变更：configSnapshot / configChanged 都会走这里，同步权威配置。
   React.useEffect(() => {
     const AS = window.AgentSpaces;
     if (!AS?.onConfigChanged) return;
     const unsub = AS.onConfigChanged((path, value) => {
-      if (path === BOARD_PATH && value) setBoard(value);
+      if (path === BOARD_PATH && value) {
+        setBoard(value);
+        setLoaded(true);
+      }
     });
     return () => { try { unsub(); } catch {} };
   }, []);
