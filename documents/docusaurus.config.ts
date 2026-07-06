@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Agent Spaces',
-  tagline: '本地多 Agent 协同编程平台',
+  tagline: '可视化工作流自动化平台',
   favicon: 'img/favicon.ico',
 
   future: {

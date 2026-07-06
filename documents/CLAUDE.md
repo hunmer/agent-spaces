@@ -17,6 +17,6 @@ Docusaurus 3 文档站点。包含博客、API 文档等。端口 3001。
 
 ## 扫描状态
 
-- **更新时间**: 2026-06-27
-- **已扫描**: package.json、docusaurus.config.ts、目录结构
+- **更新时间**: 2026-07-06
+- **已扫描**: package.json、docusaurus.config.ts、sidebars.ts、src/pages、src/components、docs/ 全量 mdx
 - **跳过**: .docusaurus 缓存、build 生成物

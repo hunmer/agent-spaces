@@ -10,11 +10,38 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: '多 Agent 协同',
+    title: '可视化工作流引擎',
     description: (
       <>
-        调度者、策划者、执行者、审核者、提交者六种 Agent 角色各司其职，
-        自动完成从需求分析到代码提交的完整流程。
+        基于 @xyflow/react 的 DAG 编辑器，拖拽 40+ 内置节点（流程控制 / AI / 交互 / 展示 /
+        数据库 / 知识库 / Mini App / 插件），把重复的 AI 任务沉淀成可复用的自动化流程。
+      </>
+    ),
+  },
+  {
+    title: '多种触发与执行形态',
+    description: (
+      <>
+        工作流可由 cron 定时、Webhook、HTTP API（SSE 流式）、Issue 事件、Agent 工具调用触发，
+        支持断点调试、暂停恢复、断线快照恢复，以及嵌套子流程与循环复合节点。
+      </>
+    ),
+  },
+  {
+    title: '六种 AI 运行时',
+    description: (
+      <>
+        Claude Code、OpenAI Codex、LangChain、Open Agent SDK、Hermes、Oh-My-Pi 六种 Agent 运行时，
+        一键发现/安装/更新本地 CLI 与 SDK，按需切换。
+      </>
+    ),
+  },
+  {
+    title: 'Mini App 交互节点',
+    description: (
+      <>
+        独立的轻量 React/HTML 应用子系统，可单独运行，也可通过 show_miniapp 节点嵌入工作流，
+        阻塞收集用户提交数据，实现人机协同自动化。
       </>
     ),
   },
@@ -22,40 +49,17 @@ const FeatureList: FeatureItem[] = [
     title: '完全本地运行',
     description: (
       <>
-        代码不离开你的机器，数据存储在本地。支持 Claude Code、OpenAI Codex 等多种 AI 运行时。
+        代码不离开你的机器，数据存储在本地（JSON 文件 + SQLite，无需外部数据库），
+        Secret Key + Bearer Token 认证，安全可控。
       </>
     ),
   },
   {
-    title: 'IDE 级别体验',
+    title: 'IDE 级前端 + 多端客户端',
     description: (
       <>
-        集成 Monaco 代码编辑器、终端、Git 操作、议题管理、频道聊天，
-        提供一站式的开发环境体验。
-      </>
-    ),
-  },
-  {
-    title: '实时通知',
-    description: (
-      <>
-        通过飞书、企业微信接收 Agent 状态通知，支持 Bot 斜杠命令远程操控 Agent。
-      </>
-    ),
-  },
-  {
-    title: '用量统计',
-    description: (
-      <>
-        内置 Token 消耗追踪和费用估算仪表盘，帮助你掌握 Agent 使用成本。
-      </>
-    ),
-  },
-  {
-    title: '多服务器支持',
-    description: (
-      <>
-        前端支持配置和切换多个后端服务器实例，轻松管理不同环境的 Agent 服务。
+        Monaco 代码编辑器（TypeScript LSP）、终端、Git、飞书/企微 Bot 通知、用量仪表盘，
+        Web + Electron 桌面端 + Flutter 移动端全覆盖。
       </>
     ),
   },

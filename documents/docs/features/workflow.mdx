@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 2
 ---
 
 # Workflow 编辑器
@@ -24,33 +24,47 @@ Workflow 是一个有向无环图（DAG）模板，定义了节点之间的执�
 
 Workflow 编辑器内置了一组功能节点，按分类组织在左侧节点面板中，涵盖流程控制、AI 调用、展示渲染、交互、字符串处理、工具类以及 SQL 数据库操作。
 
-#### Agent 节点
+#### Agent 节点（AI 分类）
 
-从左侧 Agent 面板拖拽 Agent 预设到画布中。每个 Agent 节点代表一个 Agent 执行单元，绑定具体的 Agent 预设配置。Agent 节点支持自定义任务标题模板（`taskTitleTemplate`）和描述模板（`taskDescriptionTemplate`），用于覆盖自动生成的 Task 标题与描述。
+`agent_run` 节点绑定具体的 Agent 预设配置。Agent 节点支持自定义任务标题模板（`taskTitleTemplate`）和描述模板（`taskDescriptionTemplate`），用于覆盖自动生成的 Task 标题与描述。属性含 `agent`、`prompt`、`cwd`、`additionalDirectories`、`permissionMode`（default/dontAsk/acceptEdits/plan/auto/bypassPermissions）。
 
-#### 流程控制节点
+#### 流程控制节点（flowControl 分类）
 
-用于组织 DAG 的执行流程，例如条件分支、循环、合并等。具体可用节点以编辑器节点面板为准。
+组织 DAG 的执行流程：
 
-#### AI 节点
+- `start` / `end` — 工作流起点（singleton，接收输入字段）与终点
+- `switch` — 条件分支，`conditions` 属性，动态多 source handle
+- `variable_aggregate` — 多入参汇聚（first_non_empty 策略）
+- `set_variable` / `get_variable` / `delete_variable` — 环境变量读写删
+- `run_code` — JavaScript 代码执行
+- `run_python` — Python 代码执行（含 `pythonPath`）
+- `toast` — 消息提示
+- `loop` + `loop_body` — 循环（count/array/infinite 三种 loopType，支持 concurrency 并发与 sharedVariables），是**复合节点**（见下文「复合节点与子流程」）
+- `loop_break` — 循环中断
 
-封装大模型调用能力，可直接在工作流中进行文本生成、补全等 AI 操作，无需绑定完整的 Agent 预设。
+#### 人机交互节点（interaction 分类）
 
-#### 展示与渲染节点（UI 渲染节点）
+提供人工介入能力，服务端通过 `interactionManager.request` 阻塞等待前端回应：
 
-用于在工作流执行过程中渲染输出内容（例如表格展示 `table_display` 等）。这类节点面向可视化结果输出，不执行 Agent 任务。
+- `alert` — 确认弹窗
+- `prompt` — 输入弹窗
+- `form` — 表单收集（text/textarea/number/select/checkbox 字段）
 
-#### 交互节点
+#### 展示节点（display 分类）
 
-提供人工介入能力，例如在工作流中等待用户输入、确认或选择，从而支持半自动化流程。
+面向可视化结果输出，多为 `readonlyOutputs`、无 source/target handle（纯展示）：
 
-#### 字符串与工具节点
+- `gallery_preview` — 图库/视频预览
+- `music_player` — 音乐播放器
+- `table_display` — 表格展示（支持行选择）
+- `code_render` — React/HTML 代码渲染（`renderType: react | html`）
+- `sticky_note` — 便签
+- `markdown` — Markdown 渲染
+- `file_display` — 文件展示
 
-提供字符串拼接、格式化等通用工具能力，便于在节点之间传递和加工数据。
+#### SQLite 数据库节点（sqlite 分类）
 
-#### SQL 数据库节点（数据库分类）
-
-用于对工作空间级 SQLite 数据库执行结构化数据操作。包含 5 个内置节点：
+对工作空间级 SQLite 数据库执行结构化数据操作，包含 5 个节点：
 
 - **查询数据（`sqlite_query`）** — 按表、列、`where`、`orderBy`、`limit` 查询，输出 `rows` 和 `rowCount`
 - **新增数据（`sqlite_insert`）** — 向指定表插入字段，输出 `insertedId` 和 `changes`
@@ -58,9 +72,24 @@ Workflow 编辑器内置了一组功能节点，按分类组织在左侧节点�
 - **删除数据（`sqlite_delete`）** — 按条件删除数据，输出 `changes`
 - **SQL 自定义（`sqlite_raw`）** — 直接执行原生 SQL（`query` 或 `exec` 模式），输出 `rows` 或 `execResult`
 
-数据库节点的「数据库」属性选择工作空间中的 SQLite 数据库资源（多对多关联到工作流），表名与列名提供动态下拉（依赖已选数据库自动拉取）。所有用户 SQL 经安全校验（禁用 `ATTACH`/`DETACH` 等，表/列名经白名单校验，值用 `?` 参数绑定，结果行数受上限保护），可在工作流中安全使用。
+数据库节点的「数据库」属性选择工作空间中的 SQLite 数据库资源（多对多关联到工作流），表名与列名提供动态下拉。所有用户 SQL 经安全校验（禁用 `ATTACH`/`DETACH` 等，表/列名经白名单校验，值用 `?` 参数绑定，结果行数受上限保护）。
 
-> 设计与实现细节参见 `docs/superpowers/specs/2026-06-13-workflow-sqlite-nodes-design.md`。
+#### 知识库节点（knowledge-base 分类）
+
+- `kb_add` / `kb_query` / `kb_delete` — 知识库的增/查（向量检索）/删
+
+#### 工具与字符串节点（utils / string 分类）
+
+- 工具：`flatten_array` / `pluck_array_key` / `array_text_replace` / `merge_arrays` / `parse_json`
+- 字符串：`string_concat` / `string_split`
+
+#### Mini App 节点（miniapp 分类）
+
+`show_miniapp` 节点选择 `miniAppId` + `route` + `params`，在流程中弹出 Mini App 界面，通过 WS 双向通信**阻塞等待**前端用户在 Mini App 内提交数据，输出 `submittedData` / `confirmed`。详见 [Mini App 文档](/docs/features/mini-app)。
+
+#### 插件节点（动态注入）
+
+插件可动态注册自定义工作流节点（`PluginInfo.entries.workflow`），支持服务端、客户端、双端三种执行模式（`PluginRuntimeType = 'server' | 'client' | 'both'`）。前端通过 `registerPluginNodeDefinitions` 动态注册，服务端执行走 default 分支动态分发。Local Bridge 节点（Electron 主进程）如 `delay` 也属于此机制。详见 [插件文档](/docs/features/plugins)。
 
 ### 4. 连线定义依赖
 
@@ -82,6 +111,64 @@ Workflow 编辑器内置了一组功能节点，按分类组织在左侧节点�
 - **Agent 节点有效性** — 每个 Agent 节点绑定的 `agentConfigId` 必须存在于当前工作空间的 Agent 列表中（保存时会重新解析节点的 role/avatarUrl/modelId，避免 Agent 预设改名或改角色后节点过期）
 
 注意：保存时只校验 Agent 是否存在，不校验是否启用、也不校验是否属于某个 Issue 频道成员——这些条件在运行时才会校验。
+
+## 触发方式
+
+工作流可通过多种入口触发执行，由 `inferWorkflowSource` 判定来源（影响日志与权限上下文）：
+
+| 触发方式 | source 值 | 说明 |
+|---|---|---|
+| WebSocket 实时 | `web` | 前端编辑器默认执行入口 |
+| HTTP API（SSE 流式） | `api` | `POST /api/workflows/:id/execute`，流式回传执行进度 |
+| cron 定时 | `cron` | `WorkflowTrigger` 类型之一，cron 表达式 + timezone，由 node-cron 调度 |
+| Webhook / Hook | `hook` | `WorkflowTrigger` 类型之一，`POST /api/workflow-hook/hook/:hookName`，hook 触发后以 SSE 回传 |
+| Issue 自动编排 | 走调用方 source | Issue 绑定 `workflowId`，启动后由 executionManager 驱动（issue automation is workflow-driven） |
+| Agent 工具调用 | `agent-tools` | Agent 运行时通过工具调用工作流（`executeWorkflowAsync` / `executeWorkflowSync` 轮询） |
+
+> **触发器配置**只有 `cron` 和 `hook` 两种类型会存为 `WorkflowTrigger` 配置项；`api` / `web` / `agent-tools` 是运行时调用入口。频道 @mention 触发的是 Agent 运行，不是工作流。
+
+## 执行形态与输出
+
+工作流执行事件通过 `eventSink: (channel, payload) => void` 注入，不同入口各自适配传输：
+
+| 形态 | 说明 |
+|---|---|
+| WebSocket 事件流 | `web` 源主路径，逐节点 `node:start/progress/complete/error` 推送 |
+| HTTP SSE 流式 | `api` / `hook` 源，`text/event-stream` 流式回传 |
+| Webhook SSE 回调 | hook 触发后把执行进度流式回传给 hook 调用方 |
+| 客户端交互响应（WS） | `workflow:interaction` / `workflow:client-node`，用于 alert/prompt/form/show_miniapp 等需前端回传的节点 |
+| 断线快照恢复 | `ExecutionSnapshot` + `workflow:get-execution-recovery`，断线后可恢复执行状态 |
+| 双向控制（WS） | pause / resume / stop / debug-node 均走 WS |
+
+工作流容错模式 `faultTolerance: 'ignore' | 'stop'`，请求显式指定优先，否则回退全局 workflow-settings。
+
+## 复合节点与子流程
+
+### Loop 复合节点
+
+`loop` 是 **compound 复合节点**，由 `loop`（循环头）+ `loop_body`（循环体容器）组成，`loop_body` 是 `scopeBoundary`（作用域边界）。支持三种 loopType：
+
+- `count` — 固定次数
+- `array` — 遍历数组
+- `infinite` — 无限循环（配合 `loop_break` 退出）
+
+支持 `concurrency` 并发执行与 `sharedVariables` 跨迭代共享变量。复合节点根据 `definition.compound.children` + `edges` 自动生成子节点与连线。
+
+### 嵌套子流程（sub_workflow）
+
+`sub_workflow` 节点通过 `executeEmbeddedWorkflow` 执行另一个完整 workflow（禁止自调用），实现工作流嵌套复用。该类型当前为内部/隐式节点，不在前端可见节点注册表中。
+
+### 边（Edge）类型
+
+边有两种 `edgeKind`：
+
+- `runtime` — 执行流
+- `reference` — 引用/数据流
+
+### 节点状态与断点
+
+- 节点状态：`normal` / `disabled` / `skipped`
+- 节点断点：`NodeBreakpoint = 'start' | 'end'`，暂停原因含 `manual` / `breakpoint-start` / `breakpoint-end`
 
 ## Issue 与 Workflow
 

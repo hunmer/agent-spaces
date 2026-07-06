@@ -33,8 +33,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`${siteConfig.title} - 本地多 Agent 协同编程平台`}
-      description="Agent Spaces 是一个本地多 Agent 协同编程平台，通过多种 Agent 角色实现任务的自动分发、代码修改、审核与提交。">
+      title={`${siteConfig.title} - 可视化工作流自动化平台`}
+      description="Agent Spaces 是一个可视化工作流自动化平台。用 DAG 拖拽编排工作流，混合调度 AI Agent、代码、数据库、知识库、人机交互与 Mini App 界面节点，把重复的 AI 任务沉淀成可复用、可触发、可观测的自动化流程。">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
