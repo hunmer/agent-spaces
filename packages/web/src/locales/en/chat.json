@@ -17,6 +17,7 @@
     "noAgents": "No agents found",
     "delete": "Delete Channel",
     "deleteConfirm": "Are you sure you want to delete channel \"{name}\"? This action cannot be undone.",
+    "deleteAlsoIssue": "Also delete the associated issue",
     "batchDeleteConfirm": "Delete {count} {count, plural, one {channel} other {channels}}? This cannot be undone.",
     "holdToDelete": "Hold to delete",
     "multiSelect": "Multi-select",

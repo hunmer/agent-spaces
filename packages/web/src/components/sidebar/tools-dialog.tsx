@@ -66,6 +66,15 @@ const ALL_TOOLS = (BUILT_IN_AGENT_TOOLS ?? []) as readonly { name: BuiltInAgentT
 export function ToolsDialog({ open, onOpenChange, standalone, selectable, selectedTools: externalSelected, onSelectedToolsChange }: ToolsDialogProps) {
   const t = useTranslations('tools');
 
+  const toolLabel = (tool: { name: string; label: string }) => {
+    const key = `items.${tool.name}.label` as const;
+    return t.has(key) ? t(key) : tool.label;
+  };
+  const toolDesc = (tool: { name: string; description: string }) => {
+    const key = `items.${tool.name}.description` as const;
+    return t.has(key) ? t(key) : tool.description;
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [detailTool, setDetailTool] = useState<{ name: string; label: string; description: string } | null>(null);
@@ -119,7 +128,7 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      tools = tools.filter((t) => t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q));
+      tools = tools.filter((t) => toolLabel(t).toLowerCase().includes(q) || toolDesc(t).toLowerCase().includes(q));
     }
     return tools;
   }, [activeCategory, filterAgentId, searchQuery, agentsWithTools]);
@@ -259,8 +268,8 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <span className="block text-xs font-medium">{tool.label}</span>
-                        <span className="block text-[11px] text-muted-foreground line-clamp-2">{tool.description}</span>
+                        <span className="block text-xs font-medium">{toolLabel(tool)}</span>
+                        <span className="block text-[11px] text-muted-foreground line-clamp-2">{toolDesc(tool)}</span>
                         {(() => {
                           const boundAgents = agentsWithTools.filter((a) => a.tools.includes(tool.name));
                           if (boundAgents.length === 0) return null;
@@ -313,11 +322,11 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
       <Dialog open={!!detailTool} onOpenChange={(v) => { if (!v) setDetailTool(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{detailTool?.label}</DialogTitle>
+            <DialogTitle>{detailTool ? toolLabel(detailTool) : null}</DialogTitle>
             <DialogDescription className="font-mono text-xs text-muted-foreground">{detailTool?.name}</DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <p className="text-sm text-muted-foreground">{detailTool?.description}</p>
+            <p className="text-sm text-muted-foreground">{detailTool ? toolDesc(detailTool) : null}</p>
           </div>
         </DialogContent>
       </Dialog>

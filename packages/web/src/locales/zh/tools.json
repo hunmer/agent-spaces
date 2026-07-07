@@ -16,5 +16,135 @@
     "database": "知识库",
     "files": "文件",
     "workflow": "工作流"
+  },
+  "items": {
+    "CreateCurrentChannelIssue": {
+      "label": "创建当前 Issue",
+      "description": "为当前频道创建并绑定一个 Issue。"
+    },
+    "ViewCurrentChannelIssue": {
+      "label": "查看当前 Issue",
+      "description": "查看当前频道绑定的 Issue 及其评论。"
+    },
+    "AddCurrentChannelComment": {
+      "label": "添加当前评论",
+      "description": "向当前频道绑定的 Issue 添加评论。"
+    },
+    "ReadTerminalOutput": {
+      "label": "读取终端输出",
+      "description": "按会话 ID 读取分页终端输出，默认最新 100 行。"
+    },
+    "ListQuickCommands": {
+      "label": "列出快捷命令",
+      "description": "列出工作区的所有快捷命令及其运行状态。"
+    },
+    "RunQuickCommand": {
+      "label": "运行快捷命令",
+      "description": "按 ID 启动快捷命令，返回终端会话 ID。"
+    },
+    "StopQuickCommand": {
+      "label": "停止快捷命令",
+      "description": "按 ID 停止运行中的快捷命令。"
+    },
+    "ListDatabases": {
+      "label": "列出知识库",
+      "description": "列出工作区中的知识库数据库及其 ID。"
+    },
+    "ListDatabaseNodes": {
+      "label": "列出知识库节点",
+      "description": "列出某路径下的知识库节点，可按标题过滤。"
+    },
+    "SearchDatabaseNodes": {
+      "label": "搜索知识库节点",
+      "description": "按标题或内容在某路径下搜索知识库节点。"
+    },
+    "QueryDatabaseVectors": {
+      "label": "查询知识库向量",
+      "description": "使用知识库绑定的嵌入模型按向量相似度搜索节点。"
+    },
+    "ReadDatabaseNode": {
+      "label": "读取知识库节点",
+      "description": "按 ID 读取知识库节点的元数据与内容。"
+    },
+    "ListDatabaseNodeVersions": {
+      "label": "列出知识库版本",
+      "description": "按 ID 列出知识库节点的内容版本历史与差异。"
+    },
+    "CreateDatabaseNode": {
+      "label": "创建知识库节点",
+      "description": "在父路径或父 ID 下创建知识库节点。"
+    },
+    "WriteDatabaseNode": {
+      "label": "写入知识库节点",
+      "description": "按 ID 插入、替换或覆盖知识库节点内容。"
+    },
+    "DeleteDatabaseNode": {
+      "label": "删除知识库节点",
+      "description": "将知识库节点及其后代移入回收站或永久删除。"
+    },
+    "MoveDatabaseNode": {
+      "label": "移动知识库节点",
+      "description": "将知识库节点或目录移动到其它父路径或父 ID 下。"
+    },
+    "UpdateDatabaseNodeMeta": {
+      "label": "更新知识库元数据",
+      "description": "更新知识库节点元数据，如标题、图标、封面、父级或回收站状态。"
+    },
+    "ListWorkspaceFiles": {
+      "label": "列出工作区文件",
+      "description": "列出当前工作区文件系统中的文件和目录。"
+    },
+    "SearchWorkspaceFiles": {
+      "label": "搜索工作区文件",
+      "description": "搜索工作区文件路径及 UTF-8 文本文件内容。"
+    },
+    "ReadWorkspaceFile": {
+      "label": "读取工作区文件",
+      "description": "从当前工作区文件系统读取 UTF-8 文本文件。"
+    },
+    "WriteWorkspaceFile": {
+      "label": "写入工作区文件",
+      "description": "向工作区文件写入 UTF-8 文本内容。"
+    },
+    "DeleteWorkspacePath": {
+      "label": "删除工作区路径",
+      "description": "递归删除工作区文件或目录。"
+    },
+    "MoveWorkspacePath": {
+      "label": "移动工作区路径",
+      "description": "移动或重命名工作区文件或目录。"
+    },
+    "list_available_agent_capabilities": {
+      "label": "列出可用智能体能力",
+      "description": "列出当前环境中所有可用的 MCP 服务器、技能和内置工具。"
+    },
+    "list_agent_capabilities": {
+      "label": "列出智能体能力",
+      "description": "列出可用的智能体预设及其配置的 MCP、技能和工具。"
+    },
+    "list_workflows": {
+      "label": "列出工作流",
+      "description": "列出已保存的工作流及其起始节点的输入字段。"
+    },
+    "search_workflow": {
+      "label": "搜索工作流",
+      "description": "按名称或描述搜索已保存的工作流。"
+    },
+    "execute_workflow_sync": {
+      "label": "同步执行工作流",
+      "description": "启动工作流并等待完成、暂停、出错或超时。"
+    },
+    "execute_workflow_async": {
+      "label": "异步执行工作流",
+      "description": "启动工作流并立即返回其执行 ID。"
+    },
+    "get_workflow_result": {
+      "label": "获取工作流结果",
+      "description": "按执行 ID 读取工作流的执行结果。"
+    },
+    "get_workflow_latest_result": {
+      "label": "获取最新工作流结果",
+      "description": "读取某个工作流的最新执行结果。"
+    }
   }
 }

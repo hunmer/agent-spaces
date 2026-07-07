@@ -22,7 +22,9 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { HoldToConfirm } from '@/components/ui/hold-toconfirm';
+import { useIssueStore } from '@/stores/issue';
 
 import type { Channel, Message } from '@agent-spaces/shared';
 
@@ -74,6 +76,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Channel | null>(null);
+  const [deleteAlsoIssue, setDeleteAlsoIssue] = useState(false);
   const [batchDeleteInfo, setBatchDeleteInfo] = useState<{ ids: Set<string>; exit: () => void } | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const agents = useAgentStore(s => s.agents);
@@ -350,7 +353,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             agents={agents}
             onSubmit={handleSubmit}
           />
-          <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+          <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) { setDeleteTarget(null); setDeleteAlsoIssue(false); } }}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>{tc('delete')}</AlertDialogTitle>
@@ -358,11 +361,23 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                   {t('channel.deleteConfirm', { name: deleteTarget?.name ?? '' })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              {deleteTarget?.issueId && (
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <Checkbox checked={deleteAlsoIssue} onCheckedChange={v => setDeleteAlsoIssue(v === true)} />
+                  <span>{t('channel.deleteAlsoIssue')}</span>
+                </label>
+              )}
               <AlertDialogFooter>
                 <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={async () => {
-                  if (deleteTarget) await deleteChannel(workspaceId, deleteTarget.id);
+                  if (deleteTarget) {
+                    if (deleteAlsoIssue && deleteTarget.issueId) {
+                      await useIssueStore.getState().deleteIssue(workspaceId, deleteTarget.issueId).catch(() => {});
+                    }
+                    await deleteChannel(workspaceId, deleteTarget.id);
+                  }
                   setDeleteTarget(null);
+                  setDeleteAlsoIssue(false);
                 }}>{tc('delete')}</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

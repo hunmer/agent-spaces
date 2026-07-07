@@ -17,6 +17,7 @@
     "noAgents": "未找到 Agent",
     "delete": "删除频道",
     "deleteConfirm": "确认删除频道「{name}」？此操作不可撤销。",
+    "deleteAlsoIssue": "同时删除对应的议题",
     "batchDeleteConfirm": "确认删除 {count} 个频道？此操作不可撤销。",
     "holdToDelete": "长按删除",
     "multiSelect": "多选",

@@ -85,6 +85,11 @@ export function AgentDetail({
   hiddenFields?: AgentDetailHiddenFields;
 }) {
   const t = useTranslations("agent");
+  const tTools = useTranslations("tools");
+  const toolLabel = (name: string, fallback: string) => {
+    const key = `items.${name}.label` as const;
+    return tTools.has(key) ? tTools(key) : fallback;
+  };
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState("");
   const [optimizing, setOptimizing] = useState(false);
@@ -463,7 +468,7 @@ export function AgentDetail({
               const builtIn = BUILT_IN_AGENT_TOOLS.find((t) => t.name === tool);
               return (
                 <span key={tool} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
-                  {builtIn?.label ?? tool}
+                  {builtIn ? toolLabel(builtIn.name, builtIn.label) : tool}
                   {!lockedFields?.tools ? (
                     <button type="button" onClick={() => onChange("tools", tools.filter((t) => t !== tool))} className="hover:text-destructive cursor-pointer">
                       <X className="size-2.5" />
