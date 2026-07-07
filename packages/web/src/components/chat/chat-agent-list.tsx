@@ -12,8 +12,9 @@ import { cn } from "@/lib/utils";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { FileIconImg } from "@/components/editor/file-icon";
 import {
-  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore, Eraser, FolderX, X,
+  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore, Eraser, X, CheckIcon,
 } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback } from "react";
 import type { ChatAgent, ChatWorkspace, ChatSession } from "@agent-spaces/sdk";
@@ -36,7 +37,7 @@ interface ChatSessionListProps {
   onArchiveSession: (sessionId: string) => void;
   onUnarchiveSession: (sessionId: string) => void;
   onClearAllMessages: () => void;
-  onDeleteWorkspace: () => void;
+  onDeleteWorkspace: (workspaceId: string) => void;
   fileTabs: ChatFileTab[];
   activeFileTabPath: string | null;
   onSelectFileTab: (path: string) => void;
@@ -192,15 +193,62 @@ export function ChatAgentList({
     >
       {/* Workspace Switcher Header */}
       <div className="border-b px-3 py-2">
-        <Workspaces
-          workspaces={workspaces}
-          selectedWorkspaceId={activeWorkspaceId ?? undefined}
-          onWorkspaceChange={(ws) => onWorkspaceChange(ws.id)}
-          getWorkspaceId={(ws) => ws.id}
-          getWorkspaceName={(ws) => ws.name}
-        >
-          <WorkspaceTrigger className="h-9 w-full text-sm" />
-          <WorkspaceContent title={t("workspaces")} searchable>
+        {workspaces.length === 0 ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start gap-2 text-sm"
+            onClick={onCreateWorkspace}
+          >
+            <MessageSquarePlus className="size-4" />
+            {t("newWorkspace")}
+          </Button>
+        ) : (
+          <Workspaces
+            workspaces={workspaces}
+            selectedWorkspaceId={activeWorkspaceId ?? undefined}
+            onWorkspaceChange={(ws) => onWorkspaceChange(ws.id)}
+            getWorkspaceId={(ws) => ws.id}
+            getWorkspaceName={(ws) => ws.name}
+          >
+            <WorkspaceTrigger className="h-9 w-full text-sm" />
+          <WorkspaceContent
+            title={t("workspaces")}
+            searchable
+            renderWorkspace={(workspace, isSelected) => (
+              <>
+                <Avatar className="h-6 w-6">
+                  <AvatarImage
+                    src={(workspace as any).logo}
+                    alt={workspace.name}
+                  />
+                  <AvatarFallback className="text-xs">
+                    {workspace.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex min-w-0 flex-1 flex-col items-start">
+                  <span className="truncate text-sm">{workspace.name}</span>
+                  {(workspace as any).plan && (
+                    <span className="text-muted-foreground text-xs">
+                      {(workspace as any).plan}
+                    </span>
+                  )}
+                </div>
+                {isSelected && <CheckIcon className="ml-auto h-4 w-4" />}
+                <button
+                  type="button"
+                  aria-label={t("deleteWorkspace")}
+                  className="ml-1 rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteWorkspace(workspace.id);
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </>
+            )}
+          >
             <button
               className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent"
               onClick={onCreateWorkspace}
@@ -209,7 +257,8 @@ export function ChatAgentList({
               {t("newWorkspace")}
             </button>
           </WorkspaceContent>
-        </Workspaces>
+          </Workspaces>
+        )}
       </div>
 
       {/* New Session + Search */}
@@ -231,15 +280,6 @@ export function ChatAgentList({
             onClick={onClearAllMessages}
           >
             <Eraser className="size-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-2 text-destructive hover:text-destructive"
-            title={t("deleteWorkspace")}
-            onClick={onDeleteWorkspace}
-          >
-            <FolderX className="size-4" />
           </Button>
         </div>
         <div className="relative">

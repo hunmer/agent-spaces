@@ -245,7 +245,7 @@ export function ChatAgentPickerDialog({
 
   // ── Tabs ──
   const tabs = (
-    <div className="flex items-center gap-1 border-b border-border px-1">
+    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-0.5">
       {(
         [
           ["local", FileText, t("dialog.tabLocal")],
@@ -255,10 +255,10 @@ export function ChatAgentPickerDialog({
         <button
           key={key}
           onClick={() => setActiveTab(key)}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
             activeTab === key
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Icon className="size-3.5" />
@@ -442,6 +442,7 @@ export function ChatAgentPickerDialog({
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2">
+              {tabs}
               {onCreate && (
                 <Button variant="outline" size="sm" onClick={onCreate}>
                   <Plus className="size-3.5" />
@@ -457,7 +458,6 @@ export function ChatAgentPickerDialog({
 
           {/* Body */}
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-            {tabs}
             {activeTab === "local" ? localView : storeView}
           </div>
         </DialogContent>

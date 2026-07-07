@@ -409,7 +409,7 @@ function ChatPageInner() {
       onArchiveSession={archiveSession}
       onUnarchiveSession={unarchiveSession}
       onClearAllMessages={clearAllSessionMessages}
-      onDeleteWorkspace={() => activeWorkspaceId && deleteWorkspace(activeWorkspaceId)}
+      onDeleteWorkspace={deleteWorkspace}
       fileTabs={activeFileTabs}
       activeFileTabPath={activeFileTabPath}
       onSelectFileTab={(path) => {
