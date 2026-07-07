@@ -278,7 +278,7 @@ export function AgentDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={(o) => { if (!o && !singleAgent) data.handleBack(); onOpenChange(o); }}>
-      <DialogContent className="sm:max-w-[80vw] max-h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col p-0 gap-0">
         {content}
       </DialogContent>
     </Dialog>

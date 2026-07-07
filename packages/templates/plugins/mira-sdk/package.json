@@ -5,6 +5,6 @@
   "main": "main.js",
   "type": "commonjs",
   "dependencies": {
-    "mira-app-core": "^2.0.0"
+    "mira-app-core": "^2.0.1"
   }
 }

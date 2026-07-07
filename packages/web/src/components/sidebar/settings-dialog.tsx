@@ -136,7 +136,7 @@ export function SettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
+      <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] p-0 gap-0 flex flex-col overflow-hidden">
         <DialogHeader className="px-5 py-4 border-b shrink-0">
           <DialogTitle className="text-base">{t("title")}</DialogTitle>
           <DialogDescription className="text-xs">{t("description")}</DialogDescription>
