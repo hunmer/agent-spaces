@@ -108,6 +108,11 @@ function ChatPageInner() {
   }, []);
 
   const activeWorkspace = workspaces.find((ws) => ws.id === activeWorkspaceId);
+  // Stable Set ref so the picker dialog's open effect doesn't re-run on every render
+  const selectedAgentIdSet = useMemo(
+    () => new Set(activeWorkspace?.agentIds ?? []),
+    [activeWorkspace?.agentIds],
+  );
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   // File tabs belong to the active session (stable empty array when none)
   const activeFileTabs: ChatFileTab[] = activeSessionId ? (sessionFileTabs[activeSessionId] ?? EMPTY_FILE_TABS) : EMPTY_FILE_TABS;
@@ -307,7 +312,7 @@ function ChatPageInner() {
         open={memberDialogOpen}
         onOpenChange={setMemberDialogOpen}
         chatAgents={agents}
-        selectedAgentIds={new Set(activeWorkspace?.agentIds ?? [])}
+        selectedAgentIds={selectedAgentIdSet}
         onAdd={handleAddAgent}
         onAddToChat={(id) => {
           if (!activeWorkspaceId) return;
@@ -445,6 +450,7 @@ function ChatPageInner() {
             streamingContent={activeStreamingContent}
             streamingThinking={activeStreamingThinking}
             streamingTimeline={activeStreamingTimeline}
+            workspaceId={activeWorkspaceId ?? undefined}
             archived={!!activeSession.archived}
             onSend={handleSend}
             onStop={stopSession}

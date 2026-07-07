@@ -162,7 +162,7 @@ async function listWorkspaceFiles(workspaceId: string, input: unknown, resolveWo
   const data = readInputRecord(input);
   const relPath = readWorkspacePath(readStringOrDefault(data.path, ''));
   const depth = clampNumber(data.depth, 2, 1, 10);
-  const files = await fileService.readTree(workspace, relPath, depth);
+  const files = await readWorkspaceTree(workspace, relPath, depth);
   return { workspaceId, path: relPath, files };
 }
 
@@ -170,12 +170,13 @@ async function readWorkspaceFile(workspaceId: string, input: unknown, resolveWor
   const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
   const data = readInputRecord(input);
   const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
-  const abs = fileService.resolvePath(workspace, relPath);
+  const { workspace: targetWorkspace, path: targetPath } = resolveWorkspaceTarget(workspace, relPath);
+  const abs = fileService.resolvePath(targetWorkspace, targetPath);
   if (!abs) throw new Error('Invalid workspace path.');
   const fileStat = await stat(abs).catch(() => null);
   if (!fileStat || !fileStat.isFile()) throw new Error('Workspace file not found.');
   if (fileStat.size > MAX_READ_BYTES) throw new Error(`File is too large to read. Maximum size is ${MAX_READ_BYTES} bytes.`);
-  const result = await fileService.readFileContent(workspace, relPath);
+  const result = await fileService.readFileContent(targetWorkspace, targetPath);
   if (!result) throw new Error('Failed to read workspace file as UTF-8 text.');
   return { path: relPath, content: result.content, encoding: result.encoding, size: fileStat.size };
 }
@@ -186,10 +187,11 @@ async function writeWorkspaceFile(workspaceId: string, input: unknown, resolveWo
   const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
   const content = readStringOrDefault(data.content, '');
   const mode = readStringOrDefault(data.mode, 'overwrite') === 'append' ? 'append' : 'overwrite';
+  const { workspace: targetWorkspace, path: targetPath } = resolveWorkspaceTarget(workspace, relPath);
   const nextContent = mode === 'append'
-    ? `${(await fileService.readFileContent(workspace, relPath))?.content ?? ''}${content}`
+    ? `${(await fileService.readFileContent(targetWorkspace, targetPath))?.content ?? ''}${content}`
     : content;
-  const ok = await fileService.writeFileContent(workspace, relPath, nextContent);
+  const ok = await fileService.writeFileContent(targetWorkspace, targetPath, nextContent);
   if (!ok) throw new Error('Failed to write workspace file.');
   return { ok: true, path: relPath, mode };
 }
@@ -198,7 +200,8 @@ async function deleteWorkspacePath(workspaceId: string, input: unknown, resolveW
   const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
   const data = readInputRecord(input);
   const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
-  const ok = await fileService.deletePath(workspace, relPath);
+  const { workspace: targetWorkspace, path: targetPath } = resolveWorkspaceTarget(workspace, relPath);
+  const ok = await fileService.deletePath(targetWorkspace, targetPath);
   if (!ok) throw new Error('Failed to delete workspace path.');
   return { ok: true, path: relPath };
 }
@@ -208,7 +211,10 @@ async function moveWorkspacePath(workspaceId: string, input: unknown, resolveWor
   const data = readInputRecord(input);
   const sourcePath = readWorkspacePath(readRequiredString(data.sourcePath, 'sourcePath'));
   const targetPath = readWorkspacePath(readRequiredString(data.targetPath, 'targetPath'));
-  const ok = await fileService.renamePath(workspace, sourcePath, targetPath);
+  const source = resolveWorkspaceTarget(workspace, sourcePath);
+  const target = resolveWorkspaceTarget(workspace, targetPath);
+  if (source.workspace.boundDirs[0] !== target.workspace.boundDirs[0]) throw new Error('Cannot move paths between workspace roots.');
+  const ok = await fileService.renamePath(source.workspace, source.path, target.path);
   if (!ok) throw new Error('Failed to move workspace path.');
   return { ok: true, sourcePath, targetPath };
 }
@@ -224,7 +230,7 @@ async function searchWorkspaceFiles(
   const relPath = readWorkspacePath(readStringOrDefault(data.path, ''));
   const maxFiles = clampNumber(data.maxFiles, 50, 1, MAX_SEARCH_FILES);
   const maxMatches = clampNumber(data.maxMatches, 20, 1, MAX_SEARCH_MATCHES);
-  const tree = await fileService.readTree(workspace, relPath, Infinity);
+  const tree = await readWorkspaceTree(workspace, relPath, Infinity);
   const files = flattenFiles(tree).slice(0, maxFiles);
   const matches: Array<{ path: string; name: string; type: 'path' | 'content'; line?: number; preview?: string }> = [];
 
@@ -234,10 +240,11 @@ async function searchWorkspaceFiles(
       matches.push({ path: file.path, name: file.name, type: 'path' });
       if (matches.length >= maxMatches) break;
     }
-    const abs = fileService.resolvePath(workspace, file.path);
+    const { workspace: targetWorkspace, path: targetPath } = resolveWorkspaceTarget(workspace, file.path);
+    const abs = fileService.resolvePath(targetWorkspace, targetPath);
     const fileStat = abs ? await stat(abs).catch(() => null) : null;
     if (!fileStat || !fileStat.isFile() || fileStat.size > MAX_READ_BYTES) continue;
-    const content = await fileService.readFileContent(workspace, file.path);
+    const content = await fileService.readFileContent(targetWorkspace, targetPath);
     if (!content) continue;
     const lines = content.content.split(/\r?\n/);
     const lineIndex = lines.findIndex((line) => line.toLowerCase().includes(query));
@@ -253,6 +260,54 @@ async function searchWorkspaceFiles(
   }
 
   return { query, path: relPath, matches };
+}
+
+async function readWorkspaceTree(workspace: Workspace, relPath: string, depth: number): Promise<FileNode[]> {
+  if (workspace.boundDirs.length <= 1) return fileService.readTree(workspace, relPath, depth);
+  if (!relPath) {
+    const defaultFiles = await fileService.readTree(singleRootWorkspace(workspace, workspace.boundDirs[0]), '', depth);
+    const roots = workspace.boundDirs.slice(1).map((dir) => rootNode(dir));
+    if (depth <= 1) return [...defaultFiles, ...roots];
+    const extraRoots = await Promise.all(roots.map(async (node, index) => ({
+      ...node,
+      children: prefixTreePaths(await fileService.readTree(singleRootWorkspace(workspace, workspace.boundDirs[index + 1]), '', depth - 1), node.path),
+    })));
+    return [...defaultFiles, ...extraRoots];
+  }
+  const { workspace: targetWorkspace, path: targetPath } = resolveWorkspaceTarget(workspace, relPath);
+  return fileService.readTree(targetWorkspace, targetPath, depth);
+}
+
+function resolveWorkspaceTarget(workspace: Workspace, relPath: string): { workspace: Workspace; path: string } {
+  if (workspace.boundDirs.length <= 1) return { workspace, path: relPath };
+  const [rootName, ...rest] = relPath.split('/');
+  const index = workspace.boundDirs.findIndex((dir) => rootPathName(dir) === rootName);
+  if (index === -1) return { workspace: singleRootWorkspace(workspace, workspace.boundDirs[0]), path: relPath };
+  return { workspace: singleRootWorkspace(workspace, workspace.boundDirs[index]), path: rest.join('/') };
+}
+
+function rootNode(dir: string): FileNode {
+  return {
+    name: rootPathName(dir),
+    path: rootPathName(dir),
+    type: 'directory',
+  };
+}
+
+function rootPathName(dir: string): string {
+  return basename(dir.replace(/[\\/]+$/, '')) || dir;
+}
+
+function singleRootWorkspace(workspace: Workspace, dir: string): Workspace {
+  return { ...workspace, boundDirs: [dir] };
+}
+
+function prefixTreePaths(nodes: FileNode[], prefix: string): FileNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    path: `${prefix}/${node.path}`,
+    children: node.children ? prefixTreePaths(node.children, prefix) : node.children,
+  }));
 }
 
 function getWorkspaceOrThrow(workspaceId: string, resolveWorkspace?: () => Workspace | null): Workspace {

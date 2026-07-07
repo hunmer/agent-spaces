@@ -61,6 +61,7 @@ import {
   FieldGroup,
   SectionHeader,
 } from "./agent-shared";
+import { CAP_CLS, getModelCapabilities } from "./model-capabilities";
 
 export function AgentDetail({
   agent,
@@ -556,6 +557,20 @@ export function AgentDetail({
               searchPlaceholder={t("detail.apiMessageTypeSearchPlaceholder")}
               allowCustom={false}
               disabled
+              triggerPrefix={
+                getModelCapabilities(agent.modelProvider).length > 0 ? (
+                  <span className="flex shrink-0 items-center gap-0.5">
+                    {getModelCapabilities(agent.modelProvider).map((cap) => (
+                      <span
+                        key={cap}
+                        className={`inline-block rounded px-1 text-[9px] font-medium border ${CAP_CLS[cap]}`}
+                      >
+                        {cap[0].toUpperCase()}
+                      </span>
+                    ))}
+                  </span>
+                ) : null
+              }
             />
           </FieldGroup>
           <FieldGroup label={t("detail.apiBase")}>

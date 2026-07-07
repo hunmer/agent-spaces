@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import type { BuiltInAgentToolName, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
+import type { BuiltInAgentToolName, WorkflowAgentTimelineItem, WorkflowAgentToolCall, Workspace } from '@agent-spaces/shared';
 import * as chatService from '../services/chat.js';
 import * as agentService from '../services/agent.js';
 import { generateChatSessionTitle } from '../services/generated-title.js';
@@ -124,7 +124,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     const functionTools = [
       ...createCommandFunctionTools(workspaceId, tools),
       ...createDatabaseFunctionTools(workspaceId, tools),
-      ...createWorkspaceFileFunctionTools(workspaceId, tools, () => chatService.getAgentWorkspace(agentId)),
+      ...createWorkspaceFileFunctionTools(workspaceId, tools, () => getSessionFileWorkspace(workspaceId, session) ?? chatService.getAgentWorkspace(agentId)),
       ...createWorkflowExecutionFunctionTools(workspaceId, tools),
     ];
     const result = await runtime.execute(prompt, workingDir, {
@@ -194,6 +194,20 @@ function resolveSessionRegenerateContext(
   }
 
   return null;
+}
+
+function getSessionFileWorkspace(
+  workspaceId: string,
+  session: { editorDirectoryTabs?: Array<{ path: string }> },
+): Workspace | null {
+  const dirs = session.editorDirectoryTabs?.map((tab) => tab.path).filter(Boolean) ?? [];
+  if (dirs.length === 0) return chatService.getChatWorkspaceRoot(workspaceId);
+  const root = chatService.getChatWorkspaceRoot(workspaceId);
+  if (!root) return null;
+  return {
+    ...root,
+    boundDirs: [...root.boundDirs, ...dirs],
+  };
 }
 
 router.post('/agents/:id/run', async (req, res) => {
