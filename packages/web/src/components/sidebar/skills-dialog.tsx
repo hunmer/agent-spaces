@@ -304,7 +304,7 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
             <ImportButton
               label={t('import')}
               align="end"
-              className="shrink-0"
+              className="shrink-0 me-8"
             >
               <DropdownMenuItem onClick={importState.openMdPicker}>
                 <FileText className="size-3.5 mr-1.5" />

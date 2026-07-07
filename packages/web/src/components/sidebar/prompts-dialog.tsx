@@ -314,10 +314,6 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
               className="pl-8"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={handleCreate}>
-            <Plus className="size-3.5 mr-1" />
-            {t('create')}
-          </Button>
         </div>
         {importState.importDialogOpen ? (
           <ImportPreviewPanel
@@ -483,6 +479,10 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
               handleFolderSelect={importState.handleFolderSelect}
               handleZipSelect={importState.handleZipSelect}
             />
+            <Button variant="outline" size="sm" onClick={handleCreate}>
+              <Plus className="size-3.5 mr-1" />
+              {t('create')}
+            </Button>
           </div>
         </div>
       </DialogHeader>

@@ -339,30 +339,6 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
               className="pl-8"
             />
           </div>
-          <FileImportMenu
-            label={t('import')}
-            triggers={importState}
-            enabled={{ md: true, folder: true, zip: true, external: true }}
-            external={{
-              kinds: ['output-styles'],
-              defaultKind: 'output-styles',
-              onImported: fetchTemplates,
-            }}
-            open={importOpen}
-            onOpenChange={setImportOpen}
-          />
-          <ImportFileInputs
-            mdInputRef={importState.mdInputRef}
-            folderInputRef={importState.folderInputRef}
-            zipInputRef={importState.zipInputRef}
-            handleMdSelect={importState.handleMdSelect}
-            handleFolderSelect={importState.handleFolderSelect}
-            handleZipSelect={importState.handleZipSelect}
-          />
-          <Button variant="outline" size="sm" onClick={handleCreate}>
-            <Plus className="size-3.5 mr-1" />
-            {t('create')}
-          </Button>
         </div>
         {importState.importDialogOpen ? (
           <ImportPreviewPanel
@@ -501,7 +477,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   const mainBody = (
     <>
       <DialogHeader>
-        <div className="flex items-center justify-between pr-8">
+        <div className="flex items-center justify-between gap-2 pr-12">
           <div className="hidden md:block">
             {standalone
               ? <h2 className="text-base font-semibold">{t('title')}</h2>
@@ -511,6 +487,32 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
               ? <p className="text-xs text-muted-foreground">{t('description')}</p>
               : <DialogDescription>{t('description')}</DialogDescription>
             }
+          </div>
+          <div className="flex items-center gap-1.5">
+            <FileImportMenu
+              label={t('import')}
+              triggers={importState}
+              enabled={{ md: true, folder: true, zip: true, external: true }}
+              external={{
+                kinds: ['output-styles'],
+                defaultKind: 'output-styles',
+                onImported: fetchTemplates,
+              }}
+              open={importOpen}
+              onOpenChange={setImportOpen}
+            />
+            <ImportFileInputs
+              mdInputRef={importState.mdInputRef}
+              folderInputRef={importState.folderInputRef}
+              zipInputRef={importState.zipInputRef}
+              handleMdSelect={importState.handleMdSelect}
+              handleFolderSelect={importState.handleFolderSelect}
+              handleZipSelect={importState.handleZipSelect}
+            />
+            <Button variant="outline" size="sm" onClick={handleCreate}>
+              <Plus className="size-3.5 mr-1" />
+              {t('create')}
+            </Button>
           </div>
         </div>
       </DialogHeader>
