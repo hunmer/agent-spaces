@@ -300,7 +300,6 @@
   },
   "user": "User",
   "tour": {
-    "start": "Start tour",
     "workspaceSwitcherTitle": "Workspace Switcher",
     "workspaceSwitcher": "Switch between different workspaces here. Each workspace groups its own agents and chat sessions.",
     "manageAgentsTitle": "Manage Agents",

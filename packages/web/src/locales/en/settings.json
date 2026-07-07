@@ -186,5 +186,8 @@
   "catalogColOutput": "Output $/M",
   "catalogProviderModels": "{count} models",
   "runtimeInstalled": "Installed",
-  "runtimeNotInstalled": "Not installed"
+  "runtimeNotInstalled": "Not installed",
+  "tour": "Onboarding Tour",
+  "tourDesc": "Replay the chat page onboarding tour.",
+  "replayTour": "Replay Tour"
 }

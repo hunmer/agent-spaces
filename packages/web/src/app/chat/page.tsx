@@ -14,7 +14,7 @@ import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialo
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, PanelLeft, PanelRight, HelpCircle } from "lucide-react";
+import { MessageSquare, PanelLeft, PanelRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useJoyride, STATUS } from "react-joyride";
 import type { Status } from "react-joyride";
@@ -166,21 +166,21 @@ function ChatPageInner() {
     },
   });
 
-  // 首次访问自动启动
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // 首次访问自动启动，或通过 URL 参数 ?tour=1 强制启动
   useEffect(() => {
+    if (isMobile) return;
+    const force = searchParams.get("tour") === "1";
     try {
       const done = localStorage.getItem(TOUR_KEY);
-      if (!done && !isMobile) {
+      if (force || !done) {
         const timer = setTimeout(() => setRunTour(true), 600);
         return () => clearTimeout(timer);
       }
     } catch {}
-  }, [isMobile]);
-
-  const startTour = useCallback(() => setRunTour(true), []);
-
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  }, [isMobile, searchParams]);
 
   const defaultLayout = useMemo<Layout | undefined>(() => loadLayout(), []);
   const onLayoutChange = useCallback((layout: Layout) => {
@@ -608,17 +608,6 @@ function ChatPageInner() {
 
   return (
     <div className="relative h-full">
-      <Button
-        aria-label={tTour("start")}
-        title={tTour("start")}
-        className="absolute top-3 right-3 z-30 size-8 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
-        onClick={startTour}
-        size="icon"
-        variant="ghost"
-        type="button"
-      >
-        <HelpCircle className="size-4" />
-      </Button>
       <ResizablePanelGroup
         orientation="horizontal"
         defaultLayout={defaultLayout}

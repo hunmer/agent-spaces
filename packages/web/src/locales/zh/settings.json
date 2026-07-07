@@ -186,5 +186,8 @@
   "runtimeCheckUpdateFailed": "检查更新失败",
   "runtimeLatestVersion": "最新版本",
   "runtimeUpToDate": "已最新",
-  "runtimeProcessing": "处理中..."
+  "runtimeProcessing": "处理中...",
+  "tour": "新手引导",
+  "tourDesc": "重新播放聊天页面的新手引导。",
+  "replayTour": "重新播放引导"
 }
