@@ -106,15 +106,15 @@ export function AgentDialog({
   );
 
   const tabs = (
-    <div className="flex items-center gap-1 border-b border-border px-1">
+    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-0.5">
       {([["local", FileText, t("dialog.tabLocal")], ["store", Store, t("dialog.tabStore")]] as [TabType, typeof FileText, string][]).map(([key, Icon, label]) => (
         <button
           key={key}
           onClick={() => data.setActiveTab(key)}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
             data.activeTab === key
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Icon className="size-3.5" />
@@ -194,6 +194,7 @@ export function AgentDialog({
         openJsonImport={() => data.jsonInputRef.current?.click()}
         openTextImport={() => { data.setImportError(""); data.setTextDialogOpen(true); }}
         openExternalImport={() => setExternalImportOpen(true)}
+        tabs={!data.selectedAgent && !singleAgent ? tabs : null}
       />
 
       {/* Hidden json file input for agent import */}
@@ -228,7 +229,6 @@ export function AgentDialog({
         </div>
       ) : !data.selectedAgent ? (
         <div className="flex flex-1 min-h-0 flex-col">
-          {tabs}
           {data.activeTab === "local" ? (
             <div className="flex flex-1 min-h-0 gap-4 px-4 pt-2">
               {(data.uniqueRoles.length > 1 || data.hasSystemAgents) && roleSidebar}

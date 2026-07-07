@@ -211,42 +211,41 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const mainBody = (
     <>
       <DialogHeader>
-        <div className="flex items-center justify-between pr-8">
+        <div className="flex items-center justify-between gap-2 pr-12">
           <div className="hidden md:block">
             <DialogTitle>{t('title')}</DialogTitle>
             <DialogDescription>{t('description')}</DialogDescription>
           </div>
+          <div className="flex items-center gap-1.5">
+            <FileImportMenu
+              label={t('import')}
+              triggers={importState}
+              enabled={{ md: true, folder: true, zip: true, external: true }}
+              external={{
+                kinds: ['commands'],
+                defaultKind: 'commands',
+                targetAgentId: filterAgentId || agents[0]?.agentId || '',
+                agents: agents.map((agent) => ({ id: agent.agentId, name: agent.agentName })),
+                onImported: fetchAllCommands,
+              }}
+              open={importOpen}
+              onOpenChange={setImportOpen}
+            />
+            <ImportFileInputs
+              mdInputRef={importState.mdInputRef}
+              folderInputRef={importState.folderInputRef}
+              zipInputRef={importState.zipInputRef}
+              handleMdSelect={importState.handleMdSelect}
+              handleFolderSelect={importState.handleFolderSelect}
+              handleZipSelect={importState.handleZipSelect}
+            />
+            <Button variant="outline" size="sm" onClick={handleCreate}>
+              <Plus className="size-3.5 mr-1" />
+              {t('create')}
+            </Button>
+          </div>
         </div>
       </DialogHeader>
-
-      <div className="flex items-center gap-2 ml-auto shrink-0">
-        <FileImportMenu
-          label={t('import')}
-          triggers={importState}
-          enabled={{ md: true, folder: true, zip: true, external: true }}
-          external={{
-            kinds: ['commands'],
-            defaultKind: 'commands',
-            targetAgentId: filterAgentId || agents[0]?.agentId || '',
-            agents: agents.map((agent) => ({ id: agent.agentId, name: agent.agentName })),
-            onImported: fetchAllCommands,
-          }}
-          open={importOpen}
-          onOpenChange={setImportOpen}
-        />
-        <ImportFileInputs
-          mdInputRef={importState.mdInputRef}
-          folderInputRef={importState.folderInputRef}
-          zipInputRef={importState.zipInputRef}
-          handleMdSelect={importState.handleMdSelect}
-          handleFolderSelect={importState.handleFolderSelect}
-          handleZipSelect={importState.handleZipSelect}
-        />
-        <Button variant="outline" size="sm" onClick={handleCreate}>
-          <Plus className="size-3.5 mr-1" />
-          {t('create')}
-        </Button>
-      </div>
 
       {importState.importDialogOpen ? (
         <ImportPreviewPanel

@@ -53,6 +53,7 @@ interface AgentDialogHeaderProps {
   openJsonImport?: () => void;
   openTextImport?: () => void;
   openExternalImport?: () => void;
+  tabs?: React.ReactNode;
 }
 
 export function AgentDialogHeader({
@@ -72,6 +73,7 @@ export function AgentDialogHeader({
   openJsonImport,
   openTextImport,
   openExternalImport,
+  tabs,
 }: AgentDialogHeaderProps) {
   const t = useTranslations("agent");
   const tc = useTranslations("common");
@@ -187,6 +189,7 @@ export function AgentDialogHeader({
         {generateButton}
         {!selectedAgent && !singleAgent && (
           <div className="flex items-center gap-2">
+            {tabs}
             {smartCreateButton}
             {importDropdown}
             {addDropdown()}
@@ -200,6 +203,7 @@ export function AgentDialogHeader({
   if (!selectedAgent && !singleAgent) {
     return (
       <div className="flex items-center justify-end gap-2 px-5 py-3 border-b">
+        {tabs}
         {smartCreateButton}
         {importDropdown}
         {addDropdown()}
