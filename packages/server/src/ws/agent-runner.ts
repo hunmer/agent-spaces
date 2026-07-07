@@ -248,6 +248,12 @@ export async function runMentionedAgent(
     ...createIssueFunctionTools(workspaceId, channel, {
       senderId: preset.id,
       senderRole: preset.role,
+      avatarUrl: preset.avatarUrl,
+      icon: preset.icon,
+      apiBase: preset.apiBase,
+      modelId: preset.modelId,
+      providerId: preset.providerId,
+      modelProvider: preset.modelProvider,
     }, preset.tools),
     ...createCommandFunctionTools(workspaceId, preset.tools),
     ...createDatabaseFunctionTools(workspaceId, preset.tools),

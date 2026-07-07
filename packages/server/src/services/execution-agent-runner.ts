@@ -91,7 +91,16 @@ async function executeAgentWithRuntime(
   const issueFunctionTools = createIssueFunctionTools(
     workspaceId,
     issueRuntimeContext.channel,
-    { senderId: preset.id, senderRole: preset.role },
+    {
+      senderId: preset.id,
+      senderRole: preset.role,
+      avatarUrl: preset.avatarUrl,
+      icon: preset.icon,
+      apiBase: preset.apiBase,
+      modelId: preset.modelId,
+      providerId: preset.providerId,
+      modelProvider: preset.modelProvider,
+    },
     tools,
   );
   const builtInTools = BUILT_IN_AGENT_TOOLS

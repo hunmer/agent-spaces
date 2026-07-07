@@ -156,12 +156,12 @@ export function IssueMessage({
           <AgentIcon
             agentId={comment.senderId}
             name={senderName}
-            avatarUrl={agent?.avatarUrl}
-            icon={agent?.icon}
-            apiBase={agent?.apiBase}
+            avatarUrl={agent?.avatarUrl ?? comment.metadata?.avatarUrl}
+            icon={agent?.icon ?? comment.metadata?.icon}
+            apiBase={agent?.apiBase ?? comment.metadata?.apiBase}
             modelId={agent?.modelId ?? comment.metadata?.model}
-            providerId={agent?.providerId}
-            modelProvider={agent?.modelProvider}
+            providerId={agent?.providerId ?? comment.metadata?.providerId}
+            modelProvider={agent?.modelProvider ?? comment.metadata?.modelProvider}
             className="size-7 shrink-0"
             bordered={false}
             hoverCard
@@ -313,12 +313,12 @@ function IssueReply({ reply, level, workspaceId }: { reply: MessageReply; level:
           <AgentIcon
             agentId={reply.senderId}
             name={senderName}
-            avatarUrl={agent?.avatarUrl}
-            icon={agent?.icon}
-            apiBase={agent?.apiBase}
+            avatarUrl={agent?.avatarUrl ?? reply.metadata?.avatarUrl}
+            icon={agent?.icon ?? reply.metadata?.icon}
+            apiBase={agent?.apiBase ?? reply.metadata?.apiBase}
             modelId={agent?.modelId ?? reply.metadata?.model}
-            providerId={agent?.providerId}
-            modelProvider={agent?.modelProvider}
+            providerId={agent?.providerId ?? reply.metadata?.providerId}
+            modelProvider={agent?.modelProvider ?? reply.metadata?.modelProvider}
             className="size-7 shrink-0"
             bordered={false}
             hoverCard

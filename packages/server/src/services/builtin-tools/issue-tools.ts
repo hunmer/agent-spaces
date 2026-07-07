@@ -9,6 +9,12 @@ import { broadcastToWorkspace } from '../../ws/connection-manager.js';
 interface IssueToolActor {
   senderId: string;
   senderRole?: string;
+  avatarUrl?: string;
+  icon?: string;
+  apiBase?: string;
+  modelId?: string;
+  providerId?: string;
+  modelProvider?: string;
 }
 
 const issueStatuses = [
@@ -199,6 +205,12 @@ function addCurrentChannelComment(
     source: actor.senderId === 'user' ? 'user' : 'agent_progress',
     metadata: {
       channelId: channel.id,
+      avatarUrl: actor.avatarUrl,
+      icon: actor.icon,
+      apiBase: actor.apiBase,
+      model: actor.modelId,
+      providerId: actor.providerId,
+      modelProvider: actor.modelProvider,
     },
   });
   if (!comment) throw new Error(`Bound issue not found: ${issue.id}`);

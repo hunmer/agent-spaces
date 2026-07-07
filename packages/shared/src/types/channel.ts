@@ -152,6 +152,11 @@ export interface MessageMetadata {
   runtimeSessionId?: string;
   runtime?: string;
   model?: string;
+  avatarUrl?: string;
+  icon?: string;
+  apiBase?: string;
+  providerId?: string;
+  modelProvider?: string;
   summary?: string;
   duration?: number;
   nodeExecutionId?: string;
