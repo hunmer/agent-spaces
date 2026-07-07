@@ -1211,5 +1211,30 @@
       "sunset": { "label": "Sunset", "description": "Warm accent edges" },
       "custom": { "label": "Custom", "description": "Use React Flow CSS variables" }
     }
+  },
+  "tour": {
+    "nodeSidebarTitle": "Nodes",
+    "nodeSidebar": "Browse all available node types. Drag or click to add nodes onto the canvas.",
+    "canvasStyleTitle": "Canvas Style",
+    "canvasStyle": "Customize canvas appearance and layout preferences.",
+    "variablesTitle": "Variables",
+    "variables": "Define and manage workflow-level variables used across nodes.",
+    "canvasTitle": "Canvas",
+    "canvas": "The main workspace where you compose nodes and connect them into a workflow.",
+    "propertiesTitle": "Properties",
+    "properties": "Edit the selected node's configuration, inputs, and field references.",
+    "historyTitle": "History",
+    "history": "Browse saved versions and undo/redo operation history.",
+    "nodeListTitle": "Node List",
+    "nodeList": "An overview of all nodes and groups; jump to or test any node from here.",
+    "executionBarTitle": "Execution",
+    "executionBar": "Run the workflow, inspect execution logs, and preview results.",
+    "stagingTitle": "Staging",
+    "staging": "Temporarily stage nodes here before deciding where to place them.",
+    "back": "Back",
+    "close": "Close",
+    "last": "Finish",
+    "next": "Next",
+    "skip": "Skip"
   }
 }

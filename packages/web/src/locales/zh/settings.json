@@ -191,5 +191,7 @@
   "tourDesc": "重新播放聊天页面的新手引导。",
   "replayTour": "重新播放引导",
   "workspaceTourDesc": "重新播放工作区各标签页的新手引导。",
-  "replayWorkspaceTour": "重新播放工作区引导"
+  "replayWorkspaceTour": "重新播放工作区引导",
+  "workflowTourDesc": "重新播放工作流编辑器的新手引导。",
+  "replayWorkflowTour": "重新播放工作流引导"
 }

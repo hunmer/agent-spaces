@@ -191,5 +191,7 @@
   "tourDesc": "Replay the chat page onboarding tour.",
   "replayTour": "Replay Tour",
   "workspaceTourDesc": "Replay the workspace tabs onboarding tour.",
-  "replayWorkspaceTour": "Replay Workspace Tour"
+  "replayWorkspaceTour": "Replay Workspace Tour",
+  "workflowTourDesc": "Replay the workflow editor onboarding tour.",
+  "replayWorkflowTour": "Replay Workflow Tour"
 }

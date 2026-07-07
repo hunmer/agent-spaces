@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
+import { useJoyride, STATUS } from 'react-joyride';
+import type { Status, Step } from 'react-joyride';
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { Layout, Model, TabNode, IJsonModel, ITabRenderValues, Actions, Action } from 'flexlayout-react';
 import type { ExecutionStep, OutputField, StagedNode, WorkflowTemplate, Workflow as WorkflowType } from '@agent-spaces/shared';
@@ -56,6 +58,8 @@ import {
 import { replaceFieldKeyReferences } from './workflow-canvas-references';
 import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
+
+const WORKFLOW_TOUR_KEY = 'agent-spaces:workflow-tour-completed';
 
 // ---- flexlayout-react default model ----
 
@@ -1010,11 +1014,113 @@ function WorkflowEditorInner({
   }, [state]);
 
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
-    const icon = WORKFLOW_TAB_ICONS[node.getComponent() ?? ''];
+    const comp = node.getComponent() ?? '';
+    const icon = WORKFLOW_TAB_ICONS[comp];
     if (icon) {
-      renderValues.content = <span title={node.getName()} className="flex items-center justify-center">{icon}</span>;
+      renderValues.content = <span title={node.getName()} className="flex items-center justify-center" data-tour-tab={comp}>{icon}</span>;
     }
   }, []);
+
+  // ===== 各 tab 引导介绍 (react-joyride) =====
+  const [runTour, setRunTour] = useState(false);
+  const tTour = useTranslations('workflows.tour');
+
+  const tourSteps: Step[] = useMemo(() => [
+    {
+      target: '[data-tour-tab="node-sidebar"]',
+      content: tTour('nodeSidebar'),
+      title: tTour('nodeSidebarTitle'),
+      placement: 'right',
+      skipBeacon: true,
+    },
+    {
+      target: '[data-tour-tab="canvas-style"]',
+      content: tTour('canvasStyle'),
+      title: tTour('canvasStyleTitle'),
+      placement: 'right',
+    },
+    {
+      target: '[data-tour-tab="variables"]',
+      content: tTour('variables'),
+      title: tTour('variablesTitle'),
+      placement: 'right',
+    },
+    {
+      target: '[data-tour-tab="canvas"]',
+      content: tTour('canvas'),
+      title: tTour('canvasTitle'),
+      placement: 'bottom',
+    },
+    {
+      target: '[data-tour-tab="properties"]',
+      content: tTour('properties'),
+      title: tTour('propertiesTitle'),
+      placement: 'left',
+    },
+    {
+      target: '[data-tour-tab="history"]',
+      content: tTour('history'),
+      title: tTour('historyTitle'),
+      placement: 'left',
+    },
+    {
+      target: '[data-tour-tab="node-list"]',
+      content: tTour('nodeList'),
+      title: tTour('nodeListTitle'),
+      placement: 'left',
+    },
+    {
+      target: '[data-tour-tab="execution-bar"]',
+      content: tTour('executionBar'),
+      title: tTour('executionBarTitle'),
+      placement: 'top',
+    },
+    {
+      target: '[data-tour-tab="staging"]',
+      content: tTour('staging'),
+      title: tTour('stagingTitle'),
+      placement: 'top',
+    },
+  ], [tTour]);
+
+  const { Tour } = useJoyride({
+    continuous: true,
+    run: runTour,
+    steps: tourSteps,
+    locale: {
+      back: tTour('back'),
+      close: tTour('close'),
+      last: tTour('last'),
+      next: tTour('next'),
+      skip: tTour('skip'),
+    },
+    options: {
+      showProgress: true,
+      buttons: ['back', 'close', 'primary', 'skip'],
+    },
+    onEvent: (data) => {
+      const finished = [STATUS.FINISHED, STATUS.SKIPPED] as readonly Status[];
+      if (finished.includes(data.status)) {
+        setRunTour(false);
+        try { localStorage.setItem(WORKFLOW_TOUR_KEY, '1'); } catch { /* ignore */ }
+      }
+    },
+  });
+
+  // 首次打开工作流编辑器自动启动，或通过 sessionStorage 标记强制启动（从设置页跳来）
+  useEffect(() => {
+    if (isMobile) return;
+    let force = false;
+    try {
+      force = sessionStorage.getItem('agent-spaces:workflow-tour-pending') === '1';
+      if (force) sessionStorage.removeItem('agent-spaces:workflow-tour-pending');
+      const done = localStorage.getItem(WORKFLOW_TOUR_KEY);
+      if (force || !done) {
+        const timer = setTimeout(() => setRunTour(true), 800);
+        return () => clearTimeout(timer);
+      }
+    } catch { /* ignore */ }
+  }, [isMobile]);
 
   // 渲染单个 tab 内容（桌面 factory 与小屏 Drawer 共用）
   const renderTab = (comp: string) => {
@@ -1726,6 +1832,8 @@ function WorkflowEditorInner({
           )}
         </DialogContent>
       </Dialog>
+
+      {Tour}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { PlayIcon } from "lucide-react";
 
 const TOUR_KEY = "agent-spaces:chat-tour-completed";
 const WORKSPACE_TOUR_KEY = "agent-spaces:workspace-tour-completed";
+const WORKFLOW_TOUR_KEY = "agent-spaces:workflow-tour-completed";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -36,6 +37,14 @@ export function GeneralTab() {
     try { localStorage.removeItem(WORKSPACE_TOUR_KEY); } catch {}
     const id = localStorage.getItem("lastWorkspaceId");
     router.push(id ? `/workspace/${id}?wstour=1` : "/");
+  };
+
+  const replayWorkflowTour = () => {
+    try {
+      localStorage.removeItem(WORKFLOW_TOUR_KEY);
+      sessionStorage.setItem("agent-spaces:workflow-tour-pending", "1");
+    } catch {}
+    router.push("/workflows");
   };
 
   return (
@@ -66,6 +75,13 @@ export function GeneralTab() {
             <Button variant="outline" size="sm" className="shrink-0 gap-2" onClick={replayWorkspaceTour}>
               <PlayIcon className="size-4" />
               {t("replayWorkspaceTour")}
+            </Button>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">{t("workflowTourDesc")}</p>
+            <Button variant="outline" size="sm" className="shrink-0 gap-2" onClick={replayWorkflowTour}>
+              <PlayIcon className="size-4" />
+              {t("replayWorkflowTour")}
             </Button>
           </div>
         </div>
