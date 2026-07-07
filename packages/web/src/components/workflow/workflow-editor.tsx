@@ -1081,6 +1081,30 @@ function WorkflowEditorInner({
       title: tTour('stagingTitle'),
       placement: 'top',
     },
+    {
+      target: '[data-tour="wf-plugin-manager"]',
+      content: tTour('pluginManager'),
+      title: tTour('pluginManagerTitle'),
+      placement: 'bottom',
+    },
+    {
+      target: '[data-tour="wf-preview"]',
+      content: tTour('preview'),
+      title: tTour('previewTitle'),
+      placement: 'bottom',
+    },
+    {
+      target: '[data-tour="wf-trigger-settings"]',
+      content: tTour('triggerSettings'),
+      title: tTour('triggerSettingsTitle'),
+      placement: 'bottom',
+    },
+    {
+      target: '[data-tour="floating-chat-toggle"]',
+      content: tTour('agentAssistant'),
+      title: tTour('agentAssistantTitle'),
+      placement: 'top',
+    },
   ], [tTour]);
 
   const { Tour } = useJoyride({

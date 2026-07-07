@@ -262,7 +262,7 @@ export function WorkflowEditorToolbar({
         <>
       <div className="w-px h-5 bg-border mx-1" />
 
-      <ToolBtn tooltip={t('editor.pluginManager')} variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenPluginManager} disabled={!workflow}>
+      <ToolBtn tooltip={t('editor.pluginManager')} variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenPluginManager} disabled={!workflow} data-tour="wf-plugin-manager">
         <PackagePlus className="h-4 w-4" />
       </ToolBtn>
 
@@ -348,10 +348,10 @@ export function WorkflowEditorToolbar({
 
       <div className="flex-1" />
 
-      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
+      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)} data-tour="wf-preview">
         {t('editor.preview')}
       </Button>
-      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={onOpenTriggerDialog}>
+      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={onOpenTriggerDialog} data-tour="wf-trigger-settings">
         <Clock className="h-3.5 w-3.5" />
         {hasTriggers ? t('editor.manageTriggers') : t('editor.triggerSettings')}
       </Button>

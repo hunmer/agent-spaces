@@ -138,6 +138,7 @@ export function FloatingChatPanel({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onToggle}
+          data-tour="floating-chat-toggle"
           className={cn(
             'cursor-pointer group relative flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition-all duration-300',
             isOpen
