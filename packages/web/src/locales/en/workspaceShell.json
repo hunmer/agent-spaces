@@ -1,0 +1,33 @@
+{
+  "tour": {
+    "projectSettingsTitle": "Project Settings",
+    "projectSettings": "Configure workspace-level settings, including members, notifications, and integrations.",
+    "channelListTitle": "Channels",
+    "channelList": "Browse and manage all chat channels in this workspace. Pick a channel to open its conversation.",
+    "issueListTitle": "Issues",
+    "issueList": "Track tasks and issues. Select an issue to view its detail and workflow status.",
+    "workfolderTitle": "Workfolder",
+    "workfolder": "Browse the workspace file tree and manage files. Opening a file switches to the Code Editor.",
+    "codeEditorTitle": "Code Editor",
+    "codeEditor": "Edit files here. The editor follows the active file from the Workfolder.",
+    "chatTitle": "Chat",
+    "chat": "Channel conversation view. Messages from the selected channel show up here.",
+    "issueDetailTitle": "Issue Detail",
+    "issueDetail": "Inspect an issue's description, members, and workflow execution in detail.",
+    "terminalTitle": "Terminal",
+    "terminal": "Run shell commands inside the workspace's bound directories.",
+    "gitCommitsTitle": "Commits",
+    "gitCommits": "Review git status, diffs, and commit history for the workspace.",
+    "codeFavoritesTitle": "Favorites",
+    "codeFavorites": "Save and quickly jump to frequently used code snippets.",
+    "worktreeTitle": "Worktrees",
+    "worktree": "Manage git worktrees to work on multiple branches in parallel.",
+    "activityLogTitle": "Logger",
+    "activityLog": "A live log of workspace activity and events.",
+    "back": "Back",
+    "close": "Close",
+    "last": "Finish",
+    "next": "Next",
+    "skip": "Skip"
+  }
+}

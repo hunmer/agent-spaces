@@ -65,6 +65,8 @@
   "importSuccess": "导入成功",
   "importFailed": "导入失败",
   "copyPath": "复制路径",
+  "showHiddenFiles": "显示隐藏文件",
+  "saveSettingsFailed": "保存设置失败",
   "duplicateFile": "复制副本",
   "duplicateSuccess": "副本已创建",
   "duplicateFailed": "创建副本失败",

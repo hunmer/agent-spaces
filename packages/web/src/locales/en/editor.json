@@ -65,6 +65,8 @@
   "importSuccess": "Import successful",
   "importFailed": "Import failed",
   "copyPath": "Copy Path",
+  "showHiddenFiles": "Show Hidden Files",
+  "saveSettingsFailed": "Failed to save settings",
   "duplicateFile": "Duplicate",
   "duplicateSuccess": "Duplicate created",
   "duplicateFailed": "Failed to create duplicate",

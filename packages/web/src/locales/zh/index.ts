@@ -29,6 +29,7 @@ import sqlite from './sqlite.json';
 import terminal from './terminal.json';
 import tools from './tools.json';
 import workspace from './workspace.json';
+import workspaceShell from './workspaceShell.json';
 import workspaces from './workspaces.json';
 import worktree from './worktree.json';
 import workflows from './workflows.json';
@@ -66,6 +67,7 @@ const messages = {
   terminal,
   tools,
   workspace,
+  workspaceShell,
   workspaces,
   worktree,
   workflows,

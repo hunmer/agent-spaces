@@ -13,6 +13,7 @@ export interface Workspace {
   activeChannels: string[];
   activeIssues: string[];
   autoProcessIssues?: boolean;
+  editorSettings?: WorkspaceEditorSettings;
   notificationSettings?: WorkspaceNotificationSettings;
   hooksEnabled?: boolean;
   isWorktree?: boolean;
@@ -20,6 +21,10 @@ export interface Workspace {
 }
 
 export type NotificationProvider = 'lark' | 'wechat' | 'native';
+
+export interface WorkspaceEditorSettings {
+  showHiddenFiles?: boolean;
+}
 
 export type NotificationEventKey = 'issue_started' | 'issue_completed';
 

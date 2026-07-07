@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { PlayIcon } from "lucide-react";
 
 const TOUR_KEY = "agent-spaces:chat-tour-completed";
+const WORKSPACE_TOUR_KEY = "agent-spaces:workspace-tour-completed";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -31,6 +32,12 @@ export function GeneralTab() {
     router.push("/chat?tour=1");
   };
 
+  const replayWorkspaceTour = () => {
+    try { localStorage.removeItem(WORKSPACE_TOUR_KEY); } catch {}
+    const id = localStorage.getItem("lastWorkspaceId");
+    router.push(id ? `/workspace/${id}?wstour=1` : "/");
+  };
+
   return (
     <div className="space-y-5">
       <Section title={t("startup")}>
@@ -46,12 +53,21 @@ export function GeneralTab() {
         <SecurityTab />
       </Section>
       <Section title={t("tour")}>
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">{t("tourDesc")}</p>
-          <Button variant="outline" size="sm" className="shrink-0 gap-2" onClick={replayTour}>
-            <PlayIcon className="size-4" />
-            {t("replayTour")}
-          </Button>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">{t("tourDesc")}</p>
+            <Button variant="outline" size="sm" className="shrink-0 gap-2" onClick={replayTour}>
+              <PlayIcon className="size-4" />
+              {t("replayTour")}
+            </Button>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">{t("workspaceTourDesc")}</p>
+            <Button variant="outline" size="sm" className="shrink-0 gap-2" onClick={replayWorkspaceTour}>
+              <PlayIcon className="size-4" />
+              {t("replayWorkspaceTour")}
+            </Button>
+          </div>
         </div>
       </Section>
     </div>

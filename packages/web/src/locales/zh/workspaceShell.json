@@ -1,0 +1,33 @@
+{
+  "tour": {
+    "projectSettingsTitle": "项目设置",
+    "projectSettings": "配置工作空间级别的设置，包括成员、通知与集成。",
+    "channelListTitle": "频道",
+    "channelList": "浏览并管理工作空间中的所有聊天频道，选择一个频道即可打开对应会话。",
+    "issueListTitle": "议题",
+    "issueList": "跟踪任务与议题。选择一个议题可查看详情和工作流状态。",
+    "workfolderTitle": "工作目录",
+    "workfolder": "浏览工作空间的文件树并管理文件，打开文件会切换到代码编辑器。",
+    "codeEditorTitle": "代码编辑器",
+    "codeEditor": "在此编辑文件，编辑器会跟随工作目录中当前激活的文件。",
+    "chatTitle": "聊天",
+    "chat": "频道会话视图，所选频道的消息会显示在这里。",
+    "issueDetailTitle": "议题详情",
+    "issueDetail": "查看议题的描述、成员以及工作流执行情况。",
+    "terminalTitle": "终端",
+    "terminal": "在工作空间绑定的目录中执行 shell 命令。",
+    "gitCommitsTitle": "提交",
+    "gitCommits": "查看工作空间的 git 状态、差异与提交历史。",
+    "codeFavoritesTitle": "收藏",
+    "codeFavorites": "保存并快速跳转到常用的代码片段。",
+    "worktreeTitle": "工作树",
+    "worktree": "管理 git 工作树，便于并行处理多个分支。",
+    "activityLogTitle": "日志",
+    "activityLog": "工作空间活动与事件的实时日志。",
+    "back": "上一步",
+    "close": "关闭",
+    "last": "完成",
+    "next": "下一步",
+    "skip": "跳过"
+  }
+}

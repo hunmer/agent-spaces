@@ -189,5 +189,7 @@
   "runtimeNotInstalled": "Not installed",
   "tour": "Onboarding Tour",
   "tourDesc": "Replay the chat page onboarding tour.",
-  "replayTour": "Replay Tour"
+  "replayTour": "Replay Tour",
+  "workspaceTourDesc": "Replay the workspace tabs onboarding tour.",
+  "replayWorkspaceTour": "Replay Workspace Tour"
 }

@@ -154,7 +154,7 @@ export function renderTabIcon(
   if (!icon) return null;
   const { trailing, badge } = getTabBadge(comp, gitStatus, terminalSessions, channelMessages, issues);
   return (
-    <span title={name} className="flex items-center justify-center">
+    <span title={name} className="flex items-center justify-center" data-tour-tab={comp}>
       <span className="relative">
         {icon}
         {badge}

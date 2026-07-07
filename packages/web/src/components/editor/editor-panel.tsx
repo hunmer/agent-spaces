@@ -14,7 +14,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from "sonner";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,20 @@ function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
     }
   }
   return result;
+}
+
+function isHiddenPath(path: string): boolean {
+  return path.split('/').some(part => part.startsWith('.') && part.length > 1);
+}
+
+function filterHiddenTree(nodes: FileNode[]): FileNode[] {
+  return nodes.flatMap((node) => {
+    if (isHiddenPath(node.path)) return [];
+    if (node.type === 'directory' && node.children) {
+      return [{ ...node, children: filterHiddenTree(node.children) }];
+    }
+    return [node];
+  });
 }
 
 function collectAllDirPaths(nodes: FileNode[]): string[] {
@@ -193,6 +207,7 @@ export function CommonEditorPanel({
 }: EditorPanelProps) {
   const editorStore = useEditorStore();
   const workspace = useWorkspaceStore((s) => workspaceId ? s.workspaces.find((w) => w.id === workspaceId) : undefined);
+  const upsertWorkspace = useWorkspaceStore((s) => s.upsertWorkspace);
   const panelKey = storageKey ?? workspaceId ?? 'default';
   const tree = api?.tree ?? editorStore.tree;
   const treeLoading = api?.treeLoading ?? editorStore.treeLoading;
@@ -241,6 +256,7 @@ export function CommonEditorPanel({
   const loadTreeRef = useRef(loadTree);
   const loadDirectoryRef = useRef(loadDirectory);
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
+  const [showHiddenFiles, setShowHiddenFiles] = useState(true);
   const [internalSidebarTab, setInternalSidebarTab] = useState<'files' | 'search'>('files');
   const activeSidebarTab = sidebarTab ?? internalSidebarTab;
   const setActiveSidebarTab = useCallback((value: string) => {
@@ -251,11 +267,28 @@ export function CommonEditorPanel({
       setInternalSidebarTab(next);
     }
   }, [onSidebarTabChange]);
-  const filteredTree = useMemo(() => filterTreeByName(tree, fileSearch), [tree, fileSearch]);
-  const fileSizeMap = useMemo(() => buildFileSizeMap(tree), [tree]);
+  const visibleTree = useMemo(() => showHiddenFiles ? tree : filterHiddenTree(tree), [tree, showHiddenFiles]);
+  const filteredTree = useMemo(() => filterTreeByName(visibleTree, fileSearch), [visibleTree, fileSearch]);
+  const fileSizeMap = useMemo(() => buildFileSizeMap(visibleTree), [visibleTree]);
 
   useEffect(() => { loadTreeRef.current = loadTree; }, [loadTree]);
   useEffect(() => { loadDirectoryRef.current = loadDirectory; }, [loadDirectory]);
+  useEffect(() => {
+    setShowHiddenFiles(workspace?.editorSettings?.showHiddenFiles ?? true);
+  }, [workspace?.id, workspace?.editorSettings?.showHiddenFiles]);
+
+  const updateShowHiddenFiles = useCallback((showHidden: boolean) => {
+    setShowHiddenFiles(showHidden);
+    if (!workspaceId || !workspace) return;
+    sdk.workspace.update(workspaceId, {
+      editorSettings: {
+        ...workspace.editorSettings,
+        showHiddenFiles: showHidden,
+      },
+    }).then(upsertWorkspace).catch(() => {
+      toast.error(t('saveSettingsFailed'));
+    });
+  }, [t, upsertWorkspace, workspace, workspaceId]);
 
   // 有搜索词时走后端全局搜索，否则清空
   useEffect(() => {
@@ -283,17 +316,19 @@ export function CommonEditorPanel({
   }, [api, fileSearch, workspaceId]);
 
   const displayTree = fileSearch.trim() && globalFileResults.length > 0
-    ? globalFileResults.filter(r => r.type === 'file').map(r => ({ path: r.path, name: r.name, type: 'file' as const }))
+    ? globalFileResults
+      .filter(r => r.type === 'file' && (showHiddenFiles || !isHiddenPath(r.path)))
+      .map(r => ({ path: r.path, name: r.name, type: 'file' as const }))
     : [];
   const recentFiles = useMemo(() => {
-    const files = collectAllFiles(tree).filter(f => f.modifiedAt);
+    const files = collectAllFiles(visibleTree).filter(f => f.modifiedAt);
     files.sort((a, b) => (b.modifiedAt || '').localeCompare(a.modifiedAt || ''));
     return files.slice(0, 50);
-  }, [tree]);
+  }, [visibleTree]);
   const openedFileNodes = useMemo(() => {
     const pathSet = new Set(openFiles.map(f => f.path));
-    return [...collectAllFiles(tree).filter(f => pathSet.has(f.path))].reverse();
-  }, [tree, openFiles]);
+    return [...collectAllFiles(visibleTree).filter(f => pathSet.has(f.path))].reverse();
+  }, [visibleTree, openFiles]);
 
   // 搜索时自动展开所有目录
   const effectiveExpanded = useMemo(() => {
@@ -592,6 +627,9 @@ export function CommonEditorPanel({
                 <Ellipsis className="size-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                <DropdownMenuCheckboxItem checked={showHiddenFiles} onCheckedChange={(checked) => updateShowHiddenFiles(checked === true)}>
+                  {t('showHiddenFiles')}
+                </DropdownMenuCheckboxItem>
                 {showImport && workspaceId ? (
                   <DropdownMenuItem onClick={() => { setImportTargetPath(''); setImportDialogOpen(true); }}>
                     <Upload className="size-4" />
