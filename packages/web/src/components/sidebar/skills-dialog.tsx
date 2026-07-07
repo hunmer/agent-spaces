@@ -11,15 +11,28 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
+import {
   Store,
   FileText,
   Download,
   Search,
   Check,
+  FolderOpen,
+  FileArchive,
+  GitBranch,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { StoreTabPanel } from '@/components/common/store-tab-panel';
+import { ImportButton } from './import-button';
+import { ImportFileInputs } from './import-panel/import-file-inputs';
+import { ImportPreviewPanel } from './import-panel/import-preview-panel';
+import { ImportGitDialog } from './import-panel/import-git-dialog';
+import { ExternalImportDialog } from './external-import-dialog';
+import { useImport } from './import-panel/use-import';
 import type { SkillInfo, SkillsDialogProps, StoreSkillItem } from './skills-dialog/types';
 import { useSkillsData, useSkillActions } from './skills-dialog/use-skills-data';
 import { SkillList } from './skills-dialog/skill-list';
@@ -28,14 +41,22 @@ import { SkillBindDialog } from './skills-dialog/skill-bind-dialog';
 
 type TabType = 'local' | 'store';
 
-export function SkillsDialog({ open, onOpenChange, standalone, selectable, selectedSkills, onSelectedSkillsChange }: SkillsDialogProps) {
+export function SkillsDialog({ open, onOpenChange, standalone, selectable, selectedSkills, onSelectedSkillsChange, showBindAll }: SkillsDialogProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
+  const ti = useTranslations('import');
 
   const [activeTab, setActiveTab] = useState<TabType>('local');
 
   const { skills, setSkills, agents, loading, fetchSkills, storeSkills, storeLoading, importingPaths, importFromStore } = useSkillsData(open, standalone);
   const actions = useSkillActions(skills, setSkills, fetchSkills);
+
+  // Import state (lifted from SkillList so the trigger can live in the header)
+  const importState = useImport({
+    onImportBatch: actions.importBatch,
+    onImportFromGit: actions.importFromGit,
+  });
+  const [externalImportOpen, setExternalImportOpen] = useState(false);
 
   const [editSkill, setEditSkill] = useState<SkillInfo | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -268,15 +289,45 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
   const mainBody = (
     <>
       <DialogHeader>
-        <div className="hidden md:block">
-          {standalone
-            ? <h2 className="text-base font-semibold">{t('title')}</h2>
-            : <DialogTitle>{t('title')}</DialogTitle>
-          }
-          {standalone
-            ? <p className="text-xs text-muted-foreground">{t('description')}</p>
-            : <DialogDescription>{t('description')}</DialogDescription>
-          }
+        <div className="hidden md:flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {standalone
+              ? <h2 className="text-base font-semibold">{t('title')}</h2>
+              : <DialogTitle>{t('title')}</DialogTitle>
+            }
+            {standalone
+              ? <p className="text-xs text-muted-foreground">{t('description')}</p>
+              : <DialogDescription>{t('description')}</DialogDescription>
+            }
+          </div>
+          {activeTab === 'local' && (
+            <ImportButton
+              label={t('import')}
+              align="end"
+              className="shrink-0"
+            >
+              <DropdownMenuItem onClick={importState.openMdPicker}>
+                <FileText className="size-3.5 mr-1.5" />
+                {t('importFromMd')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={importState.openFolderPicker}>
+                <FolderOpen className="size-3.5 mr-1.5" />
+                {t('importFromFolder')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={importState.openZipPicker}>
+                <FileArchive className="size-3.5 mr-1.5" />
+                {t('importFromZip')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={importState.openGitDialog} disabled={importState.gitLoading}>
+                <GitBranch className="size-3.5 mr-1.5" />
+                {t('importFromGit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setExternalImportOpen(true)}>
+                <Download className="size-3.5 mr-1.5" />
+                {ti('importFromExternal')}
+              </DropdownMenuItem>
+            </ImportButton>
+          )}
         </div>
       </DialogHeader>
 
@@ -284,19 +335,37 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
 
       <div className="flex flex-1 min-h-0 flex-col">
       {activeTab === 'local' ? (
-        <SkillList
-          skills={skills}
-          agents={agents}
-          loading={loading}
-          onToggleFavorite={actions.toggleFavorite}
-          onDelete={actions.deleteSkill}
-          onEdit={openEditDialog}
-          onBind={openBindDialog}
-          onImportBatch={actions.importBatch}
-          onImportFromGit={actions.importFromGit}
-          onExternalImported={fetchSkills}
-          onBindAll={openBindAllDialog}
-        />
+        <>
+          <ImportFileInputs
+            mdInputRef={importState.mdInputRef}
+            folderInputRef={importState.folderInputRef}
+            zipInputRef={importState.zipInputRef}
+            handleMdSelect={importState.handleMdSelect}
+            handleFolderSelect={importState.handleFolderSelect}
+            handleZipSelect={importState.handleZipSelect}
+          />
+          {importState.importDialogOpen ? (
+            <ImportPreviewPanel
+              items={importState.importItems}
+              onItemsChange={importState.setImportItems}
+              onConfirm={importState.handleImportConfirm}
+              onCancel={importState.handleImportCancel}
+              defaultGroup={importState.importDefaultGroup}
+            />
+          ) : (
+            <SkillList
+              skills={skills}
+              agents={agents}
+              loading={loading}
+              onToggleFavorite={actions.toggleFavorite}
+              onDelete={actions.deleteSkill}
+              onEdit={openEditDialog}
+              onBind={openBindDialog}
+              onExternalImported={fetchSkills}
+              onBindAll={showBindAll ? openBindAllDialog : undefined}
+            />
+          )}
+        </>
       ) : (
         storeView
       )}
@@ -335,6 +404,24 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
         initialSelected={isBindAllMode ? [] : (bindDialogSkill?.boundAgents.map((a) => a.id) ?? [])}
         onClose={() => setBindDialogSkill(null)}
         onSubmit={handleBindConfirm}
+      />
+
+      <ImportGitDialog
+        open={importState.gitDialogOpen}
+        onOpenChange={importState.setGitDialogOpen}
+        gitUrl={importState.gitUrl}
+        onGitUrlChange={importState.setGitUrl}
+        loading={importState.gitLoading}
+        onImport={importState.handleGitImport}
+        confirmLabel={t('import')}
+      />
+
+      <ExternalImportDialog
+        open={externalImportOpen}
+        onOpenChange={setExternalImportOpen}
+        kinds={['skills']}
+        defaultKind="skills"
+        onImported={fetchSkills}
       />
     </>
   );

@@ -66,7 +66,7 @@ export function DashboardSidebar() {
   const removeWorkspace = useWorkspaceStore((store) => store.removeWorkspace);
   const openWorkspaceDialog = useWorkspaceStore((s) => s.openWorkspaceDialog);
   const [wsConnected, setWsConnected] = useState(false);
-  const dialogs = useSidebarDialogs();
+  const dialogs = useSidebarDialogs(isMobile);
 
   useEffect(() => {
     if (!currentWorkspaceId) {

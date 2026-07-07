@@ -29,6 +29,8 @@ export interface SkillsDialogProps {
   selectable?: boolean;
   selectedSkills?: string[];
   onSelectedSkillsChange?: (skills: string[]) => void;
+  /** 是否显示「应用到所有 agent」Footer，仅在 agent 配置等带上下文入口启用 */
+  showBindAll?: boolean;
 }
 
 export type FilterMode = 'all' | 'favorites' | 'agent';
