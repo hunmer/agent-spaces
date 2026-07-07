@@ -143,5 +143,30 @@
     "deleteTitle": "Delete usage record",
     "deleteConfirm": "Are you sure you want to delete this usage record? This action cannot be undone.",
     "cancel": "Cancel"
+  },
+  "workflowExecutions": {
+    "title": "Workflow Executions",
+    "refresh": "Refresh",
+    "empty": "No workflow executions yet",
+    "stats": {
+      "totalRuns": "Total Runs",
+      "running": "Running",
+      "successRate": "Success Rate",
+      "failed": "Failed"
+    },
+    "status": {
+      "running": "Running",
+      "completed": "Completed",
+      "paused": "Paused",
+      "error": "Error"
+    },
+    "table": {
+      "workflow": "Workflow",
+      "status": "Status",
+      "started": "Started",
+      "duration": "Duration",
+      "steps": "Steps"
+    },
+    "timePlaceholder": "-"
   }
 }

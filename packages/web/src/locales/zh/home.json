@@ -143,5 +143,30 @@
     "deleteTitle": "删除用量记录",
     "deleteConfirm": "确定删除该用量记录吗？此操作不可撤销。",
     "cancel": "取消"
+  },
+  "workflowExecutions": {
+    "title": "工作流执行",
+    "refresh": "刷新",
+    "empty": "暂无工作流执行记录",
+    "stats": {
+      "totalRuns": "总执行次数",
+      "running": "运行中",
+      "successRate": "成功率",
+      "failed": "失败"
+    },
+    "status": {
+      "running": "运行中",
+      "completed": "已完成",
+      "paused": "已暂停",
+      "error": "失败"
+    },
+    "table": {
+      "workflow": "工作流",
+      "status": "状态",
+      "started": "开始时间",
+      "duration": "耗时",
+      "steps": "步骤"
+    },
+    "timePlaceholder": "-"
   }
 }

@@ -80,7 +80,12 @@
     "uploadFailed": "Upload failed: {name}",
     "voiceStart": "Voice Input",
     "voiceStop": "Stop Recording",
-    "manageMembers": "Manage channel members"
+    "manageMembers": "Manage channel members",
+    "followAgent": "Follow Agent",
+    "usingAgentModel": "Use {name}'s current model config",
+    "noAgentSelected": "No agent selected",
+    "temporaryModel": "Temporary Model",
+    "searchModel": "Search model"
   },
   "messageParts": {
     "agentProcessing": "Agent is processing...",

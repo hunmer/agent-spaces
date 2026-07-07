@@ -257,8 +257,10 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     return [
       {
         value: "",
-        label: "跟随 Agent",
-        description: activeAgent ? `使用 ${activeAgent.name || activeAgent.role} 当前模型配置` : "未选择 Agent",
+        label: t("input.followAgent"),
+        description: activeAgent
+          ? t("input.usingAgentModel", { name: activeAgent.name || activeAgent.role })
+          : t("input.noAgentSelected"),
       },
       ...models
         .map((model) => {
@@ -274,7 +276,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         })
         .filter((item): item is NonNullable<typeof item> => Boolean(item)),
     ];
-  }, [activeAgent, models, providers]);
+  }, [activeAgent, models, providers, t]);
 
   const selectedModelOverride = selectedModelId ? temporaryModelMap.get(selectedModelId) : undefined;
 
@@ -632,8 +634,8 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
           value={selectedModelId}
           onChange={setSelectedModelId}
           options={temporaryModelOptions}
-          placeholder="临时模型"
-          searchPlaceholder="搜索模型"
+          placeholder={t("input.temporaryModel")}
+          searchPlaceholder={t("input.searchModel")}
           allowCustom={false}
           disabled={isProcessing || submitting}
           className="w-52"

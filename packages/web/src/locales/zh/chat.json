@@ -80,7 +80,12 @@
     "uploadFailed": "上传失败：{name}",
     "voiceStart": "语音输入",
     "voiceStop": "停止录音",
-    "manageMembers": "管理频道成员"
+    "manageMembers": "管理频道成员",
+    "followAgent": "跟随 Agent",
+    "usingAgentModel": "使用 {name} 当前模型配置",
+    "noAgentSelected": "未选择 Agent",
+    "temporaryModel": "临时模型",
+    "searchModel": "搜索模型"
   },
   "messageParts": {
     "agentProcessing": "Agent 正在处理...",
