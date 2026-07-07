@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { X } from 'lucide-react';
 
@@ -86,12 +87,11 @@ export function MemberPicker({
                 <span className="block truncate text-xs text-muted-foreground">{candidate.description}</span>
               )}
             </span>
-            <div
-              className={`flex items-center justify-center size-4 rounded border shrink-0 ${
-                uniqueSelected.includes(candidate.id)
-                  ? 'bg-primary border-primary text-primary-foreground'
-                  : 'border-input'
-              }`}
+            <Checkbox
+              checked={uniqueSelected.includes(candidate.id)}
+              onCheckedChange={() => onToggle(candidate.id)}
+              className="shrink-0"
+              onClick={(e) => e.stopPropagation()}
             />
           </button>
         ))}
