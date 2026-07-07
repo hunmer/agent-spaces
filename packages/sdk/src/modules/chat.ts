@@ -110,6 +110,12 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
       return http.get(`/api/chat/workspaces/${workspaceId}/tree${qs.size ? `?${qs}` : ''}`);
     },
 
+    uploadWorkspaceFiles: (agentId: string, targetDir: string, files: Array<{ name: string; content: string }>): Promise<void> =>
+      http.post(`/api/chat/agents/${agentId}/workspace/upload`, { targetDir, files }),
+
+    uploadChatWorkspaceFiles: (workspaceId: string, targetDir: string, files: Array<{ name: string; content: string }>): Promise<void> =>
+      http.post(`/api/chat/workspaces/${workspaceId}/upload`, { targetDir, files }),
+
     workspaceFileContent: (agentId: string, path: string): Promise<{ content: string; encoding: string }> =>
       http.get(`/api/chat/agents/${agentId}/workspace/content?path=${encodeURIComponent(path)}`),
 

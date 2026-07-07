@@ -4,14 +4,21 @@ import { resolve, join, extname } from 'path';
 import { existsSync, createReadStream, statSync } from 'node:fs';
 import * as fileService from '../services/file.js';
 import * as wsService from '../services/workspace.js';
+import * as chatService from '../services/chat.js';
 import { getDataDir } from '../storage/json-store.js';
 
 const EDITOR_STATE_PATH = '.agentspace/editor-state.json';
 
 const router = Router({ mergeParams: true });
 
+function getWorkspace(id: string) {
+  if (id.startsWith('chat:')) return chatService.getAgentWorkspace(id.slice('chat:'.length));
+  if (id.startsWith('chat-workspace:')) return chatService.getChatWorkspaceRoot(id.slice('chat-workspace:'.length).split(':')[0]);
+  return fileService.getWorkspace(id);
+}
+
 router.get('/tree', async (req: Request<{ id: string }>, res: Response) => {
-  const ws = fileService.getWorkspace(req.params.id);
+  const ws = getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const path = (req.query.path as string) || '';
@@ -29,7 +36,7 @@ const MIME_MAP: Record<string, string> = {
 };
 
 router.get('/content', async (req: Request<{ id: string }>, res: Response) => {
-  const ws = fileService.getWorkspace(req.params.id);
+  const ws = getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const path = req.query.path as string;
@@ -82,7 +89,7 @@ router.get('/content', async (req: Request<{ id: string }>, res: Response) => {
 });
 
 router.get('/exists', async (req: Request<{ id: string }>, res: Response) => {
-  const ws = fileService.getWorkspace(req.params.id);
+  const ws = getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const path = req.query.path as string;
@@ -92,7 +99,7 @@ router.get('/exists', async (req: Request<{ id: string }>, res: Response) => {
 });
 
 router.put('/content', async (req: Request<{ id: string }>, res: Response) => {
-  const ws = fileService.getWorkspace(req.params.id);
+  const ws = getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const { path, content } = req.body;
@@ -104,7 +111,7 @@ router.put('/content', async (req: Request<{ id: string }>, res: Response) => {
 });
 
 router.delete('/', async (req: Request<{ id: string }>, res: Response) => {
-  const ws = fileService.getWorkspace(req.params.id);
+  const ws = getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const path = req.query.path as string;
@@ -116,7 +123,7 @@ router.delete('/', async (req: Request<{ id: string }>, res: Response) => {
 });
 
 router.get('/editor-state', async (req: Request<{ id: string }>, res: Response) => {
-  const ws = fileService.getWorkspace(req.params.id);
+  const ws = getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const result = await fileService.readFileContent(ws, EDITOR_STATE_PATH);

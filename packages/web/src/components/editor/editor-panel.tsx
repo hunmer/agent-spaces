@@ -39,6 +39,7 @@ type FilePanelApi = {
   deletePath: (path: string) => Promise<void>;
   renamePath: (oldPath: string, newPath: string) => Promise<void>;
   copyPath: (srcPath: string, destPath: string) => Promise<void>;
+  uploadFiles?: (targetPath: string, files: File[]) => Promise<void>;
 };
 
 function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
@@ -137,6 +138,18 @@ const STORAGE_KEY_PREFIX = 'agent-spaces:file-tree-expanded:';
 const ROOT_DROP_TARGET = '__file_tree_root_drop_target__';
 const FILE_TREE_DRAG_MIME = 'application/x-agent-spaces-file-path';
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] || result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function loadExpandedPaths(workspaceId: string): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PREFIX + workspaceId);
@@ -190,6 +203,9 @@ export interface EditorPanelProps {
   onSidebarTabChange?: (value: 'files' | 'search') => void;
   hideSidebarTabs?: boolean;
   hideBottomTabs?: boolean;
+  allowDragUpload?: boolean;
+  dragUploadAccept?: string | string[];
+  dragUploadMaxSize?: number;
 }
 
 export function CommonEditorPanel({
@@ -204,6 +220,9 @@ export function CommonEditorPanel({
   onSidebarTabChange,
   hideSidebarTabs = false,
   hideBottomTabs = false,
+  allowDragUpload = false,
+  dragUploadAccept,
+  dragUploadMaxSize,
 }: EditorPanelProps) {
   const editorStore = useEditorStore();
   const workspace = useWorkspaceStore((s) => workspaceId ? s.workspaces.find((w) => w.id === workspaceId) : undefined);
@@ -560,6 +579,30 @@ export function CommonEditorPanel({
     setDraggedOverPath((path) => path === targetId ? null : path);
   }, []);
 
+  const handleDragUpload = useCallback(async (files: File[], targetPath: string) => {
+    try {
+      if (api?.uploadFiles) {
+        await api.uploadFiles(targetPath, files);
+      } else if (workspaceId) {
+        const filesData = await Promise.all(files.map(async (file) => ({
+          name: file.name,
+          content: await fileToBase64(file),
+        })));
+        await sdk.editor.uploadFiles(workspaceId, targetPath, filesData);
+      } else {
+        return;
+      }
+      toast.success(t('importSuccess'));
+      await loadTree();
+    } catch {
+      toast.error(t('importFailed'));
+    }
+  }, [api, loadTree, t, workspaceId]);
+
+  const handleDragUploadReject = useCallback((file: File) => {
+    toast.error(`${file.name}: ${t('importFailed')}`);
+  }, [t]);
+
   useEffect(() => {
     if (!revealPath) return;
     const parts = revealPath.split('/').filter(Boolean);
@@ -757,6 +800,11 @@ export function CommonEditorPanel({
                       onRootDropLineDragEnter={handleTreeRootDragOver}
                       onRootDropLineDragLeave={handleTreeRootDragLeave}
                       onRootDropLineDrop={handleTreeRootDrop}
+                      allowDragUpload={allowDragUpload}
+                      dragUploadAccept={dragUploadAccept}
+                      dragUploadMaxSize={dragUploadMaxSize}
+                      onDragUpload={handleDragUpload}
+                      onDragUploadReject={handleDragUploadReject}
                     >
                       <FileTreeNodes nodes={filteredTree} />
                     </FileTree>

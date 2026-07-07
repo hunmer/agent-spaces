@@ -40,6 +40,25 @@ function searchTree(nodes: FileNode[], query: string): FileSearchResult[] {
   return results;
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] || result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function toUploadFiles(files: File[]) {
+  return Promise.all(files.map(async (file) => ({
+    name: file.name,
+    content: await fileToBase64(file),
+  })));
+}
+
 function getDirectoryName(path: string) {
   return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || path || "";
 }
@@ -90,6 +109,16 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
     return sdk.chat.chatWorkspaceTree(activeWorkspaceId, { path });
   }, [activeWorkspaceId]);
 
+  const uploadAgentFiles = useCallback(async (targetPath: string, files: File[]) => {
+    if (!agentId) return;
+    await sdk.chat.uploadWorkspaceFiles(agentId, targetPath, await toUploadFiles(files));
+  }, [agentId]);
+
+  const uploadCurrentTabFiles = useCallback(async (targetPath: string, files: File[]) => {
+    if (!activeWorkspaceId) return;
+    await sdk.chat.uploadChatWorkspaceFiles(activeWorkspaceId, targetPath, await toUploadFiles(files));
+  }, [activeWorkspaceId]);
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm">
       <ResizablePanelGroup
@@ -104,6 +133,7 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
             emptyTitle={t("noAgent")}
             enabled={!!agentId}
             loadTree={loadAgentTree}
+            uploadFiles={uploadAgentFiles}
             workspaceId={agentId ? `chat:${agentId}` : undefined}
             boundDir={boundDir}
             onFileSelect={onFileSelect}
@@ -116,6 +146,7 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
             emptyTitle={t("noChatTab")}
             enabled={!!activeWorkspaceId && !!activeSessionId}
             loadTree={loadCurrentTabTree}
+            uploadFiles={uploadCurrentTabFiles}
             workspaceId={activeWorkspaceId ? `chat-workspace:${activeWorkspaceId}:custom-dirs` : undefined}
             sessionId={activeSessionId ?? undefined}
             directoryTabs={activeSession?.editorDirectoryTabs ?? []}
@@ -133,6 +164,7 @@ function WorkspaceFileTreePanel({
   emptyTitle,
   enabled,
   loadTree,
+  uploadFiles,
   workspaceId,
   boundDir,
   onFileSelect,
@@ -141,6 +173,7 @@ function WorkspaceFileTreePanel({
   emptyTitle: string;
   enabled: boolean;
   loadTree: (path?: string) => Promise<FileNode[]>;
+  uploadFiles?: (targetPath: string, files: File[]) => Promise<void>;
   workspaceId?: string;
   boundDir: string;
   onFileSelect?: (path: string) => void;
@@ -159,6 +192,7 @@ function WorkspaceFileTreePanel({
         enabled={enabled}
         emptyTitle={emptyTitle}
         loadTree={loadTree}
+        uploadFiles={uploadFiles}
         workspaceId={workspaceId}
         storageKey={workspaceId}
         boundDir={boundDir}
@@ -175,6 +209,7 @@ function MultiDirectoryFileTreePanel({
   emptyTitle,
   enabled,
   loadTree,
+  uploadFiles,
   workspaceId,
   sessionId,
   directoryTabs,
@@ -185,6 +220,7 @@ function MultiDirectoryFileTreePanel({
   emptyTitle: string;
   enabled: boolean;
   loadTree: (path?: string) => Promise<FileNode[]>;
+  uploadFiles?: (targetPath: string, files: File[]) => Promise<void>;
   workspaceId?: string;
   sessionId?: string;
   directoryTabs: DirectoryTab[];
@@ -314,6 +350,7 @@ function MultiDirectoryFileTreePanel({
                 enabled={enabled}
                 emptyTitle={emptyTitle}
                 loadTree={loadTree}
+                uploadFiles={uploadFiles}
                 workspaceId={workspaceId}
                 storageKey={workspaceId ? `${workspaceId}:${tab.id}` : tab.id}
                 boundDir=""
@@ -387,6 +424,7 @@ function WorkspaceEditorPanel({
   emptyTitle,
   enabled,
   loadTree,
+  uploadFiles,
   workspaceId,
   storageKey,
   boundDir,
@@ -398,6 +436,7 @@ function WorkspaceEditorPanel({
   emptyTitle: string;
   enabled: boolean;
   loadTree: (path?: string) => Promise<FileNode[]>;
+  uploadFiles?: (targetPath: string, files: File[]) => Promise<void>;
   workspaceId?: string;
   storageKey?: string;
   boundDir: string;
@@ -441,10 +480,18 @@ function WorkspaceEditorPanel({
     },
     searchFiles: async (query: string) => searchTree(tree, query),
     saveEmptyFile: async (_path: string) => {},
-    deletePath: async (_path: string) => {},
+    deletePath: async (path: string) => {
+      if (workspaceId) await sdk.editor.deleteFile(workspaceId, path);
+    },
     renamePath: async (_oldPath: string, _newPath: string) => {},
     copyPath: async (_srcPath: string, _destPath: string) => {},
-  }), [loading, onFileSelect, reloadTree, tree]);
+    uploadFiles: async (targetPath: string, files: File[]) => {
+      const uploadTarget = rootPath
+        ? [rootPath.replace(/\/+$/, ""), targetPath.replace(/^\/+/, "")].filter(Boolean).join("/")
+        : targetPath;
+      await uploadFiles?.(uploadTarget, files);
+    },
+  }), [loading, onFileSelect, reloadTree, rootPath, tree, uploadFiles, workspaceId]);
 
   useEffect(() => {
     reloadTree();
@@ -472,6 +519,7 @@ function WorkspaceEditorPanel({
           hideSidebarTabs
           hideBottomTabs
           showImport={false}
+          allowDragUpload={!!uploadFiles}
         />
       )}
     </div>

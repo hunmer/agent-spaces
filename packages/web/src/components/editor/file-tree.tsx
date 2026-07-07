@@ -61,6 +61,11 @@ interface FileTreeContextType {
   onRootDropLineDragEnter?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  allowDragUpload?: boolean
+  dragUploadAccept?: string | string[]
+  dragUploadMaxSize?: number
+  onDragUpload?: (files: File[], targetPath: string) => void | Promise<void>
+  onDragUploadReject?: (file: File, reason: 'type' | 'size') => void
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -102,6 +107,11 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onRootDropLineDragEnter?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  allowDragUpload?: boolean
+  dragUploadAccept?: string | string[]
+  dragUploadMaxSize?: number
+  onDragUpload?: (files: File[], targetPath: string) => void | Promise<void>
+  onDragUploadReject?: (file: File, reason: 'type' | 'size') => void
 }
 
 export const FileTree = ({
@@ -137,6 +147,11 @@ export const FileTree = ({
   onRootDropLineDragEnter,
   onRootDropLineDragLeave,
   onRootDropLineDrop,
+  allowDragUpload,
+  dragUploadAccept,
+  dragUploadMaxSize,
+  onDragUpload,
+  onDragUploadReject,
   className,
   children,
   ...props
@@ -163,11 +178,26 @@ export const FileTree = ({
     return () => clearInterval(id)
   }, [refreshInterval, onLoadDirectory, expandedPaths])
 
+  const handleRootDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!allowDragUpload || !event.dataTransfer.types.includes('Files')) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }, [allowDragUpload])
+
+  const handleRootDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!allowDragUpload || event.dataTransfer.files.length === 0) return
+    event.preventDefault()
+    const accepted = filterDragUploadFiles([...event.dataTransfer.files], dragUploadAccept, dragUploadMaxSize, onDragUploadReject)
+    if (accepted.length > 0) void onDragUpload?.(accepted, '')
+  }, [allowDragUpload, dragUploadAccept, dragUploadMaxSize, onDragUpload, onDragUploadReject])
+
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, variant, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragEnter, onRootDropLineDragLeave, onRootDropLineDrop }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, variant, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragEnter, onRootDropLineDragLeave, onRootDropLineDrop, allowDragUpload, dragUploadAccept, dragUploadMaxSize, onDragUpload, onDragUploadReject }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
+        onDragOver={handleRootDragOver}
+        onDrop={handleRootDrop}
         {...props}
       >
         <div className="p-2 flex-1 min-h-0 overflow-y-auto overflow-x-auto">{children}</div>
@@ -562,6 +592,37 @@ const canDropIntoDirectory = (sourcePath: string | null | undefined, targetDir: 
   return targetDir !== sourcePath && !targetDir.startsWith(`${sourcePath}/`)
 }
 
+const matchesDragUploadAccept = (file: File, accept?: string | string[]) => {
+  if (!accept || accept.length === 0) return true
+  const rules = Array.isArray(accept) ? accept : accept.split(',')
+  const name = file.name.toLowerCase()
+  const type = file.type.toLowerCase()
+  return rules.some((rule) => {
+    const value = rule.trim().toLowerCase()
+    if (!value) return false
+    if (value.startsWith('.')) return name.endsWith(value)
+    if (value.endsWith('/*')) return type.startsWith(value.slice(0, -1))
+    return type === value
+  })
+}
+
+const filterDragUploadFiles = (
+  files: File[],
+  accept?: string | string[],
+  maxSize?: number,
+  onReject?: (file: File, reason: 'type' | 'size') => void,
+) => files.filter((file) => {
+  if (!matchesDragUploadAccept(file, accept)) {
+    onReject?.(file, 'type')
+    return false
+  }
+  if (maxSize != null && file.size > maxSize) {
+    onReject?.(file, 'size')
+    return false
+  }
+  return true
+})
+
 const hasIgnoredParent = (stat: Stat<HeTreeFileNode>) => {
   let parent = stat.parentStat
   while (parent) {
@@ -587,6 +648,11 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
     onRootDropLineDragEnter,
     onRootDropLineDragLeave,
     onRootDropLineDrop,
+    allowDragUpload,
+    dragUploadAccept,
+    dragUploadMaxSize,
+    onDragUpload,
+    onDragUploadReject,
   } = useContext(FileTreeContext)
   const draggingPathRef = useRef<string | null>(null)
   const dragOpenedPathsRef = useRef(new Set<string>())
@@ -611,6 +677,11 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
       onItemDragStart?.(asFileTreeDragEvent(event), stat.node.path)
     },
     onDragOver: (event, stat) => {
+      if (allowDragUpload && event.dataTransfer.types.includes('Files')) {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'copy'
+        return
+      }
       onItemDragOver?.(asFileTreeDragEvent(event), stat.node.path)
     },
     onDragEnd: (event, _stat) => {
@@ -665,6 +736,25 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
         ...restAttrs,
         style: attrs.style,
         onDragLeave: onItemDragLeave,
+        onDragOver: (event) => {
+          if (allowDragUpload && event.dataTransfer.types.includes('Files')) {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'copy'
+            return
+          }
+          restAttrs.onDragOver?.(event)
+        },
+        onDrop: (event) => {
+          if (allowDragUpload && event.dataTransfer.files.length > 0) {
+            event.preventDefault()
+            event.stopPropagation()
+            const targetPath = node.type === 'directory' ? node.path : node.path.replace(/\/[^/]*$/, '')
+            const accepted = filterDragUploadFiles([...event.dataTransfer.files], dragUploadAccept, dragUploadMaxSize, onDragUploadReject)
+            if (accepted.length > 0) void onDragUpload?.(accepted, targetPath)
+            return
+          }
+          restAttrs.onDrop?.(event)
+        },
       } as NestedTreeRowProps
       const levelPadding = Math.max(0, state.level * 16)
       const rootDropLineId = rootDropTargetId ? `${rootDropTargetId}:${node.path}` : undefined

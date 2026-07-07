@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { existsSync } from 'node:fs';
 import * as svc from '../services/chat.js';
 import * as fileService from '../services/file.js';
 import * as chatStore from '../storage/chat-store.js';
@@ -84,6 +85,21 @@ router.get('/workspaces/:wsId/tree', async (req, res) => {
     const relPath = typeof req.query.path === 'string' ? req.query.path : '';
     const depth = req.query.depth ? Number(req.query.depth) : Infinity;
     res.json(await fileService.readTree(workspace, relPath, depth));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/workspaces/:wsId/upload', async (req, res) => {
+  const { wsId } = req.params;
+  try {
+    const workspace = svc.getChatWorkspaceRoot(wsId);
+    if (!workspace) {
+      res.status(404).json({ error: 'Chat workspace not found' });
+      return;
+    }
+    const paths = await uploadFilesToWorkspace(workspace, req.body);
+    res.json({ ok: true, paths });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -354,6 +370,21 @@ router.get('/agents/:id/workspace/tree', async (req, res) => {
   }
 });
 
+router.post('/agents/:id/workspace/upload', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const workspace = svc.getAgentWorkspace(id);
+    if (!workspace) {
+      res.status(404).json({ error: 'Agent workspace not found' });
+      return;
+    }
+    const paths = await uploadFilesToWorkspace(workspace, req.body);
+    res.json({ ok: true, paths });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/chat/agents/:id/workspace/content - read chat agent file content
 router.get('/agents/:id/workspace/content', async (req, res) => {
   const { id } = req.params;
@@ -381,6 +412,24 @@ router.get('/agents/:id/workspace/content', async (req, res) => {
 
 function stringValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+async function uploadFilesToWorkspace(workspace: NonNullable<ReturnType<typeof svc.getAgentWorkspace>>, body: any) {
+  const { targetDir, files } = body || {};
+  if (!Array.isArray(files) || files.length === 0) throw new Error('files are required');
+  const uploadWorkspace = typeof targetDir === 'string' && existsSync(targetDir)
+    ? { ...workspace, boundDirs: [targetDir] }
+    : workspace;
+  const uploadDir = uploadWorkspace === workspace ? targetDir : '';
+
+  const results: string[] = [];
+  for (const file of files) {
+    if (!file?.name || !file?.content) continue;
+    const relPath = uploadDir ? `${uploadDir}/${file.name}` : file.name;
+    const ok = await fileService.writeFileBinary(uploadWorkspace, relPath, Buffer.from(file.content, 'base64'));
+    if (ok) results.push(relPath);
+  }
+  return results;
 }
 
 export default router;
