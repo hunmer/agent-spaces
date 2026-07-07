@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IssueMessage } from '@/components/issue/issue-message';
+import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription } from '@/components/ui/empty';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, RefreshCw } from 'lucide-react';
 import { useChannelStore } from '@/stores/channel';
 import { getWS } from '@/lib/ws';
 import type { Attachment as MessageAttachment, IssueComment, Issue, Message } from '@agent-spaces/shared';
@@ -36,6 +37,7 @@ export function IssueDetailComments({
   t,
 }: IssueDetailCommentsProps) {
   const [replyingCommentId, setReplyingCommentId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const messages = useChannelStore((s) => s.messages);
   const loadMessages = useChannelStore((s) => s.loadMessages);
   const sendMessage = useChannelStore((s) => s.sendMessage);
@@ -92,7 +94,26 @@ export function IssueDetailComments({
   return (
     <div className="flex flex-col border-t xl:h-full xl:border-t-0">
       <div className="px-4 pt-2 xl:px-5 xl:pt-6">
-        <h3 className="text-sm font-medium mb-3">{t('detail.comments', { count: comments.length })}</h3>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h3 className="text-sm font-medium">{t('detail.comments', { count: comments.length })}</h3>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={!channelId || refreshing}
+            onClick={async () => {
+              if (!channelId) return;
+              setRefreshing(true);
+              try {
+                await loadMessages(workspaceId, channelId);
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          >
+            <RefreshCw className={refreshing ? 'size-4 animate-spin' : 'size-4'} />
+          </Button>
+        </div>
       </div>
       {comments.length > 0 ? (
         <div ref={commentsViewportRef} className="relative xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
