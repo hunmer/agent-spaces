@@ -32,8 +32,7 @@
     "providerRequired": "请选择模型供应商后再保存",
     "connectionTestFailed": "连接测试失败",
     "noWorkspace": "请先打开工作空间再添加 Agent 预设",
-    "deleteFailed": "删除 Agent 预设失败",
-    "syncFailed": "同步 Agent 模板失败"
+    "deleteFailed": "删除 Agent 预设失败"
   },
   "dialog": {
     "title": "Agent 预设",
@@ -50,7 +49,6 @@
     "importInvalidJson": "JSON 格式无效",
     "importFailed": "导入失败",
     "importSuccess": "导入成功 {count} 个 Agent",
-    "syncTemplates": "同步模板",
     "smartCreate": "智能创建",
     "noWorkspace": "未选择工作空间",
     "loading": "加载 Agent 预设中...",

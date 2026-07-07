@@ -182,13 +182,11 @@ export function AgentDialog({
         selectedAgent={data.selectedAgent}
         singleAgent={singleAgent}
         saving={data.saving}
-        syncingTemplates={data.syncingTemplates}
         editorRef={data.editorRef}
         roleFilterSet={data.roleFilterSet}
         addRoleOptions={data.addRoleOptions}
         onBack={data.handleBack}
         onOpenChange={onOpenChange}
-        onSyncTemplates={data.handleSyncTemplates}
         onAutoGenerate={handleAutoGenerate}
         handleAddAgent={data.handleAddAgent}
         importOpen={data.importOpen}

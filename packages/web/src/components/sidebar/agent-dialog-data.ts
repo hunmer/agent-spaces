@@ -58,7 +58,6 @@ export function useAgentDialogData({
   const [autoGenerate, setAutoGenerate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [syncingTemplates, setSyncingTemplates] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("local");
   const [roleFilterLocal, setRoleFilterLocal] = useState<string>("");
@@ -247,18 +246,6 @@ export function useAgentDialogData({
     setAutoGenerate(false);
   };
 
-  const handleSyncTemplates = async () => {
-    setSyncingTemplates(true);
-    setError(null);
-    try {
-      await sdk.agent.syncWorkspaces();
-    } catch {
-      setError(t("error.syncFailed"));
-    } finally {
-      setSyncingTemplates(false);
-    }
-  };
-
   const importFromStore = async (storeAgent: StoreAgentItem) => {
     if (importingIds.has(storeAgent.id)) return;
     setImportingIds((prev) => new Set(prev).add(storeAgent.id));
@@ -304,7 +291,7 @@ export function useAgentDialogData({
   };
 
   return {
-    agents, selectedAgent, autoGenerate, loading, saving, syncingTemplates, error,
+    agents, selectedAgent, autoGenerate, loading, saving, error,
     activeTab, roleFilterLocal, localSearch,
     storeAgents, storeLoading, importingIds,
     visibleAgents, filteredAgents, addRoleOptions, uniqueRoles, hasSystemAgents, localAgentNames,
@@ -312,7 +299,7 @@ export function useAgentDialogData({
     editorRef,
     setSelectedAgent, setAutoGenerate, setActiveTab, setRoleFilterLocal, setLocalSearch,
     handleSelectAgent, handleBack, handleAddAgent, handleToggleEnabled,
-    handleDeleteAgent, handleEditorSaved, handleSyncTemplates, importFromStore,
+    handleDeleteAgent, handleEditorSaved, importFromStore,
     refreshAgents,
     importOpen, setImportOpen, textDialogOpen, setTextDialogOpen,
     importText, setImportText, importError, setImportError,

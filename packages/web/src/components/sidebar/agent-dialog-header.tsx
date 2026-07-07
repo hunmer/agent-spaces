@@ -23,7 +23,6 @@ import {
   Download,
   FileJson,
   Plus,
-  RefreshCw,
   RotateCcw,
   Upload,
   WandSparkles,
@@ -42,13 +41,11 @@ interface AgentDialogHeaderProps {
   selectedAgent: AgentPreset | null;
   singleAgent: boolean;
   saving: boolean;
-  syncingTemplates: boolean;
   editorRef: React.RefObject<AgentEditorHandle | null>;
   roleFilterSet: Set<string> | null;
   addRoleOptions: BuiltInRole[];
   onBack: () => void;
   onOpenChange: (open: boolean) => void;
-  onSyncTemplates: () => void;
   onAutoGenerate: () => void;
   handleAddAgent: (role: BuiltInRole | "empty") => void;
   importOpen?: boolean;
@@ -63,13 +60,11 @@ export function AgentDialogHeader({
   selectedAgent,
   singleAgent,
   saving,
-  syncingTemplates,
   editorRef,
   roleFilterSet,
   addRoleOptions,
   onBack,
   onOpenChange,
-  onSyncTemplates,
   onAutoGenerate,
   handleAddAgent,
   importOpen,
@@ -142,13 +137,6 @@ export function AgentDialogHeader({
     </DropdownMenu>
   ) : null;
 
-  const syncButton = (
-    <Button variant="outline" size="sm" onClick={onSyncTemplates} disabled={syncingTemplates}>
-      <RefreshCw className={cn("size-3.5", syncingTemplates && "animate-spin")} />
-      {t("dialog.syncTemplates")}
-    </Button>
-  );
-
   const smartCreateButton = (
     <Button variant="outline" size="sm" onClick={onAutoGenerate}>
       <WandSparkles className="size-3.5" />
@@ -199,7 +187,6 @@ export function AgentDialogHeader({
         {generateButton}
         {!selectedAgent && !singleAgent && (
           <div className="flex items-center gap-2">
-            {syncButton}
             {smartCreateButton}
             {importDropdown}
             {addDropdown()}
@@ -213,7 +200,6 @@ export function AgentDialogHeader({
   if (!selectedAgent && !singleAgent) {
     return (
       <div className="flex items-center justify-end gap-2 px-5 py-3 border-b">
-        {syncButton}
         {smartCreateButton}
         {importDropdown}
         {addDropdown()}
