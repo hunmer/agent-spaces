@@ -385,8 +385,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const { activeWorkspaceId: wsId, activeSessionId: sessionId } = get();
     if (!wsId || !sessionId) return;
     await sdk.chat.clearSessionMessages(wsId, sessionId);
+    const updated = await sdk.chat.updateSession(wsId, sessionId, { title: '' });
     set((s) => ({
       messages: { ...s.messages, [sessionId]: [] },
+      sessions: s.sessions.map((session) => session.id === sessionId ? updated : session),
     }));
   },
 
