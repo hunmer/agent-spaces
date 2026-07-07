@@ -682,6 +682,24 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
             }
           </div>
           <div className="flex items-center gap-2">
+            {!selectable && (
+              <div className="flex items-center gap-1 rounded-md bg-muted/50 p-0.5">
+                {([['local', Plug, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                      activeTab === key
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Icon className="size-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             {!selectable && activeTab === 'local' && (
               <>
                 <ImportButton
@@ -713,25 +731,6 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
           </div>
         </div>
       </DialogHeader>
-
-      {!selectable && (
-        <div className="flex items-center gap-1 border-b border-border px-1">
-          {([['local', Plug, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === key
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="size-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {selectable ? selectableView : (activeTab === 'local' ? localView : storeView)}
     </>

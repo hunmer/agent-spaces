@@ -217,15 +217,15 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
   const localSkillNames = new Set(skills.map((s) => s.name));
 
   const tabs = (
-    <div className="flex items-center gap-1 border-b border-border px-1">
+    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-0.5">
       {([['local', FileText, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
         <button
           key={key}
           onClick={() => setActiveTab(key)}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
             activeTab === key
-              ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <Icon className="size-3.5" />
@@ -300,38 +300,39 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
               : <DialogDescription>{t('description')}</DialogDescription>
             }
           </div>
-          {activeTab === 'local' && (
-            <ImportButton
-              label={t('import')}
-              align="end"
-              className="shrink-0 me-8"
-            >
-              <DropdownMenuItem onClick={importState.openMdPicker}>
-                <FileText className="size-3.5 mr-1.5" />
-                {t('importFromMd')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={importState.openFolderPicker}>
-                <FolderOpen className="size-3.5 mr-1.5" />
-                {t('importFromFolder')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={importState.openZipPicker}>
-                <FileArchive className="size-3.5 mr-1.5" />
-                {t('importFromZip')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={importState.openGitDialog} disabled={importState.gitLoading}>
-                <GitBranch className="size-3.5 mr-1.5" />
-                {t('importFromGit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setExternalImportOpen(true)}>
-                <Download className="size-3.5 mr-1.5" />
-                {ti('importFromExternal')}
-              </DropdownMenuItem>
-            </ImportButton>
-          )}
+          <div className="flex items-center gap-2">
+            {tabs}
+            {activeTab === 'local' && (
+              <ImportButton
+                label={t('import')}
+                align="end"
+                className="shrink-0"
+              >
+                <DropdownMenuItem onClick={importState.openMdPicker}>
+                  <FileText className="size-3.5 mr-1.5" />
+                  {t('importFromMd')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={importState.openFolderPicker}>
+                  <FolderOpen className="size-3.5 mr-1.5" />
+                  {t('importFromFolder')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={importState.openZipPicker}>
+                  <FileArchive className="size-3.5 mr-1.5" />
+                  {t('importFromZip')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={importState.openGitDialog} disabled={importState.gitLoading}>
+                  <GitBranch className="size-3.5 mr-1.5" />
+                  {t('importFromGit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setExternalImportOpen(true)}>
+                  <Download className="size-3.5 mr-1.5" />
+                  {ti('importFromExternal')}
+                </DropdownMenuItem>
+              </ImportButton>
+            )}
+          </div>
         </div>
       </DialogHeader>
-
-      {tabs}
 
       <div className="flex flex-1 min-h-0 flex-col">
       {activeTab === 'local' ? (

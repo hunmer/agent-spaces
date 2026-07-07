@@ -253,15 +253,15 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   }));
 
   const tabs = (
-    <div className="flex items-center gap-1 border-b border-border px-1">
+    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-0.5">
       {([['local', FileText, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
         <button
           key={key}
           onClick={() => setActiveTab(key)}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
             activeTab === key
-              ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <Icon className="size-3.5" />
@@ -464,6 +464,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
             }
           </div>
           <div className="flex items-center gap-1.5">
+            {tabs}
             <FileImportMenu
               label={t('import')}
               triggers={importState}
@@ -486,8 +487,6 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
           </div>
         </div>
       </DialogHeader>
-
-      {tabs}
 
       <div className="flex-1 min-h-0 pt-2">
         {activeTab === 'local' ? localView : storeView}
