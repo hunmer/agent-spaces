@@ -293,6 +293,24 @@ export function ChatAgentPickerDialog({
                       {agent.model}
                     </span>
                   }
+                  corner={
+                    <Switch
+                      size="sm"
+                      checked={added}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          handleAdd(agent);
+                        } else {
+                          setAddedIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(agent.id);
+                            return next;
+                          });
+                          onRemoveFromChat?.(agent.id);
+                        }
+                      }}
+                    />
+                  }
                   actions={
                     <>
                       {onToggleFavorite && (
@@ -315,22 +333,6 @@ export function ChatAgentPickerDialog({
                           <Pencil className="size-3.5" />
                         </Button>
                       )}
-                      <Switch
-                        size="sm"
-                        checked={added}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            handleAdd(agent);
-                          } else {
-                            setAddedIds((prev) => {
-                              const next = new Set(prev);
-                              next.delete(agent.id);
-                              return next;
-                            });
-                            onRemoveFromChat?.(agent.id);
-                          }
-                        }}
-                      />
                       {onRemoveAgent && (
                         <Button
                           size="icon"

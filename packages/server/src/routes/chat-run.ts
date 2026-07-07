@@ -2,6 +2,7 @@ import { Router, type Response } from 'express';
 import type { BuiltInAgentToolName, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
 import * as chatService from '../services/chat.js';
 import * as agentService from '../services/agent.js';
+import { generateChatSessionTitle } from '../services/generated-title.js';
 import { LangChainRuntime } from '../adapters/langchain-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
 import {
@@ -50,6 +51,10 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     return;
   }
   const baseURL = resolveChatAgentBaseURL(agent);
+  const shouldGenerateTitle = !regenerateContext
+    && !session.title?.trim()
+    && chatService.listSessionMessages(workspaceId, sessionId).length === 0;
+  let titleTask: Promise<void> | null = null;
 
   prepareSse(res);
 
@@ -68,6 +73,22 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       content: trimmedContent,
     });
     writeSse(res, 'message_saved', userMsg);
+    if (shouldGenerateTitle) {
+      titleTask = generateChatSessionTitle({
+        workspaceId,
+        sessionId,
+        requirement: trimmedContent,
+        onUpdated: (updated) => {
+          if (!res.writableEnded) writeSse(res, 'session_updated', updated);
+        },
+      }).catch((err) => {
+        console.error('[title-generator] chat session title generation failed', {
+          workspaceId,
+          sessionId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
   }
 
   const config: AgentRuntimeConfig = {
@@ -144,6 +165,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     completed = true;
     writeSse(res, 'error', { error: err instanceof Error ? err.message : String(err) });
   } finally {
+    if (titleTask) await titleTask;
     res.end();
   }
 });

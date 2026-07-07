@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2 } from 'lucide-react';
+import type { AgentUsageRecord, Message, MessagePart } from '@agent-spaces/shared';
+import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -17,6 +17,7 @@ import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/decorations/text-shimmer';
 import { MovingBorder } from '@/components/ui/border-glide';
 import { copyToClipboard } from '@/lib/utils';
+import { UsageDashboardSessionDialog } from '@/components/home/usage-dashboard-session-dialog';
 
 interface MessageItemProps {
   message: Message;
@@ -29,6 +30,7 @@ interface MessageItemProps {
 export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }: MessageItemProps) {
   const tc = useTranslations('common');
   const tm = useTranslations('chat.messageItem');
+  const tb = useTranslations('chat.messageBubble');
   const isUser = message.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
   const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
@@ -38,6 +40,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const [sessionRecord, setSessionRecord] = useState<AgentUsageRecord | null>(null);
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const storeAgents = useAgentStore((s) => s.agents);
   const replies = message.replies ?? [];
@@ -60,6 +63,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   }, [message.metadata?.duration, message.createdAt, isStreaming]);
 
   const showDuration = !isUser && (isStreaming || message.status === 'completed' || message.status === 'error') && elapsed > 0;
+  const messageSessionRecord = buildSessionRecord(message, workspaceId);
 
   const handleCopy = useCallback(async () => {
     const text = isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content;
@@ -184,6 +188,15 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           )}
+          {!isUser && messageSessionRecord && (
+            <button
+              onClick={() => setSessionRecord(messageSessionRecord)}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              title={tb('viewSessionContext')}
+            >
+              <FileText className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             onClick={() => onDelete?.(message)}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
@@ -228,8 +241,47 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           </Dialog>
         );
       })()}
+      <UsageDashboardSessionDialog
+        record={sessionRecord}
+        open={Boolean(sessionRecord)}
+        onOpenChange={(open) => {
+          if (!open) setSessionRecord(null);
+        }}
+      />
     </div>
   );
+}
+
+function buildSessionRecord(message: Message, workspaceId: string): AgentUsageRecord | null {
+  const contextPart = [...(message.parts ?? [])].reverse().find(isSessionContextPart);
+  const sessionId = message.metadata?.agentSessionId ?? contextPart?.agentContext?.sessionId;
+  if (!sessionId) return null;
+  return {
+    id: message.id,
+    workspaceId,
+    agentSessionId: sessionId,
+    agentConfigId: message.senderId,
+    role: 'assistant',
+    status: message.status === 'error' ? 'crashed' : message.status === 'pending' || message.status === 'streaming' ? 'active' : 'completed',
+    runtime: message.metadata?.runtime ?? contextPart?.agentContext?.runtime,
+    model: message.metadata?.model ?? contextPart?.agentContext?.model,
+    summary: message.metadata?.summary,
+    inputTokens: 0,
+    outputTokens: 0,
+    cachedInputTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: contextPart?.usage?.totalTokens ?? contextPart?.usedTokens ?? 0,
+    inputCostUsd: 0,
+    outputCostUsd: 0,
+    totalCostUsd: 0,
+    startedAt: message.createdAt,
+    completedAt: message.createdAt,
+    durationMs: message.metadata?.duration ?? 0,
+  } as AgentUsageRecord;
+}
+
+function isSessionContextPart(part: MessagePart): part is Extract<MessagePart, { type: 'context' }> {
+  return part.type === 'context' && Boolean(part.agentContext?.sessionId);
 }
 
 function isHTML(str: string): boolean {

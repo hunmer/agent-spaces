@@ -485,12 +485,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         sessionFileTabs?: Record<string, Array<{ path: string; agentId: string }>>;
         activeTab?: { type: string; id: string } | null;
       };
+      const restoredSessionId = state.activeTab?.type === 'session' ? state.activeTab.id : null;
       set({
         openSessionTabIds: state.openSessionTabIds ?? [],
         sessionFileTabs: {}, // file content loaded on demand
         activeFileTabPath: state.activeTab?.type === 'file' ? state.activeTab.id : null,
-        activeSessionId: state.activeTab?.type === 'session' ? state.activeTab.id : null,
+        activeSessionId: restoredSessionId,
       });
+      // 恢复上次激活会话的消息，确保 UI 真正"激活"而不仅是高亮
+      if (restoredSessionId) {
+        get().loadSessionMessages(workspaceId, restoredSessionId);
+      }
       // Pre-load file tab contents (per session); legacy flat openFileTabs is dropped
       const persisted = state.sessionFileTabs ?? {};
       for (const [sid, tabs] of Object.entries(persisted)) {
@@ -663,6 +668,13 @@ function handleChatRunEvent(
           ...s.messages,
           [agentId]: [...(s.messages[agentId] ?? []), msg],
         },
+      }));
+      break;
+    }
+    case 'session_updated': {
+      const session = payload.data as ChatSessionWithEditorDirectories;
+      set((s) => ({
+        sessions: s.sessions.map((item) => item.id === session.id ? session : item),
       }));
       break;
     }

@@ -220,6 +220,7 @@
     "copy": "Copy",
     "delete": "Delete",
     "regenerate": "Regenerate",
+    "viewSessionContext": "View session context",
     "showToolCalls": "Show tool calls",
     "hideToolCalls": "Hide tool calls"
   },

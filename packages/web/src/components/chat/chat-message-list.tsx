@@ -2,7 +2,7 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { cn, copyToClipboard } from "@/lib/utils";
-import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall } from "@agent-spaces/shared";
+import type { AgentUsageRecord, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from "@agent-spaces/shared";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
   Brain,
@@ -11,12 +11,14 @@ import {
   ChevronRight,
   ChevronRight as ChevronRightIcon,
   Copy,
+  FileText,
   RefreshCw,
   Trash2,
   Wrench,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { UsageDashboardSessionDialog } from "@/components/home/usage-dashboard-session-dialog";
 import { ChatToolTimeline, normalizeChatTimeline } from "./chat-tool-timeline";
 
 export interface DisplayChatMessage {
@@ -24,6 +26,14 @@ export interface DisplayChatMessage {
   role: "user" | "agent";
   content: string;
   timestamp: Date | string;
+  agentId?: string;
+  metadata?: {
+    agentSessionId?: string;
+    runtime?: string;
+    model?: string;
+    duration?: number;
+    summary?: string;
+  };
   toolCalls?: WorkflowAgentToolCall[];
   timeline?: WorkflowAgentTimelineItem[];
 }
@@ -50,6 +60,7 @@ export interface ChatMessageListProps<TMessage extends DisplayChatMessage> {
   onRegenerateMessage?: (message: TMessage) => void;
   isStreamingMessage?: (message: TMessage) => boolean;
   onRerunTool?: (message: TMessage, item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
+  sessionRecordForMessage?: (message: TMessage) => AgentUsageRecord | null | undefined;
 }
 
 const messageVariants: Variants = {
@@ -77,6 +88,34 @@ function getMessageTimeline(message: DisplayChatMessage): WorkflowAgentTimelineI
   return message.timeline?.length
     ? message.timeline
     : message.toolCalls?.map((toolCall) => ({ ...toolCall, type: "tool" as const })) ?? [];
+}
+
+function buildSessionRecord(message: DisplayChatMessage, workspaceId?: string): AgentUsageRecord | null {
+  const sessionId = message.metadata?.agentSessionId;
+  if (!sessionId) return null;
+  const timestamp = message.timestamp instanceof Date ? message.timestamp.toISOString() : message.timestamp;
+  return {
+    id: message.id,
+    workspaceId: workspaceId ?? "",
+    agentSessionId: sessionId,
+    agentConfigId: message.agentId ?? "",
+    role: "assistant",
+    status: "completed",
+    runtime: message.metadata?.runtime,
+    model: message.metadata?.model,
+    summary: message.metadata?.summary,
+    inputTokens: 0,
+    outputTokens: 0,
+    cachedInputTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: 0,
+    inputCostUsd: 0,
+    outputCostUsd: 0,
+    totalCostUsd: 0,
+    startedAt: timestamp,
+    completedAt: timestamp,
+    durationMs: message.metadata?.duration ?? 0,
+  } as AgentUsageRecord;
 }
 
 function ThinkingBlock({ content }: { content: string }) {
@@ -142,9 +181,11 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
   onRegenerateMessage,
   isStreamingMessage,
   onRerunTool,
+  sessionRecordForMessage,
 }: ChatMessageListProps<TMessage>) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [visibleToolTimelineMessageIds, setVisibleToolTimelineMessageIds] = useState<Record<string, boolean>>({});
+  const [selectedSessionRecord, setSelectedSessionRecord] = useState<AgentUsageRecord | null>(null);
   const t = useTranslations("chat.messageBubble");
 
   const handleCopyMessage = async (message: TMessage) => {
@@ -179,6 +220,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const versions = versionInfo?.(msg);
     const hasVersions = msg.role === "agent" && versions && versions.count > 1 && versions.onChange;
     const versionNumber = versions ? Math.min(versions.index + 1, versions.count) : 1;
+    const sessionRecord = sessionRecordForMessage?.(msg) ?? buildSessionRecord(msg, workspaceId);
 
     const content = (
       <div
@@ -303,6 +345,17 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
                 <Wrench className="size-3" />
               </button>
             ) : null}
+            {sessionRecord ? (
+              <button
+                type="button"
+                onClick={() => setSelectedSessionRecord(sessionRecord)}
+                className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title={t("viewSessionContext")}
+                aria-label={t("viewSessionContext")}
+              >
+                <FileText className="size-3" />
+              </button>
+            ) : null}
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100">
               <button
                 type="button"
@@ -338,10 +391,19 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
   });
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      {messages.length === 0 && !sending ? renderEmpty : null}
-      {animated ? <AnimatePresence>{messageNodes}</AnimatePresence> : messageNodes}
-      {sending && showTypingIndicator ? <TypingIndicator animated={animated} /> : null}
-    </div>
+    <>
+      <div className={cn("flex flex-col gap-3", className)}>
+        {messages.length === 0 && !sending ? renderEmpty : null}
+        {animated ? <AnimatePresence>{messageNodes}</AnimatePresence> : messageNodes}
+        {sending && showTypingIndicator ? <TypingIndicator animated={animated} /> : null}
+      </div>
+      <UsageDashboardSessionDialog
+        record={selectedSessionRecord}
+        open={Boolean(selectedSessionRecord)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedSessionRecord(null);
+        }}
+      />
+    </>
   );
 }

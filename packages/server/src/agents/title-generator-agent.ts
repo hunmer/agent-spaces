@@ -22,7 +22,7 @@ const TITLE_GENERATOR_CONSTRAINTS = [
 
 export async function runTitleGeneratorAgent(input: {
   workspaceId: string;
-  target: 'channel' | 'issue';
+  target: 'channel' | 'issue' | 'session';
   requirement: string;
   description?: string;
 }): Promise<string> {
@@ -101,7 +101,7 @@ function buildSystemPrompt(preset: AgentConfig): string {
   ].filter(Boolean).join('\n\n');
 }
 
-function buildUserPrompt(target: 'channel' | 'issue', requirement: string, description: string): string {
+function buildUserPrompt(target: 'channel' | 'issue' | 'session', requirement: string, description: string): string {
   return [
     `Target: ${target}`,
     'Source text for title extraction:',

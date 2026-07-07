@@ -220,6 +220,7 @@
     "copy": "复制",
     "delete": "删除",
     "regenerate": "重新生成",
+    "viewSessionContext": "查看会话上下文",
     "showToolCalls": "显示工具调用",
     "hideToolCalls": "隐藏工具调用"
   },
