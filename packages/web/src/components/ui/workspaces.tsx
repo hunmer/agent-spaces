@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -178,11 +179,13 @@ function WorkspaceContent({
     className,
     children,
     renderWorkspace,
-    title = 'Workspaces',
+    title,
     searchable = false,
     onSearch,
     ...props
 }: WorkspaceContentProps) {
+    const t = useTranslations('workspaces');
+    const resolvedTitle = title ?? t('title');
     const {
         workspaces,
         selectedWorkspace,
@@ -237,14 +240,14 @@ function WorkspaceContent({
             {...props}
         >
             <div className="border-b px-3 py-2">
-                <p className="text-muted-foreground text-sm font-medium">{title}</p>
+                <p className="text-muted-foreground text-sm font-medium">{resolvedTitle}</p>
             </div>
 
             {searchable && (
                 <div className="border-b px-3 py-2">
                     <input
                         type="text"
-                        placeholder="Search workspaces..."
+                        placeholder={t('searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="placeholder:text-muted-foreground w-full border-none bg-transparent text-sm outline-none"
@@ -255,7 +258,7 @@ function WorkspaceContent({
             <div className="max-h-[300px] overflow-y-auto">
                 {filteredWorkspaces.length === 0 ? (
                     <div className="text-muted-foreground px-3 py-2 text-center text-sm">
-                        No workspaces found
+                        {t('notFound')}
                     </div>
                 ) : (
                     <div className="p-1">

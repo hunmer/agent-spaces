@@ -11,26 +11,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import { Switch } from "@/components/ui/switch";
-import { Bot, FileText, Store, Plus, Check, WandSparkles, Trash2, Pencil, Star } from "lucide-react";
+import { Bot, Download, FileText, Store, Plus, WandSparkles, Trash2, Pencil, Star } from "lucide-react";
 import { fetchStoreIndex } from "@/lib/agent-store";
 import { sdk } from "@/lib/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
+import type { StoreAgentItem, TabType } from "@/components/sidebar/agent-dialog-data";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import { AgentCard } from "@/components/sidebar/agent-card";
-
-type TabType = "local" | "store";
-
-interface StoreChatAgentItem {
-  id: string;
-  name: string;
-  group: string;
-  path: string;
-  description: string;
-  emoji: string;
-}
 
 interface ChatAgentPickerDialogProps {
   open: boolean;
@@ -69,7 +58,7 @@ export function ChatAgentPickerDialog({
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   // ── Store tab ──
-  const [storeAgents, setStoreAgents] = useState<StoreChatAgentItem[]>([]);
+  const [storeAgents, setStoreAgents] = useState<StoreAgentItem[]>([]);
   const [storeLoading, setStoreLoading] = useState(false);
   const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
 
@@ -93,7 +82,7 @@ export function ChatAgentPickerDialog({
   useEffect(() => {
     if (!open) return;
     setStoreLoading(true);
-    fetchStoreIndex<StoreChatAgentItem>("chat/index.json")
+    fetchStoreIndex<StoreAgentItem>("agents/index.json")
       .then(setStoreAgents)
       .catch(() => setStoreAgents([]))
       .finally(() => setStoreLoading(false));
@@ -149,7 +138,7 @@ export function ChatAgentPickerDialog({
   );
 
   const handleImportFromStore = useCallback(
-    async (storeAgent: StoreChatAgentItem) => {
+    async (storeAgent: StoreAgentItem) => {
       if (importingIds.has(storeAgent.id)) return;
       setImportingIds((prev) => new Set(prev).add(storeAgent.id));
       try {
@@ -157,7 +146,7 @@ export function ChatAgentPickerDialog({
           const stored = localStorage.getItem("agent-spaces:store-api-base");
           return stored ? stored.replace(/\/+$/, "") : "/agents-store";
         })();
-        const res = await fetch(`${base}/chat/${storeAgent.path}.md`);
+        const res = await fetch(`${base}/agents/${storeAgent.path}.md`);
         if (!res.ok) throw new Error("fetch failed");
         const content = await res.text();
         const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -373,7 +362,7 @@ export function ChatAgentPickerDialog({
   // ── Store list ──
   const chatAgentNames = new Set(chatAgents.map((a) => a.name));
   const storeView = (
-    <StoreTabPanel<StoreChatAgentItem>
+    <StoreTabPanel<StoreAgentItem>
       items={storeAgents}
       loading={storeLoading}
       getGroup={(a) => a.group}
@@ -384,7 +373,7 @@ export function ChatAgentPickerDialog({
       loadingText={tc("loading")}
       gridClassName="grid-cols-2 lg:grid-cols-3"
       renderItem={(agent) => {
-        const isAdded = chatAgentNames.has(agent.name) || importingIds.has(agent.id);
+        const isImported = chatAgentNames.has(agent.name);
         const isImporting = importingIds.has(agent.id);
         return (
           <AgentCard
@@ -393,32 +382,29 @@ export function ChatAgentPickerDialog({
             name={agent.name}
             description={agent.description}
             meta={
-              <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                 {agent.group}
-              </Badge>
+              </span>
             }
             actions={
-              isAdded && !isImporting ? (
-                <div className="flex items-center gap-1 text-green-500 text-xs">
-                  <Check className="size-4" />
-                  <span>{t("dialog.added")}</span>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0"
-                  disabled={isImporting}
-                  onClick={() => handleImportFromStore(agent)}
-                >
-                  {isImporting ? t("dialog.importing") : (
-                    <>
-                      <Plus className="size-3.5 mr-1" />
-                      {t("dialog.importTo")}
-                    </>
-                  )}
-                </Button>
-              )
+              <Button
+                variant={isImported ? "ghost" : "outline"}
+                size="sm"
+                className="shrink-0"
+                disabled={isImported || isImporting}
+                onClick={() => handleImportFromStore(agent)}
+              >
+                {isImported ? (
+                  t("dialog.imported")
+                ) : isImporting ? (
+                  t("dialog.importing")
+                ) : (
+                  <>
+                    <Download className="size-3.5 mr-1" />
+                    {t("dialog.importTo")}
+                  </>
+                )}
+              </Button>
             }
           />
         );

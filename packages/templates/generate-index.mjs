@@ -281,41 +281,6 @@ function scanPluginStore() {
 
 scanAgentStore();
 
-function scanChatStore() {
-  const dir = join(agentsDir, 'chat');
-  if (!existsSync(dir)) return;
-  const indexPath = join(dir, 'index.json');
-  const existing = loadExistingIndex(indexPath);
-  const index = [];
-  for (const file of readdirSync(dir)) {
-    if (!file.endsWith('.md')) continue;
-    const id = basename(file, '.md');
-    const filePath = join(dir, file);
-    const content = readFileSync(filePath, 'utf-8');
-    const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    let name = id.replace(/[-_]/g, ' ');
-    let description = '';
-    let emoji = '';
-    if (fm) {
-      for (const line of fm[1].split(/\r?\n/)) {
-        const m = line.match(/^\s*(\w+)\s*:\s*(.+)/);
-        if (!m) continue;
-        const [, key, val] = m;
-        if (key === 'name') name = val.trim();
-        else if (key === 'description') description = val.trim();
-        else if (key === 'emoji') emoji = val.trim();
-      }
-    }
-    const md5 = fileMD5(filePath);
-    const prev = existing.get(id);
-    const updatedAt = (!prev || prev.md5 !== md5) ? fileMtime(filePath) : prev.updatedAt;
-    index.push({ id, name, group: 'chat', path: id, description, emoji, md5, updatedAt });
-  }
-  writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
-  console.log(`[chat] ${index.length} agents`);
-}
-scanChatStore();
-
 scanMcpStore();
 scanPluginStore();
 

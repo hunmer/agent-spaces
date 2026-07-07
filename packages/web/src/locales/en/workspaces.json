@@ -2,6 +2,8 @@
   "title": "Workspaces",
   "newWorkspace": "New Workspace",
   "emptyMessage": "No workspaces yet. Create one to get started.",
+  "searchPlaceholder": "Search workspaces...",
+  "notFound": "No workspaces found",
   "edit": "Edit",
   "reveal": "Reveal in Finder",
   "delete": "Delete Workspace",

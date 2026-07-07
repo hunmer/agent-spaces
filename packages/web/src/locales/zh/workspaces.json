@@ -2,6 +2,8 @@
   "title": "工作空间",
   "newWorkspace": "新建工作空间",
   "emptyMessage": "暂无工作空间。创建一个以开始使用。",
+  "searchPlaceholder": "搜索工作空间...",
+  "notFound": "未找到工作空间",
   "edit": "编辑",
   "reveal": "在 Finder 中打开",
   "delete": "删除工作空间",

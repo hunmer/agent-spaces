@@ -658,8 +658,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "mira-sdk",
-    "md5": "7f0b78ead3b90eb0c7bf45c854b244c9",
-    "updatedAt": "2026-06-28T08:11:14.308Z",
+    "md5": "a19d617caf53d11e42b511645f1f124f",
+    "updatedAt": "2026-07-07T02:58:03.142Z",
     "files": [
       "actions.js",
       "info.json",
