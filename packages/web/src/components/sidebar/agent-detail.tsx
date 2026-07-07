@@ -108,10 +108,28 @@ export function AgentDetail({
     ?? llmProviders.find((p) => p.apiBase === agent.apiBase && p.apiKey === agent.apiKey);
   const dynamicModelOptions = useMemo(() => {
     if (!selectedProvider) return [];
+    const capabilities = getModelCapabilities(agent.modelProvider);
     return llmModels
       .filter((m) => m.provider === selectedProvider.name)
-      .map((m) => ({ value: m.modelId, label: m.name }));
-  }, [selectedProvider, llmModels]);
+      .map((m) => ({
+        value: m.modelId,
+        label: m.name,
+        extra: capabilities.length > 0 ? (
+          <span className="flex shrink-0 items-center gap-0.5">
+            {capabilities.map((cap) =>
+              m[cap] ? (
+                <span
+                  key={cap}
+                  className={`inline-block rounded px-1 text-[9px] font-medium border ${CAP_CLS[cap]}`}
+                >
+                  {cap[0].toUpperCase()}
+                </span>
+              ) : null,
+            )}
+          </span>
+        ) : undefined,
+      }));
+  }, [selectedProvider, llmModels, agent.modelProvider]);
   const runtimeOptions = useMemo(() => {
     const discoveredRuntimeOptions = discoveredRuntimeCliItems
       .filter((item): item is RuntimeCliDiscoveryItem & { runtimeKind: SupportedRuntimeKind } => (
@@ -557,20 +575,6 @@ export function AgentDetail({
               searchPlaceholder={t("detail.apiMessageTypeSearchPlaceholder")}
               allowCustom={false}
               disabled
-              triggerPrefix={
-                getModelCapabilities(agent.modelProvider).length > 0 ? (
-                  <span className="flex shrink-0 items-center gap-0.5">
-                    {getModelCapabilities(agent.modelProvider).map((cap) => (
-                      <span
-                        key={cap}
-                        className={`inline-block rounded px-1 text-[9px] font-medium border ${CAP_CLS[cap]}`}
-                      >
-                        {cap[0].toUpperCase()}
-                      </span>
-                    ))}
-                  </span>
-                ) : null
-              }
             />
           </FieldGroup>
           <FieldGroup label={t("detail.apiBase")}>

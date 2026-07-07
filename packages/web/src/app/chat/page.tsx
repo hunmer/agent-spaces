@@ -14,10 +14,15 @@ import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialo
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, PanelLeft, PanelRight } from "lucide-react";
+import { MessageSquare, PanelLeft, PanelRight, HelpCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useJoyride, STATUS } from "react-joyride";
+import type { Status } from "react-joyride";
+import type { Step } from "react-joyride";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
+
+const TOUR_KEY = "agent-spaces:chat-tour-completed";
 
 const PANEL_ID_AGENT_LIST = "chat-agent-list";
 const PANEL_ID_CHAT = "chat-main";
@@ -98,6 +103,81 @@ function ChatPageInner() {
   const isMobile = useIsMobile();
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
+
+  // ===== 引导介绍 (react-joyride) =====
+  const [runTour, setRunTour] = useState(false);
+  const tTour = useTranslations('chat.tour');
+
+  const tourSteps: Step[] = useMemo(() => [
+    {
+      target: ".tour-workspace-switcher",
+      content: tTour("workspaceSwitcher"),
+      title: tTour("workspaceSwitcherTitle"),
+      placement: "right",
+      skipBeacon: true,
+    },
+    {
+      target: ".tour-manage-agents",
+      content: tTour("manageAgents"),
+      title: tTour("manageAgentsTitle"),
+      placement: "right",
+    },
+    {
+      target: ".tour-new-chat",
+      content: tTour("newChat"),
+      title: tTour("newChatTitle"),
+      placement: "right",
+    },
+    {
+      target: ".tour-agent-workspace",
+      content: tTour("agentWorkspace"),
+      title: tTour("agentWorkspaceTitle"),
+      placement: "left",
+    },
+    {
+      target: ".tour-extra-directories",
+      content: tTour("extraDirectories"),
+      title: tTour("extraDirectoriesTitle"),
+      placement: "left",
+    },
+  ], [tTour]);
+
+  const { Tour } = useJoyride({
+    continuous: true,
+    run: runTour,
+    steps: tourSteps,
+    locale: {
+      back: tTour("back"),
+      close: tTour("close"),
+      last: tTour("last"),
+      next: tTour("next"),
+      skip: tTour("skip"),
+    },
+    options: {
+      showProgress: true,
+      buttons: ["back", "close", "primary", "skip"],
+    },
+    onEvent: (data) => {
+      const finished = [STATUS.FINISHED, STATUS.SKIPPED] as readonly Status[];
+      if (finished.includes(data.status)) {
+        setRunTour(false);
+        try { localStorage.setItem(TOUR_KEY, "1"); } catch {}
+      }
+    },
+  });
+
+  // 首次访问自动启动
+  useEffect(() => {
+    try {
+      const done = localStorage.getItem(TOUR_KEY);
+      if (!done && !isMobile) {
+        const timer = setTimeout(() => setRunTour(true), 600);
+        return () => clearTimeout(timer);
+      }
+    } catch {}
+  }, [isMobile]);
+
+  const startTour = useCallback(() => setRunTour(true), []);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -521,33 +601,48 @@ function ChatPageInner() {
         </Drawer>
 
         {dialogs}
+        {Tour}
       </div>
     );
   }
 
   return (
-    <ResizablePanelGroup
-      orientation="horizontal"
-      defaultLayout={defaultLayout}
-      onLayoutChange={onLayoutChange}
-      className="h-full bg-muted/30 gap-3 p-2"
-    >
-      <ResizablePanel id={PANEL_ID_AGENT_LIST} defaultSize="22%" minSize="15%" maxSize="35%">
-        {agentListPanel}
-      </ResizablePanel>
+    <div className="relative h-full">
+      <Button
+        aria-label={tTour("start")}
+        title={tTour("start")}
+        className="absolute top-3 right-3 z-30 size-8 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+        onClick={startTour}
+        size="icon"
+        variant="ghost"
+        type="button"
+      >
+        <HelpCircle className="size-4" />
+      </Button>
+      <ResizablePanelGroup
+        orientation="horizontal"
+        defaultLayout={defaultLayout}
+        onLayoutChange={onLayoutChange}
+        className="h-full bg-muted/30 gap-3 p-2"
+      >
+        <ResizablePanel id={PANEL_ID_AGENT_LIST} defaultSize="22%" minSize="15%" maxSize="35%">
+          {agentListPanel}
+        </ResizablePanel>
 
-      <ResizableHandle withHandle />
+        <ResizableHandle withHandle />
 
-      <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%" className="min-w-0 overflow-hidden">
-        {chatMainPanel}
-      </ResizablePanel>
+        <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%" className="min-w-0 overflow-hidden">
+          {chatMainPanel}
+        </ResizablePanel>
 
-      <ResizableHandle withHandle />
-      <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
-        {rightPanel}
-      </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
+          {rightPanel}
+        </ResizablePanel>
 
-      {dialogs}
-    </ResizablePanelGroup>
+        {dialogs}
+      </ResizablePanelGroup>
+      {Tour}
+    </div>
   );
 }

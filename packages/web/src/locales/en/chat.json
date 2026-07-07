@@ -298,5 +298,23 @@
     "generating": "Generating…",
     "generate": "Generate"
   },
-  "user": "User"
+  "user": "User",
+  "tour": {
+    "start": "Start tour",
+    "workspaceSwitcherTitle": "Workspace Switcher",
+    "workspaceSwitcher": "Switch between different workspaces here. Each workspace groups its own agents and chat sessions.",
+    "manageAgentsTitle": "Manage Agents",
+    "manageAgents": "Open the agent manager to add, edit, or remove agents from this workspace.",
+    "newChatTitle": "Add Agent to Chat",
+    "newChat": "Click here to pick an agent and start a new chat session.",
+    "agentWorkspaceTitle": "Agent Workspace",
+    "agentWorkspace": "This is the agent's own workspace — its bound working directory and project files.",
+    "extraDirectoriesTitle": "Extra Directories",
+    "extraDirectories": "Add extra directories here so the agent can access files outside its main workspace.",
+    "back": "Back",
+    "close": "Close",
+    "last": "Finish",
+    "next": "Next",
+    "skip": "Skip"
+  }
 }

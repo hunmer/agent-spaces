@@ -192,7 +192,7 @@ export function ChatAgentList({
       role="complementary"
     >
       {/* Workspace Switcher Header */}
-      <div className="border-b px-3 py-2">
+      <div className="tour-workspace-switcher border-b px-3 py-2">
         {workspaces.length === 0 ? (
           <Button
             variant="outline"
@@ -266,7 +266,7 @@ export function ChatAgentList({
         <div className="flex gap-2">
           <Button
             size="sm"
-            className="flex-1 justify-start gap-2"
+            className="tour-new-chat flex-1 justify-start gap-2"
             onClick={onNewSession}
           >
             <MessageSquarePlus className="size-4" />
@@ -409,7 +409,7 @@ export function ChatAgentList({
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-2 text-muted-foreground"
+          className="tour-manage-agents w-full justify-start gap-2 text-muted-foreground"
           onClick={onManageAgents}
         >
           <Settings2 className="size-4" />

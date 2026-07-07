@@ -298,5 +298,23 @@
     "generating": "生成中…",
     "generate": "生成"
   },
-  "user": "用户"
+  "user": "用户",
+  "tour": {
+    "start": "启动引导",
+    "workspaceSwitcherTitle": "工作区切换",
+    "workspaceSwitcher": "在此切换不同的工作区，每个工作区拥有独立的 agent 和会话。",
+    "manageAgentsTitle": "管理 Agent",
+    "manageAgents": "打开 Agent 管理面板，为当前工作区添加、编辑或移除 agent。",
+    "newChatTitle": "添加 Agent 到聊天",
+    "newChat": "点击这里选择一个 agent，并发起新的会话。",
+    "agentWorkspaceTitle": "Agent 工作区",
+    "agentWorkspace": "这是 agent 自身的工作区，包含它绑定的运行目录与项目文件。",
+    "extraDirectoriesTitle": "额外目录",
+    "extraDirectories": "在这里添加额外目录，让 agent 可以访问主工作区之外的文件。",
+    "back": "上一步",
+    "close": "关闭",
+    "last": "完成",
+    "next": "下一步",
+    "skip": "跳过"
+  }
 }

@@ -13,6 +13,8 @@ export interface SearchSelectOption {
   description?: string;
   keywords?: string[];
   group?: string;
+  /** 显示在选项右侧的自定义内容（如能力标签） */
+  extra?: ReactNode;
 }
 
 export interface SearchSelectProps {
@@ -153,6 +155,11 @@ export function SearchSelect({
           <span className="block truncate text-[10px] text-muted-foreground">{option.description}</span>
         ) : null}
       </span>
+      {option.extra ? (
+        <span className="flex shrink-0 items-center gap-0.5" onMouseDown={(e) => e.preventDefault()}>
+          {option.extra}
+        </span>
+      ) : null}
     </button>
   );
 
