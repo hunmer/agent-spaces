@@ -429,11 +429,13 @@ function ChatPageInner() {
           <ChatFileViewer path={activeFile.path} content={activeFile.content} />
         ) : activeSession && activeAgent ? (
           <InlineChatPanel
+            sessionId={activeSession.id}
             agentId={activeAgent.id}
             agentName={activeAgent.name}
             agentAvatar={activeAgent.avatar}
             agentIcon={activeAgent.icon}
             agentDescription={activeAgent.description}
+            agentSystemPrompt={activeAgent.systemPrompt}
             agentMcps={activeAgent.mcps}
             agentSkills={activeAgentSkills}
             agentTools={activeAgent.tools}

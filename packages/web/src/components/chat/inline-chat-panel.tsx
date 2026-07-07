@@ -6,8 +6,8 @@ import { AgentIcon } from "@/components/common/agent-icon";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Eraser, MessageSquare, PanelRightOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRef, useEffect, useMemo, useState } from "react";
-import type { Attachment as MessageAttachment, BuiltInAgentToolName } from "@agent-spaces/shared";
+import { useRef, useEffect, useMemo, useState, useCallback } from "react";
+import type { AgentUsageRecord, AgentUsageSessionDetail, Attachment as MessageAttachment, BuiltInAgentToolName } from "@agent-spaces/shared";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { ChatComposerInput, type ChatComposerInputHandle, type ChatComposerInputState } from "./chat-composer-input";
 import { ChatInputInfoBar } from "./chat-input-info-bar";
@@ -22,12 +22,21 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
   activeTools: [],
 };
 
+type InlineChatMessage = ChatMessage & {
+  metadata?: {
+    systemPrompt?: string;
+    fullPrompt?: string;
+  };
+};
+
 interface InlineChatPanelProps {
+  sessionId: string;
   agentId: string;
   agentName: string;
   agentAvatar?: string;
   agentIcon?: string;
   agentDescription?: string;
+  agentSystemPrompt?: string;
   agentMcps?: Record<string, unknown>;
   agentSkills?: string[];
   agentTools?: BuiltInAgentToolName[];
@@ -49,11 +58,13 @@ interface InlineChatPanelProps {
 }
 
 export function InlineChatPanel({
+  sessionId,
   agentId,
   agentName,
   agentAvatar,
   agentIcon,
   agentDescription,
+  agentSystemPrompt,
   agentMcps,
   agentSkills,
   agentTools,
@@ -94,6 +105,12 @@ export function InlineChatPanel({
   const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);
   const t = useTranslations('chat.inlineChat');
   const isRegenerating = sending && regeneratingVersionKey !== null;
+  const sessionRecordForMessage = useCallback((message: ChatMessage) => (
+    buildInlineSessionRecord(message, sessionId, workspaceId, agentId)
+  ), [agentId, sessionId, workspaceId]);
+  const sessionDetailForMessage = useCallback((message: ChatMessage) => (
+    buildInlineSessionDetail(sessionId, agentId, messages, (message as InlineChatMessage).metadata?.fullPrompt ?? agentSystemPrompt)
+  ), [agentId, agentSystemPrompt, messages, sessionId]);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -201,6 +218,8 @@ export function InlineChatPanel({
                   workspaceId={workspaceId}
                   showTypingIndicator={false}
                   onDeleteMessage={onDelete}
+                  sessionRecordForMessage={sessionRecordForMessage}
+                  sessionDetailForMessage={sessionDetailForMessage}
                 />
               );
             }
@@ -235,6 +254,8 @@ export function InlineChatPanel({
                   onChange: (index) => setSelectedVersions((prev) => ({ ...prev, [item.key]: index })),
                 })}
                 isStreamingMessage={(message) => message.id === streamingMessage?.id}
+                sessionRecordForMessage={sessionRecordForMessage}
+                sessionDetailForMessage={sessionDetailForMessage}
               />
             );
           })}
@@ -254,6 +275,8 @@ export function InlineChatPanel({
               workspaceId={workspaceId}
               showTypingIndicator={false}
               isStreamingMessage={() => true}
+              sessionRecordForMessage={sessionRecordForMessage}
+              sessionDetailForMessage={sessionDetailForMessage}
             />
           )}
           {sending && !isRegenerating && !streamingContent && !streamingThinking && streamingTimeline.length === 0 && (
@@ -311,6 +334,59 @@ export function InlineChatPanel({
 type MessageRenderItem =
   | { type: "single"; message: ChatMessage }
   | { type: "versions"; key: string; messages: ChatMessage[] };
+
+function buildInlineSessionRecord(
+  message: ChatMessage,
+  sessionId: string,
+  workspaceId: string | undefined,
+  agentId: string,
+): AgentUsageRecord | null {
+  if (message.role !== "agent") return null;
+  const timestamp = message.timestamp || new Date().toISOString();
+  return {
+    id: message.id,
+    workspaceId: workspaceId ?? "",
+    agentSessionId: sessionId,
+    agentConfigId: agentId,
+    role: "assistant",
+    status: "completed",
+    model: undefined,
+    inputTokens: message.usage?.inputTokens ?? 0,
+    outputTokens: message.usage?.outputTokens ?? 0,
+    cachedInputTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: message.usage?.totalTokens ?? 0,
+    inputCostUsd: 0,
+    outputCostUsd: 0,
+    totalCostUsd: 0,
+    startedAt: timestamp,
+    completedAt: timestamp,
+    durationMs: 0,
+  } as AgentUsageRecord;
+}
+
+function buildInlineSessionDetail(
+  sessionId: string,
+  agentId: string,
+  messages: ChatMessage[],
+  systemPrompt?: string,
+): AgentUsageSessionDetail {
+  return {
+    session: null,
+    usage: null,
+    source: "none",
+    systemPrompt,
+    messages: messages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      createdAt: message.timestamp,
+      senderId: message.role === "agent" ? agentId : "user",
+      timeline: message.timeline,
+    })),
+    rawSession: { id: sessionId, agentId, systemPrompt, messages },
+  };
+}
 
 function groupMessageVersions(messages: ChatMessage[]): MessageRenderItem[] {
   const items: MessageRenderItem[] = [];

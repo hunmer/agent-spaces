@@ -32,10 +32,12 @@ export function UsageDashboardSessionDialog({
   record,
   open,
   onOpenChange,
+  detailOverride,
 }: {
   record: AgentUsageRecord | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  detailOverride?: AgentUsageSessionDetail | null
 }) {
   const t = useTranslations("home")
   const [loading, setLoading] = useState(false)
@@ -45,6 +47,12 @@ export function UsageDashboardSessionDialog({
 
   useEffect(() => {
     if (!open || !record) return
+    if (detailOverride) {
+      setLoading(false)
+      setError(null)
+      setDetail(detailOverride)
+      return
+    }
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -64,7 +72,7 @@ export function UsageDashboardSessionDialog({
     return () => {
       cancelled = true
     }
-  }, [open, record])
+  }, [open, record, detailOverride])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

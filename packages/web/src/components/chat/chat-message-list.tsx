@@ -2,7 +2,7 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { cn, copyToClipboard } from "@/lib/utils";
-import type { AgentUsageRecord, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from "@agent-spaces/shared";
+import type { AgentUsageRecord, AgentUsageSessionDetail, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from "@agent-spaces/shared";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
   Brain,
@@ -33,6 +33,8 @@ export interface DisplayChatMessage {
     model?: string;
     duration?: number;
     summary?: string;
+    systemPrompt?: string;
+    fullPrompt?: string;
   };
   toolCalls?: WorkflowAgentToolCall[];
   timeline?: WorkflowAgentTimelineItem[];
@@ -61,6 +63,7 @@ export interface ChatMessageListProps<TMessage extends DisplayChatMessage> {
   isStreamingMessage?: (message: TMessage) => boolean;
   onRerunTool?: (message: TMessage, item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
   sessionRecordForMessage?: (message: TMessage) => AgentUsageRecord | null | undefined;
+  sessionDetailForMessage?: (message: TMessage) => AgentUsageSessionDetail | null | undefined;
 }
 
 const messageVariants: Variants = {
@@ -182,10 +185,12 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
   isStreamingMessage,
   onRerunTool,
   sessionRecordForMessage,
+  sessionDetailForMessage,
 }: ChatMessageListProps<TMessage>) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [visibleToolTimelineMessageIds, setVisibleToolTimelineMessageIds] = useState<Record<string, boolean>>({});
   const [selectedSessionRecord, setSelectedSessionRecord] = useState<AgentUsageRecord | null>(null);
+  const [selectedSessionDetail, setSelectedSessionDetail] = useState<AgentUsageSessionDetail | null>(null);
   const t = useTranslations("chat.messageBubble");
 
   const handleCopyMessage = async (message: TMessage) => {
@@ -348,7 +353,10 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
             {sessionRecord ? (
               <button
                 type="button"
-                onClick={() => setSelectedSessionRecord(sessionRecord)}
+                onClick={() => {
+                  setSelectedSessionRecord(sessionRecord);
+                  setSelectedSessionDetail(sessionDetailForMessage?.(msg) ?? null);
+                }}
                 className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 title={t("viewSessionContext")}
                 aria-label={t("viewSessionContext")}
@@ -400,8 +408,12 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
       <UsageDashboardSessionDialog
         record={selectedSessionRecord}
         open={Boolean(selectedSessionRecord)}
+        detailOverride={selectedSessionDetail}
         onOpenChange={(open) => {
-          if (!open) setSelectedSessionRecord(null);
+          if (!open) {
+            setSelectedSessionRecord(null);
+            setSelectedSessionDetail(null);
+          }
         }}
       />
     </>

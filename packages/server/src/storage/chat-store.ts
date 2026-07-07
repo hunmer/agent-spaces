@@ -48,6 +48,10 @@ export interface ChatMessage {
   };
   toolCalls?: WorkflowAgentToolCall[];
   timeline?: WorkflowAgentTimelineItem[];
+  metadata?: {
+    systemPrompt?: string;
+    fullPrompt?: string;
+  };
 }
 
 export interface ChatWorkspace {

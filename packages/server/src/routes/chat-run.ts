@@ -156,6 +156,10 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       role: 'agent',
       content: agentContent,
       usage: result.usage,
+      metadata: {
+        systemPrompt: agent.systemPrompt,
+        fullPrompt: prompt,
+      },
       ...createTimelinePayload(timeline),
     });
 
