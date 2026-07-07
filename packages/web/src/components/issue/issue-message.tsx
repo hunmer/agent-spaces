@@ -159,7 +159,7 @@ export function IssueMessage({
             avatarUrl={agent?.avatarUrl}
             icon={agent?.icon}
             apiBase={agent?.apiBase}
-            modelId={agent?.modelId}
+            modelId={agent?.modelId ?? comment.metadata?.model}
             providerId={agent?.providerId}
             modelProvider={agent?.modelProvider}
             className="size-7 shrink-0"
@@ -316,7 +316,7 @@ function IssueReply({ reply, level, workspaceId }: { reply: MessageReply; level:
             avatarUrl={agent?.avatarUrl}
             icon={agent?.icon}
             apiBase={agent?.apiBase}
-            modelId={agent?.modelId}
+            modelId={agent?.modelId ?? reply.metadata?.model}
             providerId={agent?.providerId}
             modelProvider={agent?.modelProvider}
             className="size-7 shrink-0"

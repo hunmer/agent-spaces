@@ -76,6 +76,7 @@ export function IssueDetailComments({
   }, [workspaceId, channelId, addMessage, updateMessage, deleteMessage]);
 
   const messageById = useMemo(() => {
+    if (!channelId) return new Map<string, Message>();
     const channelMessages = messages[channelId];
     return new Map((Array.isArray(channelMessages) ? channelMessages : []).map((message) => [message.id, message]));
   }, [messages, channelId]);

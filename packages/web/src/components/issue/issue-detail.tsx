@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { ISSUE_STATUS_COLOR } from './issue-status-colors';
@@ -75,6 +76,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
   const [composerOpen, setComposerOpen] = useState(false);
   const [startInputOpen, setStartInputOpen] = useState(false);
+  const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [startWorkflow, setStartWorkflow] = useState<Workflow | null>(null);
   const [retryInputValues, setRetryInputValues] = useState<Record<string, string> | undefined>(undefined);
   const [retryEnvValues, setRetryEnvValues] = useState<Record<string, string> | undefined>(undefined);
@@ -180,6 +182,24 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
     useIssueStore.getState().upsertIssue(updated);
   };
+
+  const handleOpenChatChannel = useCallback(() => {
+    if (!issue) return;
+    if (!issue.channelId) {
+      setCreateChannelOpen(true);
+      return;
+    }
+    void useChannelStore.getState().ensureAndActivateChannel(workspaceId, issue.channelId);
+  }, [issue, workspaceId]);
+
+  const handleCreateChatChannel = useCallback(async () => {
+    if (!issue) return;
+    const updated = await sdk.issue.ensureChannel(workspaceId, issue.id);
+    useIssueStore.getState().upsertIssue(updated);
+    if (updated.channelId) {
+      await useChannelStore.getState().ensureAndActivateChannel(workspaceId, updated.channelId);
+    }
+  }, [issue, workspaceId]);
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
     if (!issue) return;
@@ -350,7 +370,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     variant="ghost"
                     size="icon"
                     title={t('detail.openChatChannel') as string}
-                    onClick={() => { if (issue.channelId) useChannelStore.getState().ensureAndActivateChannel(workspaceId, issue.channelId); }}
+                    onClick={handleOpenChatChannel}
                   >
                     <MessagesSquare className="size-4" />
                   </Button>
@@ -733,6 +753,23 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           onSubmit={(values, env) => startIssue(workspaceId, issue.id, values, env)}
         />
       )}
+
+      <AlertDialog open={createChannelOpen} onOpenChange={setCreateChannelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('detail.createChatChannelTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('detail.createChatChannelDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('detail.createChatChannelCancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreateChatChannel}>
+              {t('detail.createChatChannelConfirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

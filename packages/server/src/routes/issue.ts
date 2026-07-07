@@ -42,8 +42,6 @@ router.post('/', (req: Request<{ id: string }>, res: Response) => {
     members: mergeWorkflowMembers(members, workflowId),
     workflowId,
   });
-  const channel = issue.channelId ? channelService.getChannel(req.params.id, issue.channelId) : null;
-  if (channel) broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   broadcastToWorkspace(req.params.id, 'issue.created', issue);
   res.status(201).json(issue);
 
@@ -107,6 +105,18 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
     }
   }
   res.json(saved);
+});
+
+router.post('/:issueId/channel', (req: Request<{ id: string; issueId: string }>, res: Response) => {
+  const issue = issueService.ensureChannel(req.params.id, req.params.issueId);
+  if (!issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+  const channel = issue.channelId ? channelService.getChannel(req.params.id, issue.channelId) : null;
+  if (channel) broadcastToWorkspace(req.params.id, 'channel.updated', channel);
+  broadcastToWorkspace(req.params.id, 'issue.updated', issue);
+  res.json(issue);
 });
 
 router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, res: Response) => {

@@ -26,6 +26,9 @@ export function createIssueApi(http: HttpClient) {
     start: (workspaceId: string, issueId: string, data?: StartIssueInput): Promise<Issue> =>
       http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/start`, data),
 
+    ensureChannel: (workspaceId: string, issueId: string): Promise<Issue> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/channel`),
+
     pause: (workspaceId: string, issueId: string): Promise<Issue> =>
       http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/pause`),
 

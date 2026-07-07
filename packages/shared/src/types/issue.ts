@@ -9,7 +9,7 @@
 export interface Issue {
   id: string;
   workspaceId: string;
-  channelId: string;
+  channelId?: string;
   title: string;
   description: string;
   status: IssueStatus;

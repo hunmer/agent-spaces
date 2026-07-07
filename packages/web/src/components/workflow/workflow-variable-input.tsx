@@ -98,6 +98,35 @@ function getVariableBadgeLabel(
   return expression;
 }
 
+function getVariableBadgeIcon(
+  value: string | number,
+  variableContext: WorkflowVariableContext | undefined,
+  plugins: WorkflowPlugin[],
+): Pick<VariableSuggestionItem, 'groupIcon' | 'nodeIconDefinition' | 'pluginIconSource'> {
+  const expression = getVariableExpression(value);
+  if (!expression) return {};
+
+  const nodeMatch = expression.match(NODE_VARIABLE_PATTERN);
+  if (nodeMatch) {
+    const node = variableContext?.nodes.find((item) => item.id === nodeMatch[1]);
+    return { nodeIconDefinition: node ? getNodeDefinition(node.type) : undefined };
+  }
+
+  const configMatch = expression.match(CONFIG_VARIABLE_PATTERN);
+  if (configMatch) {
+    const plugin = plugins.find((item) => item.id === configMatch[1]);
+    return {
+      groupIcon: 'plugin',
+      pluginIconSource: plugin?.iconPath
+        ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) }
+        : { type: 'builtin', variant: 'local' },
+    };
+  }
+
+  if (expression.match(LOOP_VARIABLE_PATTERN)) return { groupIcon: 'loop' };
+  return { groupIcon: 'variable' };
+}
+
 function createTextContent(value: string | number): JSONContent {
   const lines = String(value).split('\n');
   return {
@@ -883,6 +912,7 @@ export function VariableBadgeInput({
 }) {
   const label = getVariableBadgeLabel(value, variableContext);
   const { plugins, pluginsLoaded, hasPluginContext } = useEnabledWorkflowPlugins(variableContext);
+  const icon = getVariableBadgeIcon(value, variableContext, plugins);
   const missing = isConfigVariableReference(value)
     ? hasPluginContext && pluginsLoaded && isConfigVariableReferenceMissing(value, plugins)
     : isVariableReferenceMissing(value, variableContext);
@@ -903,6 +933,11 @@ export function VariableBadgeInput({
           badgeClassName,
         )}
       >
+        <WorkflowVariableSuggestionGroupIcon
+          groupIcon={icon.groupIcon}
+          nodeIconDefinition={icon.nodeIconDefinition}
+          pluginIconSource={icon.pluginIconSource}
+        />
         <span className="min-w-0 truncate">{label}</span>
         {showClear ? (
           <button

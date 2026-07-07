@@ -17,16 +17,18 @@ export function createIssueAgentProgressTracker(input: {
   workspaceRoot?: string;
   onOutput?: (line: string) => void;
 }): AgentMessagePartsTracker {
+  const channelId = input.issue.channelId;
+  if (!channelId) throw new Error('issue channel is required for agent progress');
   const startTime = Date.now();
   let tracker: AgentMessagePartsTracker;
   tracker = createAgentMessagePartsTracker({
     workspaceId: input.workspaceId,
-    channelId: input.issue.channelId,
+    channelId,
     messageId: input.progress.message.id,
     workspaceRoot: input.workspaceRoot,
     onOutput: (line) => {
       input.onOutput?.(line);
-      const live = messageService.updateMessage(input.workspaceId, input.issue.channelId, input.progress.message.id, {
+      const live = messageService.updateMessage(input.workspaceId, channelId, input.progress.message.id, {
         content: tracker.output.join('\n') || input.progress.message.content,
         status: 'streaming',
         metadata: {
@@ -58,6 +60,8 @@ export function createIssueAgentProgress(
     phase?: string;
   },
 ): IssueAgentProgress {
+  const channelId = issue.channelId;
+  if (!channelId) throw new Error('issue channel is required for agent progress');
   const content = `${preset.name || preset.role} is processing...`;
   const progressMetadata: MessageMetadata = {
     agentSessionId,
@@ -68,7 +72,7 @@ export function createIssueAgentProgress(
     nodeExecutionId: metadata.nodeExecutionId,
     phase: metadata.phase,
   };
-  const message = messageService.createMessage(workspaceId, issue.channelId, {
+  const message = messageService.createMessage(workspaceId, channelId, {
     senderId: preset.id,
     senderRole: preset.role,
     content,
@@ -84,7 +88,7 @@ export function createIssueAgentProgress(
     content,
     source: 'agent_progress',
     metadata: {
-      channelId: issue.channelId,
+      channelId,
       messageId: message.id,
       ...progressMetadata,
     } as IssueComment['metadata'],
@@ -108,12 +112,14 @@ export function completeIssueAgentProgress(
     parts?: MessagePart[];
   },
 ): void {
+  const channelId = issue.channelId;
+  if (!channelId) throw new Error('issue channel is required for agent progress');
   const parts = metadata.parts;
   const finalText = [...(parts ?? [])].reverse().find((part) => part.type === 'text')?.text.trim();
   const content = finalText || summary.trim() || output.join('\n').trim();
   if (!content.trim()) return;
 
-  const message = messageService.updateMessage(workspaceId, issue.channelId, progress.message.id, {
+  const message = messageService.updateMessage(workspaceId, channelId, progress.message.id, {
     content,
     type: 'text',
     status: metadata.messageStatus,
@@ -133,7 +139,7 @@ export function completeIssueAgentProgress(
       content,
       metadata: {
         ...progress.comment.metadata,
-        channelId: issue.channelId,
+        channelId,
         messageId: progress.message.id,
         runtime: metadata.runtime,
         model: metadata.model,
