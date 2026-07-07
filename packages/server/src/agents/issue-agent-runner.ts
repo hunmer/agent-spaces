@@ -111,7 +111,7 @@ export async function startIssueWorkflowExecution(
   input?: Record<string, unknown>,
   env?: Record<string, unknown>,
 ): Promise<void> {
-  const issue = issueService.getById(workspaceId, issueId);
+  const issue = issueService.ensureChannel(workspaceId, issueId);
   if (!issue) {
     console.warn(`[issue-runner] issue not found workspaceId=${workspaceId} issueId=${issueId}`);
     return;

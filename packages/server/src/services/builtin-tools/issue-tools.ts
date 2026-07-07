@@ -132,7 +132,11 @@ interface CurrentIssueContext {
 function createCurrentChannelIssue(workspaceId: string, channel: Channel, input: unknown): Issue {
   const data = assertCurrentChannelId(channel, input);
   const currentChannel = getCurrentChannel(workspaceId, channel);
-  if (currentChannel.issueId) throw new Error(`Current channel already has a bound issue: ${currentChannel.issueId}`);
+  if (currentChannel.issueId) {
+    const existing = issueService.getById(workspaceId, currentChannel.issueId);
+    if (!existing) throw new Error(`Bound issue not found: ${currentChannel.issueId}`);
+    return existing;
+  }
 
   const title = typeof data.title === 'string' ? data.title.trim() : '';
   const description = typeof data.description === 'string' ? data.description.trim() : '';
