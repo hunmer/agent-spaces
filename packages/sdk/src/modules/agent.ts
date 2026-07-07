@@ -56,9 +56,5 @@ export function createAgentApi(http: HttpClient) {
     /** Generate agent config from prompt */
     generateFromPrompt: (prompt: string): Promise<Record<string, unknown> & { error?: string }> =>
       http.post('/api/agents/presets/generate', { prompt }),
-
-    /** Sync presets to all workspaces */
-    syncWorkspaces: (): Promise<void> =>
-      http.postVoid('/api/agents/presets/sync-workspaces'),
   };
 }

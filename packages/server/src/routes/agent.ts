@@ -68,10 +68,6 @@ router.post('/presets', (req: Request<{ id: string }>, res: Response) => {
   res.status(201).json(preset);
 });
 
-router.post('/presets/sync-workspaces', (_req: Request, res: Response) => {
-  res.json(agentService.syncTemplatesToAllWorkspaces());
-});
-
 router.post('/presets/generate', async (req: Request<{ id: string }>, res: Response) => {
   const { prompt } = req.body as { prompt?: string };
   if (!prompt?.trim()) {

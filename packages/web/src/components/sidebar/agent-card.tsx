@@ -19,6 +19,8 @@ export interface AgentCardProps {
   meta?: ReactNode;
   /** 卡片底部操作区 */
   actions?: ReactNode;
+  /** 卡片右上角内容（如开关），绝对定位 */
+  corner?: ReactNode;
   /** 整卡点击 */
   onClick?: () => void;
   /** 名称/描述区点击（与 onClick 独立，用于编辑等场景） */
@@ -38,6 +40,7 @@ export function AgentCard({
   color = "default",
   meta,
   actions,
+  corner,
   onClick,
   onContentClick,
   muted,
@@ -48,6 +51,14 @@ export function AgentCard({
       onClick={onClick}
       className={cn("min-h-[176px] p-3", muted && "opacity-50", className)}
     >
+      {corner && (
+        <div
+          className="absolute right-2 top-2 z-20"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {corner}
+        </div>
+      )}
       {/* 图标区：占据上半部分并居中，用文档流布局避免与底部文字重叠 */}
       <div className="flex flex-1 items-center justify-center py-2">
         <AgentIcon

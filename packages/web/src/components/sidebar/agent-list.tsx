@@ -64,6 +64,14 @@ export function AgentList({
                 <span className="text-[10px] text-muted-foreground font-mono">{agent.modelId.split("-").slice(0, 2).join("-")}</span>
               </>
             }
+            corner={
+              <Switch
+                size="sm"
+                checked={fixed || agent.enabled}
+                disabled={fixed}
+                onCheckedChange={() => onToggleEnabled?.(agent.id)}
+              />
+            }
             actions={
               <>
                 <Button
@@ -84,14 +92,6 @@ export function AgentList({
                     <Trash2 className="size-3 text-destructive" />
                   </Button>
                 )}
-                <div onClick={(e) => e.stopPropagation()}>
-                  <Switch
-                    size="sm"
-                    checked={fixed || agent.enabled}
-                    disabled={fixed}
-                    onCheckedChange={() => onToggleEnabled?.(agent.id)}
-                  />
-                </div>
               </>
             }
           />

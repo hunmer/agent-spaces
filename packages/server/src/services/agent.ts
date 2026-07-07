@@ -469,22 +469,6 @@ export function getAgentConfigDir(workspaceId: string, preset: AgentConfig): str
   return workspaceAgentDir;
 }
 
-export function syncTemplatesToAllWorkspaces(): { workspaces: number; agents: number } {
-  const templates = listTemplates().filter((template) => existsSync(getGlobalAgentTemplateDir(template.id)));
-  const workspaces = listWorkspaces();
-  let agents = 0;
-
-  for (const workspace of workspaces) {
-    if (!workspace.agentspaceDir) continue;
-    for (const template of templates) {
-      writeWorkspaceAgentCopy(template, workspace.agentspaceDir);
-      agents++;
-    }
-  }
-
-  return { workspaces: workspaces.length, agents };
-}
-
 export function getAvailableSkillNames(agentDir: string | undefined, skills?: unknown): string[] {
   if (!agentDir || !Array.isArray(skills)) return [];
   return normalizeSkillNames(skills)
