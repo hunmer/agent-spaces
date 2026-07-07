@@ -41,7 +41,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const configDir = agentDir ? join(agentDir, '.claude') : undefined;
     if (configDir) prepareConfigDir(configDir, agentDir);
     const skillNames = normalizeSkillNames(options?.skills, configDir);
-    const allowedToolNames = Array.isArray(options?.tools) ? options.tools : [];
+    const allowedToolNames = normalizeAllowedToolNames(options?.tools, options?.functionTools);
     const outputStyleFile = configDir ? prepareClaudeOutputStyleFile(configDir, options?.outputStyle) : undefined;
     const claudeExecutable = resolveBundledClaudeExecutable();
     this.adapterRun = await startClaudeAdapterIfNeeded(this.config);
@@ -377,6 +377,14 @@ function readPositiveIntegerEnv(name: string): number | undefined {
   if (!value) return undefined;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function normalizeAllowedToolNames(tools: string[] | undefined, functionTools: AgentRunOptions['functionTools']): string[] {
+  const names = new Set(Array.isArray(tools) ? tools : []);
+  for (const tool of functionTools ?? []) {
+    names.add(`mcp__agent-spaces__${tool.name}`);
+  }
+  return [...names];
 }
 
 function readSessionId(message: unknown): string | undefined {
@@ -756,4 +764,5 @@ export const __testables = {
   extractOfficeDocumentText,
   extractDocxText,
   extractXlsxText,
+  normalizeAllowedToolNames,
 };
