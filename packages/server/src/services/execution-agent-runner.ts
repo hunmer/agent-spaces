@@ -86,6 +86,7 @@ async function executeAgentWithRuntime(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const tools = Array.isArray(preset.tools) ? [...preset.tools] : undefined;
   const enabledToolNames = new Set(tools ?? []);
+  ensureWorkflowChannelContext(workspaceId, session, tools);
   const issueRuntimeContext = resolveExecutionIssueContext(workspaceId, session);
   const issueFunctionTools = createIssueFunctionTools(
     workspaceId,
@@ -305,6 +306,30 @@ function resolveExecutionIssueContext(
       : null;
 
   return { channel, issue };
+}
+
+function ensureWorkflowChannelContext(workspaceId: string, session: ExecutionSession, tools?: string[]): void {
+  if (!usesIssueTools(tools)) return;
+
+  const channelId = typeof session.context.channelId === 'string' ? session.context.channelId.trim() : '';
+  if (channelId && channelService.getChannel(workspaceId, channelId)) return;
+
+  const { channel } = channelService.createChannel(workspaceId, {
+    id: `workflow-${session.id}`,
+    name: `Workflow: ${session.workflow.name || session.workflow.id || session.id}`,
+    type: 'general',
+    overwrite: true,
+  });
+  session.context.channelId = channel.id;
+}
+
+function usesIssueTools(tools?: string[]): boolean {
+  if (!tools) return true;
+  return tools.some((tool) => (
+    tool === 'CreateCurrentChannelIssue'
+    || tool === 'ViewCurrentChannelIssue'
+    || tool === 'AddCurrentChannelComment'
+  ));
 }
 
 function normalizeStringList(value: unknown): string[] {
