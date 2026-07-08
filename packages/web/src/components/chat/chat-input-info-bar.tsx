@@ -15,6 +15,7 @@ import { Slider } from "@/components/ui/slider";
 import { sdk } from "@/lib/sdk";
 import { pluginApi } from "@/lib/workflow-plugin-api";
 import { useAgentStore } from "@/stores/agent";
+import { useChatStore } from "@/stores/chat";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
 import { useWorkflowStore } from "@/stores/workflow";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
@@ -105,6 +106,7 @@ export function ChatInputInfoBar({
   const [draftWorkflowIds, setDraftWorkflowIds] = useState<string[]>([]);
   const [draftWorkflowPluginTools, setDraftWorkflowPluginTools] = useState<Array<{ pluginId: string; toolName: string }>>([]);
   const agents = useAgentStore((s) => s.agents);
+  const chatAgents = useChatStore((s) => s.agents);
   const workflows = useWorkflowStore((s) => s.workflows);
   const loadWorkflows = useWorkflowStore((s) => s.loadWorkflows);
   const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
@@ -146,11 +148,20 @@ export function ChatInputInfoBar({
   ) => {
     if (!activeAgent?.id) return;
     const storedAgent = agents.find((agent) => agent.id === activeAgent.id);
-    if (!storedAgent) return;
-    const next = { ...storedAgent, ...updates };
-    await sdk.agent.updatePreset(storedAgent.id, next);
-    useAgentStore.setState((state) => ({
-      agents: state.agents.map((agent) => agent.id === storedAgent.id ? next : agent),
+    if (storedAgent) {
+      const next = { ...storedAgent, ...updates };
+      await sdk.agent.updatePreset(storedAgent.id, next);
+      useAgentStore.setState((state) => ({
+        agents: state.agents.map((agent) => agent.id === storedAgent.id ? next : agent),
+      }));
+      return;
+    }
+    const chatAgent = chatAgents.find((agent) => agent.id === activeAgent.id);
+    if (!chatAgent) return;
+    const next = { ...chatAgent, ...updates };
+    await sdk.chat.updateAgent(chatAgent.id, next);
+    useChatStore.setState((state) => ({
+      agents: state.agents.map((agent) => agent.id === chatAgent.id ? next : agent),
     }));
   };
 

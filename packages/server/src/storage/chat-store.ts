@@ -26,6 +26,8 @@ export interface ChatAgent {
   mcps?: Record<string, unknown>;
   skills?: Array<string | { name: string; content?: string }>;
   tools?: BuiltInAgentToolName[];
+  boundWorkflowIds?: string[];
+  boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
   outputStyle?: string;
   temperature?: number;
   maxTokens?: number;

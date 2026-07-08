@@ -35,6 +35,8 @@ function chatAgentToPreset(agent: ChatAgent): AgentPreset {
       typeof skill === "string" ? { name: skill } : { name: skill.name, content: skill.content }
     )),
     tools: agent.tools ?? newEmptyAgent().tools,
+    boundWorkflowIds: agent.boundWorkflowIds ?? [],
+    boundWorkflowPluginTools: agent.boundWorkflowPluginTools ?? [],
     outputStyle: agent.outputStyle ?? "",
     temperature: agent.temperature ?? 0.3,
     maxTokens: agent.maxTokens ?? 4096,
@@ -60,6 +62,8 @@ function presetToChatAgentData(preset: AgentPreset): Omit<ChatAgent, "id" | "cre
     mcps: preset.mcps,
     skills: preset.skills,
     tools: preset.tools,
+    boundWorkflowIds: preset.boundWorkflowIds,
+    boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
     outputStyle: preset.outputStyle || undefined,
     temperature: preset.temperature,
     maxTokens: preset.maxTokens,

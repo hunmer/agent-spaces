@@ -233,6 +233,8 @@ function normalizeAgentData(data: Partial<ChatAgent> & Record<string, unknown>):
     mcps: isRecord(data.mcps) ? data.mcps : {},
     skills,
     tools: Array.isArray(data.tools) ? data.tools as ChatAgent['tools'] : [],
+    boundWorkflowIds: normalizeStringList(data.boundWorkflowIds),
+    boundWorkflowPluginTools: normalizeBoundWorkflowPluginTools(data.boundWorkflowPluginTools),
     outputStyle: stringValue(data.outputStyle) || undefined,
     temperature: typeof data.temperature === 'number' ? data.temperature : 0.3,
     maxTokens: typeof data.maxTokens === 'number' ? data.maxTokens : 4096,
@@ -290,4 +292,24 @@ function normalizeSkillNames(skills: unknown): string[] {
   return skills
     .map(skill => typeof skill === 'string' ? skill : isRecord(skill) ? stringValue(skill.name) : '')
     .filter(Boolean);
+}
+
+function normalizeStringList(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return values.map((value) => typeof value === 'string' ? value.trim() : '').filter(Boolean);
+}
+
+function normalizeBoundWorkflowPluginTools(values: unknown): Array<{ pluginId: string; toolName: string }> {
+  if (!Array.isArray(values)) return [];
+  const dedup = new Set<string>();
+  return values.flatMap((value) => {
+    if (!isRecord(value)) return [];
+    const pluginId = stringValue(value.pluginId);
+    const toolName = stringValue(value.toolName);
+    if (!pluginId || !toolName) return [];
+    const key = `${pluginId}:${toolName}`;
+    if (dedup.has(key)) return [];
+    dedup.add(key);
+    return [{ pluginId, toolName }];
+  });
 }
