@@ -320,6 +320,19 @@ export function ChatAgentPickerDialog({
                   }
                   actions={
                     <>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
+                        title={tc("copy")}
+                        onClick={() => {
+                          navigator.clipboard?.writeText(agent.id).then(() => {
+                            toast.success(tc("copied"));
+                          });
+                        }}
+                      >
+                        <Copy className="size-3.5" />
+                      </Button>
                       {onToggleFavorite && (
                         <Button
                           size="icon"

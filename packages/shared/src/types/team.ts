@@ -1,7 +1,10 @@
+import type { AgentConfig } from './workspace';
+
 export type TeamStatus = 'active' | 'archived' | 'dissolved';
 export type TeamVisibility = 'private' | 'open';
 export type TeamRole = 'owner' | 'admin' | 'member' | 'observer';
 export type TeamMembershipStatus = 'active' | 'left' | 'removed' | 'suspended';
+export type TeamMembershipAgentStore = 'agent' | 'chat' | 'custom';
 export type TeamMessageType = 'direct' | 'broadcast';
 export type TeamBodyFormat = 'plain_text' | 'markdown' | 'structured_text';
 export type TeamPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -9,6 +12,10 @@ export type TeamInboxStatus = 'unread' | 'read' | 'archived';
 export type TeamExecutionStatus = 'pending' | 'in_progress' | 'done' | 'failed' | 'ignored';
 export type TeamCommentVisibility = 'team' | 'participants' | 'private';
 export type TeamCommentContentFormat = 'plain_text' | 'markdown';
+export type TeamMembershipAgent = Partial<AgentConfig> & Record<string, unknown> & {
+  id: string;
+  name?: string;
+};
 
 export interface Team {
   id: string;
@@ -29,6 +36,8 @@ export interface TeamMembership {
   id: string;
   teamId: string;
   agentId: string;
+  agentStore?: TeamMembershipAgentStore;
+  agent?: TeamMembershipAgent;
   role: TeamRole;
   status: TeamMembershipStatus;
   joinedAt: string;

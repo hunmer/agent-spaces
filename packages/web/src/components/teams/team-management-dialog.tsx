@@ -15,11 +15,8 @@ function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
   const ids: string[] = [];
   for (const node of workflow.nodes ?? []) {
     if (node.type !== "agent_run") continue;
-    const agent = node.data?.agent;
-    if (agent && typeof agent === "object" && typeof (agent as { id?: unknown }).id === "string") {
-      const id = (agent as { id: string }).id;
-      if (id.trim()) ids.push(id);
-    }
+    const id = typeof node.data?.agentConfigId === "string" ? node.data.agentConfigId.trim() : "";
+    if (id) ids.push(id);
   }
   return Array.from(new Set(ids));
 }

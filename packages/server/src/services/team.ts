@@ -1,5 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { join } from 'node:path';
+import type { AgentConfig } from '@agent-spaces/shared';
+import { listPresets } from './agent.js';
+import { findAgent as findChatAgent } from './chat.js';
 import { getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 
 type JsonMap = Record<string, unknown>;
@@ -7,6 +10,7 @@ type TeamStatus = 'active' | 'archived' | 'dissolved';
 type TeamVisibility = 'private' | 'open';
 type TeamRole = 'owner' | 'admin' | 'member' | 'observer';
 type TeamMembershipStatus = 'active' | 'left' | 'removed' | 'suspended';
+type TeamMembershipAgentStore = 'agent' | 'chat' | 'custom';
 type TeamMessageType = 'direct' | 'broadcast';
 type TeamBodyFormat = 'plain_text' | 'markdown' | 'structured_text';
 type TeamPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -34,6 +38,8 @@ interface TeamMembership {
   id: string;
   teamId: string;
   agentId: string;
+  agentStore?: TeamMembershipAgentStore;
+  agent?: Record<string, unknown>;
   role: TeamRole;
   status: TeamMembershipStatus;
   joinedAt: string;
@@ -177,7 +183,7 @@ function loadTeam(teamId: string): Team | null {
 }
 
 function listMemberships(teamId: string): TeamMembership[] {
-  return readJsonFile<TeamMembership[]>(teamMembershipsPath(teamId)) ?? [];
+  return (readJsonFile<TeamMembership[]>(teamMembershipsPath(teamId)) ?? []).map(normalizeStoredMembership);
 }
 
 function saveMemberships(teamId: string, items: TeamMembership[]): void {
@@ -222,6 +228,10 @@ function asBoolean(input: unknown, fallback = false): boolean {
 
 function asArray<T = unknown>(input: unknown): T[] {
   return Array.isArray(input) ? input as T[] : [];
+}
+
+function asAgentRecord(input: unknown): Record<string, unknown> | undefined {
+  return isObject(input) ? { ...input } : undefined;
 }
 
 function parsePage(input: JsonMap): { size: number; offset: number } {
@@ -271,6 +281,59 @@ function parseRole(input: unknown): TeamRole {
   return input === 'owner' || input === 'admin' || input === 'observer' ? input : 'member';
 }
 
+function parseAgentStore(input: unknown): TeamMembershipAgentStore | undefined {
+  return input === 'agent' || input === 'chat' || input === 'custom' ? input : undefined;
+}
+
+function findPresetById(agentId: string): AgentConfig | undefined {
+  return listPresets('').find((item) => item.id === agentId);
+}
+
+function detectAgentStore(agentId: string): TeamMembershipAgentStore | undefined {
+  if (findPresetById(agentId)) return 'agent';
+  if (findChatAgent(agentId)) return 'chat';
+  return undefined;
+}
+
+function normalizeStoredMembership(item: TeamMembership): TeamMembership {
+  if (item.agentStore) return item;
+  return {
+    ...item,
+    agentStore: item.agent ? 'custom' : detectAgentStore(item.agentId) ?? 'agent',
+  };
+}
+
+function resolveMembershipAgent(
+  input: JsonMap,
+): { agentId: string; agentStore: TeamMembershipAgentStore; agent?: Record<string, unknown> } | { error: TeamServiceResult } {
+  const customAgent = asAgentRecord(input.agent);
+  const agentId = asString(input.agent_id ?? input.agentId ?? customAgent?.id);
+  if (!agentId) return { error: fail('agent_id is required', 'INVALID_ARGUMENT') };
+
+  const requestedStore = parseAgentStore(input.agent_store ?? input.agentStore);
+  if (customAgent) {
+    return {
+      agentId,
+      agentStore: requestedStore ?? 'custom',
+      agent: { ...customAgent, id: agentId },
+    };
+  }
+  if (requestedStore === 'custom') {
+    return { error: fail('agent object is required when agent_store=custom', 'INVALID_ARGUMENT') };
+  }
+
+  const resolvedStore = requestedStore ?? detectAgentStore(agentId);
+  if (resolvedStore === 'agent') {
+    if (!findPresetById(agentId)) return { error: fail(`agent not found: ${agentId}`, 'AGENT_NOT_FOUND') };
+    return { agentId, agentStore: 'agent' };
+  }
+  if (resolvedStore === 'chat') {
+    if (!findChatAgent(agentId)) return { error: fail(`chat agent not found: ${agentId}`, 'AGENT_NOT_FOUND') };
+    return { agentId, agentStore: 'chat' };
+  }
+  return { error: fail(`agent not found: ${agentId}`, 'AGENT_NOT_FOUND') };
+}
+
 function parseBodyFormat(input: unknown): TeamBodyFormat {
   return input === 'markdown' || input === 'structured_text' ? input : 'plain_text';
 }
@@ -315,6 +378,7 @@ function membershipView(item: TeamMembership) {
     membership_id: item.id,
     team_id: item.teamId,
     agent_id: item.agentId,
+    agent_store: item.agentStore ?? 'agent',
     joined_at: item.joinedAt,
     updated_at: item.updatedAt,
   };
@@ -501,6 +565,8 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     if (asBoolean(input.dry_run)) return ok('team create validation passed', { team: { name } });
 
     const now = new Date().toISOString();
+    const ownerAgent = resolveMembershipAgent({ agent_id: actorAgentId });
+    if ('error' in ownerAgent) return ownerAgent.error;
     const team: Team = {
       id: uuid(),
       name,
@@ -517,19 +583,24 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     const memberships: TeamMembership[] = [{
       id: uuid(),
       teamId: team.id,
-      agentId: actorAgentId,
+      agentId: ownerAgent.agentId,
+      agentStore: ownerAgent.agentStore,
+      agent: ownerAgent.agent,
       role: 'owner',
       status: 'active',
       joinedAt: now,
       updatedAt: now,
     }];
     for (const item of asArray<JsonMap>(input.initial_members ?? input.initialMembers)) {
-      const agentId = asString(item?.agent_id ?? item?.agentId);
-      if (!agentId || agentId === actorAgentId || memberships.some((membership) => membership.agentId === agentId)) continue;
+      const resolved = resolveMembershipAgent(item);
+      if ('error' in resolved) return resolved.error;
+      if (resolved.agentId === actorAgentId || memberships.some((membership) => membership.agentId === resolved.agentId)) continue;
       memberships.push({
         id: uuid(),
         teamId: team.id,
-        agentId,
+        agentId: resolved.agentId,
+        agentStore: resolved.agentStore,
+        agent: resolved.agent,
         role: parseRole(item?.role),
         status: 'active',
         joinedAt: now,
@@ -685,12 +756,16 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
     }
     if (asBoolean(input.dry_run)) return ok('team join validation passed', { team_id: teamId });
     const now = new Date().toISOString();
+    const resolvedActor = resolveMembershipAgent({ agent_id: actorAgentId });
+    if ('error' in resolvedActor) return resolvedActor.error;
     const membership: TeamMembership = existing
-      ? { ...existing, status: 'active', updatedAt: now }
+      ? { ...existing, agentStore: existing.agentStore ?? resolvedActor.agentStore, agent: existing.agent ?? resolvedActor.agent, status: 'active', updatedAt: now }
       : {
           id: uuid(),
           teamId,
-          agentId: actorAgentId,
+          agentId: resolvedActor.agentId,
+          agentStore: resolvedActor.agentStore,
+          agent: resolvedActor.agent,
           role: 'member',
           status: 'active',
           joinedAt: now,
@@ -703,6 +778,62 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
     const updatedTeam = updateTeamMemberCount(team);
     return ok('team joined', {
       membership: membershipView(membership),
+      team_summary: { team_id: updatedTeam.id, name: updatedTeam.name, status: updatedTeam.status },
+    });
+  }
+
+  if (action === 'invite') {
+    const inviter = getActiveMembership(teamId, actorAgentId);
+    if (!inviter || (inviter.role !== 'owner' && inviter.role !== 'admin')) {
+      return fail('only owner or admin can invite members', 'PERMISSION_DENIED');
+    }
+    if (team.status !== 'active') return fail('team is not active', 'TEAM_DISSOLVED');
+
+    const target = resolveMembershipAgent({
+      agent_id: input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId,
+      agent_store: input.agent_store ?? input.agentStore,
+      agent: input.agent,
+    });
+    if ('error' in target) return target.error;
+
+    const memberships = listMemberships(teamId);
+    const existing = memberships.find((item) => item.agentId === target.agentId);
+    if (existing?.status === 'active') {
+      return ok('already invited', {
+        membership: membershipView(existing),
+        team_summary: { team_id: team.id, name: team.name, status: team.status },
+      }, 'ALREADY_JOINED');
+    }
+    if (asBoolean(input.dry_run)) return ok('team invite validation passed', { team_id: teamId, agent_id: target.agentId });
+
+    const now = new Date().toISOString();
+    const invited: TeamMembership = existing
+      ? {
+          ...existing,
+          agentStore: target.agentStore,
+          agent: target.agent,
+          role: parseRole(input.role),
+          status: 'active',
+          updatedAt: now,
+        }
+      : {
+          id: uuid(),
+          teamId,
+          agentId: target.agentId,
+          agentStore: target.agentStore,
+          agent: target.agent,
+          role: parseRole(input.role),
+          status: 'active',
+          joinedAt: now,
+          updatedAt: now,
+        };
+    const next = existing
+      ? memberships.map((item) => item.agentId === target.agentId ? invited : item)
+      : [...memberships, invited];
+    saveMemberships(teamId, next);
+    const updatedTeam = updateTeamMemberCount(team);
+    return ok('team member invited', {
+      membership: membershipView(invited),
       team_summary: { team_id: updatedTeam.id, name: updatedTeam.name, status: updatedTeam.status },
     });
   }

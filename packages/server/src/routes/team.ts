@@ -13,7 +13,7 @@ const router = Router({ mergeParams: true });
 function sendResult(res: Response, result: { success: boolean; code: string; message: string; data?: unknown; warnings?: string[] }) {
   const status = result.success
     ? 200
-    : result.code === 'TEAM_NOT_FOUND' || result.code === 'MESSAGE_NOT_FOUND' || result.code === 'DELIVERY_NOT_FOUND' || result.code === 'COMMENT_NOT_FOUND'
+    : result.code === 'TEAM_NOT_FOUND' || result.code === 'MESSAGE_NOT_FOUND' || result.code === 'DELIVERY_NOT_FOUND' || result.code === 'COMMENT_NOT_FOUND' || result.code === 'AGENT_NOT_FOUND'
       ? 404
       : result.code === 'PERMISSION_DENIED'
         ? 403
@@ -58,6 +58,10 @@ router.patch('/:teamId', (req: Request<{ teamId: string }>, res: Response) => {
 
 router.post('/:teamId/join', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'join', team_id: req.params.teamId }));
+});
+
+router.post('/:teamId/invite', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'invite', team_id: req.params.teamId }));
 });
 
 router.post('/:teamId/leave', (req: Request<{ teamId: string }>, res: Response) => {
