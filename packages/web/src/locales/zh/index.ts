@@ -27,6 +27,7 @@ import sidebar from './sidebar.json';
 import skills from './skills.json';
 import sqlite from './sqlite.json';
 import terminal from './terminal.json';
+import teams from './teams.json';
 import tools from './tools.json';
 import workspace from './workspace.json';
 import workspaceShell from './workspaceShell.json';
@@ -65,6 +66,7 @@ const messages = {
   skills,
   sqlite,
   terminal,
+  teams,
   tools,
   workspace,
   workspaceShell,

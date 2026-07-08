@@ -1,0 +1,82 @@
+{
+  "title": "Team Collaboration",
+  "description": "Manage teams and read team messages by workspace and agent.",
+  "newTeam": "New Team",
+  "deleteConfirm": "Dissolve team \"{name}\"?",
+  "filters": {
+    "workspace": "Select workspace",
+    "actor": "Select agent"
+  },
+  "dialog": {
+    "createTitle": "Create team",
+    "createDescription": "Create a new collaboration team in the current workspace.",
+    "editTitle": "Edit team",
+    "editDescription": "Update the selected team's basic information."
+  },
+  "form": {
+    "name": "Team name",
+    "description": "Description",
+    "purpose": "Purpose"
+  },
+  "visibility": {
+    "private": "Private",
+    "open": "Open"
+  },
+  "status": {
+    "active": "Active",
+    "archived": "Archived",
+    "dissolved": "Dissolved"
+  },
+  "priority": {
+    "low": "Low",
+    "normal": "Normal",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "messageType": {
+    "direct": "Direct",
+    "broadcast": "Broadcast"
+  },
+  "inboxStatus": {
+    "unread": "Unread",
+    "read": "Read",
+    "archived": "Archived"
+  },
+  "list": {
+    "title": "Teams",
+    "memberCount": "{count} members",
+    "role": "My role: {role}",
+    "noRole": "none"
+  },
+  "detail": {
+    "noDescription": "No description yet.",
+    "purpose": "Purpose",
+    "noPurpose": "No purpose provided.",
+    "members": "Members Preview",
+    "noMembers": "No member preview.",
+    "stats": {
+      "members": "Active members",
+      "unread": "Unread messages",
+      "activity": "Last activity"
+    }
+  },
+  "messages": {
+    "title": "Team Messages",
+    "detailTitle": "Message Detail",
+    "empty": "No team messages for the selected agent.",
+    "pickMessage": "Pick a message to view details.",
+    "loading": "Loading message...",
+    "sentAt": "Sent at: {value}",
+    "sender": "Sender",
+    "recipientCount": "Recipients",
+    "requiresAction": "Requires action",
+    "dueAt": "Due at",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "empty": {
+    "setup": "Select a workspace and an agent first.",
+    "teams": "No teams yet.",
+    "teamDetail": "Select a team to view details."
+  }
+}

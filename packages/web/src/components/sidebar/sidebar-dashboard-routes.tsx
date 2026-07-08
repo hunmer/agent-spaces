@@ -21,6 +21,7 @@ import {
   MessageCircle,
   Workflow,
   Database,
+  Users,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
 import { sdk } from "@/lib/sdk";
@@ -115,6 +116,12 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
       title: ts("nav.chat"),
       icon: <MessageCircle className="size-4" />,
       link: "/chat",
+    },
+    {
+      id: "teams",
+      title: ts("nav.teams"),
+      icon: <Users className="size-4" />,
+      link: "/teams",
     },
     {
       id: "settings-manage",

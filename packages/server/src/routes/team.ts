@@ -48,6 +48,14 @@ router.get('/:teamId', (req: Request<{ id: string; teamId: string }>, res: Respo
   }));
 });
 
+router.patch('/:teamId', (req: Request<{ id: string; teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamManage(req.params.id, {
+    ...req.body,
+    action: 'update',
+    team_id: req.params.teamId,
+  }));
+});
+
 router.post('/:teamId/join', (req: Request<{ id: string; teamId: string }>, res: Response) => {
   sendResult(res, handleTeamMembershipManage(req.params.id, { ...req.body, action: 'join', team_id: req.params.teamId }));
 });

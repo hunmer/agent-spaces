@@ -605,6 +605,45 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
     });
   }
 
+  if (action === 'update') {
+    const teamId = asString(input.team_id ?? input.teamId);
+    if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
+    const team = loadTeam(workspaceId, teamId);
+    if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
+    const membership = getActiveMembership(workspaceId, teamId, actorAgentId);
+    if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+      return fail('only owner or admin can update team', 'PERMISSION_DENIED');
+    }
+    if (team.status === 'dissolved') return fail('team already dissolved', 'TEAM_DISSOLVED');
+
+    const hasName = Object.prototype.hasOwnProperty.call(input, 'name');
+    const hasDescription = Object.prototype.hasOwnProperty.call(input, 'description');
+    const hasPurpose = Object.prototype.hasOwnProperty.call(input, 'purpose');
+    const hasVisibility = Object.prototype.hasOwnProperty.call(input, 'visibility');
+    const hasMetadata = Object.prototype.hasOwnProperty.call(input, 'metadata');
+    const nextName = asString(input.name);
+    if (hasName && !nextName) return fail('name cannot be empty', 'INVALID_ARGUMENT');
+    if (!hasName && !hasDescription && !hasPurpose && !hasVisibility && !hasMetadata) {
+      return fail('at least one update field is required', 'INVALID_ARGUMENT');
+    }
+    if (asBoolean(input.dry_run)) return ok('team update validation passed', { team_id: teamId });
+
+    const now = new Date().toISOString();
+    const next: Team = {
+      ...team,
+      name: hasName ? nextName! : team.name,
+      description: hasDescription ? asString(input.description) ?? '' : team.description,
+      purpose: hasPurpose ? (asString(input.purpose) || undefined) : team.purpose,
+      visibility: hasVisibility ? parseVisibility(input.visibility) : team.visibility,
+      metadata: hasMetadata ? (isObject(input.metadata) ? input.metadata : undefined) : team.metadata,
+      updatedAt: now,
+    };
+    saveTeam(next);
+    return ok('team updated', {
+      team: teamView(next, actorAgentId),
+    });
+  }
+
   if (action === 'dissolve') {
     const teamId = asString(input.team_id ?? input.teamId);
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');

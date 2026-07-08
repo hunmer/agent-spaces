@@ -1,0 +1,82 @@
+{
+  "title": "团队协作",
+  "description": "按工作区和 Agent 管理团队并查看团队消息。",
+  "newTeam": "新建团队",
+  "deleteConfirm": "确认解散团队“{name}”？",
+  "filters": {
+    "workspace": "选择工作区",
+    "actor": "选择 Agent"
+  },
+  "dialog": {
+    "createTitle": "新建团队",
+    "createDescription": "在当前工作区创建一个新的协作团队。",
+    "editTitle": "编辑团队",
+    "editDescription": "更新当前团队的基础信息。"
+  },
+  "form": {
+    "name": "团队名称",
+    "description": "团队描述",
+    "purpose": "团队目标"
+  },
+  "visibility": {
+    "private": "私有",
+    "open": "开放"
+  },
+  "status": {
+    "active": "活跃",
+    "archived": "归档",
+    "dissolved": "已解散"
+  },
+  "priority": {
+    "low": "低",
+    "normal": "普通",
+    "high": "高",
+    "urgent": "紧急"
+  },
+  "messageType": {
+    "direct": "定向消息",
+    "broadcast": "广播消息"
+  },
+  "inboxStatus": {
+    "unread": "未读",
+    "read": "已读",
+    "archived": "已归档"
+  },
+  "list": {
+    "title": "团队列表",
+    "memberCount": "{count} 名成员",
+    "role": "我的角色：{role}",
+    "noRole": "无"
+  },
+  "detail": {
+    "noDescription": "暂无描述。",
+    "purpose": "团队目标",
+    "noPurpose": "暂无团队目标。",
+    "members": "成员预览",
+    "noMembers": "暂无成员预览。",
+    "stats": {
+      "members": "活跃成员",
+      "unread": "未读消息",
+      "activity": "最近活动"
+    }
+  },
+  "messages": {
+    "title": "团队消息",
+    "detailTitle": "消息详情",
+    "empty": "当前 Agent 在该团队下暂无消息。",
+    "pickMessage": "选择一条消息查看详情。",
+    "loading": "正在加载消息...",
+    "sentAt": "发送时间：{value}",
+    "sender": "发送者",
+    "recipientCount": "接收人数",
+    "requiresAction": "需要处理",
+    "dueAt": "截止时间",
+    "yes": "是",
+    "no": "否"
+  },
+  "empty": {
+    "setup": "请先选择工作区和 Agent。",
+    "teams": "暂无团队。",
+    "teamDetail": "请选择一个团队查看详情。"
+  }
+}

@@ -16,6 +16,7 @@
     "workflows": "Workflows",
     "miniApp": "Workflows UI",
     "chat": "Chat",
+    "teams": "Teams",
     "hooks": "Hooks",
     "tools": "Tools",
     "commands": "Commands",
