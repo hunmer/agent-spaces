@@ -12,6 +12,7 @@
   "boundTo": "已绑定",
   "categories": {
     "channel": "频道管理",
+    "team": "团队协作",
     "terminal": "终端/命令",
     "database": "知识库",
     "files": "文件",
@@ -29,6 +30,30 @@
     "AddCurrentChannelComment": {
       "label": "添加当前评论",
       "description": "向当前频道绑定的 Issue 添加评论。"
+    },
+    "team_manage": {
+      "label": "团队管理",
+      "description": "创建、列出、查看或解散团队。"
+    },
+    "team_membership_manage": {
+      "label": "团队成员管理",
+      "description": "加入或离开团队。"
+    },
+    "team_message_send": {
+      "label": "发送团队消息",
+      "description": "发送团队定向消息或广播。"
+    },
+    "team_inbox_query": {
+      "label": "查询团队收件箱",
+      "description": "列出团队收件箱消息或查看单条投递。"
+    },
+    "team_message_update": {
+      "label": "更新团队消息状态",
+      "description": "更新已接收团队消息的收件状态或执行状态。"
+    },
+    "team_message_comment": {
+      "label": "团队消息评论",
+      "description": "添加、列出或删除团队消息评论。"
     },
     "ReadTerminalOutput": {
       "label": "读取终端输出",

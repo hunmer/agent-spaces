@@ -398,6 +398,7 @@ export function createPreset(
     systemPrompt: data.systemPrompt || '',
     outputStyle: data.outputStyle,
     suggestions: data.suggestions,
+    openingMessage: data.openingMessage,
     temperature: data.temperature ?? 0.3,
     maxTokens: data.maxTokens ?? 4096,
     avatarUrl: data.avatarUrl,

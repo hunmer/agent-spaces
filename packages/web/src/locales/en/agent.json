@@ -100,6 +100,8 @@
     "suggestions": "Suggested Messages",
     "suggestionsPlaceholder": "Type a suggestion and press Enter...",
     "suggestionsAdd": "Add",
+    "openingMessage": "Opening Message",
+    "openingMessagePlaceholder": "Welcome message sent by the Agent when entering an empty conversation...",
     "mcpServers": "MCP Servers",
     "tools": "Tools",
     "skills": "Skills",

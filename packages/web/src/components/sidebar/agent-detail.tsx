@@ -402,6 +402,15 @@ export function AgentDetail({
       </Section>
       )}
 
+      <Section icon={<MessageSquare className="size-3.5" />} title={t("detail.openingMessage")}>
+        <Textarea
+          value={agent.openingMessage ?? ""}
+          onChange={(e) => onChange("openingMessage", e.target.value)}
+          placeholder={t("detail.openingMessagePlaceholder")}
+          className="min-h-16 text-xs"
+        />
+      </Section>
+
       <Section icon={<Lightbulb className="size-3.5" />} title={t("detail.suggestions")}>
         <TagInput
           value={agent.suggestions ?? []}

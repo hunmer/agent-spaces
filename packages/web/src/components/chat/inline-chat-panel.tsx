@@ -225,17 +225,51 @@ export function InlineChatPanel({
       {/* Messages */}
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-4">
         <div className="flex min-h-full flex-col gap-3">
-          {messages.length === 0 && !sending && (
-            <Empty className="border-0">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <MessageSquare />
-                </EmptyMedia>
-                <EmptyTitle>{t('startConversation')}</EmptyTitle>
-                <EmptyDescription>{t('startConversationDesc')}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
+          {messages.length === 0 && !sending && (() => {
+            const openingMessage = storedAgent?.openingMessage?.trim();
+            const suggestions = (storedAgent?.suggestions ?? []).filter((s) => s.trim());
+            return (
+              <>
+                {openingMessage ? (
+                  <div className="flex gap-3">
+                    <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-7" bordered />
+                    <div className="max-w-[78%] whitespace-pre-wrap break-words rounded-2xl rounded-tl-none border bg-muted/50 px-4 py-3 text-sm">
+                      {openingMessage}
+                    </div>
+                  </div>
+                ) : (
+                  <Empty className="border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <MessageSquare />
+                      </EmptyMedia>
+                      <EmptyTitle>{t('startConversation')}</EmptyTitle>
+                      <EmptyDescription>{t('startConversationDesc')}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                )}
+                {suggestions.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {openingMessage && (
+                      <div className="px-1 text-xs font-medium text-muted-foreground">{t('suggestions')}</div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((suggestion, index) => (
+                        <button
+                          key={`${suggestion}-${index}`}
+                          type="button"
+                          onClick={() => composerRef.current?.insertText(suggestion)}
+                          className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-accent hover:border-foreground/30 cursor-pointer"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           {messageItems.map((item) => {
             if (item.type === "single") {
               return (

@@ -100,6 +100,8 @@
     "suggestions": "建议消息",
     "suggestionsPlaceholder": "输入建议消息后回车添加...",
     "suggestionsAdd": "添加",
+    "openingMessage": "开场白",
+    "openingMessagePlaceholder": "进入会话空状态时由 Agent 主动发出的欢迎语...",
     "mcpServers": "MCP 服务器",
     "tools": "工具",
     "skills": "技能",

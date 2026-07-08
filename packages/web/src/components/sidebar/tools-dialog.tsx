@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { sdk } from '@/lib/sdk';
 import {
+  BUILT_IN_AGENT_TOOL_CATEGORIES,
   BUILT_IN_AGENT_TOOLS,
+  type BuiltInAgentToolCategoryName,
   type BuiltInAgentToolName,
 } from '@agent-spaces/shared';
 import {
@@ -23,6 +25,7 @@ import {
   Database,
   Workflow,
   Files,
+  Users,
   Search,
   Wrench,
 } from 'lucide-react';
@@ -38,29 +41,56 @@ interface ToolsDialogProps {
   onSelectedToolsChange?: (tools: BuiltInAgentToolName[]) => void;
 }
 
-// 分类的归属由各工具自带的 category 字段决定（单一数据源，见 BUILT_IN_AGENT_TOOLS）。
-// 这里只保留每个分类的 UI 表现（图标）。
-const TOOL_CATEGORIES: Record<string, { icon: typeof Hash }> = {
-  channel: { icon: Hash },
-  terminal: { icon: Terminal },
-  database: { icon: Database },
-  files: { icon: Files },
-  workflow: { icon: Workflow },
+interface AgentToolsPreset {
+  id: string;
+  name?: string;
+  avatarUrl?: string;
+  tools?: string[];
+}
+
+const TOOL_CATEGORY_ICONS: Record<string, typeof Hash> = {
+  Hash,
+  Users,
+  Terminal,
+  Database,
+  Files,
+  Workflow,
 };
 
-const ALL_TOOLS = (BUILT_IN_AGENT_TOOLS ?? []) as readonly { name: BuiltInAgentToolName; label: string; description: string; category?: string }[];
+const TOOL_CATEGORIES = Object.entries(BUILT_IN_AGENT_TOOL_CATEGORIES)
+  .sort(([, a], [, b]) => a.order - b.order)
+  .map(([key, meta]) => ({
+    key: key as BuiltInAgentToolCategoryName,
+    icon: TOOL_CATEGORY_ICONS[meta.icon] ?? Hash,
+  }));
+
+type BuiltInToolView = {
+  name: BuiltInAgentToolName;
+  label: string;
+  description: string;
+  category?: BuiltInAgentToolCategoryName;
+};
+
+const ALL_TOOLS = (BUILT_IN_AGENT_TOOLS ?? []) as readonly BuiltInToolView[];
+
+function compareTools(a: BuiltInToolView, b: BuiltInToolView) {
+  const aOrder = a.category ? BUILT_IN_AGENT_TOOL_CATEGORIES[a.category]?.order ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+  const bOrder = b.category ? BUILT_IN_AGENT_TOOL_CATEGORIES[b.category]?.order ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+  if (aOrder !== bOrder) return aOrder - bOrder;
+  return ALL_TOOLS.findIndex((tool) => tool.name === a.name) - ALL_TOOLS.findIndex((tool) => tool.name === b.name);
+}
 
 export function ToolsDialog({ open, onOpenChange, standalone, selectable, selectedTools: externalSelected, onSelectedToolsChange }: ToolsDialogProps) {
   const t = useTranslations('tools');
 
-  const toolLabel = (tool: { name: string; label: string }) => {
+  const toolLabel = useCallback((tool: { name: string; label: string }) => {
     const key = `items.${tool.name}.label` as const;
     return t.has(key) ? t(key) : tool.label;
-  };
-  const toolDesc = (tool: { name: string; description: string }) => {
+  }, [t]);
+  const toolDesc = useCallback((tool: { name: string; description: string }) => {
     const key = `items.${tool.name}.description` as const;
     return t.has(key) ? t(key) : tool.description;
-  };
+  }, [t]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -73,7 +103,7 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
     if (open || standalone) {
       sdk.agent.listPresets()
         .then((data) => {
-          setAgentsWithTools(data.map((a: any) => ({
+          setAgentsWithTools((data as AgentToolsPreset[]).map((a) => ({
             id: a.id,
             name: a.name || a.id,
             avatarUrl: a.avatarUrl,
@@ -100,11 +130,8 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
     }
   };
 
-  const filteredTools = useMemo(() => {
+  const searchableTools = useMemo(() => {
     let tools = ALL_TOOLS;
-    if (activeCategory !== 'all') {
-      tools = tools.filter((t) => t.category === activeCategory);
-    }
     if (filterAgentId) {
       const agent = agentsWithTools.find((a) => a.id === filterAgentId);
       if (agent) {
@@ -116,8 +143,22 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
       const q = searchQuery.toLowerCase();
       tools = tools.filter((t) => toolLabel(t).toLowerCase().includes(q) || toolDesc(t).toLowerCase().includes(q));
     }
-    return tools;
-  }, [activeCategory, filterAgentId, searchQuery, agentsWithTools]);
+    return [...tools].sort(compareTools);
+  }, [filterAgentId, searchQuery, agentsWithTools, toolDesc, toolLabel]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Partial<Record<BuiltInAgentToolCategoryName, number>> = {};
+    for (const tool of searchableTools) {
+      if (!tool.category) continue;
+      counts[tool.category] = (counts[tool.category] ?? 0) + 1;
+    }
+    return counts;
+  }, [searchableTools]);
+
+  const filteredTools = useMemo(() => {
+    if (activeCategory === 'all') return searchableTools;
+    return searchableTools.filter((tool) => tool.category === activeCategory);
+  }, [activeCategory, searchableTools]);
 
   const mainBody = (
     <>
@@ -137,8 +178,9 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
           >
             <Wrench className="size-3.5 mr-1.5" />
             {t('filterAll')}
+            <span className="ml-auto text-[10px] text-muted-foreground">{searchableTools.length}</span>
           </Button>
-          {Object.entries(TOOL_CATEGORIES).map(([key, { icon: Icon }]) => (
+          {TOOL_CATEGORIES.map(({ key, icon: Icon }) => (
             <Button
               key={key}
               variant={activeCategory === key ? 'secondary' : 'ghost'}
@@ -148,6 +190,7 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
             >
               <Icon className="size-3.5 mr-1.5" />
               {t(`categories.${key}`)}
+              <span className="ml-auto text-[10px] text-muted-foreground">{categoryCounts[key] ?? 0}</span>
             </Button>
           ))}
 
@@ -181,11 +224,11 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
               <button type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === 'all' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground', "cursor-pointer")} onClick={() => setActiveCategory('all')}>
-                {t('filterAll')}
+                {t('filterAll')} ({searchableTools.length})
               </button>
-              {Object.entries(TOOL_CATEGORIES).map(([key]) => (
+              {TOOL_CATEGORIES.map(({ key }) => (
                 <button key={key} type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === key ? 'bg-muted' : 'text-muted-foreground hover:text-foreground', "cursor-pointer")} onClick={() => setActiveCategory(key)}>
-                  {t(`categories.${key}`)}
+                  {t(`categories.${key}`)} ({categoryCounts[key] ?? 0})
                 </button>
               ))}
             </div>

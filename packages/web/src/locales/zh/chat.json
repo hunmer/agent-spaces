@@ -217,7 +217,8 @@
     "clearMessages": "清空消息",
     "togglePanel": "切换右侧面板",
     "messagePlaceholder": "发送消息给 {name}...",
-    "archivedPreview": "封存的消息仅允许预览"
+    "archivedPreview": "封存的消息仅允许预览",
+    "suggestions": "试试这些"
   },
   "messageBubble": {
     "thinking": "思考中...",

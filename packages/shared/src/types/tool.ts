@@ -1,3 +1,32 @@
+export const BUILT_IN_AGENT_TOOL_CATEGORIES = {
+  channel: {
+    order: 10,
+    icon: 'Hash',
+  },
+  team: {
+    order: 20,
+    icon: 'Users',
+  },
+  terminal: {
+    order: 30,
+    icon: 'Terminal',
+  },
+  database: {
+    order: 40,
+    icon: 'Database',
+  },
+  files: {
+    order: 50,
+    icon: 'Files',
+  },
+  workflow: {
+    order: 60,
+    icon: 'Workflow',
+  },
+} as const;
+
+export type BuiltInAgentToolCategoryName = keyof typeof BUILT_IN_AGENT_TOOL_CATEGORIES;
+
 export const BUILT_IN_AGENT_TOOLS = [
   {
     name: 'CreateCurrentChannelIssue',

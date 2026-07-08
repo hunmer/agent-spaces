@@ -217,7 +217,8 @@
     "clearMessages": "Clear messages",
     "togglePanel": "Toggle right panel",
     "messagePlaceholder": "Message {name}...",
-    "archivedPreview": "Archived messages are view-only"
+    "archivedPreview": "Archived messages are view-only",
+    "suggestions": "Try these"
   },
   "messageBubble": {
     "thinking": "Thinking...",

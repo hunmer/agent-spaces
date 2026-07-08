@@ -86,6 +86,8 @@ export interface AgentConfig {
   outputStyle?: string;
   /** 预设消息建议：聊天输入框的快捷提示（如 mini-app 预览聊天） */
   suggestions?: string[];
+  /** 开场白：进入会话空状态时由 Agent 主动发出的欢迎语 */
+  openingMessage?: string;
   temperature?: number;
   maxTokens?: number;
   avatarUrl?: string;
