@@ -119,10 +119,8 @@ function FilterPopover({
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button type="button" className={triggerClass} onClick={() => setOpen(v => !v)}>
-          {trigger}
-        </button>
+      <PopoverTrigger className={triggerClass}>
+        {trigger}
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -204,110 +202,115 @@ export function WorkflowFilterToolbar({
           className="pl-8 h-8 text-sm"
         />
       </div>
-      <Popover>
-        <PopoverTrigger className={triggerClass}>
-          <ArrowUpDown className="h-3.5 w-3.5" />
-          {t(`page.${sortField}`)}
-          <span className="text-muted-foreground text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-48 p-2">
+      <FilterPopover
+        trigger={
+          <>
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            {t(`page.${sortField}`)}
+            <span className="text-muted-foreground text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+          </>
+        }
+        contentClassName="w-48 p-2"
+      >
+        <div className="flex flex-col gap-1">
+          {([
+            ['createdAt', t('page.createdAt')],
+            ['updatedAt', t('page.updatedAt')],
+            ['lastRunAt', t('page.lastRunAt')],
+            ['lastOpenedAt', t('page.lastOpenedAt')],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              className={itemClass(sortField === value)}
+              onClick={() => setSortField(value)}
+            >
+              {sortField === value && <span className="text-primary">✓</span>}
+              {label}
+            </button>
+          ))}
+          <div className="border-t my-1" />
+          <button
+            className={itemClass(sortOrder === 'asc')}
+            onClick={() => setSortOrder('asc')}
+          >
+            {sortOrder === 'asc' && <span className="text-primary">✓</span>}
+            {t('page.asc')}
+          </button>
+          <button
+            className={itemClass(sortOrder === 'desc')}
+            onClick={() => setSortOrder('desc')}
+          >
+            {sortOrder === 'desc' && <span className="text-primary">✓</span>}
+            {t('page.desc')}
+          </button>
+        </div>
+      </FilterPopover>
+      {showScheduleFilter ? (
+        <FilterPopover
+          trigger={
+            <>
+              <Clock className="h-3.5 w-3.5" />
+              {scheduleFilter === 'scheduled' ? t('page.scheduleScheduled') : scheduleFilter === 'unscheduled' ? t('page.scheduleUnscheduled') : t('page.scheduleFilter')}
+            </>
+          }
+        >
           <div className="flex flex-col gap-1">
             {([
-              ['createdAt', t('page.createdAt')],
-              ['updatedAt', t('page.updatedAt')],
-              ['lastRunAt', t('page.lastRunAt')],
-              ['lastOpenedAt', t('page.lastOpenedAt')],
+              ['all', t('page.scheduleFilterAll')],
+              ['scheduled', t('page.scheduleScheduled')],
+              ['unscheduled', t('page.scheduleUnscheduled')],
             ] as const).map(([value, label]) => (
               <button
                 key={value}
-                className={itemClass(sortField === value)}
-                onClick={() => setSortField(value)}
+                className={itemClass(scheduleFilter === value)}
+                onClick={() => setScheduleFilter(value)}
               >
-                {sortField === value && <span className="text-primary">✓</span>}
+                {scheduleFilter === value && <span className="text-primary">✓</span>}
                 {label}
               </button>
             ))}
-            <div className="border-t my-1" />
-            <button
-              className={itemClass(sortOrder === 'asc')}
-              onClick={() => setSortOrder('asc')}
-            >
-              {sortOrder === 'asc' && <span className="text-primary">✓</span>}
-              {t('page.asc')}
-            </button>
-            <button
-              className={itemClass(sortOrder === 'desc')}
-              onClick={() => setSortOrder('desc')}
-            >
-              {sortOrder === 'desc' && <span className="text-primary">✓</span>}
-              {t('page.desc')}
-            </button>
           </div>
-        </PopoverContent>
-      </Popover>
-      {showScheduleFilter ? (
-        <Popover>
-          <PopoverTrigger className={triggerClass}>
-            <Clock className="h-3.5 w-3.5" />
-            {scheduleFilter === 'scheduled' ? t('page.scheduleScheduled') : scheduleFilter === 'unscheduled' ? t('page.scheduleUnscheduled') : t('page.scheduleFilter')}
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-44 p-2">
-            <div className="flex flex-col gap-1">
-              {([
-                ['all', t('page.scheduleFilterAll')],
-                ['scheduled', t('page.scheduleScheduled')],
-                ['unscheduled', t('page.scheduleUnscheduled')],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  className={itemClass(scheduleFilter === value)}
-                  onClick={() => setScheduleFilter(value)}
-                >
-                  {scheduleFilter === value && <span className="text-primary">✓</span>}
-                  {label}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+        </FilterPopover>
       ) : null}
       {showTagsFilter && allTags.length > 0 ? (
-        <Popover>
-          <PopoverTrigger className={triggerClass}>
-            <Filter className="h-3.5 w-3.5" />
-            {t('page.tags')}
-            {selectedTags.length > 0 && (
-              <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedTags.length}</Badge>
-            )}
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-48 p-2">
-            <div className="flex flex-col gap-1">
-              {allTags.map(tag => {
-                const selected = selectedTags.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer"
-                    onClick={() => setSelectedTags(selected ? selectedTags.filter(x => x !== tag) : [...selectedTags, tag])}
-                  >
-                    <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
-                      {selected && <span className="text-[10px]">✓</span>}
-                    </span>
-                    {tag}
-                  </button>
-                );
-              })}
-            </div>
-            {selectedTags.length > 0 && (
-              <button
-                className="text-xs text-muted-foreground hover:text-foreground mt-1 pt-1 border-t cursor-pointer w-full text-left px-2 py-1"
-                onClick={() => setSelectedTags([])}
-              >
-                {t('page.clearFilter')}
-              </button>
-            )}
-          </PopoverContent>
-        </Popover>
+        <FilterPopover
+          contentClassName="w-48 p-2"
+          trigger={
+            <>
+              <Filter className="h-3.5 w-3.5" />
+              {t('page.tags')}
+              {selectedTags.length > 0 && (
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedTags.length}</Badge>
+              )}
+            </>
+          }
+        >
+          <div className="flex flex-col gap-1">
+            {allTags.map(tag => {
+              const selected = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer"
+                  onClick={() => setSelectedTags(selected ? selectedTags.filter(x => x !== tag) : [...selectedTags, tag])}
+                >
+                  <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
+                    {selected && <span className="text-[10px]">✓</span>}
+                  </span>
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+          {selectedTags.length > 0 && (
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground mt-1 pt-1 border-t cursor-pointer w-full text-left px-2 py-1"
+              onClick={() => setSelectedTags([])}
+            >
+              {t('page.clearFilter')}
+            </button>
+          )}
+        </FilterPopover>
       ) : null}
       {selectedTags.length > 0 ? (
         <div className="flex gap-1 flex-wrap">

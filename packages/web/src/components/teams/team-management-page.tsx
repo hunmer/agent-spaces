@@ -5,6 +5,7 @@ import type { Team, TeamInboxItem, TeamMembership, TeamMessage, Workspace } from
 import { useTranslations } from "next-intl";
 import { Loader2, MessagesSquare, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { sdk } from "@/lib/sdk";
@@ -129,6 +130,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [teamMessages, setTeamMessages] = useState<TeamInboxItemView[]>([]);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<TeamMessageView | null>(null);
+  const [messageDetailOpen, setMessageDetailOpen] = useState(false);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
@@ -352,51 +354,20 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   return (
     <div className={embedded ? "flex h-full flex-col" : "flex min-h-dvh w-full flex-col"}>
       <main className={embedded ? "flex size-full flex-1 flex-col gap-4 px-4 py-4 sm:px-6" : "mx-auto flex size-full max-w-7xl flex-1 flex-col gap-4 px-4 py-6 sm:px-6"}>
-        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              {embedded ? null : <h1 className="text-2xl font-semibold">{t("title")}</h1>}
-              <p className="text-sm text-muted-foreground">{t("description")}</p>
-            </div>
-            {embedded ? null : (
+        {!embedded ? (
+          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold">{t("title")}</h1>
+                <p className="text-sm text-muted-foreground">{t("description")}</p>
+              </div>
               <Button onClick={openCreateDialog} disabled={!canCreateTeam}>
                 <Plus className="size-4" />
                 {t("newTeam")}
               </Button>
-            )}
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Select value={selectedWorkspaceId} onValueChange={(next) => setSelectedWorkspaceId(next ?? "")}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t("filters.workspace")} />
-              </SelectTrigger>
-              <SelectContent>
-                {workspaces.map((workspace) => (
-                  <SelectItem key={workspace.id} value={workspace.id}>
-                    {workspace.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedActorId} onValueChange={(next) => setSelectedActorId(next ?? "")}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t("filters.actor")} />
-              </SelectTrigger>
-              <SelectContent>
-                {availableAgents.map((agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    {agent.name || agent.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {error ? (
-            <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         {!selectedWorkspaceId || !selectedActorId ? (
           <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
@@ -404,41 +375,74 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           </div>
         ) : (
           <div className="grid flex-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1.1fr)]">
-            <section className="rounded-2xl border border-border bg-card p-4">
-              <div className="mb-3 flex items-center justify-between">
+            <section className="flex flex-col rounded-2xl border border-border bg-card p-4">
+              <div className="flex flex-col gap-2">
+                <Select value={selectedWorkspaceId} onValueChange={(next) => setSelectedWorkspaceId(next ?? "")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t("filters.workspace")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workspaces.map((workspace) => (
+                      <SelectItem key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedActorId} onValueChange={(next) => setSelectedActorId(next ?? "")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t("filters.actor")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableAgents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name || agent.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {error ? (
+                  <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                    {error}
+                  </div>
+                ) : null}
+              </div>
+              <div className="mb-3 mt-4 flex items-center justify-between">
                 <h2 className="font-medium">{t("list.title")}</h2>
                 {loadingTeams ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
               </div>
-              {teams.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                  {t("empty.teams")}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {teams.map((team) => (
-                    <button
-                      key={team.team_id}
-                      type="button"
-                      onClick={() => setSelectedTeamId(team.team_id)}
-                      className={`rounded-xl border px-3 py-3 text-left transition-colors ${team.team_id === selectedTeamId ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">{team.name}</div>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
-                            <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
+              <div className="min-h-0 flex-1 overflow-auto">
+                {teams.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                    {t("empty.teams")}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {teams.map((team) => (
+                      <button
+                        key={team.team_id}
+                        type="button"
+                        onClick={() => setSelectedTeamId(team.team_id)}
+                        className={`rounded-xl border px-3 py-3 text-left transition-colors ${team.team_id === selectedTeamId ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium">{team.name}</div>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
+                              <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
+                            </div>
                           </div>
+                          <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                         </div>
-                        <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                      </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {t("list.memberCount", { count: team.member_count })} · {t("list.role", { role: team.my_role ?? t("list.noRole") })}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {t("list.memberCount", { count: team.member_count })} · {t("list.role", { role: team.my_role ?? t("list.noRole") })}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </section>
 
             <section className="rounded-2xl border border-border bg-card p-4">
@@ -500,35 +504,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                     </div>
                   </div>
 
-                  <div className="min-h-0 flex-1 rounded-xl border border-border p-3">
-                    <div className="mb-3 flex items-center gap-2">
-                      <MessagesSquare className="size-4 text-muted-foreground" />
-                      <div className="text-sm font-medium">{t("messages.title")}</div>
-                    </div>
-                    {teamMessages.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">{t("messages.empty")}</div>
-                    ) : (
-                      <div className="flex max-h-[24rem] flex-col gap-2 overflow-auto pr-1">
-                        {teamMessages.map((item) => (
-                          <button
-                            key={item.delivery_id}
-                            type="button"
-                            onClick={() => setSelectedDeliveryId(item.delivery_id)}
-                            className={`rounded-xl border px-3 py-3 text-left ${item.delivery_id === selectedDeliveryId ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="truncate font-medium">{item.subject}</div>
-                                <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.preview}</div>
-                              </div>
-                              <Badge variant={badgeTone(item.inbox_status)}>{t(`inboxStatus.${item.inbox_status}`)}</Badge>
-                            </div>
-                            <div className="mt-2 text-xs text-muted-foreground">{formatTime(item.sent_at)}</div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
@@ -537,52 +512,105 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               )}
             </section>
 
-            <section className="rounded-2xl border border-border bg-card p-4">
-              <h2 className="mb-3 font-medium">{t("messages.detailTitle")}</h2>
-              {!selectedDeliveryId ? (
+            <section className="flex flex-col rounded-2xl border border-border bg-card p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <MessagesSquare className="size-4 text-muted-foreground" />
+                <h2 className="font-medium">{t("messages.title")}</h2>
+              </div>
+              {!selectedTeamId ? (
                 <div className="text-sm text-muted-foreground">{t("messages.pickMessage")}</div>
-              ) : loadingMessage ? (
+              ) : loadingMessage && selectedDeliveryId ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" />
                   {t("messages.loading")}
                 </div>
-              ) : selectedMessage ? (
-                <div className="flex flex-col gap-3">
-                  <div className="rounded-xl border border-border p-3">
-                    <div className="text-lg font-semibold">{selectedMessage.subject}</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant={badgeTone(selectedMessage.priority)}>{t(`priority.${selectedMessage.priority}`)}</Badge>
-                      <Badge variant="outline">{t(`messageType.${selectedMessage.message_type}`)}</Badge>
-                    </div>
-                    <div className="mt-3 text-xs text-muted-foreground">{t("messages.sentAt", { value: formatTime(selectedMessage.sent_at) })}</div>
-                    <div className="mt-3 whitespace-pre-wrap text-sm leading-6">{selectedMessage.body}</div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-border p-3 text-sm">
-                      <div className="text-xs text-muted-foreground">{t("messages.sender")}</div>
-                      <div className="mt-1">{availableAgents.find((agent) => agent.id === selectedMessage.sender_agent_id)?.name || selectedMessage.sender_agent_id}</div>
-                    </div>
-                    <div className="rounded-xl border border-border p-3 text-sm">
-                      <div className="text-xs text-muted-foreground">{t("messages.recipientCount")}</div>
-                      <div className="mt-1">{selectedMessage.recipient_count}</div>
-                    </div>
-                    <div className="rounded-xl border border-border p-3 text-sm">
-                      <div className="text-xs text-muted-foreground">{t("messages.requiresAction")}</div>
-                      <div className="mt-1">{selectedMessage.requires_action ? t("messages.yes") : t("messages.no")}</div>
-                    </div>
-                    <div className="rounded-xl border border-border p-3 text-sm">
-                      <div className="text-xs text-muted-foreground">{t("messages.dueAt")}</div>
-                      <div className="mt-1">{formatTime(selectedMessage.due_at)}</div>
-                    </div>
+              ) : teamMessages.length === 0 ? (
+                <div className="text-sm text-muted-foreground">{t("messages.empty")}</div>
+              ) : (
+                <div className="min-h-0 flex-1 overflow-auto">
+                  <div className="flex flex-col gap-2">
+                    {teamMessages.map((item) => (
+                      <button
+                        key={item.delivery_id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDeliveryId(item.delivery_id);
+                          setMessageDetailOpen(true);
+                        }}
+                        className="rounded-xl border px-3 py-3 text-left transition-colors border-border hover:bg-muted/50"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium">{item.subject}</div>
+                            <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.preview}</div>
+                          </div>
+                          <Badge variant={badgeTone(item.inbox_status)}>{t(`inboxStatus.${item.inbox_status}`)}</Badge>
+                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground">{formatTime(item.sent_at)}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">{t("messages.empty")}</div>
               )}
             </section>
           </div>
         )}
       </main>
+
+      <Dialog
+        open={messageDetailOpen}
+        onOpenChange={(next) => {
+          setMessageDetailOpen(next);
+          if (!next) {
+            setSelectedDeliveryId("");
+            setSelectedMessage(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("messages.detailTitle")}</DialogTitle>
+          </DialogHeader>
+          {loadingMessage ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t("messages.loading")}
+            </div>
+          ) : selectedMessage ? (
+            <div className="flex flex-col gap-3">
+              <div className="rounded-xl border border-border p-3">
+                <div className="text-lg font-semibold">{selectedMessage.subject}</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant={badgeTone(selectedMessage.priority)}>{t(`priority.${selectedMessage.priority}`)}</Badge>
+                  <Badge variant="outline">{t(`messageType.${selectedMessage.message_type}`)}</Badge>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">{t("messages.sentAt", { value: formatTime(selectedMessage.sent_at) })}</div>
+                <div className="mt-3 whitespace-pre-wrap text-sm leading-6">{selectedMessage.body}</div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-border p-3 text-sm">
+                  <div className="text-xs text-muted-foreground">{t("messages.sender")}</div>
+                  <div className="mt-1">{availableAgents.find((agent) => agent.id === selectedMessage.sender_agent_id)?.name || selectedMessage.sender_agent_id}</div>
+                </div>
+                <div className="rounded-xl border border-border p-3 text-sm">
+                  <div className="text-xs text-muted-foreground">{t("messages.recipientCount")}</div>
+                  <div className="mt-1">{selectedMessage.recipient_count}</div>
+                </div>
+                <div className="rounded-xl border border-border p-3 text-sm">
+                  <div className="text-xs text-muted-foreground">{t("messages.requiresAction")}</div>
+                  <div className="mt-1">{selectedMessage.requires_action ? t("messages.yes") : t("messages.no")}</div>
+                </div>
+                <div className="rounded-xl border border-border p-3 text-sm">
+                  <div className="text-xs text-muted-foreground">{t("messages.dueAt")}</div>
+                  <div className="mt-1">{formatTime(selectedMessage.due_at)}</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">{t("messages.empty")}</div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <CreateTeamDialog
         open={dialogOpen}
