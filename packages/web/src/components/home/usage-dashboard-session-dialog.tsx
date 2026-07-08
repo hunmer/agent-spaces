@@ -117,6 +117,16 @@ export function UsageDashboardSessionDialog({
                   </pre>
                 </div>
               ) : null}
+              {detail?.fullPrompt ? (
+                <div className="mb-3 rounded-md border bg-muted/30 p-3">
+                  <div className="mb-2 text-[11px] font-medium text-muted-foreground">
+                    Full Prompt
+                  </div>
+                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-foreground">
+                    {detail.fullPrompt}
+                  </pre>
+                </div>
+              ) : null}
               {loading ? (
                 <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
                   <Loader2 className="mr-2 size-4 animate-spin" />

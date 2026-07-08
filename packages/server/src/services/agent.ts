@@ -1301,12 +1301,17 @@ export function getSessionDetail(agentSessionId: string): AgentUsageSessionDetai
     messages,
     rawSession,
   });
+  const fullPrompt = resolveSessionFullPrompt({
+    messages,
+    rawSession,
+  });
 
   return {
     session,
     usage,
     messages,
     systemPrompt,
+    fullPrompt,
     source,
     cliHistoryPath: rawSession ? cliHistoryPath : undefined,
     rawSession,
@@ -1323,6 +1328,7 @@ export function persistSessionCliHistory(agentSessionId: string): void {
     usage: detail.usage,
     messages: detail.messages,
     systemPrompt: detail.systemPrompt,
+    fullPrompt: detail.fullPrompt,
     generatedAt: new Date().toISOString(),
   });
 }
@@ -1389,6 +1395,24 @@ function resolveSessionSystemPrompt(input: {
 
   const agentSessionId = input.session?.id ?? input.usage?.agentSessionId;
   return agentSessionId ? findWorkflowExecutionSystemPrompt(agentSessionId) : undefined;
+}
+
+function resolveSessionFullPrompt(input: {
+  messages: AgentUsageSessionMessage[];
+  rawSession: unknown;
+}): string | undefined {
+  const rawRecord = input.rawSession && typeof input.rawSession === 'object' && !Array.isArray(input.rawSession)
+    ? input.rawSession as Record<string, unknown>
+    : null;
+  const rawPrompt = typeof rawRecord?.fullPrompt === 'string' ? rawRecord.fullPrompt.trim() : '';
+  if (rawPrompt) return rawPrompt;
+
+  for (const message of input.messages) {
+    const prompt = message.contextPart?.agentContext?.fullPrompt?.trim();
+    if (prompt) return prompt;
+  }
+
+  return undefined;
 }
 
 function findWorkflowExecutionSystemPrompt(agentSessionId: string): string | undefined {

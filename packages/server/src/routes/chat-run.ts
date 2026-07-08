@@ -1,10 +1,11 @@
 import { Router, type Response } from 'express';
-import type { BuiltInAgentToolName, WorkflowAgentTimelineItem, WorkflowAgentToolCall, Workspace } from '@agent-spaces/shared';
+import type { BuiltInAgentToolName, Message, WorkflowAgentTimelineItem, WorkflowAgentToolCall, Workspace } from '@agent-spaces/shared';
 import * as chatService from '../services/chat.js';
 import * as agentService from '../services/agent.js';
 import { generateChatSessionTitle } from '../services/generated-title.js';
 import { LangChainRuntime } from '../adapters/langchain-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
+import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import {
   createCommandFunctionTools,
   createDatabaseFunctionTools,
@@ -110,30 +111,38 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
   try {
     const historyMessages = regenerateContext?.historyMessages
       ?? chatService.getRecentSessionMessages(workspaceId, sessionId, 20).slice(0, -1);
-    const historyPrompt = historyMessages
-      .filter(shouldIncludeHistoryMessage)
-      .map((message) => `${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`)
-      .join('\n\n');
-    const prompt = historyPrompt
-      ? `${historyPrompt}\n\nUser: ${trimmedContent}\nAssistant:`
-      : trimmedContent;
-
     const workingDir = chatService.getAgentWorkingDir(agentId) || process.cwd();
     const configDir = chatService.getAgentConfigDir(agentId) || undefined;
     const tools = normalizeToolNames(agent.tools);
+    const fileWorkspace = getSessionFileWorkspace(workspaceId, session) ?? chatService.getAgentWorkspace(agentId);
     const functionTools = [
       ...createCommandFunctionTools(workspaceId, tools),
       ...createDatabaseFunctionTools(workspaceId, tools),
-      ...createWorkspaceFileFunctionTools(workspaceId, tools, () => getSessionFileWorkspace(workspaceId, session) ?? chatService.getAgentWorkspace(agentId)),
-      ...createWorkflowExecutionFunctionTools(workspaceId, tools),
+      ...createWorkspaceFileFunctionTools(workspaceId, tools, () => fileWorkspace),
+      ...createWorkflowExecutionFunctionTools(workspaceId, tools, {
+        boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
+      }),
     ];
-    const result = await runtime.execute(prompt, workingDir, {
+    const runtimePrompt = buildChatRuntimePrompt({
+      workspaceId,
+      systemPrompt: agent.systemPrompt,
+      userPrompt: trimmedContent,
+      historyMessages,
+      runtimeKind: 'langchain',
+      mcpServers: Object.keys(agentService.getMcpServers(agent.mcps as Parameters<typeof agentService.getMcpServers>[0]) ?? {}),
+      skills: normalizeSkillNames(agent.skills),
+      boundDirs: fileWorkspace?.boundDirs,
+      workingDir,
+      builtInTools: functionTools.map((tool) => ({ name: tool.name, description: tool.description })),
+      boundWorkflowIds: agent.boundWorkflowIds,
+      boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
+    });
+    const result = await runtime.execute(runtimePrompt, workingDir, {
       maxTurns: 100,
       functionTools,
       mcpServers: agentService.getMcpServers(agent.mcps as Parameters<typeof agentService.getMcpServers>[0]),
       skills: normalizeSkillNames(agent.skills),
       configDir,
-      systemPrompt: agent.systemPrompt,
       outputStyle: agent.outputStyle,
       onEvent: (event: AgentRuntimeEvent) => {
         collectRuntimeTimeline(timeline, event);
@@ -158,7 +167,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       usage: result.usage,
       metadata: {
         systemPrompt: agent.systemPrompt,
-        fullPrompt: buildStoredFullPrompt(agent.systemPrompt, prompt),
+        fullPrompt: runtimePrompt,
       },
       ...createTimelinePayload(timeline),
     });
@@ -267,29 +276,36 @@ router.post('/agents/:id/run', async (req, res) => {
 
   try {
     const historyMessages = regenerateContext?.historyMessages ?? chatService.getRecentMessages(id, 20).slice(0, -1);
-    const historyPrompt = historyMessages
-      .filter(shouldIncludeHistoryMessage)
-      .map((message) => `${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`)
-      .join('\n\n');
-    const prompt = historyPrompt
-      ? `${historyPrompt}\n\nUser: ${trimmedContent}\nAssistant:`
-      : trimmedContent;
-
     const workingDir = chatService.getAgentWorkingDir(id) || process.cwd();
     const configDir = chatService.getAgentConfigDir(id) || undefined;
     const tools = normalizeToolNames(agent.tools);
     const functionTools = [
       ...createCommandFunctionTools(id, tools),
       ...createDatabaseFunctionTools(id, tools),
-      ...createWorkflowExecutionFunctionTools(id, tools),
+      ...createWorkflowExecutionFunctionTools(id, tools, {
+        boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
+      }),
     ];
-    const result = await runtime.execute(prompt, workingDir, {
+    const runtimePrompt = buildChatRuntimePrompt({
+      workspaceId: id,
+      systemPrompt: agent.systemPrompt,
+      userPrompt: trimmedContent,
+      historyMessages,
+      runtimeKind: 'langchain',
+      mcpServers: Object.keys(agentService.getMcpServers(agent.mcps as Parameters<typeof agentService.getMcpServers>[0]) ?? {}),
+      skills: normalizeSkillNames(agent.skills),
+      boundDirs: chatService.getAgentWorkspace(id)?.boundDirs,
+      workingDir,
+      builtInTools: functionTools.map((tool) => ({ name: tool.name, description: tool.description })),
+      boundWorkflowIds: agent.boundWorkflowIds,
+      boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
+    });
+    const result = await runtime.execute(runtimePrompt, workingDir, {
       maxTurns: 100,
       functionTools,
       mcpServers: agentService.getMcpServers(agent.mcps as Parameters<typeof agentService.getMcpServers>[0]),
       skills: normalizeSkillNames(agent.skills),
       configDir,
-      systemPrompt: agent.systemPrompt,
       outputStyle: agent.outputStyle,
       onEvent: (event: AgentRuntimeEvent) => {
         collectRuntimeTimeline(timeline, event);
@@ -468,6 +484,40 @@ export function buildStoredFullPrompt(systemPrompt: string | undefined, prompt: 
   return trimmedSystemPrompt ? `${trimmedSystemPrompt}\n\n${prompt}` : prompt;
 }
 
+interface ChatRuntimePromptOptions {
+  workspaceId: string;
+  systemPrompt?: string;
+  userPrompt: string;
+  historyMessages: Array<{ role: 'user' | 'agent'; content: string }>;
+  runtimeKind: 'langchain';
+  mcpServers: string[];
+  skills: string[];
+  boundDirs?: string[];
+  workingDir: string;
+  builtInTools: Array<{ name: string; description: string }>;
+  boundWorkflowIds?: string[];
+  boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
+}
+
+export function buildChatRuntimePrompt(options: ChatRuntimePromptOptions): string {
+  return buildAgentPrompt(
+    options.workspaceId,
+    options.systemPrompt,
+    options.userPrompt,
+    toPromptHistoryMessages(options.historyMessages),
+    {
+      runtimeKind: options.runtimeKind,
+      mcpServers: options.mcpServers,
+      skills: options.skills,
+      boundDirs: options.boundDirs,
+      workingDir: options.workingDir,
+      builtInTools: options.builtInTools,
+      boundWorkflowIds: options.boundWorkflowIds,
+      boundWorkflowPluginTools: options.boundWorkflowPluginTools,
+    },
+  );
+}
+
 function requiresBaseURL(provider?: string): boolean {
   return provider === 'openai-chat-completions'
     || provider === 'openai-responses'
@@ -490,6 +540,22 @@ function normalizeSkillNames(skills: unknown): string[] {
 function normalizeToolNames(tools: unknown): BuiltInAgentToolName[] | undefined {
   if (!Array.isArray(tools)) return undefined;
   return tools.filter((tool): tool is BuiltInAgentToolName => typeof tool === 'string');
+}
+
+function toPromptHistoryMessages(historyMessages: Array<{ role: 'user' | 'agent'; content: string }>): Message[] {
+  return historyMessages
+    .filter(shouldIncludeHistoryMessage)
+    .map((message, index) => ({
+      id: `chat-history-${index}`,
+      channelId: 'chat',
+      senderId: message.role === 'user' ? 'user' : 'agent',
+      senderRole: message.role === 'user' ? 'user' : 'assistant',
+      content: message.content,
+      type: 'text',
+      status: 'completed',
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    }));
 }
 
 export default router;

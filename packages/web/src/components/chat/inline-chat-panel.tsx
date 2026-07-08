@@ -126,7 +126,13 @@ export function InlineChatPanel({
     buildInlineSessionRecord(message, sessionId, workspaceId, agentId)
   ), [agentId, sessionId, workspaceId]);
   const sessionDetailForMessage = useCallback((message: ChatMessage) => (
-    buildInlineSessionDetail(sessionId, agentId, messages, (message as InlineChatMessage).metadata?.systemPrompt ?? agentSystemPrompt)
+    buildInlineSessionDetail(
+      sessionId,
+      agentId,
+      messages,
+      (message as InlineChatMessage).metadata?.systemPrompt ?? agentSystemPrompt,
+      (message as InlineChatMessage).metadata?.fullPrompt,
+    )
   ), [agentId, agentSystemPrompt, messages, sessionId]);
 
   useEffect(() => {
@@ -394,12 +400,14 @@ function buildInlineSessionDetail(
   agentId: string,
   messages: ChatMessage[],
   systemPrompt?: string,
+  fullPrompt?: string,
 ): AgentUsageSessionDetail {
   return {
     session: null,
     usage: null,
     source: "none",
     systemPrompt,
+    fullPrompt,
     messages: messages.map((message) => ({
       id: message.id,
       role: message.role,
@@ -408,7 +416,7 @@ function buildInlineSessionDetail(
       senderId: message.role === "agent" ? agentId : "user",
       timeline: message.timeline,
     })),
-    rawSession: { id: sessionId, agentId, systemPrompt, messages },
+    rawSession: { id: sessionId, agentId, systemPrompt, fullPrompt, messages },
   };
 }
 

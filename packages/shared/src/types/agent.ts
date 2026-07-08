@@ -156,6 +156,7 @@ export interface AgentUsageSessionDetail {
   usage: AgentUsageRecord | null;
   messages: AgentUsageSessionMessage[];
   systemPrompt?: string;
+  fullPrompt?: string;
   source: 'channel' | 'cli_history' | 'none';
   cliHistoryPath?: string;
   rawSession?: unknown;
