@@ -242,7 +242,7 @@ function normalizeAgentData(data: Partial<ChatAgent> & Record<string, unknown>):
     boundWorkflowPluginTools: normalizeBoundWorkflowPluginTools(data.boundWorkflowPluginTools),
     outputStyle: stringValue(data.outputStyle) || undefined,
     suggestions: normalizeStringList(data.suggestions),
-    openingMessage: stringValue(data.openingMessage) || undefined,
+    openingMessage: stringValue(data.openingMessage),
     temperature: typeof data.temperature === 'number' ? data.temperature : 0.3,
     maxTokens: typeof data.maxTokens === 'number' ? data.maxTokens : 4096,
     backgroundUrl: stringValue(data.backgroundUrl) || undefined,

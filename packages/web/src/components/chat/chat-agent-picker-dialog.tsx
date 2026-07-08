@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import { Switch } from "@/components/ui/switch";
-import { Bot, Download, FileText, Store, Plus, WandSparkles, Trash2, Pencil, Star } from "lucide-react";
+import { Bot, Download, FileText, Store, Plus, WandSparkles, Trash2, Pencil, Star, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { fetchStoreIndex } from "@/lib/agent-store";
 import { sdk } from "@/lib/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
@@ -282,7 +283,7 @@ export function ChatAgentPickerDialog({
             <p className="text-sm">{t("dialog.noAgentsAvailable")}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 p-2">
             {filteredAgents.map((agent) => {
               const added = addedIds.has(agent.id);
               return (

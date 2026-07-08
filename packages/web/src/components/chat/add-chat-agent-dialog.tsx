@@ -69,7 +69,7 @@ function presetToChatAgentData(preset: AgentPreset): Omit<ChatAgent, "id" | "cre
     boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
     outputStyle: preset.outputStyle || undefined,
     suggestions: preset.suggestions,
-    openingMessage: preset.openingMessage || undefined,
+    openingMessage: preset.openingMessage ?? "",
     temperature: preset.temperature,
     maxTokens: preset.maxTokens,
     backgroundUrl: preset.backgroundUrl || undefined,
