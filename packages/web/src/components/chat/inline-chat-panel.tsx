@@ -3,8 +3,8 @@
 
 import { Button } from "@/components/ui/button";
 import { AgentIcon } from "@/components/common/agent-icon";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Eraser, MessageSquare, PanelRightOpen } from "lucide-react";
+import { EmptyDescription, EmptyTitle } from "@/components/ui/empty";
+import { Eraser, MessageCircle, Sparkles, PanelRightOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import type { AgentUsageRecord, AgentUsageSessionDetail, Attachment as MessageAttachment, BuiltInAgentToolName } from "@agent-spaces/shared";
@@ -229,45 +229,35 @@ export function InlineChatPanel({
             const openingMessage = storedAgent?.openingMessage?.trim();
             const suggestions = (storedAgent?.suggestions ?? []).filter((s) => s.trim());
             return (
-              <>
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 py-6 text-center">
+                <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-16" bordered />
                 {openingMessage ? (
-                  <div className="flex gap-3">
-                    <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-7" bordered />
-                    <div className="max-w-[78%] whitespace-pre-wrap break-words rounded-2xl rounded-tl-none border bg-muted/50 px-4 py-3 text-sm">
-                      {openingMessage}
-                    </div>
+                  <div className="flex w-full max-w-md items-start gap-2 rounded-xl border border-border bg-background px-4 py-3 text-left">
+                    <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <div className="whitespace-pre-wrap break-words text-sm text-foreground">{openingMessage}</div>
                   </div>
                 ) : (
-                  <Empty className="border-0">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <MessageSquare />
-                      </EmptyMedia>
-                      <EmptyTitle>{t('startConversation')}</EmptyTitle>
-                      <EmptyDescription>{t('startConversationDesc')}</EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                )}
-                {suggestions.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    {openingMessage && (
-                      <div className="px-1 text-xs font-medium text-muted-foreground">{t('suggestions')}</div>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {suggestions.map((suggestion, index) => (
-                        <button
-                          key={`${suggestion}-${index}`}
-                          type="button"
-                          onClick={() => composerRef.current?.insertText(suggestion)}
-                          className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-accent hover:border-foreground/30 cursor-pointer"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <EmptyTitle className="text-base font-semibold">{t('startConversation')}</EmptyTitle>
+                    <EmptyDescription>{t('startConversationDesc')}</EmptyDescription>
                   </div>
                 )}
-              </>
+                {suggestions.length > 0 && (
+                  <div className="flex w-full max-w-md flex-col items-stretch gap-2">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={`${suggestion}-${index}`}
+                        type="button"
+                        onClick={() => composerRef.current?.insertText(suggestion)}
+                        className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left text-xs text-foreground transition-colors hover:bg-accent hover:border-foreground/30 cursor-pointer"
+                      >
+                        <MessageCircle className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span>{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })()}
           {messageItems.map((item) => {

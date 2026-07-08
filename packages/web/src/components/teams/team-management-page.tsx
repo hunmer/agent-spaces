@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import type { Team, TeamInboxItem, TeamMembership, TeamMessage, Workspace } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { Loader2, MessagesSquare, Pencil, Plus, Trash2, Users } from "lucide-react";
@@ -177,13 +177,19 @@ function TeamFormDialog({
   );
 }
 
-export function TeamManagementPage({
-  initialWorkspaces,
-  embedded = false,
-}: {
+export type TeamManagementPageHandle = {
+  openCreateDialog: () => void;
+};
+
+export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   initialWorkspaces: Workspace[];
   embedded?: boolean;
-}) {
+  onCanCreateChange?: (canCreate: boolean) => void;
+}>(function TeamManagementPage({
+  initialWorkspaces,
+  embedded = false,
+  onCanCreateChange,
+}, ref) {
   const t = useTranslations("teams");
   const tc = useTranslations("common");
   const ensureAgents = useAgentStore((store) => store.ensure);
@@ -213,6 +219,15 @@ export function TeamManagementPage({
     [agents],
   );
   const selectedTeam = teams.find((team) => team.team_id === selectedTeamId) ?? null;
+  const canCreateTeam = Boolean(selectedWorkspaceId && selectedActorId);
+
+  useEffect(() => {
+    onCanCreateChange?.(canCreateTeam);
+  }, [canCreateTeam, onCanCreateChange]);
+
+  useImperativeHandle(ref, () => ({
+    openCreateDialog,
+  }), []);
 
   useEffect(() => {
     void ensureAgents();
@@ -407,10 +422,12 @@ export function TeamManagementPage({
               {embedded ? null : <h1 className="text-2xl font-semibold">{t("title")}</h1>}
               <p className="text-sm text-muted-foreground">{t("description")}</p>
             </div>
-            <Button onClick={openCreateDialog} disabled={!selectedWorkspaceId || !selectedActorId}>
-              <Plus className="size-4" />
-              {t("newTeam")}
-            </Button>
+            {embedded ? null : (
+              <Button onClick={openCreateDialog} disabled={!canCreateTeam}>
+                <Plus className="size-4" />
+                {t("newTeam")}
+              </Button>
+            )}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <Select value={selectedWorkspaceId} onValueChange={(next) => setSelectedWorkspaceId(next ?? "")}>
@@ -642,4 +659,4 @@ export function TeamManagementPage({
       />
     </div>
   );
-}
+});
