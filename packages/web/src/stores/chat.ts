@@ -29,6 +29,69 @@ export type ChatTab =
 const activeChatRequests = new Map<string, AbortController>();
 type ChatSet = StoreApi<ChatStore>['setState'];
 
+const CHAT_BROWSER_WORKSPACE_ID_KEY = 'agent-spaces:chat-browser-workspace-id';
+const CHAT_BROWSER_WORKSPACE_NAME_KEY = 'agent-spaces:chat-browser-workspace-name';
+const CHAT_BROWSER_WORKSPACE_CREATE_LOCK_KEY = 'agent-spaces:chat-browser-workspace-create-lock';
+const CHAT_BROWSER_WORKSPACE_CREATE_LOCK_MS = 5000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function findWorkspaceByBrowserBinding(workspaces: ChatWorkspace[], id: string | null, name: string) {
+  if (id) {
+    const byId = workspaces.find((workspace) => workspace.id === id);
+    if (byId) return byId;
+  }
+  return workspaces.find((workspace) => workspace.name === name);
+}
+
+function getBrowserWorkspaceId(): string | null {
+  try {
+    return localStorage.getItem(CHAT_BROWSER_WORKSPACE_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setBrowserWorkspaceId(id: string | null) {
+  try {
+    if (id) localStorage.setItem(CHAT_BROWSER_WORKSPACE_ID_KEY, id);
+    else localStorage.removeItem(CHAT_BROWSER_WORKSPACE_ID_KEY);
+  } catch { /* ignore */ }
+}
+
+function getBrowserWorkspaceName(): string {
+  try {
+    const saved = localStorage.getItem(CHAT_BROWSER_WORKSPACE_NAME_KEY);
+    if (saved) return saved;
+    const name = `Browser ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    localStorage.setItem(CHAT_BROWSER_WORKSPACE_NAME_KEY, name);
+    return name;
+  } catch {
+    return 'Browser Workspace';
+  }
+}
+
+function tryAcquireBrowserWorkspaceCreateLock(): boolean {
+  try {
+    const now = Date.now();
+    const raw = localStorage.getItem(CHAT_BROWSER_WORKSPACE_CREATE_LOCK_KEY);
+    const expiresAt = raw ? Number(raw) : 0;
+    if (Number.isFinite(expiresAt) && expiresAt > now) return false;
+    localStorage.setItem(CHAT_BROWSER_WORKSPACE_CREATE_LOCK_KEY, String(now + CHAT_BROWSER_WORKSPACE_CREATE_LOCK_MS));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function releaseBrowserWorkspaceCreateLock() {
+  try {
+    localStorage.removeItem(CHAT_BROWSER_WORKSPACE_CREATE_LOCK_KEY);
+  } catch { /* ignore */ }
+}
+
 let stateSaveTimer: ReturnType<typeof setTimeout> | null = null;
 function debouncedSaveState() {
   if (stateSaveTimer) clearTimeout(stateSaveTimer);
@@ -226,10 +289,59 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   // --- Workspace ---
   loadWorkspaces: async () => {
     try {
-      const workspaces = await sdk.chat.listWorkspaces();
+      let workspaces = await sdk.chat.listWorkspaces();
       set({ workspaces });
-      if (workspaces.length > 0 && !get().activeWorkspaceId) {
-        get().selectWorkspace(workspaces[0].id);
+      if (get().activeWorkspaceId) return;
+      const savedWorkspaceId = getBrowserWorkspaceId();
+      const browserWorkspaceName = getBrowserWorkspaceName();
+      const savedWorkspace = findWorkspaceByBrowserBinding(workspaces, savedWorkspaceId, browserWorkspaceName);
+      if (savedWorkspace) {
+        setBrowserWorkspaceId(savedWorkspace.id);
+        get().selectWorkspace(savedWorkspace.id);
+        return;
+      }
+
+      const existingWorkspace = workspaces.find((workspace) => workspace.name === browserWorkspaceName);
+      if (existingWorkspace) {
+        setBrowserWorkspaceId(existingWorkspace.id);
+        get().selectWorkspace(existingWorkspace.id);
+        return;
+      }
+
+      let hasCreateLock = tryAcquireBrowserWorkspaceCreateLock();
+      for (let i = 0; !hasCreateLock && i < 10; i += 1) {
+        await sleep(200);
+        workspaces = await sdk.chat.listWorkspaces();
+        set({ workspaces });
+        const dedupedWorkspace = workspaces.find((workspace) => workspace.name === browserWorkspaceName);
+        if (dedupedWorkspace) {
+          setBrowserWorkspaceId(dedupedWorkspace.id);
+          get().selectWorkspace(dedupedWorkspace.id);
+          return;
+        }
+        hasCreateLock = tryAcquireBrowserWorkspaceCreateLock();
+      }
+
+      if (!hasCreateLock) {
+        return;
+      }
+
+      try {
+        workspaces = await sdk.chat.listWorkspaces();
+        set({ workspaces });
+        const dedupedWorkspace = workspaces.find((workspace) => workspace.name === browserWorkspaceName);
+        if (dedupedWorkspace) {
+          setBrowserWorkspaceId(dedupedWorkspace.id);
+          get().selectWorkspace(dedupedWorkspace.id);
+          return;
+        }
+
+        const workspace = await sdk.chat.createWorkspace({ name: browserWorkspaceName });
+        set((s) => ({ workspaces: [...s.workspaces, workspace] }));
+        setBrowserWorkspaceId(workspace.id);
+        get().selectWorkspace(workspace.id);
+      } finally {
+        releaseBrowserWorkspaceCreateLock();
       }
     } catch { /* ignore */ }
   },
@@ -248,6 +360,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   deleteWorkspace: async (id) => {
     await sdk.chat.deleteWorkspace(id);
+    const browserWorkspaceId = getBrowserWorkspaceId();
     set((s) => {
       const workspaces = s.workspaces.filter(ws => ws.id !== id);
       const activeWorkspaceId = s.activeWorkspaceId === id
@@ -255,9 +368,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         : s.activeWorkspaceId;
       return { workspaces, activeWorkspaceId, sessions: [], activeSessionId: null };
     });
+    if (browserWorkspaceId === id) {
+      setBrowserWorkspaceId(get().activeWorkspaceId);
+    }
   },
 
   selectWorkspace: (id) => {
+    setBrowserWorkspaceId(id);
     set({ activeWorkspaceId: id, sessions: [], activeSessionId: null, sessionFileTabs: {}, activeFileTabPath: null, openSessionTabIds: [] });
     get().loadSessions(id);
     get().loadWorkspaceState(id);

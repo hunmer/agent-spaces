@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { sdk } from "@/lib/sdk";
 import type { ChatFileTab } from "@/stores/chat";
 
+const CHAT_BROWSER_WORKSPACE_ID_KEY = "agent-spaces:chat-browser-workspace-id";
+
 interface ChatSessionListProps {
   workspaces: ChatWorkspace[];
   activeWorkspaceId: string | null;
@@ -184,6 +186,13 @@ export function ChatAgentList({
     setCtxMenu(null);
   }, []);
 
+  const handleWorkspaceChange = useCallback((workspaceId: string) => {
+    try {
+      localStorage.setItem(CHAT_BROWSER_WORKSPACE_ID_KEY, workspaceId);
+    } catch { /* ignore */ }
+    onWorkspaceChange(workspaceId);
+  }, [onWorkspaceChange]);
+
   return (
     <aside
       aria-label="Chat Session List"
@@ -209,7 +218,7 @@ export function ChatAgentList({
           <Workspaces
             workspaces={workspaces}
             selectedWorkspaceId={activeWorkspaceId ?? undefined}
-            onWorkspaceChange={(ws) => onWorkspaceChange(ws.id)}
+            onWorkspaceChange={(ws) => handleWorkspaceChange(ws.id)}
             getWorkspaceId={(ws) => ws.id}
             getWorkspaceName={(ws) => ws.name}
           >
