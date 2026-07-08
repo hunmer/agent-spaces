@@ -126,7 +126,7 @@ export function InlineChatPanel({
     buildInlineSessionRecord(message, sessionId, workspaceId, agentId)
   ), [agentId, sessionId, workspaceId]);
   const sessionDetailForMessage = useCallback((message: ChatMessage) => (
-    buildInlineSessionDetail(sessionId, agentId, messages, (message as InlineChatMessage).metadata?.fullPrompt ?? agentSystemPrompt)
+    buildInlineSessionDetail(sessionId, agentId, messages, (message as InlineChatMessage).metadata?.systemPrompt ?? agentSystemPrompt)
   ), [agentId, agentSystemPrompt, messages, sessionId]);
 
   useEffect(() => {

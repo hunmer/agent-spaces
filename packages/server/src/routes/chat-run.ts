@@ -158,7 +158,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       usage: result.usage,
       metadata: {
         systemPrompt: agent.systemPrompt,
-        fullPrompt: prompt,
+        fullPrompt: buildStoredFullPrompt(agent.systemPrompt, prompt),
       },
       ...createTimelinePayload(timeline),
     });
@@ -461,6 +461,11 @@ function resolveRegenerateContext(
 
 function resolveChatAgentBaseURL(agent: { baseURL?: string; apiBase?: string }): string | undefined {
   return agent.baseURL?.trim() || agent.apiBase?.trim() || undefined;
+}
+
+export function buildStoredFullPrompt(systemPrompt: string | undefined, prompt: string): string {
+  const trimmedSystemPrompt = systemPrompt?.trim();
+  return trimmedSystemPrompt ? `${trimmedSystemPrompt}\n\n${prompt}` : prompt;
 }
 
 function requiresBaseURL(provider?: string): boolean {
