@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { existsSync } from 'node:fs';
 import { exec } from 'node:child_process';
+import type { ChatMessage } from '../storage/chat-store.js';
 import * as svc from '../services/chat.js';
 import * as fileService from '../services/file.js';
 import * as chatStore from '../storage/chat-store.js';
@@ -241,6 +242,43 @@ router.get('/sessions/:sessionId/messages', (req, res) => {
   }
 });
 
+router.post('/sessions/:sessionId/messages', (req, res) => {
+  const { sessionId } = req.params;
+  const wsId = req.query.workspaceId as string;
+  const { role, content, thinking, usage, toolCalls, timeline, metadata } = req.body as Partial<ChatMessage>;
+  if (!wsId) {
+    res.status(400).json({ error: 'workspaceId query param is required' });
+    return;
+  }
+  if (role !== 'user' && role !== 'agent') {
+    res.status(400).json({ error: 'role is required' });
+    return;
+  }
+  if (typeof content !== 'string') {
+    res.status(400).json({ error: 'content is required' });
+    return;
+  }
+  try {
+    const session = svc.findSession(wsId, sessionId);
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+    res.status(201).json(svc.saveSessionMessage(wsId, sessionId, {
+      agentId: session.agentId,
+      role,
+      content,
+      thinking,
+      usage,
+      toolCalls,
+      timeline,
+      metadata,
+    }));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/sessions/:sessionId/messages', (req, res) => {
   const { sessionId } = req.params;
   const wsId = req.query.workspaceId as string;
@@ -358,6 +396,42 @@ router.get('/agents/:id/messages', (req, res) => {
 });
 
 // DELETE /api/chat/agents/:id/messages — clear messages
+router.post('/agents/:id/messages', (req, res) => {
+  const { id } = req.params;
+  const { role, content, thinking, usage, toolCalls, timeline, metadata } = req.body as Partial<ChatMessage>;
+  if (!id) {
+    res.status(400).json({ error: 'id is required' });
+    return;
+  }
+  if (role !== 'user' && role !== 'agent') {
+    res.status(400).json({ error: 'role is required' });
+    return;
+  }
+  if (typeof content !== 'string') {
+    res.status(400).json({ error: 'content is required' });
+    return;
+  }
+  try {
+    const agent = svc.findAgent(id);
+    if (!agent) {
+      res.status(404).json({ error: 'Agent not found' });
+      return;
+    }
+    res.status(201).json(svc.saveMessage({
+      agentId: id,
+      role,
+      content,
+      thinking,
+      usage,
+      toolCalls,
+      timeline,
+      metadata,
+    }));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/agents/:id/messages', (req, res) => {
   const { id } = req.params;
   if (!id) {

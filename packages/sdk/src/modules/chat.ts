@@ -95,6 +95,12 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
       return http.get(`/api/chat/agents/${agentId}/messages${qs}`);
     },
 
+    saveMessage: (
+      agentId: string,
+      data: Omit<ChatMessage, 'id' | 'timestamp' | 'agentId'>,
+    ): Promise<ChatMessage> =>
+      http.post(`/api/chat/agents/${agentId}/messages`, data),
+
     clearMessages: (agentId: string): Promise<void> =>
       http.delete(`/api/chat/agents/${agentId}/messages`),
 
@@ -153,6 +159,13 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
     // Session Messages
     listSessionMessages: (workspaceId: string, sessionId: string): Promise<ChatMessage[]> =>
       http.get(`/api/chat/sessions/${sessionId}/messages?workspaceId=${encodeURIComponent(workspaceId)}`),
+
+    saveSessionMessage: (
+      workspaceId: string,
+      sessionId: string,
+      data: Omit<ChatMessage, 'id' | 'timestamp' | 'agentId'>,
+    ): Promise<ChatMessage> =>
+      http.post(`/api/chat/sessions/${sessionId}/messages?workspaceId=${encodeURIComponent(workspaceId)}`, data),
 
     clearSessionMessages: (workspaceId: string, sessionId: string): Promise<void> =>
       http.delete(`/api/chat/sessions/${sessionId}/messages?workspaceId=${encodeURIComponent(workspaceId)}`),

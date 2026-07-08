@@ -29,8 +29,10 @@ export interface ChatAgent {
   boundWorkflowIds?: string[];
   boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
   outputStyle?: string;
+  suggestions?: string[];
   temperature?: number;
   maxTokens?: number;
+  backgroundUrl?: string;
   enabled?: boolean;
   createdAt: string;
   updatedAt: string;

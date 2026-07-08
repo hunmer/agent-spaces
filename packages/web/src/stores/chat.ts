@@ -61,7 +61,7 @@ interface ChatStore {
   loadMessages: (agentId: string) => Promise<void>;
   sendMessage: (agentId: string, content: string) => void;
   regenerateMessage: (agentId: string, messageId: string) => void;
-  stopAgent: (agentId: string) => void;
+  stopAgent: (agentId: string) => Promise<void>;
   clearMessages: (agentId: string) => void;
 
   // WS event handlers
@@ -95,7 +95,7 @@ interface ChatStore {
   loadSessionMessages: (workspaceId: string, sessionId: string) => Promise<void>;
   sendSessionMessage: (content: string) => void;
   regenerateSessionMessage: (messageId: string) => void;
-  stopSession: () => void;
+  stopSession: () => Promise<void>;
   clearSessionMessages: () => void;
   clearAllSessionMessages: () => Promise<void>;
 
@@ -203,11 +203,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     await runChatAgent(agentId, { regenerateFromMessageId: messageId }, get, set);
   },
 
-  stopAgent: (agentId) => {
+  stopAgent: async (agentId) => {
+    await persistAbortedStreamingMessage(get, set, { agentId });
     activeChatRequests.get(agentId)?.abort();
     activeChatRequests.delete(agentId);
     set((s) => ({
-      messages: appendAbortedStreamingMessage(s.messages, agentId, s.streamingContent[agentId], s.streamingThinking[agentId], s.streamingTimeline[agentId]),
       sending: { ...s.sending, [agentId]: false },
       errors: { ...s.errors, [agentId]: '' },
       streamingContent: { ...s.streamingContent, [agentId]: '' },
@@ -368,13 +368,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     await runSessionChat(wsId, sessionId, session.agentId, { regenerateFromMessageId: messageId }, get, set);
   },
 
-  stopSession: () => {
+  stopSession: async () => {
     const { activeSessionId: sessionId } = get();
     if (!sessionId) return;
+    await persistAbortedStreamingMessage(get, set, { sessionId });
     activeChatRequests.get(sessionId)?.abort();
     activeChatRequests.delete(sessionId);
     set((s) => ({
-      messages: appendAbortedStreamingMessage(s.messages, sessionId, s.streamingContent[sessionId], s.streamingThinking[sessionId], s.streamingTimeline[sessionId]),
       sending: { ...s.sending, [sessionId]: false },
       errors: { ...s.errors, [sessionId]: '' },
       streamingContent: { ...s.streamingContent, [sessionId]: '' },
@@ -782,22 +782,21 @@ function withStreamingTimeline(message: ChatMessage, streamingTimeline?: Workflo
   return timeline.length ? { ...message, timeline } : message;
 }
 
-function appendAbortedStreamingMessage(
-  messages: Record<string, ChatMessage[]>,
+function createAbortedStreamingMessage(
   agentId: string,
   streamingContent?: string,
   streamingThinking?: string,
   streamingTimeline?: WorkflowAgentTimelineItem[],
-): Record<string, ChatMessage[]> {
+): ChatMessage | null {
   const content = streamingContent?.trim() ?? '';
   const thinking = streamingThinking?.trim() || undefined;
   const timeline = streamingTimeline?.filter((item) => item.type !== 'message') ?? [];
 
   if (!content && !thinking && timeline.length === 0) {
-    return messages;
+    return null;
   }
 
-  const message: ChatMessage = {
+  return {
     id: `aborted-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     agentId,
     role: 'agent',
@@ -806,11 +805,58 @@ function appendAbortedStreamingMessage(
     ...(thinking ? { thinking } : {}),
     ...(timeline.length ? { timeline } : {}),
   };
+}
 
-  return {
-    ...messages,
-    [agentId]: [...(messages[agentId] ?? []), message],
-  };
+async function persistAbortedStreamingMessage(
+  get: () => ChatStore,
+  set: ChatSet,
+  target: { agentId: string } | { sessionId: string },
+): Promise<void> {
+  const state = get();
+  const messageKey = 'agentId' in target ? target.agentId : target.sessionId;
+  const draft = createAbortedStreamingMessage(
+    messageKey,
+    state.streamingContent[messageKey],
+    state.streamingThinking[messageKey],
+    state.streamingTimeline[messageKey],
+  );
+  if (!draft) return;
+
+  try {
+    const saved = 'agentId' in target
+      ? await sdk.chat.saveMessage(target.agentId, {
+        role: draft.role,
+        content: draft.content,
+        thinking: draft.thinking,
+        usage: draft.usage,
+        toolCalls: draft.toolCalls,
+        timeline: draft.timeline,
+        metadata: draft.metadata,
+      })
+      : await sdk.chat.saveSessionMessage(state.activeWorkspaceId!, target.sessionId, {
+        role: draft.role,
+        content: draft.content,
+        thinking: draft.thinking,
+        usage: draft.usage,
+        toolCalls: draft.toolCalls,
+        timeline: draft.timeline,
+        metadata: draft.metadata,
+      });
+
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [messageKey]: [...(s.messages[messageKey] ?? []), saved],
+      },
+    }));
+  } catch {
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [messageKey]: [...(s.messages[messageKey] ?? []), draft],
+      },
+    }));
+  }
 }
 
 function appendStreamingToolUse(
