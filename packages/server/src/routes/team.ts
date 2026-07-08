@@ -23,8 +23,8 @@ function sendResult(res: Response, result: { success: boolean; code: string; mes
   res.status(status).json(result);
 }
 
-router.get('/', (req: Request<{ id: string }>, res: Response) => {
-  sendResult(res, handleTeamManage(req.params.id, {
+router.get('/', (req: Request, res: Response) => {
+  sendResult(res, handleTeamManage({
     action: 'list',
     actor_agent_id: req.query.actor_agent_id,
     scope: req.query.scope,
@@ -35,12 +35,12 @@ router.get('/', (req: Request<{ id: string }>, res: Response) => {
   }));
 });
 
-router.post('/', (req: Request<{ id: string }>, res: Response) => {
-  sendResult(res, handleTeamManage(req.params.id, { ...req.body, action: 'create' }));
+router.post('/', (req: Request, res: Response) => {
+  sendResult(res, handleTeamManage({ ...req.body, action: 'create' }));
 });
 
-router.get('/:teamId', (req: Request<{ id: string; teamId: string }>, res: Response) => {
-  sendResult(res, handleTeamManage(req.params.id, {
+router.get('/:teamId', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamManage({
     action: 'get',
     actor_agent_id: req.query.actor_agent_id,
     team_id: req.params.teamId,
@@ -48,34 +48,34 @@ router.get('/:teamId', (req: Request<{ id: string; teamId: string }>, res: Respo
   }));
 });
 
-router.patch('/:teamId', (req: Request<{ id: string; teamId: string }>, res: Response) => {
-  sendResult(res, handleTeamManage(req.params.id, {
+router.patch('/:teamId', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamManage({
     ...req.body,
     action: 'update',
     team_id: req.params.teamId,
   }));
 });
 
-router.post('/:teamId/join', (req: Request<{ id: string; teamId: string }>, res: Response) => {
-  sendResult(res, handleTeamMembershipManage(req.params.id, { ...req.body, action: 'join', team_id: req.params.teamId }));
+router.post('/:teamId/join', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'join', team_id: req.params.teamId }));
 });
 
-router.post('/:teamId/leave', (req: Request<{ id: string; teamId: string }>, res: Response) => {
-  sendResult(res, handleTeamMembershipManage(req.params.id, { ...req.body, action: 'leave', team_id: req.params.teamId }));
+router.post('/:teamId/leave', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'leave', team_id: req.params.teamId }));
 });
 
-router.post('/:teamId/dissolve', (req: Request<{ id: string; teamId: string }>, res: Response) => {
-  sendResult(res, handleTeamManage(req.params.id, { ...req.body, action: 'dissolve', team_id: req.params.teamId }));
+router.post('/:teamId/dissolve', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamManage({ ...req.body, action: 'dissolve', team_id: req.params.teamId }));
 });
 
-router.post('/:teamId/messages', (req: Request<{ id: string; teamId: string }>, res: Response) => {
-  sendResult(res, handleTeamMessageSend(req.params.id, { ...req.body, action: 'send', team_id: req.params.teamId }));
+router.post('/:teamId/messages', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMessageSend({ ...req.body, action: 'send', team_id: req.params.teamId }));
 });
 
 export const teamInboxRouter = Router({ mergeParams: true });
 
-teamInboxRouter.get('/', (req: Request<{ id: string }>, res: Response) => {
-  sendResult(res, handleTeamInboxQuery(req.params.id, {
+teamInboxRouter.get('/', (req: Request, res: Response) => {
+  sendResult(res, handleTeamInboxQuery({
     action: 'list',
     actor_agent_id: req.query.actor_agent_id,
     unread_only: req.query.unread_only === 'true',
@@ -92,16 +92,16 @@ teamInboxRouter.get('/', (req: Request<{ id: string }>, res: Response) => {
   }));
 });
 
-teamInboxRouter.get('/:deliveryId', (req: Request<{ id: string; deliveryId: string }>, res: Response) => {
-  sendResult(res, handleTeamInboxQuery(req.params.id, {
+teamInboxRouter.get('/:deliveryId', (req: Request<{ deliveryId: string }>, res: Response) => {
+  sendResult(res, handleTeamInboxQuery({
     action: 'get',
     actor_agent_id: req.query.actor_agent_id,
     delivery_id: req.params.deliveryId,
   }));
 });
 
-teamInboxRouter.patch('/:deliveryId', (req: Request<{ id: string; deliveryId: string }>, res: Response) => {
-  sendResult(res, handleTeamMessageUpdate(req.params.id, {
+teamInboxRouter.patch('/:deliveryId', (req: Request<{ deliveryId: string }>, res: Response) => {
+  sendResult(res, handleTeamMessageUpdate({
     ...req.body,
     action: 'update_status',
     delivery_id: req.params.deliveryId,
@@ -110,8 +110,8 @@ teamInboxRouter.patch('/:deliveryId', (req: Request<{ id: string; deliveryId: st
 
 export const teamMessageRouter = Router({ mergeParams: true });
 
-teamMessageRouter.get('/:messageId/comments', (req: Request<{ id: string; messageId: string }>, res: Response) => {
-  sendResult(res, handleTeamMessageComment(req.params.id, {
+teamMessageRouter.get('/:messageId/comments', (req: Request<{ messageId: string }>, res: Response) => {
+  sendResult(res, handleTeamMessageComment({
     action: 'list',
     actor_agent_id: req.query.actor_agent_id,
     message_id: req.params.messageId,
@@ -121,16 +121,16 @@ teamMessageRouter.get('/:messageId/comments', (req: Request<{ id: string; messag
   }));
 });
 
-teamMessageRouter.post('/:messageId/comments', (req: Request<{ id: string; messageId: string }>, res: Response) => {
-  sendResult(res, handleTeamMessageComment(req.params.id, {
+teamMessageRouter.post('/:messageId/comments', (req: Request<{ messageId: string }>, res: Response) => {
+  sendResult(res, handleTeamMessageComment({
     ...req.body,
     action: 'add',
     message_id: req.params.messageId,
   }));
 });
 
-teamMessageRouter.delete('/comments/:commentId', (req: Request<{ id: string; commentId: string }>, res: Response) => {
-  sendResult(res, handleTeamMessageComment(req.params.id, {
+teamMessageRouter.delete('/comments/:commentId', (req: Request<{ commentId: string }>, res: Response) => {
+  sendResult(res, handleTeamMessageComment({
     ...req.body,
     action: 'delete',
     comment_id: req.params.commentId,

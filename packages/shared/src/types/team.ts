@@ -12,7 +12,6 @@ export type TeamCommentContentFormat = 'plain_text' | 'markdown';
 
 export interface Team {
   id: string;
-  workspaceId: string;
   name: string;
   description: string;
   purpose?: string;
@@ -28,7 +27,6 @@ export interface Team {
 
 export interface TeamMembership {
   id: string;
-  workspaceId: string;
   teamId: string;
   agentId: string;
   role: TeamRole;
@@ -39,7 +37,6 @@ export interface TeamMembership {
 
 export interface TeamMessage {
   id: string;
-  workspaceId: string;
   teamId: string;
   senderAgentId: string;
   messageType: TeamMessageType;
@@ -60,7 +57,6 @@ export interface TeamMessage {
 
 export interface TeamInboxItem {
   id: string;
-  workspaceId: string;
   teamId: string;
   messageId: string;
   recipientAgentId: string;
@@ -86,7 +82,6 @@ export interface TeamInboxItem {
 
 export interface TeamMessageComment {
   id: string;
-  workspaceId: string;
   teamId: string;
   messageId: string;
   authorAgentId: string;

@@ -17,7 +17,6 @@ type TeamCommentContentFormat = 'plain_text' | 'markdown';
 
 interface Team {
   id: string;
-  workspaceId: string;
   name: string;
   description: string;
   purpose?: string;
@@ -33,7 +32,6 @@ interface Team {
 
 interface TeamMembership {
   id: string;
-  workspaceId: string;
   teamId: string;
   agentId: string;
   role: TeamRole;
@@ -44,7 +42,6 @@ interface TeamMembership {
 
 interface TeamMessage {
   id: string;
-  workspaceId: string;
   teamId: string;
   senderAgentId: string;
   messageType: TeamMessageType;
@@ -65,7 +62,6 @@ interface TeamMessage {
 
 interface TeamInboxItem {
   id: string;
-  workspaceId: string;
   teamId: string;
   messageId: string;
   recipientAgentId: string;
@@ -91,7 +87,6 @@ interface TeamInboxItem {
 
 interface TeamMessageComment {
   id: string;
-  workspaceId: string;
   teamId: string;
   messageId: string;
   authorAgentId: string;
@@ -121,88 +116,96 @@ function fail(message: string, code: string): TeamServiceResult<never> {
   return { success: false, code, message };
 }
 
-function teamDir(workspaceId: string): string {
-  return join(getDataDir(), 'workspaces', workspaceId, 'teams');
+function teamDir(): string {
+  return join(getDataDir(), 'team');
 }
 
-function teamIndexPath(workspaceId: string): string {
-  return join(teamDir(workspaceId), 'index.json');
+function teamIndexPath(): string {
+  return join(teamDir(), 'teams.json');
 }
 
-function teamFilePath(workspaceId: string, teamId: string): string {
-  return join(teamDir(workspaceId), `${teamId}.json`);
+function teamDataDir(teamId: string): string {
+  return join(teamDir(), teamId);
 }
 
-function teamMembershipsPath(workspaceId: string, teamId: string): string {
-  return join(teamDir(workspaceId), `${teamId}.memberships.json`);
+function teamFilePath(teamId: string): string {
+  return join(teamDataDir(teamId), 'info.json');
 }
 
-function teamMessagesPath(workspaceId: string, teamId: string): string {
-  return join(teamDir(workspaceId), `${teamId}.messages.json`);
+function teamMembershipsPath(teamId: string): string {
+  return join(teamDataDir(teamId), 'memberships.json');
 }
 
-function teamDeliveriesPath(workspaceId: string, teamId: string): string {
-  return join(teamDir(workspaceId), `${teamId}.deliveries.json`);
+function teamMessagesPath(teamId: string): string {
+  return join(teamDataDir(teamId), 'messages.json');
 }
 
-function teamCommentsPath(workspaceId: string, teamId: string): string {
-  return join(teamDir(workspaceId), `${teamId}.comments.json`);
+function teamDeliveriesPath(teamId: string): string {
+  return join(teamDataDir(teamId), 'deliveries.json');
 }
 
-function listTeamIds(workspaceId: string): string[] {
-  return readJsonFile<string[]>(teamIndexPath(workspaceId)) ?? [];
+function teamCommentsPath(teamId: string): string {
+  return join(teamDataDir(teamId), 'comments.json');
 }
 
-function saveTeamIds(workspaceId: string, ids: string[]): void {
-  writeJsonFile(teamIndexPath(workspaceId), Array.from(new Set(ids)));
+function uniqueTeamIds(ids: string[]): string[] {
+  return Array.from(new Set(ids));
 }
 
-function listTeamsRaw(workspaceId: string): Team[] {
-  return listTeamIds(workspaceId)
-    .map((teamId) => readJsonFile<Team>(teamFilePath(workspaceId, teamId)))
+function listTeamIds(): string[] {
+  return readJsonFile<string[]>(teamIndexPath()) ?? [];
+}
+
+function saveTeamIds(ids: string[]): void {
+  writeJsonFile(teamIndexPath(), uniqueTeamIds(ids));
+}
+
+function listTeamsRaw(): Team[] {
+  return listTeamIds()
+    .map((teamId) => loadTeam(teamId))
     .filter((team): team is Team => Boolean(team));
 }
 
 function saveTeam(team: Team): void {
-  const ids = listTeamIds(team.workspaceId);
-  if (!ids.includes(team.id)) saveTeamIds(team.workspaceId, [...ids, team.id]);
-  writeJsonFile(teamFilePath(team.workspaceId, team.id), team);
+  const ids = listTeamIds();
+  if (!ids.includes(team.id)) saveTeamIds([...ids, team.id]);
+  writeJsonFile(teamFilePath(team.id), team);
 }
 
-function loadTeam(workspaceId: string, teamId: string): Team | null {
-  return readJsonFile<Team>(teamFilePath(workspaceId, teamId));
+function loadTeam(teamId: string): Team | null {
+  return readJsonFile<Team>(teamFilePath(teamId));
 }
 
-function listMemberships(workspaceId: string, teamId: string): TeamMembership[] {
-  return readJsonFile<TeamMembership[]>(teamMembershipsPath(workspaceId, teamId)) ?? [];
+function listMemberships(teamId: string): TeamMembership[] {
+  return readJsonFile<TeamMembership[]>(teamMembershipsPath(teamId)) ?? [];
 }
 
-function saveMemberships(workspaceId: string, teamId: string, items: TeamMembership[]): void {
-  writeJsonFile(teamMembershipsPath(workspaceId, teamId), items);
+function saveMemberships(teamId: string, items: TeamMembership[]): void {
+  writeJsonFile(teamMembershipsPath(teamId), items);
 }
 
-function listMessages(workspaceId: string, teamId: string): TeamMessage[] {
-  return readJsonFile<TeamMessage[]>(teamMessagesPath(workspaceId, teamId)) ?? [];
+function listMessages(teamId: string): TeamMessage[] {
+  return readJsonFile<TeamMessage[]>(teamMessagesPath(teamId)) ?? [];
 }
 
-function saveMessages(workspaceId: string, teamId: string, items: TeamMessage[]): void {
-  writeJsonFile(teamMessagesPath(workspaceId, teamId), items);
+function saveMessages(teamId: string, items: TeamMessage[]): void {
+  writeJsonFile(teamMessagesPath(teamId), items);
 }
 
-function listDeliveries(workspaceId: string, teamId: string): TeamInboxItem[] {
-  return readJsonFile<TeamInboxItem[]>(teamDeliveriesPath(workspaceId, teamId)) ?? [];
+function listDeliveries(teamId: string): TeamInboxItem[] {
+  return readJsonFile<TeamInboxItem[]>(teamDeliveriesPath(teamId)) ?? [];
 }
 
-function saveDeliveries(workspaceId: string, teamId: string, items: TeamInboxItem[]): void {
-  writeJsonFile(teamDeliveriesPath(workspaceId, teamId), items);
+function saveDeliveries(teamId: string, items: TeamInboxItem[]): void {
+  writeJsonFile(teamDeliveriesPath(teamId), items);
 }
 
-function listCommentsRaw(workspaceId: string, teamId: string): TeamMessageComment[] {
-  return readJsonFile<TeamMessageComment[]>(teamCommentsPath(workspaceId, teamId)) ?? [];
+function listCommentsRaw(teamId: string): TeamMessageComment[] {
+  return readJsonFile<TeamMessageComment[]>(teamCommentsPath(teamId)) ?? [];
 }
 
-function saveComments(workspaceId: string, teamId: string, items: TeamMessageComment[]): void {
-  writeJsonFile(teamCommentsPath(workspaceId, teamId), items);
+function saveComments(teamId: string, items: TeamMessageComment[]): void {
+  writeJsonFile(teamCommentsPath(teamId), items);
 }
 
 function isObject(input: unknown): input is JsonMap {
@@ -241,21 +244,21 @@ function isActiveMembership(item: TeamMembership | undefined | null): item is Te
   return item != null && item.status === 'active';
 }
 
-function getMembership(workspaceId: string, teamId: string, agentId: string): TeamMembership | undefined {
-  return listMemberships(workspaceId, teamId).find((item) => item.agentId === agentId);
+function getMembership(teamId: string, agentId: string): TeamMembership | undefined {
+  return listMemberships(teamId).find((item) => item.agentId === agentId);
 }
 
-function getActiveMembership(workspaceId: string, teamId: string, agentId: string): TeamMembership | undefined {
-  const membership = getMembership(workspaceId, teamId, agentId);
+function getActiveMembership(teamId: string, agentId: string): TeamMembership | undefined {
+  const membership = getMembership(teamId, agentId);
   return isActiveMembership(membership) ? membership : undefined;
 }
 
-function activeMemberships(workspaceId: string, teamId: string): TeamMembership[] {
-  return listMemberships(workspaceId, teamId).filter((item) => item.status === 'active');
+function activeMemberships(teamId: string): TeamMembership[] {
+  return listMemberships(teamId).filter((item) => item.status === 'active');
 }
 
 function updateTeamMemberCount(team: Team): Team {
-  const next = { ...team, memberCount: activeMemberships(team.workspaceId, team.id).length, updatedAt: new Date().toISOString() };
+  const next = { ...team, memberCount: activeMemberships(team.id).length, updatedAt: new Date().toISOString() };
   saveTeam(next);
   return next;
 }
@@ -295,7 +298,7 @@ function parseCommentFormat(input: unknown): TeamCommentContentFormat {
 }
 
 function teamView(team: Team, actorAgentId?: string) {
-  const membership = actorAgentId ? getActiveMembership(team.workspaceId, team.id, actorAgentId) : undefined;
+  const membership = actorAgentId ? getActiveMembership(team.id, actorAgentId) : undefined;
   return {
     ...team,
     team_id: team.id,
@@ -374,22 +377,16 @@ function commentView(item: TeamMessageComment) {
 }
 
 function canViewTeam(team: Team, actorAgentId: string): boolean {
-  return team.visibility === 'open' || Boolean(getActiveMembership(team.workspaceId, team.id, actorAgentId));
-}
-
-function getTeamOrFail(workspaceId: string, teamId: string): TeamServiceResult<Team> {
-  const team = loadTeam(workspaceId, teamId);
-  return team ? ok('team loaded', team) : fail('team not found', 'TEAM_NOT_FOUND');
+  return team.visibility === 'open' || Boolean(getActiveMembership(team.id, actorAgentId));
 }
 
 function resolveRecipients(
-  workspaceId: string,
   teamId: string,
   mode: 'direct' | 'broadcast',
   input: JsonMap,
   senderId: string,
 ): TeamServiceResult<{ includedAgentIds: string[]; excludedAgentIds: string[]; warnings: string[] }> {
-  const active = activeMemberships(workspaceId, teamId);
+  const active = activeMemberships(teamId);
   const activeByAgentId = new Map(active.map((item) => [item.agentId, item]));
   const includeSender = asBoolean(input.include_sender);
   const requestedIds = asArray<string>(input.recipient_agent_ids ?? input.recipientAgentIds)
@@ -436,38 +433,38 @@ function resolveRecipients(
   });
 }
 
-function findDeliveryContext(workspaceId: string, deliveryId: string): { team: Team; delivery: TeamInboxItem; deliveries: TeamInboxItem[] } | null {
-  for (const team of listTeamsRaw(workspaceId)) {
-    const deliveries = listDeliveries(workspaceId, team.id);
+function findDeliveryContext(deliveryId: string): { team: Team; delivery: TeamInboxItem; deliveries: TeamInboxItem[] } | null {
+  for (const team of listTeamsRaw()) {
+    const deliveries = listDeliveries(team.id);
     const delivery = deliveries.find((item) => item.id === deliveryId);
     if (delivery) return { team, delivery, deliveries };
   }
   return null;
 }
 
-function findMessageContext(workspaceId: string, messageId: string): { team: Team; message: TeamMessage; messages: TeamMessage[] } | null {
-  for (const team of listTeamsRaw(workspaceId)) {
-    const messages = listMessages(workspaceId, team.id);
+function findMessageContext(messageId: string): { team: Team; message: TeamMessage; messages: TeamMessage[] } | null {
+  for (const team of listTeamsRaw()) {
+    const messages = listMessages(team.id);
     const message = messages.find((item) => item.id === messageId);
     if (message) return { team, message, messages };
   }
   return null;
 }
 
-function findCommentContext(workspaceId: string, commentId: string): { team: Team; comment: TeamMessageComment; comments: TeamMessageComment[] } | null {
-  for (const team of listTeamsRaw(workspaceId)) {
-    const comments = listCommentsRaw(workspaceId, team.id);
+function findCommentContext(commentId: string): { team: Team; comment: TeamMessageComment; comments: TeamMessageComment[] } | null {
+  for (const team of listTeamsRaw()) {
+    const comments = listCommentsRaw(team.id);
     const comment = comments.find((item) => item.id === commentId);
     if (comment) return { team, comment, comments };
   }
   return null;
 }
 
-function canAccessMessage(workspaceId: string, messageId: string, actorAgentId: string): boolean {
-  const ctx = findMessageContext(workspaceId, messageId);
+function canAccessMessage(messageId: string, actorAgentId: string): boolean {
+  const ctx = findMessageContext(messageId);
   if (!ctx) return false;
   if (ctx.message.senderAgentId === actorAgentId) return true;
-  return Boolean(getActiveMembership(workspaceId, ctx.team.id, actorAgentId));
+  return Boolean(getActiveMembership(ctx.team.id, actorAgentId));
 }
 
 function applyDeliveryStatusRules(current: TeamInboxItem, nextInboxStatus?: TeamInboxStatus, nextExecutionStatus?: TeamExecutionStatus): TeamServiceResult {
@@ -492,7 +489,7 @@ function applyDeliveryStatusRules(current: TeamInboxItem, nextInboxStatus?: Team
   return ok('status transition allowed');
 }
 
-export function handleTeamManage(workspaceId: string, input: unknown): TeamServiceResult {
+export function handleTeamManage(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
@@ -506,7 +503,6 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
     const now = new Date().toISOString();
     const team: Team = {
       id: uuid(),
-      workspaceId,
       name,
       description: asString(input.description) ?? '',
       purpose: asString(input.purpose),
@@ -520,7 +516,6 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
     };
     const memberships: TeamMembership[] = [{
       id: uuid(),
-      workspaceId,
       teamId: team.id,
       agentId: actorAgentId,
       role: 'owner',
@@ -533,7 +528,6 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
       if (!agentId || agentId === actorAgentId || memberships.some((membership) => membership.agentId === agentId)) continue;
       memberships.push({
         id: uuid(),
-        workspaceId,
         teamId: team.id,
         agentId,
         role: parseRole(item?.role),
@@ -544,10 +538,10 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
     }
     team.memberCount = memberships.length;
     saveTeam(team);
-    saveMemberships(workspaceId, team.id, memberships);
-    saveMessages(workspaceId, team.id, []);
-    saveDeliveries(workspaceId, team.id, []);
-    saveComments(workspaceId, team.id, []);
+    saveMemberships(team.id, memberships);
+    saveMessages(team.id, []);
+    saveDeliveries(team.id, []);
+    saveComments(team.id, []);
     return ok('team created', {
       team: teamView(team, actorAgentId),
       memberships_created: memberships.map(membershipView),
@@ -555,11 +549,11 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
   }
 
   if (action === 'list') {
-    const allTeams = listTeamsRaw(workspaceId)
+    const allTeams = listTeamsRaw()
       .filter((team) => {
         const scope = asString(input.scope) ?? 'mine';
         if (scope === 'visible') return canViewTeam(team, actorAgentId);
-        return Boolean(getActiveMembership(workspaceId, team.id, actorAgentId));
+        return Boolean(getActiveMembership(team.id, actorAgentId));
       })
       .filter((team) => {
         const statusFilter = new Set(
@@ -586,12 +580,12 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
   if (action === 'get') {
     const teamId = asString(input.team_id ?? input.teamId);
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
-    const team = loadTeam(workspaceId, teamId);
+    const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
     if (!canViewTeam(team, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
-    const deliveries = listDeliveries(workspaceId, teamId);
-    const memberships = listMemberships(workspaceId, teamId);
-    const messages = listMessages(workspaceId, teamId);
+    const deliveries = listDeliveries(teamId);
+    const memberships = listMemberships(teamId);
+    const messages = listMessages(teamId);
     return ok('team loaded', {
       team: teamView(team, actorAgentId),
       members_preview: asBoolean(input.include_members_preview ?? input.includeMembersPreview)
@@ -608,9 +602,9 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
   if (action === 'update') {
     const teamId = asString(input.team_id ?? input.teamId);
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
-    const team = loadTeam(workspaceId, teamId);
+    const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
-    const membership = getActiveMembership(workspaceId, teamId, actorAgentId);
+    const membership = getActiveMembership(teamId, actorAgentId);
     if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
       return fail('only owner or admin can update team', 'PERMISSION_DENIED');
     }
@@ -647,9 +641,9 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
   if (action === 'dissolve') {
     const teamId = asString(input.team_id ?? input.teamId);
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
-    const team = loadTeam(workspaceId, teamId);
+    const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
-    const membership = getActiveMembership(workspaceId, teamId, actorAgentId);
+    const membership = getActiveMembership(teamId, actorAgentId);
     if (!membership || membership.role !== 'owner') return fail('only owner can dissolve team', 'PERMISSION_DENIED');
     if (!asBoolean(input.confirm)) return fail('confirm must be true', 'INVALID_ARGUMENT');
     if (team.status === 'dissolved') return fail('team already dissolved', 'TEAM_DISSOLVED');
@@ -667,21 +661,21 @@ export function handleTeamManage(workspaceId: string, input: unknown): TeamServi
   return fail('invalid action', 'INVALID_ACTION');
 }
 
-export function handleTeamMembershipManage(workspaceId: string, input: unknown): TeamServiceResult {
+export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
   if (!action || !actorAgentId || !teamId) return fail('action, actor_agent_id, team_id are required', 'INVALID_ARGUMENT');
-  const team = loadTeam(workspaceId, teamId);
+  const team = loadTeam(teamId);
   if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
 
   if (action === 'join') {
     if (team.status !== 'active') return fail('team is not active', 'TEAM_DISSOLVED');
-    if (team.visibility !== 'open' && !getActiveMembership(workspaceId, teamId, actorAgentId)) {
+    if (team.visibility !== 'open' && !getActiveMembership(teamId, actorAgentId)) {
       return fail('team is not open for joining', 'PERMISSION_DENIED');
     }
-    const memberships = listMemberships(workspaceId, teamId);
+    const memberships = listMemberships(teamId);
     const existing = memberships.find((item) => item.agentId === actorAgentId);
     if (existing?.status === 'active') {
       return ok('already joined', {
@@ -695,7 +689,6 @@ export function handleTeamMembershipManage(workspaceId: string, input: unknown):
       ? { ...existing, status: 'active', updatedAt: now }
       : {
           id: uuid(),
-          workspaceId,
           teamId,
           agentId: actorAgentId,
           role: 'member',
@@ -706,7 +699,7 @@ export function handleTeamMembershipManage(workspaceId: string, input: unknown):
     const next = existing
       ? memberships.map((item) => item.agentId === actorAgentId ? membership : item)
       : [...memberships, membership];
-    saveMemberships(workspaceId, teamId, next);
+    saveMemberships(teamId, next);
     const updatedTeam = updateTeamMemberCount(team);
     return ok('team joined', {
       membership: membershipView(membership),
@@ -715,7 +708,7 @@ export function handleTeamMembershipManage(workspaceId: string, input: unknown):
   }
 
   if (action === 'leave') {
-    const memberships = listMemberships(workspaceId, teamId);
+    const memberships = listMemberships(teamId);
     const existing = memberships.find((item) => item.agentId === actorAgentId);
     if (!existing || existing.status !== 'active') {
       return ok('already left', {
@@ -735,7 +728,7 @@ export function handleTeamMembershipManage(workspaceId: string, input: unknown):
     if (asBoolean(input.dry_run)) return ok('team leave validation passed', { team_id: teamId });
     const now = new Date().toISOString();
     const updated: TeamMembership = { ...existing, status: 'left', updatedAt: now };
-    saveMemberships(workspaceId, teamId, memberships.map((item) => item.agentId === actorAgentId ? updated : item));
+    saveMemberships(teamId, memberships.map((item) => item.agentId === actorAgentId ? updated : item));
     updateTeamMemberCount(team);
     return ok('team left', {
       membership: {
@@ -751,7 +744,7 @@ export function handleTeamMembershipManage(workspaceId: string, input: unknown):
   return fail('invalid action', 'INVALID_ACTION');
 }
 
-export function handleTeamMessageSend(workspaceId: string, input: unknown): TeamServiceResult {
+export function handleTeamMessageSend(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
@@ -759,10 +752,10 @@ export function handleTeamMessageSend(workspaceId: string, input: unknown): Team
   if (!actorAgentId || !teamId || !action) return fail('action, actor_agent_id, team_id are required', 'INVALID_ARGUMENT');
   if (action !== 'send') return fail('invalid action', 'INVALID_ACTION');
 
-  const team = loadTeam(workspaceId, teamId);
+  const team = loadTeam(teamId);
   if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
   if (team.status !== 'active') return fail('team is not active', 'TEAM_DISSOLVED');
-  if (!getActiveMembership(workspaceId, teamId, actorAgentId)) return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
+  if (!getActiveMembership(teamId, actorAgentId)) return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
 
   const mode = (asString(input.mode) === 'broadcast' ? 'broadcast' : 'direct') as 'direct' | 'broadcast';
   const subject = asString(input.subject);
@@ -770,14 +763,13 @@ export function handleTeamMessageSend(workspaceId: string, input: unknown): Team
   if (!subject || !body) return fail('subject and body are required', 'INVALID_ARGUMENT');
   const dueAt = asString(input.due_at ?? input.dueAt) ?? null;
   if (dueAt && Number.isNaN(Date.parse(dueAt))) return fail('due_at must be a valid datetime', 'INVALID_ARGUMENT');
-  const recipientsResult = resolveRecipients(workspaceId, teamId, mode, input, actorAgentId);
+  const recipientsResult = resolveRecipients(teamId, mode, input, actorAgentId);
   if (!recipientsResult.success || !recipientsResult.data) return recipientsResult;
   if (asBoolean(input.dry_run)) return ok('message send validation passed', recipientsResult.data);
 
   const now = new Date().toISOString();
   const message: TeamMessage = {
     id: uuid(),
-    workspaceId,
     teamId,
     senderAgentId: actorAgentId,
     messageType: mode,
@@ -795,12 +787,11 @@ export function handleTeamMessageSend(workspaceId: string, input: unknown): Team
     recipientCount: recipientsResult.data.includedAgentIds.length,
     metadata: isObject(input.metadata) ? input.metadata : undefined,
   };
-  const deliveries = listDeliveries(workspaceId, teamId);
+  const deliveries = listDeliveries(teamId);
   const nextDeliveries = [
     ...deliveries,
     ...recipientsResult.data.includedAgentIds.map((recipientAgentId) => ({
       id: uuid(),
-      workspaceId,
       teamId,
       messageId: message.id,
       recipientAgentId,
@@ -824,8 +815,8 @@ export function handleTeamMessageSend(workspaceId: string, input: unknown): Team
       updatedAt: now,
     })),
   ];
-  saveMessages(workspaceId, teamId, [...listMessages(workspaceId, teamId), message]);
-  saveDeliveries(workspaceId, teamId, nextDeliveries);
+  saveMessages(teamId, [...listMessages(teamId), message]);
+  saveDeliveries(teamId, nextDeliveries);
   return ok('message sent', {
     message: messageView(message),
     recipients: {
@@ -839,15 +830,15 @@ export function handleTeamMessageSend(workspaceId: string, input: unknown): Team
   }, 'OK', recipientsResult.data.warnings);
 }
 
-export function handleTeamInboxQuery(workspaceId: string, input: unknown): TeamServiceResult {
+export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   if (!action || !actorAgentId) return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
 
   if (action === 'list') {
-    const items = listTeamsRaw(workspaceId)
-      .flatMap((team) => listDeliveries(workspaceId, team.id))
+    const items = listTeamsRaw()
+      .flatMap((team) => listDeliveries(team.id))
       .filter((item) => item.recipientAgentId === actorAgentId)
       .filter((item) => {
         const teamId = asString(input.team_id ?? input.teamId);
@@ -904,15 +895,15 @@ export function handleTeamInboxQuery(workspaceId: string, input: unknown): TeamS
     let inboxItem: TeamInboxItem | undefined;
     let message: TeamMessage | undefined;
     if (deliveryId) {
-      const ctx = findDeliveryContext(workspaceId, deliveryId);
+      const ctx = findDeliveryContext(deliveryId);
       if (!ctx) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
       if (ctx.delivery.recipientAgentId !== actorAgentId) return fail('permission denied', 'PERMISSION_DENIED');
       inboxItem = ctx.delivery;
-      message = listMessages(workspaceId, ctx.team.id).find((item) => item.id === ctx.delivery.messageId);
+      message = listMessages(ctx.team.id).find((item) => item.id === ctx.delivery.messageId);
     } else if (messageId) {
-      const ctx = findMessageContext(workspaceId, messageId);
+      const ctx = findMessageContext(messageId);
       if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
-      inboxItem = listDeliveries(workspaceId, ctx.team.id).find((item) => item.messageId === messageId && item.recipientAgentId === actorAgentId);
+      inboxItem = listDeliveries(ctx.team.id).find((item) => item.messageId === messageId && item.recipientAgentId === actorAgentId);
       message = ctx.message;
       if (!inboxItem) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
     }
@@ -926,7 +917,7 @@ export function handleTeamInboxQuery(workspaceId: string, input: unknown): TeamS
   return fail('invalid action', 'INVALID_ACTION');
 }
 
-export function handleTeamMessageUpdate(workspaceId: string, input: unknown): TeamServiceResult {
+export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
@@ -934,7 +925,7 @@ export function handleTeamMessageUpdate(workspaceId: string, input: unknown): Te
   if (action !== 'update_status' || !actorAgentId || !deliveryId) {
     return fail('action=update_status, actor_agent_id, delivery_id are required', 'INVALID_ARGUMENT');
   }
-  const ctx = findDeliveryContext(workspaceId, deliveryId);
+  const ctx = findDeliveryContext(deliveryId);
   if (!ctx) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
   if (ctx.delivery.recipientAgentId !== actorAgentId) return fail('permission denied', 'PERMISSION_DENIED');
 
@@ -966,7 +957,7 @@ export function handleTeamMessageUpdate(workspaceId: string, input: unknown): Te
     version: ctx.delivery.version + 1,
     updatedAt: now,
   };
-  saveDeliveries(workspaceId, ctx.team.id, ctx.deliveries.map((item) => item.id === deliveryId ? updated : item));
+  saveDeliveries(ctx.team.id, ctx.deliveries.map((item) => item.id === deliveryId ? updated : item));
   const changedFields = [
     nextInboxStatus && nextInboxStatus !== ctx.delivery.inboxStatus ? 'inbox_status' : null,
     nextExecutionStatus && nextExecutionStatus !== ctx.delivery.executionStatus ? 'execution_status' : null,
@@ -982,7 +973,7 @@ export function handleTeamMessageUpdate(workspaceId: string, input: unknown): Te
   });
 }
 
-export function handleTeamMessageComment(workspaceId: string, input: unknown): TeamServiceResult {
+export function handleTeamMessageComment(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
@@ -992,13 +983,12 @@ export function handleTeamMessageComment(workspaceId: string, input: unknown): T
     const messageId = asString(input.message_id ?? input.messageId);
     const content = asString(input.content);
     if (!messageId || !content) return fail('message_id and content are required', 'INVALID_ARGUMENT');
-    const ctx = findMessageContext(workspaceId, messageId);
+    const ctx = findMessageContext(messageId);
     if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
-    if (!canAccessMessage(workspaceId, messageId, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
+    if (!canAccessMessage(messageId, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
     const now = new Date().toISOString();
     const comment: TeamMessageComment = {
       id: uuid(),
-      workspaceId,
       teamId: ctx.team.id,
       messageId,
       authorAgentId: actorAgentId,
@@ -1009,24 +999,24 @@ export function handleTeamMessageComment(workspaceId: string, input: unknown): T
       updatedAt: null,
       deletedAt: null,
     };
-    saveComments(workspaceId, ctx.team.id, [...listCommentsRaw(workspaceId, ctx.team.id), comment]);
-    const deliveries = listDeliveries(workspaceId, ctx.team.id).map((item) =>
+    saveComments(ctx.team.id, [...listCommentsRaw(ctx.team.id), comment]);
+    const deliveries = listDeliveries(ctx.team.id).map((item) =>
       item.messageId === messageId && item.recipientAgentId !== actorAgentId
         ? { ...item, unreadCommentCount: item.unreadCommentCount + 1, updatedAt: now }
         : item,
     );
-    saveDeliveries(workspaceId, ctx.team.id, deliveries);
+    saveDeliveries(ctx.team.id, deliveries);
     return ok('comment added', { comment: commentView(comment) });
   }
 
   if (action === 'list') {
     const messageId = asString(input.message_id ?? input.messageId);
     if (!messageId) return fail('message_id is required', 'INVALID_ARGUMENT');
-    const ctx = findMessageContext(workspaceId, messageId);
+    const ctx = findMessageContext(messageId);
     if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
-    if (!canAccessMessage(workspaceId, messageId, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
+    if (!canAccessMessage(messageId, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
     const includeDeleted = asBoolean(input.include_deleted ?? input.includeDeleted);
-    const comments = listCommentsRaw(workspaceId, ctx.team.id)
+    const comments = listCommentsRaw(ctx.team.id)
       .filter((item) => item.messageId === messageId)
       .filter((item) => includeDeleted || !item.deletedAt)
       .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
@@ -1040,7 +1030,7 @@ export function handleTeamMessageComment(workspaceId: string, input: unknown): T
   if (action === 'delete') {
     const commentId = asString(input.comment_id ?? input.commentId);
     if (!commentId) return fail('comment_id is required', 'INVALID_ARGUMENT');
-    const ctx = findCommentContext(workspaceId, commentId);
+    const ctx = findCommentContext(commentId);
     if (!ctx) return fail('comment not found', 'COMMENT_NOT_FOUND');
     if (ctx.comment.authorAgentId !== actorAgentId) return fail('only the author can delete comment', 'PERMISSION_DENIED');
     if (ctx.comment.deletedAt) return ok('comment already deleted', {
@@ -1056,7 +1046,7 @@ export function handleTeamMessageComment(workspaceId: string, input: unknown): T
       deleteReason: asString(input.reason),
       updatedAt: now,
     };
-    saveComments(workspaceId, ctx.team.id, ctx.comments.map((item) => item.id === commentId ? updated : item));
+    saveComments(ctx.team.id, ctx.comments.map((item) => item.id === commentId ? updated : item));
     return ok('comment deleted', {
       comment_id: commentId,
       deleted_at: now,

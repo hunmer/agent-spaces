@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { WorkflowTemplate, Workspace } from "@agent-spaces/shared";
+import type { WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { EllipsisVertical, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,11 +27,9 @@ function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
 export function TeamManagementDialog({
   open,
   onOpenChange,
-  workspaces,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspaces: Workspace[];
 }) {
   const t = useTranslations("teams");
   const pageRef = useRef<TeamManagementPageHandle>(null);
@@ -91,7 +89,6 @@ export function TeamManagementDialog({
         <div className="min-h-0 flex-1 overflow-auto">
           <TeamManagementPage
             ref={pageRef}
-            initialWorkspaces={workspaces}
             embedded
             onCanCreateChange={setCanCreate}
           />

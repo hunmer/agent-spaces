@@ -69,7 +69,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         metadata: { type: 'object' },
       }, ['action', 'actor_agent_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamManage(workspaceId, input),
+      execute: async (input) => handleTeamManage(input),
     },
     {
       name: 'team_membership_manage',
@@ -83,7 +83,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         reason: { type: 'string' },
       }, ['action', 'actor_agent_id', 'team_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMembershipManage(workspaceId, input),
+      execute: async (input) => handleTeamMembershipManage(input),
     },
     {
       name: 'team_message_send',
@@ -109,7 +109,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         metadata: { type: 'object' },
       }, ['action', 'actor_agent_id', 'team_id', 'mode', 'subject', 'body']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageSend(workspaceId, input),
+      execute: async (input) => handleTeamMessageSend(input),
     },
     {
       name: 'team_inbox_query',
@@ -133,7 +133,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         message_id: { type: 'string' },
       }, ['action', 'actor_agent_id']),
       annotations: { readOnly: true, openWorld: false },
-      execute: async (input) => handleTeamInboxQuery(workspaceId, input),
+      execute: async (input) => handleTeamInboxQuery(input),
     },
     {
       name: 'team_message_update',
@@ -151,7 +151,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         expected_version: { type: 'integer' },
       }, ['action', 'actor_agent_id', 'delivery_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageUpdate(workspaceId, input),
+      execute: async (input) => handleTeamMessageUpdate(input),
     },
     {
       name: 'team_message_comment',
@@ -171,7 +171,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         reason: { type: 'string' },
       }, ['action', 'actor_agent_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageComment(workspaceId, input),
+      execute: async (input) => handleTeamMessageComment(input),
     },
   ];
 

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "3400a00f-7251-4eb5-914f-690f856caace",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "agentId": "agent-generator",
+    "role": "owner",
+    "status": "active",
+    "joinedAt": "2026-07-08T11:10:33.732Z",
+    "updatedAt": "2026-07-08T11:10:33.732Z"
+  },
+  {
+    "id": "72ce9774-2052-433c-8cf5-0b5627fed8a3",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "agentId": "topic_agent",
+    "role": "member",
+    "status": "active",
+    "joinedAt": "2026-07-08T11:10:33.732Z",
+    "updatedAt": "2026-07-08T11:10:33.732Z"
+  },
+  {
+    "id": "0520f2bd-6533-4288-ac2e-d7af5a53df11",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "agentId": "editor_agent",
+    "role": "member",
+    "status": "active",
+    "joinedAt": "2026-07-08T11:10:33.732Z",
+    "updatedAt": "2026-07-08T11:10:33.732Z"
+  },
+  {
+    "id": "b521bf97-2cbf-4a9b-8638-2e987582b4f3",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "agentId": "reviewer_agent",
+    "role": "member",
+    "status": "active",
+    "joinedAt": "2026-07-08T11:10:33.732Z",
+    "updatedAt": "2026-07-08T11:10:33.732Z"
+  }
+]

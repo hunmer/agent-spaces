@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import type { Team, TeamInboxItem, TeamMembership, TeamMessage, Workspace } from "@agent-spaces/shared";
+import type { Team, TeamInboxItem, TeamMembership, TeamMessage } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { Loader2, MessagesSquare, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { sdk } from "@/lib/sdk";
 import { useAgentStore } from "@/stores/agent";
+import { AgentIcon } from "@/components/common/agent-icon";
+import { AgentDialog } from "@/components/sidebar/agent-dialog";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
 
 type TeamView = Team & {
@@ -110,11 +112,9 @@ export type TeamManagementPageHandle = {
 };
 
 export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
-  initialWorkspaces: Workspace[];
   embedded?: boolean;
   onCanCreateChange?: (canCreate: boolean) => void;
 }>(function TeamManagementPage({
-  initialWorkspaces,
   embedded = false,
   onCanCreateChange,
 }, ref) {
@@ -122,7 +122,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const tc = useTranslations("common");
   const ensureAgents = useAgentStore((store) => store.ensure);
   const agents = useAgentStore((store) => store.agents);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [selectedActorId, setSelectedActorId] = useState("");
   const [teams, setTeams] = useState<TeamView[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
@@ -131,6 +130,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [selectedDeliveryId, setSelectedDeliveryId] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<TeamMessageView | null>(null);
   const [messageDetailOpen, setMessageDetailOpen] = useState(false);
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [editingAgentId, setEditingAgentId] = useState<string>("");
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
@@ -140,16 +141,12 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [dialogDefaults, setDialogDefaults] = useState<TeamFormDefaults | undefined>(undefined);
   const [editingTeam, setEditingTeam] = useState<TeamView | null>(null);
 
-  const workspaces = useMemo(
-    () => initialWorkspaces.filter((workspace) => !workspace.isWorktree),
-    [initialWorkspaces],
-  );
   const availableAgents = useMemo(
     () => agents.filter((agent) => agent.enabled !== false),
     [agents],
   );
   const selectedTeam = teams.find((team) => team.team_id === selectedTeamId) ?? null;
-  const canCreateTeam = Boolean(selectedWorkspaceId && selectedActorId);
+  const canCreateTeam = Boolean(selectedActorId);
 
   useEffect(() => {
     onCanCreateChange?.(canCreateTeam);
@@ -165,12 +162,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   }, [ensureAgents]);
 
   useEffect(() => {
-    if (!selectedWorkspaceId && workspaces[0]?.id) {
-      setSelectedWorkspaceId(workspaces[0].id);
-    }
-  }, [selectedWorkspaceId, workspaces]);
-
-  useEffect(() => {
     if (!selectedActorId && availableAgents[0]?.id) {
       setSelectedActorId(availableAgents[0].id);
     }
@@ -181,7 +172,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     setError("");
     try {
       const data = await requestTeamApi<{ teams: TeamView[] }>(
-        `/api/workspaces/${selectedWorkspaceId}/teams?actor_agent_id=${encodeURIComponent(selectedActorId)}&scope=visible&page_size=100`,
+        `/api/teams?actor_agent_id=${encodeURIComponent(selectedActorId)}&scope=visible&page_size=100`,
       );
       setTeams(data.teams);
       const nextId = nextSelectedTeamId && data.teams.some((item) => item.team_id === nextSelectedTeamId)
@@ -201,24 +192,24 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     } finally {
       setLoadingTeams(false);
     }
-  }, [selectedActorId, selectedTeamId, selectedWorkspaceId]);
+  }, [selectedActorId, selectedTeamId]);
 
   const loadTeamDetail = useCallback(async (teamId: string) => {
     try {
       const data = await requestTeamApi<TeamDetail>(
-        `/api/workspaces/${selectedWorkspaceId}/teams/${teamId}?actor_agent_id=${encodeURIComponent(selectedActorId)}&include_members_preview=true`,
+        `/api/teams/${teamId}?actor_agent_id=${encodeURIComponent(selectedActorId)}&include_members_preview=true`,
       );
       setTeamDetail(data);
     } catch (err) {
       setTeamDetail(null);
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [selectedActorId, selectedWorkspaceId]);
+  }, [selectedActorId]);
 
   const loadTeamMessages = useCallback(async (teamId: string) => {
     try {
       const data = await requestTeamApi<{ inbox_items: TeamInboxItemView[] }>(
-        `/api/workspaces/${selectedWorkspaceId}/team-inbox?actor_agent_id=${encodeURIComponent(selectedActorId)}&team_id=${encodeURIComponent(teamId)}&page_size=100`,
+        `/api/team-inbox?actor_agent_id=${encodeURIComponent(selectedActorId)}&team_id=${encodeURIComponent(teamId)}&page_size=100`,
       );
       setTeamMessages(data.inbox_items);
       setSelectedDeliveryId((current) => data.inbox_items.find((item) => item.delivery_id === current)?.delivery_id ?? data.inbox_items[0]?.delivery_id ?? "");
@@ -227,13 +218,13 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       setSelectedDeliveryId("");
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [selectedActorId, selectedWorkspaceId]);
+  }, [selectedActorId]);
 
   const loadMessage = useCallback(async (deliveryId: string) => {
     setLoadingMessage(true);
     try {
       const data = await requestTeamApi<{ message: TeamMessageView }>(
-        `/api/workspaces/${selectedWorkspaceId}/team-inbox/${deliveryId}?actor_agent_id=${encodeURIComponent(selectedActorId)}`,
+        `/api/team-inbox/${deliveryId}?actor_agent_id=${encodeURIComponent(selectedActorId)}`,
       );
       setSelectedMessage(data.message);
     } catch (err) {
@@ -242,15 +233,15 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     } finally {
       setLoadingMessage(false);
     }
-  }, [selectedActorId, selectedWorkspaceId]);
+  }, [selectedActorId]);
 
   useEffect(() => {
-    if (!selectedWorkspaceId || !selectedActorId) return;
+    if (!selectedActorId) return;
     void loadTeams();
-  }, [loadTeams, selectedActorId, selectedWorkspaceId]);
+  }, [loadTeams, selectedActorId]);
 
   useEffect(() => {
-    if (!selectedWorkspaceId || !selectedActorId || !selectedTeamId) {
+    if (!selectedActorId || !selectedTeamId) {
       setTeamDetail(null);
       setTeamMessages([]);
       setSelectedDeliveryId("");
@@ -258,15 +249,15 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       return;
     }
     void Promise.all([loadTeamDetail(selectedTeamId), loadTeamMessages(selectedTeamId)]);
-  }, [loadTeamDetail, loadTeamMessages, selectedActorId, selectedTeamId, selectedWorkspaceId]);
+  }, [loadTeamDetail, loadTeamMessages, selectedActorId, selectedTeamId]);
 
   useEffect(() => {
-    if (!selectedWorkspaceId || !selectedActorId || !selectedDeliveryId) {
+    if (!selectedActorId || !selectedDeliveryId) {
       setSelectedMessage(null);
       return;
     }
     void loadMessage(selectedDeliveryId);
-  }, [loadMessage, selectedActorId, selectedDeliveryId, selectedWorkspaceId]);
+  }, [loadMessage, selectedActorId, selectedDeliveryId]);
 
   function openCreateDialog() {
     setDialogMode("create");
@@ -290,12 +281,12 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   }
 
   async function submitTeam(values: TeamFormValues) {
-    if (!selectedWorkspaceId || !selectedActorId) return;
+    if (!selectedActorId) return;
     setSavingTeam(true);
     setError("");
     try {
       if (dialogMode === "create") {
-        const data = await requestTeamApi<{ team: TeamView }>(`/api/workspaces/${selectedWorkspaceId}/teams`, {
+        const data = await requestTeamApi<{ team: TeamView }>(`/api/teams`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -311,7 +302,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         });
         await loadTeams(data.team.team_id);
       } else if (selectedTeamId) {
-        const data = await requestTeamApi<{ team: TeamView }>(`/api/workspaces/${selectedWorkspaceId}/teams/${selectedTeamId}`, {
+        const data = await requestTeamApi<{ team: TeamView }>(`/api/teams/${selectedTeamId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -333,11 +324,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   }
 
   async function dissolveTeam(team: TeamView) {
-    if (!selectedWorkspaceId || !selectedActorId) return;
+    if (!selectedActorId) return;
     if (!confirm(t("deleteConfirm", { name: team.name }))) return;
     setError("");
     try {
-      await requestTeamApi<{ team_id: string }>(`/api/workspaces/${selectedWorkspaceId}/teams/${team.team_id}/dissolve`, {
+      await requestTeamApi<{ team_id: string }>(`/api/teams/${team.team_id}/dissolve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -369,7 +360,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           </div>
         ) : null}
 
-        {!selectedWorkspaceId || !selectedActorId ? (
+        {!selectedActorId ? (
           <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
             {t("empty.setup")}
           </div>
@@ -377,18 +368,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           <div className="grid flex-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1.1fr)]">
             <section className="flex flex-col rounded-2xl border border-border bg-card p-4">
               <div className="flex flex-col gap-2">
-                <Select value={selectedWorkspaceId} onValueChange={(next) => setSelectedWorkspaceId(next ?? "")}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={t("filters.workspace")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workspaces.map((workspace) => (
-                      <SelectItem key={workspace.id} value={workspace.id}>
-                        {workspace.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Select value={selectedActorId} onValueChange={(next) => setSelectedActorId(next ?? "")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={t("filters.actor")} />
@@ -493,9 +472,37 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                       ) : (
                         (teamDetail.members_preview ?? []).map((member) => {
                           const agent = availableAgents.find((item) => item.id === member.agent_id);
+                          if (!agent) {
+                            return (
+                              <Badge key={member.membership_id} variant="outline" className="gap-1 px-2 py-1">
+                                <span>{member.agent_id}</span>
+                                <span className="text-muted-foreground">· {member.role}</span>
+                              </Badge>
+                            );
+                          }
                           return (
-                            <Badge key={member.membership_id} variant="outline" className="gap-1 px-2 py-1">
-                              <span>{agent?.name || member.agent_id}</span>
+                            <Badge
+                              key={member.membership_id}
+                              variant="outline"
+                              className="cursor-pointer gap-1.5 px-2 py-1 transition-colors hover:bg-muted/60"
+                              onClick={() => {
+                                setEditingAgentId(agent.id);
+                                setAgentDialogOpen(true);
+                              }}
+                            >
+                              <AgentIcon
+                                agentId={agent.id}
+                                name={agent.name}
+                                avatarUrl={agent.avatarUrl}
+                                icon={agent.icon}
+                                apiBase={agent.apiBase}
+                                modelId={agent.modelId}
+                                providerId={agent.providerId}
+                                modelProvider={agent.modelProvider}
+                                className="size-4"
+                                bordered={false}
+                              />
+                              <span>{agent.name}</span>
                               <span className="text-muted-foreground">· {member.role}</span>
                             </Badge>
                           );
@@ -630,6 +637,16 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         }
         onOpenChange={setDialogOpen}
         onSubmit={submitTeam}
+      />
+
+      <AgentDialog
+        open={agentDialogOpen}
+        onOpenChange={(next) => {
+          setAgentDialogOpen(next);
+          if (!next) setEditingAgentId("");
+        }}
+        initialAgentId={editingAgentId || undefined}
+        singleAgent
       />
     </div>
   );

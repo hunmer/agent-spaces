@@ -1,0 +1,12 @@
+{
+  "id": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+  "name": "公众号编写",
+  "description": "选题agent->编辑agent->审批agent",
+  "purpose": "制作逻辑严谨的文章",
+  "status": "active",
+  "visibility": "open",
+  "createdBy": "agent-generator",
+  "createdAt": "2026-07-08T11:10:33.732Z",
+  "updatedAt": "2026-07-08T11:10:33.732Z",
+  "memberCount": 4
+}

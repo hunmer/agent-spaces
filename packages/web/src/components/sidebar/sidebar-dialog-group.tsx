@@ -18,17 +18,14 @@ import {
   LAYOUT_RESET_EVENT,
   applyLayoutToStorage,
 } from "@/lib/layout-templates";
-import type { Workspace } from "@agent-spaces/shared";
 import type { useSidebarDialogs } from "./use-sidebar-dialogs";
 
 export function SidebarDialogGroup({
   dialogs,
   currentWorkspaceId: _currentWorkspaceId,
-  workspaces,
 }: {
   dialogs: ReturnType<typeof useSidebarDialogs>;
   currentWorkspaceId: string | null;
-  workspaces: Workspace[];
 }) {
   return (
     <>
@@ -40,7 +37,7 @@ export function SidebarDialogGroup({
       <HooksDialog open={dialogs.hooksDialogOpen} onOpenChange={dialogs.setHooksDialogOpen} />
       <AgentCommandsDialog open={dialogs.agentCommandsDialogOpen} onOpenChange={dialogs.setAgentCommandsDialogOpen} />
       <ToolsDialog open={dialogs.toolsDialogOpen} onOpenChange={dialogs.setToolsDialogOpen} />
-      <TeamManagementDialog open={dialogs.teamsDialogOpen} onOpenChange={dialogs.setTeamsDialogOpen} workspaces={workspaces} />
+      <TeamManagementDialog open={dialogs.teamsDialogOpen} onOpenChange={dialogs.setTeamsDialogOpen} />
       <SettingsDialog open={dialogs.settingsDialogOpen} onOpenChange={dialogs.setSettingsDialogOpen} />
       <ModelsDialog open={dialogs.modelsDialogOpen} onOpenChange={dialogs.setModelsDialogOpen} initialProvider={dialogs.modelsDialogProvider} />
       <ProvidersDialog
