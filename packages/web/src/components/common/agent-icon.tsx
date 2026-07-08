@@ -118,7 +118,7 @@ export function AgentIcon({
       {src ? (
         <img src={src} alt={displayName} className="size-full object-cover" onError={handleError} />
       ) : showEmoji ? (
-        <span className={cn("select-none leading-none", textSize ?? "text-sm")}>{emojiValue}</span>
+        <span className={cn("select-none leading-none", textSize ?? "text-2xl")}>{emojiValue}</span>
       ) : (
         <span className={cn("font-semibold select-none", textSize ?? "text-xs")}>{initial}</span>
       )}

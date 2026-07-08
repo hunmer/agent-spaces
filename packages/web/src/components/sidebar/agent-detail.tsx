@@ -511,7 +511,12 @@ export function AgentDetail({
       <div className="flex flex-col gap-2.5">
         <SectionHeader
           icon={<Wrench className="size-3.5" />}
-          title="Bound Workflows"
+          title={t("detail.boundWorkflows")}
+          action={
+            lockedFields?.boundWorkflowIds ? null : <Button variant="ghost" size="icon" className="size-5" onClick={() => setWorkflowDialogOpen(true)}>
+              <Settings2 className="size-3.5" />
+            </Button>
+          }
         />
         <div className="flex flex-wrap gap-1.5">
           {agent.boundWorkflowIds.length > 0 ? (
@@ -530,14 +535,9 @@ export function AgentDetail({
               </span>
             ))
           ) : (
-            <span className="text-xs text-muted-foreground">No bound workflows</span>
+            <span className="text-xs text-muted-foreground">{t("detail.noBoundWorkflows")}</span>
           )}
         </div>
-        {!lockedFields?.boundWorkflowIds ? (
-          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setWorkflowDialogOpen(true)}>
-            选择工作流
-          </Button>
-        ) : null}
       </div>
       )}
 
@@ -545,7 +545,12 @@ export function AgentDetail({
       <div className="flex flex-col gap-2.5">
         <SectionHeader
           icon={<Wrench className="size-3.5" />}
-          title="Bound Workflow Plugin Tools"
+          title={t("detail.boundWorkflowPluginTools")}
+          action={
+            lockedFields?.boundWorkflowPluginTools ? null : <Button variant="ghost" size="icon" className="size-5" onClick={() => setPluginToolDialogOpen(true)}>
+              <Settings2 className="size-3.5" />
+            </Button>
+          }
         />
         <div className="flex flex-wrap gap-1.5">
           {agent.boundWorkflowPluginTools.length > 0 ? (
@@ -564,14 +569,9 @@ export function AgentDetail({
               </span>
             ))
           ) : (
-            <span className="text-xs text-muted-foreground">No bound workflow plugin tools</span>
+            <span className="text-xs text-muted-foreground">{t("detail.noBoundWorkflowPluginTools")}</span>
           )}
         </div>
-        {!lockedFields?.boundWorkflowPluginTools ? (
-          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setPluginToolDialogOpen(true)}>
-            选择工作流插件工具
-          </Button>
-        ) : null}
       </div>
       )}
 

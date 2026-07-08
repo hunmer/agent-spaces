@@ -129,7 +129,11 @@
     "enabledToolsCount": "已启用 {count}/{total} 个工具",
     "noTools": "未配置工具",
     "noMcps": "未配置 MCP 服务器",
-    "noSkills": "未配置技能"
+    "noSkills": "未配置技能",
+    "boundWorkflows": "绑定工作流",
+    "noBoundWorkflows": "未绑定工作流",
+    "boundWorkflowPluginTools": "绑定工作流插件工具",
+    "noBoundWorkflowPluginTools": "未绑定工作流插件工具"
   },
   "debug": {
     "status": "状态：",

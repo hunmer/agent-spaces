@@ -129,7 +129,11 @@
     "enabledToolsCount": "{count}/{total} tools enabled",
     "noTools": "No tools configured",
     "noMcps": "No MCP servers configured",
-    "noSkills": "No skills configured"
+    "noSkills": "No skills configured",
+    "boundWorkflows": "Bound Workflows",
+    "noBoundWorkflows": "No bound workflows",
+    "boundWorkflowPluginTools": "Bound Workflow Plugin Tools",
+    "noBoundWorkflowPluginTools": "No bound workflow plugin tools"
   },
   "debug": {
     "status": "status:",
