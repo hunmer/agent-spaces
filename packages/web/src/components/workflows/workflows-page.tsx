@@ -1,23 +1,20 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { WorkflowTemplate, WorkflowNode } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Plug, FileText, Search, Filter, ArrowUpDown, CheckSquare, Download, Trash2, Clock } from 'lucide-react';
+import { Plus, Plug, FileText, CheckSquare, Download, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import { WorkflowInfoDialog } from '@/components/workflow/workflow-info-dialog';
 import { WorkflowCard } from '@/components/workflows/workflow-card';
+import { WorkflowFilterToolbar, useWorkflowFilters } from '@/components/workflows/workflow-filters';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { sdk } from '@/lib/sdk';
-import { toPinyinSearchKey } from '@/lib/utils';
 import { workflowApi } from '@/lib/workflow-api';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { nativeNavigate } from '@/lib/navigate';
@@ -35,41 +32,9 @@ export function WorkflowsPage() {
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
-  const [search, setSearch] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [scheduleFilter, setScheduleFilter] = useState<'all' | 'scheduled' | 'unscheduled'>('all');
-  const [typeFilter, setTypeFilter] = useState<'normal' | 'workspace'>('normal');
-  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt' | 'lastRunAt' | 'lastOpenedAt'>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const filters = useWorkflowFilters({ workflows });
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    workflows.forEach(wf => wf.tags?.forEach(t => tagSet.add(t)));
-    return Array.from(tagSet).sort();
-  }, [workflows]);
-
-  const filteredWorkflows = useMemo(() => {
-    return workflows.filter(wf => {
-      const q = search.toLowerCase();
-      const matchesSearch = !search || wf.name.toLowerCase().includes(q) || wf.description?.toLowerCase().includes(q) || toPinyinSearchKey(wf.name).includes(q) || toPinyinSearchKey(wf.description ?? '').includes(q);
-      const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => wf.tags?.includes(tag));
-      const hasEnabledCronTrigger = wf.triggers?.some(trigger => trigger.type === 'cron' && trigger.enabled) || false;
-      const matchesSchedule =
-        scheduleFilter === 'all'
-        || (scheduleFilter === 'scheduled' && hasEnabledCronTrigger)
-        || (scheduleFilter === 'unscheduled' && !hasEnabledCronTrigger);
-      // 类型过滤：未声明 type 视为 normal
-      const matchesType = (wf.type ?? 'normal') === typeFilter;
-      return matchesSearch && matchesTags && matchesSchedule && matchesType;
-    }).sort((a, b) => {
-      // lastRunAt is undefined for workflows that have never run — treat as 0 (oldest).
-      const av = a[sortField] ?? 0;
-      const bv = b[sortField] ?? 0;
-      return sortOrder === 'asc' ? av - bv : bv - av;
-    });
-  }, [workflows, search, selectedTags, scheduleFilter, typeFilter, sortField, sortOrder]);
 
   useEffect(() => {
     loadWorkflows();
@@ -288,164 +253,7 @@ export function WorkflowsPage() {
       </div>
 
       <div className="hidden md:flex items-center gap-2 mb-4">
-        <Popover>
-          <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
-            <Filter className="h-3.5 w-3.5" />
-            {typeFilter === 'workspace' ? t('page.typeWorkspace') : t('page.typeNormal')}
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-44 p-2">
-            <div className="flex flex-col gap-1">
-              {([
-                ['normal', t('page.typeNormal')],
-                ['workspace', t('page.typeWorkspace')],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${typeFilter === value ? 'font-medium' : ''}`}
-                  onClick={() => setTypeFilter(value)}
-                >
-                  {typeFilter === value && <span className="text-primary">✓</span>}
-                  {label}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder={t('page.searchPlaceholder')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <Popover>
-          <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
-            <ArrowUpDown className="h-3.5 w-3.5" />
-            {t(`page.${sortField}`)}
-            <span className="text-muted-foreground text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-48 p-2">
-            <div className="flex flex-col gap-1">
-              <button
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'createdAt' ? 'font-medium' : ''}`}
-                onClick={() => setSortField('createdAt')}
-              >
-                {sortField === 'createdAt' && <span className="text-primary">✓</span>}
-                {t('page.createdAt')}
-              </button>
-              <button
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'updatedAt' ? 'font-medium' : ''}`}
-                onClick={() => setSortField('updatedAt')}
-              >
-                {sortField === 'updatedAt' && <span className="text-primary">✓</span>}
-                {t('page.updatedAt')}
-              </button>
-              <button
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'lastRunAt' ? 'font-medium' : ''}`}
-                onClick={() => setSortField('lastRunAt')}
-              >
-                {sortField === 'lastRunAt' && <span className="text-primary">✓</span>}
-                {t('page.lastRunAt')}
-              </button>
-              <button
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'lastOpenedAt' ? 'font-medium' : ''}`}
-                onClick={() => setSortField('lastOpenedAt')}
-              >
-                {sortField === 'lastOpenedAt' && <span className="text-primary">✓</span>}
-                {t('page.lastOpenedAt')}
-              </button>
-              <div className="border-t my-1" />
-              <button
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortOrder === 'asc' ? 'font-medium' : ''}`}
-                onClick={() => setSortOrder('asc')}
-              >
-                {sortOrder === 'asc' && <span className="text-primary">✓</span>}
-                {t('page.asc')}
-              </button>
-              <button
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortOrder === 'desc' ? 'font-medium' : ''}`}
-                onClick={() => setSortOrder('desc')}
-              >
-                {sortOrder === 'desc' && <span className="text-primary">✓</span>}
-                {t('page.desc')}
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <Popover>
-          <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
-            <Clock className="h-3.5 w-3.5" />
-            {scheduleFilter === 'scheduled' ? t('page.scheduleScheduled') : scheduleFilter === 'unscheduled' ? t('page.scheduleUnscheduled') : t('page.scheduleFilter')}
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-44 p-2">
-            <div className="flex flex-col gap-1">
-              {[
-                ['all', t('page.scheduleFilterAll')],
-                ['scheduled', t('page.scheduleScheduled')],
-                ['unscheduled', t('page.scheduleUnscheduled')],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${scheduleFilter === value ? 'font-medium' : ''}`}
-                  onClick={() => setScheduleFilter(value as typeof scheduleFilter)}
-                >
-                  {scheduleFilter === value && <span className="text-primary">✓</span>}
-                  {label}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-        {allTags.length > 0 && (
-          <Popover>
-            <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
-              <Filter className="h-3.5 w-3.5" />
-              {t('page.tags')}
-              {selectedTags.length > 0 && (
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedTags.length}</Badge>
-              )}
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-48 p-2">
-              <div className="flex flex-col gap-1">
-                {allTags.map(tag => {
-                  const selected = selectedTags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer"
-                      onClick={() => setSelectedTags(prev => selected ? prev.filter(x => x !== tag) : [...prev, tag])}
-                    >
-                      <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
-                        {selected && <span className="text-[10px]">✓</span>}
-                      </span>
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedTags.length > 0 && (
-                <button
-                  className="text-xs text-muted-foreground hover:text-foreground mt-1 pt-1 border-t cursor-pointer w-full text-left px-2 py-1"
-                  onClick={() => setSelectedTags([])}
-                >
-                  {t('page.clearFilter')}
-                </button>
-              )}
-            </PopoverContent>
-          </Popover>
-        )}
-        {selectedTags.length > 0 && (
-          <div className="flex gap-1 flex-wrap">
-            {selectedTags.map(tag => (
-              <Badge key={tag} variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setSelectedTags(prev => prev.filter(x => x !== tag))}>
-                {tag}
-                <span className="text-[10px]">✕</span>
-              </Badge>
-            ))}
-          </div>
-        )}
+        <WorkflowFilterToolbar state={filters} />
       </div>
 
       {workflows.length === 0 ? (
@@ -457,7 +265,7 @@ export function WorkflowsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredWorkflows.map((workflow) => (
+          {filters.filtered.map((workflow) => (
             <WorkflowCard
               key={workflow.id}
               workflow={workflow}

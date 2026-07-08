@@ -1,14 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import {
+  WorkflowFilterToolbar,
+  useWorkflowFilters,
+} from '@/components/workflows/workflow-filters';
 
 interface WorkflowListDialogProps {
   open: boolean;
@@ -33,21 +37,8 @@ export function WorkflowListDialog({
   onSelectedWorkflowIdsChange,
   showCreate = true,
 }: WorkflowListDialogProps) {
-  const [query, setQuery] = useState('');
-
-  const sorted = useMemo(
-    () => [...workflows].sort((a, b) =>
-      new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
-    ),
-    [workflows],
-  );
-
-  const filtered = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return sorted;
-    return sorted.filter((workflow) =>
-      `${workflow.name || ''}\n${workflow.description || ''}\n${workflow.id}`.toLowerCase().includes(keyword));
-  }, [query, sorted]);
+  const t = useTranslations('workflows');
+  const filters = useWorkflowFilters({ workflows });
 
   const selectedSet = useMemo(() => new Set(selectedWorkflowIds), [selectedWorkflowIds]);
 
@@ -63,19 +54,18 @@ export function WorkflowListDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>工作流</DialogTitle>
+          <DialogTitle>{t('page.title')}</DialogTitle>
         </DialogHeader>
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="搜索工作流"
-          className="h-8 text-sm"
+        <WorkflowFilterToolbar
+          state={filters}
+          className="gap-1.5"
+          showTypeFilter={false}
         />
         <div className="max-h-[400px] space-y-1 overflow-y-auto">
-          {filtered.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">暂无工作流</div>
+          {filters.filtered.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">{t('page.empty')}</div>
           ) : null}
-          {filtered.map((workflow) => (
+          {filters.filtered.map((workflow) => (
             <div
               key={workflow.id}
               role="button"
@@ -107,9 +97,9 @@ export function WorkflowListDialog({
                   />
                 ) : null}
                 <div className="min-w-0">
-                  <div className="truncate font-medium">{workflow.name || '未命名'}</div>
+                  <div className="truncate font-medium">{workflow.name || t('editor.untitled')}</div>
                   <div className="text-[10px] text-muted-foreground">
-                    {workflow.nodes?.length || 0} 个节点
+                    {t('card.nodes', { count: workflow.nodes?.length || 0 })}
                   </div>
                 </div>
               </div>
@@ -120,7 +110,7 @@ export function WorkflowListDialog({
         <DialogFooter>
           {showCreate ? (
             <Button onClick={onCreate}>
-              <Plus className="mr-1 h-4 w-4" /> 新建工作流
+              <Plus className="mr-1 h-4 w-4" /> {t('page.create')}
             </Button>
           ) : null}
         </DialogFooter>
