@@ -257,7 +257,9 @@ export async function runMentionedAgent(
     }, preset.tools),
     ...createCommandFunctionTools(workspaceId, preset.tools),
     ...createDatabaseFunctionTools(workspaceId, preset.tools),
-    ...createWorkflowExecutionFunctionTools(workspaceId, preset.tools),
+    ...createWorkflowExecutionFunctionTools(workspaceId, preset.tools, {
+      boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
+    }),
     ...(miniAppRuntimeContext ? createMiniAppFunctionTools({
       enabledPlugins: miniAppRuntimeContext.enabledPlugins,
     }) : []),
@@ -277,6 +279,8 @@ export async function runMentionedAgent(
     workingDir,
     excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
     builtInTools: buildBuiltInTools(functionTools, channel, issue),
+    boundWorkflowIds: preset.boundWorkflowIds,
+    boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
     miniAppContext: miniAppRuntimeContext ? {
       projectId: miniAppRuntimeContext.projectId,
       activeFilePath: options.miniAppContext?.activeFilePath,

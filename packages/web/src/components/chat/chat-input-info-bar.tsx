@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
+import { useWorkflowStore } from "@/stores/workflow";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
@@ -54,6 +55,8 @@ interface ChatInputInfoBarProps {
   mcps: string[];
   skills: string[];
   tools: ToolEntry[];
+  workflowIds: string[];
+  workflowPluginTools: Array<{ pluginId: string; toolName: string }>;
   todos: Channel["todos"];
   contextLength: number;
   onContextLengthChange: (contextLength: number) => void;
@@ -68,6 +71,8 @@ export function ChatInputInfoBar({
   mcps,
   skills,
   tools,
+  workflowIds,
+  workflowPluginTools,
   todos,
   contextLength,
   onContextLengthChange,
@@ -84,9 +89,20 @@ export function ChatInputInfoBar({
   const [mcpsManageOpen, setMcpsManageOpen] = useState(false);
   const [skillsManageOpen, setSkillsManageOpen] = useState(false);
   const [toolsManageOpen, setToolsManageOpen] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+  const [workflowToolOpen, setWorkflowToolOpen] = useState(false);
+  const workflows = useWorkflowStore((s) => s.workflows);
+  const loadWorkflows = useWorkflowStore((s) => s.loadWorkflows);
   const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
   const loadHistory = useInspectorHistoryStore((s) => s.loadHistory);
   const clearHistory = useInspectorHistoryStore((s) => s.clearHistory);
+
+  useEffect(() => {
+    if (workflowOpen) void loadWorkflows();
+  }, [loadWorkflows, workflowOpen]);
+
+  const workflowNameMap = useMemo(() => new Map(workflows.map((workflow) => [workflow.id, workflow.name])), [workflows]);
+  const selectedWorkflowLabels = workflowIds.map((id) => workflowNameMap.get(id) || id);
 
   const insertCodeLocation = (path: string, line: number, column: number) => {
     onInsertText?.(`${path}:${line}:${column}`);
@@ -234,6 +250,74 @@ export function ChatInputInfoBar({
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Popover open={workflowOpen} onOpenChange={setWorkflowOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+            />
+          }
+        >
+          <IconTools className="size-3" />
+          <span className="hidden md:inline">Workflow{workflowIds.length ? ` ${workflowIds.length}` : ""}</span>
+        </PopoverTrigger>
+        <PopoverContent align="start" sideOffset={6} className="w-80 p-2">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">Bound Workflows</div>
+          {selectedWorkflowLabels.length ? (
+            <div className="flex flex-col gap-1">
+              {selectedWorkflowLabels.map((label, index) => (
+                <button
+                  key={`${workflowIds[index]}:${label}`}
+                  type="button"
+                  className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
+                  onClick={() => onInsertText?.(`[use workflow: ${workflowIds[index]}]`)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="px-2 py-4 text-xs text-muted-foreground">No bound workflows</div>
+          )}
+        </PopoverContent>
+      </Popover>
+
+      <Popover open={workflowToolOpen} onOpenChange={setWorkflowToolOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+            />
+          }
+        >
+          <IconTools className="size-3" />
+          <span className="hidden md:inline">Workflow Tools{workflowPluginTools.length ? ` ${workflowPluginTools.length}` : ""}</span>
+        </PopoverTrigger>
+        <PopoverContent align="start" sideOffset={6} className="w-96 p-2">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">Bound Workflow Plugin Tools</div>
+          {workflowPluginTools.length ? (
+            <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+              {workflowPluginTools.map((item) => (
+                <button
+                  key={`${item.pluginId}:${item.toolName}`}
+                  type="button"
+                  className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
+                  onClick={() => onInsertText?.(`[use workflow plugin tool: ${item.pluginId}:${item.toolName}]`)}
+                >
+                  {item.pluginId}:{item.toolName}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="px-2 py-4 text-xs text-muted-foreground">No bound workflow plugin tools</div>
+          )}
+        </PopoverContent>
+      </Popover>
 
       <DropdownMenu>
         <DropdownMenuTrigger

@@ -22,6 +22,8 @@ export type AgentPreset = Omit<AgentConfig, "mcps" | "skills" | "modelProvider">
   mcps: McpDraft;
   skills: SkillDraft[];
   tools: BuiltInAgentToolName[];
+  boundWorkflowIds: string[];
+  boundWorkflowPluginTools: Array<{ pluginId: string; toolName: string }>;
   systemPrompt: string;
   outputStyle: string;
   temperature: number;
@@ -48,6 +50,8 @@ export type AgentDetailLockedFields = Partial<Record<
   | "systemPrompt"
   | "mcps"
   | "tools"
+  | "boundWorkflowIds"
+  | "boundWorkflowPluginTools"
   | "skills",
   boolean
 >>;
@@ -59,6 +63,8 @@ export type AgentDetailHiddenFields = Partial<Record<
   | "systemPrompt"
   | "mcps"
   | "tools"
+  | "boundWorkflowIds"
+  | "boundWorkflowPluginTools"
   | "skills"
   | "background"
   | "outputStyle",
@@ -138,6 +144,8 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     mcps: defaultMcpConfig([]),
     skills: defaultSkills([]),
     tools: DEFAULT_AGENT_TOOLS,
+    boundWorkflowIds: [],
+    boundWorkflowPluginTools: [],
     systemPrompt:
       "你是通用 Agent。根据 issue 和当前任务上下文完成被分配的工作，遵循项目规范，必要时修改代码、运行验证，并清晰汇报结果。",
     outputStyle: "",
@@ -162,6 +170,8 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     mcps: defaultMcpConfig([]),
     skills: defaultSkills(["planning", "task-split"]),
     tools: DEFAULT_AGENT_TOOLS,
+    boundWorkflowIds: [],
+    boundWorkflowPluginTools: [],
     systemPrompt:
       "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
     outputStyle: "",
@@ -186,6 +196,8 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     mcps: {},
     skills: [],
     tools: DEFAULT_AGENT_TOOLS,
+    boundWorkflowIds: [],
+    boundWorkflowPluginTools: [],
     systemPrompt:
       "你是 Agent Spaces 的消息机器人。你会简洁回答来自外部聊天平台的用户消息。不要执行危险操作；需要用户提供更多信息时直接询问。",
     outputStyle: "",
@@ -213,6 +225,8 @@ export function normalizeAgent(agent: AgentConfig): AgentPreset {
     mcps: normalizeMcpDraft(agent.mcps),
     skills: normalizeSkillDrafts(agent.skills),
     tools: normalizeToolDrafts(agent.tools),
+    boundWorkflowIds: Array.isArray(agent.boundWorkflowIds) ? agent.boundWorkflowIds : [],
+    boundWorkflowPluginTools: Array.isArray(agent.boundWorkflowPluginTools) ? agent.boundWorkflowPluginTools : [],
     systemPrompt: agent.systemPrompt || "",
     outputStyle: agent.outputStyle || "",
     temperature: agent.temperature ?? 0.3,
@@ -273,6 +287,8 @@ export function newAgentDraft(role: BuiltInRole): AgentPreset {
     mcps: structuredClone(ROLE_TEMPLATES[role].mcps),
     skills: ROLE_TEMPLATES[role].skills.map((skill) => ({ ...skill })),
     tools: [...ROLE_TEMPLATES[role].tools],
+    boundWorkflowIds: [...ROLE_TEMPLATES[role].boundWorkflowIds],
+    boundWorkflowPluginTools: ROLE_TEMPLATES[role].boundWorkflowPluginTools.map((item) => ({ ...item })),
   };
 }
 
@@ -295,6 +311,8 @@ export function newEmptyAgent(): AgentPreset {
     mcps: {},
     skills: [],
     tools: DEFAULT_AGENT_TOOLS,
+    boundWorkflowIds: [],
+    boundWorkflowPluginTools: [],
     systemPrompt: "",
     outputStyle: "",
     temperature: 0.3,

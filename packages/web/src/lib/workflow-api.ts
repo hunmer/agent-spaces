@@ -37,6 +37,8 @@ function sanitizeWorkflowAgentValue(value: unknown): unknown {
     mcps: agent.mcps,
     skills: agent.skills,
     tools: agent.tools,
+    boundWorkflowIds: agent.boundWorkflowIds,
+    boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
     systemPrompt: agent.systemPrompt,
     outputStyle: agent.outputStyle,
     temperature: agent.temperature,

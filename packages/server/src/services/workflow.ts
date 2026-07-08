@@ -160,6 +160,8 @@ function sanitizeWorkflowAgentValue(value: unknown): unknown {
     mcps: sanitizeWorkflowAgentMcps(agent.mcps),
     skills: sanitizeWorkflowAgentSkills(agent.skills),
     tools: sanitizeWorkflowAgentTools(agent.tools),
+    boundWorkflowIds: sanitizeWorkflowAgentStringList(agent.boundWorkflowIds),
+    boundWorkflowPluginTools: sanitizeWorkflowAgentBoundPluginTools(agent.boundWorkflowPluginTools),
     systemPrompt: agent.systemPrompt,
     outputStyle: agent.outputStyle,
     temperature: agent.temperature,
@@ -176,6 +178,24 @@ function sanitizeWorkflowAgentMcps(
 ): Record<string, unknown> | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   return value as Record<string, unknown>;
+}
+
+function sanitizeWorkflowAgentStringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function sanitizeWorkflowAgentBoundPluginTools(value: unknown): Array<{ pluginId: string; toolName: string }> | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((item): item is { pluginId: string; toolName: string } => (
+      Boolean(item)
+      && typeof item === 'object'
+      && !Array.isArray(item)
+      && typeof (item as { pluginId?: unknown }).pluginId === 'string'
+      && typeof (item as { toolName?: unknown }).toolName === 'string'
+    ))
+    .map((item) => ({ pluginId: item.pluginId, toolName: item.toolName }));
 }
 
 function sanitizeWorkflowAgentSkills(value: unknown): string[] | undefined {

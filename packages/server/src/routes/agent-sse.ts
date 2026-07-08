@@ -136,6 +136,8 @@ router.post('/run', async (req: Request, res: Response) => {
         workingDir,
         excludeNativeClaudeMd: runtimeKind === 'claude-code',
         builtInTools: (functionTools ?? []).map((tool) => ({ name: tool.name, description: tool.description })),
+        boundWorkflowIds: preset.boundWorkflowIds,
+        boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
       },
     );
     let result: Awaited<ReturnType<ReturnType<typeof createAgentRuntime>['execute']>>;

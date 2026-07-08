@@ -159,6 +159,11 @@ export const BUILT_IN_AGENT_TOOLS = [
     label: 'Get Latest Workflow Result',
     description: 'Read the latest execution result for a workflow.',
   },
+  {
+    name: 'execute_bound_workflow_plugin_tool',
+    label: 'Execute Bound Workflow Plugin Tool',
+    description: 'Execute a workflow plugin tool that is explicitly bound to the current agent.',
+  },
 ] as const;
 
 export type BuiltInAgentToolName = typeof BUILT_IN_AGENT_TOOLS[number]['name'];

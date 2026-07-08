@@ -2,9 +2,17 @@
 
 import type { NodeTypeDefinition, PluginConfigField, PluginMeta } from '@agent-spaces/shared';
 import { sdk } from './sdk';
+import { fetchWithAuth } from './auth';
 
 export type WorkflowPlugin = PluginMeta & {
   config?: PluginConfigField[];
+};
+
+export type WorkflowPluginTool = {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+  outputs: unknown[];
 };
 
 export type StoreWorkflowPlugin = Omit<WorkflowPlugin, 'enabled'> & {
@@ -134,6 +142,9 @@ export const pluginApi = {
     });
     pendingWorkflowNodes.set(cacheKey, request);
     return request;
+  },
+  getTools(pluginId: string): Promise<WorkflowPluginTool[]> {
+    return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/tools${getPluginLocaleQuery()}`).then((r) => r.json());
   },
   getConfig(pluginId: string): Promise<Record<string, string>> {
     return sdk.workflowPlugin.getConfig(pluginId);

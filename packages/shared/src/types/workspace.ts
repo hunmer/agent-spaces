@@ -80,6 +80,8 @@ export interface AgentConfig {
   mcps?: Record<string, unknown>;
   skills?: string[];
   tools?: BuiltInAgentToolName[];
+  boundWorkflowIds?: string[];
+  boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
   systemPrompt?: string;
   outputStyle?: string;
   /** 预设消息建议：聊天输入框的快捷提示（如 mini-app 预览聊天） */

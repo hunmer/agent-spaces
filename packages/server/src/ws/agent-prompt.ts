@@ -34,6 +34,8 @@ export function buildAgentPrompt(
     workingDir?: string;
     excludeNativeClaudeMd?: boolean;
     builtInTools?: BuiltInToolContext[];
+    boundWorkflowIds?: string[];
+    boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
     miniAppContext?: MiniAppPromptContext;
   },
 ): string {
@@ -56,6 +58,9 @@ export function buildAgentPrompt(
     configLines.push('- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.');
     if (runtimeConfig.builtInTools?.length) {
       configLines.push(...formatBuiltInToolContext(workspaceId, runtimeConfig.builtInTools));
+    }
+    if (runtimeConfig.boundWorkflowIds?.length || runtimeConfig.boundWorkflowPluginTools?.length) {
+      configLines.push(...formatBoundWorkflowContext(runtimeConfig.boundWorkflowIds, runtimeConfig.boundWorkflowPluginTools));
     }
     if (runtimeConfig.miniAppContext) {
       configLines.push(...formatMiniAppPromptContext(runtimeConfig.miniAppContext));
@@ -267,6 +272,26 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
 
   for (const tool of tools) {
     lines.push(`- ${formatCallableToolName(tool.name)}: ${tool.description}`);
+  }
+  return lines;
+}
+
+function formatBoundWorkflowContext(
+  workflowIds?: string[],
+  pluginTools?: Array<{ pluginId: string; toolName: string }>,
+): string[] {
+  const lines = [
+    'Bound workflow capabilities:',
+    `- Bound workflows: ${workflowIds?.length ? workflowIds.join(', ') : 'none'}`,
+    `- Bound workflow plugin tools: ${pluginTools?.length ? pluginTools.map((item) => `${item.pluginId}:${item.toolName}`).join(', ') : 'none'}`,
+  ];
+  if (workflowIds?.length) {
+    lines.push('- Prefer the bound workflows above when the task matches an existing workflow capability.');
+    lines.push('- Use list_workflows or get_workflow_latest_result only as supporting tools; the bound workflow IDs above are the approved workflow scope.');
+  }
+  if (pluginTools?.length) {
+    lines.push('- To execute a bound workflow plugin tool, call mcp__agent-spaces__execute_bound_workflow_plugin_tool.');
+    lines.push('- Do not call unbound workflow plugin tools or invent plugin/tool names outside the bound list above.');
   }
   return lines;
 }

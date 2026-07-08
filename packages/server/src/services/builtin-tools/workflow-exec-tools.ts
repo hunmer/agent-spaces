@@ -3,6 +3,8 @@ import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import type { ExecutionManager } from '../execution-manager.js';
 import { listAvailableAgentCapabilities } from '../agent-capability-catalog.js';
 import * as agentService from '../agent.js';
+import { executePluginTool, getPluginTools } from '../plugin.js';
+import { createBuiltinPluginApi } from '../plugin-runtime-api.js';
 import * as workflowService from '../workflow.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -39,12 +41,30 @@ const listAgentCapabilitiesInputSchema = schema({
   },
 });
 
+type BoundWorkflowPluginTool = { pluginId: string; toolName: string };
+export interface WorkflowExecutionToolContext {
+  boundWorkflowPluginTools?: BoundWorkflowPluginTool[];
+}
+
+const executeBoundWorkflowPluginToolInputSchema = schema({
+  plugin_id: { type: 'string', description: 'Bound plugin ID. pluginId is also accepted.' },
+  pluginId: { type: 'string', description: 'Plugin ID alias.' },
+  tool_name: { type: 'string', description: 'Bound plugin tool name. toolName is also accepted.' },
+  toolName: { type: 'string', description: 'Plugin tool name alias.' },
+  args: { type: 'object', description: 'Tool input arguments.', properties: {} },
+});
+
 export function setWorkflowExecutionManager(manager: ExecutionManager): void {
   workflowExecutionManager = manager;
 }
 
-export function createWorkflowExecutionFunctionTools(workspaceId = '', allowedTools?: BuiltInAgentToolName[]): AgentFunctionTool[] {
+export function createWorkflowExecutionFunctionTools(
+  workspaceId = '',
+  allowedTools?: BuiltInAgentToolName[],
+  ctx?: WorkflowExecutionToolContext,
+): AgentFunctionTool[] {
   const allowedToolNames = getAllowedWorkflowToolNames(allowedTools);
+  const boundWorkflowPluginTools = listBoundWorkflowPluginTools(allowedTools, ctx);
   const tools: AgentFunctionTool[] = [
     {
       name: 'list_available_agent_capabilities',
@@ -118,9 +138,27 @@ export function createWorkflowExecutionFunctionTools(workspaceId = '', allowedTo
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => getWorkflowLatestResult(input),
     },
+    {
+      name: 'execute_bound_workflow_plugin_tool',
+      description: 'Execute a workflow plugin tool that is explicitly bound to the current agent. Use this only with configured bindings.',
+      inputSchema: executeBoundWorkflowPluginToolInputSchema,
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => executeBoundWorkflowPluginTool(input, boundWorkflowPluginTools),
+    },
   ];
 
   return tools.filter((tool) => allowedToolNames.has(tool.name as BuiltInAgentToolName));
+}
+
+function listBoundWorkflowPluginTools(allowedTools?: BuiltInAgentToolName[], ctx?: WorkflowExecutionToolContext): BoundWorkflowPluginTool[] {
+  if (!allowedTools?.includes('execute_bound_workflow_plugin_tool')) return [];
+  const dedup = new Set<string>();
+  return (ctx?.boundWorkflowPluginTools ?? []).filter((binding) => {
+    const key = `${binding.pluginId}:${binding.toolName}`;
+    if (!binding.pluginId || !binding.toolName || dedup.has(key)) return false;
+    dedup.add(key);
+    return true;
+  });
 }
 
 function listAgentCapabilities(workspaceId: string, input: unknown) {
@@ -297,6 +335,40 @@ function getWorkflowLatestResult(input: unknown) {
   if (!log) return { success: false, message: `Workflow has no execution logs: ${workflowId}` };
 
   return executionLogResult(workflowId, log, stringInput(record, 'node_id'), true);
+}
+
+async function executeBoundWorkflowPluginTool(input: unknown, boundTools: BoundWorkflowPluginTool[]) {
+  const record = asRecord(input);
+  const pluginId = stringInput(record, 'plugin_id') ?? stringInput(record, 'pluginId');
+  const toolName = stringInput(record, 'tool_name') ?? stringInput(record, 'toolName');
+  if (!pluginId) return { success: false, message: 'plugin_id is required' };
+  if (!toolName) return { success: false, message: 'tool_name is required' };
+
+  const binding = boundTools.find((item) => item.pluginId === pluginId && item.toolName === toolName);
+  if (!binding) {
+    return {
+      success: false,
+      message: `Tool is not bound to the current agent: ${pluginId}:${toolName}`,
+      data: { available: boundTools },
+    };
+  }
+
+  const toolDef = getPluginTools(pluginId).find((item) => item.name === toolName);
+  if (!toolDef) return { success: false, message: `Plugin tool not found: ${pluginId}:${toolName}` };
+
+  const args = objectInput(record, 'args');
+  const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi());
+  return {
+    success: true,
+    message: `Executed plugin tool: ${pluginId}:${toolName}.`,
+    data: {
+      plugin_id: pluginId,
+      tool_name: toolName,
+      input_schema: toolDef.input_schema,
+      outputs: toolDef.outputs,
+      result,
+    },
+  };
 }
 
 function executionLogResult(workflowId: string, log: ExecutionLog, nodeId?: string, latest = false) {

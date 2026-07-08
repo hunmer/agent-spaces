@@ -393,6 +393,8 @@ export function createPreset(
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     tools: normalizeToolNames(data.tools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name)),
+    boundWorkflowIds: normalizeStringList(data.boundWorkflowIds),
+    boundWorkflowPluginTools: normalizeBoundWorkflowPluginTools(data.boundWorkflowPluginTools),
     systemPrompt: data.systemPrompt || '',
     outputStyle: data.outputStyle,
     suggestions: data.suggestions,
@@ -437,6 +439,8 @@ export function updatePreset(
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     tools: normalizeToolNames(data.tools ?? existing.tools),
+    boundWorkflowIds: normalizeStringList(data.boundWorkflowIds ?? existing.boundWorkflowIds),
+    boundWorkflowPluginTools: normalizeBoundWorkflowPluginTools(data.boundWorkflowPluginTools ?? existing.boundWorkflowPluginTools),
     enabled: data.enabled ?? existing.enabled ?? true,
   };
   writeAgentTemplate(updated, data.skills as SkillInput[] | undefined);
@@ -588,6 +592,31 @@ function normalizeSkillNames(skills?: unknown): string[] {
 function normalizeToolNames(tools?: AgentConfig['tools']): AgentConfig['tools'] {
   if (!Array.isArray(tools)) return [];
   return tools.filter((name): name is NonNullable<AgentConfig['tools']>[number] => VALID_TOOL_NAMES.has(name));
+}
+
+function normalizeStringList(values?: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return values
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function normalizeBoundWorkflowPluginTools(values?: unknown): Array<{ pluginId: string; toolName: string }> {
+  if (!Array.isArray(values)) return [];
+  const dedup = new Set<string>();
+  const result: Array<{ pluginId: string; toolName: string }> = [];
+  for (const item of values) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    const pluginId = typeof (item as { pluginId?: unknown }).pluginId === 'string' ? (item as { pluginId: string }).pluginId.trim() : '';
+    const toolName = typeof (item as { toolName?: unknown }).toolName === 'string' ? (item as { toolName: string }).toolName.trim() : '';
+    if (!pluginId || !toolName) continue;
+    const key = `${pluginId}:${toolName}`;
+    if (dedup.has(key)) continue;
+    dedup.add(key);
+    result.push({ pluginId, toolName });
+  }
+  return result;
 }
 
 function resolveProviderConfig(data: Partial<AgentConfig>): LLMProvider | undefined {

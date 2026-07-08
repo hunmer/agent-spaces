@@ -76,6 +76,8 @@ export interface ChatComposerInputState {
   activeMcps: string[];
   activeSkills: string[];
   activeTools: Array<{ name: string; label: string; icon: Icon }>;
+  activeWorkflowIds: string[];
+  activeWorkflowPluginTools: Array<{ pluginId: string; toolName: string }>;
 }
 
 export interface ChatComposerInputHandle {
@@ -202,6 +204,8 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       activeMcps,
       activeSkills,
       activeTools,
+      activeWorkflowIds: activeAgent?.boundWorkflowIds ?? [],
+      activeWorkflowPluginTools: activeAgent?.boundWorkflowPluginTools ?? [],
     };
     const prev = prevStateRef.current;
     // Only notify parent when something actually changed to avoid update loops
@@ -211,13 +215,24 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       prev.activeMcps === next.activeMcps &&
       prev.activeSkills === next.activeSkills &&
       prev.activeTools === next.activeTools &&
+      prev.activeWorkflowIds === next.activeWorkflowIds &&
+      prev.activeWorkflowPluginTools === next.activeWorkflowPluginTools &&
       prev.mentionedAgentIds === next.mentionedAgentIds
     ) {
       return;
     }
     prevStateRef.current = next;
     onStateChange?.(next);
-  }, [effectiveMentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools, onStateChange]);
+  }, [
+    effectiveMentionedAgentIds,
+    activeAgent,
+    activeMcps,
+    activeSkills,
+    activeTools,
+    activeAgent?.boundWorkflowIds,
+    activeAgent?.boundWorkflowPluginTools,
+    onStateChange,
+  ]);
 
   useEffect(() => {
     activeSkillsRef.current = activeSkills;

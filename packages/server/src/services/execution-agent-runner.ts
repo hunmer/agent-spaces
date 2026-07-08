@@ -120,7 +120,9 @@ async function executeAgentWithRuntime(
     ...createCommandFunctionTools(workspaceId, tools),
     ...createDatabaseFunctionTools(workspaceId, tools),
     ...createWorkspaceFileFunctionTools(workspaceId, tools, () => workspace ?? null),
-    ...createWorkflowExecutionFunctionTools(workspaceId, tools),
+    ...createWorkflowExecutionFunctionTools(workspaceId, tools, {
+      boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
+    }),
   ];
 
   appendLog('info', `Runtime: ${preset.runtimeKind || 'langchain'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
@@ -138,6 +140,8 @@ async function executeAgentWithRuntime(
       workingDir,
       excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
       builtInTools: mergedBuiltInTools,
+      boundWorkflowIds: preset.boundWorkflowIds,
+      boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
     }),
     workingDir,
     {
@@ -420,6 +424,8 @@ function getAgentOverrideFields(resolvedData: Record<string, any>): Record<strin
     'mcps',
     'skills',
     'tools',
+    'boundWorkflowIds',
+    'boundWorkflowPluginTools',
     'systemPrompt',
     'outputStyle',
     'temperature',

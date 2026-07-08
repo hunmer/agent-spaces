@@ -20,6 +20,8 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
   activeMcps: [],
   activeSkills: [],
   activeTools: [],
+  activeWorkflowIds: [],
+  activeWorkflowPluginTools: [],
 };
 
 type InlineChatMessage = ChatMessage & {
@@ -100,6 +102,8 @@ export function InlineChatPanel({
     mcps: agentMcps,
     skills: agentSkills,
     tools: agentTools,
+    boundWorkflowIds: [],
+    boundWorkflowPluginTools: [],
     avatarUrl: agentAvatar,
   }], [agentId, agentName, agentDescription, agentMcps, agentSkills, agentTools, agentAvatar]);
   const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);
@@ -319,6 +323,8 @@ export function InlineChatPanel({
             mcps={composerState.activeMcps}
             skills={composerState.activeSkills}
             tools={composerState.activeTools}
+            workflowIds={composerState.activeWorkflowIds}
+            workflowPluginTools={composerState.activeWorkflowPluginTools}
             todos={[]}
             contextLength={contextLength}
             onContextLengthChange={setContextLength}
