@@ -290,7 +290,9 @@ function formatBoundWorkflowContext(
     lines.push('- Use list_workflows or get_workflow_latest_result only as supporting tools; the bound workflow IDs above are the approved workflow scope.');
   }
   if (pluginTools?.length) {
+    lines.push('- To inspect the bound workflow plugin tool schema before execution, call mcp__agent-spaces__get_bound_workflow_plugin_tool.');
     lines.push('- To execute a bound workflow plugin tool, call mcp__agent-spaces__execute_bound_workflow_plugin_tool.');
+    lines.push('- If execution fails, read the returned data.tool field for the exact tool schema and metadata.');
     lines.push('- Do not call unbound workflow plugin tools or invent plugin/tool names outside the bound list above.');
   }
   return lines;

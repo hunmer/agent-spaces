@@ -190,6 +190,12 @@ export const BUILT_IN_AGENT_TOOLS = [
     category: 'workflow',
   },
   {
+    name: 'get_bound_workflow_plugin_tool',
+    label: 'Get Bound Workflow Plugin Tool',
+    description: 'Query workflow plugin tools that are explicitly bound to the current agent.',
+    category: 'workflow',
+  },
+  {
     name: 'execute_bound_workflow_plugin_tool',
     label: 'Execute Bound Workflow Plugin Tool',
     description: 'Execute a workflow plugin tool that is explicitly bound to the current agent.',

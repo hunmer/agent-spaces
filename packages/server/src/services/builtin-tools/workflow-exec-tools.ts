@@ -54,6 +54,13 @@ const executeBoundWorkflowPluginToolInputSchema = schema({
   args: { type: 'object', description: 'Tool input arguments.', properties: {} },
 });
 
+const getBoundWorkflowPluginToolInputSchema = schema({
+  plugin_id: { type: 'string', description: 'Optional bound plugin ID filter. pluginId is also accepted.' },
+  pluginId: { type: 'string', description: 'Plugin ID alias.' },
+  tool_name: { type: 'string', description: 'Optional bound plugin tool name filter. toolName is also accepted.' },
+  toolName: { type: 'string', description: 'Plugin tool name alias.' },
+});
+
 export function setWorkflowExecutionManager(manager: ExecutionManager): void {
   workflowExecutionManager = manager;
 }
@@ -139,6 +146,13 @@ export function createWorkflowExecutionFunctionTools(
       execute: async (input) => getWorkflowLatestResult(input),
     },
     {
+      name: 'get_bound_workflow_plugin_tool',
+      description: 'Query workflow plugin tools that are explicitly bound to the current agent. Optionally filter by plugin_id and tool_name.',
+      inputSchema: getBoundWorkflowPluginToolInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => getBoundWorkflowPluginTool(input, boundWorkflowPluginTools),
+    },
+    {
       name: 'execute_bound_workflow_plugin_tool',
       description: 'Execute a workflow plugin tool that is explicitly bound to the current agent. Use this only with configured bindings.',
       inputSchema: executeBoundWorkflowPluginToolInputSchema,
@@ -151,7 +165,11 @@ export function createWorkflowExecutionFunctionTools(
 }
 
 function listBoundWorkflowPluginTools(allowedTools?: BuiltInAgentToolName[], ctx?: WorkflowExecutionToolContext): BoundWorkflowPluginTool[] {
-  if (!allowedTools?.includes('execute_bound_workflow_plugin_tool')) return [];
+  if (
+    allowedTools
+    && !allowedTools.includes('execute_bound_workflow_plugin_tool')
+    && !allowedTools.includes('get_bound_workflow_plugin_tool')
+  ) return [];
   const dedup = new Set<string>();
   return (ctx?.boundWorkflowPluginTools ?? []).filter((binding) => {
     const key = `${binding.pluginId}:${binding.toolName}`;
@@ -159,6 +177,24 @@ function listBoundWorkflowPluginTools(allowedTools?: BuiltInAgentToolName[], ctx
     dedup.add(key);
     return true;
   });
+}
+
+function getBoundWorkflowPluginTool(input: unknown, boundTools: BoundWorkflowPluginTool[]) {
+  const record = asRecord(input);
+  const pluginId = stringInput(record, 'plugin_id') ?? stringInput(record, 'pluginId');
+  const toolName = stringInput(record, 'tool_name') ?? stringInput(record, 'toolName');
+  const matches = boundTools
+    .filter((item) => (!pluginId || item.pluginId === pluginId) && (!toolName || item.toolName === toolName))
+    .map(describeBoundWorkflowPluginTool);
+
+  return {
+    success: true,
+    message: matches.length ? `Found ${matches.length} bound workflow plugin tool(s).` : 'No matching bound workflow plugin tools found.',
+    data: {
+      total: matches.length,
+      tools: matches,
+    },
+  };
 }
 
 function listAgentCapabilities(workspaceId: string, input: unknown) {
@@ -345,30 +381,50 @@ async function executeBoundWorkflowPluginTool(input: unknown, boundTools: BoundW
   if (!toolName) return { success: false, message: 'tool_name is required' };
 
   const binding = boundTools.find((item) => item.pluginId === pluginId && item.toolName === toolName);
+  const toolInfo = describeBoundWorkflowPluginTool({ pluginId, toolName });
   if (!binding) {
     return {
       success: false,
       message: `Tool is not bound to the current agent: ${pluginId}:${toolName}`,
-      data: { available: boundTools },
+      data: {
+        tool: toolInfo,
+        available: boundTools.map(describeBoundWorkflowPluginTool),
+      },
     };
   }
 
-  const toolDef = getPluginTools(pluginId).find((item) => item.name === toolName);
-  if (!toolDef) return { success: false, message: `Plugin tool not found: ${pluginId}:${toolName}` };
+  if (!toolInfo.found) {
+    return {
+      success: false,
+      message: `Plugin tool not found: ${pluginId}:${toolName}`,
+      data: { tool: toolInfo },
+    };
+  }
 
   const args = objectInput(record, 'args');
-  const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi());
-  return {
-    success: true,
-    message: `Executed plugin tool: ${pluginId}:${toolName}.`,
-    data: {
-      plugin_id: pluginId,
-      tool_name: toolName,
-      input_schema: toolDef.input_schema,
-      outputs: toolDef.outputs,
-      result,
-    },
-  };
+  try {
+    const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi());
+    return {
+      success: true,
+      message: `Executed plugin tool: ${pluginId}:${toolName}.`,
+      data: {
+        plugin_id: pluginId,
+        tool_name: toolName,
+        input_schema: toolInfo.input_schema,
+        outputs: toolInfo.outputs,
+        result,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : `Failed to execute plugin tool: ${pluginId}:${toolName}`,
+      data: {
+        tool: toolInfo,
+        args,
+      },
+    };
+  }
 }
 
 function executionLogResult(workflowId: string, log: ExecutionLog, nodeId?: string, latest = false) {
@@ -447,6 +503,7 @@ function getAllowedWorkflowToolNames(allowedTools?: BuiltInAgentToolName[]): Set
     names.add('search_workflow');
     names.add('get_workflow_result');
     names.add('get_workflow_latest_result');
+    names.add('get_bound_workflow_plugin_tool');
   }
   return names;
 }
@@ -459,7 +516,9 @@ function isWorkflowExecutionToolName(name: string): boolean {
     || name === 'execute_workflow_sync'
     || name === 'execute_workflow_async'
     || name === 'get_workflow_result'
-    || name === 'get_workflow_latest_result';
+    || name === 'get_workflow_latest_result'
+    || name === 'get_bound_workflow_plugin_tool'
+    || name === 'execute_bound_workflow_plugin_tool';
 }
 
 function pageArgs(input: JsonRecord): { page: number; pageSize: number } {
@@ -471,6 +530,20 @@ function pageArgs(input: JsonRecord): { page: number; pageSize: number } {
 
 function resolveWorkflowId(input: JsonRecord): string {
   return stringInput(input, 'workflow_id') ?? stringInput(input, 'workflowId') ?? '';
+}
+
+function describeBoundWorkflowPluginTool(binding: BoundWorkflowPluginTool) {
+  const toolDef = getPluginTools(binding.pluginId).find((item) => item.name === binding.toolName);
+  return {
+    plugin_id: binding.pluginId,
+    tool_name: binding.toolName,
+    found: Boolean(toolDef),
+    key: `${binding.pluginId}:${binding.toolName}`,
+    input_schema: toolDef?.input_schema ?? null,
+    outputs: toolDef?.outputs ?? [],
+    description: toolDef?.description ?? '',
+    output_count: Array.isArray(toolDef?.outputs) ? toolDef.outputs.length : 0,
+  };
 }
 
 function schema(properties: Record<string, unknown>, required?: string[]): Record<string, unknown> {

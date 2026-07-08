@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { sdk } from "@/lib/sdk";
 import { pluginApi } from "@/lib/workflow-plugin-api";
 import { useAgentStore } from "@/stores/agent";
@@ -120,6 +121,38 @@ export function ChatInputInfoBar({
     if (workflowOpen) void loadWorkflows();
   }, [loadWorkflows, workflowOpen]);
 
+  // 工作流插件 tool 描述缓存：`${pluginId}:${toolName}` -> description
+  const [pluginToolDescMap, setPluginToolDescMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!workflowToolOpen || workflowPluginTools.length === 0) return;
+    let cancelled = false;
+    const pluginIds = Array.from(new Set(workflowPluginTools.map((item) => item.pluginId)));
+    void Promise.all(
+      pluginIds.map(async (pluginId) => {
+        try {
+          const tools = await pluginApi.getTools(pluginId);
+          return [pluginId, tools] as const;
+        } catch {
+          return [pluginId, []] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      setPluginToolDescMap((prev) => {
+        const next = { ...prev };
+        for (const [pluginId, tools] of entries) {
+          for (const tool of tools) {
+            next[`${pluginId}:${tool.name}`] = tool.description;
+          }
+        }
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [workflowToolOpen, workflowPluginTools]);
+
   useEffect(() => {
     if (!pluginToolDialogOpen) return;
     void pluginApi.listWorkflowPlugins().then((items) => {
@@ -147,8 +180,8 @@ export function ChatInputInfoBar({
     if (toolsDialogOpen) setDraftTools(tools.map((tool) => tool.name as BuiltInAgentToolName));
   }, [toolsDialogOpen, tools]);
 
-  const workflowNameMap = useMemo(() => new Map(workflows.map((workflow) => [workflow.id, workflow.name])), [workflows]);
-  const selectedWorkflowLabels = workflowIds.map((id) => workflowNameMap.get(id) || id);
+  const workflowMap = useMemo(() => new Map(workflows.map((workflow) => [workflow.id, workflow])), [workflows]);
+  const selectedWorkflowLabels = workflowIds.map((id) => workflowMap.get(id)?.name || id);
 
   const insertCodeLocation = (path: string, line: number, column: number) => {
     onInsertText?.(`${path}:${line}:${column}`);
@@ -351,16 +384,30 @@ export function ChatInputInfoBar({
         <PopoverContent align="start" sideOffset={6} className="min-w-[200px] max-w-xs p-1.5">
           {selectedWorkflowLabels.length ? (
             <div className="flex flex-col gap-1">
-              {selectedWorkflowLabels.map((label, index) => (
-                <button
-                  key={`${workflowIds[index]}:${label}`}
-                  type="button"
-                  className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
-                  onClick={() => onInsertText?.(`[use workflow: ${workflowIds[index]}]`)}
-                >
-                  {label}
-                </button>
-              ))}
+              {selectedWorkflowLabels.map((label, index) => {
+                const workflowId = workflowIds[index];
+                const description = workflowMap.get(workflowId)?.description;
+                return (
+                  <Tooltip key={`${workflowId}:${label}`}>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
+                          onClick={() => onInsertText?.(`[use workflow: ${workflowId}]`)}
+                        />
+                      }
+                    >
+                      {label}
+                    </TooltipTrigger>
+                    {description ? (
+                      <TooltipContent side="right" className="max-w-xs whitespace-pre-wrap text-xs">
+                        {description}
+                      </TooltipContent>
+                    ) : null}
+                  </Tooltip>
+                );
+              })}
             </div>
           ) : (
             <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
@@ -368,10 +415,10 @@ export function ChatInputInfoBar({
               {t("input.noWorkflow")}
             </div>
           )}
-          <div className="mt-2 border-t pt-2">
+          <div >
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-primary hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-primary hover:bg-accent"
               onClick={() => {
                 setWorkflowOpen(false);
                 setWorkflowDialogOpen(true);
@@ -400,16 +447,29 @@ export function ChatInputInfoBar({
         <PopoverContent align="start" sideOffset={6} className="min-w-[200px] max-w-xs p-1.5">
           {workflowPluginTools.length ? (
             <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-              {workflowPluginTools.map((item) => (
-                <button
-                  key={`${item.pluginId}:${item.toolName}`}
-                  type="button"
-                  className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
-                  onClick={() => onInsertText?.(`[use workflow plugin tool: ${item.pluginId}:${item.toolName}]`)}
-                >
-                  {item.pluginId}:{item.toolName}
-                </button>
-              ))}
+              {workflowPluginTools.map((item) => {
+                const description = pluginToolDescMap[`${item.pluginId}:${item.toolName}`];
+                return (
+                  <Tooltip key={`${item.pluginId}:${item.toolName}`}>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
+                          onClick={() => onInsertText?.(`[use workflow plugin tool: ${item.pluginId}:${item.toolName}]`)}
+                        />
+                      }
+                    >
+                      {item.pluginId}:{item.toolName}
+                    </TooltipTrigger>
+                    {description ? (
+                      <TooltipContent side="right" className="max-w-xs whitespace-pre-wrap text-xs">
+                        {description}
+                      </TooltipContent>
+                    ) : null}
+                  </Tooltip>
+                );
+              })}
             </div>
           ) : (
             <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
@@ -417,10 +477,10 @@ export function ChatInputInfoBar({
               {t("input.noWorkflowTools")}
             </div>
           )}
-          <div className="mt-2 border-t pt-2">
+          <div>
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-primary hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-primary hover:bg-accent"
               onClick={() => {
                 setWorkflowToolOpen(false);
                 setPluginToolDialogOpen(true);
