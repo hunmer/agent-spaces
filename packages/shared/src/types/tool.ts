@@ -18,6 +18,42 @@ export const BUILT_IN_AGENT_TOOLS = [
     category: 'channel',
   },
   {
+    name: 'team_manage',
+    label: 'Team Manage',
+    description: 'Create, list, inspect, or dissolve teams.',
+    category: 'team',
+  },
+  {
+    name: 'team_membership_manage',
+    label: 'Team Membership',
+    description: 'Join or leave a team.',
+    category: 'team',
+  },
+  {
+    name: 'team_message_send',
+    label: 'Team Message Send',
+    description: 'Send direct team messages or broadcasts.',
+    category: 'team',
+  },
+  {
+    name: 'team_inbox_query',
+    label: 'Team Inbox Query',
+    description: 'List inbox messages or read a specific team message delivery.',
+    category: 'team',
+  },
+  {
+    name: 'team_message_update',
+    label: 'Team Message Update',
+    description: 'Update inbox and execution status for a received team message.',
+    category: 'team',
+  },
+  {
+    name: 'team_message_comment',
+    label: 'Team Message Comment',
+    description: 'Add, list, or delete comments on team messages.',
+    category: 'team',
+  },
+  {
     name: 'ReadTerminalOutput',
     label: 'Read Terminal Output',
     description: 'Read paginated terminal output by session ID. Defaults to the newest 100 lines.',

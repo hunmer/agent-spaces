@@ -9,6 +9,7 @@ import {
   createCommandFunctionTools,
   createDatabaseFunctionTools,
   createIssueFunctionTools,
+  createTeamFunctionTools,
   createWorkspaceFileFunctionTools,
   createWorkflowExecutionFunctionTools,
 } from './builtin-tools/index.js';
@@ -117,6 +118,7 @@ async function executeAgentWithRuntime(
   });
   const functionTools = [
     ...issueFunctionTools,
+    ...createTeamFunctionTools(workspaceId, tools),
     ...createCommandFunctionTools(workspaceId, tools),
     ...createDatabaseFunctionTools(workspaceId, tools),
     ...createWorkspaceFileFunctionTools(workspaceId, tools, () => workspace ?? null),

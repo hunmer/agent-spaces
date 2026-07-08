@@ -9,6 +9,7 @@ import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import {
   createCommandFunctionTools,
   createDatabaseFunctionTools,
+  createTeamFunctionTools,
   createWorkspaceFileFunctionTools,
   createWorkflowExecutionFunctionTools,
 } from '../services/builtin-tools/index.js';
@@ -116,6 +117,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     const tools = normalizeToolNames(agent.tools);
     const fileWorkspace = getSessionFileWorkspace(workspaceId, session) ?? chatService.getAgentWorkspace(agentId);
     const functionTools = [
+      ...createTeamFunctionTools(workspaceId, tools),
       ...createCommandFunctionTools(workspaceId, tools),
       ...createDatabaseFunctionTools(workspaceId, tools),
       ...createWorkspaceFileFunctionTools(workspaceId, tools, () => fileWorkspace),
@@ -280,6 +282,7 @@ router.post('/agents/:id/run', async (req, res) => {
     const configDir = chatService.getAgentConfigDir(id) || undefined;
     const tools = normalizeToolNames(agent.tools);
     const functionTools = [
+      ...createTeamFunctionTools(id, tools),
       ...createCommandFunctionTools(id, tools),
       ...createDatabaseFunctionTools(id, tools),
       ...createWorkflowExecutionFunctionTools(id, tools, {
