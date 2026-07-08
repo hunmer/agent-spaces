@@ -32,6 +32,7 @@ import {
   IconCode,
   IconHistory,
   IconLoader2,
+  IconMessageCircle,
   IconPlug,
   IconPuzzle,
   IconSettings,
@@ -182,6 +183,7 @@ export function ChatInputInfoBar({
 
   const workflowMap = useMemo(() => new Map(workflows.map((workflow) => [workflow.id, workflow])), [workflows]);
   const selectedWorkflowLabels = workflowIds.map((id) => workflowMap.get(id)?.name || id);
+  const suggestions = activeAgent?.suggestions?.filter((item) => item.trim().length > 0) ?? [];
 
   const insertCodeLocation = (path: string, line: number, column: number) => {
     onInsertText?.(`${path}:${line}:${column}`);
@@ -328,6 +330,42 @@ export function ChatInputInfoBar({
           </PopoverContent>
         </Popover>
       ) : null}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+            />
+          }
+        >
+          <IconMessageCircle className="size-3" />
+          <span className="hidden md:inline">{t("input.suggestions")}{suggestions.length ? ` ${suggestions.length}` : ""}</span>
+          <IconChevronDown className="size-3" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[220px] max-w-sm rounded-2xl p-1.5 bg-popover border-border">
+          <DropdownMenuGroup className="space-y-1">
+            {suggestions.length ? (
+              suggestions.map((suggestion, index) => (
+                <DropdownMenuItem
+                  key={`${suggestion}-${index}`}
+                  className="rounded-[calc(1rem-6px)] text-xs cursor-pointer"
+                  onClick={() => onInsertText?.(suggestion)}
+                >
+                  <IconMessageCircle size={16} className="opacity-60 shrink-0" />
+                  <span className="line-clamp-2">{suggestion}</span>
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                <IconMessageCircle size={16} className="opacity-60 shrink-0" />
+                {t("input.noSuggestions")}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <DropdownMenu>
         <DropdownMenuTrigger
           render={

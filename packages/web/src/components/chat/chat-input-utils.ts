@@ -10,7 +10,7 @@ import type { JSONContent } from "@tiptap/core";
 
 export type MentionedAgent = Pick<
   AgentConfig,
-  "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools" | "avatarUrl" | "boundWorkflowIds" | "boundWorkflowPluginTools"
+  "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools" | "avatarUrl" | "boundWorkflowIds" | "boundWorkflowPluginTools" | "suggestions"
 >;
 
 export function collectMentionIds(node: JSONContent): string[] {

@@ -117,6 +117,7 @@ export function InlineChatPanel({
     tools: storedAgent?.tools ?? agentTools,
     boundWorkflowIds: storedAgent?.boundWorkflowIds ?? [],
     boundWorkflowPluginTools: storedAgent?.boundWorkflowPluginTools ?? [],
+    suggestions: storedAgent?.suggestions ?? [],
     avatarUrl: storedAgent?.avatarUrl || agentAvatar,
   }], [agentId, agentName, agentDescription, agentMcps, agentSkills, agentTools, agentAvatar, storedAgent]);
   const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);

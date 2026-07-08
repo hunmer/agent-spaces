@@ -72,6 +72,8 @@
     "autoMode": "Auto",
     "mcp": "MCP",
     "noMcp": "No MCP configured",
+    "suggestions": "Suggestions",
+    "noSuggestions": "No suggestions configured",
     "skill": "Skill",
     "noSkills": "No skills configured",
     "tools": "Tools",

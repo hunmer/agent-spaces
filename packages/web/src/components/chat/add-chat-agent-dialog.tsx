@@ -38,8 +38,10 @@ function chatAgentToPreset(agent: ChatAgent): AgentPreset {
     boundWorkflowIds: agent.boundWorkflowIds ?? [],
     boundWorkflowPluginTools: agent.boundWorkflowPluginTools ?? [],
     outputStyle: agent.outputStyle ?? "",
+    suggestions: agent.suggestions ?? [],
     temperature: agent.temperature ?? 0.3,
     maxTokens: agent.maxTokens ?? 4096,
+    backgroundUrl: agent.backgroundUrl ?? "",
     enabled: agent.enabled ?? true,
   };
 }
@@ -65,8 +67,10 @@ function presetToChatAgentData(preset: AgentPreset): Omit<ChatAgent, "id" | "cre
     boundWorkflowIds: preset.boundWorkflowIds,
     boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
     outputStyle: preset.outputStyle || undefined,
+    suggestions: preset.suggestions,
     temperature: preset.temperature,
     maxTokens: preset.maxTokens,
+    backgroundUrl: preset.backgroundUrl || undefined,
     enabled: preset.enabled,
   };
 }

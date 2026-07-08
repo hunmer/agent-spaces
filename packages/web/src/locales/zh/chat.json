@@ -90,7 +90,9 @@
     "usingAgentModel": "使用 {name} 当前模型配置",
     "noAgentSelected": "未选择 Agent",
     "temporaryModel": "临时模型",
-    "searchModel": "搜索模型"
+    "searchModel": "搜索模型",
+    "suggestions": "常用语",
+    "noSuggestions": "未配置常用语"
   },
   "messageParts": {
     "agentProcessing": "Agent 正在处理...",
