@@ -42,7 +42,9 @@ import {
 } from "lucide-react";
 import { sdk } from "@/lib/sdk";
 import { workflowApi } from "@/lib/workflow-api";
-import { pluginApi, type WorkflowPluginTool } from "@/lib/workflow-plugin-api";
+import { pluginApi } from "@/lib/workflow-plugin-api";
+import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
+import { PluginToolDialog } from "@/components/workflow/plugin-tool-dialog";
 import { useRuntimeCliSettings, type RuntimeCliDiscoveryItem, type SupportedRuntimeKind } from "@/lib/runtime-cli-settings";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
@@ -105,8 +107,10 @@ export function AgentDetail({
   const [previewPrompt, setPreviewPrompt] = useState("");
   const [bgPickerSrc, setBgPickerSrc] = useState("");
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
+  const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
+  const [pluginToolDialogOpen, setPluginToolDialogOpen] = useState(false);
+  const [dialogEnabledPlugins, setDialogEnabledPlugins] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<Array<{ id: string; name: string }>>([]);
-  const [workflowPluginTools, setWorkflowPluginTools] = useState<Array<{ pluginId: string; pluginName: string; tool: WorkflowPluginTool }>>([]);
   const tools = agent.tools ?? [];
   const { items: discoveredRuntimeCliItems } = useRuntimeCliSettings();
 
@@ -173,15 +177,7 @@ export function AgentDetail({
     void workflowApi.list().then((items) => setWorkflows(items.map((item) => ({ id: item.id, name: item.name }))));
     void (async () => {
       const plugins = await pluginApi.listWorkflowPlugins();
-      const toolItems = await Promise.all(
-        plugins
-          .filter((plugin) => plugin.enabled)
-          .map(async (plugin) => {
-            const tools = await pluginApi.getTools(plugin.id).catch(() => []);
-            return tools.map((tool) => ({ pluginId: plugin.id, pluginName: plugin.name, tool }));
-          }),
-      );
-      setWorkflowPluginTools(toolItems.flat());
+      setDialogEnabledPlugins(plugins.filter((plugin) => plugin.enabled).map((plugin) => plugin.id));
     })();
   }, []);
 
@@ -538,19 +534,9 @@ export function AgentDetail({
           )}
         </div>
         {!lockedFields?.boundWorkflowIds ? (
-          <SearchSelect
-            value=""
-            onChange={(value) => {
-              if (!value || agent.boundWorkflowIds.includes(value)) return;
-              onChange("boundWorkflowIds", [...agent.boundWorkflowIds, value]);
-            }}
-            options={workflows
-              .filter((item) => !agent.boundWorkflowIds.includes(item.id))
-              .map((item) => ({ value: item.id, label: item.name, description: item.id }))}
-            placeholder="选择工作流"
-            searchPlaceholder="搜索工作流"
-            allowCustom={false}
-          />
+          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setWorkflowDialogOpen(true)}>
+            选择工作流
+          </Button>
         ) : null}
       </div>
       )}
@@ -582,26 +568,9 @@ export function AgentDetail({
           )}
         </div>
         {!lockedFields?.boundWorkflowPluginTools ? (
-          <SearchSelect
-            value=""
-            onChange={(value) => {
-              if (!value) return;
-              const [pluginId, toolName] = value.split("::");
-              if (!pluginId || !toolName) return;
-              if (agent.boundWorkflowPluginTools.some((item) => item.pluginId === pluginId && item.toolName === toolName)) return;
-              onChange("boundWorkflowPluginTools", [...agent.boundWorkflowPluginTools, { pluginId, toolName }]);
-            }}
-            options={workflowPluginTools
-              .filter((item) => !agent.boundWorkflowPluginTools.some((binding) => binding.pluginId === item.pluginId && binding.toolName === item.tool.name))
-              .map((item) => ({
-                value: `${item.pluginId}::${item.tool.name}`,
-                label: `${item.pluginName} / ${item.tool.name}`,
-                description: item.tool.description,
-              }))}
-            placeholder="选择工作流插件工具"
-            searchPlaceholder="搜索工作流插件工具"
-            allowCustom={false}
-          />
+          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setPluginToolDialogOpen(true)}>
+            选择工作流插件工具
+          </Button>
         ) : null}
       </div>
       )}
@@ -825,6 +794,30 @@ export function AgentDetail({
         open={providersDialogOpen}
         onOpenChange={setProvidersDialogOpen}
         onAddModel={() => {}}
+      />
+
+      <WorkflowListDialog
+        open={workflowDialogOpen}
+        workflows={workflows.map((workflow) => ({ id: workflow.id, name: workflow.name, description: '', nodes: [], edges: [], folderId: null, createdAt: 0, updatedAt: 0 }))}
+        onSelect={() => {}}
+        onCreate={() => {}}
+        onClose={() => setWorkflowDialogOpen(false)}
+        selectable
+        showCreate={false}
+        selectedWorkflowIds={agent.boundWorkflowIds}
+        onSelectedWorkflowIdsChange={(workflowIds) => onChange("boundWorkflowIds", workflowIds)}
+      />
+
+      <PluginToolDialog
+        open={pluginToolDialogOpen}
+        onOpenChange={setPluginToolDialogOpen}
+        projectId="agent-bindings"
+        enabledPlugins={dialogEnabledPlugins}
+        onEnabledPluginsChange={setDialogEnabledPlugins}
+        persistEnabledPlugins={false}
+        selectable
+        selectedTools={agent.boundWorkflowPluginTools}
+        onSelectedToolsChange={(tools) => onChange("boundWorkflowPluginTools", tools)}
       />
     </div>
   );

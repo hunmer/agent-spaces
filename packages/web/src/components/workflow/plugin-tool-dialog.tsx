@@ -29,10 +29,12 @@ interface PluginToolDialogProps {
   projectId: string;
   enabledPlugins: string[];
   onEnabledPluginsChange: (plugins: string[]) => void;
-  /** 打开时默认选中并滚动到的插件 id */
   defaultPluginId?: string;
-  /** 切换开关时是否调用 sdk.miniApp.update 持久化；mini-app 场景 true，workflow 场景 false（由 workflow 自行持久化） */
   persistEnabledPlugins?: boolean;
+  selectable?: boolean;
+  selectedTools?: Array<{ pluginId: string; toolName: string }>;
+  onSelectedToolsChange?: (tools: Array<{ pluginId: string; toolName: string }>) => void;
+  showPluginSwitch?: boolean;
 }
 
 export function PluginToolDialog({
@@ -43,6 +45,10 @@ export function PluginToolDialog({
   onEnabledPluginsChange,
   defaultPluginId,
   persistEnabledPlugins = true,
+  selectable = false,
+  selectedTools = [],
+  onSelectedToolsChange,
+  showPluginSwitch = true,
 }: PluginToolDialogProps) {
   const t = useTranslations('mini-apps');
   const isMobile = useIsMobile();
@@ -81,12 +87,9 @@ export function PluginToolDialog({
 
   const scrollToPlugin = useCallback((pluginId: string) => {
     const el = document.getElementById(`plugin-section-${pluginId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  // 打开时默认选中并滚动到指定插件
   useEffect(() => {
     if (!open || !defaultPluginId) return;
     setSelectedPluginId(defaultPluginId);
@@ -100,26 +103,37 @@ export function PluginToolDialog({
   }, [scrollToPlugin]);
 
   const handleOpenToolDialog = useCallback((pluginId: string, pluginName: string, pluginIconPath: string | undefined, tool: PluginTool) => {
+    if (selectable) return;
     setExecuteDialog({ pluginId, pluginName, pluginIconPath, tool });
-  }, []);
+  }, [selectable]);
 
   const handleOpenConfig = useCallback((pluginId: string) => {
     const config = getPluginConfig(pluginId);
-    const plugin = plugins.find(p => p.id === pluginId);
+    const plugin = plugins.find((p) => p.id === pluginId);
     if (!plugin || !config.length) return;
     setConfigPlugin({ id: plugin.id, name: plugin.name, config });
   }, [getPluginConfig, plugins]);
 
+  const toggleToolSelection = useCallback((pluginId: string, toolName: string) => {
+    if (!onSelectedToolsChange) return;
+    const exists = selectedTools.some((item) => item.pluginId === pluginId && item.toolName === toolName);
+    if (exists) {
+      onSelectedToolsChange(selectedTools.filter((item) => !(item.pluginId === pluginId && item.toolName === toolName)));
+      return;
+    }
+    onSelectedToolsChange([...selectedTools, { pluginId, toolName }]);
+  }, [onSelectedToolsChange, selectedTools]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="!flex !flex-col !overflow-hidden !p-0 !h-[100dvh] !w-screen !max-w-none !max-h-none !rounded-none sm:!h-[85vh] sm:!w-[80vw] sm:!max-h-[85vh] sm:!max-w-none sm:!rounded-xl"
+        className="!flex !h-[100dvh] !max-h-none !w-screen !max-w-none !flex-col !overflow-hidden !rounded-none !p-0 sm:!h-[85vh] sm:!max-h-[85vh] sm:!w-[80vw] sm:!rounded-xl"
       >
-        <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogHeader className="px-6 pb-2 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Wrench className="h-4 w-4" /> {t('pluginTools.title')}
             <div className="flex-1" />
-            <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs me-8" onClick={() => setPluginsDialogOpen(true)}>
+            <Button variant="ghost" size="sm" className="me-8 h-6 gap-1 text-xs" onClick={() => setPluginsDialogOpen(true)}>
               <PackagePlus className="h-3 w-3" /> {t('pluginTools.store')}
             </Button>
           </DialogTitle>
@@ -134,11 +148,10 @@ export function PluginToolDialog({
             {t('pluginTools.noPlugins')}
           </div>
         ) : (() => {
-          // 左：插件列表（两端共用）
           const pluginsPanel = (
             <div className={isMobile ? "h-full bg-muted/20" : "w-56 shrink-0 border-r border-border bg-muted/20"}>
               <ScrollArea className="h-full">
-                <div className="p-2 space-y-0.5">
+                <div className="space-y-0.5 p-2">
                   {plugins.map((plugin) => {
                     const isEnabled = enabledSet.has(plugin.id);
                     const tools = toolsByPlugin[plugin.id] || [];
@@ -147,7 +160,7 @@ export function PluginToolDialog({
                     return (
                       <div
                         key={plugin.id}
-                        className={`flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted/60 cursor-pointer transition-colors group ${isSelected ? 'bg-muted ring-1 ring-primary/40' : ''}`}
+                        className={`group flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-muted/60 ${isSelected ? 'bg-muted ring-1 ring-primary/40' : ''}`}
                         onClick={() => handleSelectPlugin(plugin.id)}
                       >
                         <PluginIcon
@@ -156,13 +169,13 @@ export function PluginToolDialog({
                             : { type: 'builtin', variant: 'local' }}
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium truncate">{plugin.name}</div>
+                          <div className="truncate text-xs font-medium">{plugin.name}</div>
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            {tools.length > 0 && <span>{tools.length} tools</span>}
+                            {tools.length > 0 ? <span>{tools.length} tools</span> : null}
                           </div>
                         </div>
-                        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {hasConfig && (
+                        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          {hasConfig ? (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -171,14 +184,16 @@ export function PluginToolDialog({
                             >
                               <Settings className="h-3 w-3" />
                             </Button>
-                          )}
+                          ) : null}
                         </div>
-                        <Switch
-                          checked={isEnabled}
-                          onCheckedChange={() => togglePlugin(plugin.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="scale-[0.65] shrink-0"
-                        />
+                        {showPluginSwitch ? (
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={() => togglePlugin(plugin.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="scale-[0.65] shrink-0"
+                          />
+                        ) : null}
                       </div>
                     );
                   })}
@@ -187,16 +202,20 @@ export function PluginToolDialog({
             </div>
           );
 
-          // 右：工具网格（由通用组件渲染）
           const toolsPanel = (
             <PluginToolsPanel
               plugins={plugins}
               toolsByPlugin={toolsByPlugin}
               selectedPluginId={selectedPluginId}
               enabledSet={enabledSet}
-              onToolClick={handleOpenToolDialog}
+              onToolClick={selectable ? undefined : handleOpenToolDialog}
               onTogglePlugin={togglePlugin}
               onOpenConfig={handleOpenConfig}
+              selectable={selectable}
+              selectedTools={selectedTools}
+              onToggleToolSelection={toggleToolSelection}
+              onSelectedToolsChange={onSelectedToolsChange}
+              showPluginSwitch={showPluginSwitch}
             />
           );
 
@@ -230,8 +249,6 @@ export function PluginToolDialog({
             </div>
           );
         })()}
-
-
       </DialogContent>
 
       <MiniAppToolExecuteDialog
@@ -245,7 +262,7 @@ export function PluginToolDialog({
 
       <WorkflowPluginConfigDialog
         open={Boolean(configPlugin)}
-        onOpenChange={(o) => { if (!o) setConfigPlugin(null); }}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setConfigPlugin(null); }}
         pluginId={configPlugin?.id || null}
         pluginName={configPlugin?.name || ''}
         config={configPlugin?.config || []}
@@ -258,9 +275,8 @@ export function PluginToolDialog({
           if (!nextOpen) reload();
         }}
         workflow={adapterWorkflow}
-        onWorkflowChange={(wf) => {
-          const next = wf.enabledPlugins || [];
-          onEnabledPluginsChange(next);
+        onWorkflowChange={(workflow) => {
+          onEnabledPluginsChange(workflow.enabledPlugins || []);
         }}
       />
     </Dialog>

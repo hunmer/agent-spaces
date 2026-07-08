@@ -107,6 +107,7 @@ export function LocalPluginCard({
           onEnabledPluginsChange={onEnabledPluginsChange!}
           defaultPluginId={plugin.id}
           persistEnabledPlugins={false}
+          showPluginSwitch={false}
         />
       )}
 

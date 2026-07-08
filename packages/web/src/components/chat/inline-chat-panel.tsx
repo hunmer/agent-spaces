@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import type { AgentUsageRecord, AgentUsageSessionDetail, Attachment as MessageAttachment, BuiltInAgentToolName } from "@agent-spaces/shared";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
+import { useAgentStore } from "@/stores/agent";
 import { ChatComposerInput, type ChatComposerInputHandle, type ChatComposerInputState } from "./chat-composer-input";
 import { ChatInputInfoBar } from "./chat-input-info-bar";
 import { ChatMessageList } from "./chat-message-list";
@@ -93,19 +94,22 @@ export function InlineChatPanel({
   const [regenerationStartedAt, setRegenerationStartedAt] = useState<string | null>(null);
   const [contextLength, setContextLength] = useState(0);
   const [composerState, setComposerState] = useState<ChatComposerInputState>(EMPTY_COMPOSER_STATE);
+  const ensureAgents = useAgentStore((s) => s.ensure);
+  const storeAgents = useAgentStore((s) => s.agents);
+  const storedAgent = useMemo(() => storeAgents.find((agent) => agent.id === agentId), [agentId, storeAgents]);
   const composerAgents = useMemo<MentionedAgent[]>(() => [{
     id: agentId,
-    name: agentName,
-    role: "agent",
-    description: agentDescription,
-    enabled: true,
-    mcps: agentMcps,
-    skills: agentSkills,
-    tools: agentTools,
-    boundWorkflowIds: [],
-    boundWorkflowPluginTools: [],
-    avatarUrl: agentAvatar,
-  }], [agentId, agentName, agentDescription, agentMcps, agentSkills, agentTools, agentAvatar]);
+    name: storedAgent?.name || agentName,
+    role: storedAgent?.role || "agent",
+    description: storedAgent?.description || agentDescription,
+    enabled: storedAgent?.enabled ?? true,
+    mcps: storedAgent?.mcps ?? agentMcps,
+    skills: storedAgent?.skills ?? agentSkills,
+    tools: storedAgent?.tools ?? agentTools,
+    boundWorkflowIds: storedAgent?.boundWorkflowIds ?? [],
+    boundWorkflowPluginTools: storedAgent?.boundWorkflowPluginTools ?? [],
+    avatarUrl: storedAgent?.avatarUrl || agentAvatar,
+  }], [agentId, agentName, agentDescription, agentMcps, agentSkills, agentTools, agentAvatar, storedAgent]);
   const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);
   const t = useTranslations('chat.inlineChat');
   const isRegenerating = sending && regeneratingVersionKey !== null;
@@ -115,6 +119,10 @@ export function InlineChatPanel({
   const sessionDetailForMessage = useCallback((message: ChatMessage) => (
     buildInlineSessionDetail(sessionId, agentId, messages, (message as InlineChatMessage).metadata?.fullPrompt ?? agentSystemPrompt)
   ), [agentId, agentSystemPrompt, messages, sessionId]);
+
+  useEffect(() => {
+    void ensureAgents();
+  }, [ensureAgents]);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -323,6 +331,7 @@ export function InlineChatPanel({
             mcps={composerState.activeMcps}
             skills={composerState.activeSkills}
             tools={composerState.activeTools}
+            activeAgent={composerState.activeAgent}
             workflowIds={composerState.activeWorkflowIds}
             workflowPluginTools={composerState.activeWorkflowPluginTools}
             todos={[]}

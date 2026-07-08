@@ -12,11 +12,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import { sdk } from "@/lib/sdk";
+import { pluginApi } from "@/lib/workflow-plugin-api";
+import { useAgentStore } from "@/stores/agent";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
 import { useWorkflowStore } from "@/stores/workflow";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
+import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
+import { PluginToolDialog } from "@/components/workflow/plugin-tool-dialog";
 import { cn } from "@/lib/utils";
 import {
   IconChevronDown,
@@ -34,6 +39,7 @@ import {
 import { useTranslations } from "next-intl";
 import type { Icon } from "@tabler/icons-react";
 import type { Channel, TodoItem } from "@agent-spaces/shared";
+import type { MentionedAgent } from "./chat-input-utils";
 
 const EMPTY_HISTORY: never[] = [];
 const DEFAULT_CONTEXT_LENGTH = 20;
@@ -55,6 +61,7 @@ interface ChatInputInfoBarProps {
   mcps: string[];
   skills: string[];
   tools: ToolEntry[];
+  activeAgent?: MentionedAgent;
   workflowIds: string[];
   workflowPluginTools: Array<{ pluginId: string; toolName: string }>;
   todos: Channel["todos"];
@@ -71,6 +78,7 @@ export function ChatInputInfoBar({
   mcps,
   skills,
   tools,
+  activeAgent,
   workflowIds,
   workflowPluginTools,
   todos,
@@ -91,6 +99,12 @@ export function ChatInputInfoBar({
   const [toolsManageOpen, setToolsManageOpen] = useState(false);
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [workflowToolOpen, setWorkflowToolOpen] = useState(false);
+  const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
+  const [pluginToolDialogOpen, setPluginToolDialogOpen] = useState(false);
+  const [dialogEnabledPlugins, setDialogEnabledPlugins] = useState<string[]>([]);
+  const [draftWorkflowIds, setDraftWorkflowIds] = useState<string[]>([]);
+  const [draftWorkflowPluginTools, setDraftWorkflowPluginTools] = useState<Array<{ pluginId: string; toolName: string }>>([]);
+  const agents = useAgentStore((s) => s.agents);
   const workflows = useWorkflowStore((s) => s.workflows);
   const loadWorkflows = useWorkflowStore((s) => s.loadWorkflows);
   const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
@@ -101,12 +115,43 @@ export function ChatInputInfoBar({
     if (workflowOpen) void loadWorkflows();
   }, [loadWorkflows, workflowOpen]);
 
+  useEffect(() => {
+    if (!pluginToolDialogOpen) return;
+    void pluginApi.listWorkflowPlugins().then((items) => {
+      setDialogEnabledPlugins(items.filter((item) => item.enabled).map((item) => item.id));
+    });
+  }, [pluginToolDialogOpen]);
+
+  useEffect(() => {
+    if (workflowDialogOpen) setDraftWorkflowIds(workflowIds);
+  }, [workflowDialogOpen, workflowIds]);
+
+  useEffect(() => {
+    if (pluginToolDialogOpen) setDraftWorkflowPluginTools(workflowPluginTools);
+  }, [pluginToolDialogOpen, workflowPluginTools]);
+
   const workflowNameMap = useMemo(() => new Map(workflows.map((workflow) => [workflow.id, workflow.name])), [workflows]);
   const selectedWorkflowLabels = workflowIds.map((id) => workflowNameMap.get(id) || id);
 
   const insertCodeLocation = (path: string, line: number, column: number) => {
     onInsertText?.(`${path}:${line}:${column}`);
     setHistoryOpen(false);
+  };
+
+  const persistAgentBindings = async (
+    updates: {
+      boundWorkflowIds?: string[];
+      boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
+    },
+  ) => {
+    if (!activeAgent?.id) return;
+    const storedAgent = agents.find((agent) => agent.id === activeAgent.id);
+    if (!storedAgent) return;
+    const next = { ...storedAgent, ...updates };
+    await sdk.agent.updatePreset(storedAgent.id, next);
+    useAgentStore.setState((state) => ({
+      agents: state.agents.map((agent) => agent.id === storedAgent.id ? next : agent),
+    }));
   };
 
   return (
@@ -282,6 +327,19 @@ export function ChatInputInfoBar({
           ) : (
             <div className="px-2 py-4 text-xs text-muted-foreground">No bound workflows</div>
           )}
+          <div className="mt-2 border-t pt-2">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-primary hover:bg-accent"
+              onClick={() => {
+                setWorkflowOpen(false);
+                setWorkflowDialogOpen(true);
+              }}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </button>
+          </div>
         </PopoverContent>
       </Popover>
 
@@ -316,6 +374,19 @@ export function ChatInputInfoBar({
           ) : (
             <div className="px-2 py-4 text-xs text-muted-foreground">No bound workflow plugin tools</div>
           )}
+          <div className="mt-2 border-t pt-2">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-primary hover:bg-accent"
+              onClick={() => {
+                setWorkflowToolOpen(false);
+                setPluginToolDialogOpen(true);
+              }}
+            >
+              <IconSettings size={16} className="shrink-0" />
+              {tCommon("manage")}
+            </button>
+          </div>
         </PopoverContent>
       </Popover>
 
@@ -460,6 +531,34 @@ export function ChatInputInfoBar({
       <McpsDialog open={mcpsManageOpen} onOpenChange={setMcpsManageOpen} />
       <SkillsDialog open={skillsManageOpen} onOpenChange={setSkillsManageOpen} />
       <ToolsDialog open={toolsManageOpen} onOpenChange={setToolsManageOpen} />
+      <WorkflowListDialog
+        open={workflowDialogOpen}
+        workflows={workflows}
+        onSelect={() => {}}
+        onCreate={() => {}}
+        onClose={() => setWorkflowDialogOpen(false)}
+        selectable
+        showCreate={false}
+        selectedWorkflowIds={draftWorkflowIds}
+        onSelectedWorkflowIdsChange={(nextWorkflowIds) => {
+          setDraftWorkflowIds(nextWorkflowIds);
+          void persistAgentBindings({ boundWorkflowIds: nextWorkflowIds });
+        }}
+      />
+      <PluginToolDialog
+        open={pluginToolDialogOpen}
+        onOpenChange={setPluginToolDialogOpen}
+        projectId="chat-agent-bindings"
+        enabledPlugins={dialogEnabledPlugins}
+        onEnabledPluginsChange={setDialogEnabledPlugins}
+        persistEnabledPlugins={false}
+        selectable
+        selectedTools={draftWorkflowPluginTools}
+        onSelectedToolsChange={(nextTools) => {
+          setDraftWorkflowPluginTools(nextTools);
+          void persistAgentBindings({ boundWorkflowPluginTools: nextTools });
+        }}
+      />
     </div>
   );
 }

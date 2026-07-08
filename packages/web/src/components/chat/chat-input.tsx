@@ -179,6 +179,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             mcps={composerState.activeMcps}
             skills={composerState.activeSkills}
             tools={composerState.activeTools}
+            activeAgent={composerState.activeAgent}
             workflowIds={composerState.activeWorkflowIds}
             workflowPluginTools={composerState.activeWorkflowPluginTools}
             todos={channel.todos}
