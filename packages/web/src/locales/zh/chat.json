@@ -280,7 +280,9 @@
     "unarchive": "取消封存",
     "archived": "已封存",
     "delete": "删除",
-    "files": "文件"
+    "files": "文件",
+    "openFolder": "打开聊天文件夹",
+    "openFolderFailed": "打开文件夹失败"
   },
   "navigator": {
     "you": "你"

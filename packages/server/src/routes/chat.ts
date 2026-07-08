@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { existsSync } from 'node:fs';
+import { exec } from 'node:child_process';
 import * as svc from '../services/chat.js';
 import * as fileService from '../services/file.js';
 import * as chatStore from '../storage/chat-store.js';
@@ -200,6 +201,28 @@ router.delete('/workspaces/:wsId/sessions/:sessionId', (req, res) => {
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// POST /api/chat/workspaces/:wsId/sessions/:sessionId/reveal - 在系统文件管理器中打开 session 目录
+router.post('/workspaces/:wsId/sessions/:sessionId/reveal', (req, res) => {
+  const { wsId, sessionId } = req.params;
+  const dir = svc.getSessionDir(wsId, sessionId);
+  if (!dir) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+  const cmd = process.platform === 'darwin'
+    ? `open "${dir}"`
+    : process.platform === 'win32'
+      ? `explorer "${dir}"`
+      : `xdg-open "${dir}"`;
+  exec(cmd, (err) => {
+    if (err) {
+      res.status(500).json({ error: 'Failed to reveal directory', detail: err.message });
+      return;
+    }
+    res.json({ success: true, path: dir });
+  });
 });
 
 // --- Session Messages ---

@@ -207,6 +207,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     activeChatRequests.get(agentId)?.abort();
     activeChatRequests.delete(agentId);
     set((s) => ({
+      messages: appendAbortedStreamingMessage(s.messages, agentId, s.streamingContent[agentId], s.streamingThinking[agentId], s.streamingTimeline[agentId]),
       sending: { ...s.sending, [agentId]: false },
       errors: { ...s.errors, [agentId]: '' },
       streamingContent: { ...s.streamingContent, [agentId]: '' },
@@ -373,6 +374,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     activeChatRequests.get(sessionId)?.abort();
     activeChatRequests.delete(sessionId);
     set((s) => ({
+      messages: appendAbortedStreamingMessage(s.messages, sessionId, s.streamingContent[sessionId], s.streamingThinking[sessionId], s.streamingTimeline[sessionId]),
       sending: { ...s.sending, [sessionId]: false },
       errors: { ...s.errors, [sessionId]: '' },
       streamingContent: { ...s.streamingContent, [sessionId]: '' },
@@ -494,7 +496,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         activeFileTabPath: state.activeTab?.type === 'file' ? state.activeTab.id : null,
         activeSessionId: restoredSessionId,
       });
-      // 恢复上次激活会话的消息，确保 UI 真正"激活"而不仅是高亮
+      // 鎭㈠涓婃婵€娲讳細璇濈殑娑堟伅锛岀‘淇?UI 鐪熸"婵€娲?鑰屼笉浠呮槸楂樹寒
       if (restoredSessionId) {
         get().loadSessionMessages(workspaceId, restoredSessionId);
       }
@@ -778,6 +780,37 @@ function withStreamingTimeline(message: ChatMessage, streamingTimeline?: Workflo
   if (message.timeline?.length || !streamingTimeline?.length) return message;
   const timeline = streamingTimeline.filter((item) => item.type !== 'message');
   return timeline.length ? { ...message, timeline } : message;
+}
+
+function appendAbortedStreamingMessage(
+  messages: Record<string, ChatMessage[]>,
+  agentId: string,
+  streamingContent?: string,
+  streamingThinking?: string,
+  streamingTimeline?: WorkflowAgentTimelineItem[],
+): Record<string, ChatMessage[]> {
+  const content = streamingContent?.trim() ?? '';
+  const thinking = streamingThinking?.trim() || undefined;
+  const timeline = streamingTimeline?.filter((item) => item.type !== 'message') ?? [];
+
+  if (!content && !thinking && timeline.length === 0) {
+    return messages;
+  }
+
+  const message: ChatMessage = {
+    id: `aborted-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    agentId,
+    role: 'agent',
+    content,
+    timestamp: new Date().toISOString(),
+    ...(thinking ? { thinking } : {}),
+    ...(timeline.length ? { timeline } : {}),
+  };
+
+  return {
+    ...messages,
+    [agentId]: [...(messages[agentId] ?? []), message],
+  };
 }
 
 function appendStreamingToolUse(

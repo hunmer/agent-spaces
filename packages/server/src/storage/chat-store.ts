@@ -287,7 +287,7 @@ function sessionsFile(wsId: string): string {
   return path.join(workspaceDir(wsId), 'sessions.json');
 }
 
-function sessionDir(wsId: string, sessionId: string): string {
+export function sessionDir(wsId: string, sessionId: string): string {
   return path.join(workspaceDir(wsId), 'sessions', sessionId);
 }
 

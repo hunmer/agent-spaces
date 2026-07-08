@@ -38,30 +38,17 @@ interface ToolsDialogProps {
   onSelectedToolsChange?: (tools: BuiltInAgentToolName[]) => void;
 }
 
-const TOOL_CATEGORIES: Record<string, { keys: string[]; icon: typeof Hash }> = {
-  channel: {
-    keys: ['CreateCurrentChannelIssue', 'ViewCurrentChannelIssue', 'AddCurrentChannelComment'],
-    icon: Hash,
-  },
-  terminal: {
-    keys: ['ReadTerminalOutput', 'ListQuickCommands', 'RunQuickCommand', 'StopQuickCommand'],
-    icon: Terminal,
-  },
-  database: {
-    keys: ['ListDatabases', 'ListDatabaseNodes', 'SearchDatabaseNodes', 'QueryDatabaseVectors', 'ReadDatabaseNode', 'ListDatabaseNodeVersions', 'CreateDatabaseNode', 'WriteDatabaseNode', 'DeleteDatabaseNode', 'MoveDatabaseNode', 'UpdateDatabaseNodeMeta'],
-    icon: Database,
-  },
-  files: {
-    keys: ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'WriteWorkspaceFile', 'DeleteWorkspacePath', 'MoveWorkspacePath'],
-    icon: Files,
-  },
-  workflow: {
-    keys: ['list_workflows', 'search_workflow', 'execute_workflow_sync', 'execute_workflow_async', 'get_workflow_result', 'get_workflow_latest_result'],
-    icon: Workflow,
-  },
+// 分类的归属由各工具自带的 category 字段决定（单一数据源，见 BUILT_IN_AGENT_TOOLS）。
+// 这里只保留每个分类的 UI 表现（图标）。
+const TOOL_CATEGORIES: Record<string, { icon: typeof Hash }> = {
+  channel: { icon: Hash },
+  terminal: { icon: Terminal },
+  database: { icon: Database },
+  files: { icon: Files },
+  workflow: { icon: Workflow },
 };
 
-const ALL_TOOLS = (BUILT_IN_AGENT_TOOLS ?? []) as readonly { name: BuiltInAgentToolName; label: string; description: string }[];
+const ALL_TOOLS = (BUILT_IN_AGENT_TOOLS ?? []) as readonly { name: BuiltInAgentToolName; label: string; description: string; category?: string }[];
 
 export function ToolsDialog({ open, onOpenChange, standalone, selectable, selectedTools: externalSelected, onSelectedToolsChange }: ToolsDialogProps) {
   const t = useTranslations('tools');
@@ -116,8 +103,7 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
   const filteredTools = useMemo(() => {
     let tools = ALL_TOOLS;
     if (activeCategory !== 'all') {
-      const keys = new Set(TOOL_CATEGORIES[activeCategory]?.keys ?? []);
-      tools = tools.filter((t) => keys.has(t.name));
+      tools = tools.filter((t) => t.category === activeCategory);
     }
     if (filterAgentId) {
       const agent = agentsWithTools.find((a) => a.id === filterAgentId);

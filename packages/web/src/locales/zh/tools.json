@@ -145,6 +145,10 @@
     "get_workflow_latest_result": {
       "label": "获取最新工作流结果",
       "description": "读取某个工作流的最新执行结果。"
+    },
+    "execute_bound_workflow_plugin_tool": {
+      "label": "执行绑定的工作流插件工具",
+      "description": "执行已显式绑定到当前智能体的工作流插件工具。"
     }
   }
 }

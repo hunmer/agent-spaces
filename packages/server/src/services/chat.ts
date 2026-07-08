@@ -155,6 +155,11 @@ export function createSession(workspaceId: string, agentId: string): ChatSession
   return store.createSession(workspaceId, agentId);
 }
 
+export function getSessionDir(workspaceId: string, sessionId: string): string | null {
+  if (!store.findSession(workspaceId, sessionId)) return null;
+  return store.sessionDir(workspaceId, sessionId);
+}
+
 export function updateSession(
   workspaceId: string,
   sessionId: string,

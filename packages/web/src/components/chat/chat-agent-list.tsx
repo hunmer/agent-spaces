@@ -12,13 +12,15 @@ import { cn } from "@/lib/utils";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { FileIconImg } from "@/components/editor/file-icon";
 import {
-  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore, Eraser, X, CheckIcon,
+  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore, Eraser, X, CheckIcon, FolderOpen,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback } from "react";
 import type { ChatAgent, ChatWorkspace, ChatSession } from "@agent-spaces/sdk";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import { sdk } from "@/lib/sdk";
 import type { ChatFileTab } from "@/stores/chat";
 
 interface ChatSessionListProps {
@@ -448,6 +450,23 @@ export function ChatAgentList({
                 {t("archive")}
               </button>
             )}
+            <button
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+              onClick={async () => {
+                const wsId = activeWorkspaceId;
+                const sessionId = ctxMenu.sessionId;
+                closeContextMenu();
+                if (!wsId) return;
+                try {
+                  await sdk.http.raw(`/api/chat/workspaces/${wsId}/sessions/${sessionId}/reveal`, { method: 'POST' });
+                } catch (e: any) {
+                  toast.error(e?.message || t("openFolderFailed"));
+                }
+              }}
+            >
+              <FolderOpen className="size-3.5" />
+              {t("openFolder")}
+            </button>
             <button
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-accent"
               onClick={() => {

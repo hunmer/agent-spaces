@@ -145,6 +145,10 @@
     "get_workflow_latest_result": {
       "label": "Get Latest Workflow Result",
       "description": "Read the latest execution result for a workflow."
+    },
+    "execute_bound_workflow_plugin_tool": {
+      "label": "Execute Bound Workflow Plugin Tool",
+      "description": "Execute a workflow plugin tool that is explicitly bound to the current agent."
     }
   }
 }

@@ -280,7 +280,9 @@
     "unarchive": "Unarchive",
     "archived": "Archived",
     "delete": "Delete",
-    "files": "Files"
+    "files": "Files",
+    "openFolder": "Open Chat Folder",
+    "openFolderFailed": "Failed to open folder"
   },
   "navigator": {
     "you": "You"
