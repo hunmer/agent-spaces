@@ -12,19 +12,23 @@ import { HooksDialog } from "@/components/sidebar/hooks-dialog";
 import { AgentCommandsDialog } from "@/components/sidebar/agent-commands-dialog";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { LayoutManagerDialog } from "@/components/sidebar/layout-manager-dialog";
+import { TeamManagementDialog } from "@/components/teams/team-management-dialog";
 import {
   LAYOUT_STORAGE_KEY,
   LAYOUT_RESET_EVENT,
   applyLayoutToStorage,
 } from "@/lib/layout-templates";
+import type { Workspace } from "@agent-spaces/shared";
 import type { useSidebarDialogs } from "./use-sidebar-dialogs";
 
 export function SidebarDialogGroup({
   dialogs,
-  currentWorkspaceId,
+  currentWorkspaceId: _currentWorkspaceId,
+  workspaces,
 }: {
   dialogs: ReturnType<typeof useSidebarDialogs>;
   currentWorkspaceId: string | null;
+  workspaces: Workspace[];
 }) {
   return (
     <>
@@ -36,6 +40,7 @@ export function SidebarDialogGroup({
       <HooksDialog open={dialogs.hooksDialogOpen} onOpenChange={dialogs.setHooksDialogOpen} />
       <AgentCommandsDialog open={dialogs.agentCommandsDialogOpen} onOpenChange={dialogs.setAgentCommandsDialogOpen} />
       <ToolsDialog open={dialogs.toolsDialogOpen} onOpenChange={dialogs.setToolsDialogOpen} />
+      <TeamManagementDialog open={dialogs.teamsDialogOpen} onOpenChange={dialogs.setTeamsDialogOpen} workspaces={workspaces} />
       <SettingsDialog open={dialogs.settingsDialogOpen} onOpenChange={dialogs.setSettingsDialogOpen} />
       <ModelsDialog open={dialogs.modelsDialogOpen} onOpenChange={dialogs.setModelsDialogOpen} initialProvider={dialogs.modelsDialogProvider} />
       <ProvidersDialog

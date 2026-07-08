@@ -177,7 +177,13 @@ function TeamFormDialog({
   );
 }
 
-export function TeamManagementPage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
+export function TeamManagementPage({
+  initialWorkspaces,
+  embedded = false,
+}: {
+  initialWorkspaces: Workspace[];
+  embedded?: boolean;
+}) {
   const t = useTranslations("teams");
   const tc = useTranslations("common");
   const ensureAgents = useAgentStore((store) => store.ensure);
@@ -393,12 +399,12 @@ export function TeamManagementPage({ initialWorkspaces }: { initialWorkspaces: W
   }
 
   return (
-    <div className="flex min-h-dvh w-full flex-col">
-      <main className="mx-auto flex size-full max-w-7xl flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
+    <div className={embedded ? "flex h-full flex-col" : "flex min-h-dvh w-full flex-col"}>
+      <main className={embedded ? "flex size-full flex-1 flex-col gap-4 px-4 py-4 sm:px-6" : "mx-auto flex size-full max-w-7xl flex-1 flex-col gap-4 px-4 py-6 sm:px-6"}>
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold">{t("title")}</h1>
+              {embedded ? null : <h1 className="text-2xl font-semibold">{t("title")}</h1>}
               <p className="text-sm text-muted-foreground">{t("description")}</p>
             </div>
             <Button onClick={openCreateDialog} disabled={!selectedWorkspaceId || !selectedActorId}>

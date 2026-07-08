@@ -18,6 +18,7 @@ const DIALOG_HASH_PATHS: Record<string, string> = {
   commands: "/settings/commands",
   tools: "/settings/tools",
   settings: "/settings",
+  teams: "/teams",
 };
 
 const HASH_TO_KEY: Record<string, string> = Object.fromEntries(
@@ -42,6 +43,7 @@ export function useSidebarDialogs(isMobile = false) {
   const [hooksDialogOpen, setHooksDialogOpenRaw] = useState(false);
   const [agentCommandsDialogOpen, setAgentCommandsDialogOpenRaw] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpenRaw] = useState(false);
+  const [teamsDialogOpen, setTeamsDialogOpenRaw] = useState(false);
   const [layoutDialogOpen, setLayoutDialogOpenRaw] = useState(false);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
 
@@ -58,6 +60,7 @@ export function useSidebarDialogs(isMobile = false) {
     hooks: hooksDialogOpen,
     commands: agentCommandsDialogOpen,
     tools: toolsDialogOpen,
+    teams: teamsDialogOpen,
     settings: settingsDialogOpen,
   };
 
@@ -106,6 +109,7 @@ export function useSidebarDialogs(isMobile = false) {
   const setHooksDialogOpen = useMemo(() => wrap(setHooksDialogOpenRaw, "hooks"), [wrap, setHooksDialogOpenRaw]);
   const setAgentCommandsDialogOpen = useMemo(() => wrap(setAgentCommandsDialogOpenRaw, "commands"), [wrap, setAgentCommandsDialogOpenRaw]);
   const setToolsDialogOpen = useMemo(() => wrap(setToolsDialogOpenRaw, "tools"), [wrap, setToolsDialogOpenRaw]);
+  const setTeamsDialogOpen = useMemo(() => wrap(setTeamsDialogOpenRaw, "teams"), [wrap, setTeamsDialogOpenRaw]);
   // layout 不参与 hash 同步，保持原始 setter
   const setLayoutDialogOpen = setLayoutDialogOpenRaw;
 
@@ -121,6 +125,7 @@ export function useSidebarDialogs(isMobile = false) {
       hooks: setHooksDialogOpen,
       commands: setAgentCommandsDialogOpen,
       tools: setToolsDialogOpen,
+      teams: setTeamsDialogOpen,
       layout: setLayoutDialogOpen,
       settings: setSettingsDialogOpen,
     }),
@@ -135,6 +140,7 @@ export function useSidebarDialogs(isMobile = false) {
       setHooksDialogOpen,
       setAgentCommandsDialogOpen,
       setToolsDialogOpen,
+      setTeamsDialogOpen,
       setLayoutDialogOpen,
       setSettingsDialogOpen,
     ]
@@ -181,6 +187,8 @@ export function useSidebarDialogs(isMobile = false) {
     setAgentCommandsDialogOpen,
     toolsDialogOpen,
     setToolsDialogOpen,
+    teamsDialogOpen,
+    setTeamsDialogOpen,
     layoutDialogOpen,
     setLayoutDialogOpen,
     modelsDialogProvider,
