@@ -5,13 +5,11 @@ import type { Team, TeamInboxItem, TeamMembership, TeamMessage, Workspace } from
 import { useTranslations } from "next-intl";
 import { Loader2, MessagesSquare, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { sdk } from "@/lib/sdk";
 import { useAgentStore } from "@/stores/agent";
+import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
 
 type TeamView = Team & {
   team_id: string;
@@ -82,20 +80,6 @@ type TeamApiResponse<T> = {
   data?: T;
 };
 
-type TeamFormState = {
-  name: string;
-  description: string;
-  purpose: string;
-  visibility: "private" | "open";
-};
-
-const EMPTY_FORM: TeamFormState = {
-  name: "",
-  description: "",
-  purpose: "",
-  visibility: "private",
-};
-
 async function requestTeamApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await sdk.http.raw(path, init);
   const payload = await response.json() as TeamApiResponse<T>;
@@ -119,66 +103,9 @@ function badgeTone(value: string): "default" | "secondary" | "destructive" | "ou
   return "outline";
 }
 
-function TeamFormDialog({
-  open,
-  mode,
-  loading,
-  value,
-  onChange,
-  onOpenChange,
-  onSubmit,
-}: {
-  open: boolean;
-  mode: "create" | "edit";
-  loading: boolean;
-  value: TeamFormState;
-  onChange: (next: TeamFormState) => void;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: () => Promise<void>;
-}) {
-  const t = useTranslations("teams");
-  const tc = useTranslations("common");
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{mode === "create" ? t("dialog.createTitle") : t("dialog.editTitle")}</DialogTitle>
-          <DialogDescription>{mode === "create" ? t("dialog.createDescription") : t("dialog.editDescription")}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3 py-2">
-          <Input value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder={t("form.name")} />
-          <Textarea value={value.description} onChange={(e) => onChange({ ...value, description: e.target.value })} placeholder={t("form.description")} />
-          <Textarea value={value.purpose} onChange={(e) => onChange({ ...value, purpose: e.target.value })} placeholder={t("form.purpose")} />
-          <Select value={value.visibility} onValueChange={(next) => {
-            if (!next) return;
-            onChange({ ...value, visibility: next as "private" | "open" });
-          }}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="private">{t("visibility.private")}</SelectItem>
-              <SelectItem value="open">{t("visibility.open")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            {tc("cancel")}
-          </Button>
-          <Button onClick={() => void onSubmit()} disabled={loading || !value.name.trim()}>
-            {loading ? <Loader2 className="size-4 animate-spin" /> : null}
-            {mode === "create" ? tc("create") : tc("save")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export type TeamManagementPageHandle = {
   openCreateDialog: () => void;
+  openCreateDialogWithDefaults: (defaults: TeamFormDefaults) => void;
 };
 
 export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
@@ -208,7 +135,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [error, setError] = useState("");
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<TeamFormState>(EMPTY_FORM);
+  const [dialogDefaults, setDialogDefaults] = useState<TeamFormDefaults | undefined>(undefined);
+  const [editingTeam, setEditingTeam] = useState<TeamView | null>(null);
 
   const workspaces = useMemo(
     () => initialWorkspaces.filter((workspace) => !workspace.isWorktree),
@@ -227,6 +155,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   useImperativeHandle(ref, () => ({
     openCreateDialog,
+    openCreateDialogWithDefaults,
   }), []);
 
   useEffect(() => {
@@ -339,22 +268,26 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   function openCreateDialog() {
     setDialogMode("create");
-    setForm(EMPTY_FORM);
+    setDialogDefaults(undefined);
+    setEditingTeam(null);
+    setDialogOpen(true);
+  }
+
+  function openCreateDialogWithDefaults(defaults: TeamFormDefaults) {
+    setDialogMode("create");
+    setDialogDefaults(defaults);
+    setEditingTeam(null);
     setDialogOpen(true);
   }
 
   function openEditDialog(team: TeamView) {
     setDialogMode("edit");
-    setForm({
-      name: team.name,
-      description: team.description ?? "",
-      purpose: team.purpose ?? "",
-      visibility: team.visibility,
-    });
+    setEditingTeam(team);
+    setDialogDefaults(undefined);
     setDialogOpen(true);
   }
 
-  async function submitTeam() {
+  async function submitTeam(values: TeamFormValues) {
     if (!selectedWorkspaceId || !selectedActorId) return;
     setSavingTeam(true);
     setError("");
@@ -365,10 +298,13 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             actor_agent_id: selectedActorId,
-            name: form.name.trim(),
-            description: form.description.trim(),
-            purpose: form.purpose.trim(),
-            visibility: form.visibility,
+            name: values.name,
+            description: values.description,
+            purpose: values.purpose,
+            visibility: values.visibility,
+            initial_members: values.members
+              .filter((id) => id !== selectedActorId)
+              .map((agent_id) => ({ agent_id, role: "member" })),
           }),
         });
         await loadTeams(data.team.team_id);
@@ -378,10 +314,10 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             actor_agent_id: selectedActorId,
-            name: form.name.trim(),
-            description: form.description.trim(),
-            purpose: form.purpose.trim(),
-            visibility: form.visibility,
+            name: values.name,
+            description: values.description,
+            purpose: values.purpose,
+            visibility: values.visibility,
           }),
         });
         await loadTeams(data.team.team_id);
@@ -648,12 +584,22 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         )}
       </main>
 
-      <TeamFormDialog
+      <CreateTeamDialog
         open={dialogOpen}
         mode={dialogMode}
         loading={savingTeam}
-        value={form}
-        onChange={setForm}
+        agents={availableAgents}
+        defaultValues={dialogMode === "create" ? dialogDefaults : undefined}
+        editTarget={
+          dialogMode === "edit" && editingTeam
+            ? {
+                name: editingTeam.name,
+                description: editingTeam.description,
+                purpose: editingTeam.purpose,
+                visibility: editingTeam.visibility,
+              }
+            : null
+        }
         onOpenChange={setDialogOpen}
         onSubmit={submitTeam}
       />

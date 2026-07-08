@@ -2,6 +2,7 @@
   "title": "Team Collaboration",
   "description": "Manage teams and read team messages by workspace and agent.",
   "newTeam": "New Team",
+  "importFromWorkflow": "Import from workflow",
   "deleteConfirm": "Dissolve team \"{name}\"?",
   "filters": {
     "workspace": "Select workspace",
@@ -16,7 +17,10 @@
   "form": {
     "name": "Team name",
     "description": "Description",
-    "purpose": "Purpose"
+    "purpose": "Purpose",
+    "membersLabel": "Team members",
+    "searchAgent": "Search agent",
+    "noAgents": "No agents available"
   },
   "visibility": {
     "private": "Private",

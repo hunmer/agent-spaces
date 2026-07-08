@@ -2,6 +2,7 @@
   "title": "团队协作",
   "description": "按工作区和 Agent 管理团队并查看团队消息。",
   "newTeam": "新建团队",
+  "importFromWorkflow": "从工作流导入",
   "deleteConfirm": "确认解散团队“{name}”？",
   "filters": {
     "workspace": "选择工作区",
@@ -16,7 +17,10 @@
   "form": {
     "name": "团队名称",
     "description": "团队描述",
-    "purpose": "团队目标"
+    "purpose": "团队目标",
+    "membersLabel": "团队成员",
+    "searchAgent": "搜索 Agent",
+    "noAgents": "暂无可用 Agent"
   },
   "visibility": {
     "private": "私有",
