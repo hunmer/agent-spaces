@@ -52,14 +52,13 @@ export function WorkflowListDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t('page.title')}</DialogTitle>
         </DialogHeader>
         <WorkflowFilterToolbar
           state={filters}
           className="gap-1.5"
-          showTypeFilter={false}
         />
         <div className="max-h-[400px] space-y-1 overflow-y-auto">
           {filters.filtered.length === 0 ? (

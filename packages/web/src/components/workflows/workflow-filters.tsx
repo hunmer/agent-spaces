@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
@@ -103,6 +103,38 @@ const triggerClass =
 const itemClass = (active: boolean) =>
   `flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${active ? 'font-medium' : ''}`;
 
+/**
+ * 受控 Popover 包装：点击选项后自动收起。
+ * options 渲染区域用 children 传入，调用方在 onClick 里触发 onSelect 即可关闭。
+ */
+function FilterPopover({
+  trigger,
+  children,
+  contentClassName,
+}: {
+  trigger: ReactNode;
+  children: ReactNode;
+  contentClassName?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className={triggerClass} onClick={() => setOpen(v => !v)}>
+          {trigger}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className={contentClassName ?? 'w-44 p-2'}
+        onClick={() => setOpen(false)}
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export interface WorkflowFilterToolbarProps {
   state: WorkflowFiltersState;
   className?: string;
@@ -138,29 +170,30 @@ export function WorkflowFilterToolbar({
   return (
     <div className={`flex items-center gap-2 flex-wrap ${className ?? ''}`}>
       {showTypeFilter ? (
-        <Popover>
-          <PopoverTrigger className={triggerClass}>
-            <Filter className="h-3.5 w-3.5" />
-            {typeFilter === 'workspace' ? t('page.typeWorkspace') : t('page.typeNormal')}
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-44 p-2">
-            <div className="flex flex-col gap-1">
-              {([
-                ['normal', t('page.typeNormal')],
-                ['workspace', t('page.typeWorkspace')],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  className={itemClass(typeFilter === value)}
-                  onClick={() => setTypeFilter(value)}
-                >
-                  {typeFilter === value && <span className="text-primary">✓</span>}
-                  {label}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+        <FilterPopover
+          trigger={
+            <>
+              <Filter className="h-3.5 w-3.5" />
+              {typeFilter === 'workspace' ? t('page.typeWorkspace') : t('page.typeNormal')}
+            </>
+          }
+        >
+          <div className="flex flex-col gap-1">
+            {([
+              ['normal', t('page.typeNormal')],
+              ['workspace', t('page.typeWorkspace')],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                className={itemClass(typeFilter === value)}
+                onClick={() => setTypeFilter(value)}
+              >
+                {typeFilter === value && <span className="text-primary">✓</span>}
+                {label}
+              </button>
+            ))}
+          </div>
+        </FilterPopover>
       ) : null}
       <div className="relative flex-1 min-w-[140px] max-w-xs">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

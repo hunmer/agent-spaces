@@ -56,7 +56,7 @@ export function TeamManagementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex !h-[85vh] !w-[92vw] !max-w-6xl flex-col overflow-hidden p-0 sm:max-w-6xl">
+      <DialogContent className="flex !h-[80vh] !w-[80vw] !max-w-none flex-col overflow-hidden p-0">
         <DialogHeader className="flex shrink-0 flex-row items-center justify-between gap-3 border-b px-6 py-3">
           <div className="flex flex-col gap-1">
             <DialogTitle>{t("title")}</DialogTitle>

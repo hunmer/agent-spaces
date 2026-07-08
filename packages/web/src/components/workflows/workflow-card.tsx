@@ -128,9 +128,10 @@ export function WorkflowCard({ workflow, onEdit, onDuplicate, onDelete, onExport
             </Badge>
           )}
         </div>
-        {workflow.description && (
-          <CardDescription className="text-xs line-clamp-2">{workflow.description}</CardDescription>
-        )}
+        {/* Always render description row for consistent height */}
+        <CardDescription className="text-xs line-clamp-2">
+          {workflow.description || '\u00A0'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         {/* Tags + Plugin icons — always render row for consistent height */}
