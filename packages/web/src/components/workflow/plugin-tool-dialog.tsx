@@ -48,8 +48,9 @@ export function PluginToolDialog({
   selectable = false,
   selectedTools = [],
   onSelectedToolsChange,
-  showPluginSwitch = true,
+  showPluginSwitch,
 }: PluginToolDialogProps) {
+  const effectiveShowPluginSwitch = showPluginSwitch ?? !selectable;
   const t = useTranslations('mini-apps');
   const isMobile = useIsMobile();
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
@@ -186,7 +187,7 @@ export function PluginToolDialog({
                             </Button>
                           ) : null}
                         </div>
-                        {showPluginSwitch ? (
+                        {effectiveShowPluginSwitch ? (
                           <Switch
                             checked={isEnabled}
                             onCheckedChange={() => togglePlugin(plugin.id)}
@@ -215,7 +216,7 @@ export function PluginToolDialog({
               selectedTools={selectedTools}
               onToggleToolSelection={toggleToolSelection}
               onSelectedToolsChange={onSelectedToolsChange}
-              showPluginSwitch={showPluginSwitch}
+              showPluginSwitch={effectiveShowPluginSwitch}
             />
           );
 

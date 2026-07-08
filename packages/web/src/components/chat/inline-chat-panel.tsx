@@ -10,6 +10,7 @@ import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import type { AgentUsageRecord, AgentUsageSessionDetail, Attachment as MessageAttachment, BuiltInAgentToolName } from "@agent-spaces/shared";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { useAgentStore } from "@/stores/agent";
+import { useChatStore } from "@/stores/chat";
 import { ChatComposerInput, type ChatComposerInputHandle, type ChatComposerInputState } from "./chat-composer-input";
 import { ChatInputInfoBar } from "./chat-input-info-bar";
 import { ChatMessageList } from "./chat-message-list";
@@ -24,6 +25,10 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
   activeWorkflowIds: [],
   activeWorkflowPluginTools: [],
 };
+
+function normalizeSkills(skills?: Array<string | { name: string; content?: string }>): string[] | undefined {
+  return skills?.map((item) => typeof item === "string" ? item : item.name).filter(Boolean);
+}
 
 type InlineChatMessage = ChatMessage & {
   metadata?: {
@@ -96,7 +101,11 @@ export function InlineChatPanel({
   const [composerState, setComposerState] = useState<ChatComposerInputState>(EMPTY_COMPOSER_STATE);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const storeAgents = useAgentStore((s) => s.agents);
-  const storedAgent = useMemo(() => storeAgents.find((agent) => agent.id === agentId), [agentId, storeAgents]);
+  const chatAgents = useChatStore((s) => s.agents);
+  const storedAgent = useMemo(
+    () => storeAgents.find((agent) => agent.id === agentId) ?? chatAgents.find((agent) => agent.id === agentId),
+    [agentId, chatAgents, storeAgents],
+  );
   const composerAgents = useMemo<MentionedAgent[]>(() => [{
     id: agentId,
     name: storedAgent?.name || agentName,
@@ -104,7 +113,7 @@ export function InlineChatPanel({
     description: storedAgent?.description || agentDescription,
     enabled: storedAgent?.enabled ?? true,
     mcps: storedAgent?.mcps ?? agentMcps,
-    skills: storedAgent?.skills ?? agentSkills,
+    skills: normalizeSkills(storedAgent?.skills) ?? agentSkills,
     tools: storedAgent?.tools ?? agentTools,
     boundWorkflowIds: storedAgent?.boundWorkflowIds ?? [],
     boundWorkflowPluginTools: storedAgent?.boundWorkflowPluginTools ?? [],

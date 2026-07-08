@@ -318,10 +318,9 @@ export function ChatInputInfoBar({
           }
         >
           <IconTools className="size-3" />
-          <span className="hidden md:inline">Workflow{workflowIds.length ? ` ${workflowIds.length}` : ""}</span>
+          <span className="hidden md:inline">{t("input.workflow")}{workflowIds.length ? ` ${workflowIds.length}` : ""}</span>
         </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={6} className="w-80 p-2">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">Bound Workflows</div>
+        <PopoverContent align="start" sideOffset={6} className="min-w-[200px] max-w-xs p-1.5">
           {selectedWorkflowLabels.length ? (
             <div className="flex flex-col gap-1">
               {selectedWorkflowLabels.map((label, index) => (
@@ -336,7 +335,10 @@ export function ChatInputInfoBar({
               ))}
             </div>
           ) : (
-            <div className="px-2 py-4 text-xs text-muted-foreground">No bound workflows</div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+              <IconTools size={16} className="opacity-60 shrink-0" />
+              {t("input.noWorkflow")}
+            </div>
           )}
           <div className="mt-2 border-t pt-2">
             <button
@@ -365,10 +367,9 @@ export function ChatInputInfoBar({
           }
         >
           <IconTools className="size-3" />
-          <span className="hidden md:inline">Workflow Tools{workflowPluginTools.length ? ` ${workflowPluginTools.length}` : ""}</span>
+          <span className="hidden md:inline">{t("input.workflowTools")}{workflowPluginTools.length ? ` ${workflowPluginTools.length}` : ""}</span>
         </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={6} className="w-96 p-2">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">Bound Workflow Plugin Tools</div>
+        <PopoverContent align="start" sideOffset={6} className="min-w-[200px] max-w-xs p-1.5">
           {workflowPluginTools.length ? (
             <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
               {workflowPluginTools.map((item) => (
@@ -383,7 +384,10 @@ export function ChatInputInfoBar({
               ))}
             </div>
           ) : (
-            <div className="px-2 py-4 text-xs text-muted-foreground">No bound workflow plugin tools</div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+              <IconTools size={16} className="opacity-60 shrink-0" />
+              {t("input.noWorkflowTools")}
+            </div>
           )}
           <div className="mt-2 border-t pt-2">
             <button
