@@ -39,7 +39,7 @@ import {
 } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import type { Icon } from "@tabler/icons-react";
-import type { Channel, TodoItem } from "@agent-spaces/shared";
+import type { BuiltInAgentToolName, Channel, TodoItem } from "@agent-spaces/shared";
 import type { MentionedAgent } from "./chat-input-utils";
 
 const EMPTY_HISTORY: never[] = [];
@@ -95,16 +95,19 @@ export function ChatInputInfoBar({
   const tCommon = useTranslations("common");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
-  const [mcpsManageOpen, setMcpsManageOpen] = useState(false);
-  const [skillsManageOpen, setSkillsManageOpen] = useState(false);
-  const [toolsManageOpen, setToolsManageOpen] = useState(false);
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [workflowToolOpen, setWorkflowToolOpen] = useState(false);
   const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
   const [pluginToolDialogOpen, setPluginToolDialogOpen] = useState(false);
+  const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
+  const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
+  const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [dialogEnabledPlugins, setDialogEnabledPlugins] = useState<string[]>([]);
   const [draftWorkflowIds, setDraftWorkflowIds] = useState<string[]>([]);
   const [draftWorkflowPluginTools, setDraftWorkflowPluginTools] = useState<Array<{ pluginId: string; toolName: string }>>([]);
+  const [draftMcps, setDraftMcps] = useState<string[]>([]);
+  const [draftSkills, setDraftSkills] = useState<string[]>([]);
+  const [draftTools, setDraftTools] = useState<BuiltInAgentToolName[]>([]);
   const agents = useAgentStore((s) => s.agents);
   const chatAgents = useChatStore((s) => s.agents);
   const workflows = useWorkflowStore((s) => s.workflows);
@@ -132,6 +135,18 @@ export function ChatInputInfoBar({
     if (pluginToolDialogOpen) setDraftWorkflowPluginTools(workflowPluginTools);
   }, [pluginToolDialogOpen, workflowPluginTools]);
 
+  useEffect(() => {
+    if (mcpsDialogOpen) setDraftMcps(mcps);
+  }, [mcpsDialogOpen, mcps]);
+
+  useEffect(() => {
+    if (skillsDialogOpen) setDraftSkills(skills);
+  }, [skillsDialogOpen, skills]);
+
+  useEffect(() => {
+    if (toolsDialogOpen) setDraftTools(tools.map((tool) => tool.name as BuiltInAgentToolName));
+  }, [toolsDialogOpen, tools]);
+
   const workflowNameMap = useMemo(() => new Map(workflows.map((workflow) => [workflow.id, workflow.name])), [workflows]);
   const selectedWorkflowLabels = workflowIds.map((id) => workflowNameMap.get(id) || id);
 
@@ -144,6 +159,9 @@ export function ChatInputInfoBar({
     updates: {
       boundWorkflowIds?: string[];
       boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
+      skills?: string[];
+      tools?: BuiltInAgentToolName[];
+      mcps?: Record<string, unknown>;
     },
   ) => {
     if (!activeAgent?.id) return;
@@ -163,6 +181,16 @@ export function ChatInputInfoBar({
     useChatStore.setState((state) => ({
       agents: state.agents.map((agent) => agent.id === chatAgent.id ? next : agent),
     }));
+  };
+
+  const applyMcpSelection = (names: string[], configs: Record<string, unknown>) => {
+    const mcpServers: Record<string, unknown> = {};
+    for (const name of names) {
+      if (configs[name]) mcpServers[name] = configs[name];
+    }
+    // 合并而非覆盖：保留 agent.mcps 中 mcpServers 以外的字段
+    const currentMcps = (activeAgent?.mcps ?? {}) as Record<string, unknown>;
+    void persistAgentBindings({ mcps: { ...currentMcps, mcpServers } });
   };
 
   return (
@@ -298,7 +326,7 @@ export function ChatInputInfoBar({
             )}
             <DropdownMenuItem
               className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
-              onClick={() => setMcpsManageOpen(true)}
+              onClick={() => setMcpsDialogOpen(true)}
             >
               <IconSettings size={16} className="shrink-0" />
               {tCommon("manage")}
@@ -436,7 +464,7 @@ export function ChatInputInfoBar({
             )}
             <DropdownMenuItem
               className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
-              onClick={() => setSkillsManageOpen(true)}
+              onClick={() => setSkillsDialogOpen(true)}
             >
               <IconSettings size={16} className="shrink-0" />
               {tCommon("manage")}
@@ -476,7 +504,7 @@ export function ChatInputInfoBar({
             )}
             <DropdownMenuItem
               className="rounded-[calc(1rem-6px)] text-xs gap-2 cursor-pointer text-primary focus:text-primary"
-              onClick={() => setToolsManageOpen(true)}
+              onClick={() => setToolsDialogOpen(true)}
             >
               <IconSettings size={16} className="shrink-0" />
               {tCommon("manage")}
@@ -543,9 +571,36 @@ export function ChatInputInfoBar({
 
       <div className="flex-1" />
 
-      <McpsDialog open={mcpsManageOpen} onOpenChange={setMcpsManageOpen} />
-      <SkillsDialog open={skillsManageOpen} onOpenChange={setSkillsManageOpen} />
-      <ToolsDialog open={toolsManageOpen} onOpenChange={setToolsManageOpen} />
+      <McpsDialog
+        open={mcpsDialogOpen}
+        onOpenChange={setMcpsDialogOpen}
+        selectable
+        selectedMcps={draftMcps}
+        onSelectedMcpsChange={(nextMcps, configs) => {
+          setDraftMcps(nextMcps);
+          applyMcpSelection(nextMcps, configs);
+        }}
+      />
+      <SkillsDialog
+        open={skillsDialogOpen}
+        onOpenChange={setSkillsDialogOpen}
+        selectable
+        selectedSkills={draftSkills}
+        onSelectedSkillsChange={(nextSkills) => {
+          setDraftSkills(nextSkills);
+          void persistAgentBindings({ skills: nextSkills });
+        }}
+      />
+      <ToolsDialog
+        open={toolsDialogOpen}
+        onOpenChange={setToolsDialogOpen}
+        selectable
+        selectedTools={draftTools}
+        onSelectedToolsChange={(nextTools) => {
+          setDraftTools(nextTools);
+          void persistAgentBindings({ tools: nextTools });
+        }}
+      />
       <WorkflowListDialog
         open={workflowDialogOpen}
         workflows={workflows}
