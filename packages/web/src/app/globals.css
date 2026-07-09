@@ -1075,3 +1075,12 @@
     animation: shine 5s linear infinite;
   }
 }
+
+/* chat-input-info-bar：空间不足时只显示图标，隐藏文字 */
+[data-compact="true"] .bar-label {
+  display: none !important;
+}
+/* 测量阶段强制显示文字，确保测得真实所需宽度 */
+[data-measuring="true"] .bar-label {
+  display: inline !important;
+}

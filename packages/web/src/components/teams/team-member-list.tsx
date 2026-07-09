@@ -12,35 +12,11 @@ import {
   ContextMenuContent,
   ContextMenuItem,
 } from "@/components/ui/context-menu";
-import { AddMemberDialog, type AddMemberCandidate } from "@/components/chat/add-member-dialog";
 import { TeamMemberRow } from "@/components/teams/team-member-row";
+import { MemberSelectDialog, buildCandidates } from "@/components/teams/member-select-panel";
+import type { TeamMembershipView } from "@agent-spaces/sdk";
 
-/** 与 team-management-page 中的 TeamMembershipView 保持一致 */
-export interface TeamMembershipView {
-  membership_id: string;
-  team_id: string;
-  agent_id: string;
-  role: "owner" | "admin" | "member" | "observer";
-  status: string;
-  joined_at?: string;
-  updated_at?: string;
-}
-
-interface TeamApiResponse<T> {
-  success: boolean;
-  code: string;
-  message: string;
-  data?: T;
-}
-
-async function requestTeamApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await sdk.http.raw(path, init);
-  const payload = (await response.json()) as TeamApiResponse<T>;
-  if (!response.ok || !payload.success || payload.data === undefined) {
-    throw new Error(payload.message || response.statusText);
-  }
-  return payload.data;
-}
+export type { TeamMembershipView };
 
 interface TeamMemberListProps {
   teamId: string;
@@ -63,24 +39,13 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
   const memberIds = useMemo(() => new Set(members.map((m) => m.agent_id)), [members]);
 
   // 添加成员的候选列表：已启用 agent，排除已在团队中的
-  const candidates: AddMemberCandidate[] = useMemo(
-    () =>
-      agents
-        .filter((a) => a.enabled !== false)
-        .map((a) => ({ id: a.id, label: a.name || a.id, sortIndex: 0 }))
-        .filter((c) => !memberIds.has(c.id)),
-    [agents, memberIds],
-  );
+  const candidates = useMemo(() => buildCandidates(agents, memberIds), [agents, memberIds]);
 
   async function setOwner(targetId: string) {
     if (busyId) return;
     setBusyId(targetId);
     try {
-      await requestTeamApi(`/api/teams/${teamId}/set-role`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actor_agent_id: actorAgentId, agent_id: targetId, role: "owner" }),
-      });
+      await sdk.team.setRole(teamId, actorAgentId, targetId, "owner");
       onChange();
     } catch (err) {
       alert(err instanceof Error ? err.message : String(err));
@@ -94,11 +59,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
     if (!confirm(t("detail.removeConfirm"))) return;
     setBusyId(targetId);
     try {
-      await requestTeamApi(`/api/teams/${teamId}/remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actor_agent_id: actorAgentId, agent_id: targetId }),
-      });
+      await sdk.team.remove(teamId, actorAgentId, targetId);
       onChange();
     } catch (err) {
       alert(err instanceof Error ? err.message : String(err));
@@ -112,11 +73,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
     setBusyId("__add");
     try {
       for (const agent_id of newIds) {
-        await requestTeamApi(`/api/teams/${teamId}/invite`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ actor_agent_id: actorAgentId, agent_id, role: "member" }),
-        });
+        await sdk.team.invite(teamId, actorAgentId, agent_id, "member");
       }
       onChange();
     } catch (err) {
@@ -195,11 +152,13 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
         </div>
       )}
 
-      <AddMemberDialog
+      <MemberSelectDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         candidates={candidates}
-        onAdd={(ids) => void handleAdd(ids)}
+        title={t("detail.addMember")}
+        confirmLabel={t("detail.addMember")}
+        onConfirm={(ids) => void handleAdd(ids)}
       />
     </div>
   );

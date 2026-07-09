@@ -6,72 +6,24 @@ import { useTranslations } from "next-intl";
 import { Loader2, PanelRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
+import { MessageNavigator } from "@/components/chat/message-navigator";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useAgentStore } from "@/stores/agent";
 import { sdk } from "@/lib/sdk";
+import type {
+  TeamRuntimeView,
+  TeamRuntimeMessageView,
+  TeamRuntimeResponse,
+} from "@agent-spaces/sdk";
 import { WorkspaceWS } from "@/lib/ws";
 
 const TEAM_RUNTIME_WORKSPACE_ID = "__team__";
-
-type TeamRuntimeView = {
-  id: string;
-  teamId: string;
-  actorAgentId: string;
-  leaderAgentId: string;
-  status: "idle" | "running" | "completed" | "error";
-  updatedAt: string;
-  team_id: string;
-  actor_agent_id: string;
-  leader_agent_id: string;
-  updated_at: string;
-};
-
-type TeamRuntimeMessageView = {
-  id: string;
-  runtimeId: string;
-  teamId: string;
-  messageId: string;
-  deliveryId?: string;
-  senderAgentId: string;
-  recipientAgentId: string;
-  content: string;
-  createdAt: string;
-  status: "running" | "completed" | "error";
-};
-
-type TeamRuntimeResponse = {
-  runtime: TeamRuntimeView;
-  leader?: {
-    id: string;
-    name: string;
-    description?: string;
-    avatarUrl?: string;
-    icon?: string;
-    role?: string;
-  };
-  participants?: Array<{
-    id: string;
-    name: string;
-    description?: string;
-    avatarUrl?: string;
-    icon?: string;
-    role?: string;
-  }>;
-  messages: TeamRuntimeMessageView[];
-};
 
 type TeamChatPanelProps = {
   teamId: string;
   actorAgentId: string;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
-};
-
-type TeamApiResponse<T> = {
-  success: boolean;
-  code: string;
-  message: string;
-  data?: T;
 };
 
 const EMPTY_CHANNEL: Channel = {
@@ -82,15 +34,6 @@ const EMPTY_CHANNEL: Channel = {
   members: [],
   createdAt: "",
 };
-
-async function requestTeamApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await sdk.http.raw(path, init);
-  const payload = await response.json() as TeamApiResponse<T>;
-  if (!response.ok || !payload.success || payload.data === undefined) {
-    throw new Error(payload.message || response.statusText);
-  }
-  return payload.data;
-}
 
 function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): Message {
   const isUser = item.senderAgentId === actorAgentId;
@@ -161,9 +104,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setLoading(true);
     setError("");
     try {
-      const data = await requestTeamApi<TeamRuntimeResponse>(
-        `/api/teams/${teamId}/runtime?actor_agent_id=${encodeURIComponent(actorAgentId)}`,
-      );
+      const data = await sdk.team.getRuntime(teamId, actorAgentId);
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
@@ -218,19 +159,12 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setSending(true);
     setError("");
     try {
-      await requestTeamApi(
-        `/api/teams/${teamId}/runtime/messages`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            actor_agent_id: actorAgentId,
-            content: trimmed,
-            target_agent_id: mentions[0],
-            context_length: contextLength,
-          }),
-        },
-      );
+      await sdk.team.sendRuntimeMessage(teamId, {
+        actor_agent_id: actorAgentId,
+        content: trimmed,
+        target_agent_id: mentions[0],
+        context_length: contextLength,
+      });
       await loadRuntime();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -242,14 +176,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const handleDeleteMessage = useCallback(async (message: Message) => {
     setError("");
     try {
-      await requestTeamApi(
-        `/api/team-messages/${message.id}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ actor_agent_id: actorAgentId }),
-        },
-      );
+      await sdk.team.deleteMessage(message.id, actorAgentId);
       await loadRuntime();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -259,14 +186,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const handleClearMessages = useCallback(async () => {
     setError("");
     try {
-      await requestTeamApi(
-        `/api/teams/${teamId}/messages`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ actor_agent_id: actorAgentId }),
-        },
-      );
+      await sdk.team.clearMessages(teamId, actorAgentId);
       await loadRuntime();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -327,18 +247,21 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
         <div className="text-sm text-muted-foreground">{t("chat.empty")}</div>
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {viewMessages.length === 0 ? (
-              <div className="text-sm text-muted-foreground">{t("chat.empty")}</div>
-            ) : (
-              <div className="flex flex-col py-2">
-                {viewMessages.map((message) => (
-                  <div key={message.id}>
-                    <MessageItem message={message} workspaceId="" onDelete={handleDeleteMessage} />
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="relative min-h-0 flex-1">
+            <div className="h-full overflow-y-auto overflow-x-hidden py-2">
+              {viewMessages.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t("chat.empty")}</div>
+              ) : (
+                <div className="flex flex-col py-2">
+                  {viewMessages.map((message) => (
+                    <div key={message.id} id={`msg-${message.id}`}>
+                      <MessageItem message={message} workspaceId="" onDelete={handleDeleteMessage} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <MessageNavigator messages={viewMessages} />
           </div>
           <ChatInput
             channelName={channel.name}

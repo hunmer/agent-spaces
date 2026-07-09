@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import type { Team, TeamMembership, WorkflowTemplate } from "@agent-spaces/shared";
+import type { WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { EllipsisVertical, Eraser, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { sdk } from "@/lib/sdk";
+import type {
+  TeamView,
+  TeamMembershipView,
+  TeamDetail,
+} from "@agent-spaces/sdk";
 import { useAgentStore } from "@/stores/agent";
 import { useWorkflowStore } from "@/stores/workflow";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
@@ -35,49 +40,6 @@ function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
   // eslint-disable-next-line no-console
   console.log("[extractAgentRunIds]", { workflowName: workflow.name, nodeCount: (workflow.nodes ?? []).length, extractedIds: result });
   return result;
-}
-
-type TeamView = Team & {
-  team_id: string;
-  created_by: string;
-  created_at: string;
-  member_count: number;
-  my_role: string | null;
-  dissolved_at?: string;
-};
-
-type TeamMembershipView = TeamMembership & {
-  membership_id: string;
-  team_id: string;
-  agent_id: string;
-  joined_at: string;
-  updated_at: string;
-};
-
-type TeamDetail = {
-  team: TeamView;
-  members_preview?: TeamMembershipView[];
-  stats: {
-    unread_count: number;
-    active_member_count: number;
-    last_activity_at: string | null;
-  };
-};
-
-type TeamApiResponse<T> = {
-  success: boolean;
-  code: string;
-  message: string;
-  data?: T;
-};
-
-async function requestTeamApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await sdk.http.raw(path, init);
-  const payload = await response.json() as TeamApiResponse<T>;
-  if (!response.ok || !payload.success || payload.data === undefined) {
-    throw new Error(payload.message || response.statusText);
-  }
-  return payload.data;
 }
 
 function formatTime(value?: string | null) {
@@ -171,9 +133,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     setLoadingTeams(true);
     setError("");
     try {
-      const data = await requestTeamApi<{ teams: TeamView[] }>(
-        `/api/teams?actor_agent_id=${encodeURIComponent(selectedActorId)}&scope=visible&page_size=100`,
-      );
+      const data = await sdk.team.list({
+        actor_agent_id: selectedActorId,
+        scope: "visible",
+        page_size: 100,
+      });
       setTeams(data.teams);
       const nextId = nextSelectedTeamId && data.teams.some((item) => item.team_id === nextSelectedTeamId)
         ? nextSelectedTeamId
@@ -198,9 +162,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     }
     setLoadingArchived(true);
     try {
-      const data = await requestTeamApi<{ teams: TeamView[] }>(
-        `/api/teams?actor_agent_id=${encodeURIComponent(selectedActorId)}&archived=true&page_size=100`,
-      );
+      const data = await sdk.team.list({
+        actor_agent_id: selectedActorId,
+        archived: true,
+        page_size: 100,
+      });
       setArchivedTeams(data.teams);
     } catch {
       setArchivedTeams([]);
@@ -211,9 +177,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   const loadTeamDetail = useCallback(async (teamId: string) => {
     try {
-      const data = await requestTeamApi<TeamDetail>(
-        `/api/teams/${teamId}?actor_agent_id=${encodeURIComponent(selectedActorId)}&include_members_preview=true`,
-      );
+      const data = await sdk.team.get(teamId, selectedActorId, true);
       setTeamDetail(data);
     } catch (err) {
       setTeamDetail(null);
@@ -262,32 +226,24 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     setError("");
     try {
       if (dialogMode === "create") {
-        const data = await requestTeamApi<{ team: TeamView }>(`/api/teams`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            actor_agent_id: selectedActorId,
-            name: values.name,
-            description: values.description,
-            purpose: values.purpose,
-            visibility: values.visibility,
-            initial_members: values.members
-              .filter((id) => id !== selectedActorId)
-              .map((agent_id) => ({ agent_id, role: "member" })),
-          }),
+        const data = await sdk.team.create({
+          actor_agent_id: selectedActorId,
+          name: values.name,
+          description: values.description,
+          purpose: values.purpose,
+          visibility: values.visibility,
+          initial_members: values.members
+            .filter((id) => id !== selectedActorId)
+            .map((agent_id) => ({ agent_id, role: "member" })),
         });
         await loadTeams(data.team.team_id);
       } else if (selectedTeamId) {
-        const data = await requestTeamApi<{ team: TeamView }>(`/api/teams/${selectedTeamId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            actor_agent_id: selectedActorId,
-            name: values.name,
-            description: values.description,
-            purpose: values.purpose,
-            visibility: values.visibility,
-          }),
+        const data = await sdk.team.update(selectedTeamId, {
+          actor_agent_id: selectedActorId,
+          name: values.name,
+          description: values.description,
+          purpose: values.purpose,
+          visibility: values.visibility,
         });
         await loadTeams(data.team.team_id);
       }
@@ -304,14 +260,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     if (!confirm(t("deleteConfirm", { name: team.name }))) return;
     setError("");
     try {
-      await requestTeamApi<{ team_id: string }>(`/api/teams/${team.team_id}/dissolve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          actor_agent_id: selectedActorId,
-          confirm: true,
-        }),
-      });
+      await sdk.team.dissolve(team.team_id, selectedActorId);
       await loadTeams(team.team_id === selectedTeamId ? undefined : selectedTeamId);
       void loadArchivedTeams();
     } catch (err) {
@@ -323,11 +272,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     if (!confirm(t("archived.deleteConfirm", { name: team.name }))) return;
     setError("");
     try {
-      await requestTeamApi<{ team_id: string }>(`/api/teams/archive/delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ team_id: team.team_id }),
-      });
+      await sdk.team.deleteArchive(team.team_id);
       await loadArchivedTeams();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -339,11 +284,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     if (!confirm(t("archived.clearConfirm"))) return;
     setError("");
     try {
-      await requestTeamApi<{ cleared: number }>(`/api/teams/archive/clear`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
+      await sdk.team.clearArchives();
       await loadArchivedTeams();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -359,26 +300,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               <div>
                 <h1 className="text-2xl font-semibold">{t("title")}</h1>
                 <p className="text-sm text-muted-foreground">{t("description")}</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button onClick={openCreateDialog} disabled={!canCreateTeam}>
-                  <Plus className="size-4" />
-                  {t("newTeam")}
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button variant="ghost" size="icon" disabled={!canCreateTeam}>
-                        <EllipsisVertical className="size-4" />
-                      </Button>
-                    }
-                  />
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setWorkflowListOpen(true)}>
-                      {t("importFromWorkflow")}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -401,7 +322,26 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               ) : null}
               <div className="mb-3 mt-4 flex items-center justify-between">
                 <h2 className="font-medium">{t("list.title")}</h2>
-                {loadingTeams || loadingArchived ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+                <div className="flex items-center gap-1">
+                  {loadingTeams || loadingArchived ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+                  <Button variant="ghost" size="icon" onClick={openCreateDialog} disabled={!canCreateTeam} title={t("newTeam")}>
+                    <Plus className="size-4" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button variant="ghost" size="icon" disabled={!canCreateTeam}>
+                          <EllipsisVertical className="size-4" />
+                        </Button>
+                      }
+                    />
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setWorkflowListOpen(true)}>
+                        {t("importFromWorkflow")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
               <Tabs defaultValue="active" className="min-h-0 flex-1 flex-col gap-2">
                 <TabsList className="self-start">

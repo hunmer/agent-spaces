@@ -72,7 +72,7 @@ function CollapsibleTagList({ items }: { items: string[] }) {
   );
 }
 
-function AgentDetails({ agent }: { agent: AgentConfig }) {
+function AgentDetails({ agent }: { agent: Partial<AgentConfig> }) {
   const t = useTranslations('chat.memberInfoCard');
   return (
     <div className="space-y-2">
@@ -111,10 +111,12 @@ export interface MemberInfoCardProps {
   channels?: string[];
   compact?: boolean;
   onConfigure?: () => void;
+  agent?: Partial<AgentConfig>;
 }
 
-export function MemberInfoCard({ agentId, displayName, channels = [], compact = false, onConfigure }: MemberInfoCardProps) {
-  const agent = useAgentStore((s) => s.agents.find((a) => a.id === agentId));
+export function MemberInfoCard({ agentId, displayName, channels = [], compact = false, onConfigure, agent: fallbackAgent }: MemberInfoCardProps) {
+  const storeAgent = useAgentStore((s) => s.agents.find((a) => a.id === agentId));
+  const agent = storeAgent ? { ...fallbackAgent, ...storeAgent } : fallbackAgent;
   const t = useTranslations('chat.memberInfoCard');
   const resolvedName = displayName || agent?.name || agentId;
 
@@ -149,6 +151,12 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
             <AgentIcon
               agentId={agentId}
               name={resolvedName}
+              avatarUrl={agent?.avatarUrl}
+              icon={agent?.icon}
+              apiBase={agent?.apiBase}
+              modelId={agent?.modelId}
+              providerId={agent?.providerId}
+              modelProvider={agent?.modelProvider}
               className="shrink-0 size-12 rounded-xl border-2 border-background shadow-sm"
             />
             <div className="flex-1 min-w-0 pb-1">
@@ -175,6 +183,12 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
           <AgentIcon
             agentId={agentId}
             name={resolvedName}
+            avatarUrl={agent?.avatarUrl}
+            icon={agent?.icon}
+            apiBase={agent?.apiBase}
+            modelId={agent?.modelId}
+            providerId={agent?.providerId}
+            modelProvider={agent?.modelProvider}
             className="shrink-0 size-8 rounded-full"
           />
           <div className="flex-1 min-w-0">

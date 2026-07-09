@@ -1,6 +1,7 @@
 "use client";
 
 import { lazy, Suspense, type ReactNode } from "react";
+import type { AgentConfig } from "@agent-spaces/shared";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { useAgentStore } from "@/stores/agent";
 
@@ -15,6 +16,7 @@ interface MemberHoverCardProps {
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
   onConfigure?: () => void;
+  agent?: Partial<AgentConfig>;
   children: ReactNode;
 }
 
@@ -25,9 +27,11 @@ export function MemberHoverCard({
   side = "top",
   align = "start",
   onConfigure,
+  agent: fallbackAgent,
   children,
 }: MemberHoverCardProps) {
-  const agent = useAgentStore((s) => s.agents.find((a) => a.id === agentId));
+  const storeAgent = useAgentStore((s) => s.agents.find((a) => a.id === agentId));
+  const agent = storeAgent ? { ...fallbackAgent, ...storeAgent } : fallbackAgent;
   const backgroundSrc = agent?.backgroundUrl || '';
 
   return (
@@ -45,6 +49,7 @@ export function MemberHoverCard({
               channels={channels}
               compact
               onConfigure={onConfigure}
+              agent={agent}
             />
           </Suspense>
         </div>

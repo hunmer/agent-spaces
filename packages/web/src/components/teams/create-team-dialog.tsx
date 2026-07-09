@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TeamMemberRow } from "@/components/teams/team-member-row";
+import { MemberSelectPanel } from "@/components/teams/member-select-panel";
 import { getMemberDisplayName } from "@/lib/agent-members";
 
 export interface TeamFormValues {
@@ -63,40 +63,6 @@ interface MemberSelectPanelProps {
   candidates: Array<{ agent?: AgentConfig; label: string; id: string }>;
   selected: string[];
   onToggle: (id: string) => void;
-}
-
-/** 复用 TeamMemberRow 的成员选择面板（选择模式） */
-function MemberSelectPanel({
-  label,
-  searchPlaceholder,
-  emptyText,
-  query,
-  onQueryChange,
-  candidates,
-  selected,
-  onToggle,
-}: MemberSelectPanelProps) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      {label ? <label className="text-sm font-medium">{label}</label> : null}
-      <Input value={query} onChange={(e) => onQueryChange(e.target.value)} placeholder={searchPlaceholder} />
-      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-        {candidates.length === 0 ? (
-          <p className="py-2 text-center text-sm text-muted-foreground">{emptyText}</p>
-        ) : null}
-        {candidates.map(({ agent, label: displayLabel, id }) => (
-          <TeamMemberRow
-            key={id}
-            agent={agent}
-            name={displayLabel}
-            variant="select"
-            selected={selected.includes(id)}
-            onToggle={() => onToggle(id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export function CreateTeamDialog({

@@ -64,6 +64,19 @@ export { createChatApi } from './modules/chat';
 export type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from './modules/chat';
 export { createMiniAppApi, type MiniAppProject, type MiniAppAgentConfig } from './modules/mini-apps';
 export { createSqliteApi } from './modules/sqlite';
+export { createTeamApi } from './modules/team';
+export type {
+  TeamView,
+  TeamMembershipView,
+  TeamDetail,
+  TeamRuntimeView,
+  TeamRuntimeMessageView,
+  TeamRuntimeAgentProfile,
+  TeamRuntimeResponse,
+  ListTeamsParams,
+  CreateTeamInput,
+  UpdateTeamInput,
+} from './modules/team';
 
 // ---- 工厂函数 ----
 
@@ -108,6 +121,7 @@ import { createExternalImportApi } from './modules/external-import';
 import { createChatApi } from './modules/chat';
 import { createMiniAppApi } from './modules/mini-apps';
 import { createSqliteApi } from './modules/sqlite';
+import { createTeamApi } from './modules/team';
 
 export interface SDK {
   /** 底层 HTTP 客户端 */
@@ -156,6 +170,7 @@ export interface SDK {
   readonly chat: ReturnType<typeof createChatApi>;
   readonly miniApp: ReturnType<typeof createMiniAppApi>;
   readonly sqlite: ReturnType<typeof createSqliteApi>;
+  readonly team: ReturnType<typeof createTeamApi>;
 }
 
 /**
@@ -212,5 +227,6 @@ export function createSDK(config: SDKConfig): SDK {
     chat: createChatApi(http),
     miniApp: createMiniAppApi(http),
     sqlite: createSqliteApi(http),
+    team: createTeamApi(http),
   };
 }

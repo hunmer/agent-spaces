@@ -50,7 +50,7 @@ export function ChatInputAgentBar({
           {visibleAgents.map((agent) => {
             const isActive = agent.id === activeAgent?.id;
             return (
-              <MemberHoverCard key={agent.id} agentId={agent.id} displayName={agent.name || agent.role} side="top" align="start" onConfigure={() => setConfigAgentId(agent.id)}>
+              <MemberHoverCard key={agent.id} agentId={agent.id} displayName={agent.name || agent.role} side="top" align="start" onConfigure={() => setConfigAgentId(agent.id)} agent={agent}>
                 <ShinyBadge
                   shiny={isActive}
                   shinySpeed={3}
