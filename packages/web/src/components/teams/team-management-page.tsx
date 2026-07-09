@@ -4,6 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useSt
 import type { Team, TeamMembership } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -99,6 +100,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogDefaults, setDialogDefaults] = useState<TeamFormDefaults | undefined>(undefined);
   const [editingTeam, setEditingTeam] = useState<TeamView | null>(null);
+  const [infoSidebarOpen, setInfoSidebarOpen] = useState(true);
 
   const availableAgents = useMemo(
     () => agents.filter((agent) => agent.enabled !== false),
@@ -281,7 +283,10 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
             {t("empty.setup")}
           </div>
         ) : (
-          <div className="grid flex-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1.1fr)]">
+          <div className={cn(
+            "grid flex-1 gap-4 xl:grid-cols-2",
+            infoSidebarOpen ? "xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1.1fr)]" : "xl:grid-cols-[320px_minmax(0,1fr)]",
+          )}>
             <section className="flex flex-col rounded-2xl border border-border bg-card p-4">
               <div className="flex flex-col gap-2">
                 <Select value={selectedActorId} onValueChange={(next) => setSelectedActorId(next ?? "")}>
@@ -340,6 +345,14 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               </div>
             </section>
 
+            <TeamChatPanel
+              teamId={selectedTeamId}
+              actorAgentId={selectedActorId}
+              sidebarOpen={infoSidebarOpen}
+              onToggleSidebar={() => setInfoSidebarOpen((v) => !v)}
+            />
+
+            {infoSidebarOpen ? (
             <section className="rounded-2xl border border-border bg-card p-4">
               {selectedTeam && teamDetail ? (
                 <div className="flex h-full flex-col gap-4">
@@ -434,8 +447,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                 </div>
               )}
             </section>
+            ) : null}
 
-            <TeamChatPanel teamId={selectedTeamId} actorAgentId={selectedActorId} />
           </div>
         )}
       </main>

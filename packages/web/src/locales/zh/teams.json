@@ -85,7 +85,9 @@
     "loadingLeader": "正在加载 leader...",
     "pickTeam": "请先选择团队。",
     "loading": "正在加载聊天...",
-    "empty": "当前还没有聊天消息。"
+    "empty": "当前还没有聊天消息。",
+    "hideSidebar": "隐藏团队信息",
+    "showSidebar": "显示团队信息"
   },
   "empty": {
     "setup": "请先选择工作区和 Agent。",

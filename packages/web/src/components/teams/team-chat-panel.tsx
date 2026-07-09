@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Channel, Message } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
+import { Loader2, PanelRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useAgentStore } from "@/stores/agent";
@@ -43,6 +44,8 @@ type TeamRuntimeResponse = {
 type TeamChatPanelProps = {
   teamId: string;
   actorAgentId: string;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 };
 
 type TeamApiResponse<T> = {
@@ -83,7 +86,7 @@ function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): M
   };
 }
 
-export function TeamChatPanel({ teamId, actorAgentId }: TeamChatPanelProps) {
+export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onToggleSidebar }: TeamChatPanelProps) {
   const t = useTranslations("teams");
   const agents = useAgentStore((store) => store.agents);
   const ensureAgents = useAgentStore((store) => store.ensure);
@@ -196,7 +199,7 @@ export function TeamChatPanel({ teamId, actorAgentId }: TeamChatPanelProps) {
   return (
     <section className="flex min-h-0 flex-col rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <h2 className="font-medium">{t("chat.title")}</h2>
           <div className="text-xs text-muted-foreground">
             {leader?.name
@@ -204,7 +207,20 @@ export function TeamChatPanel({ teamId, actorAgentId }: TeamChatPanelProps) {
               : t("chat.loadingLeader")}
           </div>
         </div>
-        {(loading || sending) ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+        <div className="flex items-center gap-1.5">
+          {(loading || sending) ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+          {onToggleSidebar ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              onClick={onToggleSidebar}
+              title={sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")}
+            >
+              <PanelRight className="size-4" />
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {error ? (

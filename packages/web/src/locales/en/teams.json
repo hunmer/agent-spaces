@@ -85,7 +85,9 @@
     "loadingLeader": "Loading leader...",
     "pickTeam": "Pick a team first.",
     "loading": "Loading chat...",
-    "empty": "No chat messages yet."
+    "empty": "No chat messages yet.",
+    "hideSidebar": "Hide team info",
+    "showSidebar": "Show team info"
   },
   "empty": {
     "setup": "Select a workspace and an agent first.",
