@@ -5,6 +5,7 @@
     "actorAgentId": "agent-generator",
     "leaderAgentId": "topic_agent",
     "status": "completed",
+<<<<<<< HEAD
     "updatedAt": "2026-07-09T11:41:04.013Z",
     "lastMessageId": "61d9bb2a-4c35-4bc1-8ed6-0f277ae8e774"
   },
@@ -16,5 +17,9 @@
     "status": "completed",
     "updatedAt": "2026-07-09T11:44:04.664Z",
     "lastMessageId": "ca926144-1ede-4df0-af96-bfe6d8477b7d"
+=======
+    "updatedAt": "2026-07-09T11:32:17.495Z",
+    "lastMessageId": "6fe56687-df97-4fb3-b63c-1ba364ab4fb9"
+>>>>>>> 25bc6cbcde5e7cfc543e192ae2f08b47f04a1ef2
   }
 ]
