@@ -22,6 +22,7 @@ import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/
 import { TeamMemberList } from "@/components/teams/team-member-list";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
 import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
+import { AgentIcon } from "@/components/common/agent-icon";
 
 const PANEL_ID_LIST = "team-list";
 const PANEL_ID_CHAT = "team-chat";
@@ -191,6 +192,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         actor_agent_id: selectedActorId,
         scope: "visible",
         page_size: 100,
+        include_members_preview: true,
       });
       setTeams(data.teams);
       const nextId = nextSelectedTeamId && data.teams.some((item) => item.team_id === nextSelectedTeamId)
@@ -429,8 +431,27 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                             </div>
                             <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                           </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            {t("list.memberCount", { count: team.member_count })}
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {t("list.memberCount", { count: team.member_count })}
+                            </span>
+                            {team.members_preview && team.members_preview.length > 0 ? (
+                              <div className="flex -space-x-1.5">
+                                {team.members_preview.slice(0, 5).map((m) => (
+                                  <AgentIcon
+                                    key={m.membership_id}
+                                    agentId={m.agent_id}
+                                    name={m.agent?.name}
+                                    avatarUrl={m.agent?.avatarUrl}
+                                    icon={m.agent?.icon as string | undefined}
+                                    className="size-5"
+                                    rounded="rounded-full"
+                                    textSize="text-[10px]"
+                                    hoverCard
+                                  />
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
                         </button>
                       ))}

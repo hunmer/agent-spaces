@@ -45,6 +45,7 @@ export interface TeamView {
   my_role: TeamRole | null;
   dissolved_at?: string;
   metadata?: Record<string, unknown>;
+  members_preview?: TeamMembershipView[];
 }
 
 export interface TeamMembershipView {
@@ -130,6 +131,7 @@ export interface ListTeamsParams {
   archived?: boolean;
   page_size?: number;
   page_token?: string;
+  include_members_preview?: boolean;
 }
 
 export interface CreateTeamInput {
@@ -162,6 +164,7 @@ export function createTeamApi(http: HttpClient) {
       if (params.archived) query.set('archived', 'true');
       if (params.page_size !== undefined) query.set('page_size', String(params.page_size));
       if (params.page_token) query.set('page_token', params.page_token);
+      if (params.include_members_preview) query.set('include_members_preview', 'true');
       return unwrap(http.raw(`/api/teams?${query.toString()}`));
     },
 

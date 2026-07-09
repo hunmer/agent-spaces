@@ -705,8 +705,19 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
         return team.name.toLowerCase().includes(keyword) || team.description.toLowerCase().includes(keyword);
       })
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    const includeMembersPreview = asBoolean(input.include_members_preview ?? input.includeMembersPreview);
     const { size, offset } = parsePage(input);
-    const page = allTeams.slice(offset, offset + size).map((team) => teamView(team, actorAgentId));
+    const page = allTeams.slice(offset, offset + size).map((team) => {
+      const view = teamView(team, actorAgentId);
+      if (includeMembersPreview) {
+        (view as TeamView & { members_preview?: ReturnType<typeof membershipView>[] }).members_preview =
+          listMemberships(team.id)
+            .filter((item) => item.status === 'active')
+            .slice(0, 5)
+            .map(membershipView);
+      }
+      return view;
+    });
     return ok('teams listed', {
       teams: page,
       next_page_token: nextPageToken(allTeams.length, offset, size),

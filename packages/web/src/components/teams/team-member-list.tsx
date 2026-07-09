@@ -12,6 +12,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
 } from "@/components/ui/context-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AgentEditor } from "@/components/sidebar/agent-editor";
+import { normalizeAgent } from "@/components/sidebar/agent-shared";
 import { TeamMemberRow } from "@/components/teams/team-member-row";
 import { MemberSelectDialog, buildCandidates } from "@/components/teams/member-select-panel";
 import type { TeamMembershipView } from "@agent-spaces/sdk";
@@ -23,22 +26,19 @@ interface TeamMemberListProps {
   actorAgentId: string;
   members: TeamMembershipView[];
   agents: AgentConfig[];
-  /** 当前 actor 在该团队的角色（owner/admin/member/observer/null） */
   myRole?: string | null;
   onChange: () => void;
 }
 
 export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, onChange }: TeamMemberListProps) {
   const t = useTranslations("teams");
-  const tc = useTranslations("common");
+  const tm = useTranslations("chat.messageItem");
   const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string>("");
+  const [configAgentId, setConfigAgentId] = useState<string | null>(null);
 
   const canManage = myRole === "owner" || myRole === "admin";
-
   const memberIds = useMemo(() => new Set(members.map((m) => m.agent_id)), [members]);
-
-  // 添加成员的候选列表：已启用 agent，排除已在团队中的
   const candidates = useMemo(() => buildCandidates(agents, memberIds), [agents, memberIds]);
 
   async function setOwner(targetId: string) {
@@ -107,7 +107,8 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
       ) : (
         <div className="space-y-1">
           {members.map((member) => {
-            const agent = member.agent ?? agents.find((a) => a.id === member.agent_id);
+            const storedAgent = agents.find((a) => a.id === member.agent_id);
+            const agent = member.agent ?? storedAgent;
             const name = agent?.name || member.agent_id;
             const isOwner = member.role === "owner";
             const isBusy = busyId === member.agent_id;
@@ -118,11 +119,11 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
                 name={name}
                 role={member.role}
                 busy={isBusy}
+                onConfigure={storedAgent ? () => setConfigAgentId(member.agent_id) : undefined}
                 onRemove={canManage ? () => void removeMember(member.agent_id) : undefined}
               />
             );
 
-            // 无管理权限时只渲染行，不提供右键菜单
             if (!canManage) {
               return <div key={member.membership_id}>{row}</div>;
             }
@@ -160,6 +161,27 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
         confirmLabel={t("detail.addMember")}
         onConfirm={(ids) => void handleAdd(ids)}
       />
+
+      {configAgentId && (() => {
+        const agent = agents.find((item) => item.id === configAgentId);
+        if (!agent) return null;
+        return (
+          <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="border-b px-5 py-3">
+                <DialogTitle>{tm("configureAgent")}</DialogTitle>
+                <DialogDescription />
+              </DialogHeader>
+              <AgentEditor
+                agent={normalizeAgent(agent)}
+                onSaved={() => setConfigAgentId(null)}
+                onBack={() => setConfigAgentId(null)}
+                showFooter
+              />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

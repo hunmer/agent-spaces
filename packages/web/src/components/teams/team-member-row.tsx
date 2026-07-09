@@ -9,7 +9,6 @@ import { MemberHoverCard } from "@/components/chat/member-hover-card";
 
 export type TeamMemberRole = "owner" | "admin" | "member" | "observer";
 
-/** 通用 agent 渲染所需的最小数据（来自 AgentConfig） */
 export interface MemberAgent {
   id: string;
   name?: string;
@@ -31,19 +30,13 @@ export interface MemberAgent {
 
 export interface TeamMemberRowProps {
   agent?: MemberAgent;
-  /** 显示名（已解析，优先于 agent.name） */
   name?: string;
-  /** 角色徽章，不传则不显示 */
   role?: TeamMemberRole;
-  /** 选择模式：渲染 checkbox，点击行触发 onToggle */
   selected?: boolean;
-  /** 选中切换回调（选择模式） */
   onToggle?: () => void;
-  /** 移除回调（展示模式），传入则显示移除按钮 */
+  onConfigure?: () => void;
   onRemove?: () => void;
-  /** 该行处于 loading（如删除中） */
   busy?: boolean;
-  /** 交互变体：select = 列表内可选（checkbox + hover）；display = 仅展示 + 移除按钮 */
   variant?: "select" | "display";
 }
 
@@ -62,16 +55,13 @@ function resolveAgent(agent: MemberAgent | undefined, fallbackId: string): Membe
   return agent ?? { id: fallbackId };
 }
 
-/**
- * 通用团队成员行：头像 + 名称 + 角色 Badge + 选择/移除控件。
- * 被 TeamMemberList（展示模式）与 CreateTeamDialog（选择模式）共用。
- */
 export function TeamMemberRow({
   agent,
   name,
   role,
   selected = false,
   onToggle,
+  onConfigure,
   onRemove,
   busy = false,
   variant = "display",
@@ -82,7 +72,14 @@ export function TeamMemberRow({
 
   const inner = (
     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
-      <MemberHoverCard agentId={a.id} displayName={displayName} side="top" align="start" agent={a}>
+      <MemberHoverCard
+        agentId={a.id}
+        displayName={displayName}
+        side="top"
+        align="start"
+        agent={a}
+        onConfigure={onConfigure}
+      >
         <AgentIcon
           agentId={a.id}
           name={displayName}
@@ -145,10 +142,32 @@ export function TeamMemberRow({
       </div>
     );
   }
+
   return inner;
 }
 
-/** 从 AgentConfig 列表构建 MemberAgent 映射，便于按 id 查找 */
-export function buildAgentMap(agents: Array<Pick<AgentConfig, "id" | "name" | "role" | "description" | "avatarUrl" | "icon" | "apiBase" | "modelId" | "providerId" | "modelProvider" | "runtimeKind" | "systemPrompt" | "backgroundUrl" | "tools" | "skills" | "mcps">>) {
+export function buildAgentMap(
+  agents: Array<
+    Pick<
+      AgentConfig,
+      | "id"
+      | "name"
+      | "role"
+      | "description"
+      | "avatarUrl"
+      | "icon"
+      | "apiBase"
+      | "modelId"
+      | "providerId"
+      | "modelProvider"
+      | "runtimeKind"
+      | "systemPrompt"
+      | "backgroundUrl"
+      | "tools"
+      | "skills"
+      | "mcps"
+    >
+  >,
+) {
   return new Map(agents.map((a) => [a.id, a as MemberAgent]));
 }
