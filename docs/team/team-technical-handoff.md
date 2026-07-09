@@ -18,6 +18,8 @@
 - team API 是全局路由，不再带 `/workspaces/:id/...`
 - team 可包含 3 类成员来源：`agent`、`chat`、`custom`
 - workflow 导入 team 成员时，必须取 `agent_run.data.agentConfigId`，不能取 `agent_run.data.agent.id`
+- **前端调用 team 接口一律走 `sdk.team.*`，禁止在组件里手拼 `/api/teams...` URL**
+- team 接口返回 `{ success, code, message, data }` 信封，与 SDK 其他模块不同；解包逻辑收敛在 `sdk.team` 内部（`unwrap`），调用方直接拿到 `data`
 
 ## 3. 核心文件入口
 
@@ -38,7 +40,14 @@
 ### 前端
 
 - `packages/web/src/components/teams/team-management-page.tsx`
-  - team 页面主体，负责调用 `/api/teams`、`/api/team-inbox`
+  - team 页面主体
+  - 通过 `sdk.team.*` 调用 team 接口（不再外部拼 URL）
+- `packages/web/src/components/teams/team-chat-panel.tsx`
+  - team runtime 聊天面板
+  - 通过 `sdk.team.getRuntime / sendRuntimeMessage / clearMessages / deleteMessage` 调用
+- `packages/web/src/components/teams/team-member-list.tsx`
+  - 成员列表与增删改
+  - 通过 `sdk.team.invite / setRole / remove` 调用
 - `packages/web/src/components/teams/create-team-dialog.tsx`
   - 创建/编辑 team 对话框
 - `packages/web/src/components/teams/team-management-dialog.tsx`
@@ -46,6 +55,14 @@
   - workflow 导入 team 默认成员的逻辑在这里
 - `packages/web/src/app/teams/page.tsx`
   - `/teams` 页面入口
+
+### SDK（team API 唯一出口）
+
+- `packages/sdk/src/modules/team.ts`
+  - **前端所有 team 接口调用的唯一出口**
+  - 封装了 team 管理 / membership / runtime / 消息 全部方法
+  - 内部统一解包 `{ success, code, message, data }` 信封
+  - 视图类型（`TeamView / TeamDetail / TeamRuntimeResponse` 等）在此定义并从 SDK 导出
 
 ### 类型
 
@@ -162,6 +179,31 @@ team 数据目录：
 - `GET /api/team-messages/:messageId/comments`
 - `POST /api/team-messages/:messageId/comments`
 - `DELETE /api/team-messages/comments/:commentId`
+
+### 6.1 前端调用约定
+
+上述路由中，**已被 `sdk.team` 封装的部分，前端必须走 SDK，不允许在组件里手拼 URL**。
+
+`sdk.team` 当前覆盖（见 `packages/sdk/src/modules/team.ts`）：
+
+| SDK 方法 | 对应路由 |
+| --- | --- |
+| `sdk.team.list` | `GET /api/teams` |
+| `sdk.team.get` | `GET /api/teams/:teamId` |
+| `sdk.team.create` | `POST /api/teams` |
+| `sdk.team.update` | `PATCH /api/teams/:teamId` |
+| `sdk.team.dissolve` | `POST /api/teams/:teamId/dissolve` |
+| `sdk.team.deleteArchive` | `POST /api/teams/archive/delete` |
+| `sdk.team.clearArchives` | `POST /api/teams/archive/clear` |
+| `sdk.team.invite` | `POST /api/teams/:teamId/invite` |
+| `sdk.team.setRole` | `POST /api/teams/:teamId/set-role` |
+| `sdk.team.remove` | `POST /api/teams/:teamId/remove` |
+| `sdk.team.getRuntime` | `GET /api/teams/:teamId/runtime` |
+| `sdk.team.sendRuntimeMessage` | `POST /api/teams/:teamId/runtime/messages` |
+| `sdk.team.clearMessages` | `DELETE /api/teams/:teamId/messages` |
+| `sdk.team.deleteMessage` | `DELETE /api/team-messages/:messageId` |
+
+尚未封装（无前端调用点，用到时补）：`join`、`leave`、`team-inbox` 系列、消息评论系列。
 
 ## 7. 内置工具
 
@@ -306,8 +348,8 @@ team 数据目录：
 
 ## 10. 当前已知限制
 
-- team 编辑模式还**不支持完整成员增删改 UI**
-  - 现在 PATCH 主要是 team 基础字段
+- team 编辑模式现在支持完整成员增删改 UI（invite / set-role / remove），通过 `sdk.team` 调用
+  - PATCH 本身仍只改 team 基础字段；成员变更走独立 membership 接口
 - workflow 导入只是导入 agent ids
   - 不会直接导入更复杂的 team 成员配置
 - 旧 membership 数据没有独立迁移命令
@@ -315,6 +357,9 @@ team 数据目录：
 - `createTeamFunctionTools(workspaceId, allowedTools?)` 里的 `workspaceId`
   - 仍是历史残留参数
   - handler 已经不再依赖它
+- `sdk.team` 目前未封装 team inbox（`/api/team-inbox`）和消息评论接口
+  - 原因：当前无前端调用点
+  - 后续用到时补到同一模块即可
 
 ## 11. 下个 agent 接手建议
 
@@ -323,9 +368,11 @@ team 数据目录：
 1. `packages/server/src/services/team.ts`
 2. `packages/server/src/routes/team.ts`
 3. `packages/server/src/services/builtin-tools/team-tools.ts`
-4. `packages/web/src/components/teams/team-management-page.tsx`
-5. `packages/web/src/components/teams/team-management-dialog.tsx`
-6. `packages/shared/src/types/team.ts`
+4. `packages/sdk/src/modules/team.ts`
+5. `packages/web/src/components/teams/team-management-page.tsx`
+6. `packages/web/src/components/teams/team-member-list.tsx`
+7. `packages/web/src/components/teams/team-chat-panel.tsx`
+8. `packages/shared/src/types/team.ts`
 
 推荐先确认的问题：
 
@@ -365,9 +412,16 @@ pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
 
 如果 UI 看不到 team，看：
 
-- `/api/teams?actor_agent_id=...&scope=visible`
+- `sdk.team.list({ actor_agent_id, scope: "visible" })` 的实际返回
+  - 底层请求：`/api/teams?actor_agent_id=...&scope=visible`
 - 当前 actor 是否是 active membership
 - team `visibility` 是否为 `open`
+
+如果 `sdk.team.*` 报错（如信封解析失败），看：
+
+- `packages/sdk/src/modules/team.ts` 的 `unwrap` 逻辑
+- 服务端 `sendResult` 返回的 `success` 是否为 `true`
+- 接口路径是否与 `packages/server/src/routes/team.ts` 一致
 
 ## 14. 一句话总结
 

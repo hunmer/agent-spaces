@@ -111,9 +111,23 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogDefaults, setDialogDefaults] = useState<TeamFormDefaults | undefined>(undefined);
   const [editingTeam, setEditingTeam] = useState<TeamView | null>(null);
-  const [infoSidebarOpen, setInfoSidebarOpen] = useState(true);
+  const [savedLayout, setSavedLayout] = useState<Record<string, number>>(loadSavedLayout);
+  // 右栏初始是否展开，由持久化布局决定（detail 占比 > 0 即展开）
+  const [infoSidebarOpen, setInfoSidebarOpen] = useState(() => (loadSavedLayout()[PANEL_ID_DETAIL] ?? DEFAULT_LAYOUT[PANEL_ID_DETAIL]) > 0);
   const [workflowListOpen, setWorkflowListOpen] = useState(false);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
+  const saveLayoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // 布局变化时持久化（防抖写入 localStorage）
+  const handleLayoutChange = useCallback((layout: Record<string, number>) => {
+    setSavedLayout(layout);
+    if (saveLayoutTimer.current) clearTimeout(saveLayoutTimer.current);
+    saveLayoutTimer.current = setTimeout(() => {
+      try {
+        window.localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+      } catch {}
+    }, 200);
+  }, []);
 
   // 右栏隐藏通过面板 collapse 到 0 实现（占用比例变为 0，DOM 保留）
   const toggleInfoSidebar = useCallback(() => {
@@ -353,7 +367,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           <ResizablePanelGroup
             orientation="horizontal"
             className="flex-1 gap-3"
-            defaultLayout={{ [PANEL_ID_LIST]: 25, [PANEL_ID_CHAT]: 40, [PANEL_ID_DETAIL]: 35 }}
+            defaultLayout={savedLayout}
+            onLayoutChange={handleLayoutChange}
           >
             <ResizablePanel id={PANEL_ID_LIST} defaultSize="25%" minSize="18%" maxSize="35%">
             <section className="flex h-full flex-col rounded-2xl border border-border bg-card p-4">
@@ -415,7 +430,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                             <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                           </div>
                           <div className="mt-2 text-xs text-muted-foreground">
-                            {t("list.memberCount", { count: team.member_count })} · {t("list.role", { role: team.my_role ?? t("list.noRole") })}
+                            {t("list.memberCount", { count: team.member_count })}
                           </div>
                         </button>
                       ))}
@@ -500,7 +515,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               }}
             >
             {infoSidebarOpen ? (
-            <section className="rounded-2xl border border-border bg-card p-4">
+            <section className="rounded-2xl border border-border bg-card p-4 h-full">
               {selectedTeam && teamDetail ? (
                 <div className="flex h-full flex-col gap-4">
                   <div className="flex items-start justify-between gap-3">

@@ -54,6 +54,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const ensureAgents = useAgentStore((store) => store.ensure);
   const [runtime, setRuntime] = useState<TeamRuntimeView | null>(null);
   const [messages, setMessages] = useState<TeamRuntimeMessageView[]>([]);
+  const [pendingAssistantSince, setPendingAssistantSince] = useState<string | null>(null);
   const [leaderProfile, setLeaderProfile] = useState<TeamRuntimeResponse["leader"] | null>(null);
   const [participants, setParticipants] = useState<NonNullable<TeamRuntimeResponse["participants"]>>([]);
   const [loading, setLoading] = useState(false);
@@ -80,7 +81,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     name: leader?.name || t("chat.leaderFallback"),
     members: runtime?.leader_agent_id ? [runtime.leader_agent_id] : [],
     pinnedMentionId: runtime?.leader_agent_id,
-  }), [leader?.name, runtime?.id, runtime?.leader_agent_id, t]);
+  }), [leader, runtime, t]);
 
   const composerAgents = useMemo(() => {
     return participants.map((participant) => ({
@@ -109,10 +110,37 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     [participants],
   );
 
-  const viewMessages = useMemo(
-    () => messages.map((item) => toChannelMessage(item, actorAgentId)),
-    [actorAgentId, messages],
-  );
+  const viewMessages = useMemo(() => {
+    const rendered = messages.map((item) => toChannelMessage(item, actorAgentId));
+    if (!pendingAssistantSince) return rendered;
+
+    const hasRealAssistantMessage = messages.some((item) => (
+      item.senderAgentId !== actorAgentId
+      && new Date(item.createdAt).getTime() >= new Date(pendingAssistantSince).getTime()
+    ));
+    if (hasRealAssistantMessage) return rendered;
+
+    return [...rendered, {
+      id: "__team_pending_assistant__",
+      channelId: runtime?.id ?? "__team_runtime__",
+      senderId: runtime?.leader_agent_id || leader?.id || "assistant",
+      content: "",
+      type: "text",
+      status: "pending",
+      createdAt: pendingAssistantSince,
+    }];
+  }, [actorAgentId, leader?.id, messages, pendingAssistantSince, runtime?.id, runtime?.leader_agent_id]);
+
+  const clearPendingAssistantIfResolved = useCallback((items: TeamRuntimeMessageView[]) => {
+    if (!pendingAssistantSince) return;
+    const resolved = items.some((item) => (
+      item.senderAgentId !== actorAgentId
+      && new Date(item.createdAt).getTime() >= new Date(pendingAssistantSince).getTime()
+    ));
+    if (resolved) {
+      setPendingAssistantSince(null);
+    }
+  }, [actorAgentId, pendingAssistantSince]);
 
   const loadRuntime = useCallback(async () => {
     if (!teamId || !actorAgentId) return;
@@ -124,16 +152,41 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
       setMessages(data.messages);
+      clearPendingAssistantIfResolved(data.messages);
     } catch (err) {
       setRuntime(null);
       setLeaderProfile(null);
       setParticipants([]);
       setMessages([]);
+      setPendingAssistantSince(null);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
-  }, [actorAgentId, teamId]);
+  }, [actorAgentId, clearPendingAssistantIfResolved, teamId]);
+
+  const handleSend = useCallback(async (content: string, mentions: string[], _attachments?: unknown, _replyToMessageId?: string, contextLength?: number) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    const startedAt = new Date().toISOString();
+    setPendingAssistantSince(startedAt);
+    setSending(true);
+    setError("");
+    try {
+      await sdk.team.sendRuntimeMessage(teamId, {
+        actor_agent_id: actorAgentId,
+        content: trimmed,
+        target_agent_id: mentions[0],
+        context_length: contextLength,
+      });
+      await loadRuntime();
+    } catch (err) {
+      setPendingAssistantSince(null);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSending(false);
+    }
+  }, [actorAgentId, loadRuntime, teamId]);
 
   useEffect(() => {
     void ensureAgents();
@@ -166,26 +219,6 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       offUpdated();
       ws.disconnect();
     };
-  }, [actorAgentId, loadRuntime, teamId]);
-
-  const handleSend = useCallback(async (content: string, mentions: string[], _attachments?: unknown, _replyToMessageId?: string, contextLength?: number) => {
-    const trimmed = content.trim();
-    if (!trimmed) return;
-    setSending(true);
-    setError("");
-    try {
-      await sdk.team.sendRuntimeMessage(teamId, {
-        actor_agent_id: actorAgentId,
-        content: trimmed,
-        target_agent_id: mentions[0],
-        context_length: contextLength,
-      });
-      await loadRuntime();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSending(false);
-    }
   }, [actorAgentId, loadRuntime, teamId]);
 
   const handleDeleteMessage = useCallback(async (message: Message) => {

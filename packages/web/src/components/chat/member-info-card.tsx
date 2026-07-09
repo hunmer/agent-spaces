@@ -25,6 +25,15 @@ const PROVIDER_LABELS: Record<string, string> = {
   'gemini-generate-content': 'Gemini',
 };
 
+function handleConfigurePress(
+  event: React.MouseEvent<HTMLButtonElement> | React.PointerEvent<HTMLButtonElement>,
+  onConfigure?: () => void,
+) {
+  event.preventDefault();
+  event.stopPropagation();
+  onConfigure?.();
+}
+
 function InfoRow({ icon: Icon, label, children }: { icon: React.ElementType; label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2 text-xs">
@@ -140,7 +149,8 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
             )}
             {agent && onConfigure && (
               <button
-                onClick={(e) => { e.stopPropagation(); onConfigure(); }}
+                onPointerDown={(e) => handleConfigurePress(e, onConfigure)}
+                onClick={(e) => handleConfigurePress(e, onConfigure)}
                 className="absolute top-2 right-2 p-1.5 rounded-md bg-black/40 text-white/80 hover:text-white hover:bg-black/60 transition-colors cursor-pointer"
               >
                 <Settings className="size-3.5" />
@@ -209,7 +219,8 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
           </div>
           {agent && onConfigure && (
             <button
-              onClick={(e) => { e.stopPropagation(); onConfigure(); }}
+              onPointerDown={(e) => handleConfigurePress(e, onConfigure)}
+              onClick={(e) => handleConfigurePress(e, onConfigure)}
               className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <Settings className="size-4" />
