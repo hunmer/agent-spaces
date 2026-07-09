@@ -50,7 +50,12 @@
     "title": "Teams",
     "memberCount": "{count} members",
     "role": "My role: {role}",
-    "noRole": "none"
+    "noRole": "none",
+    "archivedAt": "Archived"
+  },
+  "tabs": {
+    "active": "Active",
+    "archived": "Archived"
   },
   "detail": {
     "noDescription": "No description yet.",
@@ -104,6 +109,7 @@
   "empty": {
     "setup": "Select a workspace and an agent first.",
     "teams": "No teams yet.",
+    "archived": "No archived teams.",
     "teamDetail": "Select a team to view details."
   }
 }

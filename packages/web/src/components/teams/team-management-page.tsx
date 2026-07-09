@@ -7,6 +7,7 @@ import { Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { sdk } from "@/lib/sdk";
 import { useAgentStore } from "@/stores/agent";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
@@ -19,6 +20,7 @@ type TeamView = Team & {
   created_at: string;
   member_count: number;
   my_role: string | null;
+  dissolved_at?: string;
 };
 
 type TeamMembershipView = TeamMembership & {
@@ -87,9 +89,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const agents = useAgentStore((store) => store.agents);
   const [selectedActorId, setSelectedActorId] = useState("");
   const [teams, setTeams] = useState<TeamView[]>([]);
+  const [archivedTeams, setArchivedTeams] = useState<TeamView[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [teamDetail, setTeamDetail] = useState<TeamDetail | null>(null);
   const [loadingTeams, setLoadingTeams] = useState(false);
+  const [loadingArchived, setLoadingArchived] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
   const [error, setError] = useState("");
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -148,6 +152,24 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     }
   }, [selectedActorId, selectedTeamId]);
 
+  const loadArchivedTeams = useCallback(async () => {
+    if (!selectedActorId) {
+      setArchivedTeams([]);
+      return;
+    }
+    setLoadingArchived(true);
+    try {
+      const data = await requestTeamApi<{ teams: TeamView[] }>(
+        `/api/teams?actor_agent_id=${encodeURIComponent(selectedActorId)}&archived=true&page_size=100`,
+      );
+      setArchivedTeams(data.teams);
+    } catch {
+      setArchivedTeams([]);
+    } finally {
+      setLoadingArchived(false);
+    }
+  }, [selectedActorId]);
+
   const loadTeamDetail = useCallback(async (teamId: string) => {
     try {
       const data = await requestTeamApi<TeamDetail>(
@@ -163,7 +185,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   useEffect(() => {
     if (!selectedActorId) return;
     void loadTeams();
-  }, [loadTeams, selectedActorId]);
+    void loadArchivedTeams();
+  }, [loadTeams, loadArchivedTeams, selectedActorId]);
 
   useEffect(() => {
     if (!selectedActorId || !selectedTeamId) {
@@ -251,6 +274,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         }),
       });
       await loadTeams(team.team_id === selectedTeamId ? undefined : selectedTeamId);
+      void loadArchivedTeams();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -291,40 +315,76 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               ) : null}
               <div className="mb-3 mt-4 flex items-center justify-between">
                 <h2 className="font-medium">{t("list.title")}</h2>
-                {loadingTeams ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+                {loadingTeams || loadingArchived ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
               </div>
-              <div className="min-h-0 flex-1 overflow-auto">
-                {teams.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                    {t("empty.teams")}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {teams.map((team) => (
-                      <button
-                        key={team.team_id}
-                        type="button"
-                        onClick={() => setSelectedTeamId(team.team_id)}
-                        className={`rounded-xl border px-3 py-3 text-left transition-colors ${team.team_id === selectedTeamId ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium">{team.name}</div>
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
-                              <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
+              <Tabs defaultValue="active" className="min-h-0 flex-1 flex-col gap-2">
+                <TabsList className="self-start">
+                  <TabsTrigger value="active">{t("tabs.active")}</TabsTrigger>
+                  <TabsTrigger value="archived">{t("tabs.archived")}</TabsTrigger>
+                </TabsList>
+                <TabsContent value="active" className="min-h-0 flex-1 overflow-auto">
+                  {teams.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                      {t("empty.teams")}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {teams.map((team) => (
+                        <button
+                          key={team.team_id}
+                          type="button"
+                          onClick={() => setSelectedTeamId(team.team_id)}
+                          className={`rounded-xl border px-3 py-3 text-left transition-colors ${team.team_id === selectedTeamId ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">{team.name}</div>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
+                                <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
+                              </div>
                             </div>
+                            <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                           </div>
-                          <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            {t("list.memberCount", { count: team.member_count })} · {t("list.role", { role: team.my_role ?? t("list.noRole") })}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="archived" className="min-h-0 flex-1 overflow-auto">
+                  {archivedTeams.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                      {t("empty.archived")}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {archivedTeams.map((team) => (
+                        <div
+                          key={team.team_id}
+                          className="rounded-xl border border-border px-3 py-3 text-left opacity-70"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">{team.name}</div>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
+                                <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
+                              </div>
+                            </div>
+                            <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            {team.dissolved_at ? `${t("list.archivedAt")} ${formatTime(team.dissolved_at)}` : ""}
+                          </div>
                         </div>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          {t("list.memberCount", { count: team.member_count })} · {t("list.role", { role: team.my_role ?? t("list.noRole") })}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </section>
 
             <TeamChatPanel

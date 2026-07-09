@@ -50,7 +50,12 @@
     "title": "团队列表",
     "memberCount": "{count} 名成员",
     "role": "我的角色：{role}",
-    "noRole": "无"
+    "noRole": "无",
+    "archivedAt": "归档于"
+  },
+  "tabs": {
+    "active": "团队列表",
+    "archived": "已归档"
   },
   "detail": {
     "noDescription": "暂无描述。",
@@ -104,6 +109,7 @@
   "empty": {
     "setup": "请先选择工作区和 Agent。",
     "teams": "暂无团队。",
+    "archived": "暂无已归档团队。",
     "teamDetail": "请选择一个团队查看详情。"
   }
 }

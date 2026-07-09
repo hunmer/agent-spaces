@@ -1,10 +1,11 @@
 import { v4 as uuid } from 'uuid';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import type { AgentConfig } from '@agent-spaces/shared';
 import { listPresets } from './agent.js';
 import { findAgent as findChatAgent } from './chat.js';
 import { listWorkflows } from './workflow.js';
-import { getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
+import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 
 type JsonMap = Record<string, unknown>;
 type TeamStatus = 'active' | 'archived' | 'dissolved';
@@ -153,6 +154,34 @@ function teamDeliveriesPath(teamId: string): string {
 
 function teamCommentsPath(teamId: string): string {
   return join(teamDataDir(teamId), 'comments.json');
+}
+
+/** 归档目录：team/archived/{teamId} */
+function archivedTeamDataDir(teamId: string): string {
+  return join(teamDir(), 'archived', teamId);
+}
+
+function archivedTeamFilePath(teamId: string): string {
+  return join(archivedTeamDataDir(teamId), 'info.json');
+}
+
+function loadArchivedTeam(teamId: string): Team | null {
+  return readJsonFile<Team>(archivedTeamFilePath(teamId));
+}
+
+/** 列出归档目录下所有 team id（按子目录名） */
+function listArchivedTeamIds(): string[] {
+  const dir = join(teamDir(), 'archived');
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+}
+
+function listArchivedTeamsRaw(): Team[] {
+  return listArchivedTeamIds()
+    .map((teamId) => loadArchivedTeam(teamId))
+    .filter((team): team is Team => Boolean(team));
 }
 
 function uniqueTeamIds(ids: string[]): string[] {
@@ -650,8 +679,11 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
   }
 
   if (action === 'list') {
-    const allTeams = listTeamsRaw()
+    const archivedOnly = asBoolean(input.archived);
+    const allTeams = (archivedOnly ? listArchivedTeamsRaw() : listTeamsRaw())
       .filter((team) => {
+        // 归档团队不再做成员可见性校验（已解散，仅作历史展示）
+        if (archivedOnly) return true;
         const scope = asString(input.scope) ?? 'mine';
         if (scope === 'visible') return canViewTeam(team, actorAgentId);
         return Boolean(getActiveMembership(team.id, actorAgentId));
@@ -751,7 +783,20 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     if (asBoolean(input.dry_run)) return ok('team dissolve validation passed', { team_id: teamId });
     const now = new Date().toISOString();
     const next: Team = { ...team, status: 'dissolved', dissolvedAt: now, updatedAt: now };
+    // 先写入新状态，再移动整个团队目录到 archived/{teamId}，最后从活跃索引移除
     saveTeam(next);
+    const srcDir = teamDataDir(teamId);
+    const destDir = archivedTeamDataDir(teamId);
+    if (existsSync(srcDir)) {
+      ensureDir(dirname(destDir));
+      // 若归档目录已存在（异常残留），先清理避免 rename 失败
+      if (existsSync(destDir)) {
+        renameSync(destDir, `${destDir}.${Date.now()}.bak`);
+      }
+      renameSync(srcDir, destDir);
+    }
+    // 从 teams.json 索引移除（归档团队不再出现在活跃列表）
+    saveTeamIds(listTeamIds().filter((id) => id !== teamId));
     return ok('team dissolved', {
       team_id: teamId,
       status: 'dissolved',
