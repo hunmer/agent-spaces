@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { AgentConfig } from '@agent-spaces/shared';
 import { listPresets } from './agent.js';
 import { findAgent as findChatAgent } from './chat.js';
+import { listWorkflows } from './workflow.js';
 import { getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 
 type JsonMap = Record<string, unknown>;
@@ -289,17 +290,41 @@ function findPresetById(agentId: string): AgentConfig | undefined {
   return listPresets('').find((item) => item.id === agentId);
 }
 
-function detectAgentStore(agentId: string): TeamMembershipAgentStore | undefined {
-  if (findPresetById(agentId)) return 'agent';
-  if (findChatAgent(agentId)) return 'chat';
+function findWorkflowAgentConfig(agentId: string): Record<string, unknown> | undefined {
+  for (const workflow of listWorkflows()) {
+    for (const node of workflow.nodes ?? []) {
+      if (node.type !== 'agent_run') continue;
+      const data = isObject(node.data) ? node.data : null;
+      if (!data) continue;
+      const agent = asAgentRecord(data.agent);
+      const candidateId = asString(agent?.id) ?? asString(data.agentConfigId);
+      if (candidateId === agentId) return { ...(agent ?? {}), id: agentId };
+    }
+  }
   return undefined;
+}
+
+export function resolveTeamAgentSource(
+  agentId: string,
+): { agentStore: TeamMembershipAgentStore; agent?: Record<string, unknown> } | null {
+  if (findPresetById(agentId)) return { agentStore: 'agent' };
+  if (findChatAgent(agentId)) return { agentStore: 'chat' };
+  const workflowAgent = findWorkflowAgentConfig(agentId);
+  if (workflowAgent) return { agentStore: 'custom', agent: workflowAgent };
+  return null;
+}
+
+function detectAgentStore(agentId: string): TeamMembershipAgentStore | undefined {
+  return resolveTeamAgentSource(agentId)?.agentStore;
 }
 
 function normalizeStoredMembership(item: TeamMembership): TeamMembership {
   if (item.agentStore) return item;
+  const resolved = item.agent ? { agentStore: 'custom' as const, agent: item.agent } : resolveTeamAgentSource(item.agentId);
   return {
     ...item,
-    agentStore: item.agent ? 'custom' : detectAgentStore(item.agentId) ?? 'agent',
+    agentStore: resolved?.agentStore ?? 'agent',
+    agent: item.agent ?? resolved?.agent,
   };
 }
 
@@ -322,7 +347,8 @@ function resolveMembershipAgent(
     return { error: fail('agent object is required when agent_store=custom', 'INVALID_ARGUMENT') };
   }
 
-  const resolvedStore = requestedStore ?? detectAgentStore(agentId);
+  const resolvedSource = resolveTeamAgentSource(agentId);
+  const resolvedStore = requestedStore ?? resolvedSource?.agentStore;
   if (resolvedStore === 'agent') {
     if (!findPresetById(agentId)) return { error: fail(`agent not found: ${agentId}`, 'AGENT_NOT_FOUND') };
     return { agentId, agentStore: 'agent' };
@@ -330,6 +356,9 @@ function resolveMembershipAgent(
   if (resolvedStore === 'chat') {
     if (!findChatAgent(agentId)) return { error: fail(`chat agent not found: ${agentId}`, 'AGENT_NOT_FOUND') };
     return { agentId, agentStore: 'chat' };
+  }
+  if (resolvedStore === 'custom' && resolvedSource?.agent) {
+    return { agentId, agentStore: 'custom', agent: resolvedSource.agent };
   }
   return { error: fail(`agent not found: ${agentId}`, 'AGENT_NOT_FOUND') };
 }
@@ -1171,6 +1200,52 @@ export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
       version: updated.version,
       updated_at: now,
     },
+  });
+}
+
+export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
+  if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
+  const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
+  const teamId = asString(input.team_id ?? input.teamId);
+  const messageId = asString(input.message_id ?? input.messageId);
+  if (!actorAgentId || (!messageId && !teamId)) {
+    return fail('actor_agent_id and message_id or team_id are required', 'INVALID_ARGUMENT');
+  }
+
+  if (teamId) {
+    const team = loadTeam(teamId);
+    if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
+    const actorMembership = getActiveMembership(teamId, actorAgentId);
+    if (!actorMembership) return fail('permission denied', 'PERMISSION_DENIED');
+
+    saveMessages(teamId, []);
+    saveDeliveries(teamId, []);
+    saveComments(teamId, []);
+    return ok('messages cleared', {
+      team_id: teamId,
+    });
+  }
+
+  if (!messageId) return fail('message_id is required', 'INVALID_ARGUMENT');
+  const ctx = findMessageContext(messageId);
+  if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
+
+  const actorMembership = getActiveMembership(ctx.team.id, actorAgentId);
+  const canDelete = ctx.message.senderAgentId === actorAgentId
+    || actorMembership?.role === 'owner'
+    || actorMembership?.role === 'admin';
+  if (!canDelete) return fail('permission denied', 'PERMISSION_DENIED');
+
+  const nextMessages = ctx.messages.filter((item) => item.id !== messageId);
+  const nextDeliveries = listDeliveries(ctx.team.id).filter((item) => item.messageId !== messageId);
+  const nextComments = listCommentsRaw(ctx.team.id).filter((item) => item.messageId !== messageId);
+  saveMessages(ctx.team.id, nextMessages);
+  saveDeliveries(ctx.team.id, nextDeliveries);
+  saveComments(ctx.team.id, nextComments);
+
+  return ok('message deleted', {
+    message_id: messageId,
+    team_id: ctx.team.id,
   });
 }
 

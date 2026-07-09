@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { sdk } from "@/lib/sdk";
 import { useAgentStore } from "@/stores/agent";
@@ -285,25 +284,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
             infoSidebarOpen ? "xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1.1fr)]" : "xl:grid-cols-[320px_minmax(0,1fr)]",
           )}>
             <section className="flex flex-col rounded-2xl border border-border bg-card p-4">
-              <div className="flex flex-col gap-2">
-                <Select value={selectedActorId} onValueChange={(next) => setSelectedActorId(next ?? "")}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={t("filters.actor")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableAgents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name || agent.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {error ? (
-                  <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                    {error}
-                  </div>
-                ) : null}
-              </div>
+              {error ? (
+                <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </div>
+              ) : null}
               <div className="mb-3 mt-4 flex items-center justify-between">
                 <h2 className="font-medium">{t("list.title")}</h2>
                 {loadingTeams ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}

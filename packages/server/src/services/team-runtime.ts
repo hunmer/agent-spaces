@@ -2,8 +2,10 @@ import { v4 as uuid } from 'uuid';
 import type { Team, TeamMembership, TeamMessage } from '@agent-spaces/shared';
 import { join } from 'node:path';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
+import type { AgentRuntime, AgentRuntimeKind, AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
 import { getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
-import { handleTeamMessageSend, type TeamServiceResult } from './team.js';
+import { listProviders } from '../storage/llm-store.js';
+import { handleTeamMessageSend, resolveTeamAgentSource, type TeamServiceResult } from './team.js';
 import * as agentService from './agent.js';
 import * as chatService from './chat.js';
 import { listPresets } from './agent.js';
@@ -13,6 +15,11 @@ import { prependPersistentAgentContext } from './persistent-agent-context.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 const TEAM_RUNTIME_WORKSPACE_ID = '__team__';
+let runtimeFactory: (config?: AgentRuntimeConfig) => AgentRuntime = createAgentRuntime;
+
+export function setTeamRuntimeFactoryForTests(factory?: (config?: AgentRuntimeConfig) => AgentRuntime): void {
+  runtimeFactory = factory ?? createAgentRuntime;
+}
 
 type TeamRuntimeStatus = 'idle' | 'running' | 'completed' | 'error';
 
@@ -112,6 +119,23 @@ function normalizeContextLength(input: unknown): number {
   return Math.max(0, Math.min(20, Math.floor(value)));
 }
 
+export function resolveCustomAgentProvider(agent: Record<string, unknown>) {
+  const providers = listProviders();
+  const providerId = asString(agent.providerId);
+  if (providerId) {
+    const byId = providers.find((provider) => provider.id === providerId);
+    if (byId) return byId;
+  }
+
+  const apiBase = asString(agent.apiBase) ?? asString(agent.baseURL);
+  const apiKey = asString(agent.apiKey);
+  if (!apiBase && !apiKey) return undefined;
+  return providers.find((provider) =>
+    (!apiBase || provider.apiBase === apiBase)
+    && (!apiKey || provider.apiKey === apiKey),
+  );
+}
+
 function listMemberships(teamId: string): TeamMembership[] {
   return readJsonFile<TeamMembership[]>(teamMembershipsPath(teamId)) ?? [];
 }
@@ -171,8 +195,10 @@ function findLatestRuntime(teamId: string, actorAgentId: string): StoredTeamRunt
 }
 
 function resolveLeaderProfile(leaderAgentId: string): TeamRuntimeLeader {
-  const preset = listPresets('').find((item) => item.id === leaderAgentId);
-  if (preset) {
+  const source = resolveTeamAgentSource(leaderAgentId);
+  if (source?.agentStore === 'agent') {
+    const preset = listPresets('').find((item) => item.id === leaderAgentId);
+    if (!preset) return { id: leaderAgentId, name: leaderAgentId };
     return {
       id: preset.id,
       name: preset.name || preset.id,
@@ -182,8 +208,9 @@ function resolveLeaderProfile(leaderAgentId: string): TeamRuntimeLeader {
       role: preset.role,
     };
   }
-  const chatAgent = findChatAgent(leaderAgentId);
-  if (chatAgent) {
+  if (source?.agentStore === 'chat') {
+    const chatAgent = findChatAgent(leaderAgentId);
+    if (!chatAgent) return { id: leaderAgentId, name: leaderAgentId };
     return {
       id: chatAgent.id,
       name: chatAgent.name || chatAgent.id,
@@ -191,6 +218,16 @@ function resolveLeaderProfile(leaderAgentId: string): TeamRuntimeLeader {
       avatarUrl: chatAgent.avatarUrl,
       icon: chatAgent.icon,
       role: chatAgent.role,
+    };
+  }
+  if (source?.agentStore === 'custom' && source.agent) {
+    return {
+      id: leaderAgentId,
+      name: asString(source.agent.name) ?? leaderAgentId,
+      description: asString(source.agent.description),
+      avatarUrl: asString(source.agent.avatarUrl),
+      icon: asString(source.agent.icon),
+      role: asString(source.agent.role),
     };
   }
   return {
@@ -268,7 +305,7 @@ async function executePresetTeamReply(targetAgentId: string, content: string, hi
   const session = agentService.getOrCreateSessionForConfig('', preset);
   agentService.updateStatus('', session.id, 'active');
   const startedAt = Date.now();
-  const runtime = createAgentRuntime({
+  const runtime = runtimeFactory({
     kind: preset.runtimeKind,
     provider: preset.modelProvider,
     model: preset.modelId,
@@ -319,7 +356,7 @@ async function executePresetTeamReply(targetAgentId: string, content: string, hi
 async function executeChatTeamReply(targetAgentId: string, content: string, history: TeamRuntimeMessage[]): Promise<string> {
   const agent = chatService.findAgent(targetAgentId);
   if (!agent) throw new Error(`chat agent not found: ${targetAgentId}`);
-  const runtime = createAgentRuntime({
+  const runtime = runtimeFactory({
     kind: agent.runtimeKind ?? 'langchain',
     provider: agent.modelProvider ?? agent.provider,
     model: agent.modelId ?? agent.model,
@@ -341,9 +378,60 @@ async function executeChatTeamReply(targetAgentId: string, content: string, hist
   return formatAgentReply(result);
 }
 
-async function executeTeamReply(targetAgentId: string, content: string, history: TeamRuntimeMessage[]): Promise<string> {
-  if (listPresets('').some((item) => item.id === targetAgentId)) {
+async function executeCustomTeamReply(
+  targetAgentId: string,
+  agent: Record<string, unknown>,
+  content: string,
+  history: TeamRuntimeMessage[],
+): Promise<string> {
+  const provider = resolveCustomAgentProvider(agent);
+  const runtime = runtimeFactory({
+    kind: (asString(agent.runtimeKind) ?? 'claude-code') as AgentRuntimeKind,
+    provider: asString(agent.modelProvider) ?? provider?.modelProvider,
+    model: asString(agent.modelId),
+    apiKey: provider?.apiKey ?? asString(agent.apiKey),
+    baseURL: provider?.apiBase ?? asString(agent.apiBase) ?? asString(agent.baseURL),
+    maxTokens: typeof agent.maxTokens === 'number' ? agent.maxTokens : undefined,
+  });
+  const workingDir = asString(agent.workingDir) || process.cwd();
+  const userPrompt = buildTeamAgentPrompt(content, history);
+  const runtimeKind = asString(agent.runtimeKind);
+  const skills = Array.isArray(agent.skills) ? agent.skills.filter((item): item is string => typeof item === 'string') : [];
+  const result = await runtime.execute(
+    prependPersistentAgentContext(userPrompt, {
+      workspaceId: '',
+      workingDir,
+      includeWorkspacePrompt: false,
+      excludeNativeClaudeMd: runtimeKind === 'claude-code',
+    }),
+    workingDir,
+    {
+      maxTurns: 20,
+      userPrompt,
+      mcpServers: agentService.getMcpServers((agent.mcps && typeof agent.mcps === 'object' && !Array.isArray(agent.mcps))
+        ? agent.mcps as Parameters<typeof agentService.getMcpServers>[0]
+        : undefined),
+      skills,
+      systemPrompt: asString(agent.systemPrompt),
+      outputStyle: asString(agent.outputStyle),
+    },
+  );
+  return formatAgentReply(result);
+}
+
+async function executeTeamReply(teamId: string, targetAgentId: string, content: string, history: TeamRuntimeMessage[]): Promise<string> {
+  const membership = listMemberships(teamId).find((item) => item.status === 'active' && item.agentId === targetAgentId) as
+    | (TeamMembership & { agentStore?: 'agent' | 'chat' | 'custom'; agent?: Record<string, unknown> })
+    | undefined;
+  const source = membership?.agentStore
+    ? { agentStore: membership.agentStore, agent: membership.agent }
+    : resolveTeamAgentSource(targetAgentId);
+
+  if (source?.agentStore === 'agent') {
     return executePresetTeamReply(targetAgentId, content, history);
+  }
+  if (source?.agentStore === 'custom' && source.agent && typeof source.agent === 'object') {
+    return executeCustomTeamReply(targetAgentId, source.agent, content, history);
   }
   return executeChatTeamReply(targetAgentId, content, history);
 }
@@ -355,7 +443,7 @@ function broadcastTeamRuntimeEvent(event: string, payload: Record<string, unknow
 function dispatchTeamReply(teamId: string, actorAgentId: string, targetAgentId: string, content: string, runtime: StoredTeamRuntime, history: TeamRuntimeMessage[]): void {
   void (async () => {
     try {
-      const reply = await executeTeamReply(targetAgentId, content, history);
+      const reply = await executeTeamReply(teamId, targetAgentId, content, history);
       const result = handleTeamMessageSend({
         action: 'send',
         team_id: teamId,

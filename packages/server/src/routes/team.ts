@@ -4,6 +4,7 @@ import {
   handleTeamManage,
   handleTeamMembershipManage,
   handleTeamMessageComment,
+  handleTeamMessageDelete,
   handleTeamMessageSend,
   handleTeamMessageUpdate,
 } from '../services/team.js';
@@ -85,6 +86,13 @@ router.post('/:teamId/messages', (req: Request<{ teamId: string }>, res: Respons
   sendResult(res, handleTeamMessageSend({ ...req.body, action: 'send', team_id: req.params.teamId }));
 });
 
+router.delete('/:teamId/messages', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMessageDelete({
+    team_id: req.params.teamId,
+    actor_agent_id: req.body?.actor_agent_id ?? req.query.actor_agent_id,
+  }));
+});
+
 router.get('/:teamId/runtime', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, getTeamRuntime({
     team_id: req.params.teamId,
@@ -136,6 +144,13 @@ teamInboxRouter.patch('/:deliveryId', (req: Request<{ deliveryId: string }>, res
 });
 
 export const teamMessageRouter = Router({ mergeParams: true });
+
+teamMessageRouter.delete('/:messageId', (req: Request<{ messageId: string }>, res: Response) => {
+  sendResult(res, handleTeamMessageDelete({
+    message_id: req.params.messageId,
+    actor_agent_id: req.body?.actor_agent_id ?? req.query.actor_agent_id,
+  }));
+});
 
 teamMessageRouter.get('/:messageId/comments', (req: Request<{ messageId: string }>, res: Response) => {
   sendResult(res, handleTeamMessageComment({

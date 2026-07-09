@@ -138,7 +138,6 @@ function collectInstructionFiles(
   boundDirs?: string[],
   options: Pick<PersistentAgentContextOptions, 'excludeNativeClaudeMd'> = {},
 ): InstructionFile[] {
-  const cwd = resolveInstructionSearchBase(workingDir, boundDirs);
   const seen = new Set<string>();
   const files: InstructionFile[] = [];
   const filenames = getInstructionFilenames(options);
@@ -146,6 +145,9 @@ function collectInstructionFiles(
   for (const globalPath of globalInstructionPaths(options)) {
     addInstructionFile(files, seen, globalPath, compactPath(globalPath));
   }
+
+  const cwd = resolveInstructionSearchBase(workingDir, boundDirs);
+  if (!cwd) return files;
 
   for (const dir of ancestorDirs(cwd, resolveInstructionRoot(cwd, boundDirs))) {
     for (const filename of filenames) {
@@ -157,13 +159,13 @@ function collectInstructionFiles(
   return files;
 }
 
-function resolveInstructionSearchBase(workingDir: string, boundDirs?: string[]): string {
-  const cwd = resolve(workingDir || process.cwd());
+function resolveInstructionSearchBase(workingDir: string, boundDirs?: string[]): string | null {
   const roots = (boundDirs ?? [])
     .map((dir) => safeResolve(dir))
     .filter((dir): dir is string => Boolean(dir));
 
-  if (roots.length === 0) return cwd;
+  if (roots.length === 0) return null;
+  const cwd = safeResolve(workingDir) ?? roots[0];
   if (roots.some((dir) => isPathWithin(cwd, dir))) return cwd;
   return roots[0];
 }

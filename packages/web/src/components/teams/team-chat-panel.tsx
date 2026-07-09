@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Channel, Message } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2, PanelRight } from "lucide-react";
+import { Loader2, PanelRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
 import { ChatInput } from "@/components/chat/chat-input";
@@ -239,6 +239,40 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     }
   }, [actorAgentId, loadRuntime, teamId]);
 
+  const handleDeleteMessage = useCallback(async (message: Message) => {
+    setError("");
+    try {
+      await requestTeamApi(
+        `/api/team-messages/${message.id}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actor_agent_id: actorAgentId }),
+        },
+      );
+      await loadRuntime();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [actorAgentId, loadRuntime]);
+
+  const handleClearMessages = useCallback(async () => {
+    setError("");
+    try {
+      await requestTeamApi(
+        `/api/teams/${teamId}/messages`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actor_agent_id: actorAgentId }),
+        },
+      );
+      await loadRuntime();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [actorAgentId, loadRuntime, teamId]);
+
   return (
     <section className="flex min-h-0 flex-col rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -252,6 +286,16 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
         </div>
         <div className="flex items-center gap-1.5">
           {(loading || sending) ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={handleClearMessages}
+            disabled={viewMessages.length === 0 || loading || sending}
+            title="清空消息"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
           {onToggleSidebar ? (
             <Button
               variant="ghost"
@@ -290,7 +334,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
               <div className="flex flex-col py-2">
                 {viewMessages.map((message) => (
                   <div key={message.id}>
-                    <MessageItem message={message} workspaceId="" />
+                    <MessageItem message={message} workspaceId="" onDelete={handleDeleteMessage} />
                   </div>
                 ))}
               </div>

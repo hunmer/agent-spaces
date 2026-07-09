@@ -100,11 +100,11 @@
           "name": "Topic Agent",
           "role": "agent",
           "description": "围绕公众号主题生成多角度选题和大纲",
-          "runtimeKind": "claude-code",
-          "modelProvider": "anthropic-messages",
-          "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+          "runtimeKind": "langchain",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
           "modelId": "MiniMax-M2.7",
-          "apiBase": "https://api.minimaxi.com/anthropic",
+          "apiBase": "https://api.minimaxi.com/v1",
           "workingDir": "",
           "mcps": {
             "mcpServers": {}
@@ -400,11 +400,11 @@
     }
   ],
   "createdAt": 1782821632696,
-  "updatedAt": 1783421673339,
+  "updatedAt": 1783567898848,
   "published": false,
   "name": "公众号编写 (Copy)",
   "description": "选题agent->编辑agent->审批agent",
   "groups": [],
   "lastRunAt": 1783423565595,
-  "lastOpenedAt": 1782986745886
+  "lastOpenedAt": 1783567042561
 }
