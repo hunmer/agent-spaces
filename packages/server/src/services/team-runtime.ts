@@ -588,7 +588,7 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
   let runtime = findLatestRuntime(teamId, actorAgentId);
   if (!runtime) {
     const leaderAgentId = resolveLeader(teamId, actorAgentId);
-    if (!leaderAgentId) return fail('leader not found', 'AGENT_NOT_FOUND');
+    if (!leaderAgentId) return fail('owner not found', 'AGENT_NOT_FOUND');
     runtime = ensureRuntime(teamId, actorAgentId, leaderAgentId);
   }
   const messages = collectConversationMessages(teamId, actorAgentId, runtime.leaderAgentId, runtime);

@@ -57,6 +57,11 @@
     "active": "团队列表",
     "archived": "已归档"
   },
+  "archived": {
+    "clearAll": "清空所有",
+    "deleteConfirm": "确定彻底删除归档团队「{name}」吗？此操作不可恢复。",
+    "clearConfirm": "确定清空所有已归档团队吗？此操作不可恢复。"
+  },
   "detail": {
     "noDescription": "暂无描述。",
     "purpose": "团队目标",

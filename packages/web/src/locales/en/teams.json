@@ -57,6 +57,11 @@
     "active": "Active",
     "archived": "Archived"
   },
+  "archived": {
+    "clearAll": "Clear all",
+    "deleteConfirm": "Permanently delete archived team \"{name}\"? This cannot be undone.",
+    "clearConfirm": "Clear all archived teams? This cannot be undone."
+  },
   "detail": {
     "noDescription": "No description yet.",
     "purpose": "Purpose",

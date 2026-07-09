@@ -96,9 +96,9 @@ export function TeamMemberRow({
       {variant === "select" ? (
         <Checkbox
           checked={selected}
-          onCheckedChange={onToggle}
-          className="shrink-0"
-          onClick={(e) => e.stopPropagation()}
+          tabIndex={-1}
+          aria-hidden
+          className="shrink-0 pointer-events-none"
         />
       ) : null}
       {variant === "display" && onRemove ? (
@@ -119,13 +119,20 @@ export function TeamMemberRow({
 
   if (variant === "select") {
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
-        className="block w-full text-left"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle?.();
+          }
+        }}
+        className="block w-full cursor-pointer text-left"
       >
         {inner}
-      </button>
+      </div>
     );
   }
   return inner;

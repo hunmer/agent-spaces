@@ -615,8 +615,11 @@ function applyDeliveryStatusRules(current: TeamInboxItem, nextInboxStatus?: Team
 export function handleTeamManage(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
-  const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
-  if (!action || !actorAgentId) return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
+  const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId) ?? '';
+  // 归档清理操作不需要 actor
+  if (!action || (action !== 'delete_archive' && action !== 'clear_archives' && !actorAgentId)) {
+    return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
+  }
 
   if (action === 'create') {
     const name = asString(input.name);
@@ -807,9 +810,17 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
   if (action === 'delete_archive') {
     const teamId = asString(input.team_id ?? input.teamId);
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
-    const dir = archivedTeamDataDir(teamId);
-    if (!existsSync(dir)) return fail('archived team not found', 'TEAM_NOT_FOUND');
-    rmSync(dir, { recursive: true, force: true });
+    // 优先按目录名匹配，再按 info.json 内的 id 匹配（兼容目录名与 id 不一致的情况）
+    let targetDir: string | null = existsSync(archivedTeamDataDir(teamId)) ? archivedTeamDataDir(teamId) : null;
+    if (!targetDir) {
+      const matched = listArchivedTeamIds().find((id) => {
+        const t = loadArchivedTeam(id);
+        return t?.id === teamId;
+      });
+      if (matched) targetDir = archivedTeamDataDir(matched);
+    }
+    if (targetDir) rmSync(targetDir, { recursive: true, force: true });
+    // 幂等：目录不存在也视为成功，避免陈旧列表报错
     return ok('archived team deleted', { team_id: teamId });
   }
 

@@ -20,7 +20,7 @@ import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
 function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
   const ids: string[] = [];
   for (const node of workflow.nodes ?? []) {
-    if (node.type !== "agent_run") continue;
+    if (node.type !== "agent" && node.type !== "agent_run") continue;
     const id = typeof node.data?.agentConfigId === "string" ? node.data.agentConfigId.trim() : "";
     if (id) ids.push(id);
   }
@@ -311,7 +311,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     if (!confirm(t("archived.deleteConfirm", { name: team.name }))) return;
     setError("");
     try {
-      await requestTeamApi<{ team_id: string }>(`/api/teams/${team.team_id}/archive`, { method: "DELETE" });
+      await requestTeamApi<{ team_id: string }>(`/api/teams/archive/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team_id: team.team_id }),
+      });
       await loadArchivedTeams();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -323,7 +327,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     if (!confirm(t("archived.clearConfirm"))) return;
     setError("");
     try {
-      await requestTeamApi<{ cleared: number }>(`/api/teams/archives`, { method: "DELETE" });
+      await requestTeamApi<{ cleared: number }>(`/api/teams/archive/clear`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
       await loadArchivedTeams();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

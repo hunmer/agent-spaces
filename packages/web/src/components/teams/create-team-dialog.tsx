@@ -60,7 +60,7 @@ interface MemberSelectPanelProps {
   emptyText?: string;
   query: string;
   onQueryChange: (q: string) => void;
-  candidates: Array<{ agent: AgentConfig; label: string; id: string }>;
+  candidates: Array<{ agent?: AgentConfig; label: string; id: string }>;
   selected: string[];
   onToggle: (id: string) => void;
 }
@@ -135,13 +135,19 @@ export function CreateTeamDialog({
     }
   }, [open, mode, editTarget, defaultValues]);
 
-  const candidates = useMemo(
-    () =>
-      agents
-        .filter((a) => a.enabled !== false)
-        .map((a) => ({ agent: a, label: getMemberDisplayName(agents, a.id), id: a.id })),
-    [agents],
-  );
+  const candidates = useMemo(() => {
+    const list: Array<{ agent?: AgentConfig; label: string; id: string }> = agents
+      .filter((a) => a.enabled !== false)
+      .map((a) => ({ agent: a, label: getMemberDisplayName(agents, a.id), id: a.id }));
+    // 已选但不在 agents 列表中的（如从工作流导入的 agentConfigId），补为占位候选
+    const present = new Set(list.map((c) => c.id));
+    for (const id of values.members) {
+      if (!present.has(id)) {
+        list.push({ agent: undefined, label: getMemberDisplayName(agents, id), id });
+      }
+    }
+    return list;
+  }, [agents, values.members]);
 
   const [memberQuery, setMemberQuery] = useState("");
   const filteredCandidates = useMemo(() => {
