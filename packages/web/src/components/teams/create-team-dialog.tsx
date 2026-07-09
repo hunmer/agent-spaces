@@ -125,6 +125,8 @@ export function CreateTeamDialog({
         members: [],
       });
     } else {
+      // eslint-disable-next-line no-console
+      console.log("[CreateTeamDialog] open create with defaults", { defaultValues });
       setValues({
         name: defaultValues?.name ?? "",
         description: defaultValues?.description ?? "",
@@ -146,6 +148,8 @@ export function CreateTeamDialog({
         list.push({ agent: undefined, label: getMemberDisplayName(agents, id), id });
       }
     }
+    // eslint-disable-next-line no-console
+    console.log("[CreateTeamDialog] candidates", { agentCount: agents.length, memberCount: values.members.length, candidateIds: list.map((c) => c.id) });
     return list;
   }, [agents, values.members]);
 

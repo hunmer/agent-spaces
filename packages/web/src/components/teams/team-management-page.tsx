@@ -21,10 +21,20 @@ function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
   const ids: string[] = [];
   for (const node of workflow.nodes ?? []) {
     if (node.type !== "agent" && node.type !== "agent_run") continue;
-    const id = typeof node.data?.agentConfigId === "string" ? node.data.agentConfigId.trim() : "";
+    const data = node.data ?? {};
+    // 兼容两种数据结构：
+    // 1. 内联 agent 定义：node.data.agent.id
+    // 2. 引用模式：node.data.agentConfigId
+    const agentObj = data.agent as { id?: unknown } | undefined;
+    const fromAgent = agentObj && typeof agentObj.id === "string" ? agentObj.id.trim() : "";
+    const fromConfigId = typeof data.agentConfigId === "string" ? data.agentConfigId.trim() : "";
+    const id = fromAgent || fromConfigId;
     if (id) ids.push(id);
   }
-  return Array.from(new Set(ids));
+  const result = Array.from(new Set(ids));
+  // eslint-disable-next-line no-console
+  console.log("[extractAgentRunIds]", { workflowName: workflow.name, nodeCount: (workflow.nodes ?? []).length, extractedIds: result });
+  return result;
 }
 
 type TeamView = Team & {
@@ -142,6 +152,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   function handleImportFromWorkflow(workflow: WorkflowTemplate) {
     setWorkflowListOpen(false);
     const memberIds = extractAgentRunIds(workflow);
+    // eslint-disable-next-line no-console
+    console.log("[handleImportFromWorkflow]", { workflowName: workflow.name, memberIds });
     openCreateDialogWithDefaults({
       name: workflow.name,
       description: workflow.description ?? "",
