@@ -222,8 +222,9 @@ function addInstructionFile(files: InstructionFile[], seen: Set<string>, path: s
   if (!stat.isFile()) return;
 
   const realPath = realpathSync(path);
-  if (seen.has(realPath)) return;
-  seen.add(realPath);
+  const seenKey = normalizeInstructionSeenKey(realPath);
+  if (seen.has(seenKey)) return;
+  seen.add(seenKey);
 
   files.push({
     path: realPath,
@@ -231,6 +232,10 @@ function addInstructionFile(files: InstructionFile[], seen: Set<string>, path: s
     filename: basename(realPath),
     content: readFileSync(path, 'utf-8').trim(),
   });
+}
+
+function normalizeInstructionSeenKey(path: string): string {
+  return process.platform === 'win32' ? path.toLowerCase() : path;
 }
 
 function truncateForBudget(content: string, maxChars: number): string {

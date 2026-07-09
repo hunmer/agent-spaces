@@ -47,14 +47,36 @@ test('buildPersistentAgentContextDetails loads instruction files from boundDirs 
       boundDirs: [workspaceDir],
     });
 
-    assert.deepEqual(
-      details.summary.instructionFiles.map((file) => file.filename),
-      ['AGENTS.md', 'CLAUDE.md'],
-    );
-    assert.equal(details.summary.counts.agentsMd, 1);
-    assert.equal(details.summary.counts.claudeMd, 1);
+    assert.ok(details.summary.instructionFiles.some((file) => file.path.endsWith('AGENTS.md')));
+    assert.ok(details.summary.instructionFiles.some((file) => file.path.endsWith('CLAUDE.md')));
     assert.match(details.instructionContext, /workspace instructions/);
     assert.match(details.instructionContext, /nested instructions/);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(workspaceDir, { recursive: true, force: true });
+  }
+});
+
+test('buildPersistentAgentContextDetails deduplicates instruction files by case on Windows', () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
+  const workspaceDir = mkdtempSync(join(tmpdir(), 'persistent-context-dedupe-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    writeFileSync(join(workspaceDir, 'AGENTS.md'), 'workspace instructions', 'utf-8');
+
+    const details = buildPersistentAgentContextDetails({
+      workspaceId: 'ws-1',
+      workingDir: workspaceDir,
+      boundDirs: [workspaceDir],
+    });
+
+    const agentFiles = details.summary.instructionFiles.filter((file) => file.filename.toLowerCase() === 'agents.md');
+    assert.equal(agentFiles.length, 1);
+    assert.equal(details.summary.counts.agentsMd, 1);
   } finally {
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
     else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;

@@ -745,7 +745,7 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
     const membership = getActiveMembership(teamId, actorAgentId);
-    if (!membership || membership.role !== 'owner') return fail('only owner can dissolve team', 'PERMISSION_DENIED');
+    if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) return fail('only owner or admin can dissolve team', 'PERMISSION_DENIED');
     if (!asBoolean(input.confirm)) return fail('confirm must be true', 'INVALID_ARGUMENT');
     if (team.status === 'dissolved') return fail('team already dissolved', 'TEAM_DISSOLVED');
     if (asBoolean(input.dry_run)) return ok('team dissolve validation passed', { team_id: teamId });

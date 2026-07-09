@@ -3,10 +3,11 @@
   "name": "公众号编写",
   "description": "选题agent->编辑agent->审批agent",
   "purpose": "制作逻辑严谨的文章",
-  "status": "active",
+  "status": "dissolved",
   "visibility": "open",
   "createdBy": "agent-generator",
   "createdAt": "2026-07-08T11:10:33.732Z",
-  "updatedAt": "2026-07-09T03:11:48.184Z",
-  "memberCount": 4
+  "updatedAt": "2026-07-09T03:39:21.713Z",
+  "memberCount": 4,
+  "dissolvedAt": "2026-07-09T03:39:21.713Z"
 }
