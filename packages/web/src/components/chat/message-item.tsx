@@ -12,7 +12,7 @@ import { useUserAvatar } from '@/hooks/use-user-avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MemberHoverCard } from './member-hover-card';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
-import { normalizeAgent } from '@/components/sidebar/agent-shared';
+import { normalizeAgent, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/decorations/text-shimmer';
 import { MovingBorder } from '@/components/ui/border-glide';
@@ -22,12 +22,15 @@ interface MessageItemProps {
   message: Message;
   workspaceId: string;
   agent?: Partial<AgentConfig>;
+  teamId?: string;
+  actorAgentId?: string;
+  onAgentUpdated?: () => void;
   onEdit?: (message: Message) => void;
   onDelete?: (message: Message) => void;
   onReply?: (message: Message) => void;
 }
 
-export function MessageItem({ message, workspaceId, agent: fallbackAgent, onEdit, onDelete, onReply }: MessageItemProps) {
+export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId, actorAgentId, onAgentUpdated, onEdit, onDelete, onReply }: MessageItemProps) {
   const tc = useTranslations('common');
   const tm = useTranslations('chat.messageItem');
   const isUser = message.senderId === 'user';
@@ -217,8 +220,9 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, onEdit
         </Dialog>
       )}
       {configAgentId && (() => {
-        const agent = storeAgents.find((a) => a.id === configAgentId);
-        if (!agent) return null;
+        const storeAgent = storeAgents.find((a) => a.id === configAgentId);
+        const customAgent = !storeAgent && fallbackAgent?.id === configAgentId ? fallbackAgent : undefined;
+        if (!storeAgent && !customAgent) return null;
         return (
           <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
             <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
@@ -226,12 +230,41 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, onEdit
                 <DialogTitle>{tm('configureAgent')}</DialogTitle>
                 <DialogDescription />
               </DialogHeader>
-              <AgentEditor
-                agent={normalizeAgent(agent)}
-                onSaved={() => setConfigAgentId(null)}
-                onBack={() => setConfigAgentId(null)}
-                showFooter
-              />
+              {storeAgent ? (
+                <AgentEditor
+                  agent={normalizeAgent(storeAgent)}
+                  onSaved={() => setConfigAgentId(null)}
+                  onBack={() => setConfigAgentId(null)}
+                  showFooter
+                />
+              ) : customAgent ? (
+                <AgentEditor
+                  agent={normalizeAgent({ id: configAgentId, ...customAgent } as AgentConfig)}
+                  commit={async (draft: AgentPreset) => {
+                    if (!teamId || !actorAgentId) throw new Error('team context missing');
+                    const response = await fetch(`/api/teams/${teamId}/update-agent`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        actor_agent_id: actorAgentId,
+                        agent_id: configAgentId,
+                        agent: { ...draft, id: configAgentId },
+                      }),
+                    });
+                    const payload = await response.json() as { success?: boolean; message?: string };
+                    if (!response.ok || payload.success === false) {
+                      throw new Error(payload.message || 'save failed');
+                    }
+                    return { ...draft, id: configAgentId };
+                  }}
+                  onSaved={() => {
+                    setConfigAgentId(null);
+                    onAgentUpdated?.();
+                  }}
+                  onBack={() => setConfigAgentId(null)}
+                  showFooter
+                />
+              ) : null}
             </DialogContent>
           </Dialog>
         );

@@ -16,6 +16,7 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 const TEAM_RUNTIME_WORKSPACE_ID = '__team__';
 let runtimeFactory: (config?: AgentRuntimeConfig) => AgentRuntime = createAgentRuntime;
+const activeTeamRuns = new Map<string, { runtime: AgentRuntime; token: string }>();
 
 export function setTeamRuntimeFactoryForTests(factory?: (config?: AgentRuntimeConfig) => AgentRuntime): void {
   runtimeFactory = factory ?? createAgentRuntime;
@@ -313,7 +314,12 @@ function formatAgentReply(result: { success: boolean; summary: string; output: s
     || '已处理';
 }
 
-async function executePresetTeamReply(targetAgentId: string, content: string, history: TeamRuntimeMessage[]): Promise<string> {
+async function executePresetTeamReply(
+  targetAgentId: string,
+  content: string,
+  history: TeamRuntimeMessage[],
+  onRuntime?: (runtime: AgentRuntime) => void,
+): Promise<string> {
   const preset = listPresets('').find((item) => item.id === targetAgentId);
   if (!preset) throw new Error(`agent not found: ${targetAgentId}`);
   const session = agentService.getOrCreateSessionForConfig('', preset);
@@ -328,6 +334,7 @@ async function executePresetTeamReply(targetAgentId: string, content: string, hi
     maxTokens: preset.maxTokens,
     ...getThinkingRuntimeConfig(preset),
   });
+  onRuntime?.(runtime);
   const workingDir = agentService.resolveWorkingDir('', preset);
   const userPrompt = buildTeamAgentPrompt(content, history);
   try {
@@ -367,7 +374,12 @@ async function executePresetTeamReply(targetAgentId: string, content: string, hi
   }
 }
 
-async function executeChatTeamReply(targetAgentId: string, content: string, history: TeamRuntimeMessage[]): Promise<string> {
+async function executeChatTeamReply(
+  targetAgentId: string,
+  content: string,
+  history: TeamRuntimeMessage[],
+  onRuntime?: (runtime: AgentRuntime) => void,
+): Promise<string> {
   const agent = chatService.findAgent(targetAgentId);
   if (!agent) throw new Error(`chat agent not found: ${targetAgentId}`);
   const runtime = runtimeFactory({
@@ -378,6 +390,7 @@ async function executeChatTeamReply(targetAgentId: string, content: string, hist
     baseURL: agent.apiBase ?? agent.baseURL,
     maxTokens: agent.maxTokens,
   });
+  onRuntime?.(runtime);
   const userPrompt = buildTeamAgentPrompt(content, history);
   const workingDir = chatService.getAgentWorkingDir(targetAgentId) || process.cwd();
   const result = await runtime.execute(userPrompt, workingDir, {
@@ -397,6 +410,7 @@ async function executeCustomTeamReply(
   agent: Record<string, unknown>,
   content: string,
   history: TeamRuntimeMessage[],
+  onRuntime?: (runtime: AgentRuntime) => void,
 ): Promise<string> {
   const provider = resolveCustomAgentProvider(agent);
   const runtime = runtimeFactory({
@@ -407,6 +421,7 @@ async function executeCustomTeamReply(
     baseURL: provider?.apiBase ?? asString(agent.apiBase) ?? asString(agent.baseURL),
     maxTokens: typeof agent.maxTokens === 'number' ? agent.maxTokens : undefined,
   });
+  onRuntime?.(runtime);
   const workingDir = asString(agent.workingDir) || process.cwd();
   const userPrompt = buildTeamAgentPrompt(content, history);
   const runtimeKind = asString(agent.runtimeKind);
@@ -433,7 +448,13 @@ async function executeCustomTeamReply(
   return formatAgentReply(result);
 }
 
-async function executeTeamReply(teamId: string, targetAgentId: string, content: string, history: TeamRuntimeMessage[]): Promise<string> {
+async function executeTeamReply(
+  teamId: string,
+  targetAgentId: string,
+  content: string,
+  history: TeamRuntimeMessage[],
+  onRuntime?: (runtime: AgentRuntime) => void,
+): Promise<string> {
   const membership = listMemberships(teamId).find((item) => item.status === 'active' && item.agentId === targetAgentId) as
     | (TeamMembership & { agentStore?: 'agent' | 'chat' | 'custom'; agent?: Record<string, unknown> })
     | undefined;
@@ -442,12 +463,12 @@ async function executeTeamReply(teamId: string, targetAgentId: string, content: 
     : resolveTeamAgentSource(targetAgentId);
 
   if (source?.agentStore === 'agent') {
-    return executePresetTeamReply(targetAgentId, content, history);
+    return executePresetTeamReply(targetAgentId, content, history, onRuntime);
   }
   if (source?.agentStore === 'custom' && source.agent && typeof source.agent === 'object') {
-    return executeCustomTeamReply(targetAgentId, source.agent, content, history);
+    return executeCustomTeamReply(targetAgentId, source.agent, content, history, onRuntime);
   }
-  return executeChatTeamReply(targetAgentId, content, history);
+  return executeChatTeamReply(targetAgentId, content, history, onRuntime);
 }
 
 function broadcastTeamRuntimeEvent(event: string, payload: Record<string, unknown>): void {
@@ -455,9 +476,15 @@ function broadcastTeamRuntimeEvent(event: string, payload: Record<string, unknow
 }
 
 function dispatchTeamReply(teamId: string, actorAgentId: string, targetAgentId: string, content: string, runtime: StoredTeamRuntime, history: TeamRuntimeMessage[]): void {
+  const runKey = `${teamId}:${actorAgentId}:${targetAgentId}`;
+  activeTeamRuns.get(runKey)?.runtime.stop();
+  const token = uuid();
   void (async () => {
     try {
-      const reply = await executeTeamReply(teamId, targetAgentId, content, history);
+      const reply = await executeTeamReply(teamId, targetAgentId, content, history, (activeRuntime) => {
+        activeTeamRuns.set(runKey, { runtime: activeRuntime, token });
+      });
+      if (activeTeamRuns.get(runKey)?.token !== token) return;
       const result = handleTeamMessageSend({
         action: 'send',
         team_id: teamId,
@@ -488,6 +515,7 @@ function dispatchTeamReply(teamId: string, actorAgentId: string, targetAgentId: 
         });
       }
     } catch (error) {
+      if (activeTeamRuns.get(runKey)?.token !== token) return;
       const message = error instanceof Error ? error.message : String(error);
       const result = handleTeamMessageSend({
         action: 'send',
@@ -519,6 +547,8 @@ function dispatchTeamReply(teamId: string, actorAgentId: string, targetAgentId: 
           message: (result.data as { message?: unknown } | undefined)?.message,
         });
       }
+    } finally {
+      if (activeTeamRuns.get(runKey)?.token === token) activeTeamRuns.delete(runKey);
     }
   })();
 }
@@ -695,5 +725,23 @@ export function postTeamRuntimeMessage(input: unknown): TeamServiceResult {
     leader,
     participants,
     message: (sendResult.data as { message?: unknown } | undefined)?.message,
+  });
+}
+
+export function handleTeamMessageSendAndRun(input: unknown): TeamServiceResult {
+  if (!input || typeof input !== 'object') return fail('tool input must be an object', 'INVALID_ARGUMENT');
+  const map = input as Record<string, unknown>;
+  const recipients = Array.isArray(map.recipient_agent_ids ?? map.recipientAgentIds)
+    ? (map.recipient_agent_ids ?? map.recipientAgentIds) as unknown[]
+    : [];
+  const targetAgentId = recipients.find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  if (asString(map.mode) !== 'direct' || !targetAgentId) return handleTeamMessageSend(input);
+
+  return postTeamRuntimeMessage({
+    team_id: map.team_id ?? map.teamId,
+    actor_agent_id: map.actor_agent_id ?? map.actorAgentId,
+    content: map.body,
+    target_agent_id: targetAgentId,
+    context_length: map.context_length ?? map.contextLength,
   });
 }

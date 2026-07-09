@@ -1,7 +1,7 @@
 "use client";
 
 import type { AgentConfig } from "@agent-spaces/shared";
-import { Loader2, Trash2, Crown } from "lucide-react";
+import { Loader2, Trash2, Crown, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AgentIcon } from "@/components/common/agent-icon";
@@ -18,9 +18,9 @@ export interface MemberAgent {
   icon?: string;
   apiBase?: string;
   modelId?: string;
-  providerId?: string;
-  modelProvider?: string;
-  runtimeKind?: string;
+  providerId?: AgentConfig["providerId"];
+  modelProvider?: AgentConfig["modelProvider"];
+  runtimeKind?: AgentConfig["runtimeKind"];
   systemPrompt?: string;
   backgroundUrl?: string;
   tools?: string[];
@@ -38,6 +38,8 @@ export interface TeamMemberRowProps {
   onRemove?: () => void;
   busy?: boolean;
   variant?: "select" | "display";
+  unreadCount?: number;
+  runtimeStatus?: "idle" | "running" | "completed" | "error";
 }
 
 function roleBadgeClass(role: TeamMemberRole): string {
@@ -65,6 +67,8 @@ export function TeamMemberRow({
   onRemove,
   busy = false,
   variant = "display",
+  unreadCount = 0,
+  runtimeStatus = "idle",
 }: TeamMemberRowProps) {
   const a = resolveAgent(agent, name ?? "");
   const displayName = name ?? a.name ?? a.id;
@@ -94,6 +98,18 @@ export function TeamMemberRow({
         />
       </MemberHoverCard>
       <span className="min-w-0 flex-1 truncate text-sm">{displayName}</span>
+      {runtimeStatus === "running" ? (
+        <Badge variant="outline" className="gap-1 border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0 text-xs text-emerald-600">
+          <Loader2 className="size-3 animate-spin" />
+          running
+        </Badge>
+      ) : null}
+      {unreadCount > 0 ? (
+        <Badge variant="outline" className="gap-1 border-orange-500/40 bg-orange-500/10 px-1.5 py-0 text-xs text-orange-600">
+          <Mail className="size-3" />
+          {unreadCount}
+        </Badge>
+      ) : null}
       {role ? (
         <Badge variant="outline" className={`gap-1 px-1.5 py-0 text-xs ${roleBadgeClass(role)}`}>
           {isOwner && <Crown className="size-3" />}

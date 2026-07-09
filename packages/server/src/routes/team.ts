@@ -34,6 +34,7 @@ router.get('/', (req: Request, res: Response) => {
     status_filter: Array.isArray(req.query.status_filter) ? req.query.status_filter : req.query.status_filter ? [req.query.status_filter] : undefined,
     page_token: req.query.page_token,
     page_size: req.query.page_size ? Number(req.query.page_size) : undefined,
+    include_members_preview: req.query.include_members_preview === 'true',
   }));
 });
 
@@ -72,6 +73,10 @@ router.post('/:teamId/leave', (req: Request<{ teamId: string }>, res: Response) 
 
 router.post('/:teamId/set-role', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'set_role', team_id: req.params.teamId }));
+});
+
+router.post('/:teamId/update-agent', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'update_agent', team_id: req.params.teamId }));
 });
 
 router.post('/:teamId/remove', (req: Request<{ teamId: string }>, res: Response) => {

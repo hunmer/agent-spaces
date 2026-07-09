@@ -5,9 +5,9 @@ import {
   handleTeamManage,
   handleTeamMembershipManage,
   handleTeamMessageComment,
-  handleTeamMessageSend,
   handleTeamMessageUpdate,
 } from '../team.js';
+import { handleTeamMessageSendAndRun } from '../team-runtime.js';
 
 const actorField = {
   actor_agent_id: {
@@ -114,7 +114,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         metadata: { type: 'object' },
       }, ['action', 'actor_agent_id', 'team_id', 'mode', 'subject', 'body']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageSend(input),
+      execute: async (input) => handleTeamMessageSendAndRun(input),
     },
     {
       name: 'team_inbox_query',

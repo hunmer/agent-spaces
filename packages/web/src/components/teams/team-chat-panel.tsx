@@ -120,7 +120,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     ));
     if (hasRealAssistantMessage) return rendered;
 
-    return [...rendered, {
+    const pendingMessage: Message = {
       id: "__team_pending_assistant__",
       channelId: runtime?.id ?? "__team_runtime__",
       senderId: runtime?.leader_agent_id || leader?.id || "assistant",
@@ -128,7 +128,8 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       type: "text",
       status: "pending",
       createdAt: pendingAssistantSince,
-    }];
+    };
+    return [...rendered, pendingMessage];
   }, [actorAgentId, leader?.id, messages, pendingAssistantSince, runtime?.id, runtime?.leader_agent_id]);
 
   const clearPendingAssistantIfResolved = useCallback((items: TeamRuntimeMessageView[]) => {
@@ -303,7 +304,15 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                 <div className="flex flex-col py-2">
                   {viewMessages.map((message) => (
                     <div key={message.id} id={`msg-${message.id}`}>
-                      <MessageItem message={message} workspaceId="" agent={participantsById.get(message.senderId)} onDelete={handleDeleteMessage} />
+                      <MessageItem
+                        message={message}
+                        workspaceId=""
+                        agent={participantsById.get(message.senderId)}
+                        teamId={teamId}
+                        actorAgentId={actorAgentId}
+                        onAgentUpdated={() => { void loadRuntime(); }}
+                        onDelete={handleDeleteMessage}
+                      />
                     </div>
                   ))}
                 </div>

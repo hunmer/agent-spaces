@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/context-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgentEditor } from "@/components/sidebar/agent-editor";
-import { normalizeAgent } from "@/components/sidebar/agent-shared";
+import { normalizeAgent, type AgentPreset } from "@/components/sidebar/agent-shared";
 import { TeamMemberRow } from "@/components/teams/team-member-row";
 import { MemberSelectDialog, buildCandidates } from "@/components/teams/member-select-panel";
 import type { TeamMembershipView } from "@agent-spaces/sdk";
@@ -36,6 +36,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
   const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string>("");
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
+  const [configCustomMemberId, setConfigCustomMemberId] = useState<string | null>(null);
 
   const canManage = myRole === "owner" || myRole === "admin";
   const memberIds = useMemo(() => new Set(members.map((m) => m.agent_id)), [members]);
@@ -119,7 +120,17 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
                 name={name}
                 role={member.role}
                 busy={isBusy}
-                onConfigure={storedAgent ? () => setConfigAgentId(member.agent_id) : undefined}
+                unreadCount={member.unread_count ?? 0}
+                runtimeStatus={member.runtime_status ?? "idle"}
+                onConfigure={() => {
+                  if (storedAgent) {
+                    setConfigAgentId(member.agent_id);
+                    return;
+                  }
+                  if (member.agent) {
+                    setConfigCustomMemberId(member.agent_id);
+                  }
+                }}
                 onRemove={canManage ? () => void removeMember(member.agent_id) : undefined}
               />
             );
@@ -176,6 +187,47 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
                 agent={normalizeAgent(agent)}
                 onSaved={() => setConfigAgentId(null)}
                 onBack={() => setConfigAgentId(null)}
+                showFooter
+              />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
+      {configCustomMemberId && (() => {
+        const member = members.find((item) => item.agent_id === configCustomMemberId);
+        if (!member?.agent) return null;
+        const preset = normalizeAgent({ ...member.agent, id: member.agent_id } as AgentConfig);
+        return (
+          <Dialog open={Boolean(configCustomMemberId)} onOpenChange={(open) => { if (!open) setConfigCustomMemberId(null); }}>
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="border-b px-5 py-3">
+                <DialogTitle>{tm("configureAgent")}</DialogTitle>
+                <DialogDescription />
+              </DialogHeader>
+              <AgentEditor
+                agent={preset}
+                commit={async (draft: AgentPreset) => {
+                  const response = await fetch(`/api/teams/${teamId}/update-agent`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      actor_agent_id: actorAgentId,
+                      agent_id: member.agent_id,
+                      agent: { ...draft, id: member.agent_id },
+                    }),
+                  });
+                  const payload = await response.json() as { success?: boolean; message?: string };
+                  if (!response.ok || payload.success === false) {
+                    throw new Error(payload.message || "save failed");
+                  }
+                  return { ...draft, id: member.agent_id };
+                }}
+                onSaved={() => {
+                  setConfigCustomMemberId(null);
+                  onChange();
+                }}
+                onBack={() => setConfigCustomMemberId(null)}
                 showFooter
               />
             </DialogContent>

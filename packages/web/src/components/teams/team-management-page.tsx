@@ -23,6 +23,7 @@ import { TeamMemberList } from "@/components/teams/team-member-list";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
 import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
 import { AgentIcon } from "@/components/common/agent-icon";
+import { AvatarGroup } from "@/components/ui/avatar-group";
 
 const PANEL_ID_LIST = "team-list";
 const PANEL_ID_CHAT = "team-chat";
@@ -436,21 +437,31 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                               {t("list.memberCount", { count: team.member_count })}
                             </span>
                             {team.members_preview && team.members_preview.length > 0 ? (
-                              <div className="flex -space-x-1.5">
-                                {team.members_preview.slice(0, 5).map((m) => (
-                                  <AgentIcon
-                                    key={m.membership_id}
-                                    agentId={m.agent_id}
-                                    name={m.agent?.name}
-                                    avatarUrl={m.agent?.avatarUrl}
-                                    icon={m.agent?.icon as string | undefined}
-                                    className="size-5"
-                                    rounded="rounded-full"
-                                    textSize="text-[10px]"
-                                    hoverCard
-                                  />
-                                ))}
-                              </div>
+                              <AvatarGroup
+                                size="sm"
+                                avatarUrls={team.members_preview.slice(0, 5).map((m) => {
+                                  const agent = agents.find((a) => a.id === m.agent_id) ?? m.agent;
+                                  const name = agent?.name || m.agent_id;
+                                  return {
+                                    imageUrl: "",
+                                    name,
+                                    avatarNode: (
+                                      <AgentIcon
+                                        agentId={m.agent_id}
+                                        name={name}
+                                        avatarUrl={agent?.avatarUrl}
+                                        icon={agent?.icon}
+                                        apiBase={agent?.apiBase}
+                                        modelId={agent?.modelId}
+                                        providerId={agent?.providerId}
+                                        modelProvider={agent?.modelProvider}
+                                        className="size-5 rounded-full border object-cover"
+                                        rounded="rounded-full"
+                                      />
+                                    ),
+                                  };
+                                })}
+                              />
                             ) : null}
                           </div>
                         </button>

@@ -152,6 +152,10 @@ function teamDeliveriesPath(teamId: string): string {
   return join(teamDataDir(teamId), 'deliveries.json');
 }
 
+function teamRuntimesPath(teamId: string): string {
+  return join(teamDataDir(teamId), 'runtimes.json');
+}
+
 function teamCommentsPath(teamId: string): string {
   return join(teamDataDir(teamId), 'comments.json');
 }
@@ -230,6 +234,10 @@ function saveMessages(teamId: string, items: TeamMessage[]): void {
 
 function listDeliveries(teamId: string): TeamInboxItem[] {
   return readJsonFile<TeamInboxItem[]>(teamDeliveriesPath(teamId)) ?? [];
+}
+
+function listRuntimes(teamId: string): Array<{ leaderAgentId?: string; status?: string }> {
+  return readJsonFile<Array<{ leaderAgentId?: string; status?: string }>>(teamRuntimesPath(teamId)) ?? [];
 }
 
 function saveDeliveries(teamId: string, items: TeamInboxItem[]): void {
@@ -431,12 +439,21 @@ function teamView(team: Team, actorAgentId?: string) {
 }
 
 function membershipView(item: TeamMembership) {
+  const unreadCount = listDeliveries(item.teamId)
+    .filter((delivery) => delivery.recipientAgentId === item.agentId && delivery.inboxStatus === 'unread')
+    .length;
+  const runningCount = listRuntimes(item.teamId)
+    .filter((runtime) => runtime.leaderAgentId === item.agentId && runtime.status === 'running')
+    .length;
   return {
     ...item,
     membership_id: item.id,
     team_id: item.teamId,
     agent_id: item.agentId,
     agent_store: item.agentStore ?? 'agent',
+    unread_count: unreadCount,
+    runtime_status: runningCount > 0 ? 'running' : 'idle',
+    running_count: runningCount,
     joined_at: item.joinedAt,
     updated_at: item.updatedAt,
   };
@@ -710,7 +727,7 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     const page = allTeams.slice(offset, offset + size).map((team) => {
       const view = teamView(team, actorAgentId);
       if (includeMembersPreview) {
-        (view as TeamView & { members_preview?: ReturnType<typeof membershipView>[] }).members_preview =
+        (view as ReturnType<typeof teamView> & { members_preview?: ReturnType<typeof membershipView>[] }).members_preview =
           listMemberships(team.id)
             .filter((item) => item.status === 'active')
             .slice(0, 5)
@@ -1014,6 +1031,38 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
     const updated = next.find((item) => item.agentId === targetAgentId);
     return ok('member role updated', {
       membership: updated ? membershipView(updated) : null,
+    });
+  }
+
+  if (action === 'update_agent') {
+    const actor = getActiveMembership(teamId, actorAgentId);
+    if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
+      return fail('only owner or admin can update member agent', 'PERMISSION_DENIED');
+    }
+    const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
+    if (!targetAgentId) return fail('agent_id is required', 'INVALID_ARGUMENT');
+    if (!isObject(input.agent)) return fail('agent is required', 'INVALID_ARGUMENT');
+
+    const memberships = listMemberships(teamId);
+    const target = memberships.find((item) => item.agentId === targetAgentId);
+    if (!target || target.status !== 'active') {
+      return fail('target agent is not an active team member', 'AGENT_NOT_FOUND');
+    }
+
+    const now = new Date().toISOString();
+    const updated: TeamMembership = {
+      ...target,
+      agentStore: 'custom',
+      agent: {
+        ...(target.agent ?? {}),
+        ...input.agent,
+        id: targetAgentId,
+      },
+      updatedAt: now,
+    };
+    saveMemberships(teamId, memberships.map((item) => item.agentId === targetAgentId ? updated : item));
+    return ok('member agent updated', {
+      membership: membershipView(updated),
     });
   }
 
