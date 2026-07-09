@@ -1,18 +1,31 @@
 "use client";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import type { Team, TeamMembership } from "@agent-spaces/shared";
+import type { Team, TeamMembership, WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { EllipsisVertical, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { sdk } from "@/lib/sdk";
 import { useAgentStore } from "@/stores/agent";
+import { useWorkflowStore } from "@/stores/workflow";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
 import { TeamMemberList } from "@/components/teams/team-member-list";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
+import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
+
+function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
+  const ids: string[] = [];
+  for (const node of workflow.nodes ?? []) {
+    if (node.type !== "agent_run") continue;
+    const id = typeof node.data?.agentConfigId === "string" ? node.data.agentConfigId.trim() : "";
+    if (id) ids.push(id);
+  }
+  return Array.from(new Set(ids));
+}
 
 type TeamView = Team & {
   team_id: string;
@@ -101,6 +114,9 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [dialogDefaults, setDialogDefaults] = useState<TeamFormDefaults | undefined>(undefined);
   const [editingTeam, setEditingTeam] = useState<TeamView | null>(null);
   const [infoSidebarOpen, setInfoSidebarOpen] = useState(true);
+  const [workflowListOpen, setWorkflowListOpen] = useState(false);
+
+  const { workflows, loadWorkflows } = useWorkflowStore();
 
   const availableAgents = useMemo(
     () => agents.filter((agent) => agent.enabled !== false),
@@ -120,7 +136,18 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   useEffect(() => {
     void ensureAgents();
-  }, [ensureAgents]);
+    void loadWorkflows();
+  }, [ensureAgents, loadWorkflows]);
+
+  function handleImportFromWorkflow(workflow: WorkflowTemplate) {
+    setWorkflowListOpen(false);
+    const memberIds = extractAgentRunIds(workflow);
+    openCreateDialogWithDefaults({
+      name: workflow.name,
+      description: workflow.description ?? "",
+      members: memberIds,
+    });
+  }
 
   useEffect(() => {
     if (!selectedActorId && availableAgents[0]?.id) {
@@ -290,10 +317,26 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                 <h1 className="text-2xl font-semibold">{t("title")}</h1>
                 <p className="text-sm text-muted-foreground">{t("description")}</p>
               </div>
-              <Button onClick={openCreateDialog} disabled={!canCreateTeam}>
-                <Plus className="size-4" />
-                {t("newTeam")}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button onClick={openCreateDialog} disabled={!canCreateTeam}>
+                  <Plus className="size-4" />
+                  {t("newTeam")}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button variant="ghost" size="icon" disabled={!canCreateTeam}>
+                        <EllipsisVertical className="size-4" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setWorkflowListOpen(true)}>
+                      {t("importFromWorkflow")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         ) : null}
@@ -477,6 +520,15 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         }
         onOpenChange={setDialogOpen}
         onSubmit={submitTeam}
+      />
+
+      <WorkflowListDialog
+        open={workflowListOpen}
+        workflows={workflows}
+        onSelect={handleImportFromWorkflow}
+        onCreate={() => {}}
+        onClose={() => setWorkflowListOpen(false)}
+        showCreate={false}
       />
     </div>
   );
