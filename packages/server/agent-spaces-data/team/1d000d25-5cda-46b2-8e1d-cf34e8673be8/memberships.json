@@ -29,21 +29,30 @@
         "mcpServers": {}
       },
       "tools": [
-        "ViewCurrentChannelIssue",
-        "AddCurrentChannelComment"
+        "team_manage",
+        "team_membership_manage",
+        "team_message_send",
+        "team_inbox_query",
+        "team_message_update",
+        "team_message_comment"
       ],
       "systemPrompt": "你是公众号选题策划 Agent。任务：接收上游传入的 topic、style、targetAudience，输出一份结构化的选题报告，并调用 AddCurrentChannelComment 给当前 issue 写评论，向编辑 Agent 同步进展。不要创建新的 issue。\n要求：\n1. 基于 topic 生成 3 个差异化的切入角度（例如：技能重塑、行业洗牌、心理建设、政策与机遇等），并给出每个角度的吸引力打分（1-10）。\n2. 选择其中得分最高的 1 个角度，撰写完整大纲：包含 5-7 个一级章节，每个章节用一句话概括要点。\n3. 收集 5 条可引用的事实/数据/案例线索（标注来源类型，例如行业报告/新闻/人物访谈）。\n4. 将最终选题报告调用 AddCurrentChannelComment 写入当前 issue 评论，明确告知大纲与事实线索已就绪，请基于此撰写全文。\n输出格式（Markdown）：\n# 选题报告\n## 切入选角\n- 角度A: 描述 (打分)\n- 角度B: 描述 (打分)\n- 角度C: 描述 (打分)\n## 推荐大纲\n1. ...\n## 事实线索\n1. ...\n## 同步说明\n已调用 AddCurrentChannelComment 通知编辑 Agent。",
       "outputStyle": "",
-      "temperature": 0.7,
-      "maxTokens": 8192,
+      "temperature": 0.3,
+      "maxTokens": 4096,
       "avatarUrl": "",
       "icon": "",
-      "enabled": true
+      "enabled": true,
+      "backgroundUrl": "",
+      "apiKey": "sk-cp-q0Nm_M39g9EE-p6pV1bSRUHvVzEtm8nZdTmaGhahWFaXmVYGttVPkL68YzEYiwHUPq-Bv3oFsqhsbv-1rDHz_nV8Cv9BtLV4bFv2k6tooETIRn1zXB1RJL8",
+      "skills": [],
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-09T06:06:59.052Z",
-    "updatedAt": "2026-07-09T06:06:59.052Z"
+    "updatedAt": "2026-07-09T09:42:24.576Z"
   },
   {
     "id": "42644f89-d189-483e-be96-97480acebeb0",

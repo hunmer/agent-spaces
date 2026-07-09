@@ -80,10 +80,8 @@ export type TeamManagementPageHandle = {
 };
 
 export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
-  embedded?: boolean;
   onCanCreateChange?: (canCreate: boolean) => void;
 }>(function TeamManagementPage({
-  embedded = false,
   onCanCreateChange,
 }, ref) {
   const t = useTranslations("teams");
@@ -350,19 +348,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   }
 
   return (
-    <div className={embedded ? "flex h-full flex-col" : "flex min-h-dvh w-full flex-col"}>
-      <main className={embedded ? "flex size-full flex-1 flex-col gap-4 px-4 py-4 sm:px-6" : "mx-auto flex size-full flex-1 flex-col gap-4 px-4 py-6 sm:px-6"}>
-        {!embedded ? (
-          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold">{t("title")}</h1>
-                <p className="text-sm text-muted-foreground">{t("description")}</p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
+    <div className="flex min-h-dvh w-full flex-col">
+      <main className="mx-auto flex size-full flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
         {!selectedActorId ? (
           <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
             {t("empty.setup")}
@@ -381,7 +368,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                   {error}
                 </div>
               ) : null}
-              <div className="mb-3 mt-4 flex items-center justify-between">
+              <div className=" flex items-center justify-between">
                 <h2 className="font-medium">{t("list.title")}</h2>
                 <div className="flex items-center gap-1">
                   {loadingTeams || loadingArchived ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
@@ -497,7 +484,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
             <section className="rounded-2xl border border-border bg-card p-4 h-full">
               {selectedTeam && teamDetail ? (
                 <div className="flex h-full flex-col gap-4">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-3">
                     <div>
                       <h2 className="text-xl font-semibold">{teamDetail.team.name}</h2>
                       <p className="mt-1 text-sm text-muted-foreground">{teamDetail.team.description || t("detail.noDescription")}</p>
@@ -514,7 +501,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border p-3">
+                  <div className="rounded-xl border border-border bg-background p-3">
                     <div className="text-sm font-medium">{t("detail.purpose")}</div>
                     <p className="mt-1 text-sm text-muted-foreground">{teamDetail.team.purpose || t("detail.noPurpose")}</p>
                   </div>

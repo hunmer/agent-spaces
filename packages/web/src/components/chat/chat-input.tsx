@@ -3,7 +3,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { IconChevronUp } from "@tabler/icons-react";
-import type { Attachment as MessageAttachment, Channel, Message } from "@agent-spaces/shared";
+import type { Attachment as MessageAttachment, BuiltInAgentToolName, Channel, Message } from "@agent-spaces/shared";
 import { cn } from "@/lib/utils";
 import { useChannelStore } from "@/stores/channel";
 import { useAgentStore } from "@/stores/agent";
@@ -39,6 +39,14 @@ interface ChatInputProps {
   replyTo?: { id: string; label: string } | null;
   onCancelReply?: () => void;
   onAgentActivated?: (agent: MentionedAgent) => void;
+  onConfigureAgent?: (agentId: string, agent?: MentionedAgent) => void;
+  onAgentBindingsChange?: (agentId: string, updates: {
+    boundWorkflowIds?: string[];
+    boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
+    skills?: string[];
+    tools?: BuiltInAgentToolName[];
+    mcps?: Record<string, unknown>;
+  }) => void | Promise<void>;
   showAgentBar?: boolean;
   showAddMember?: boolean;
 }
@@ -61,7 +69,7 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
 const DEFAULT_CONTEXT_LENGTH = 20;
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated, showAgentBar = true, showAddMember = true },
+  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated, onConfigureAgent, onAgentBindingsChange, showAgentBar = true, showAddMember = true },
   ref,
 ) {
   const t = useTranslations("chat");
@@ -152,6 +160,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               lastActiveAgentId={lastActiveAgentId}
               onActivateAgent={activateAgent}
               onAgentActivated={onAgentActivated}
+              onConfigureAgent={onConfigureAgent}
               onOpenAddMember={() => {
                 if (showAddMember) setAddMemberOpen(true);
               }}
@@ -191,6 +200,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             onContextLengthChange={setContextLength}
             onClearTodos={() => updateChannel(workspaceId, channelId, { todos: [] })}
             onInsertText={(text) => composerRef.current?.insertText(text)}
+            onAgentBindingsChange={onAgentBindingsChange}
           />
         </div>
       )}

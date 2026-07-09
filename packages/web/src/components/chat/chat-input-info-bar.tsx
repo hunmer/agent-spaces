@@ -59,6 +59,14 @@ interface ToolEntry {
   icon: Icon;
 }
 
+type AgentBindingUpdates = {
+  boundWorkflowIds?: string[];
+  boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
+  skills?: string[];
+  tools?: BuiltInAgentToolName[];
+  mcps?: Record<string, unknown>;
+};
+
 interface ChatInputInfoBarProps {
   workspaceId: string;
   mcps: string[];
@@ -74,6 +82,7 @@ interface ChatInputInfoBarProps {
   enableRecentCode?: boolean;
   onClearTodos?: () => void;
   onInsertText?: (text: string) => void;
+  onAgentBindingsChange?: (agentId: string, updates: AgentBindingUpdates) => void | Promise<void>;
 }
 
 export function ChatInputInfoBar({
@@ -91,6 +100,7 @@ export function ChatInputInfoBar({
   enableRecentCode = true,
   onClearTodos,
   onInsertText,
+  onAgentBindingsChange,
 }: ChatInputInfoBarProps) {
   const t = useTranslations("chat");
   const tc = useTranslations("composer");
@@ -190,16 +200,12 @@ export function ChatInputInfoBar({
     setHistoryOpen(false);
   };
 
-  const persistAgentBindings = async (
-    updates: {
-      boundWorkflowIds?: string[];
-      boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
-      skills?: string[];
-      tools?: BuiltInAgentToolName[];
-      mcps?: Record<string, unknown>;
-    },
-  ) => {
+  const persistAgentBindings = async (updates: AgentBindingUpdates) => {
     if (!activeAgent?.id) return;
+    if (onAgentBindingsChange) {
+      await onAgentBindingsChange(activeAgent.id, updates);
+      return;
+    }
     const storedAgent = agents.find((agent) => agent.id === activeAgent.id);
     if (storedAgent) {
       const next = { ...storedAgent, ...updates };

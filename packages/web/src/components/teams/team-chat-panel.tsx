@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Channel, Message } from "@agent-spaces/shared";
+import type { AgentConfig, Channel, Message } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { Loader2, PanelRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ type TeamChatPanelProps = {
   onToggleSidebar?: () => void;
   teamDescription?: string;
 };
+
+type TeamParticipant = NonNullable<TeamRuntimeResponse["participants"]>[number];
 
 const EMPTY_CHANNEL: Channel = {
   id: "__team_runtime__",
@@ -60,11 +62,11 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const [messages, setMessages] = useState<TeamRuntimeMessageView[]>([]);
   const [pendingAssistantSince, setPendingAssistantSince] = useState<string | null>(null);
   const [leaderProfile, setLeaderProfile] = useState<TeamRuntimeResponse["leader"] | null>(null);
-  const [participants, setParticipants] = useState<NonNullable<TeamRuntimeResponse["participants"]>>([]);
+  const [participants, setParticipants] = useState<TeamParticipant[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [configAgent, setConfigAgent] = useState<{ id: string; agent?: Partial<TeamRuntimeResponse["participants"][number]> } | null>(null);
+  const [configAgent, setConfigAgent] = useState<{ id: string; agent?: Partial<TeamParticipant> } | null>(null);
 
   const leader = useMemo(() => {
     if (leaderProfile?.id) return leaderProfile;
@@ -154,13 +156,6 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setError("");
     try {
       const data = await sdk.team.getRuntime(teamId, actorAgentId);
-      console.log("[TeamChatPanel] loadRuntime", {
-        teamId,
-        actorAgentId,
-        leader: data.leader,
-        participants: data.participants,
-        messageCount: data.messages.length,
-      });
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
@@ -254,6 +249,9 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     }
   }, [actorAgentId, loadRuntime, teamId]);
 
+  const configStoreAgent = configAgent ? agents.find((item) => item.id === configAgent.id) : undefined;
+  const configCustomAgent = configAgent && !configStoreAgent ? configAgent.agent : undefined;
+
   return (
     <section className="flex h-full min-h-0 flex-col rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -315,11 +313,6 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                 <div className="flex flex-col py-2">
                   {viewMessages.map((message) => (
                     <div key={message.id} id={`msg-${message.id}`}>
-                      {console.log("[TeamChatPanel] render-message-item", {
-                        messageId: message.id,
-                        senderId: message.senderId,
-                        participantAgent: participantsById.get(message.senderId),
-                      })}
                       <MessageItem
                         message={message}
                         workspaceId=""
@@ -328,12 +321,6 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                         actorAgentId={actorAgentId}
                         onAgentUpdated={() => { void loadRuntime(); }}
                         onConfigureAgent={(agentId, agent) => {
-                          console.log("[TeamChatPanel] open-config-dialog", {
-                            teamId,
-                            actorAgentId,
-                            agentId,
-                            agent,
-                          });
                           setConfigAgent({ id: agentId, agent });
                         }}
                         onDelete={handleDeleteMessage}
@@ -354,76 +341,74 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             messages={viewMessages}
             onSend={(content, mentions, attachments, replyToMessageId, contextLength) => void handleSend(content, mentions, attachments, replyToMessageId, contextLength)}
             isProcessing={sending}
+            onConfigureAgent={(agentId, agent) => {
+              setConfigAgent({ id: agentId, agent });
+            }}
+            onAgentBindingsChange={async (agentId, updates) => {
+              const response = await fetch(`/api/teams/${teamId}/update-agent`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  actor_agent_id: actorAgentId,
+                  agent_id: agentId,
+                  agent: { ...participantsById.get(agentId), ...updates, id: agentId },
+                }),
+              });
+              const payload = await response.json() as { success?: boolean; message?: string };
+              if (!response.ok || payload.success === false) {
+                throw new Error(payload.message || "save failed");
+              }
+              await loadRuntime();
+            }}
             showAgentBar
             showAddMember={false}
           />
-          {configAgent && (() => {
-            const storeAgent = agents.find((item) => item.id === configAgent.id);
-            const customAgent = !storeAgent ? configAgent.agent : undefined;
-            console.log("[TeamChatPanel] render-config-dialog", {
-              configAgent,
-              hasStoreAgent: Boolean(storeAgent),
-              customAgent,
-            });
-            if (!storeAgent && !customAgent) return null;
-            return (
-              <Dialog open={Boolean(configAgent)} onOpenChange={(open) => { if (!open) setConfigAgent(null); }}>
-                <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
-                  <DialogHeader className="border-b px-5 py-3">
-                    <DialogTitle>{t("chat.configureAgent")}</DialogTitle>
-                    <DialogDescription />
-                  </DialogHeader>
-                  {storeAgent ? (
-                    <AgentEditor
-                      agent={normalizeAgent(storeAgent)}
-                      onSaved={() => setConfigAgent(null)}
-                      onBack={() => setConfigAgent(null)}
-                      showFooter
-                    />
-                  ) : customAgent ? (
-                    <AgentEditor
-                      agent={normalizeAgent({ id: configAgent.id, ...customAgent } as AgentConfig)}
-                      commit={async (draft: AgentPreset) => {
-                        const requestBody = {
-                          actor_agent_id: actorAgentId,
-                          agent_id: configAgent.id,
-                          agent: { ...draft, id: configAgent.id },
-                        };
-                        console.log("[TeamChatPanel] custom-agent-save:start", {
-                          teamId,
-                          actorAgentId,
-                          requestBody,
-                        });
-                        const response = await fetch(`/api/teams/${teamId}/update-agent`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify(requestBody),
-                        });
-                        const payload = await response.json() as { success?: boolean; message?: string };
-                        console.log("[TeamChatPanel] custom-agent-save:done", {
-                          status: response.status,
-                          ok: response.ok,
-                          payload,
-                        });
-                        if (!response.ok || payload.success === false) {
-                          throw new Error(payload.message || "save failed");
-                        }
-                        return { ...draft, id: configAgent.id };
-                      }}
-                      onSaved={() => {
-                        setConfigAgent(null);
-                        void loadRuntime();
-                      }}
-                      onBack={() => setConfigAgent(null)}
-                      showFooter
-                    />
-                  ) : null}
-                </DialogContent>
-              </Dialog>
-            );
-          })()}
         </>
       )}
+      {configAgent && (configStoreAgent || configCustomAgent) ? (
+        <Dialog open onOpenChange={(open) => { if (!open) setConfigAgent(null); }}>
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+            <DialogHeader className="border-b px-5 py-3">
+              <DialogTitle>{t("chat.configureAgent")}</DialogTitle>
+              <DialogDescription />
+            </DialogHeader>
+            {configStoreAgent ? (
+              <AgentEditor
+                agent={normalizeAgent(configStoreAgent)}
+                onSaved={() => setConfigAgent(null)}
+                onBack={() => setConfigAgent(null)}
+                showFooter
+              />
+            ) : configCustomAgent ? (
+              <AgentEditor
+                agent={normalizeAgent({ id: configAgent.id, ...configCustomAgent } as AgentConfig)}
+                commit={async (draft: AgentPreset) => {
+                  const response = await fetch(`/api/teams/${teamId}/update-agent`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      actor_agent_id: actorAgentId,
+                      agent_id: configAgent.id,
+                      agent: { ...draft, id: configAgent.id },
+                    }),
+                  });
+                  const payload = await response.json() as { success?: boolean; message?: string };
+                  if (!response.ok || payload.success === false) {
+                    throw new Error(payload.message || "save failed");
+                  }
+                  return { ...draft, id: configAgent.id };
+                }}
+                onSaved={() => {
+                  setConfigAgent(null);
+                  void loadRuntime();
+                }}
+                onBack={() => setConfigAgent(null)}
+                showFooter
+              />
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </section>
   );
 }

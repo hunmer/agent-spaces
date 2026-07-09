@@ -5,13 +5,12 @@ import { cn } from "@/lib/utils";
 import { IconUserPlus } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { AgentIcon } from "@/components/common/agent-icon";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { AgentEditor } from "@/components/sidebar/agent-editor";
-import { normalizeAgent } from "@/components/sidebar/agent-shared";
-import { useAgentStore } from "@/stores/agent";
+import { useChatStore } from "@/stores/chat";
 import { MemberHoverCard } from "./member-hover-card";
 import type { MentionedAgent } from "./chat-input-utils";
 import { ShinyBadge } from "@/components/ui/shiny-badge";
+import { AddChatAgentDialog } from "./add-chat-agent-dialog";
+import type { ChatAgent } from "@agent-spaces/sdk";
 
 interface ChatInputAgentBarProps {
   agents: MentionedAgent[];
@@ -20,20 +19,26 @@ interface ChatInputAgentBarProps {
   onActivateAgent: (agent: MentionedAgent) => void;
   onOpenAddMember: () => void;
   onAgentActivated?: (agent: MentionedAgent) => void;
+  onConfigureAgent?: (agentId: string, agent?: MentionedAgent) => void;
 }
 
 export function ChatInputAgentBar({
   agents,
   activeAgent,
-  lastActiveAgentId,
+  lastActiveAgentId: _lastActiveAgentId,
   onActivateAgent,
   onOpenAddMember,
   onAgentActivated,
+  onConfigureAgent,
 }: ChatInputAgentBarProps) {
   const t = useTranslations("chat");
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
-  const storeAgents = useAgentStore((s) => s.agents);
+  const storeAgents = useChatStore((s) => s.agents);
+  const updateAgent = useChatStore((s) => s.updateAgent);
   const visibleAgents = [...new Map(agents.map((agent) => [agent.id, agent])).values()];
+  const configAgent = configAgentId
+    ? storeAgents.find((agent) => agent.id === configAgentId) ?? toChatAgent(visibleAgents.find((agent) => agent.id === configAgentId))
+    : undefined;
 
   return (
     <>
@@ -50,7 +55,21 @@ export function ChatInputAgentBar({
           {visibleAgents.map((agent) => {
             const isActive = agent.id === activeAgent?.id;
             return (
-              <MemberHoverCard key={agent.id} agentId={agent.id} displayName={agent.name || agent.role} side="top" align="start" onConfigure={() => setConfigAgentId(agent.id)} agent={agent}>
+              <MemberHoverCard
+                key={agent.id}
+                agentId={agent.id}
+                displayName={agent.name || agent.role}
+                side="top"
+                align="start"
+                onConfigure={() => {
+                  if (onConfigureAgent) {
+                    onConfigureAgent(agent.id, agent);
+                    return;
+                  }
+                  setConfigAgentId(agent.id);
+                }}
+                agent={agent}
+              >
                 <ShinyBadge
                   shiny={isActive}
                   shinySpeed={3}
@@ -72,26 +91,30 @@ export function ChatInputAgentBar({
           })}
         </div>
       </div>
-      {configAgentId && (() => {
-        const agent = storeAgents.find((a) => a.id === configAgentId);
-        if (!agent) return null;
-        return (
-          <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
-            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
-              <DialogHeader className="border-b px-5 py-3">
-                <DialogTitle>{t('messageItem.configureAgent')}</DialogTitle>
-                <DialogDescription />
-              </DialogHeader>
-              <AgentEditor
-                agent={normalizeAgent(agent)}
-                onSaved={() => setConfigAgentId(null)}
-                onBack={() => setConfigAgentId(null)}
-                showFooter
-              />
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
+      {!onConfigureAgent && (
+        <AddChatAgentDialog
+          open={Boolean(configAgent)}
+          onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}
+          initialData={configAgent}
+          onSubmit={async (data) => {
+            if (!configAgentId) return;
+            await updateAgent(configAgentId, data);
+            setConfigAgentId(null);
+          }}
+        />
+      )}
     </>
   );
+}
+
+function toChatAgent(agent?: MentionedAgent): ChatAgent | undefined {
+  if (!agent) return undefined;
+  return {
+    ...agent,
+    name: agent.name || agent.role || agent.id,
+    role: "agent",
+    model: agent.modelId || "",
+    createdAt: "",
+    updatedAt: "",
+  };
 }
