@@ -4,8 +4,17 @@
     "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
     "actorAgentId": "agent-generator",
     "leaderAgentId": "topic_agent",
-    "status": "running",
-    "updatedAt": "2026-07-09T10:31:51.456Z",
-    "lastMessageId": "9caf142d-4e15-4c17-8433-be4a227fabf1"
+    "status": "completed",
+    "updatedAt": "2026-07-09T11:41:04.013Z",
+    "lastMessageId": "61d9bb2a-4c35-4bc1-8ed6-0f277ae8e774"
+  },
+  {
+    "id": "5c832fa8-165a-4902-a215-29334e137219",
+    "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
+    "actorAgentId": "topic_agent",
+    "leaderAgentId": "editor_agent",
+    "status": "completed",
+    "updatedAt": "2026-07-09T11:44:04.664Z",
+    "lastMessageId": "ca926144-1ede-4df0-af96-bfe6d8477b7d"
   }
 ]

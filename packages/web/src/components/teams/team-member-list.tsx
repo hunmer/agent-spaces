@@ -36,6 +36,9 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
   const tm = useTranslations("chat.messageItem");
   const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string>("");
+  const [removeOwnerOpen, setRemoveOwnerOpen] = useState(false);
+  const [ownerToRemoveId, setOwnerToRemoveId] = useState<string | null>(null);
+  const [replacementOwnerId, setReplacementOwnerId] = useState<string>("");
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const [configCustomMemberId, setConfigCustomMemberId] = useState<string | null>(null);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -44,6 +47,10 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
   const canManage = myRole === "owner" || myRole === "admin";
   const memberIds = useMemo(() => new Set(members.map((m) => m.agent_id)), [members]);
   const candidates = useMemo(() => buildCandidates(agents, memberIds), [agents, memberIds]);
+  const replacementOwnerCandidates = useMemo(
+    () => members.filter((member) => member.agent_id !== ownerToRemoveId),
+    [members, ownerToRemoveId],
+  );
 
   async function setOwner(targetId: string) {
     if (busyId) return;
@@ -60,10 +67,40 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
 
   async function removeMember(targetId: string) {
     if (busyId) return;
+    const target = members.find((member) => member.agent_id === targetId);
+    if (target?.role === "owner") {
+      const candidates = members.filter((member) => member.agent_id !== targetId);
+      if (candidates.length === 0) {
+        alert(t("detail.noPermission"));
+        return;
+      }
+      setOwnerToRemoveId(targetId);
+      setReplacementOwnerId(candidates[0]?.agent_id ?? "");
+      setRemoveOwnerOpen(true);
+      return;
+    }
     if (!confirm(t("detail.removeConfirm"))) return;
     setBusyId(targetId);
     try {
       await sdk.team.remove(teamId, actorAgentId, targetId);
+      onChange();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function confirmRemoveOwner() {
+    if (!ownerToRemoveId || !replacementOwnerId || busyId) return;
+    if (!confirm(t("detail.removeConfirm"))) return;
+    setBusyId(ownerToRemoveId);
+    try {
+      await sdk.team.setRole(teamId, actorAgentId, replacementOwnerId, "owner");
+      await sdk.team.remove(teamId, actorAgentId, ownerToRemoveId);
+      setRemoveOwnerOpen(false);
+      setOwnerToRemoveId(null);
+      setReplacementOwnerId("");
       onChange();
     } catch (err) {
       alert(err instanceof Error ? err.message : String(err));
@@ -178,6 +215,45 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
         confirmLabel={t("detail.addMember")}
         onConfirm={(ids) => void handleAdd(ids)}
       />
+
+      <Dialog open={removeOwnerOpen} onOpenChange={(open) => {
+        setRemoveOwnerOpen(open);
+        if (!open) {
+          setOwnerToRemoveId(null);
+          setReplacementOwnerId("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("detail.setOwner")}</DialogTitle>
+            <DialogDescription>移除 owner 前，必须先选择新的 owner。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {replacementOwnerCandidates.map((member) => {
+              const agent = member.agent ?? agents.find((item) => item.id === member.agent_id);
+              const name = agent?.name || member.agent_id;
+              const checked = replacementOwnerId === member.agent_id;
+              return (
+                <button
+                  key={member.membership_id}
+                  type="button"
+                  className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm ${checked ? "border-primary bg-primary/5" : "border-border"}`}
+                  onClick={() => setReplacementOwnerId(member.agent_id)}
+                >
+                  <span>{name}</span>
+                  <span className="text-muted-foreground">{member.role}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRemoveOwnerOpen(false)}>取消</Button>
+            <Button onClick={() => void confirmRemoveOwner()} disabled={!replacementOwnerId || Boolean(busyId)}>
+              {busyId ? <Loader2 className="size-4 animate-spin" /> : "确认移除"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {configAgentId && (() => {
         const agent = agents.find((item) => item.id === configAgentId);

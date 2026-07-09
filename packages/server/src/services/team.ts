@@ -428,6 +428,14 @@ function parseCommentFormat(input: unknown): TeamCommentContentFormat {
   return input === 'markdown' ? 'markdown' : 'plain_text';
 }
 
+function redactAgentSecrets<T>(input: T): T {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
+  const clone = { ...(input as Record<string, unknown>) };
+  delete clone.apiKey;
+  delete clone.api_key;
+  return clone as T;
+}
+
 function teamView(team: Team, actorAgentId?: string) {
   const membership = actorAgentId ? getActiveMembership(team.id, actorAgentId) : undefined;
   return {
@@ -450,6 +458,7 @@ function membershipView(item: TeamMembership) {
     .length;
   return {
     ...item,
+    agent: item.agent ? redactAgentSecrets(item.agent) : item.agent,
     membership_id: item.id,
     team_id: item.teamId,
     agent_id: item.agentId,
@@ -751,7 +760,6 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
     const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
-    if (!canViewTeam(team, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
     const deliveries = listDeliveries(teamId);
     const memberships = listMemberships(teamId);
     const messages = listMessages(teamId);

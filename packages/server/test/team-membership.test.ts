@@ -217,10 +217,12 @@ test('team runtime custom agent can self-test full reply flow with providerId on
 
   const capturedConfigs: Array<Record<string, unknown>> = [];
   const capturedRuns: Array<Record<string, unknown>> = [];
+  const capturedPrompts: string[] = [];
   setTeamRuntimeFactoryForTests((config) => {
     capturedConfigs.push((config ?? {}) as Record<string, unknown>);
     return {
-      async execute(_prompt, _workingDir, options) {
+      async execute(prompt, _workingDir, options) {
+        capturedPrompts.push(prompt);
         capturedRuns.push((options ?? {}) as Record<string, unknown>);
         return { success: true, summary: 'stub-summary', output: ['stub-reply'], artifacts: [] };
       },
@@ -302,10 +304,16 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'team_inbox_query'));
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'ListWorkspaceFiles'));
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'list_workflows'));
+    assert.match(capturedPrompts[0] ?? '', /Available teammates for handoff:/);
+    assert.match(capturedPrompts[0] ?? '', /Owner Agent/);
+    assert.match(capturedPrompts[0] ?? '', /team_message_send/);
     const listWorkspaceFilesTool = runtimeFunctionTools.find((tool) => tool.name === 'ListWorkspaceFiles');
     assert.ok(listWorkspaceFilesTool);
     const listed = await listWorkspaceFilesTool.execute({ path: '', depth: 1 }) as { files: Array<{ name: string }> };
     assert.ok(Array.isArray(listed.files));
+    const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const inbound = deliveries.find((item) => item.recipientAgentId === 'topic_agent');
+    assert.equal(inbound?.executionStatus, 'done');
     assert.equal(messages.length, 2);
     assert.equal(messages[0]?.senderAgentId, owner.id);
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');
@@ -353,6 +361,100 @@ test('team cannot remove the last active owner', () => {
       team_id: teamId,
     });
     assert.equal(detail.success, true);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('team detail can be viewed without active membership', () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const owner = createPreset('', { name: 'Owner Agent' });
+    const member = createPreset('', { name: 'Member Agent' });
+    assert.ok(owner);
+    assert.ok(member);
+
+    const created = handleTeamManage({
+      action: 'create',
+      actor_agent_id: owner.id,
+      name: 'Readable Team',
+      initial_members: [{ agent_id: member.id }],
+    });
+    assert.equal(created.success, true);
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+
+    const removed = handleTeamMembershipManage({
+      action: 'remove',
+      actor_agent_id: owner.id,
+      team_id: teamId,
+      agent_id: member.id,
+    });
+    assert.equal(removed.success, true);
+
+    const detail = handleTeamManage({
+      action: 'get',
+      actor_agent_id: member.id,
+      team_id: teamId,
+      include_members_preview: true,
+    });
+    assert.equal(detail.success, true);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('transferring owner and removing previous owner does not dissolve team', () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const owner = createPreset('', { name: 'Owner Agent' });
+    const member = createPreset('', { name: 'Member Agent' });
+    assert.ok(owner);
+    assert.ok(member);
+
+    const created = handleTeamManage({
+      action: 'create',
+      actor_agent_id: owner.id,
+      name: 'Transfer Owner Team',
+      initial_members: [{ agent_id: member.id }],
+    });
+    assert.equal(created.success, true);
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+
+    const transferred = handleTeamMembershipManage({
+      action: 'set_role',
+      actor_agent_id: owner.id,
+      team_id: teamId,
+      agent_id: member.id,
+      role: 'owner',
+    });
+    assert.equal(transferred.success, true);
+
+    const removed = handleTeamMembershipManage({
+      action: 'remove',
+      actor_agent_id: member.id,
+      team_id: teamId,
+      agent_id: owner.id,
+    });
+    assert.equal(removed.success, true);
+
+    const detail = handleTeamManage({
+      action: 'get',
+      actor_agent_id: owner.id,
+      team_id: teamId,
+    });
+    assert.equal(detail.success, true);
+    assert.equal((detail.data as { team: { status: string; my_role: string | null } }).team.status, 'active');
+    assert.equal((detail.data as { team: { status: string; my_role: string | null } }).team.my_role, null);
   } finally {
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
     else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;

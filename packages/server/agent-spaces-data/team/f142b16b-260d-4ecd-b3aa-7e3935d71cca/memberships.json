@@ -4,10 +4,10 @@
     "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
     "agentId": "agent-generator",
     "agentStore": "agent",
-    "role": "owner",
-    "status": "active",
+    "role": "admin",
+    "status": "removed",
     "joinedAt": "2026-07-09T10:29:25.403Z",
-    "updatedAt": "2026-07-09T10:29:25.403Z"
+    "updatedAt": "2026-07-09T11:46:17.477Z"
   },
   {
     "id": "3f16a350-022e-49b8-b6a9-cd56afad3d67",
@@ -44,10 +44,10 @@
       "icon": "",
       "enabled": true
     },
-    "role": "member",
+    "role": "owner",
     "status": "active",
     "joinedAt": "2026-07-09T10:29:25.403Z",
-    "updatedAt": "2026-07-09T10:29:42.177Z"
+    "updatedAt": "2026-07-09T11:46:14.691Z"
   },
   {
     "id": "b3d7de42-ec34-4fa3-a7b2-cb4c79c7f420",
@@ -87,7 +87,6 @@
       "enabled": true,
       "backgroundUrl": "",
       "skills": [],
-      "apiKey": "d9cd7473ecf94062b56427291c493494.WhMloqJVUAZmg1fu",
       "boundWorkflowIds": [],
       "boundWorkflowPluginTools": []
     },
@@ -132,7 +131,6 @@
       "enabled": true,
       "backgroundUrl": "",
       "skills": [],
-      "apiKey": "sk-cp-q0Nm_M39g9EE-p6pV1bSRUHvVzEtm8nZdTmaGhahWFaXmVYGttVPkL68YzEYiwHUPq-Bv3oFsqhsbv-1rDHz_nV8Cv9BtLV4bFv2k6tooETIRn1zXB1RJL8",
       "boundWorkflowIds": [],
       "boundWorkflowPluginTools": []
     },
