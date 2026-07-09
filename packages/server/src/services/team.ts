@@ -873,6 +873,83 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
     });
   }
 
+  if (action === 'set_role') {
+    const actor = getActiveMembership(teamId, actorAgentId);
+    if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
+      return fail('only owner or admin can change member roles', 'PERMISSION_DENIED');
+    }
+    const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
+    if (!targetAgentId) return fail('agent_id is required', 'INVALID_ARGUMENT');
+    const newRole = parseRole(input.role);
+
+    const memberships = listMemberships(teamId);
+    const target = memberships.find((item) => item.agentId === targetAgentId);
+    if (!target || target.status !== 'active') {
+      return fail('target agent is not an active team member', 'AGENT_NOT_FOUND');
+    }
+    if (target.agentId === actorAgentId && newRole !== 'owner') {
+      return fail('cannot demote yourself; transfer ownership instead', 'PERMISSION_DENIED');
+    }
+
+    const now = new Date().toISOString();
+    const next = memberships.map((item) => {
+      if (item.agentId === targetAgentId) return { ...item, role: newRole, updatedAt: now };
+      // 转移 owner：新角色为 owner 时，把其它 active owner 降级为 admin（唯一 owner 语义）
+      if (newRole === 'owner' && item.status === 'active' && item.role === 'owner') {
+        return { ...item, role: 'admin' as TeamRole, updatedAt: now };
+      }
+      return item;
+    });
+    saveMemberships(teamId, next);
+    const updated = next.find((item) => item.agentId === targetAgentId);
+    return ok('member role updated', {
+      membership: updated ? membershipView(updated) : null,
+    });
+  }
+
+  if (action === 'remove') {
+    const actor = getActiveMembership(teamId, actorAgentId);
+    if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
+      return fail('only owner or admin can remove members', 'PERMISSION_DENIED');
+    }
+    const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
+    if (!targetAgentId) return fail('agent_id is required', 'INVALID_ARGUMENT');
+    if (targetAgentId === actorAgentId) {
+      return fail('cannot remove yourself; use leave instead', 'PERMISSION_DENIED');
+    }
+
+    const memberships = listMemberships(teamId);
+    const target = memberships.find((item) => item.agentId === targetAgentId);
+    if (!target || target.status !== 'active') {
+      return ok('already removed', {
+        membership: {
+          membership_id: target?.id ?? null,
+          team_id: teamId,
+          agent_id: targetAgentId,
+          status: 'removed',
+          updated_at: new Date().toISOString(),
+        },
+      }, 'ALREADY_LEFT');
+    }
+    if (target.role === 'owner') {
+      return fail('cannot remove an owner; transfer ownership first', 'PERMISSION_DENIED');
+    }
+
+    const now = new Date().toISOString();
+    const updated: TeamMembership = { ...target, status: 'removed', updatedAt: now };
+    saveMemberships(teamId, memberships.map((item) => item.agentId === targetAgentId ? updated : item));
+    updateTeamMemberCount(team);
+    return ok('team member removed', {
+      membership: {
+        membership_id: updated.id,
+        team_id: teamId,
+        agent_id: targetAgentId,
+        status: 'removed',
+        updated_at: now,
+      },
+    });
+  }
+
   return fail('invalid action', 'INVALID_ACTION');
 }
 

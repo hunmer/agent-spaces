@@ -272,7 +272,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             agents={composerAgents}
             messages={viewMessages}
             onSend={(content) => void handleSend(content)}
-            isProcessing={sending || runtime.status === "running"}
+            isProcessing={sending}
             showAgentBar
             showAddMember={false}
           />

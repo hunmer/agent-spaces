@@ -69,6 +69,14 @@ router.post('/:teamId/leave', (req: Request<{ teamId: string }>, res: Response) 
   sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'leave', team_id: req.params.teamId }));
 });
 
+router.post('/:teamId/set-role', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'set_role', team_id: req.params.teamId }));
+});
+
+router.post('/:teamId/remove', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'remove', team_id: req.params.teamId }));
+});
+
 router.post('/:teamId/dissolve', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, handleTeamManage({ ...req.body, action: 'dissolve', team_id: req.params.teamId }));
 });

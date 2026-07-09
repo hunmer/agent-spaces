@@ -111,7 +111,7 @@ export function ComposerShell({
             {actions}
           </div>
           <div className="flex items-center gap-1">
-            {isProcessing ? (
+            {isProcessing && onStop ? (
               <Button
                 type="button"
                 onClick={onStop}

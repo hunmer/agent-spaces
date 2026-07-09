@@ -16,5 +16,41 @@
     "createdAt": "2026-07-09T02:16:36.036Z",
     "sentAt": "2026-07-09T02:16:36.036Z",
     "recipientCount": 1
+  },
+  {
+    "id": "f05968f4-ca9d-4fba-812f-0da49547c765",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "senderAgentId": "agent-generator",
+    "messageType": "direct",
+    "subject": "<p><span class=\"mention\" data-t…",
+    "body": "<p><span class=\"mention\" data-type=\"mention\" data-id=\"topic_agent\" data-label=\"topic_agent\" data-mention-suggestion-char=\"@\">@topic_agent</span> 你好</p>",
+    "bodyFormat": "plain_text",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "threadId": null,
+    "replyToMessageId": null,
+    "createdAt": "2026-07-09T02:24:35.350Z",
+    "sentAt": "2026-07-09T02:24:35.350Z",
+    "recipientCount": 1
+  },
+  {
+    "id": "62a4c4d9-4358-4958-b265-0594249469e9",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "senderAgentId": "agent-generator",
+    "messageType": "direct",
+    "subject": "你好",
+    "body": "你好",
+    "bodyFormat": "plain_text",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "threadId": null,
+    "replyToMessageId": null,
+    "createdAt": "2026-07-09T02:24:51.094Z",
+    "sentAt": "2026-07-09T02:24:51.094Z",
+    "recipientCount": 1
   }
 ]
