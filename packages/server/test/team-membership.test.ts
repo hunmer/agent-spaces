@@ -217,10 +217,12 @@ test('team runtime custom agent can self-test full reply flow with providerId on
 
   const capturedConfigs: Array<Record<string, unknown>> = [];
   const capturedRuns: Array<Record<string, unknown>> = [];
+  const capturedPrompts: string[] = [];
   setTeamRuntimeFactoryForTests((config) => {
     capturedConfigs.push((config ?? {}) as Record<string, unknown>);
     return {
-      async execute(_prompt, _workingDir, options) {
+      async execute(prompt, _workingDir, options) {
+        capturedPrompts.push(prompt);
         capturedRuns.push((options ?? {}) as Record<string, unknown>);
         return { success: true, summary: 'stub-summary', output: ['stub-reply'], artifacts: [] };
       },
@@ -302,10 +304,16 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'team_inbox_query'));
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'ListWorkspaceFiles'));
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'list_workflows'));
+    assert.match(capturedPrompts[0] ?? '', /Available teammates for handoff:/);
+    assert.match(capturedPrompts[0] ?? '', /Owner Agent/);
+    assert.match(capturedPrompts[0] ?? '', /team_message_send/);
     const listWorkspaceFilesTool = runtimeFunctionTools.find((tool) => tool.name === 'ListWorkspaceFiles');
     assert.ok(listWorkspaceFilesTool);
     const listed = await listWorkspaceFilesTool.execute({ path: '', depth: 1 }) as { files: Array<{ name: string }> };
     assert.ok(Array.isArray(listed.files));
+    const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const inbound = deliveries.find((item) => item.recipientAgentId === 'topic_agent');
+    assert.equal(inbound?.executionStatus, 'done');
     assert.equal(messages.length, 2);
     assert.equal(messages[0]?.senderAgentId, owner.id);
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');

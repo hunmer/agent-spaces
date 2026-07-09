@@ -1,8 +1,8 @@
 [
   {
-    "id": "3c80fd65-39f9-4d40-bc86-258091a8ceb3",
+    "id": "4eb1e50c-c32e-4e33-8cc5-e71d144e1b40",
     "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
-    "messageId": "9caf142d-4e15-4c17-8433-be4a227fabf1",
+    "messageId": "6fe56687-df97-4fb3-b63c-1ba364ab4fb9",
     "recipientAgentId": "topic_agent",
     "senderAgentId": "agent-generator",
     "subject": "<p><span class=\"mention\" data-t…",
@@ -14,13 +14,37 @@
     "requiresAck": false,
     "requiresAction": false,
     "dueAt": null,
-    "sentAt": "2026-07-09T10:31:51.453Z",
+    "sentAt": "2026-07-09T11:31:38.192Z",
     "readAt": null,
     "completedAt": null,
     "failedAt": null,
     "failureReason": null,
     "unreadCommentCount": 0,
     "version": 1,
-    "updatedAt": "2026-07-09T10:31:51.453Z"
+    "updatedAt": "2026-07-09T11:31:38.192Z"
+  },
+  {
+    "id": "0f5fb6f4-d553-4d24-ab22-1cd63bdaca8d",
+    "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
+    "messageId": "6591809b-12c6-4ce1-abf3-d56f44710859",
+    "recipientAgentId": "agent-generator",
+    "senderAgentId": "topic_agent",
+    "subject": "<think>\nThe user is asking me (…",
+    "preview": "<think>\nThe user is asking me (as Topic Agent) to work on a topic about \"Why is young people's dating becoming more and…",
+    "messageType": "direct",
+    "inboxStatus": "unread",
+    "executionStatus": "done",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "sentAt": "2026-07-09T11:32:17.492Z",
+    "readAt": null,
+    "completedAt": null,
+    "failedAt": null,
+    "failureReason": null,
+    "unreadCommentCount": 0,
+    "version": 1,
+    "updatedAt": "2026-07-09T11:32:17.492Z"
   }
 ]

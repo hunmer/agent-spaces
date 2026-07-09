@@ -3,11 +3,12 @@
   "name": "公众号编写1",
   "description": "选题agent->编辑agent->审批agent",
   "purpose": "编写优秀文章",
-  "status": "active",
+  "status": "dissolved",
   "visibility": "private",
   "createdBy": "agent-generator",
   "createdAt": "2026-07-09T06:06:59.052Z",
-  "updatedAt": "2026-07-09T10:19:42.484Z",
+  "updatedAt": "2026-07-09T11:32:45.716Z",
   "memberCount": 4,
-  "icon": "😃"
+  "icon": "😃",
+  "dissolvedAt": "2026-07-09T11:32:45.716Z"
 }
