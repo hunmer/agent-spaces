@@ -860,6 +860,44 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     return ok('archives cleared', { cleared: before.length });
   }
 
+  if (action === 'restore_archive') {
+    const teamId = asString(input.team_id ?? input.teamId);
+    if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
+    // 归档目录：优先按目录名匹配，再按 info.json 内 id 匹配
+    let archivedDir: string | null = existsSync(archivedTeamDataDir(teamId)) ? archivedTeamDataDir(teamId) : null;
+    let archiveKey = teamId;
+    if (!archivedDir) {
+      const matched = listArchivedTeamIds().find((id) => {
+        const t = loadArchivedTeam(id);
+        return t?.id === teamId;
+      });
+      if (matched) {
+        archivedDir = archivedTeamDataDir(matched);
+        archiveKey = matched;
+      }
+    }
+    if (!archivedDir) return fail('archived team not found', 'TEAM_NOT_FOUND');
+    const archivedTeam = loadArchivedTeam(archiveKey);
+    if (!archivedTeam) return fail('archived team not found', 'TEAM_NOT_FOUND');
+    const now = new Date().toISOString();
+    const restored: Team = { ...archivedTeam, status: 'active', updatedAt: now };
+    delete (restored as Partial<Team>).dissolvedAt;
+    const destDir = teamDataDir(restored.id);
+    // 若活跃目录已存在（异常残留），先备份避免 rename 失败
+    if (existsSync(destDir)) {
+      renameSync(destDir, `${destDir}.${Date.now()}.bak`);
+    }
+    ensureDir(dirname(destDir));
+    renameSync(archivedDir, destDir);
+    // 写入恢复后的状态并加入活跃索引
+    writeJsonFile(teamFilePath(restored.id), restored);
+    const ids = listTeamIds();
+    if (!ids.includes(restored.id)) saveTeamIds([...ids, restored.id]);
+    return ok('archived team restored', {
+      team: teamView(restored, asString(input.actor_agent_id ?? input.actorAgentId)),
+    });
+  }
+
   return fail('invalid action', 'INVALID_ACTION');
 }
 
@@ -1036,7 +1074,14 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
 
   if (action === 'update_agent') {
     const actor = getActiveMembership(teamId, actorAgentId);
+    console.log('[team.service] update_agent:begin', {
+      teamId,
+      actorAgentId,
+      actorRole: actor?.role,
+      input,
+    });
     if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
+      console.log('[team.service] update_agent:permission_denied', { teamId, actorAgentId, actor });
       return fail('only owner or admin can update member agent', 'PERMISSION_DENIED');
     }
     const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
@@ -1045,6 +1090,14 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
 
     const memberships = listMemberships(teamId);
     const target = memberships.find((item) => item.agentId === targetAgentId);
+    console.log('[team.service] update_agent:target_lookup', {
+      targetAgentId,
+      found: Boolean(target),
+      targetStatus: target?.status,
+      targetRole: target?.role,
+      targetAgentStore: target?.agentStore,
+      targetAgent: target?.agent,
+    });
     if (!target || target.status !== 'active') {
       return fail('target agent is not an active team member', 'AGENT_NOT_FOUND');
     }
@@ -1061,6 +1114,12 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
       updatedAt: now,
     };
     saveMemberships(teamId, memberships.map((item) => item.agentId === targetAgentId ? updated : item));
+    console.log('[team.service] update_agent:saved', {
+      teamId,
+      targetAgentId,
+      updatedAgentStore: updated.agentStore,
+      updatedAgent: updated.agent,
+    });
     return ok('member agent updated', {
       membership: membershipView(updated),
     });

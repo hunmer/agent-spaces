@@ -73,6 +73,19 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
 
+  useEffect(() => {
+    if (!configAgentId) return;
+    console.log("[MessageItem] open-config", {
+      messageId: message.id,
+      senderId: message.senderId,
+      configAgentId,
+      teamId,
+      actorAgentId,
+      hasStoreAgent: Boolean(storeAgents.find((a) => a.id === configAgentId)),
+      fallbackAgent,
+    });
+  }, [actorAgentId, configAgentId, fallbackAgent, message.id, message.senderId, storeAgents, teamId]);
+
   return (
     <div className={`group flex min-w-0 max-w-full gap-2 px-3 py-1.5 items-start ${isUser ? 'flex-row-reverse' : ''}`}>
       {isUser ? (
@@ -83,7 +96,26 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
           className="size-7 rounded-full"
         />
       ) : (
-        <MemberHoverCard agentId={message.senderId} displayName={senderName} side="right" align="start" onConfigure={() => setConfigAgentId(message.senderId)} agent={agent}>
+        <MemberHoverCard
+          agentId={message.senderId}
+          displayName={senderName}
+          side="right"
+          align="start"
+          onConfigure={() => {
+            console.log("[MessageItem] onConfigure clicked", {
+              messageId: message.id,
+              senderId: message.senderId,
+              senderName,
+              teamId,
+              actorAgentId,
+              hasStoreAgent: Boolean(storeAgent),
+              agent,
+              fallbackAgent,
+            });
+            setConfigAgentId(message.senderId);
+          }}
+          agent={agent}
+        >
           <AgentIcon
             agentId={message.senderId}
             name={senderName}
@@ -222,6 +254,13 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
       {configAgentId && (() => {
         const storeAgent = storeAgents.find((a) => a.id === configAgentId);
         const customAgent = !storeAgent && fallbackAgent?.id === configAgentId ? fallbackAgent : undefined;
+        console.log("[MessageItem] render-config-dialog", {
+          configAgentId,
+          teamId,
+          actorAgentId,
+          hasStoreAgent: Boolean(storeAgent),
+          customAgent,
+        });
         if (!storeAgent && !customAgent) return null;
         return (
           <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
@@ -242,16 +281,31 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
                   agent={normalizeAgent({ id: configAgentId, ...customAgent } as AgentConfig)}
                   commit={async (draft: AgentPreset) => {
                     if (!teamId || !actorAgentId) throw new Error('team context missing');
+                    const requestBody = {
+                      actor_agent_id: actorAgentId,
+                      agent_id: configAgentId,
+                      agent: { ...draft, id: configAgentId },
+                    };
+                    console.log("[MessageItem] custom-agent-save:start", {
+                      teamId,
+                      actorAgentId,
+                      configAgentId,
+                      requestBody,
+                    });
                     const response = await fetch(`/api/teams/${teamId}/update-agent`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        actor_agent_id: actorAgentId,
-                        agent_id: configAgentId,
-                        agent: { ...draft, id: configAgentId },
-                      }),
+                      body: JSON.stringify(requestBody),
                     });
                     const payload = await response.json() as { success?: boolean; message?: string };
+                    console.log("[MessageItem] custom-agent-save:done", {
+                      teamId,
+                      actorAgentId,
+                      configAgentId,
+                      status: response.status,
+                      ok: response.ok,
+                      payload,
+                    });
                     if (!response.ok || payload.success === false) {
                       throw new Error(payload.message || 'save failed');
                     }

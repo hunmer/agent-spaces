@@ -76,6 +76,10 @@ router.post('/:teamId/set-role', (req: Request<{ teamId: string }>, res: Respons
 });
 
 router.post('/:teamId/update-agent', (req: Request<{ teamId: string }>, res: Response) => {
+  console.log('[team.route] update-agent', {
+    teamId: req.params.teamId,
+    body: req.body,
+  });
   sendResult(res, handleTeamMembershipManage({ ...req.body, action: 'update_agent', team_id: req.params.teamId }));
 });
 
@@ -93,6 +97,10 @@ router.post('/archive/clear', (req: Request, res: Response) => {
 
 router.post('/archive/delete', (req: Request, res: Response) => {
   sendResult(res, handleTeamManage({ ...req.body, action: 'delete_archive' }));
+});
+
+router.post('/archive/restore', (req: Request, res: Response) => {
+  sendResult(res, handleTeamManage({ ...req.body, action: 'restore_archive' }));
 });
 
 router.post('/:teamId/messages', (req: Request<{ teamId: string }>, res: Response) => {

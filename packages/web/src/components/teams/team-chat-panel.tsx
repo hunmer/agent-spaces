@@ -24,6 +24,7 @@ type TeamChatPanelProps = {
   actorAgentId: string;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
+  teamDescription?: string;
 };
 
 const EMPTY_CHANNEL: Channel = {
@@ -48,7 +49,7 @@ function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): M
   };
 }
 
-export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onToggleSidebar }: TeamChatPanelProps) {
+export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onToggleSidebar, teamDescription }: TeamChatPanelProps) {
   const t = useTranslations("teams");
   const agents = useAgentStore((store) => store.agents);
   const ensureAgents = useAgentStore((store) => store.ensure);
@@ -149,6 +150,13 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setError("");
     try {
       const data = await sdk.team.getRuntime(teamId, actorAgentId);
+      console.log("[TeamChatPanel] loadRuntime", {
+        teamId,
+        actorAgentId,
+        leader: data.leader,
+        participants: data.participants,
+        messageCount: data.messages.length,
+      });
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
@@ -248,9 +256,8 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
         <div className="min-w-0">
           <h2 className="font-medium">{t("chat.title")}</h2>
           <div className="text-xs text-muted-foreground">
-            {leader?.name
-              ? t("chat.subtitle", { leader: leader.name })
-              : t("chat.loadingLeader")}
+            {teamDescription
+              || (leader?.name ? t("chat.subtitle", { leader: leader.name }) : t("chat.loadingLeader"))}
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -304,6 +311,11 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                 <div className="flex flex-col py-2">
                   {viewMessages.map((message) => (
                     <div key={message.id} id={`msg-${message.id}`}>
+                      {console.log("[TeamChatPanel] render-message-item", {
+                        messageId: message.id,
+                        senderId: message.senderId,
+                        participantAgent: participantsById.get(message.senderId),
+                      })}
                       <MessageItem
                         message={message}
                         workspaceId=""

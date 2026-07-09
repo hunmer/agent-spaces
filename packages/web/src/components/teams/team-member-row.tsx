@@ -23,7 +23,7 @@ export interface MemberAgent {
   runtimeKind?: AgentConfig["runtimeKind"];
   systemPrompt?: string;
   backgroundUrl?: string;
-  tools?: string[];
+  tools?: AgentConfig["tools"];
   skills?: string[];
   mcps?: Record<string, unknown>;
 }

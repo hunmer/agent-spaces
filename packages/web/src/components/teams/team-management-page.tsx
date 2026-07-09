@@ -3,9 +3,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { EllipsisVertical, Eraser, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { EllipsisVertical, Eraser, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -13,7 +12,6 @@ import type { PanelImperativeHandle } from "react-resizable-panels";
 import { sdk } from "@/lib/sdk";
 import type {
   TeamView,
-  TeamMembershipView,
   TeamDetail,
 } from "@agent-spaces/sdk";
 import { useAgentStore } from "@/stores/agent";
@@ -22,8 +20,7 @@ import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/
 import { TeamMemberList } from "@/components/teams/team-member-list";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
 import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
-import { AgentIcon } from "@/components/common/agent-icon";
-import { AvatarGroup } from "@/components/ui/avatar-group";
+import { TeamCard } from "@/components/teams/team-card";
 
 const PANEL_ID_LIST = "team-list";
 const PANEL_ID_CHAT = "team-chat";
@@ -75,13 +72,6 @@ function formatTime(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
-}
-
-function badgeTone(value: string): "default" | "secondary" | "destructive" | "outline" {
-  if (value === "active" || value === "done" || value === "read") return "default";
-  if (value === "open" || value === "in_progress" || value === "running") return "secondary";
-  if (value === "urgent" || value === "failed" || value === "dissolved") return "destructive";
-  return "outline";
 }
 
 export type TeamManagementPageHandle = {
@@ -336,6 +326,17 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     }
   }
 
+  async function restoreArchivedTeam(team: TeamView) {
+    if (!confirm(t("archived.restoreConfirm", { name: team.name }))) return;
+    setError("");
+    try {
+      await sdk.team.restoreArchive(team.team_id, selectedActorId);
+      await Promise.all([loadTeams(team.team_id), loadArchivedTeams()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function clearAllArchived() {
     if (archivedTeams.length === 0) return;
     if (!confirm(t("archived.clearConfirm"))) return;
@@ -416,55 +417,16 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                   ) : (
                     <div className="flex flex-col gap-2">
                       {teams.map((team) => (
-                        <button
+                        <TeamCard
                           key={team.team_id}
-                          type="button"
-                          onClick={() => setSelectedTeamId(team.team_id)}
-                          className={`rounded-xl border px-3 py-3 text-left transition-colors ${team.team_id === selectedTeamId ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate font-medium">{team.name}</div>
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
-                                <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
-                              </div>
-                            </div>
-                            <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {t("list.memberCount", { count: team.member_count })}
-                            </span>
-                            {team.members_preview && team.members_preview.length > 0 ? (
-                              <AvatarGroup
-                                size="sm"
-                                avatarUrls={team.members_preview.slice(0, 5).map((m) => {
-                                  const agent = agents.find((a) => a.id === m.agent_id) ?? m.agent;
-                                  const name = agent?.name || m.agent_id;
-                                  return {
-                                    imageUrl: "",
-                                    name,
-                                    avatarNode: (
-                                      <AgentIcon
-                                        agentId={m.agent_id}
-                                        name={name}
-                                        avatarUrl={agent?.avatarUrl}
-                                        icon={agent?.icon}
-                                        apiBase={agent?.apiBase}
-                                        modelId={agent?.modelId}
-                                        providerId={agent?.providerId}
-                                        modelProvider={agent?.modelProvider}
-                                        className="size-5 rounded-full border object-cover"
-                                        rounded="rounded-full"
-                                      />
-                                    ),
-                                  };
-                                })}
-                              />
-                            ) : null}
-                          </div>
-                        </button>
+                          team={team}
+                          mode="active"
+                          selected={team.team_id === selectedTeamId}
+                          onSelect={(item) => setSelectedTeamId(item.team_id)}
+                          onEdit={(item) => openEditDialog(item)}
+                          onDelete={(item) => void dissolveTeam(item)}
+                          agents={availableAgents}
+                        />
                       ))}
                     </div>
                   )}
@@ -488,31 +450,15 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                   ) : (
                     <div className="flex flex-col gap-2">
                       {archivedTeams.map((team) => (
-                        <div
+                        <TeamCard
                           key={team.team_id}
-                          className="rounded-xl border border-border px-3 py-3 text-left opacity-70"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate font-medium">{team.name}</div>
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
-                                <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => void deleteArchivedTeam(team)}
-                              className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                              title={tc("delete")}
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-                          </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            {team.dissolved_at ? `${t("list.archivedAt")} ${formatTime(team.dissolved_at)}` : ""}
-                          </div>
-                        </div>
+                          team={team}
+                          mode="archived"
+                          onRestore={(item) => void restoreArchivedTeam(item)}
+                          onDelete={(item) => void deleteArchivedTeam(item)}
+                          agents={availableAgents}
+                          archivedAtLabel={team.dissolved_at ? `${t("list.archivedAt")} ${formatTime(team.dissolved_at)}` : ""}
+                        />
                       ))}
                     </div>
                   )}
@@ -529,6 +475,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               actorAgentId={selectedActorId}
               sidebarOpen={infoSidebarOpen}
               onToggleSidebar={toggleInfoSidebar}
+              teamDescription={selectedTeam?.description}
             />
             </ResizablePanel>
 

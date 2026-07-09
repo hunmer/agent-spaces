@@ -210,6 +210,14 @@ export function createTeamApi(http: HttpClient) {
         body: JSON.stringify({ team_id: teamId }),
       })),
 
+    /** 恢复已归档团队 */
+    restoreArchive: (teamId: string, actorAgentId?: string): Promise<{ team: TeamView }> =>
+      unwrap(http.raw(`/api/teams/archive/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_id: teamId, actor_agent_id: actorAgentId }),
+      })),
+
     /** 清空所有归档团队 */
     clearArchives: (): Promise<{ cleared: number }> =>
       unwrap(http.raw(`/api/teams/archive/clear`, {
