@@ -38,6 +38,14 @@ type TeamRuntimeMessageView = {
 
 type TeamRuntimeResponse = {
   runtime: TeamRuntimeView;
+  leader?: {
+    id: string;
+    name: string;
+    description?: string;
+    avatarUrl?: string;
+    icon?: string;
+    role?: string;
+  };
   messages: TeamRuntimeMessageView[];
 };
 
@@ -92,14 +100,24 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const ensureAgents = useAgentStore((store) => store.ensure);
   const [runtime, setRuntime] = useState<TeamRuntimeView | null>(null);
   const [messages, setMessages] = useState<TeamRuntimeMessageView[]>([]);
+  const [leaderProfile, setLeaderProfile] = useState<TeamRuntimeResponse["leader"] | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  const leader = useMemo(
-    () => agents.find((agent) => agent.id === runtime?.leader_agent_id),
-    [agents, runtime?.leader_agent_id],
-  );
+  const leader = useMemo(() => {
+    if (leaderProfile?.id) return leaderProfile;
+    const agent = agents.find((item) => item.id === runtime?.leader_agent_id);
+    if (!agent) return null;
+    return {
+      id: agent.id,
+      name: agent.name || agent.id,
+      description: agent.description,
+      avatarUrl: agent.avatarUrl,
+      icon: agent.icon,
+      role: agent.role,
+    };
+  }, [agents, leaderProfile, runtime?.leader_agent_id]);
 
   const channel = useMemo<Channel>(() => ({
     ...EMPTY_CHANNEL,
@@ -118,16 +136,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       description: leader.description,
       avatarUrl: leader.avatarUrl,
       icon: leader.icon,
-      apiBase: leader.apiBase,
-      modelId: leader.modelId,
-      providerId: leader.providerId,
-      modelProvider: leader.modelProvider,
-      skills: leader.skills,
-      tools: leader.tools,
-      mcps: leader.mcps,
       enabled: true,
-      boundWorkflowIds: leader.boundWorkflowIds,
-      boundWorkflowPluginTools: leader.boundWorkflowPluginTools,
     }];
   }, [leader, runtime?.leader_agent_id]);
 
@@ -145,9 +154,11 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
         `/api/teams/${teamId}/runtime?actor_agent_id=${encodeURIComponent(actorAgentId)}`,
       );
       setRuntime(data.runtime);
+      setLeaderProfile(data.leader ?? null);
       setMessages(data.messages);
     } catch (err) {
       setRuntime(null);
+      setLeaderProfile(null);
       setMessages([]);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -262,7 +273,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             messages={viewMessages}
             onSend={(content) => void handleSend(content)}
             isProcessing={sending || runtime.status === "running"}
-            showAgentBar={false}
+            showAgentBar
             showAddMember={false}
           />
         </>

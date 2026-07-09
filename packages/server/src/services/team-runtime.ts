@@ -3,6 +3,8 @@ import type { Team, TeamMembership, TeamMessage } from '@agent-spaces/shared';
 import { join } from 'node:path';
 import { getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 import { handleTeamMessageSend, type TeamServiceResult } from './team.js';
+import { listPresets } from './agent.js';
+import { findAgent as findChatAgent } from './chat.js';
 
 type TeamRuntimeStatus = 'idle' | 'running' | 'completed' | 'error';
 
@@ -13,6 +15,15 @@ type TeamRuntime = {
   leaderAgentId: string;
   status: TeamRuntimeStatus;
   updatedAt: string;
+};
+
+type TeamRuntimeLeader = {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  icon?: string;
+  role?: string;
 };
 
 type TeamRuntimeMessage = {
@@ -109,11 +120,11 @@ function isActiveMember(membership: TeamMembership | undefined): membership is T
   return membership?.status === 'active';
 }
 
-function resolveLeader(teamId: string, team: Team): string | null {
+function resolveLeader(teamId: string, actorAgentId: string): string | null {
   const memberships = listMemberships(teamId).filter((item) => item.status === 'active');
-  return memberships.find((item) => item.role === 'owner')?.agentId
-    ?? memberships.find((item) => item.role === 'admin')?.agentId
-    ?? team.createdBy
+  return memberships.find((item) => item.role === 'owner' && item.agentId !== actorAgentId)?.agentId
+    ?? memberships.find((item) => item.role === 'admin' && item.agentId !== actorAgentId)?.agentId
+    ?? memberships.find((item) => item.agentId !== actorAgentId)?.agentId
     ?? null;
 }
 
@@ -131,6 +142,35 @@ function ensureRuntime(teamId: string, actorAgentId: string, leaderAgentId: stri
   };
   saveRuntimes(teamId, [...runtimes, created]);
   return created;
+}
+
+function resolveLeaderProfile(leaderAgentId: string): TeamRuntimeLeader {
+  const preset = listPresets('').find((item) => item.id === leaderAgentId);
+  if (preset) {
+    return {
+      id: preset.id,
+      name: preset.name || preset.id,
+      description: preset.description,
+      avatarUrl: preset.avatarUrl,
+      icon: preset.icon,
+      role: preset.role,
+    };
+  }
+  const chatAgent = findChatAgent(leaderAgentId);
+  if (chatAgent) {
+    return {
+      id: chatAgent.id,
+      name: chatAgent.name || chatAgent.id,
+      description: chatAgent.description,
+      avatarUrl: chatAgent.avatarUrl,
+      icon: chatAgent.icon,
+      role: chatAgent.role,
+    };
+  }
+  return {
+    id: leaderAgentId,
+    name: leaderAgentId,
+  };
 }
 
 function updateRuntime(teamId: string, runtime: StoredTeamRuntime): StoredTeamRuntime {
@@ -209,12 +249,13 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
   const memberships = listMemberships(teamId);
   const actorMembership = memberships.find((item) => item.agentId === actorAgentId);
   if (!isActiveMember(actorMembership)) return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
-  const leaderAgentId = resolveLeader(teamId, team);
+  const leaderAgentId = resolveLeader(teamId, actorAgentId);
   if (!leaderAgentId) return fail('leader not found', 'AGENT_NOT_FOUND');
 
   let runtime = ensureRuntime(teamId, actorAgentId, leaderAgentId);
   const messages = collectConversationMessages(teamId, actorAgentId, leaderAgentId, runtime);
   runtime = maybeCompleteRuntime(teamId, runtime, messages);
+  const leader = resolveLeaderProfile(leaderAgentId);
 
   return ok('team runtime loaded', {
     runtime: {
@@ -225,6 +266,7 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
       status: runtime.status,
       updated_at: runtime.updatedAt,
     },
+    leader,
     messages,
   });
 }
@@ -242,7 +284,7 @@ export function postTeamRuntimeMessage(input: unknown): TeamServiceResult {
   const memberships = listMemberships(teamId);
   const actorMembership = memberships.find((item) => item.agentId === actorAgentId);
   if (!isActiveMember(actorMembership)) return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
-  const leaderAgentId = resolveLeader(teamId, team);
+  const leaderAgentId = resolveLeader(teamId, actorAgentId);
   if (!leaderAgentId) return fail('leader not found', 'AGENT_NOT_FOUND');
 
   const sendResult = handleTeamMessageSend({
@@ -264,6 +306,7 @@ export function postTeamRuntimeMessage(input: unknown): TeamServiceResult {
     updatedAt: new Date().toISOString(),
     lastMessageId: messageId,
   });
+  const leader = resolveLeaderProfile(leaderAgentId);
 
   return ok('team runtime message sent', {
     runtime: {
@@ -274,6 +317,7 @@ export function postTeamRuntimeMessage(input: unknown): TeamServiceResult {
       status: runtime.status,
       updated_at: runtime.updatedAt,
     },
+    leader,
     message: (sendResult.data as { message?: unknown } | undefined)?.message,
   });
 }

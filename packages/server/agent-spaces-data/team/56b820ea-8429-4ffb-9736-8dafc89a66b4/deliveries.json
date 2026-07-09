@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "0626e97e-810f-4ccc-9a72-5e2302ceaccc",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "messageId": "e4bf8739-29fd-4b4c-a8dd-700a042b995b",
+    "recipientAgentId": "topic_agent",
+    "senderAgentId": "agent-generator",
+    "subject": "你好",
+    "preview": "你好",
+    "messageType": "direct",
+    "inboxStatus": "unread",
+    "executionStatus": "running",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "sentAt": "2026-07-09T02:16:36.036Z",
+    "readAt": null,
+    "completedAt": null,
+    "failedAt": null,
+    "failureReason": null,
+    "unreadCommentCount": 0,
+    "version": 1,
+    "updatedAt": "2026-07-09T02:16:36.036Z"
+  }
+]

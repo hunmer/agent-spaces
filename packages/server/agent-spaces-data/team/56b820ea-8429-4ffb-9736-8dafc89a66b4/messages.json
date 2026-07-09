@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "e4bf8739-29fd-4b4c-a8dd-700a042b995b",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "senderAgentId": "agent-generator",
+    "messageType": "direct",
+    "subject": "你好",
+    "body": "你好",
+    "bodyFormat": "plain_text",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "threadId": null,
+    "replyToMessageId": null,
+    "createdAt": "2026-07-09T02:16:36.036Z",
+    "sentAt": "2026-07-09T02:16:36.036Z",
+    "recipientCount": 1
+  }
+]
