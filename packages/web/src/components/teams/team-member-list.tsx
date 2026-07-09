@@ -107,7 +107,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
       ) : (
         <div className="space-y-1">
           {members.map((member) => {
-            const agent = agents.find((a) => a.id === member.agent_id);
+            const agent = member.agent ?? agents.find((a) => a.id === member.agent_id);
             const name = agent?.name || member.agent_id;
             const isOwner = member.role === "owner";
             const isBusy = busyId === member.agent_id;

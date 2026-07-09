@@ -90,9 +90,24 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       description: participant.description,
       avatarUrl: participant.avatarUrl,
       icon: participant.icon,
+      runtimeKind: participant.runtimeKind,
+      modelProvider: participant.modelProvider,
+      providerId: participant.providerId,
+      modelId: participant.modelId,
+      apiBase: participant.apiBase,
+      systemPrompt: participant.systemPrompt,
+      backgroundUrl: participant.backgroundUrl,
+      skills: participant.skills,
+      tools: participant.tools,
+      mcps: participant.mcps,
       enabled: true,
     }));
   }, [participants]);
+
+  const participantsById = useMemo(
+    () => new Map(participants.map((participant) => [participant.id, participant])),
+    [participants],
+  );
 
   const viewMessages = useMemo(
     () => messages.map((item) => toChannelMessage(item, actorAgentId)),
@@ -255,7 +270,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                 <div className="flex flex-col py-2">
                   {viewMessages.map((message) => (
                     <div key={message.id} id={`msg-${message.id}`}>
-                      <MessageItem message={message} workspaceId="" onDelete={handleDeleteMessage} />
+                      <MessageItem message={message} workspaceId="" agent={participantsById.get(message.senderId)} onDelete={handleDeleteMessage} />
                     </div>
                   ))}
                 </div>

@@ -39,6 +39,16 @@ type TeamRuntimeLeader = {
   avatarUrl?: string;
   icon?: string;
   role?: string;
+  runtimeKind?: string;
+  modelProvider?: string;
+  providerId?: string;
+  modelId?: string;
+  apiBase?: string;
+  systemPrompt?: string;
+  backgroundUrl?: string;
+  tools?: string[];
+  skills?: string[];
+  mcps?: Record<string, unknown>;
 };
 
 type TeamRuntimeParticipant = TeamRuntimeLeader;
@@ -111,6 +121,38 @@ function asString(input: unknown): string | undefined {
 
 function asNumber(input: unknown): number | undefined {
   return typeof input === 'number' && Number.isFinite(input) ? input : undefined;
+}
+
+function asStringArray(input: unknown): string[] | undefined {
+  if (!Array.isArray(input)) return undefined;
+  const values = input.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  return values.length > 0 ? values : undefined;
+}
+
+function asRecord(input: unknown): Record<string, unknown> | undefined {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
+  return input as Record<string, unknown>;
+}
+
+function buildRuntimeProfile(id: string, source: Record<string, unknown>): TeamRuntimeLeader {
+  return {
+    id,
+    name: asString(source.name) ?? id,
+    description: asString(source.description),
+    avatarUrl: asString(source.avatarUrl),
+    icon: asString(source.icon),
+    role: asString(source.role),
+    runtimeKind: asString(source.runtimeKind),
+    modelProvider: asString(source.modelProvider),
+    providerId: asString(source.providerId),
+    modelId: asString(source.modelId),
+    apiBase: asString(source.apiBase),
+    systemPrompt: asString(source.systemPrompt),
+    backgroundUrl: asString(source.backgroundUrl),
+    tools: asStringArray(source.tools),
+    skills: asStringArray(source.skills),
+    mcps: asRecord(source.mcps),
+  };
 }
 
 function normalizeContextLength(input: unknown): number {
@@ -199,36 +241,15 @@ function resolveLeaderProfile(leaderAgentId: string): TeamRuntimeLeader {
   if (source?.agentStore === 'agent') {
     const preset = listPresets('').find((item) => item.id === leaderAgentId);
     if (!preset) return { id: leaderAgentId, name: leaderAgentId };
-    return {
-      id: preset.id,
-      name: preset.name || preset.id,
-      description: preset.description,
-      avatarUrl: preset.avatarUrl,
-      icon: preset.icon,
-      role: preset.role,
-    };
+    return buildRuntimeProfile(preset.id, preset as unknown as Record<string, unknown>);
   }
   if (source?.agentStore === 'chat') {
     const chatAgent = findChatAgent(leaderAgentId);
     if (!chatAgent) return { id: leaderAgentId, name: leaderAgentId };
-    return {
-      id: chatAgent.id,
-      name: chatAgent.name || chatAgent.id,
-      description: chatAgent.description,
-      avatarUrl: chatAgent.avatarUrl,
-      icon: chatAgent.icon,
-      role: chatAgent.role,
-    };
+    return buildRuntimeProfile(chatAgent.id, chatAgent as unknown as Record<string, unknown>);
   }
   if (source?.agentStore === 'custom' && source.agent) {
-    return {
-      id: leaderAgentId,
-      name: asString(source.agent.name) ?? leaderAgentId,
-      description: asString(source.agent.description),
-      avatarUrl: asString(source.agent.avatarUrl),
-      icon: asString(source.agent.icon),
-      role: asString(source.agent.role),
-    };
+    return buildRuntimeProfile(leaderAgentId, source.agent as Record<string, unknown>);
   }
   return {
     id: leaderAgentId,
@@ -239,14 +260,7 @@ function resolveLeaderProfile(leaderAgentId: string): TeamRuntimeLeader {
 function resolveParticipantProfile(membership: TeamMembership): TeamRuntimeParticipant {
   const customAgent = (membership as TeamMembership & { agent?: Record<string, unknown> }).agent;
   if (customAgent && typeof customAgent === 'object') {
-    return {
-      id: membership.agentId,
-      name: asString(customAgent.name) ?? membership.agentId,
-      description: asString(customAgent.description),
-      avatarUrl: asString(customAgent.avatarUrl),
-      icon: asString(customAgent.icon),
-      role: asString(customAgent.role),
-    };
+    return buildRuntimeProfile(membership.agentId, customAgent);
   }
   return resolveLeaderProfile(membership.agentId);
 }

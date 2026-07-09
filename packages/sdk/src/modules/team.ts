@@ -1,5 +1,5 @@
 import type { HttpClient } from '../client';
-import type { TeamStatus, TeamVisibility, TeamRole } from '@agent-spaces/shared';
+import type { TeamStatus, TeamVisibility, TeamRole, TeamMembershipAgent, TeamMembershipAgentStore } from '@agent-spaces/shared';
 
 /**
  * Team API 模块
@@ -51,6 +51,8 @@ export interface TeamMembershipView {
   membership_id: string;
   team_id: string;
   agent_id: string;
+  agent_store?: TeamMembershipAgentStore;
+  agent?: TeamMembershipAgent;
   role: 'owner' | 'admin' | 'member' | 'observer';
   status: string;
   joined_at?: string;
@@ -100,6 +102,16 @@ export interface TeamRuntimeAgentProfile {
   avatarUrl?: string;
   icon?: string;
   role?: string;
+  runtimeKind?: string;
+  modelProvider?: string;
+  providerId?: string;
+  modelId?: string;
+  apiBase?: string;
+  systemPrompt?: string;
+  backgroundUrl?: string;
+  tools?: string[];
+  skills?: string[];
+  mcps?: Record<string, unknown>;
 }
 
 export interface TeamRuntimeResponse {

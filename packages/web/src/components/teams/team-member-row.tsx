@@ -5,6 +5,7 @@ import { Loader2, Trash2, Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AgentIcon } from "@/components/common/agent-icon";
+import { MemberHoverCard } from "@/components/chat/member-hover-card";
 
 export type TeamMemberRole = "owner" | "admin" | "member" | "observer";
 
@@ -12,12 +13,20 @@ export type TeamMemberRole = "owner" | "admin" | "member" | "observer";
 export interface MemberAgent {
   id: string;
   name?: string;
+  role?: string;
+  description?: string;
   avatarUrl?: string;
   icon?: string;
   apiBase?: string;
   modelId?: string;
   providerId?: string;
   modelProvider?: string;
+  runtimeKind?: string;
+  systemPrompt?: string;
+  backgroundUrl?: string;
+  tools?: string[];
+  skills?: string[];
+  mcps?: Record<string, unknown>;
 }
 
 export interface TeamMemberRowProps {
@@ -73,19 +82,20 @@ export function TeamMemberRow({
 
   const inner = (
     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
-      <AgentIcon
-        agentId={a.id}
-        name={displayName}
-        avatarUrl={a.avatarUrl}
-        icon={a.icon}
-        apiBase={a.apiBase}
-        modelId={a.modelId}
-        providerId={a.providerId}
-        modelProvider={a.modelProvider}
-        className="size-6 shrink-0"
-        bordered={false}
-        hoverCard
-      />
+      <MemberHoverCard agentId={a.id} displayName={displayName} side="top" align="start" agent={a}>
+        <AgentIcon
+          agentId={a.id}
+          name={displayName}
+          avatarUrl={a.avatarUrl}
+          icon={a.icon}
+          apiBase={a.apiBase}
+          modelId={a.modelId}
+          providerId={a.providerId}
+          modelProvider={a.modelProvider}
+          className="size-6 shrink-0"
+          bordered={false}
+        />
+      </MemberHoverCard>
       <span className="min-w-0 flex-1 truncate text-sm">{displayName}</span>
       {role ? (
         <Badge variant="outline" className={`gap-1 px-1.5 py-0 text-xs ${roleBadgeClass(role)}`}>
@@ -139,6 +149,6 @@ export function TeamMemberRow({
 }
 
 /** 从 AgentConfig 列表构建 MemberAgent 映射，便于按 id 查找 */
-export function buildAgentMap(agents: Array<Pick<AgentConfig, "id" | "name" | "avatarUrl" | "icon" | "apiBase" | "modelId" | "providerId" | "modelProvider">>) {
+export function buildAgentMap(agents: Array<Pick<AgentConfig, "id" | "name" | "role" | "description" | "avatarUrl" | "icon" | "apiBase" | "modelId" | "providerId" | "modelProvider" | "runtimeKind" | "systemPrompt" | "backgroundUrl" | "tools" | "skills" | "mcps">>) {
   return new Map(agents.map((a) => [a.id, a as MemberAgent]));
 }

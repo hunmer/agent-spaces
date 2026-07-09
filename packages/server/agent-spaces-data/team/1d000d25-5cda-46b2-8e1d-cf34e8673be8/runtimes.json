@@ -4,7 +4,8 @@
     "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
     "actorAgentId": "agent-generator",
     "leaderAgentId": "topic_agent",
-    "status": "idle",
-    "updatedAt": "2026-07-09T06:06:59.499Z"
+    "status": "completed",
+    "updatedAt": "2026-07-09T07:24:33.413Z",
+    "lastMessageId": "1e541c6f-d275-4054-9ca3-e6eec57aaddb"
   }
 ]

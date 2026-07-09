@@ -27,6 +27,27 @@ const PANEL_ID_LIST = "team-list";
 const PANEL_ID_CHAT = "team-chat";
 const PANEL_ID_DETAIL = "team-detail";
 
+// 三栏布局持久化（百分比 Layout，见 docs/ui/react-resizable-panels-size-units.md）
+const LAYOUT_KEY = "team-management:layout";
+const DEFAULT_LAYOUT: Record<string, number> = {
+  [PANEL_ID_LIST]: 25,
+  [PANEL_ID_CHAT]: 40,
+  [PANEL_ID_DETAIL]: 35,
+};
+
+function loadSavedLayout(): Record<string, number> {
+  if (typeof window === "undefined") return DEFAULT_LAYOUT;
+  try {
+    const raw = window.localStorage.getItem(LAYOUT_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, number> : null;
+    if (!parsed) return DEFAULT_LAYOUT;
+    // 合并默认值，避免新增 panel id 时缺字段
+    return { ...DEFAULT_LAYOUT, ...parsed };
+  } catch {
+    return DEFAULT_LAYOUT;
+  }
+}
+
 function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
   const ids: string[] = [];
   for (const node of workflow.nodes ?? []) {
@@ -186,7 +207,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         archived: true,
         page_size: 100,
       });
-      setArchivedTeams(data.teams);
+      setArchivedTeams(data.teams.filter((team) => team.status === "archived"));
     } catch {
       setArchivedTeams([]);
     } finally {

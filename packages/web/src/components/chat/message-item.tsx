@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { Message } from '@agent-spaces/shared';
+import type { AgentConfig, Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
@@ -21,17 +21,19 @@ import { copyToClipboard } from '@/lib/utils';
 interface MessageItemProps {
   message: Message;
   workspaceId: string;
+  agent?: Partial<AgentConfig>;
   onEdit?: (message: Message) => void;
   onDelete?: (message: Message) => void;
   onReply?: (message: Message) => void;
 }
 
-export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }: MessageItemProps) {
+export function MessageItem({ message, workspaceId, agent: fallbackAgent, onEdit, onDelete, onReply }: MessageItemProps) {
   const tc = useTranslations('common');
   const tm = useTranslations('chat.messageItem');
   const isUser = message.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
-  const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
+  const storeAgent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
+  const agent = storeAgent ? { ...fallbackAgent, ...storeAgent } : fallbackAgent;
 
   const senderName = isUser ? tc('you') : (agent?.name || message.senderId);
   const userAvatarUrl = useUserAvatar();
@@ -78,10 +80,16 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           className="size-7 rounded-full"
         />
       ) : (
-        <MemberHoverCard agentId={message.senderId} displayName={senderName} side="right" align="start" onConfigure={() => setConfigAgentId(message.senderId)}>
+        <MemberHoverCard agentId={message.senderId} displayName={senderName} side="right" align="start" onConfigure={() => setConfigAgentId(message.senderId)} agent={agent}>
           <AgentIcon
             agentId={message.senderId}
             name={senderName}
+            avatarUrl={agent?.avatarUrl}
+            icon={agent?.icon}
+            apiBase={agent?.apiBase}
+            modelId={agent?.modelId}
+            providerId={agent?.providerId}
+            modelProvider={agent?.modelProvider}
             className="size-7 rounded-full"
           />
         </MemberHoverCard>
