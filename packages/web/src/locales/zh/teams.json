@@ -56,8 +56,20 @@
     "noDescription": "暂无描述。",
     "purpose": "团队目标",
     "noPurpose": "暂无团队目标。",
-    "members": "成员预览",
-    "noMembers": "暂无成员预览。",
+    "members": "成员",
+    "noMembers": "暂无成员。",
+    "addMember": "添加成员",
+    "setOwner": "设置为 owner",
+    "removeMember": "从团队移除",
+    "cannotRemoveOwner": "无法操作 owner，请先转移所有权",
+    "removeConfirm": "确定要将该成员从团队中移除吗？",
+    "noPermission": "仅 owner 或管理员可进行此操作",
+    "role": {
+      "owner": "所有者",
+      "admin": "管理员",
+      "member": "成员",
+      "observer": "观察者"
+    },
     "stats": {
       "members": "活跃成员",
       "unread": "未读消息",

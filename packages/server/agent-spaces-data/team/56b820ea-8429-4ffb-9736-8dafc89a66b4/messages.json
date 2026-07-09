@@ -52,5 +52,41 @@
     "createdAt": "2026-07-09T02:24:51.094Z",
     "sentAt": "2026-07-09T02:24:51.094Z",
     "recipientCount": 1
+  },
+  {
+    "id": "3087c94b-61b9-491f-9554-433e12dd1b66",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "senderAgentId": "agent-generator",
+    "messageType": "direct",
+    "subject": "<p><span class=\"mention\" data-t…",
+    "body": "<p><span class=\"mention\" data-type=\"mention\" data-id=\"topic_agent\" data-label=\"topic_agent\" data-mention-suggestion-char=\"@\">@topic_agent</span> 你好</p>",
+    "bodyFormat": "plain_text",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "threadId": null,
+    "replyToMessageId": null,
+    "createdAt": "2026-07-09T02:53:42.752Z",
+    "sentAt": "2026-07-09T02:53:42.752Z",
+    "recipientCount": 1
+  },
+  {
+    "id": "dfc1648f-db64-490c-8b40-ba06f5f02949",
+    "teamId": "56b820ea-8429-4ffb-9736-8dafc89a66b4",
+    "senderAgentId": "topic_agent",
+    "messageType": "direct",
+    "subject": "处理失败",
+    "body": "处理失败：chat agent not found: topic_agent",
+    "bodyFormat": "plain_text",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "threadId": null,
+    "replyToMessageId": null,
+    "createdAt": "2026-07-09T02:53:42.767Z",
+    "sentAt": "2026-07-09T02:53:42.767Z",
+    "recipientCount": 1
   }
 ]

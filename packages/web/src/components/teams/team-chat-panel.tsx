@@ -9,6 +9,9 @@ import { MessageItem } from "@/components/chat/message-item";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useAgentStore } from "@/stores/agent";
 import { sdk } from "@/lib/sdk";
+import { WorkspaceWS } from "@/lib/ws";
+
+const TEAM_RUNTIME_WORKSPACE_ID = "__team__";
 
 type TeamRuntimeView = {
   id: string;
@@ -46,6 +49,14 @@ type TeamRuntimeResponse = {
     icon?: string;
     role?: string;
   };
+  participants?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    avatarUrl?: string;
+    icon?: string;
+    role?: string;
+  }>;
   messages: TeamRuntimeMessageView[];
 };
 
@@ -101,6 +112,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const [runtime, setRuntime] = useState<TeamRuntimeView | null>(null);
   const [messages, setMessages] = useState<TeamRuntimeMessageView[]>([]);
   const [leaderProfile, setLeaderProfile] = useState<TeamRuntimeResponse["leader"] | null>(null);
+  const [participants, setParticipants] = useState<NonNullable<TeamRuntimeResponse["participants"]>>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -128,17 +140,16 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   }), [leader?.name, runtime?.id, runtime?.leader_agent_id, t]);
 
   const composerAgents = useMemo(() => {
-    if (!leader || !runtime?.leader_agent_id) return [];
-    return [{
-      id: runtime.leader_agent_id,
-      name: leader.name || runtime.leader_agent_id,
-      role: leader.role || "leader",
-      description: leader.description,
-      avatarUrl: leader.avatarUrl,
-      icon: leader.icon,
+    return participants.map((participant) => ({
+      id: participant.id,
+      name: participant.name || participant.id,
+      role: participant.role || "agent",
+      description: participant.description,
+      avatarUrl: participant.avatarUrl,
+      icon: participant.icon,
       enabled: true,
-    }];
-  }, [leader, runtime?.leader_agent_id]);
+    }));
+  }, [participants]);
 
   const viewMessages = useMemo(
     () => messages.map((item) => toChannelMessage(item, actorAgentId)),
@@ -155,10 +166,12 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       );
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
+      setParticipants(data.participants ?? []);
       setMessages(data.messages);
     } catch (err) {
       setRuntime(null);
       setLeaderProfile(null);
+      setParticipants([]);
       setMessages([]);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -182,7 +195,24 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     return () => clearInterval(timer);
   }, [loadRuntime, runtime?.status]);
 
-  const handleSend = useCallback(async (content: string) => {
+  useEffect(() => {
+    const ws = new WorkspaceWS(TEAM_RUNTIME_WORKSPACE_ID);
+    ws.connect();
+    const handleEvent = (payload: unknown) => {
+      const data = payload as { teamId?: string; actorAgentId?: string };
+      if (data.teamId !== teamId || data.actorAgentId !== actorAgentId) return;
+      void loadRuntime();
+    };
+    const offCreated = ws.on("team.message.created", handleEvent);
+    const offUpdated = ws.on("team.runtime.updated", handleEvent);
+    return () => {
+      offCreated();
+      offUpdated();
+      ws.disconnect();
+    };
+  }, [actorAgentId, loadRuntime, teamId]);
+
+  const handleSend = useCallback(async (content: string, mentions: string[], _attachments?: unknown, _replyToMessageId?: string, contextLength?: number) => {
     const trimmed = content.trim();
     if (!trimmed) return;
     setSending(true);
@@ -196,6 +226,8 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
           body: JSON.stringify({
             actor_agent_id: actorAgentId,
             content: trimmed,
+            target_agent_id: mentions[0],
+            context_length: contextLength,
           }),
         },
       );
@@ -271,7 +303,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             channel={channel}
             agents={composerAgents}
             messages={viewMessages}
-            onSend={(content) => void handleSend(content)}
+            onSend={(content, mentions, attachments, replyToMessageId, contextLength) => void handleSend(content, mentions, attachments, replyToMessageId, contextLength)}
             isProcessing={sending}
             showAgentBar
             showAddMember={false}

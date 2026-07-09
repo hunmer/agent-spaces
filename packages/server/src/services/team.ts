@@ -887,9 +887,6 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
     if (!target || target.status !== 'active') {
       return fail('target agent is not an active team member', 'AGENT_NOT_FOUND');
     }
-    if (target.agentId === actorAgentId && newRole !== 'owner') {
-      return fail('cannot demote yourself; transfer ownership instead', 'PERMISSION_DENIED');
-    }
 
     const now = new Date().toISOString();
     const next = memberships.map((item) => {
@@ -914,9 +911,6 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
     }
     const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
     if (!targetAgentId) return fail('agent_id is required', 'INVALID_ARGUMENT');
-    if (targetAgentId === actorAgentId) {
-      return fail('cannot remove yourself; use leave instead', 'PERMISSION_DENIED');
-    }
 
     const memberships = listMemberships(teamId);
     const target = memberships.find((item) => item.agentId === targetAgentId);
@@ -930,9 +924,6 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
           updated_at: new Date().toISOString(),
         },
       }, 'ALREADY_LEFT');
-    }
-    if (target.role === 'owner') {
-      return fail('cannot remove an owner; transfer ownership first', 'PERMISSION_DENIED');
     }
 
     const now = new Date().toISOString();

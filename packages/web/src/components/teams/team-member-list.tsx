@@ -48,6 +48,8 @@ interface TeamMemberListProps {
   actorAgentId: string;
   members: TeamMembershipView[];
   agents: AgentConfig[];
+  /** 当前 actor 在该团队的角色（owner/admin/member/observer/null） */
+  myRole?: string | null;
   onChange: () => void;
 }
 
@@ -62,11 +64,13 @@ function roleBadgeClass(role: TeamMembershipView["role"]): string {
   }
 }
 
-export function TeamMemberList({ teamId, actorAgentId, members, agents, onChange }: TeamMemberListProps) {
+export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, onChange }: TeamMemberListProps) {
   const t = useTranslations("teams");
   const tc = useTranslations("common");
   const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string>("");
+
+  const canManage = myRole === "owner" || myRole === "admin";
 
   const memberIds = useMemo(() => new Set(members.map((m) => m.agent_id)), [members]);
 
@@ -145,7 +149,8 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, onChange
           size="sm"
           variant="outline"
           onClick={() => setAddOpen(true)}
-          disabled={busyId === "__add"}
+          disabled={busyId === "__add" || !canManage}
+          title={canManage ? undefined : t("detail.noPermission")}
         >
           {busyId === "__add" ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
           {t("detail.addMember")}
@@ -182,7 +187,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, onChange
                   {isOwner && <Crown className="size-3" />}
                   {t(`detail.role.${member.role}`)}
                 </Badge>
-                {!isOwner && (
+                {canManage && (
                   <button
                     type="button"
                     disabled={isBusy}
@@ -199,6 +204,11 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, onChange
               </div>
             );
 
+            // 无管理权限时只渲染行，不提供右键菜单
+            if (!canManage) {
+              return <div key={member.membership_id}>{row}</div>;
+            }
+
             return (
               <ContextMenu key={member.membership_id}>
                 <ContextMenuTrigger>{row}</ContextMenuTrigger>
@@ -209,21 +219,14 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, onChange
                       {t("detail.setOwner")}
                     </ContextMenuItem>
                   )}
-                  {!isOwner && (
-                    <ContextMenuItem
-                      variant="destructive"
-                      onClick={() => void removeMember(member.agent_id)}
-                      disabled={isBusy}
-                    >
-                      <Trash2 className="size-4" />
-                      {t("detail.removeMember")}
-                    </ContextMenuItem>
-                  )}
-                  {isOwner && (
-                    <ContextMenuItem disabled>
-                      {t("detail.cannotRemoveOwner")}
-                    </ContextMenuItem>
-                  )}
+                  <ContextMenuItem
+                    variant="destructive"
+                    onClick={() => void removeMember(member.agent_id)}
+                    disabled={isBusy}
+                  >
+                    <Trash2 className="size-4" />
+                    {t("detail.removeMember")}
+                  </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
             );

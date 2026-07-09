@@ -56,8 +56,20 @@
     "noDescription": "No description yet.",
     "purpose": "Purpose",
     "noPurpose": "No purpose provided.",
-    "members": "Members Preview",
-    "noMembers": "No member preview.",
+    "members": "Members",
+    "noMembers": "No members.",
+    "addMember": "Add member",
+    "setOwner": "Set as owner",
+    "removeMember": "Remove from team",
+    "cannotRemoveOwner": "Cannot operate on owner; transfer ownership first.",
+    "removeConfirm": "Remove this member from the team?",
+    "noPermission": "Only an owner or admin can do this.",
+    "role": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "observer": "Observer"
+    },
     "stats": {
       "members": "Active members",
       "unread": "Unread messages",

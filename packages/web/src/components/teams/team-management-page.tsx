@@ -10,9 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { sdk } from "@/lib/sdk";
 import { useAgentStore } from "@/stores/agent";
-import { AgentIcon } from "@/components/common/agent-icon";
-import { AgentDialog } from "@/components/sidebar/agent-dialog";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
+import { TeamMemberList } from "@/components/teams/team-member-list";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
 
 type TeamView = Team & {
@@ -91,8 +90,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [teams, setTeams] = useState<TeamView[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [teamDetail, setTeamDetail] = useState<TeamDetail | null>(null);
-  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
-  const [editingAgentId, setEditingAgentId] = useState<string>("");
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
   const [error, setError] = useState("");
@@ -262,7 +259,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   return (
     <div className={embedded ? "flex h-full flex-col" : "flex min-h-dvh w-full flex-col"}>
-      <main className={embedded ? "flex size-full flex-1 flex-col gap-4 px-4 py-4 sm:px-6" : "mx-auto flex size-full max-w-7xl flex-1 flex-col gap-4 px-4 py-6 sm:px-6"}>
+      <main className={embedded ? "flex size-full flex-1 flex-col gap-4 px-4 py-4 sm:px-6" : "mx-auto flex size-full flex-1 flex-col gap-4 px-4 py-6 sm:px-6"}>
         {!embedded ? (
           <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -394,50 +391,14 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                   </div>
 
                   <div className="rounded-xl border border-border p-3">
-                    <div className="mb-2 text-sm font-medium">{t("detail.members")}</div>
-                    <div className="flex flex-wrap gap-2">
-                      {(teamDetail.members_preview ?? []).length === 0 ? (
-                        <span className="text-sm text-muted-foreground">{t("detail.noMembers")}</span>
-                      ) : (
-                        (teamDetail.members_preview ?? []).map((member) => {
-                          const agent = availableAgents.find((item) => item.id === member.agent_id);
-                          if (!agent) {
-                            return (
-                              <Badge key={member.membership_id} variant="outline" className="gap-1 px-2 py-1">
-                                <span>{member.agent_id}</span>
-                                <span className="text-muted-foreground">· {member.role}</span>
-                              </Badge>
-                            );
-                          }
-                          return (
-                            <Badge
-                              key={member.membership_id}
-                              variant="outline"
-                              className="cursor-pointer gap-1.5 px-2 py-1 transition-colors hover:bg-muted/60"
-                              onClick={() => {
-                                setEditingAgentId(agent.id);
-                                setAgentDialogOpen(true);
-                              }}
-                            >
-                              <AgentIcon
-                                agentId={agent.id}
-                                name={agent.name}
-                                avatarUrl={agent.avatarUrl}
-                                icon={agent.icon}
-                                apiBase={agent.apiBase}
-                                modelId={agent.modelId}
-                                providerId={agent.providerId}
-                                modelProvider={agent.modelProvider}
-                                className="size-4"
-                                bordered={false}
-                              />
-                              <span>{agent.name}</span>
-                              <span className="text-muted-foreground">· {member.role}</span>
-                            </Badge>
-                          );
-                        })
-                      )}
-                    </div>
+                    <TeamMemberList
+                      teamId={selectedTeam.team_id}
+                      actorAgentId={selectedActorId}
+                      members={teamDetail.members_preview ?? []}
+                      agents={availableAgents}
+                      myRole={teamDetail.team.my_role}
+                      onChange={() => void loadTeamDetail(selectedTeam.team_id)}
+                    />
                   </div>
 
                 </div>
@@ -471,16 +432,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         }
         onOpenChange={setDialogOpen}
         onSubmit={submitTeam}
-      />
-
-      <AgentDialog
-        open={agentDialogOpen}
-        onOpenChange={(next) => {
-          setAgentDialogOpen(next);
-          if (!next) setEditingAgentId("");
-        }}
-        initialAgentId={editingAgentId || undefined}
-        singleAgent
       />
     </div>
   );

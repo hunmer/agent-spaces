@@ -121,8 +121,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
       id: "teams",
       title: ts("nav.teams"),
       icon: <Users className="size-4" />,
-      link: isMobile ? "/teams" : "#",
-      ...(isMobile ? {} : { onClick: () => setterMap.teams?.(true) }),
+      link: "/teams",
     },
     {
       id: "settings-manage",
