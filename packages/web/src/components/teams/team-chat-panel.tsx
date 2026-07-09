@@ -10,6 +10,9 @@ import { MessageNavigator } from "@/components/chat/message-navigator";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useAgentStore } from "@/stores/agent";
 import { sdk } from "@/lib/sdk";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AgentEditor } from "@/components/sidebar/agent-editor";
+import { normalizeAgent, type AgentPreset } from "@/components/sidebar/agent-shared";
 import type {
   TeamRuntimeView,
   TeamRuntimeMessageView,
@@ -61,6 +64,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [configAgent, setConfigAgent] = useState<{ id: string; agent?: Partial<TeamRuntimeResponse["participants"][number]> } | null>(null);
 
   const leader = useMemo(() => {
     if (leaderProfile?.id) return leaderProfile;
@@ -323,6 +327,15 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                         teamId={teamId}
                         actorAgentId={actorAgentId}
                         onAgentUpdated={() => { void loadRuntime(); }}
+                        onConfigureAgent={(agentId, agent) => {
+                          console.log("[TeamChatPanel] open-config-dialog", {
+                            teamId,
+                            actorAgentId,
+                            agentId,
+                            agent,
+                          });
+                          setConfigAgent({ id: agentId, agent });
+                        }}
                         onDelete={handleDeleteMessage}
                       />
                     </div>
@@ -344,6 +357,71 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             showAgentBar
             showAddMember={false}
           />
+          {configAgent && (() => {
+            const storeAgent = agents.find((item) => item.id === configAgent.id);
+            const customAgent = !storeAgent ? configAgent.agent : undefined;
+            console.log("[TeamChatPanel] render-config-dialog", {
+              configAgent,
+              hasStoreAgent: Boolean(storeAgent),
+              customAgent,
+            });
+            if (!storeAgent && !customAgent) return null;
+            return (
+              <Dialog open={Boolean(configAgent)} onOpenChange={(open) => { if (!open) setConfigAgent(null); }}>
+                <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+                  <DialogHeader className="border-b px-5 py-3">
+                    <DialogTitle>{t("chat.configureAgent")}</DialogTitle>
+                    <DialogDescription />
+                  </DialogHeader>
+                  {storeAgent ? (
+                    <AgentEditor
+                      agent={normalizeAgent(storeAgent)}
+                      onSaved={() => setConfigAgent(null)}
+                      onBack={() => setConfigAgent(null)}
+                      showFooter
+                    />
+                  ) : customAgent ? (
+                    <AgentEditor
+                      agent={normalizeAgent({ id: configAgent.id, ...customAgent } as AgentConfig)}
+                      commit={async (draft: AgentPreset) => {
+                        const requestBody = {
+                          actor_agent_id: actorAgentId,
+                          agent_id: configAgent.id,
+                          agent: { ...draft, id: configAgent.id },
+                        };
+                        console.log("[TeamChatPanel] custom-agent-save:start", {
+                          teamId,
+                          actorAgentId,
+                          requestBody,
+                        });
+                        const response = await fetch(`/api/teams/${teamId}/update-agent`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(requestBody),
+                        });
+                        const payload = await response.json() as { success?: boolean; message?: string };
+                        console.log("[TeamChatPanel] custom-agent-save:done", {
+                          status: response.status,
+                          ok: response.ok,
+                          payload,
+                        });
+                        if (!response.ok || payload.success === false) {
+                          throw new Error(payload.message || "save failed");
+                        }
+                        return { ...draft, id: configAgent.id };
+                      }}
+                      onSaved={() => {
+                        setConfigAgent(null);
+                        void loadRuntime();
+                      }}
+                      onBack={() => setConfigAgent(null)}
+                      showFooter
+                    />
+                  ) : null}
+                </DialogContent>
+              </Dialog>
+            );
+          })()}
         </>
       )}
     </section>

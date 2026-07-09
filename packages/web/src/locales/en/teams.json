@@ -111,7 +111,8 @@
     "loading": "Loading chat...",
     "empty": "No chat messages yet.",
     "hideSidebar": "Hide team info",
-    "showSidebar": "Show team info"
+    "showSidebar": "Show team info",
+    "configureAgent": "Configure Agent"
   },
   "empty": {
     "setup": "Select a workspace and an agent first.",

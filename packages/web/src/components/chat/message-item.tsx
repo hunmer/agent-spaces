@@ -25,12 +25,13 @@ interface MessageItemProps {
   teamId?: string;
   actorAgentId?: string;
   onAgentUpdated?: () => void;
+  onConfigureAgent?: (agentId: string, agent?: Partial<AgentConfig>) => void;
   onEdit?: (message: Message) => void;
   onDelete?: (message: Message) => void;
   onReply?: (message: Message) => void;
 }
 
-export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId, actorAgentId, onAgentUpdated, onEdit, onDelete, onReply }: MessageItemProps) {
+export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId, actorAgentId, onAgentUpdated, onConfigureAgent, onEdit, onDelete, onReply }: MessageItemProps) {
   const tc = useTranslations('common');
   const tm = useTranslations('chat.messageItem');
   const isUser = message.senderId === 'user';
@@ -112,6 +113,10 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
               agent,
               fallbackAgent,
             });
+            if (onConfigureAgent) {
+              onConfigureAgent(message.senderId, agent);
+              return;
+            }
             setConfigAgentId(message.senderId);
           }}
           agent={agent}
@@ -251,7 +256,7 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
           </DialogPortal>
         </Dialog>
       )}
-      {configAgentId && (() => {
+      {!onConfigureAgent && configAgentId && (() => {
         const storeAgent = storeAgents.find((a) => a.id === configAgentId);
         const customAgent = !storeAgent && fallbackAgent?.id === configAgentId ? fallbackAgent : undefined;
         console.log("[MessageItem] render-config-dialog", {
