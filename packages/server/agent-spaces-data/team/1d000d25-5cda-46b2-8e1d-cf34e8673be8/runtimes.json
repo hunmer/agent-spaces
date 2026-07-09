@@ -7,5 +7,14 @@
     "status": "completed",
     "updatedAt": "2026-07-09T08:17:33.421Z",
     "lastMessageId": "dfcda409-3f5e-493b-a536-aa28d141a063"
+  },
+  {
+    "id": "d508b93c-4cbd-45cd-94d8-c932fbd42df1",
+    "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
+    "actorAgentId": "agent-generator",
+    "leaderAgentId": "reviewer_agent",
+    "status": "running",
+    "updatedAt": "2026-07-09T10:15:37.032Z",
+    "lastMessageId": "9126f8da-d1a0-4b67-99de-5dc376d51cb6"
   }
 ]

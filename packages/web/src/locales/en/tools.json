@@ -9,6 +9,9 @@
   "selectAll": "Select All",
   "deselectAll": "Deselect All",
   "filterByAgent": "Filter by Agent",
+  "selected": "Selected",
+  "available": "Available",
+  "clear": "Clear",
   "boundTo": "Bound to",
   "categories": {
     "channel": "Channel",

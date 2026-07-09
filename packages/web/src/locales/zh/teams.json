@@ -88,6 +88,16 @@
       "activity": "最近活动"
     }
   },
+  "inbox": {
+    "title": "成员消息",
+    "description": "查看团队成员收到的消息，支持标记已读和删除。",
+    "pickMember": "请从左侧选择成员查看消息。",
+    "loading": "正在加载消息...",
+    "empty": "该成员暂无消息。",
+    "markRead": "标记已读",
+    "markUnread": "标记未读",
+    "delete": "删除"
+  },
   "messages": {
     "title": "团队消息",
     "detailTitle": "消息详情",

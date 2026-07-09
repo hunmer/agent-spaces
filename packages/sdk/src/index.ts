@@ -73,6 +73,8 @@ export type {
   TeamRuntimeMessageView,
   TeamRuntimeAgentProfile,
   TeamRuntimeResponse,
+  TeamInboxItemView,
+  TeamInboxListResponse,
   ListTeamsParams,
   CreateTeamInput,
   UpdateTeamInput,

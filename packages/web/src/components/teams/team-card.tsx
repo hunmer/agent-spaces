@@ -126,11 +126,22 @@ export function TeamCard({
       </div>
 
       <div className="flex items-start justify-between gap-3 pr-7">
-        <div className="min-w-0">
-          <div className="truncate font-medium">{team.name}</div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
-            <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <AgentIcon
+            name={team.name}
+            avatarUrl={team.avatarUrl ?? team.avatar_url}
+            icon={team.icon}
+            className="size-9 shrink-0 rounded-lg"
+            bordered
+            rounded="rounded-lg"
+            textSize="text-sm"
+          />
+          <div className="min-w-0">
+            <div className="truncate font-medium">{team.name}</div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
+              <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
+            </div>
           </div>
         </div>
         {!archived ? <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> : null}

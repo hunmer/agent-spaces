@@ -1,11 +1,11 @@
 [
   {
-    "id": "dfcda409-3f5e-493b-a536-aa28d141a063",
+    "id": "9126f8da-d1a0-4b67-99de-5dc376d51cb6",
     "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
     "senderAgentId": "agent-generator",
     "messageType": "direct",
-    "subject": "<p><span class=\"mention\" data-t…",
-    "body": "<p><span class=\"mention\" data-type=\"mention\" data-id=\"topic_agent\" data-label=\"Topic Agent\" data-mention-suggestion-char=\"@\">@Topic Agent</span> 你好</p>",
+    "subject": "<p></p><p><span class=\"mention\"…",
+    "body": "<p></p><p><span class=\"mention\" data-type=\"mention\" data-id=\"reviewer_agent\" data-label=\"Reviewer Agent\" data-mention-suggestion-char=\"@\">@Reviewer Agent</span> 开始选题: 年轻人的恋爱为什么越来越快餐？ 出题完成后给topic agent 发送消息让他继续处理</p>",
     "bodyFormat": "plain_text",
     "priority": "normal",
     "requiresAck": false,
@@ -13,26 +13,8 @@
     "dueAt": null,
     "threadId": null,
     "replyToMessageId": null,
-    "createdAt": "2026-07-09T08:17:29.748Z",
-    "sentAt": "2026-07-09T08:17:29.748Z",
-    "recipientCount": 1
-  },
-  {
-    "id": "0e1203ab-3466-433d-b303-f4af682ebb8f",
-    "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
-    "senderAgentId": "topic_agent",
-    "messageType": "direct",
-    "subject": "<think>用户只是打了个招呼说\"你好\"。这是一个团队聊天中…",
-    "body": "<think>用户只是打了个招呼说\"你好\"。这是一个团队聊天中的简单问候，我应该简洁友好地回复。\n\n由于这是对话的开始，没有具体的任务需要执行，我应该友好地回应并说明我可以帮助什么。\n</think>\n\n\n\n你好！我是选题策划 Agent。\n\n我可以帮你：\n\n- 基于给定 topic 生成差异化切入角度并打分\n- 撰写完整文章大纲\n- 收集可引用的事实线索\n- 同步给编辑 Agent 推进后续工作\n\n请告诉我本次的 **topic、style 和 targetAudience**，我来产出选题报告。",
-    "bodyFormat": "plain_text",
-    "priority": "normal",
-    "requiresAck": false,
-    "requiresAction": false,
-    "dueAt": null,
-    "threadId": null,
-    "replyToMessageId": null,
-    "createdAt": "2026-07-09T08:17:33.418Z",
-    "sentAt": "2026-07-09T08:17:33.418Z",
+    "createdAt": "2026-07-09T10:15:37.029Z",
+    "sentAt": "2026-07-09T10:15:37.029Z",
     "recipientCount": 1
   }
 ]

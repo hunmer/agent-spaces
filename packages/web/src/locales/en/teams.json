@@ -88,6 +88,16 @@
       "activity": "Last activity"
     }
   },
+  "inbox": {
+    "title": "Member Messages",
+    "description": "View messages received by team members. Mark as read or delete.",
+    "pickMember": "Select a member from the left to view their messages.",
+    "loading": "Loading messages...",
+    "empty": "No messages for this member.",
+    "markRead": "Mark as read",
+    "markUnread": "Mark as unread",
+    "delete": "Delete"
+  },
   "messages": {
     "title": "Team Messages",
     "detailTitle": "Message Detail",

@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AgentEditor } from "@/components/sidebar/agent-editor";
 import { normalizeAgent, type AgentPreset } from "@/components/sidebar/agent-shared";
 import { TeamMemberRow } from "@/components/teams/team-member-row";
+import { TeamInboxDialog } from "@/components/teams/team-inbox-dialog";
 import { MemberSelectDialog, buildCandidates } from "@/components/teams/member-select-panel";
 import type { TeamMembershipView } from "@agent-spaces/sdk";
 
@@ -37,6 +38,8 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
   const [busyId, setBusyId] = useState<string>("");
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const [configCustomMemberId, setConfigCustomMemberId] = useState<string | null>(null);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxAgentId, setInboxAgentId] = useState<string>("");
 
   const canManage = myRole === "owner" || myRole === "admin";
   const memberIds = useMemo(() => new Set(members.map((m) => m.agent_id)), [members]);
@@ -99,7 +102,6 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
           title={canManage ? undefined : t("detail.noPermission")}
         >
           {busyId === "__add" ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
-          {t("detail.addMember")}
         </Button>
       </div>
 
@@ -122,6 +124,10 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
                 busy={isBusy}
                 unreadCount={member.unread_count ?? 0}
                 runtimeStatus={member.runtime_status ?? "idle"}
+                onInboxOpen={() => {
+                  setInboxAgentId(member.agent_id);
+                  setInboxOpen(true);
+                }}
                 onConfigure={() => {
                   if (storedAgent) {
                     setConfigAgentId(member.agent_id);
@@ -234,6 +240,17 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
           </Dialog>
         );
       })()}
+
+      <TeamInboxDialog
+        open={inboxOpen}
+        onOpenChange={setInboxOpen}
+        teamId={teamId}
+        actorAgentId={actorAgentId}
+        members={members}
+        agents={agents}
+        initialAgentId={inboxAgentId}
+        onChanged={onChange}
+      />
     </div>
   );
 }

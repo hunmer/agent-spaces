@@ -11,11 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MemberSelectPanel } from "@/components/teams/member-select-panel";
 import { getMemberDisplayName } from "@/lib/agent-members";
+import { AvatarUploader } from "@/components/common/avatar-uploader";
+import { sdk } from "@/lib/sdk";
 
 export interface TeamFormValues {
   name: string;
   description: string;
   purpose: string;
+  icon: string;
+  avatarUrl: string;
   visibility: "private" | "open";
   members: string[];
 }
@@ -24,6 +28,8 @@ export interface TeamFormDefaults {
   name?: string;
   description?: string;
   purpose?: string;
+  icon?: string;
+  avatarUrl?: string;
   visibility?: "private" | "open";
   members?: string[];
 }
@@ -32,6 +38,8 @@ interface EditTarget {
   name: string;
   description?: string | null;
   purpose?: string | null;
+  icon?: string | null;
+  avatarUrl?: string | null;
   visibility: "private" | "open";
 }
 
@@ -50,6 +58,8 @@ const EMPTY: TeamFormValues = {
   name: "",
   description: "",
   purpose: "",
+  icon: "",
+  avatarUrl: "",
   visibility: "private",
   members: [],
 };
@@ -87,6 +97,8 @@ export function CreateTeamDialog({
         name: editTarget.name,
         description: editTarget.description ?? "",
         purpose: editTarget.purpose ?? "",
+        icon: editTarget.icon ?? "",
+        avatarUrl: editTarget.avatarUrl ?? "",
         visibility: editTarget.visibility,
         members: [],
       });
@@ -97,6 +109,8 @@ export function CreateTeamDialog({
         name: defaultValues?.name ?? "",
         description: defaultValues?.description ?? "",
         purpose: defaultValues?.purpose ?? "",
+        icon: defaultValues?.icon ?? "",
+        avatarUrl: defaultValues?.avatarUrl ?? "",
         visibility: defaultValues?.visibility ?? "private",
         members: defaultValues?.members ? [...defaultValues.members] : [],
       });
@@ -145,6 +159,8 @@ export function CreateTeamDialog({
       name: values.name.trim(),
       description: values.description.trim(),
       purpose: values.purpose.trim(),
+      icon: values.icon,
+      avatarUrl: values.avatarUrl,
       visibility: values.visibility,
       members: values.members,
     });
@@ -160,11 +176,26 @@ export function CreateTeamDialog({
         </DialogHeader>
         <div className="flex min-h-0 flex-col gap-4 pt-2 lg:flex-row">
           <div className="flex-1 space-y-3">
-            <Input
-              value={values.name}
-              onChange={(e) => setValues({ ...values, name: e.target.value })}
-              placeholder={t("form.name")}
-            />
+            <div className="flex items-center gap-3">
+              <AvatarUploader
+                name={values.name || "?"}
+                avatarUrl={values.avatarUrl}
+                icon={values.icon}
+                onAvatarUrlChange={(url) => setValues({ ...values, avatarUrl: url })}
+                onIconChange={(icon) => setValues({ ...values, icon })}
+                onUploadDataUrl={async (dataUrl) => {
+                  const data = await sdk.http.post<{ url?: string }>("/api/upload/avatar", { dataUrl });
+                  return data.url ? `${data.url}?t=${Date.now()}` : "";
+                }}
+              />
+              <div className="min-w-0 flex-1">
+                <Input
+                  value={values.name}
+                  onChange={(e) => setValues({ ...values, name: e.target.value })}
+                  placeholder={t("form.name")}
+                />
+              </div>
+            </div>
             <Textarea
               value={values.description}
               onChange={(e) => setValues({ ...values, description: e.target.value })}

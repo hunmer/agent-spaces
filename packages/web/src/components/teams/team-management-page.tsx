@@ -276,6 +276,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           name: values.name,
           description: values.description,
           purpose: values.purpose,
+          icon: values.icon,
+          avatar_url: values.avatarUrl,
           visibility: values.visibility,
           initial_members: values.members
             .filter((id) => id !== selectedActorId)
@@ -288,6 +290,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           name: values.name,
           description: values.description,
           purpose: values.purpose,
+          icon: values.icon,
+          avatar_url: values.avatarUrl,
           visibility: values.visibility,
         });
         await loadTeams(data.team.team_id);
@@ -492,11 +496,9 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => openEditDialog(selectedTeam)}>
                         <Pencil className="size-4" />
-                        {tc("edit")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => void dissolveTeam(selectedTeam)}>
                         <Trash2 className="size-4" />
-                        {tc("delete")}
                       </Button>
                     </div>
                   </div>
@@ -542,6 +544,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                 name: editingTeam.name,
                 description: editingTeam.description,
                 purpose: editingTeam.purpose,
+                icon: editingTeam.icon,
+                avatarUrl: editingTeam.avatarUrl ?? editingTeam.avatar_url,
                 visibility: editingTeam.visibility,
               }
             : null

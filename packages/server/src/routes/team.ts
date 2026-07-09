@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import {
+  handleTeamInboxDelete,
   handleTeamInboxQuery,
   handleTeamManage,
   handleTeamMembershipManage,
@@ -134,6 +135,7 @@ teamInboxRouter.get('/', (req: Request, res: Response) => {
   sendResult(res, handleTeamInboxQuery({
     action: 'list',
     actor_agent_id: req.query.actor_agent_id,
+    recipient_agent_id: req.query.recipient_agent_id,
     unread_only: req.query.unread_only === 'true',
     team_id: req.query.team_id,
     sender_agent_id: req.query.sender_agent_id,
@@ -161,6 +163,13 @@ teamInboxRouter.patch('/:deliveryId', (req: Request<{ deliveryId: string }>, res
     ...req.body,
     action: 'update_status',
     delivery_id: req.params.deliveryId,
+  }));
+});
+
+teamInboxRouter.delete('/:deliveryId', (req: Request<{ deliveryId: string }>, res: Response) => {
+  sendResult(res, handleTeamInboxDelete({
+    delivery_id: req.params.deliveryId,
+    actor_agent_id: req.body?.actor_agent_id ?? req.query.actor_agent_id,
   }));
 });
 

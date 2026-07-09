@@ -28,6 +28,7 @@ import {
   Users,
   Search,
   Wrench,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -78,6 +79,77 @@ function compareTools(a: BuiltInToolView, b: BuiltInToolView) {
   const bOrder = b.category ? BUILT_IN_AGENT_TOOL_CATEGORIES[b.category]?.order ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
   if (aOrder !== bOrder) return aOrder - bOrder;
   return ALL_TOOLS.findIndex((tool) => tool.name === a.name) - ALL_TOOLS.findIndex((tool) => tool.name === b.name);
+}
+
+interface ToolCardProps {
+  tool: BuiltInToolView;
+  checked: boolean;
+  selectable: boolean;
+  label: string;
+  description: string;
+  boundAgents: Array<{ id: string; name: string; avatarUrl?: string }>;
+  onToggle: () => void;
+  onShowDetail: () => void;
+  onRemove?: () => void;
+}
+
+function ToolCard({ tool, checked, selectable, label, description, boundAgents, onToggle, onShowDetail, onRemove }: ToolCardProps) {
+  return (
+    <div
+      className={cn(
+        'group relative rounded-lg border bg-background px-2.5 py-2 transition-colors cursor-pointer flex flex-col gap-1',
+        checked ? 'border-primary/60 ring-1 ring-primary/30' : 'border-border hover:bg-accent/30',
+      )}
+      onClick={() => {
+        if (selectable) {
+          onToggle();
+        } else {
+          onShowDetail();
+        }
+      }}
+    >
+      <div className="flex items-start gap-1.5">
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={onToggle}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-0.5 size-3 shrink-0"
+          />
+        )}
+        <span className="flex-1 min-w-0 text-xs font-medium leading-tight line-clamp-1">{label}</span>
+        {selectable && checked && onRemove && (
+          <button
+            type="button"
+            className="shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            title="Remove"
+          >
+            <X className="size-3" />
+          </button>
+        )}
+        {selectable && (
+          <button
+            type="button"
+            className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
+          >
+            <Search className="size-3" />
+          </button>
+        )}
+      </div>
+      <span className="block text-[10px] text-muted-foreground line-clamp-2 leading-snug">{description}</span>
+      {boundAgents.length > 0 && (
+        <div className="flex items-center gap-0.5">
+          {boundAgents.slice(0, 3).map((a) => (
+            <AgentIcon key={a.id} agentId={a.id} name={a.name} avatarUrl={a.avatarUrl} className="size-3.5 rounded-full" />
+          ))}
+          {boundAgents.length > 3 && <span className="text-[10px] text-muted-foreground">+{boundAgents.length - 3}</span>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ToolsDialog({ open, onOpenChange, standalone, selectable, selectedTools: externalSelected, onSelectedToolsChange }: ToolsDialogProps) {
@@ -159,6 +231,13 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
     if (activeCategory === 'all') return searchableTools;
     return searchableTools.filter((tool) => tool.category === activeCategory);
   }, [activeCategory, searchableTools]);
+
+  const selectedFilteredTools = useMemo(() => filteredTools.filter((tool) => selected.has(tool.name)), [filteredTools, selected]);
+  const unselectedFilteredTools = useMemo(() => filteredTools.filter((tool) => !selected.has(tool.name)), [filteredTools, selected]);
+
+  const boundAgentsFor = useCallback((toolName: string) => {
+    return agentsWithTools.filter((a) => a.tools.includes(toolName));
+  }, [agentsWithTools]);
 
   const mainBody = (
     <>
@@ -269,64 +348,88 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
             </div>
           )}
 
-          <ScrollArea className="flex-1">
-            {filteredTools.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('empty')}</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-2 pr-2">
-                {filteredTools.map((tool) => (
-                  <div
-                    key={tool.name}
-                    className="rounded-lg border border-border bg-background px-3 py-2 hover:bg-accent/30 transition-colors cursor-pointer"
-                    onClick={() => {
-                      if (selectable) {
-                        toggleTool(tool.name);
-                      } else {
-                        setDetailTool(tool);
-                      }
-                    }}
-                  >
-                    <div className="flex items-start gap-2">
-                      {selectable && (
-                        <input
-                          type="checkbox"
-                          checked={selected.has(tool.name)}
-                          onChange={() => toggleTool(tool.name)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="mt-0.5 size-3.5 shrink-0"
+          <div className="flex-1 min-h-0 grid grid-rows-[1fr_1fr] gap-3">
+            {/* Selected tools (top half) */}
+            {selectable && (
+              <div className="min-h-0 flex flex-col gap-2">
+                <div className="flex items-center justify-between shrink-0">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t('selected')} <span className="text-foreground">({selectedFilteredTools.length})</span>
+                  </span>
+                  {selectedFilteredTools.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        const next = new Set<BuiltInAgentToolName>(selected);
+                        selectedFilteredTools.forEach((tool) => next.delete(tool.name));
+                        if (onSelectedToolsChange) {
+                          onSelectedToolsChange(ALL_TOOLS.map((t) => t.name).filter((n) => next.has(n)));
+                        } else {
+                          setInternalSelected(next);
+                        }
+                      }}
+                    >
+                      {t('clear')}
+                    </Button>
+                  )}
+                </div>
+                <ScrollArea className="flex-1 min-h-0">
+                  {selectedFilteredTools.length === 0 ? (
+                    <div className="flex items-center justify-center py-6 text-muted-foreground text-xs">{t('empty')}</div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pr-2">
+                      {selectedFilteredTools.map((tool) => (
+                        <ToolCard
+                          key={tool.name}
+                          tool={tool}
+                          checked
+                          selectable
+                          label={toolLabel(tool)}
+                          description={toolDesc(tool)}
+                          boundAgents={boundAgentsFor(tool.name)}
+                          onToggle={() => toggleTool(tool.name)}
+                          onShowDetail={() => setDetailTool(tool)}
+                          onRemove={() => toggleTool(tool.name)}
                         />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <span className="block text-xs font-medium">{toolLabel(tool)}</span>
-                        <span className="block text-[11px] text-muted-foreground line-clamp-2">{toolDesc(tool)}</span>
-                        {(() => {
-                          const boundAgents = agentsWithTools.filter((a) => a.tools.includes(tool.name));
-                          if (boundAgents.length === 0) return null;
-                          return (
-                            <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[10px] text-muted-foreground mr-0.5">{t('boundTo')}:</span>
-                              {boundAgents.map((a) => (
-                                <AgentIcon key={a.id} agentId={a.id} name={a.name} avatarUrl={a.avatarUrl} className="size-3.5 rounded-full" />
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                      {selectable && (
-                        <button
-                          type="button"
-                          className="shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                          onClick={(e) => { e.stopPropagation(); setDetailTool(tool); }}
-                        >
-                          <Search className="size-3" />
-                        </button>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  )}
+                </ScrollArea>
               </div>
             )}
-          </ScrollArea>
+
+            {/* Unselected tools (bottom half, or full height when not selectable) */}
+            <div className={cn('min-h-0 flex flex-col gap-2', !selectable && 'row-span-2')}>
+              {selectable && (
+                <span className="text-xs font-medium text-muted-foreground shrink-0">
+                  {t('available')} <span className="text-foreground">({unselectedFilteredTools.length})</span>
+                </span>
+              )}
+              <ScrollArea className="flex-1 min-h-0">
+                {unselectedFilteredTools.length === 0 ? (
+                  <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">{t('empty')}</div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pr-2">
+                    {unselectedFilteredTools.map((tool) => (
+                      <ToolCard
+                        key={tool.name}
+                        tool={tool}
+                        checked={false}
+                        selectable={!!selectable}
+                        label={toolLabel(tool)}
+                        description={toolDesc(tool)}
+                        boundAgents={boundAgentsFor(tool.name)}
+                        onToggle={() => toggleTool(tool.name)}
+                        onShowDetail={() => setDetailTool(tool)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          </div>
         </div>
       </div>
     </>

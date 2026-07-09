@@ -1,5 +1,5 @@
 import type { HttpClient } from '../client';
-import type { AgentConfig, TeamStatus, TeamVisibility, TeamRole, TeamMembershipAgent, TeamMembershipAgentStore } from '@agent-spaces/shared';
+import type { AgentConfig, TeamStatus, TeamVisibility, TeamRole, TeamMembershipAgent, TeamMembershipAgentStore, TeamInboxStatus, TeamPriority, TeamBodyFormat, TeamMessageType, TeamExecutionStatus } from '@agent-spaces/shared';
 
 /**
  * Team API 模块
@@ -35,6 +35,9 @@ export interface TeamView {
   name: string;
   description: string;
   purpose?: string;
+  icon?: string;
+  avatarUrl?: string;
+  avatar_url?: string;
   status: TeamStatus;
   visibility: TeamVisibility;
   created_by: string;
@@ -125,6 +128,43 @@ export interface TeamRuntimeResponse {
   messages: TeamRuntimeMessageView[];
 }
 
+/** inbox 投递视图（与服务端 inboxView 对齐，并附带 message 正文） */
+export interface TeamInboxItemView {
+  delivery_id: string;
+  message_id: string;
+  team_id: string;
+  recipient_agent_id: string;
+  sender_agent_id: string;
+  subject: string;
+  preview: string;
+  body?: string;
+  body_format?: TeamBodyFormat;
+  message_type: TeamMessageType;
+  inbox_status: TeamInboxStatus;
+  execution_status: TeamExecutionStatus;
+  priority: TeamPriority;
+  requires_ack: boolean;
+  requires_action: boolean;
+  due_at: string | null;
+  sent_at: string;
+  read_at: string | null;
+  completed_at: string | null;
+  failed_at: string | null;
+  failure_reason: string | null;
+  unread_comment_count: number;
+  version: number;
+  updated_at: string;
+}
+
+export interface TeamInboxListResponse {
+  inbox_items: TeamInboxItemView[];
+  next_page_token: string | null;
+  summary: {
+    total_returned: number;
+    unread_count_estimate: number;
+  };
+}
+
 // ---- 入参类型 ----
 
 export interface ListTeamsParams {
@@ -142,6 +182,8 @@ export interface CreateTeamInput {
   name: string;
   description: string;
   purpose?: string;
+  icon?: string;
+  avatar_url?: string;
   visibility: string;
   initial_members?: Array<{ agent_id: string; role: string }>;
 }
@@ -151,6 +193,8 @@ export interface UpdateTeamInput {
   name?: string;
   description?: string;
   purpose?: string;
+  icon?: string;
+  avatar_url?: string;
   visibility?: string;
 }
 
@@ -284,6 +328,53 @@ export function createTeamApi(http: HttpClient) {
     /** 删除单条团队消息 */
     deleteMessage: (messageId: string, actorAgentId: string): Promise<void> =>
       unwrap(http.raw(`/api/team-messages/${messageId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor_agent_id: actorAgentId }),
+      })),
+
+    // ---- inbox 投递 ----
+
+    /** 查询 inbox 投递列表（默认查 actor 自己；传 recipient_agent_id 可查指定成员，需 actor 是该 team 成员） */
+    listInbox: (params: {
+      actor_agent_id: string;
+      team_id?: string;
+      recipient_agent_id?: string;
+      unread_only?: boolean;
+      sender_agent_id?: string;
+      inbox_status?: TeamInboxStatus;
+      page_size?: number;
+      page_token?: string;
+    }): Promise<TeamInboxListResponse> => {
+      const query = new URLSearchParams();
+      query.set('actor_agent_id', params.actor_agent_id);
+      if (params.team_id) query.set('team_id', params.team_id);
+      if (params.recipient_agent_id) query.set('recipient_agent_id', params.recipient_agent_id);
+      if (params.unread_only) query.set('unread_only', 'true');
+      if (params.sender_agent_id) query.set('sender_agent_id', params.sender_agent_id);
+      if (params.inbox_status) query.set('inbox_status', params.inbox_status);
+      if (params.page_size !== undefined) query.set('page_size', String(params.page_size));
+      if (params.page_token) query.set('page_token', params.page_token);
+      return unwrap(http.raw(`/api/team-inbox?${query.toString()}`));
+    },
+
+    /** 更新 inbox 投递状态（标记已读/未读） */
+    updateInboxStatus: (
+      deliveryId: string,
+      input: { actor_agent_id: string; inbox_status: TeamInboxStatus; expected_version?: number },
+    ): Promise<{ inbox_item: TeamInboxItemView }> =>
+      unwrap(http.raw(`/api/team-inbox/${deliveryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_status',
+          ...input,
+        }),
+      })),
+
+    /** 删除单条 inbox 投递（仅移除该收件人的一条 delivery，不影响 message 本体） */
+    deleteInboxItem: (deliveryId: string, actorAgentId: string): Promise<{ delivery_id: string; team_id: string }> =>
+      unwrap(http.raw(`/api/team-inbox/${deliveryId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ actor_agent_id: actorAgentId }),

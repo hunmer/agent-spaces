@@ -9,6 +9,9 @@
   "selectAll": "全选",
   "deselectAll": "取消全选",
   "filterByAgent": "按智能体筛选",
+  "selected": "已选择",
+  "available": "未选择",
+  "clear": "清空",
   "boundTo": "已绑定",
   "categories": {
     "channel": "频道管理",

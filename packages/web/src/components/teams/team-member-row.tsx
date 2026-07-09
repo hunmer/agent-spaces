@@ -36,6 +36,7 @@ export interface TeamMemberRowProps {
   onToggle?: () => void;
   onConfigure?: () => void;
   onRemove?: () => void;
+  onInboxOpen?: () => void;
   busy?: boolean;
   variant?: "select" | "display";
   unreadCount?: number;
@@ -65,6 +66,7 @@ export function TeamMemberRow({
   onToggle,
   onConfigure,
   onRemove,
+  onInboxOpen,
   busy = false,
   variant = "display",
   unreadCount = 0,
@@ -105,10 +107,28 @@ export function TeamMemberRow({
         </Badge>
       ) : null}
       {unreadCount > 0 ? (
-        <Badge variant="outline" className="gap-1 border-orange-500/40 bg-orange-500/10 px-1.5 py-0 text-xs text-orange-600">
-          <Mail className="size-3" />
-          {unreadCount}
-        </Badge>
+        onInboxOpen ? (
+          <button
+            type="button"
+            tabIndex={-1}
+            title="查看消息"
+            onClick={(e) => {
+              e.stopPropagation();
+              onInboxOpen();
+            }}
+            className="shrink-0 cursor-pointer rounded-full transition-transform hover:scale-110"
+          >
+            <Badge variant="outline" className="gap-1 border-orange-500/40 bg-orange-500/10 px-1.5 py-0 text-xs text-orange-600">
+              <Mail className="size-3" />
+              {unreadCount}
+            </Badge>
+          </button>
+        ) : (
+          <Badge variant="outline" className="gap-1 border-orange-500/40 bg-orange-500/10 px-1.5 py-0 text-xs text-orange-600">
+            <Mail className="size-3" />
+            {unreadCount}
+          </Badge>
+        )
       ) : null}
       {role ? (
         <Badge variant="outline" className={`gap-1 px-1.5 py-0 text-xs ${roleBadgeClass(role)}`}>

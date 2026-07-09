@@ -26,6 +26,8 @@ interface Team {
   name: string;
   description: string;
   purpose?: string;
+  icon?: string;
+  avatarUrl?: string;
   status: TeamStatus;
   visibility: TeamVisibility;
   createdBy: string;
@@ -434,6 +436,7 @@ function teamView(team: Team, actorAgentId?: string) {
     created_by: team.createdBy,
     created_at: team.createdAt,
     member_count: team.memberCount,
+    avatar_url: team.avatarUrl,
     my_role: membership?.role ?? null,
   };
 }
@@ -651,6 +654,8 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
       name,
       description: asString(input.description) ?? '',
       purpose: asString(input.purpose),
+      icon: asString(input.icon) || undefined,
+      avatarUrl: asString(input.avatar_url ?? input.avatarUrl) || undefined,
       status: 'active',
       visibility: parseVisibility(input.visibility),
       createdBy: actorAgentId,
@@ -779,9 +784,11 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     const hasPurpose = Object.prototype.hasOwnProperty.call(input, 'purpose');
     const hasVisibility = Object.prototype.hasOwnProperty.call(input, 'visibility');
     const hasMetadata = Object.prototype.hasOwnProperty.call(input, 'metadata');
+    const hasIcon = Object.prototype.hasOwnProperty.call(input, 'icon');
+    const hasAvatarUrl = Object.prototype.hasOwnProperty.call(input, 'avatar_url') || Object.prototype.hasOwnProperty.call(input, 'avatarUrl');
     const nextName = asString(input.name);
     if (hasName && !nextName) return fail('name cannot be empty', 'INVALID_ARGUMENT');
-    if (!hasName && !hasDescription && !hasPurpose && !hasVisibility && !hasMetadata) {
+    if (!hasName && !hasDescription && !hasPurpose && !hasVisibility && !hasMetadata && !hasIcon && !hasAvatarUrl) {
       return fail('at least one update field is required', 'INVALID_ARGUMENT');
     }
     if (asBoolean(input.dry_run)) return ok('team update validation passed', { team_id: teamId });
@@ -792,6 +799,8 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
       name: hasName ? nextName! : team.name,
       description: hasDescription ? asString(input.description) ?? '' : team.description,
       purpose: hasPurpose ? (asString(input.purpose) || undefined) : team.purpose,
+      icon: hasIcon ? (asString(input.icon) || undefined) : team.icon,
+      avatarUrl: hasAvatarUrl ? (asString(input.avatar_url ?? input.avatarUrl) || undefined) : team.avatarUrl,
       visibility: hasVisibility ? parseVisibility(input.visibility) : team.visibility,
       metadata: hasMetadata ? (isObject(input.metadata) ? input.metadata : undefined) : team.metadata,
       updatedAt: now,
@@ -1259,12 +1268,18 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
   if (!action || !actorAgentId) return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
 
   if (action === 'list') {
+    const recipientAgentId = asString(input.recipient_agent_id ?? input.recipientAgentId) ?? actorAgentId;
+    const teamFilter = asString(input.team_id ?? input.teamId);
+    // 跨成员查询收件箱：当 recipientAgentId 与 actor 不同时，要求 actor 是该 team 的 active 成员
+    if (recipientAgentId !== actorAgentId && teamFilter) {
+      const actorMembership = getActiveMembership(teamFilter, actorAgentId);
+      if (!actorMembership) return fail('permission denied', 'PERMISSION_DENIED');
+    }
     const items = listTeamsRaw()
       .flatMap((team) => listDeliveries(team.id))
-      .filter((item) => item.recipientAgentId === actorAgentId)
+      .filter((item) => item.recipientAgentId === recipientAgentId)
       .filter((item) => {
-        const teamId = asString(input.team_id ?? input.teamId);
-        return !teamId || item.teamId === teamId;
+        return !teamFilter || item.teamId === teamFilter;
       })
       .filter((item) => {
         const senderAgentId = asString(input.sender_agent_id ?? input.senderAgentId);
@@ -1300,8 +1315,27 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
       })
       .sort((a, b) => (b.sentAt || '').localeCompare(a.sentAt || ''));
     const { size, offset } = parsePage(input);
+    // 按 teamId 预加载 messages，给每条投递附带正文（供前端 markdown 渲染）
+    const messagesByTeam = new Map<string, Map<string, TeamMessage>>();
+    const ensureTeamMessages = (teamId: string) => {
+      let map = messagesByTeam.get(teamId);
+      if (!map) {
+        map = new Map(listMessages(teamId).map((item) => [item.id, item]));
+        messagesByTeam.set(teamId, map);
+      }
+      return map;
+    };
     return ok('inbox listed', {
-      inbox_items: items.slice(offset, offset + size).map(inboxView),
+      inbox_items: items.slice(offset, offset + size).map((item) => {
+        const view = inboxView(item);
+        const msg = ensureTeamMessages(item.teamId).get(item.messageId);
+        return {
+          ...view,
+          subject: msg?.subject ?? '',
+          body: msg?.body ?? item.preview ?? '',
+          body_format: msg?.bodyFormat ?? 'plain_text',
+        };
+      }),
       next_page_token: nextPageToken(items.length, offset, size),
       summary: {
         total_returned: Math.min(size, Math.max(0, items.length - offset)),
@@ -1392,6 +1426,35 @@ export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
       version: updated.version,
       updated_at: now,
     },
+  });
+}
+
+/**
+ * 删除单条 inbox 投递（仅移除该收件人的一条 delivery，不影响 message 本体和其他收件人）。
+ * 权限：收件人本人，或该 team 的 owner/admin。
+ */
+export function handleTeamInboxDelete(input: unknown): TeamServiceResult {
+  if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
+  const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
+  const deliveryId = asString(input.delivery_id ?? input.deliveryId);
+  if (!actorAgentId || !deliveryId) {
+    return fail('actor_agent_id and delivery_id are required', 'INVALID_ARGUMENT');
+  }
+  const ctx = findDeliveryContext(deliveryId);
+  if (!ctx) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
+
+  const actorMembership = getActiveMembership(ctx.team.id, actorAgentId);
+  const canDelete = ctx.delivery.recipientAgentId === actorAgentId
+    || actorMembership?.role === 'owner'
+    || actorMembership?.role === 'admin';
+  if (!canDelete) return fail('permission denied', 'PERMISSION_DENIED');
+
+  const nextDeliveries = ctx.deliveries.filter((item) => item.id !== deliveryId);
+  saveDeliveries(ctx.team.id, nextDeliveries);
+
+  return ok('delivery deleted', {
+    delivery_id: deliveryId,
+    team_id: ctx.team.id,
   });
 }
 
