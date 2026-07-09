@@ -1,11 +1,10 @@
 "use client";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import type { Team, TeamInboxItem, TeamMembership, TeamMessage } from "@agent-spaces/shared";
+import type { Team, TeamMembership } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2, MessagesSquare, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { sdk } from "@/lib/sdk";
@@ -13,6 +12,7 @@ import { useAgentStore } from "@/stores/agent";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
+import { TeamChatPanel } from "@/components/teams/team-chat-panel";
 
 type TeamView = Team & {
   team_id: string;
@@ -28,42 +28,6 @@ type TeamMembershipView = TeamMembership & {
   agent_id: string;
   joined_at: string;
   updated_at: string;
-};
-
-type TeamMessageView = TeamMessage & {
-  message_id: string;
-  team_id: string;
-  sender_agent_id: string;
-  message_type: string;
-  body_format: string;
-  requires_ack: boolean;
-  requires_action: boolean;
-  due_at: string | null;
-  thread_id: string | null;
-  reply_to_message_id: string | null;
-  created_at: string;
-  sent_at: string;
-  recipient_count: number;
-};
-
-type TeamInboxItemView = TeamInboxItem & {
-  delivery_id: string;
-  message_id: string;
-  team_id: string;
-  recipient_agent_id: string;
-  sender_agent_id: string;
-  message_type: string;
-  inbox_status: string;
-  execution_status: string;
-  requires_ack: boolean;
-  requires_action: boolean;
-  due_at: string | null;
-  sent_at: string;
-  read_at: string | null;
-  completed_at: string | null;
-  failed_at: string | null;
-  failure_reason: string | null;
-  unread_comment_count: number;
 };
 
 type TeamDetail = {
@@ -101,7 +65,7 @@ function formatTime(value?: string | null) {
 
 function badgeTone(value: string): "default" | "secondary" | "destructive" | "outline" {
   if (value === "active" || value === "done" || value === "read") return "default";
-  if (value === "open" || value === "in_progress") return "secondary";
+  if (value === "open" || value === "in_progress" || value === "running") return "secondary";
   if (value === "urgent" || value === "failed" || value === "dissolved") return "destructive";
   return "outline";
 }
@@ -126,14 +90,9 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [teams, setTeams] = useState<TeamView[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [teamDetail, setTeamDetail] = useState<TeamDetail | null>(null);
-  const [teamMessages, setTeamMessages] = useState<TeamInboxItemView[]>([]);
-  const [selectedDeliveryId, setSelectedDeliveryId] = useState("");
-  const [selectedMessage, setSelectedMessage] = useState<TeamMessageView | null>(null);
-  const [messageDetailOpen, setMessageDetailOpen] = useState(false);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [editingAgentId, setEditingAgentId] = useState<string>("");
   const [loadingTeams, setLoadingTeams] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
   const [error, setError] = useState("");
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -181,9 +140,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       setSelectedTeamId(nextId);
       if (!nextId) {
         setTeamDetail(null);
-        setTeamMessages([]);
-        setSelectedDeliveryId("");
-        setSelectedMessage(null);
       }
     } catch (err) {
       setTeams([]);
@@ -206,35 +162,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     }
   }, [selectedActorId]);
 
-  const loadTeamMessages = useCallback(async (teamId: string) => {
-    try {
-      const data = await requestTeamApi<{ inbox_items: TeamInboxItemView[] }>(
-        `/api/team-inbox?actor_agent_id=${encodeURIComponent(selectedActorId)}&team_id=${encodeURIComponent(teamId)}&page_size=100`,
-      );
-      setTeamMessages(data.inbox_items);
-      setSelectedDeliveryId((current) => data.inbox_items.find((item) => item.delivery_id === current)?.delivery_id ?? data.inbox_items[0]?.delivery_id ?? "");
-    } catch (err) {
-      setTeamMessages([]);
-      setSelectedDeliveryId("");
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, [selectedActorId]);
-
-  const loadMessage = useCallback(async (deliveryId: string) => {
-    setLoadingMessage(true);
-    try {
-      const data = await requestTeamApi<{ message: TeamMessageView }>(
-        `/api/team-inbox/${deliveryId}?actor_agent_id=${encodeURIComponent(selectedActorId)}`,
-      );
-      setSelectedMessage(data.message);
-    } catch (err) {
-      setSelectedMessage(null);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoadingMessage(false);
-    }
-  }, [selectedActorId]);
-
   useEffect(() => {
     if (!selectedActorId) return;
     void loadTeams();
@@ -243,21 +170,10 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   useEffect(() => {
     if (!selectedActorId || !selectedTeamId) {
       setTeamDetail(null);
-      setTeamMessages([]);
-      setSelectedDeliveryId("");
-      setSelectedMessage(null);
       return;
     }
-    void Promise.all([loadTeamDetail(selectedTeamId), loadTeamMessages(selectedTeamId)]);
-  }, [loadTeamDetail, loadTeamMessages, selectedActorId, selectedTeamId]);
-
-  useEffect(() => {
-    if (!selectedActorId || !selectedDeliveryId) {
-      setSelectedMessage(null);
-      return;
-    }
-    void loadMessage(selectedDeliveryId);
-  }, [loadMessage, selectedActorId, selectedDeliveryId]);
+    void loadTeamDetail(selectedTeamId);
+  }, [loadTeamDetail, selectedActorId, selectedTeamId]);
 
   function openCreateDialog() {
     setDialogMode("create");
@@ -519,105 +435,10 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               )}
             </section>
 
-            <section className="flex flex-col rounded-2xl border border-border bg-card p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <MessagesSquare className="size-4 text-muted-foreground" />
-                <h2 className="font-medium">{t("messages.title")}</h2>
-              </div>
-              {!selectedTeamId ? (
-                <div className="text-sm text-muted-foreground">{t("messages.pickMessage")}</div>
-              ) : loadingMessage && selectedDeliveryId ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  {t("messages.loading")}
-                </div>
-              ) : teamMessages.length === 0 ? (
-                <div className="text-sm text-muted-foreground">{t("messages.empty")}</div>
-              ) : (
-                <div className="min-h-0 flex-1 overflow-auto">
-                  <div className="flex flex-col gap-2">
-                    {teamMessages.map((item) => (
-                      <button
-                        key={item.delivery_id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDeliveryId(item.delivery_id);
-                          setMessageDetailOpen(true);
-                        }}
-                        className="rounded-xl border px-3 py-3 text-left transition-colors border-border hover:bg-muted/50"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium">{item.subject}</div>
-                            <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.preview}</div>
-                          </div>
-                          <Badge variant={badgeTone(item.inbox_status)}>{t(`inboxStatus.${item.inbox_status}`)}</Badge>
-                        </div>
-                        <div className="mt-2 text-xs text-muted-foreground">{formatTime(item.sent_at)}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
+            <TeamChatPanel teamId={selectedTeamId} actorAgentId={selectedActorId} />
           </div>
         )}
       </main>
-
-      <Dialog
-        open={messageDetailOpen}
-        onOpenChange={(next) => {
-          setMessageDetailOpen(next);
-          if (!next) {
-            setSelectedDeliveryId("");
-            setSelectedMessage(null);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("messages.detailTitle")}</DialogTitle>
-          </DialogHeader>
-          {loadingMessage ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              {t("messages.loading")}
-            </div>
-          ) : selectedMessage ? (
-            <div className="flex flex-col gap-3">
-              <div className="rounded-xl border border-border p-3">
-                <div className="text-lg font-semibold">{selectedMessage.subject}</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant={badgeTone(selectedMessage.priority)}>{t(`priority.${selectedMessage.priority}`)}</Badge>
-                  <Badge variant="outline">{t(`messageType.${selectedMessage.message_type}`)}</Badge>
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">{t("messages.sentAt", { value: formatTime(selectedMessage.sent_at) })}</div>
-                <div className="mt-3 whitespace-pre-wrap text-sm leading-6">{selectedMessage.body}</div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border p-3 text-sm">
-                  <div className="text-xs text-muted-foreground">{t("messages.sender")}</div>
-                  <div className="mt-1">{availableAgents.find((agent) => agent.id === selectedMessage.sender_agent_id)?.name || selectedMessage.sender_agent_id}</div>
-                </div>
-                <div className="rounded-xl border border-border p-3 text-sm">
-                  <div className="text-xs text-muted-foreground">{t("messages.recipientCount")}</div>
-                  <div className="mt-1">{selectedMessage.recipient_count}</div>
-                </div>
-                <div className="rounded-xl border border-border p-3 text-sm">
-                  <div className="text-xs text-muted-foreground">{t("messages.requiresAction")}</div>
-                  <div className="mt-1">{selectedMessage.requires_action ? t("messages.yes") : t("messages.no")}</div>
-                </div>
-                <div className="rounded-xl border border-border p-3 text-sm">
-                  <div className="text-xs text-muted-foreground">{t("messages.dueAt")}</div>
-                  <div className="mt-1">{formatTime(selectedMessage.due_at)}</div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">{t("messages.empty")}</div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <CreateTeamDialog
         open={dialogOpen}

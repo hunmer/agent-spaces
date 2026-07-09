@@ -15,7 +15,7 @@ type TeamMessageType = 'direct' | 'broadcast';
 type TeamBodyFormat = 'plain_text' | 'markdown' | 'structured_text';
 type TeamPriority = 'low' | 'normal' | 'high' | 'urgent';
 type TeamInboxStatus = 'unread' | 'read' | 'archived';
-type TeamExecutionStatus = 'pending' | 'in_progress' | 'done' | 'failed' | 'ignored';
+type TeamExecutionStatus = 'pending' | 'running' | 'in_progress' | 'done' | 'failed' | 'ignored';
 type TeamCommentVisibility = 'team' | 'participants' | 'private';
 type TeamCommentContentFormat = 'plain_text' | 'markdown';
 
@@ -347,7 +347,7 @@ function parseInboxStatus(input: unknown): TeamInboxStatus | undefined {
 }
 
 function parseExecutionStatus(input: unknown): TeamExecutionStatus | undefined {
-  return input === 'pending' || input === 'in_progress' || input === 'done' || input === 'failed' || input === 'ignored'
+  return input === 'pending' || input === 'running' || input === 'in_progress' || input === 'done' || input === 'failed' || input === 'ignored'
     ? input
     : undefined;
 }
@@ -538,11 +538,12 @@ function applyDeliveryStatusRules(current: TeamInboxItem, nextInboxStatus?: Team
     ['archived', ['read']],
   ]);
   const allowedExecution = new Map<TeamExecutionStatus, TeamExecutionStatus[]>([
-    ['pending', ['in_progress', 'done', 'failed', 'ignored']],
-    ['in_progress', ['done', 'failed', 'ignored']],
-    ['done', ['in_progress']],
-    ['failed', ['in_progress']],
-    ['ignored', ['in_progress']],
+    ['pending', ['running', 'in_progress', 'done', 'failed', 'ignored']],
+    ['running', ['in_progress', 'done', 'failed', 'ignored']],
+    ['in_progress', ['running', 'done', 'failed', 'ignored']],
+    ['done', ['running', 'in_progress']],
+    ['failed', ['running', 'in_progress']],
+    ['ignored', ['running', 'in_progress']],
   ]);
   if (nextInboxStatus && nextInboxStatus !== current.inboxStatus && !allowedInbox.get(current.inboxStatus)?.includes(nextInboxStatus)) {
     return fail('invalid inbox status transition', 'INVALID_STATUS_TRANSITION');
@@ -899,6 +900,7 @@ export function handleTeamMessageSend(input: unknown): TeamServiceResult {
   if (asBoolean(input.dry_run)) return ok('message send validation passed', recipientsResult.data);
 
   const now = new Date().toISOString();
+  const initialExecutionStatus = parseExecutionStatus(input.initial_execution_status ?? input.initialExecutionStatus) ?? 'pending';
   const message: TeamMessage = {
     id: uuid(),
     teamId,
@@ -931,7 +933,7 @@ export function handleTeamMessageSend(input: unknown): TeamServiceResult {
       preview: previewText(body),
       messageType: mode,
       inboxStatus: 'unread' as TeamInboxStatus,
-      executionStatus: 'pending' as TeamExecutionStatus,
+      executionStatus: initialExecutionStatus,
       priority: message.priority,
       requiresAck: message.requiresAck,
       requiresAction: message.requiresAction,
@@ -1083,8 +1085,8 @@ export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
         ? null
         : ctx.delivery.failureReason,
     readAt: nextInboxStatus === 'read' ? now : nextInboxStatus === 'unread' ? null : ctx.delivery.readAt,
-    completedAt: nextExecutionStatus === 'done' ? now : nextExecutionStatus === 'in_progress' ? null : ctx.delivery.completedAt,
-    failedAt: nextExecutionStatus === 'failed' ? now : nextExecutionStatus === 'in_progress' ? null : ctx.delivery.failedAt,
+    completedAt: nextExecutionStatus === 'done' ? now : nextExecutionStatus === 'in_progress' || nextExecutionStatus === 'running' ? null : ctx.delivery.completedAt,
+    failedAt: nextExecutionStatus === 'failed' ? now : nextExecutionStatus === 'in_progress' || nextExecutionStatus === 'running' ? null : ctx.delivery.failedAt,
     version: ctx.delivery.version + 1,
     updatedAt: now,
   };

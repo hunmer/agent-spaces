@@ -78,6 +78,15 @@
     "yes": "Yes",
     "no": "No"
   },
+  "chat": {
+    "title": "Team Chat",
+    "subtitle": "Messages are sent to leader {leader}",
+    "leaderFallback": "Leader",
+    "loadingLeader": "Loading leader...",
+    "pickTeam": "Pick a team first.",
+    "loading": "Loading chat...",
+    "empty": "No chat messages yet."
+  },
   "empty": {
     "setup": "Select a workspace and an agent first.",
     "teams": "No teams yet.",

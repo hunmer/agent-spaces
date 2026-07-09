@@ -9,7 +9,8 @@ export type TeamMessageType = 'direct' | 'broadcast';
 export type TeamBodyFormat = 'plain_text' | 'markdown' | 'structured_text';
 export type TeamPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type TeamInboxStatus = 'unread' | 'read' | 'archived';
-export type TeamExecutionStatus = 'pending' | 'in_progress' | 'done' | 'failed' | 'ignored';
+export type TeamExecutionStatus = 'pending' | 'running' | 'in_progress' | 'done' | 'failed' | 'ignored';
+export type TeamRuntimeStatus = 'idle' | 'running' | 'completed' | 'error';
 export type TeamCommentVisibility = 'team' | 'participants' | 'private';
 export type TeamCommentContentFormat = 'plain_text' | 'markdown';
 export type TeamMembershipAgent = Partial<AgentConfig> & Record<string, unknown> & {
@@ -102,4 +103,26 @@ export interface TeamMessageComment {
   deletedAt: string | null;
   deletedBy?: string;
   deleteReason?: string;
+}
+
+export interface TeamRuntime {
+  id: string;
+  teamId: string;
+  actorAgentId: string;
+  leaderAgentId: string;
+  status: TeamRuntimeStatus;
+  updatedAt: string;
+}
+
+export interface TeamRuntimeMessage {
+  id: string;
+  runtimeId: string;
+  teamId: string;
+  messageId: string;
+  deliveryId?: string;
+  senderAgentId: string;
+  recipientAgentId: string;
+  content: string;
+  createdAt: string;
+  status: Extract<TeamRuntimeStatus, 'running' | 'completed' | 'error'>;
 }

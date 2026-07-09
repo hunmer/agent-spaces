@@ -7,6 +7,7 @@ import {
   handleTeamMessageSend,
   handleTeamMessageUpdate,
 } from '../services/team.js';
+import { getTeamRuntime, postTeamRuntimeMessage } from '../services/team-runtime.js';
 
 const router = Router({ mergeParams: true });
 
@@ -74,6 +75,20 @@ router.post('/:teamId/dissolve', (req: Request<{ teamId: string }>, res: Respons
 
 router.post('/:teamId/messages', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, handleTeamMessageSend({ ...req.body, action: 'send', team_id: req.params.teamId }));
+});
+
+router.get('/:teamId/runtime', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, getTeamRuntime({
+    team_id: req.params.teamId,
+    actor_agent_id: req.query.actor_agent_id,
+  }));
+});
+
+router.post('/:teamId/runtime/messages', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, postTeamRuntimeMessage({
+    ...req.body,
+    team_id: req.params.teamId,
+  }));
 });
 
 export const teamInboxRouter = Router({ mergeParams: true });

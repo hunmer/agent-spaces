@@ -39,6 +39,8 @@ interface ChatInputProps {
   replyTo?: { id: string; label: string } | null;
   onCancelReply?: () => void;
   onAgentActivated?: (agent: MentionedAgent) => void;
+  showAgentBar?: boolean;
+  showAddMember?: boolean;
 }
 
 export interface ChatInputHandle {
@@ -59,7 +61,7 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
 const DEFAULT_CONTEXT_LENGTH = 20;
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated },
+  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated, showAgentBar = true, showAddMember = true },
   ref,
 ) {
   const t = useTranslations("chat");
@@ -143,14 +145,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       </div>
       {!collapsed && (
         <div className="border-t px-4 py-2">
-          {!replyTo && (
+          {!replyTo && showAgentBar && (
             <ChatInputAgentBar
               agents={sortedAgents}
               activeAgent={activeAgent}
               lastActiveAgentId={lastActiveAgentId}
               onActivateAgent={activateAgent}
               onAgentActivated={onAgentActivated}
-              onOpenAddMember={() => setAddMemberOpen(true)}
+              onOpenAddMember={() => {
+                if (showAddMember) setAddMemberOpen(true);
+              }}
             />
           )}
 
@@ -191,22 +195,24 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </div>
       )}
 
-      <AddMemberDialog
-        open={addMemberOpen}
-        onOpenChange={setAddMemberOpen}
-        candidates={allAgents.filter((agent) => agent.enabled !== false).map((agent) => ({
-          id: agent.id,
-          label: getAgentDisplayName(agent),
-          description: agent.role,
-        }))}
-        defaultSelected={channel.members}
-        onAdd={(newMembers) => {
-          const enabled = allAgents.filter((agent) => agent.enabled !== false);
-          updateChannel(workspaceId, channelId, {
-            members: normalizeChannelMembersToAgentIds(enabled, newMembers),
-          });
-        }}
-      />
+      {showAddMember ? (
+        <AddMemberDialog
+          open={addMemberOpen}
+          onOpenChange={setAddMemberOpen}
+          candidates={allAgents.filter((agent) => agent.enabled !== false).map((agent) => ({
+            id: agent.id,
+            label: getAgentDisplayName(agent),
+            description: agent.role,
+          }))}
+          defaultSelected={channel.members}
+          onAdd={(newMembers) => {
+            const enabled = allAgents.filter((agent) => agent.enabled !== false);
+            updateChannel(workspaceId, channelId, {
+              members: normalizeChannelMembersToAgentIds(enabled, newMembers),
+            });
+          }}
+        />
+      ) : null}
     </>
   );
 });
