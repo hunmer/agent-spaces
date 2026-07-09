@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import type { Team, TeamMembership, TeamMessage } from '@agent-spaces/shared';
+import type { Team, TeamMembership, TeamMessage, Workspace, BuiltInAgentToolName } from '@agent-spaces/shared';
 import { join } from 'node:path';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime, AgentRuntimeKind, AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
@@ -13,6 +13,13 @@ import { findAgent as findChatAgent } from './chat.js';
 import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import { prependPersistentAgentContext } from './persistent-agent-context.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import {
+  createCommandFunctionTools,
+  createDatabaseFunctionTools,
+  createTeamFunctionTools,
+  createWorkflowExecutionFunctionTools,
+  createWorkspaceFileFunctionTools,
+} from './builtin-tools/index.js';
 
 const TEAM_RUNTIME_WORKSPACE_ID = '__team__';
 let runtimeFactory: (config?: AgentRuntimeConfig) => AgentRuntime = createAgentRuntime;
@@ -314,6 +321,41 @@ function formatAgentReply(result: { success: boolean; summary: string; output: s
     || '已处理';
 }
 
+function buildAdHocWorkspace(workingDir: string): Workspace {
+  const now = new Date().toISOString();
+  return {
+    id: `team-runtime:${workingDir}`,
+    name: 'Team Runtime Workspace',
+    boundDirs: [workingDir],
+    agentspaceDir: workingDir,
+    createdAt: now,
+    updatedAt: now,
+    activeChannels: [],
+    activeIssues: [],
+  };
+}
+
+function resolveTeamRuntimeTools(
+  tools: unknown,
+  workingDir: string,
+): { tools?: string[]; functionTools?: ReturnType<typeof createTeamFunctionTools> } {
+  const allowedTools = asStringArray(tools);
+  const allowedToolNames = allowedTools as BuiltInAgentToolName[] | undefined;
+  const workspace = buildAdHocWorkspace(workingDir);
+  const functionTools = [
+    ...createTeamFunctionTools('', allowedToolNames),
+    ...createCommandFunctionTools('', allowedToolNames),
+    ...createDatabaseFunctionTools('', allowedToolNames),
+    ...createWorkspaceFileFunctionTools('', allowedToolNames, () => workspace),
+    ...createWorkflowExecutionFunctionTools('', allowedToolNames),
+  ];
+  const toolNames = functionTools.map((tool) => tool.name);
+  return {
+    tools: toolNames.length ? toolNames : undefined,
+    functionTools: functionTools.length ? functionTools : undefined,
+  };
+}
+
 async function executePresetTeamReply(
   targetAgentId: string,
   content: string,
@@ -337,6 +379,7 @@ async function executePresetTeamReply(
   onRuntime?.(runtime);
   const workingDir = agentService.resolveWorkingDir('', preset);
   const userPrompt = buildTeamAgentPrompt(content, history);
+  const runtimeTools = resolveTeamRuntimeTools(preset.tools, workingDir);
   try {
     const result = await runtime.execute(
       prependPersistentAgentContext(userPrompt, {
@@ -348,6 +391,8 @@ async function executePresetTeamReply(
       workingDir,
       {
         maxTurns: 20,
+        tools: runtimeTools.tools,
+        functionTools: runtimeTools.functionTools,
         userPrompt,
         mcpServers: agentService.getMcpServers(preset.mcps),
         skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir('', preset), preset.skills),
@@ -393,8 +438,11 @@ async function executeChatTeamReply(
   onRuntime?.(runtime);
   const userPrompt = buildTeamAgentPrompt(content, history);
   const workingDir = chatService.getAgentWorkingDir(targetAgentId) || process.cwd();
+  const runtimeTools = resolveTeamRuntimeTools(agent.tools, workingDir);
   const result = await runtime.execute(userPrompt, workingDir, {
     maxTurns: 20,
+    tools: runtimeTools.tools,
+    functionTools: runtimeTools.functionTools,
     userPrompt,
     mcpServers: agentService.getMcpServers(agent.mcps as Parameters<typeof agentService.getMcpServers>[0]),
     skills: Array.isArray(agent.skills) ? agent.skills.filter((item): item is string => typeof item === 'string') : [],
@@ -426,6 +474,7 @@ async function executeCustomTeamReply(
   const userPrompt = buildTeamAgentPrompt(content, history);
   const runtimeKind = asString(agent.runtimeKind);
   const skills = Array.isArray(agent.skills) ? agent.skills.filter((item): item is string => typeof item === 'string') : [];
+  const runtimeTools = resolveTeamRuntimeTools(agent.tools, workingDir);
   const result = await runtime.execute(
     prependPersistentAgentContext(userPrompt, {
       workspaceId: '',
@@ -436,6 +485,8 @@ async function executeCustomTeamReply(
     workingDir,
     {
       maxTurns: 20,
+      tools: runtimeTools.tools,
+      functionTools: runtimeTools.functionTools,
       userPrompt,
       mcpServers: agentService.getMcpServers((agent.mcps && typeof agent.mcps === 'object' && !Array.isArray(agent.mcps))
         ? agent.mcps as Parameters<typeof agentService.getMcpServers>[0]

@@ -295,6 +295,7 @@
     "copy": "Copy",
     "edit": "Edit",
     "fullscreen": "Fullscreen",
+    "stop": "Stop",
     "delete": "Delete",
     "configureAgent": "Configure Agent",
     "repliesCount": "{count, plural, one {# reply} other {# replies}}"

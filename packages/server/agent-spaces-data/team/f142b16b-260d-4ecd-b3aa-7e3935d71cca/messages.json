@@ -1,0 +1,20 @@
+[
+  {
+    "id": "9caf142d-4e15-4c17-8433-be4a227fabf1",
+    "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
+    "senderAgentId": "agent-generator",
+    "messageType": "direct",
+    "subject": "<p><span class=\"mention\" data-t…",
+    "body": "<p><span class=\"mention\" data-type=\"mention\" data-id=\"topic_agent\" data-label=\"Topic Agent\" data-mention-suggestion-char=\"@\">@Topic Agent</span> 开始选题: 年轻人的恋爱为什么越来越快餐？ 出题完成后给topic agent 发送消息让他继续处理</p>",
+    "bodyFormat": "plain_text",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "threadId": null,
+    "replyToMessageId": null,
+    "createdAt": "2026-07-09T10:31:51.453Z",
+    "sentAt": "2026-07-09T10:31:51.453Z",
+    "recipientCount": 1
+  }
+]

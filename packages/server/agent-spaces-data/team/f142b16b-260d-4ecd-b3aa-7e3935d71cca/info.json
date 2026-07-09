@@ -1,0 +1,11 @@
+{
+  "id": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
+  "name": "公众号编写",
+  "description": "选题agent->编辑agent->审批agent",
+  "status": "active",
+  "visibility": "private",
+  "createdBy": "agent-generator",
+  "createdAt": "2026-07-09T10:29:25.403Z",
+  "updatedAt": "2026-07-09T10:29:25.403Z",
+  "memberCount": 4
+}

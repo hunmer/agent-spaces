@@ -369,7 +369,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
             ) : null}
             {!messagesLoading && msgs.map((msg) => (
               <div key={msg.id} id={`msg-${msg.id}`}>
-                <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} onReply={handleReplyMessage} />
+                <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} onReply={handleReplyMessage} onStop={handleStop} />
               </div>
             ))}
             <div ref={bottomRef} />

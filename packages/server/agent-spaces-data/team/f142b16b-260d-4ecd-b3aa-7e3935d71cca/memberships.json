@@ -1,17 +1,17 @@
 [
   {
-    "id": "704ec0e1-c7fc-4bb8-a993-884d20393bff",
-    "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
+    "id": "68209142-5433-4c64-b935-78f8556c59f6",
+    "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
     "agentId": "agent-generator",
     "agentStore": "agent",
     "role": "owner",
     "status": "active",
-    "joinedAt": "2026-07-09T06:06:59.052Z",
-    "updatedAt": "2026-07-09T10:19:42.482Z"
+    "joinedAt": "2026-07-09T10:29:25.403Z",
+    "updatedAt": "2026-07-09T10:29:25.403Z"
   },
   {
-    "id": "0b8ab227-4256-4cd6-8560-24f6ce082290",
-    "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
+    "id": "3f16a350-022e-49b8-b6a9-cd56afad3d67",
+    "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
     "agentId": "topic_agent",
     "agentStore": "custom",
     "agent": {
@@ -38,25 +38,20 @@
       ],
       "systemPrompt": "你是公众号选题策划 Agent。任务：接收上游传入的 topic、style、targetAudience，输出一份结构化的选题报告，并调用 AddCurrentChannelComment 给当前 issue 写评论，向编辑 Agent 同步进展。不要创建新的 issue。\n要求：\n1. 基于 topic 生成 3 个差异化的切入角度（例如：技能重塑、行业洗牌、心理建设、政策与机遇等），并给出每个角度的吸引力打分（1-10）。\n2. 选择其中得分最高的 1 个角度，撰写完整大纲：包含 5-7 个一级章节，每个章节用一句话概括要点。\n3. 收集 5 条可引用的事实/数据/案例线索（标注来源类型，例如行业报告/新闻/人物访谈）。\n4. 将最终选题报告调用 AddCurrentChannelComment 写入当前 issue 评论，明确告知大纲与事实线索已就绪，请基于此撰写全文。\n输出格式（Markdown）：\n# 选题报告\n## 切入选角\n- 角度A: 描述 (打分)\n- 角度B: 描述 (打分)\n- 角度C: 描述 (打分)\n## 推荐大纲\n1. ...\n## 事实线索\n1. ...\n## 同步说明\n已调用 AddCurrentChannelComment 通知编辑 Agent。",
       "outputStyle": "",
-      "temperature": 0.3,
-      "maxTokens": 4096,
+      "temperature": 0.7,
+      "maxTokens": 8192,
       "avatarUrl": "",
       "icon": "",
-      "enabled": true,
-      "backgroundUrl": "",
-      "apiKey": "sk-cp-q0Nm_M39g9EE-p6pV1bSRUHvVzEtm8nZdTmaGhahWFaXmVYGttVPkL68YzEYiwHUPq-Bv3oFsqhsbv-1rDHz_nV8Cv9BtLV4bFv2k6tooETIRn1zXB1RJL8",
-      "skills": [],
-      "boundWorkflowIds": [],
-      "boundWorkflowPluginTools": []
+      "enabled": true
     },
     "role": "member",
     "status": "active",
-    "joinedAt": "2026-07-09T06:06:59.052Z",
-    "updatedAt": "2026-07-09T09:58:03.036Z"
+    "joinedAt": "2026-07-09T10:29:25.403Z",
+    "updatedAt": "2026-07-09T10:29:42.177Z"
   },
   {
-    "id": "42644f89-d189-483e-be96-97480acebeb0",
-    "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
+    "id": "b3d7de42-ec34-4fa3-a7b2-cb4c79c7f420",
+    "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
     "agentId": "editor_agent",
     "agentStore": "custom",
     "agent": {
@@ -85,20 +80,25 @@
       ],
       "systemPrompt": "你是公众号主编 Agent。任务：基于上游选题 Agent 的选题报告，撰写一篇完整的公众号文章，并调用 AddCurrentChannelComment 给当前 issue 写评论，把稿件同步给审批 Agent。不要创建新的 issue。\n\n上游输入变量（必须使用，不可编造）：\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 风格偏好：{{ __data__[\"start_1782815018956\"].style }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告（来自选题 Agent）：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n\n要求：\n1. 严格按照选题报告中的推荐大纲展开写作，不可偏离主线；事实线索需要自然融入正文。\n2. 风格：若 style 未提供，默认采用深度长文；面向 targetAudience 调整用词。\n3. 字数 1800-2500 字，使用 Markdown。\n4. 结尾给出 1 个引导互动的开放问题。\n5. 完成后必须调用 AddCurrentChannelComment 写入当前 issue 评论：明确告知稿件已就绪，标题为《...》，请审批。\n\n输出格式（Markdown）：\n---\n标题：《...》\n字数：xxx\n摘要：一句话总结\n正文：\n（完整正文）\n引导问题：...\n---\n同步状态：已调用 AddCurrentChannelComment 通知审批 Agent。",
       "outputStyle": "",
-      "temperature": 0.8,
-      "maxTokens": 8192,
+      "temperature": 0.3,
+      "maxTokens": 4096,
       "avatarUrl": "",
       "icon": "",
-      "enabled": true
+      "enabled": true,
+      "backgroundUrl": "",
+      "skills": [],
+      "apiKey": "d9cd7473ecf94062b56427291c493494.WhMloqJVUAZmg1fu",
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "member",
     "status": "active",
-    "joinedAt": "2026-07-09T06:06:59.052Z",
-    "updatedAt": "2026-07-09T09:44:21.052Z"
+    "joinedAt": "2026-07-09T10:29:25.403Z",
+    "updatedAt": "2026-07-09T10:30:52.138Z"
   },
   {
-    "id": "147017a4-9345-40bb-ae1f-30f0e10cb4b4",
-    "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
+    "id": "f0d421ac-3458-410e-980b-3cb729f03e04",
+    "teamId": "f142b16b-260d-4ecd-b3aa-7e3935d71cca",
     "agentId": "reviewer_agent",
     "agentStore": "custom",
     "agent": {
@@ -126,14 +126,19 @@
       "systemPrompt": "你是公众号质量审批 Agent。任务：基于上游编辑 Agent 的稿件进行结构化审批，并调用 AddCurrentChannelComment 给当前 issue 写评论，把审批结论同步给上游和下游。不要创建新的 issue。\n\n上游输入变量（必须使用，不可编造）：\n- 原始主题：{{ __data__[\"start_1782815018956\"].topic }}\n- 目标读者：{{ __data__[\"start_1782815018956\"].targetAudience }}\n- 选题报告：{{ __data__[\"node_1782815693251_u96noi\"].result }}\n- 编辑稿件：{{ __data__[\"node_1782815702374_v472u0\"].result }}\n\n审批维度（每项 1-10 分）：\n1. 主题契合度：是否紧扣 topic。\n2. 大纲遵循度：是否严格按推荐大纲展开。\n3. 事实可靠度：数据/案例是否合理可信。\n4. 表达流畅度：语言是否通顺、有无病句。\n5. 读者价值：对 targetAudience 的启发与帮助。\n6. 字数合规：是否在 1800-2500 字之间。\n\n结论规则：\n- 任意一项 < 6：结论为需修改，列出 3-5 条具体修改建议。\n- 全部 >= 6：结论为通过，并给出 1 句话的发布建议。\n- 最终保留可发布的稿件全文（在通过分支下，对稿件做轻度润色后输出；需修改分支下输出原稿 + 修改建议清单）。\n\n输出格式（Markdown）：\n# 审批报告\n## 评分\n- 主题契合度: x/10\n- 大纲遵循度: x/10\n- ...\n- 总分: xx/60\n## 结论\n通过 / 需修改\n## 修改建议（如需）\n1. ...\n## 最终稿件\n（通过分支：润色后稿件；需修改分支：原稿+建议清单）\n## 同步说明\n已调用 AddCurrentChannelComment 把审批结论同步给编辑 Agent 与上游调用方。",
       "outputStyle": "",
       "temperature": 0.3,
-      "maxTokens": 8192,
+      "maxTokens": 4096,
       "avatarUrl": "",
       "icon": "",
-      "enabled": true
+      "enabled": true,
+      "backgroundUrl": "",
+      "skills": [],
+      "apiKey": "sk-cp-q0Nm_M39g9EE-p6pV1bSRUHvVzEtm8nZdTmaGhahWFaXmVYGttVPkL68YzEYiwHUPq-Bv3oFsqhsbv-1rDHz_nV8Cv9BtLV4bFv2k6tooETIRn1zXB1RJL8",
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "member",
     "status": "active",
-    "joinedAt": "2026-07-09T06:06:59.052Z",
-    "updatedAt": "2026-07-09T09:44:30.259Z"
+    "joinedAt": "2026-07-09T10:29:25.403Z",
+    "updatedAt": "2026-07-09T10:31:03.981Z"
   }
 ]

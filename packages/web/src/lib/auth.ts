@@ -59,7 +59,7 @@ export async function fetchWithAuth(input: string, init?: RequestInit) {
   const headers = { ...authHeaders(), ...init?.headers };
   const res = await fetch(url, { ...init, headers });
 
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     removeToken();
     if (typeof window !== 'undefined' && !isLoginPath(window.location.pathname)) {
       window.location.replace(toStaticHref(loginHrefWithRef()));

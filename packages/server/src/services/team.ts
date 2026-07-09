@@ -1155,6 +1155,10 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
         },
       }, 'ALREADY_LEFT');
     }
+    const activeOwners = memberships.filter((item) => item.status === 'active' && item.role === 'owner');
+    if (target.role === 'owner' && activeOwners.length === 1) {
+      return fail('last owner cannot be removed', 'PERMISSION_DENIED');
+    }
 
     const now = new Date().toISOString();
     const updated: TeamMembership = { ...target, status: 'removed', updatedAt: now };

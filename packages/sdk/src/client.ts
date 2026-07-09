@@ -114,8 +114,8 @@ export class HttpClient {
       );
     }
 
-    // 6. 401/403 处理
-    if (response.status === 401 || response.status === 403) {
+    // 6. 仅 401 视为登录失效；403 交给业务层处理权限不足
+    if (response.status === 401) {
       this.config.onUnauthorized?.();
     }
 

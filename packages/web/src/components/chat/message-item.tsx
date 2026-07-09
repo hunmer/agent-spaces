@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { AgentConfig, Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2 } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2, Square } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -29,9 +29,10 @@ interface MessageItemProps {
   onEdit?: (message: Message) => void;
   onDelete?: (message: Message) => void;
   onReply?: (message: Message) => void;
+  onStop?: () => void;
 }
 
-export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId, actorAgentId, onAgentUpdated, onConfigureAgent, onEdit, onDelete, onReply }: MessageItemProps) {
+export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId, actorAgentId, onAgentUpdated, onConfigureAgent, onEdit, onDelete, onReply, onStop }: MessageItemProps) {
   const tc = useTranslations('common');
   const tm = useTranslations('chat.messageItem');
   const isUser = message.senderId === 'user';
@@ -177,6 +178,15 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
         </div>
         </div>
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
+          {!isUser && isStreaming && onStop && (
+            <button
+              onClick={onStop}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+              title={tm('stop')}
+            >
+              <Square className="h-3.5 w-3.5 fill-current" />
+            </button>
+          )}
           <button
             onClick={() => onReply?.(message)}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"

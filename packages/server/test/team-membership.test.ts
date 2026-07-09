@@ -216,10 +216,12 @@ test('team runtime custom agent can self-test full reply flow with providerId on
   process.env.AGENT_SPACES_DATA_DIR = dataDir;
 
   const capturedConfigs: Array<Record<string, unknown>> = [];
+  const capturedRuns: Array<Record<string, unknown>> = [];
   setTeamRuntimeFactoryForTests((config) => {
     capturedConfigs.push((config ?? {}) as Record<string, unknown>);
     return {
-      async execute() {
+      async execute(_prompt, _workingDir, options) {
+        capturedRuns.push((options ?? {}) as Record<string, unknown>);
         return { success: true, summary: 'stub-summary', output: ['stub-reply'], artifacts: [] };
       },
       stop() {},
@@ -254,6 +256,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
             providerId: provider.id,
             modelId: 'MiniMax-M2.7',
             apiBase: 'https://api.minimaxi.com/anthropic',
+            workingDir: dataDir,
+            tools: ['team_message_send', 'team_inbox_query', 'ListWorkspaceFiles', 'list_workflows'],
             systemPrompt: 'Be helpful.',
           },
         },
@@ -286,12 +290,70 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(capturedConfigs[0]?.apiKey, 'provider-api-key');
     assert.equal(capturedConfigs[0]?.baseURL, 'https://api.minimaxi.com/anthropic');
     assert.equal(capturedConfigs[0]?.provider, 'anthropic-messages');
+    const runtimeToolNames = Array.isArray(capturedRuns[0]?.tools) ? capturedRuns[0].tools as string[] : [];
+    assert.ok(runtimeToolNames.includes('team_message_send'));
+    assert.ok(runtimeToolNames.includes('team_inbox_query'));
+    assert.ok(runtimeToolNames.includes('ListWorkspaceFiles'));
+    assert.ok(runtimeToolNames.includes('list_workflows'));
+    const runtimeFunctionTools = Array.isArray(capturedRuns[0]?.functionTools)
+      ? capturedRuns[0].functionTools as Array<{ name: string; execute: (input: unknown) => Promise<unknown> }>
+      : [];
+    assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'team_message_send'));
+    assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'team_inbox_query'));
+    assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'ListWorkspaceFiles'));
+    assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'list_workflows'));
+    const listWorkspaceFilesTool = runtimeFunctionTools.find((tool) => tool.name === 'ListWorkspaceFiles');
+    assert.ok(listWorkspaceFilesTool);
+    const listed = await listWorkspaceFilesTool.execute({ path: '', depth: 1 }) as { files: Array<{ name: string }> };
+    assert.ok(Array.isArray(listed.files));
     assert.equal(messages.length, 2);
     assert.equal(messages[0]?.senderAgentId, owner.id);
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');
     assert.equal(messages[1]?.body, 'stub-reply');
   } finally {
     setTeamRuntimeFactoryForTests();
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('team cannot remove the last active owner', () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const owner = createPreset('', { name: 'Owner Agent' });
+    const member = createPreset('', { name: 'Member Agent' });
+    assert.ok(owner);
+    assert.ok(member);
+
+    const created = handleTeamManage({
+      action: 'create',
+      actor_agent_id: owner.id,
+      name: 'Protected Owner Team',
+      initial_members: [{ agent_id: member.id }],
+    });
+    assert.equal(created.success, true);
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+
+    const removed = handleTeamMembershipManage({
+      action: 'remove',
+      actor_agent_id: owner.id,
+      team_id: teamId,
+      agent_id: owner.id,
+    });
+    assert.equal(removed.success, false);
+    assert.equal(removed.code, 'PERMISSION_DENIED');
+
+    const detail = handleTeamManage({
+      action: 'get',
+      actor_agent_id: owner.id,
+      team_id: teamId,
+    });
+    assert.equal(detail.success, true);
+  } finally {
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
     else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
     rmSync(dataDir, { recursive: true, force: true });

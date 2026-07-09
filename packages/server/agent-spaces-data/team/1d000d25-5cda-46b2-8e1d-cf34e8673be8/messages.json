@@ -1,11 +1,11 @@
 [
   {
-    "id": "9126f8da-d1a0-4b67-99de-5dc376d51cb6",
+    "id": "8070b91e-c9ab-401d-aae1-2288af57f1e5",
     "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
     "senderAgentId": "agent-generator",
     "messageType": "direct",
-    "subject": "<p></p><p><span class=\"mention\"…",
-    "body": "<p></p><p><span class=\"mention\" data-type=\"mention\" data-id=\"reviewer_agent\" data-label=\"Reviewer Agent\" data-mention-suggestion-char=\"@\">@Reviewer Agent</span> 开始选题: 年轻人的恋爱为什么越来越快餐？ 出题完成后给topic agent 发送消息让他继续处理</p>",
+    "subject": "<p><span class=\"mention\" data-t…",
+    "body": "<p><span class=\"mention\" data-type=\"mention\" data-id=\"topic_agent\" data-label=\"Topic Agent\" data-mention-suggestion-char=\"@\">@Topic Agent</span> 开始选题: 年轻人的恋爱为什么越来越快餐？ 出题完成后给topic agent 发送消息让他继续处理</p>",
     "bodyFormat": "plain_text",
     "priority": "normal",
     "requiresAck": false,
@@ -13,8 +13,26 @@
     "dueAt": null,
     "threadId": null,
     "replyToMessageId": null,
-    "createdAt": "2026-07-09T10:15:37.029Z",
-    "sentAt": "2026-07-09T10:15:37.029Z",
+    "createdAt": "2026-07-09T10:18:37.191Z",
+    "sentAt": "2026-07-09T10:18:37.191Z",
+    "recipientCount": 1
+  },
+  {
+    "id": "06b2cd70-2897-4abe-9709-69f676e628e0",
+    "teamId": "1d000d25-5cda-46b2-8e1d-cf34e8673be8",
+    "senderAgentId": "topic_agent",
+    "messageType": "direct",
+    "subject": "<think>用户要求我作为 Topic Agent 开始选题…",
+    "body": "<think>用户要求我作为 Topic Agent 开始选题，主题是\"年轻人的恋爱为什么越来越快餐？\"。我需要：\n\n1. 基于这个 topic 生成 3 个差异化的切入选角\n2. 选择得分最高的 1 个角度，撰写完整大纲（5-7 个一级章节）\n3. 收集 5 条可引用的事实/数据/案例线索\n4. 调用 AddCurrentChannelComment 写入当前 issue 评论\n\n然后回复用户，告诉他任务完成。\n\n让我开始构思：\n\n**主题分析**：年轻人恋爱快餐化\n\n**三个差异化角度**：\n\n1. **社会结构视角**（打8分）- 城市化、房价压力、职业竞争等结构性因素导致年轻人无法承担传统恋爱的长期投入成本。快节奏生活压缩了恋爱的时间和精力。\n\n2. **技术/平台视角**（打7分）- 社交软件（ Tinder、探探、Soul 等）的算法逻辑重塑了恋爱模式，\"右滑匹配\"将恋爱变成可量产的消费品，消解了深度情感连接的可能性。\n\n3. **代际心理/价值观视角**（打9分）- Z世代的自我意识觉醒，更注重个人成长和情感体验的即时满足，对\"从一而终\"的传统婚恋观产生动摇，更倾向于\"试用期恋爱\"。\n\n\n现在确定最佳角度。代际心理/价值观视角得分最高，因为能深入探讨Z世代的内心世界。我将围绕这个角度展开大纲设计，从心理机制、成长环境、价值重构到社会影响等层面逐步推进。\n\n具体包括：自我意识觉醒驱动下的恋爱观念转变、成长背景对择偶标准的影响、即时满足文化与恋爱体验的关联、\"合适\"定义的演变、试错成本与自我保护机制、以及长期关系与个体发展的平衡。\n\n收集相关数据支撑：团中央2023年婚恋调查显示平均恋爱周期缩短，近五年结婚率持续下降，Tinder等平台的使用数据和用户行为研究，Z世代心理咨询中恋爱焦虑问题突出，以及PUA/渣男渣女等网络文化现象的兴起。\n</think>\n\n\n\n# 选题报告\n\n## 切入选角\n\n- **角度A - 社会结构视角**（7分）：聚焦城市化、房价压力、职场内卷等宏观结构性因素，分析年轻人\"没时间恋爱\"的客观困境\n- **角度B - 技术平台视角**（7分）：分析社交软件（探探、Soul、Tinder）的算法逻辑如何将恋爱\"工业化\"，右滑匹配消解深度连接\n- **角度C - 代际价值观视角**（9分）：从Z世代自我意识觉醒切入，探讨\"恋爱低期待\"背后的心理防御机制与新型情感消费观\n\n## 推荐大纲\n\n1. **现象描述**：从\"三个月魔咒\"到\"已读不回\"——当代年轻人恋爱的典型图景\n2. **观念重塑**：从\"寻找归宿\"到\"体验优先\"——Z世代爱情观的底层逻辑转变\n3. **成长背景**：独生子女一代+鸡娃焦虑，如何塑造了\"不会爱人\"的一代人\n4. **技术加速**：左滑右滑的几十秒，如何重塑了\"心动\"的定义\n5. **成本计算**：试错成本降低，为何反而让年轻人更不敢投入？\n6. **心理机制**：快餐恋爱的背后，是自我保护还是成长必经？\n7. **破局思考**：长期关系仍然值得——如何在快餐时代重建深度连接的可能\n\n## 事实线索\n\n1. **行业报告**：民政部数据——2022年结婚率创近年新低，平均初婚年龄推迟至30岁以上\n2. **调研数据**：团中央2023年青年婚恋调查报告——超60%受访者认为\"恋爱太累\"\n3. **平台数据**：探探《2023年年轻人恋爱报告》——平均恋爱周期从3年前的14个月缩短至不足6个月\n4. **学术研究**：心理学期刊《Personal Relationships》研究——社交媒体使用频率与恋爱承诺水平呈负相关\n5. **人物案例**：豆瓣\"恋爱降级\"小组48万成员的真实故事与心路历程\n\n---\n\n@topic_agent 选题报告已就绪，大纲7章+5条事实线索已备齐，请基于此框架撰写全文。",
+    "bodyFormat": "plain_text",
+    "priority": "normal",
+    "requiresAck": false,
+    "requiresAction": false,
+    "dueAt": null,
+    "threadId": null,
+    "replyToMessageId": null,
+    "createdAt": "2026-07-09T10:19:05.330Z",
+    "sentAt": "2026-07-09T10:19:05.330Z",
     "recipientCount": 1
   }
 ]

@@ -295,6 +295,7 @@
     "copy": "复制",
     "edit": "编辑",
     "fullscreen": "全屏查看",
+    "stop": "中断",
     "delete": "删除",
     "configureAgent": "配置 Agent",
     "repliesCount": "有 {count} 条回复消息"
