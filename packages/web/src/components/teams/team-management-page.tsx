@@ -1,14 +1,15 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { EllipsisVertical, Eraser, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import type { PanelImperativeHandle } from "react-resizable-panels";
 import { sdk } from "@/lib/sdk";
 import type {
   TeamView,
@@ -21,6 +22,10 @@ import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/
 import { TeamMemberList } from "@/components/teams/team-member-list";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
 import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
+
+const PANEL_ID_LIST = "team-list";
+const PANEL_ID_CHAT = "team-chat";
+const PANEL_ID_DETAIL = "team-detail";
 
 function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
   const ids: string[] = [];
@@ -87,6 +92,20 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [editingTeam, setEditingTeam] = useState<TeamView | null>(null);
   const [infoSidebarOpen, setInfoSidebarOpen] = useState(true);
   const [workflowListOpen, setWorkflowListOpen] = useState(false);
+  const detailPanelRef = useRef<PanelImperativeHandle>(null);
+
+  // 右栏隐藏通过面板 collapse 到 0 实现（占用比例变为 0，DOM 保留）
+  const toggleInfoSidebar = useCallback(() => {
+    setInfoSidebarOpen((prev) => {
+      const next = !prev;
+      const panel = detailPanelRef.current;
+      if (panel) {
+        if (next) panel.expand();
+        else panel.collapse();
+      }
+      return next;
+    });
+  }, []);
 
   const { workflows, loadWorkflows } = useWorkflowStore();
 
@@ -310,11 +329,13 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
             {t("empty.setup")}
           </div>
         ) : (
-          <div className={cn(
-            "grid flex-1 gap-4 xl:grid-cols-2",
-            infoSidebarOpen ? "xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1.1fr)]" : "xl:grid-cols-[320px_minmax(0,1fr)]",
-          )}>
-            <section className="flex flex-col rounded-2xl border border-border bg-card p-4">
+          <ResizablePanelGroup
+            orientation="horizontal"
+            className="flex-1 gap-3"
+            defaultLayout={{ [PANEL_ID_LIST]: 25, [PANEL_ID_CHAT]: 40, [PANEL_ID_DETAIL]: 35 }}
+          >
+            <ResizablePanel id={PANEL_ID_LIST} defaultSize="25%" minSize="18%" maxSize="35%">
+            <section className="flex h-full flex-col rounded-2xl border border-border bg-card p-4">
               {error ? (
                 <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                   {error}
@@ -430,14 +451,33 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                 </TabsContent>
               </Tabs>
             </section>
+            </ResizablePanel>
 
+            <ResizableHandle withHandle />
+
+            <ResizablePanel id={PANEL_ID_CHAT} defaultSize="40%" minSize="30%" className="min-w-0">
             <TeamChatPanel
               teamId={selectedTeamId}
               actorAgentId={selectedActorId}
               sidebarOpen={infoSidebarOpen}
-              onToggleSidebar={() => setInfoSidebarOpen((v) => !v)}
+              onToggleSidebar={toggleInfoSidebar}
             />
+            </ResizablePanel>
 
+            <ResizableHandle withHandle />
+
+            <ResizablePanel
+              id={PANEL_ID_DETAIL}
+              defaultSize="35%"
+              minSize="22%"
+              collapsible
+              collapsedSize="0%"
+              panelRef={detailPanelRef}
+              onResize={(size) => {
+                // 用户拖拽到 0 或展开时同步按钮状态
+                setInfoSidebarOpen(size.asPercentage > 0);
+              }}
+            >
             {infoSidebarOpen ? (
             <section className="rounded-2xl border border-border bg-card p-4">
               {selectedTeam && teamDetail ? (
@@ -456,21 +496,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                         <Trash2 className="size-4" />
                         {tc("delete")}
                       </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-border p-3">
-                      <div className="text-xs text-muted-foreground">{t("detail.stats.members")}</div>
-                      <div className="mt-1 text-lg font-semibold">{teamDetail.stats.active_member_count}</div>
-                    </div>
-                    <div className="rounded-xl border border-border p-3">
-                      <div className="text-xs text-muted-foreground">{t("detail.stats.unread")}</div>
-                      <div className="mt-1 text-lg font-semibold">{teamDetail.stats.unread_count}</div>
-                    </div>
-                    <div className="rounded-xl border border-border p-3">
-                      <div className="text-xs text-muted-foreground">{t("detail.stats.activity")}</div>
-                      <div className="mt-1 text-sm font-medium">{formatTime(teamDetail.stats.last_activity_at)}</div>
                     </div>
                   </div>
 
@@ -498,8 +523,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               )}
             </section>
             ) : null}
-
-          </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         )}
       </main>
 

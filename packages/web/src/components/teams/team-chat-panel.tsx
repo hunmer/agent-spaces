@@ -194,7 +194,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   }, [actorAgentId, loadRuntime, teamId]);
 
   return (
-    <section className="flex min-h-0 flex-col rounded-2xl border border-border bg-card p-4">
+    <section className="flex h-full min-h-0 flex-col rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-medium">{t("chat.title")}</h2>

@@ -1,4 +1,5 @@
 import type { HttpClient } from '../client';
+import type { TeamStatus, TeamVisibility, TeamRole } from '@agent-spaces/shared';
 
 /**
  * Team API 模块
@@ -34,14 +35,14 @@ export interface TeamView {
   name: string;
   description: string;
   purpose?: string;
-  status: string;
-  visibility: string;
+  status: TeamStatus;
+  visibility: TeamVisibility;
   created_by: string;
   created_at: string;
   updated_at: string;
   team_id: string;
   member_count: number;
-  my_role: string | null;
+  my_role: TeamRole | null;
   dissolved_at?: string;
   metadata?: Record<string, unknown>;
 }
