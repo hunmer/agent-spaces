@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { AgentConfig } from '@agent-spaces/shared';
 import { listPresets } from './agent.js';
@@ -802,6 +802,23 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
       status: 'dissolved',
       dissolved_at: now,
     });
+  }
+
+  if (action === 'delete_archive') {
+    const teamId = asString(input.team_id ?? input.teamId);
+    if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
+    const dir = archivedTeamDataDir(teamId);
+    if (!existsSync(dir)) return fail('archived team not found', 'TEAM_NOT_FOUND');
+    rmSync(dir, { recursive: true, force: true });
+    return ok('archived team deleted', { team_id: teamId });
+  }
+
+  if (action === 'clear_archives') {
+    const dir = join(teamDir(), 'archived');
+    if (!existsSync(dir)) return ok('no archives to clear', { cleared: 0 });
+    const before = listArchivedTeamIds();
+    rmSync(dir, { recursive: true, force: true });
+    return ok('archives cleared', { cleared: before.length });
   }
 
   return fail('invalid action', 'INVALID_ACTION');

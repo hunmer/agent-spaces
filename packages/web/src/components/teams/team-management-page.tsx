@@ -3,7 +3,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import type { Team, TeamMembership, WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { EllipsisVertical, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { EllipsisVertical, Eraser, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -307,6 +307,29 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     }
   }
 
+  async function deleteArchivedTeam(team: TeamView) {
+    if (!confirm(t("archived.deleteConfirm", { name: team.name }))) return;
+    setError("");
+    try {
+      await requestTeamApi<{ team_id: string }>(`/api/teams/${team.team_id}/archive`, { method: "DELETE" });
+      await loadArchivedTeams();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function clearAllArchived() {
+    if (archivedTeams.length === 0) return;
+    if (!confirm(t("archived.clearConfirm"))) return;
+    setError("");
+    try {
+      await requestTeamApi<{ cleared: number }>(`/api/teams/archives`, { method: "DELETE" });
+      await loadArchivedTeams();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   return (
     <div className={embedded ? "flex h-full flex-col" : "flex min-h-dvh w-full flex-col"}>
       <main className={embedded ? "flex size-full flex-1 flex-col gap-4 px-4 py-4 sm:px-6" : "mx-auto flex size-full flex-1 flex-col gap-4 px-4 py-6 sm:px-6"}>
@@ -398,6 +421,17 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                   )}
                 </TabsContent>
                 <TabsContent value="archived" className="min-h-0 flex-1 overflow-auto">
+                  <div className="mb-2 flex items-center justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void clearAllArchived()}
+                      disabled={archivedTeams.length === 0}
+                    >
+                      <Eraser className="size-4" />
+                      {t("archived.clearAll")}
+                    </Button>
+                  </div>
                   {archivedTeams.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
                       {t("empty.archived")}
@@ -417,7 +451,14 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                                 <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
                               </div>
                             </div>
-                            <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                            <button
+                              type="button"
+                              onClick={() => void deleteArchivedTeam(team)}
+                              className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              title={tc("delete")}
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
                           </div>
                           <div className="mt-2 text-xs text-muted-foreground">
                             {team.dissolved_at ? `${t("list.archivedAt")} ${formatTime(team.dissolved_at)}` : ""}

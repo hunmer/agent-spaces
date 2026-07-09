@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { Trash2, UserPlus, Loader2, Crown } from "lucide-react";
 import { sdk } from "@/lib/sdk";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { AgentIcon } from "@/components/common/agent-icon";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -15,6 +13,7 @@ import {
   ContextMenuItem,
 } from "@/components/ui/context-menu";
 import { AddMemberDialog, type AddMemberCandidate } from "@/components/chat/add-member-dialog";
+import { TeamMemberRow } from "@/components/teams/team-member-row";
 
 /** 与 team-management-page 中的 TeamMembershipView 保持一致 */
 export interface TeamMembershipView {
@@ -51,17 +50,6 @@ interface TeamMemberListProps {
   /** 当前 actor 在该团队的角色（owner/admin/member/observer/null） */
   myRole?: string | null;
   onChange: () => void;
-}
-
-function roleBadgeClass(role: TeamMembershipView["role"]): string {
-  switch (role) {
-    case "owner":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-600";
-    case "admin":
-      return "border-blue-500/40 bg-blue-500/10 text-blue-600";
-    default:
-      return "";
-  }
 }
 
 export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, onChange }: TeamMemberListProps) {
@@ -168,40 +156,13 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
             const isBusy = busyId === member.agent_id;
 
             const row = (
-              <div className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors">
-                <AgentIcon
-                  agentId={agent?.id}
-                  name={name}
-                  avatarUrl={agent?.avatarUrl}
-                  icon={agent?.icon}
-                  apiBase={agent?.apiBase}
-                  modelId={agent?.modelId}
-                  providerId={agent?.providerId}
-                  modelProvider={agent?.modelProvider}
-                  className="size-6 shrink-0"
-                  bordered={false}
-                  hoverCard
-                />
-                <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
-                <Badge variant="outline" className={`gap-1 px-1.5 py-0 text-xs ${roleBadgeClass(member.role)}`}>
-                  {isOwner && <Crown className="size-3" />}
-                  {t(`detail.role.${member.role}`)}
-                </Badge>
-                {canManage && (
-                  <button
-                    type="button"
-                    disabled={isBusy}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void removeMember(member.agent_id);
-                    }}
-                    className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    title={t("detail.removeMember")}
-                  >
-                    {isBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                  </button>
-                )}
-              </div>
+              <TeamMemberRow
+                agent={agent}
+                name={name}
+                role={member.role}
+                busy={isBusy}
+                onRemove={canManage ? () => void removeMember(member.agent_id) : undefined}
+              />
             );
 
             // 无管理权限时只渲染行，不提供右键菜单

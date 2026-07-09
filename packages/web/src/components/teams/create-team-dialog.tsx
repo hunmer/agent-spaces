@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AgentConfig } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MemberPicker } from "@/components/common/member-picker";
+import { TeamMemberRow } from "@/components/teams/team-member-row";
 import { getMemberDisplayName } from "@/lib/agent-members";
 
 export interface TeamFormValues {
@@ -54,6 +54,51 @@ const EMPTY: TeamFormValues = {
   members: [],
 };
 
+interface MemberSelectPanelProps {
+  label?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  query: string;
+  onQueryChange: (q: string) => void;
+  candidates: Array<{ agent: AgentConfig; label: string; id: string }>;
+  selected: string[];
+  onToggle: (id: string) => void;
+}
+
+/** 复用 TeamMemberRow 的成员选择面板（选择模式） */
+function MemberSelectPanel({
+  label,
+  searchPlaceholder,
+  emptyText,
+  query,
+  onQueryChange,
+  candidates,
+  selected,
+  onToggle,
+}: MemberSelectPanelProps) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {label ? <label className="text-sm font-medium">{label}</label> : null}
+      <Input value={query} onChange={(e) => onQueryChange(e.target.value)} placeholder={searchPlaceholder} />
+      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+        {candidates.length === 0 ? (
+          <p className="py-2 text-center text-sm text-muted-foreground">{emptyText}</p>
+        ) : null}
+        {candidates.map(({ agent, label: displayLabel, id }) => (
+          <TeamMemberRow
+            key={id}
+            agent={agent}
+            name={displayLabel}
+            variant="select"
+            selected={selected.includes(id)}
+            onToggle={() => onToggle(id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function CreateTeamDialog({
   open,
   onOpenChange,
@@ -90,9 +135,20 @@ export function CreateTeamDialog({
     }
   }, [open, mode, editTarget, defaultValues]);
 
-  const candidates = agents
-    .filter((a) => a.enabled !== false)
-    .map((a, i) => ({ id: a.id, label: getMemberDisplayName(agents, a.id), sortIndex: i }));
+  const candidates = useMemo(
+    () =>
+      agents
+        .filter((a) => a.enabled !== false)
+        .map((a) => ({ agent: a, label: getMemberDisplayName(agents, a.id), id: a.id })),
+    [agents],
+  );
+
+  const [memberQuery, setMemberQuery] = useState("");
+  const filteredCandidates = useMemo(() => {
+    const q = memberQuery.trim().toLowerCase();
+    if (!q) return candidates;
+    return candidates.filter((c) => c.label.toLowerCase().includes(q));
+  }, [candidates, memberQuery]);
 
   const toggleMember = (id: string) => {
     setValues((prev) =>
@@ -164,27 +220,29 @@ export function CreateTeamDialog({
             </Select>
 
             <div className="lg:hidden">
-              <MemberPicker
-                key={String(open)}
-                candidates={candidates}
-                selected={values.members}
-                onToggle={toggleMember}
+              <MemberSelectPanel
                 label={t("form.membersLabel")}
                 searchPlaceholder={t("form.searchAgent")}
                 emptyText={t("form.noAgents")}
+                query={memberQuery}
+                onQueryChange={setMemberQuery}
+                candidates={filteredCandidates}
+                selected={values.members}
+                onToggle={toggleMember}
               />
             </div>
           </div>
 
           <div className="hidden min-h-0 lg:flex lg:w-64 xl:w-72 flex-col border-l pl-4">
-            <MemberPicker
-              key={String(open)}
-              candidates={candidates}
-              selected={values.members}
-              onToggle={toggleMember}
+            <MemberSelectPanel
               label={t("form.membersLabel")}
               searchPlaceholder={t("form.searchAgent")}
               emptyText={t("form.noAgents")}
+              query={memberQuery}
+              onQueryChange={setMemberQuery}
+              candidates={filteredCandidates}
+              selected={values.members}
+              onToggle={toggleMember}
             />
           </div>
         </div>

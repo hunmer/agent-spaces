@@ -82,6 +82,14 @@ router.post('/:teamId/dissolve', (req: Request<{ teamId: string }>, res: Respons
   sendResult(res, handleTeamManage({ ...req.body, action: 'dissolve', team_id: req.params.teamId }));
 });
 
+router.delete('/archives', (req: Request, res: Response) => {
+  sendResult(res, handleTeamManage({ ...req.body, action: 'clear_archives' }));
+});
+
+router.delete('/:teamId/archive', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, handleTeamManage({ ...req.body, action: 'delete_archive', team_id: req.params.teamId }));
+});
+
 router.post('/:teamId/messages', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, handleTeamMessageSend({ ...req.body, action: 'send', team_id: req.params.teamId }));
 });
