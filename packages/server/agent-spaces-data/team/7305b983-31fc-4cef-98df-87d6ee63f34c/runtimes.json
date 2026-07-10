@@ -6,5 +6,13 @@
     "leaderAgentId": "topic_agent",
     "status": "idle",
     "updatedAt": "2026-07-10T01:47:32.232Z"
+  },
+  {
+    "id": "c46fd579-86a3-4c91-abd4-bc4ab2317fc8",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "topic_agent",
+    "leaderAgentId": "editor_agent",
+    "status": "idle",
+    "updatedAt": "2026-07-10T02:13:49.422Z"
   }
 ]

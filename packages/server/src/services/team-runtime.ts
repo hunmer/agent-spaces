@@ -716,16 +716,22 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
   if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
   const memberships = listMemberships(teamId);
   const actorMembership = memberships.find((item) => item.agentId === actorAgentId);
-  if (!isActiveMember(actorMembership)) return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
-  let runtime = findLatestRuntime(teamId, actorAgentId);
+  // 非成员（如管理视角）查看团队时，回退用 owner 身份加载 runtime，不报权限错误
+  const effectiveActorId = isActiveMember(actorMembership)
+    ? actorAgentId
+    : (memberships.find((item) => item.status === 'active' && item.role === 'owner')?.agentId
+      ?? memberships.find((item) => item.status === 'active')?.agentId
+      ?? actorAgentId);
+  let runtime = findLatestRuntime(teamId, effectiveActorId);
   if (!runtime) {
-    const leaderAgentId = resolveLeader(teamId, actorAgentId);
+    const leaderAgentId = resolveLeader(teamId, effectiveActorId);
     if (!leaderAgentId) return fail('owner not found', 'AGENT_NOT_FOUND');
-    runtime = ensureRuntime(teamId, actorAgentId, leaderAgentId);
+    runtime = ensureRuntime(teamId, effectiveActorId, leaderAgentId);
   }
-  const messages = collectConversationMessages(teamId, actorAgentId, runtime.leaderAgentId, runtime);
+  const messages = collectConversationMessages(teamId, effectiveActorId, runtime.leaderAgentId, runtime);
   runtime = maybeCompleteRuntime(teamId, runtime, messages);
   const leader = resolveLeaderProfile(runtime.leaderAgentId);
+  // participants 用原始请求者过滤：非成员不在成员列表中，自然返回全部成员（含 owner）
   const participants = listParticipants(teamId, actorAgentId);
 
   return ok('team runtime loaded', {
@@ -756,14 +762,19 @@ export function postTeamRuntimeMessage(input: unknown): TeamServiceResult {
   if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
   const memberships = listMemberships(teamId);
   const actorMembership = memberships.find((item) => item.agentId === actorAgentId);
-  if (!isActiveMember(actorMembership)) return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
-  const targetAgentId = resolveTargetAgentId(teamId, actorAgentId, asString(map.target_agent_id ?? map.targetAgentId));
+  // 非成员（如管理视角）发消息时，回退用 owner 身份，不报权限错误
+  const effectiveActorId = isActiveMember(actorMembership)
+    ? actorAgentId
+    : (memberships.find((item) => item.status === 'active' && item.role === 'owner')?.agentId
+      ?? memberships.find((item) => item.status === 'active')?.agentId
+      ?? actorAgentId);
+  const targetAgentId = resolveTargetAgentId(teamId, effectiveActorId, asString(map.target_agent_id ?? map.targetAgentId));
   if (!targetAgentId) return fail('target agent not found', 'AGENT_NOT_FOUND');
 
   const sendResult = handleTeamMessageSend({
     action: 'send',
     team_id: teamId,
-    actor_agent_id: actorAgentId,
+    actor_agent_id: effectiveActorId,
     mode: 'direct',
     subject: content.length > 32 ? `${content.slice(0, 31)}…` : content,
     body: content,
@@ -774,14 +785,15 @@ export function postTeamRuntimeMessage(input: unknown): TeamServiceResult {
 
   const messageId = (sendResult.data as { message?: { message_id?: string } } | undefined)?.message?.message_id;
   const runtime = updateRuntime(teamId, {
-    ...ensureRuntime(teamId, actorAgentId, targetAgentId),
+    ...ensureRuntime(teamId, effectiveActorId, targetAgentId),
     status: 'running',
     updatedAt: new Date().toISOString(),
     lastMessageId: messageId,
   });
   const leader = resolveLeaderProfile(targetAgentId);
+  // participants 用原始请求者过滤：非成员不在成员列表中，自然返回全部成员（含 owner）
   const participants = listParticipants(teamId, actorAgentId);
-  const fullConversation = collectConversationMessages(teamId, actorAgentId, targetAgentId, runtime);
+  const fullConversation = collectConversationMessages(teamId, effectiveActorId, targetAgentId, runtime);
   const history = contextLength === 0
     ? []
     : fullConversation
@@ -789,17 +801,17 @@ export function postTeamRuntimeMessage(input: unknown): TeamServiceResult {
       .slice(-contextLength);
   broadcastTeamRuntimeEvent('team.runtime.updated', {
     teamId,
-    actorAgentId,
+    actorAgentId: effectiveActorId,
     runtimeId: runtime.id,
     leaderAgentId: runtime.leaderAgentId,
     status: runtime.status,
   });
   broadcastTeamRuntimeEvent('team.message.created', {
     teamId,
-    actorAgentId,
+    actorAgentId: effectiveActorId,
     message: (sendResult.data as { message?: unknown } | undefined)?.message,
   });
-  dispatchTeamReply(teamId, actorAgentId, targetAgentId, content, runtime, history);
+  dispatchTeamReply(teamId, effectiveActorId, targetAgentId, content, runtime, history);
 
   return ok('team runtime message sent', {
     runtime: {
