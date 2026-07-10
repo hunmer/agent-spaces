@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createPreset, queryRecentUsage } from '../src/services/agent.js';
@@ -8,6 +8,7 @@ import { createAgent as createChatAgent } from '../src/services/chat.js';
 import { createWorkflow } from '../src/services/workflow.js';
 import {
   handleTeamManage,
+  handleTeamInboxDelete,
   handleTeamMembershipManage,
   handleTeamMessageDelete,
   handleTeamMessageSend,
@@ -42,6 +43,10 @@ test('team memberships persist agent store, validate invite target, and allow cu
     });
     assert.equal(created.success, true);
     const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+
+    assert.equal(existsSync(join(dataDir, 'team', teamId, 'messages.json')), false);
+    assert.equal(existsSync(join(dataDir, 'team', teamId, 'deliveries.json')), false);
+    assert.equal(existsSync(join(dataDir, 'team', teamId, 'comments.json')), false);
 
     const initialMemberships = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'memberships.json'), 'utf-8')) as Array<Record<string, unknown>>;
     assert.equal(initialMemberships[0]?.agentStore, 'agent');
@@ -150,10 +155,13 @@ test('team resolves workflow agent ids as custom members and deletes team messag
     const memberships = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'memberships.json'), 'utf-8')) as Array<Record<string, unknown>>;
     assert.equal(memberships.find((item) => item.agentId === 'topic_agent')?.agentStore, 'custom');
 
+    const sessionId = '11111111-1111-4111-8111-111111111111';
+
     const sent = handleTeamMessageSend({
       action: 'send',
       actor_agent_id: owner.id,
       team_id: teamId,
+      session_id: sessionId,
       mode: 'direct',
       subject: 'hello',
       body: 'hello',
@@ -161,6 +169,11 @@ test('team resolves workflow agent ids as custom members and deletes team messag
     });
     assert.equal(sent.success, true);
     const messageId = (sent.data as { message: { message_id: string } }).message.message_id;
+    const deliveryPath = join(dataDir, 'team', teamId, sessionId, 'deliveries.json');
+    const sentDeliveries = JSON.parse(readFileSync(deliveryPath, 'utf-8')) as Array<{ id: string }>;
+    const deletedDelivery = handleTeamInboxDelete({ actor_agent_id: owner.id, delivery_id: sentDeliveries[0]?.id });
+    assert.equal(deletedDelivery.success, true);
+    assert.deepEqual(JSON.parse(readFileSync(deliveryPath, 'utf-8')), []);
 
     const deleted = handleTeamMessageDelete({
       actor_agent_id: owner.id,
@@ -168,10 +181,13 @@ test('team resolves workflow agent ids as custom members and deletes team messag
     });
     assert.equal(deleted.success, true);
 
-    const messages = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'messages.json'), 'utf-8')) as Array<Record<string, unknown>>;
-    const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const messages = JSON.parse(readFileSync(join(dataDir, 'team', teamId, sessionId, 'messages.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, sessionId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
     assert.equal(messages.length, 0);
     assert.equal(deliveries.length, 0);
+    assert.equal(existsSync(join(dataDir, 'team', teamId, 'messages.json')), false);
+    assert.equal(existsSync(join(dataDir, 'team', teamId, 'deliveries.json')), false);
+    assert.equal(existsSync(join(dataDir, 'team', teamId, 'comments.json')), false);
   } finally {
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
     else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
@@ -550,11 +566,8 @@ test('team runtime sessions store and load messages independently', () => {
     assert.deepEqual(readdirSync(join(dataDir, 'team', teamId)).sort(), [
       firstSessionId,
       secondSessionId,
-      'comments.json',
-      'deliveries.json',
       'info.json',
       'memberships.json',
-      'messages.json',
     ].sort());
   } finally {
     closeAgentDb();

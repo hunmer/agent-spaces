@@ -56,8 +56,17 @@ const TEAM_MEMBER_SELECTION_PROMPT = [
   'Design 2 to 4 complementary agents for the team title and description.',
   'Return only a valid JSON object with this exact schema: {"agents":[{"name":"short name","description":"one sentence","systemPrompt":"markdown system prompt"}]}.',
   'Each agent must have a distinct responsibility and a directly usable system prompt.',
+  'Each system prompt must state when work is handed off with `team_message_send`, which teammate role should receive it, and that the agent must stop after sending.',
   'Escape all newlines and double quotes inside JSON strings, and do not use triple-backtick code fences.',
   'Do not wrap the JSON in markdown fences or mention system internals.',
+].join('\n');
+
+const TEAM_AGENT_TOOL_INSTRUCTIONS = [
+  '## Team collaboration tool',
+  '- Use `team_message_send` whenever another teammate should continue the work; do not only mention the teammate in plain text.',
+  '- Select the exact recipient agent id from the current team members provided at runtime.',
+  '- Send the complete result and enough context for the recipient to continue without reconstructing prior work.',
+  '- After sending the handoff, stop and wait for the next team message.',
 ].join('\n');
 
 export async function generateAgentDesign(userPrompt: string): Promise<AgentDesign> {
@@ -514,7 +523,16 @@ export function normalizeTeamMemberSelection(
   }
   const agents = (value as { agents?: unknown }).agents;
   if (!Array.isArray(agents) || agents.length === 0) throw new Error('Generated JSON must include agents.');
-  return { agents: agents.slice(0, 4).map(normalizeDesign) };
+  const normalized = agents
+    .map(normalizeDesign)
+    .filter((agent) => agent.name.trim().toLowerCase().replace(/[\s_]+/g, '-') !== AGENT_GENERATOR_PRESET_ID)
+    .slice(0, 4)
+    .map((agent) => ({
+      ...agent,
+      systemPrompt: `${agent.systemPrompt}\n\n${TEAM_AGENT_TOOL_INSTRUCTIONS}`,
+    }));
+  if (normalized.length === 0) throw new Error('Generated JSON did not include any usable agents.');
+  return { agents: normalized };
 }
 
 function inferProvider(apiBase?: string): NonNullable<AgentConfig['modelProvider']> {

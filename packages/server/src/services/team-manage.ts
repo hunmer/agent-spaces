@@ -28,10 +28,7 @@ import {
   parseVisibility,
   resolveEffectiveMembership,
   resolveMembershipAgent,
-  saveDeliveries,
   saveMemberships,
-  saveMessages,
-  saveComments,
   saveTeam,
   saveTeamIds,
   teamDataDir,
@@ -103,9 +100,6 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     team.memberCount = memberships.length;
     saveTeam(team);
     saveMemberships(team.id, memberships);
-    saveMessages(team.id, []);
-    saveDeliveries(team.id, []);
-    saveComments(team.id, []);
     return ok('team created', {
       team: teamView(team, actorAgentId),
       memberships_created: memberships.map(membershipView),

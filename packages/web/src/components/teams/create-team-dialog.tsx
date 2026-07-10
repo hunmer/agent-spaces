@@ -122,7 +122,7 @@ export function CreateTeamDialog({
 
   const candidates = useMemo(() => {
     const list: Array<{ agent?: AgentConfig; label: string; id: string }> = agents
-      .filter((a) => a.enabled !== false)
+      .filter((a) => a.enabled !== false && a.id !== "agent-generator")
       .map((a) => ({ agent: a, label: getMemberDisplayName(agents, a.id), id: a.id }));
     // 已选但不在 agents 列表中的（如从工作流导入的 agentConfigId），补为占位候选
     const present = new Set(list.map((c) => c.id));
@@ -169,7 +169,7 @@ export function CreateTeamDialog({
         description: values.description.trim(),
       });
       const createdAgents = await Promise.all(
-        result.agents.map((agent) => sdk.agent.createPreset({ ...agent, role: "agent" })),
+        result.agents.map((agent) => sdk.agent.createPreset({ ...agent, role: "agent", tools: ["team_message_send"] })),
       );
       useAgentStore.setState((state) => ({ agents: [...state.agents, ...createdAgents] }));
       setValues((prev) => ({

@@ -57,3 +57,20 @@
 - Runtime `running` messages are emitted by the executing agent, so running agents come from non-admin `senderAgentId`; fall back to `runtime.leader_agent_id` while running.
 - Completed agents come from non-admin senders of completed runtime messages, excluding agents still running.
 - Server `stripHtml` intentionally converts Mention spans to `@label`; Team mentions must be removed before calling it and before persisting the channel user message.
+
+## Generated agents and session-scoped storage
+
+- User reports generated members can include the built-in `agent-generator` and lack Team tool usage instructions.
+- User reports `deliveries.json`, `comments.json`, and `messages.json` are still created under `team/{teamId}` although runtime data now belongs under `team/{teamId}/{sessionId}`.
+- The provided memberships fixture is the source of truth for the expected generated Agent tool/prompt shape.
+- The fixture gives every business Agent `tools: ["team_message_send"]`; prompts state the exact sender/recipient workflow, and owner-only `team_task_complete` is appended by Team Runtime.
+- `team-runtime.ts` already requires `sessionId` for messages, deliveries, and runtimes.
+- `team-internal.ts` still accepts optional session ids and falls back to Team root paths, which permits the reported root-level files.
+- Built-in `agent-generator` filtering belongs in server-side generated-result normalization so every caller gets the same guarantee.
+- `team-manage.ts` explicitly creates empty root-level `messages.json`, `deliveries.json`, and `comments.json` during Team creation; these writes are unnecessary after session scoping.
+- `team-inbox.ts` updates delivery state with `saveDeliveries(ctx.team.id, nextDeliveries)` and drops the known session id, which can recreate root-level deliveries.
+- Root-level list/find calls do not write files but become stale after migration; aggregate lookup must enumerate UUID session directories.
+- The create dialog still renders every global preset as a candidate, including built-in `agent-generator`, even though smart creation now creates new Agents.
+- Confirmed fixes: generated-result normalization removes reserved `agent-generator`; generated prompts receive shared handoff instructions; created presets enable only `team_message_send`.
+- Confirmed storage fix: Team creation no longer initializes session files, all message/delivery/comment writes require session ids, aggregate reads enumerate UUID session directories, and ID lookups return their owning session.
+- Historical root files are left untouched; the change prevents new root writes and reads migrated session data.

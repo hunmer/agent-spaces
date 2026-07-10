@@ -34,6 +34,12 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 | Assumed composer mention renderer file path did not exist | Channel Team inspection | Located the shared renderer under `components/composer/create-suggestion-renderer.ts`. |
 | Server/Web saw stale shared and SDK declarations | First channel Team typecheck | Rebuild ignored workspace `dist` outputs before the final typecheck. |
 | Team pseudo mention widened AgentBar runtime type | First channel Team typecheck | Strip the pseudo `kind` field and retain only the supported `langchain` runtime in the ChatAgent adapter. |
+| Generated Agent regression retained `Agent Generator` | New follow-up red test | Expected failure; fix server-side normalization and frontend candidate filtering. |
+| Team creation regression found root message files | New follow-up red test | Expected failure; remove empty-file initialization and require session-scoped writes. |
+| Session message deletion returned not found | New follow-up red test | Expected failure; make context finders enumerate session directories and return the owning session id. |
+| Session layout test expected legacy root files | First green run | Update the existing assertion to the migrated session-only layout. |
+| Final line-reference `rg` split its double-quoted pattern | Final bookkeeping | Re-run with a PowerShell single-quoted pattern; no code or verification impact. |
+| `apply_patch` could not express no-final-newline metadata | Test artifact cleanup | Used one scoped mechanical byte write to restore the original tracked JSON exactly. |
 
 ## Verification
 
@@ -74,3 +80,11 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 - [complete] Show Team status and running/completed agents in TeamMessageCard.
 - [complete] Stop restoring Team mentions after send and strip Team mention text from dispatched content.
 - [complete] Run focused typecheck, lint, and regression checks.
+
+## Follow-up: generated agents and session-scoped storage
+
+- [complete] Reproduce agent-generator leakage, missing Team tools, and root-level runtime file writes.
+- [complete] Trace memberships-derived Agent configuration and every runtime storage path caller.
+- [complete] Add focused failing regressions for filtering/configuration/path placement.
+- [complete] Implement the minimum shared fixes.
+- [complete] Run targeted tests, builds, and scoped cleanup.

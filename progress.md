@@ -30,3 +30,11 @@
 - Added live Team Runtime status plus running/completed agent summaries to TeamMessageCard.
 - Removed Team mentions before channel persistence/runtime dispatch and stopped restoring Team mentions after send.
 - Passed Server/Web TypeScript, targeted ESLint, two focused tests, scoped diff check, and local HTTP health check.
+- Started generated-Agent and session-scoped Team storage follow-up; restored the existing file-based plan and opened three focused diagnosis tracks.
+- Inspected the memberships fixture and storage helpers; confirmed expected Team tool configuration and isolated root-file creation to optional-session fallbacks in `team-internal.ts` plus their callers.
+- Located direct root-file initialization in Team creation, a dropped session id in inbox updates, and stale root-level aggregate reads/finders.
+- Added failing regressions for reserved generated Agent filtering/tool guidance and session-only Team message storage.
+- Red tests reproduced all three reported faults; the existing owner-transfer assertion remains the separately documented unrelated failure.
+- Implemented server normalization/tool guidance, frontend tool/candidate filtering, session-only storage writes, aggregate reads, and session-aware ID context lookup; initial green run passed new regressions and exposed one legacy layout assertion.
+- Updated the legacy layout assertion, added inbox deletion coverage, passed 2 Agent Designer tests and 3 focused Team storage tests, passed server TypeScript and targeted Web ESLint with only 3 pre-existing warnings.
+- Removed the single real-data Team artifact created by the test harness and restored `teams.json` byte-for-byte; final scoped diff check and server build passed.

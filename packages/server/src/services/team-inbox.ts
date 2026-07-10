@@ -162,7 +162,7 @@ export function handleTeamInboxDelete(input: unknown): TeamServiceResult {
   if (!canDelete) return fail('permission denied', 'PERMISSION_DENIED');
 
   const nextDeliveries = ctx.deliveries.filter((item) => item.id !== deliveryId);
-  saveDeliveries(ctx.team.id, nextDeliveries);
+  saveDeliveries(ctx.team.id, nextDeliveries, ctx.sessionId);
 
   return ok('delivery deleted', {
     delivery_id: deliveryId,
