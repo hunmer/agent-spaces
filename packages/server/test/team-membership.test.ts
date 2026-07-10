@@ -223,6 +223,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
   const topicGate = new Promise<void>((resolve) => { releaseTopic = resolve; });
   let releaseEditor: (() => void) | undefined;
   const editorGate = new Promise<void>((resolve) => { releaseEditor = resolve; });
+  let markEditorCompleted: (() => void) | undefined;
+  const editorCompleted = new Promise<void>((resolve) => { markEditorCompleted = resolve; });
   setTeamRuntimeFactoryForTests((config) => {
     capturedConfigs.push((config ?? {}) as Record<string, unknown>);
     return {
@@ -245,7 +247,10 @@ test('team runtime custom agent can self-test full reply flow with providerId on
           assert.equal(handoff.success, true);
           await topicGate;
         }
-        if (prompt.includes('Your actor_agent_id: editor_agent')) await editorGate;
+        if (prompt.includes('Your actor_agent_id: editor_agent')) {
+          await editorGate;
+          markEditorCompleted?.();
+        }
         return { success: true, summary: 'stub-summary', output: ['<think>hidden</think>stub-reply'], artifacts: [] };
       },
       stop() {},
@@ -310,14 +315,13 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(created.success, true);
     const teamId = (created.data as { team: { team_id: string } }).team.team_id;
 
-    const sent = postTeamRuntimeMessage({
+    const sentPromise = postTeamRuntimeMessage({
       team_id: teamId,
       actor_agent_id: 'admin',
       content: 'hello runtime',
       target_agent_id: 'topic_agent',
       context_length: 0,
-    });
-    assert.equal(sent.success, true);
+    }, true);
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     const running = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
@@ -328,8 +332,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     releaseTopic?.();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const messages = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'messages.json'), 'utf-8')) as Array<Record<string, unknown>>;
-    assert.equal(capturedConfigs.length, 1);
+    assert.equal(capturedConfigs.length, 2);
     assert.equal(capturedConfigs[0]?.apiKey, 'provider-api-key');
     assert.equal(capturedConfigs[0]?.baseURL, 'https://api.minimaxi.com/anthropic');
     assert.equal(capturedConfigs[0]?.provider, 'anthropic-messages');
@@ -356,7 +359,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.ok(teamMessageSendTool);
     assert.equal(capturedPrompts.some((prompt) => prompt.includes('Your actor_agent_id: editor_agent')), true);
     releaseEditor?.();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await editorCompleted;
+    const sent = await sentPromise;
+    assert.equal(sent.success, true);
     const dryRun = await teamMessageSendTool.execute({
       action: 'send',
       actor_agent_id: 'wrong-agent',
@@ -372,12 +377,17 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.ok(listWorkspaceFilesTool);
     const listed = await listWorkspaceFilesTool.execute({ path: '', depth: 1 }) as { files: Array<{ name: string }> };
     assert.ok(Array.isArray(listed.files));
+    const messages = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'messages.json'), 'utf-8')) as Array<Record<string, unknown>>;
     const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
     const inbound = deliveries.find((item) => item.recipientAgentId === 'topic_agent');
     assert.equal(inbound?.senderAgentId, 'admin');
     assert.equal(inbound?.executionStatus, 'done');
     assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === 'editor_agent'));
     assert.ok(deliveries.some((item) => item.senderAgentId === 'editor_agent' && item.recipientAgentId === 'admin'));
+    assert.deepEqual(
+      deliveries.filter((item) => item.executionStatus !== 'done').map((item) => `${item.senderAgentId}->${item.recipientAgentId}:${item.executionStatus}`),
+      [],
+    );
     assert.equal(messages.length, 3);
     assert.equal(messages[0]?.senderAgentId, 'admin');
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');
@@ -394,9 +404,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
         .map((item) => [item.senderAgentId, item.recipientAgentId]),
       [
         ['admin', 'topic_agent'],
-        ['topic_agent', 'admin'],
         ['topic_agent', 'editor_agent'],
-        ['editor_agent', 'topic_agent'],
+        ['editor_agent', 'admin'],
       ],
     );
   } finally {

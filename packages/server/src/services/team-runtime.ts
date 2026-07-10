@@ -385,6 +385,12 @@ function resolveTeamRuntimeTools(
       teamId,
       actorAgentId,
       handleMessageSend: (input) => {
+        if (handoffs.length > 0 && input && typeof input === 'object') {
+          const map = input as Record<string, unknown>;
+          if (asString(map.mode) === 'direct') {
+            return fail('this agent run already queued a direct handoff', 'CONFLICT');
+          }
+        }
         const result = handleTeamMessageSend(input);
         if (!result.success || !input || typeof input !== 'object') return result;
         const map = input as Record<string, unknown>;
@@ -659,8 +665,10 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
       }, partsTracker.handleEvent, handoffs);
       if (activeTeamRuns.get(runKey)?.token !== token) return;
       if (handoffs.length > 0) {
+        completeMessageDeliveries(teamId, replyMessageId, targetAgentId, 'done');
         if (replyMessageId) handleTeamMessageDelete({ actor_agent_id: targetAgentId, message_id: replyMessageId });
         completeRuntimeDelivery(teamId, runtime, targetAgentId, 'done');
+        completeMessageDeliveries(teamId, replyMessageId, targetAgentId, 'done');
       } else {
         const parts = partsTracker.buildParts({ sessionId: runtime.id, success: true });
         if (!parts.some((part) => part.type === 'text')) {
@@ -701,6 +709,7 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
         updatedAt: new Date().toISOString(),
       });
       completeRuntimeDelivery(teamId, runtime, targetAgentId, 'failed', message);
+      completeMessageDeliveries(teamId, replyMessageId, targetAgentId, 'failed', message);
       broadcastTeamRuntimeEvent('team.runtime.updated', {
         teamId,
         actorAgentId,
@@ -744,6 +753,25 @@ function completeRuntimeDelivery(
     execution_status: executionStatus,
     failure_reason: failureReason,
   });
+}
+
+function completeMessageDeliveries(
+  teamId: string,
+  messageId: string | undefined,
+  actorAgentId: string,
+  executionStatus: 'done' | 'failed',
+  failureReason?: string,
+): void {
+  if (!messageId) return;
+  for (const delivery of listDeliveries(teamId).filter((item) => item.messageId === messageId)) {
+    void handleTeamMessageUpdate({
+      action: 'update_status',
+      actor_agent_id: actorAgentId,
+      delivery_id: delivery.id,
+      execution_status: executionStatus,
+      failure_reason: failureReason,
+    });
+  }
 }
 
 function collectConversationMessages(teamId: string, actorAgentId: string, leaderAgentId: string, runtime: StoredTeamRuntime): TeamRuntimeMessage[] {

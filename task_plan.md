@@ -9,8 +9,8 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 - [complete] Build a deterministic repro from stored messages/deliveries and existing tests.
 - [complete] Trace tool dispatch and handoff stream ownership.
 - [complete] Rank and test root-cause hypotheses.
-- [in_progress] Add focused regression tests and implement the minimum fix.
-- [pending] Run targeted tests and cleanup.
+- [complete] Add focused regression tests and implement the minimum fix.
+- [in_progress] Run targeted tests and cleanup.
 
 ## Constraints
 
@@ -25,3 +25,4 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 | `DEFAULT_CONTEXT_LENGTH` not defined | First typecheck | Use existing `normalizeContextLength(undefined)` helper. |
 | Existing handoff test expected blocking tool call | First targeted test | Update contract to immediate queueing and post-parent dispatch. |
 | Owner transfer test failed outside touched path | First targeted test | Re-run independently before deciding; preserve unrelated changes. |
+| Handoff test relied on fixed sleeps and did not exit reliably | Final targeted test | Added an explicit editor completion signal before assertions and cleanup. |

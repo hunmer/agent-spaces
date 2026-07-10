@@ -20,3 +20,4 @@
 - Each `dispatchTeamReply` creates an automatic completion message in addition to the explicit `team_message_send` workflow message. It addresses the immediate caller plus owner, multiplying messages and deliveries.
 - Team Chat maps `runtime.id` into `Message.channelId`; generic `ToolStep` then calls the normal channel detail route, whose required channel lookup returns 404 because a team runtime is not a channel.
 - The latest stored run has 12 messages and 15 deliveries; 9 deliveries remain `running`, matching interrupted nested handoffs.
+- Automatic reply deliveries were never completed because finalization only updated the inbound message delivery; completion now covers both inbound and generated reply deliveries.

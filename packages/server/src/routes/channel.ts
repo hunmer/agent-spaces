@@ -114,7 +114,7 @@ router.get('/:channelId/state', (req: Request<ChannelParams>, res: Response) => 
 // GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:detailId
 router.get('/:channelId/messages/:messageId/tool-details/:detailId', (req: Request<ChannelParams & { messageId: string; detailId: string }>, res: Response) => {
   const { id, channelId, messageId, detailId } = req.params;
-  if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
+  if (id !== '__team__' && !getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
   const detail = getToolDetail(id, channelId!, messageId, detailId);
   if (!detail) { res.status(404).json({ error: 'tool detail not found' }); return; }
   res.json(detail);
