@@ -267,10 +267,10 @@ function resolveLeaderProfile(leaderAgentId: string): TeamRuntimeLeader {
 
 function resolveParticipantProfile(membership: TeamMembership): TeamRuntimeParticipant {
   const customAgent = (membership as TeamMembership & { agent?: Record<string, unknown> }).agent;
-  if (customAgent && typeof customAgent === 'object') {
-    return buildRuntimeProfile(membership.agentId, customAgent);
-  }
-  return resolveLeaderProfile(membership.agentId);
+  const profile = customAgent && typeof customAgent === 'object'
+    ? buildRuntimeProfile(membership.agentId, customAgent)
+    : resolveLeaderProfile(membership.agentId);
+  return { ...profile, role: membership.role };
 }
 
 function listParticipants(teamId: string, actorAgentId: string): TeamRuntimeParticipant[] {
@@ -305,7 +305,7 @@ function buildTeamAgentPrompt(
     ? 'No prior messages.'
     : history.map((item) => `${item.senderAgentId}: ${item.content}`).join('\n');
   const participantBlock = participants.length === 0
-    ? 'No other team participants.'
+    ? 'No active team members.'
     : participants.map((item) => `- ${item.id} (${item.name}${item.role ? `, role=${item.role}` : ''})`).join('\n');
   return [
     'You are replying inside a team chat.',
@@ -317,7 +317,7 @@ function buildTeamAgentPrompt(
     'If another teammate should continue the work, call `team_message_send` with that teammate\'s agent id instead of only mentioning them in plain text.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
     '',
-    'Available teammates for handoff:',
+    'Current team members (agent id, name, team role):',
     participantBlock,
     '',
     'Conversation history:',
@@ -398,7 +398,7 @@ async function executePresetTeamReply(
   });
   onRuntime?.(runtime);
   const workingDir = agentService.resolveWorkingDir('', preset);
-  const userPrompt = buildTeamAgentPrompt(teamId, targetAgentId, content, history, listParticipants(teamId, targetAgentId));
+  const userPrompt = buildTeamAgentPrompt(teamId, targetAgentId, content, history, listParticipants(teamId, ''));
   const runtimeTools = resolveTeamRuntimeTools(preset.tools, workingDir, teamId, targetAgentId);
   try {
     const result = await runtime.execute(
@@ -457,7 +457,7 @@ async function executeChatTeamReply(
     maxTokens: agent.maxTokens,
   });
   onRuntime?.(runtime);
-  const userPrompt = buildTeamAgentPrompt(teamId, targetAgentId, content, history, listParticipants(teamId, targetAgentId));
+  const userPrompt = buildTeamAgentPrompt(teamId, targetAgentId, content, history, listParticipants(teamId, ''));
   const workingDir = chatService.getAgentWorkingDir(targetAgentId) || process.cwd();
   const runtimeTools = resolveTeamRuntimeTools(agent.tools, workingDir, teamId, targetAgentId);
   const result = await runtime.execute(userPrompt, workingDir, {
@@ -493,7 +493,7 @@ async function executeCustomTeamReply(
   });
   onRuntime?.(runtime);
   const workingDir = asString(agent.workingDir) || process.cwd();
-  const userPrompt = buildTeamAgentPrompt(teamId, targetAgentId, content, history, listParticipants(teamId, targetAgentId));
+  const userPrompt = buildTeamAgentPrompt(teamId, targetAgentId, content, history, listParticipants(teamId, ''));
   const runtimeKind = asString(agent.runtimeKind);
   const skills = Array.isArray(agent.skills) ? agent.skills.filter((item): item is string => typeof item === 'string') : [];
   const runtimeTools = resolveTeamRuntimeTools(agent.tools, workingDir, teamId, targetAgentId);

@@ -307,8 +307,10 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'team_inbox_query'));
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'ListWorkspaceFiles'));
     assert.ok(runtimeFunctionTools.some((tool) => tool.name === 'list_workflows'));
-    assert.match(capturedPrompts[0] ?? '', /Available teammates for handoff:/);
+    assert.match(capturedPrompts[0] ?? '', /Current team members \(agent id, name, team role\):/);
     assert.match(capturedPrompts[0] ?? '', /Owner Agent/);
+    assert.match(capturedPrompts[0] ?? '', /role=owner/);
+    assert.match(capturedPrompts[0] ?? '', /topic_agent \(Topic Agent, role=member\)/);
     assert.match(capturedPrompts[0] ?? '', /team_message_send/);
     assert.match(capturedPrompts[0] ?? '', new RegExp(`Current team_id: ${teamId}`));
     assert.match(capturedPrompts[0] ?? '', new RegExp(`Your actor_agent_id: topic_agent`));
