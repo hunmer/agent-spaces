@@ -32,8 +32,7 @@ router.put('/:notificationId/read', (req: Request<Params>, res: Response) => {
 
 router.put('/read-all', (req: Request<Params>, res: Response) => {
   const workspaceId = req.params.id;
-  const notifications = nc.listNotifications(workspaceId);
-  for (const n of notifications) nc.markRead(workspaceId, n.id);
+  nc.markAllRead(workspaceId);
   res.json({ ok: true });
 });
 

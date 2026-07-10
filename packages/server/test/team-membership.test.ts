@@ -17,6 +17,7 @@ import { createProvider } from '../src/storage/llm-store.js';
 import { closeDb as closeAgentDb } from '../src/storage/agent-store.js';
 import {
   getTeamRuntime,
+  listTeamSessions,
   postTeamRuntimeMessage,
   resolveCustomAgentProvider,
   setTeamRuntimeFactoryForTests,
@@ -533,9 +534,14 @@ test('team runtime sessions store and load messages independently', () => {
 
     const first = getTeamRuntime({ team_id: teamId, session_id: firstSessionId, actor_agent_id: 'admin' });
     const second = getTeamRuntime({ team_id: teamId, session_id: secondSessionId, actor_agent_id: 'admin' });
+    const listed = listTeamSessions({ team_id: teamId });
 
     assert.equal((first.data as { runtime: { session_id: string } }).runtime.session_id, firstSessionId);
     assert.equal((second.data as { runtime: { session_id: string } }).runtime.session_id, secondSessionId);
+    assert.deepEqual(
+      (listed.data as { sessions: Array<{ session_id: string }> }).sessions.map((session) => session.session_id).sort(),
+      [firstSessionId, secondSessionId].sort(),
+    );
     assert.deepEqual(readdirSync(join(dataDir, 'team', teamId)).sort(), [
       firstSessionId,
       secondSessionId,

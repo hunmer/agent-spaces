@@ -9,7 +9,7 @@ import {
   handleTeamMessageSend,
   handleTeamMessageUpdate,
 } from '../services/team.js';
-import { getTeamRuntime, postTeamRuntimeMessage } from '../services/team-runtime.js';
+import { getTeamRuntime, listTeamSessions, postTeamRuntimeMessage } from '../services/team-runtime.js';
 
 const router = Router({ mergeParams: true });
 
@@ -114,6 +114,10 @@ router.delete('/:teamId/messages', (req: Request<{ teamId: string }>, res: Respo
     session_id: req.body?.session_id ?? req.query.session_id,
     actor_agent_id: req.body?.actor_agent_id ?? req.query.actor_agent_id,
   }));
+});
+
+router.get('/:teamId/sessions', (req: Request<{ teamId: string }>, res: Response) => {
+  sendResult(res, listTeamSessions({ team_id: req.params.teamId }));
 });
 
 router.get('/:teamId/runtime', (req: Request<{ teamId: string }>, res: Response) => {

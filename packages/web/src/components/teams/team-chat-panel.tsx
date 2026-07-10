@@ -12,6 +12,7 @@ import { useAgentStore } from "@/stores/agent";
 import { sdk } from "@/lib/sdk";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AgentEditor } from "@/components/sidebar/agent-editor";
 import { normalizeAgent, type AgentPreset } from "@/components/sidebar/agent-shared";
 import type {
@@ -19,6 +20,7 @@ import type {
   TeamRuntimeView,
   TeamRuntimeMessageView,
   TeamRuntimeResponse,
+  TeamSessionView,
 } from "@agent-spaces/sdk";
 import { WorkspaceWS } from "@/lib/ws";
 import { WorkflowPreview } from "@/components/workflow/workflow-preview";
@@ -150,7 +152,8 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const agents = useAgentStore((store) => store.agents);
   const ensureAgents = useAgentStore((store) => store.ensure);
   const [runtime, setRuntime] = useState<TeamRuntimeView | null>(null);
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  const [sessions, setSessions] = useState<TeamSessionView[]>([]);
   const [messages, setMessages] = useState<TeamRuntimeMessageView[]>([]);
   const [pendingAssistantSince, setPendingAssistantSince] = useState<string | null>(null);
   const [leaderProfile, setLeaderProfile] = useState<TeamRuntimeResponse["leader"] | null>(null);
@@ -256,10 +259,12 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setError("");
     try {
       const data = await sdk.team.getRuntime(teamId, TEAM_USER_ACTOR_ID, sessionId);
+      const sessionData = await sdk.team.listSessions(teamId);
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
       setMessages(data.messages);
+      setSessions(sessionData.sessions);
       clearPendingAssistantIfResolved(data.messages);
     } catch (err) {
       setRuntime(null);
@@ -272,6 +277,13 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       setLoading(false);
     }
   }, [actorAgentId, clearPendingAssistantIfResolved, sessionId, teamId]);
+
+  const handleSessionChange = useCallback((value: string | null) => {
+    if (!value || value === sessionId) return;
+    setPendingAssistantSince(null);
+    setWorkflowDeliveries([]);
+    setSessionId(value);
+  }, [sessionId]);
 
   const handleSend = useCallback(async (content: string, mentions: string[], _attachments?: unknown, _replyToMessageId?: string, contextLength?: number) => {
     const trimmed = content.trim();
@@ -401,6 +413,18 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <Select value={sessionId} onValueChange={handleSessionChange}>
+            <SelectTrigger className="h-7 w-32 font-mono text-xs" title={sessionId} aria-label={t("chat.selectSession")}>
+              <SelectValue>{sessionId.slice(0, 8)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent align="end">
+              {sessions.map((session) => (
+                <SelectItem key={session.session_id} value={session.session_id} className="font-mono text-xs">
+                  {session.session_id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant="ghost"
             size="icon"

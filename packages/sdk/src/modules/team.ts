@@ -129,6 +129,12 @@ export interface TeamRuntimeResponse {
   messages: TeamRuntimeMessageView[];
 }
 
+export interface TeamSessionView {
+  session_id: string;
+  status: TeamRuntimeView['status'];
+  updated_at: string;
+}
+
 /** inbox 投递视图（与服务端 inboxView 对齐，并附带 message 正文） */
 export interface TeamInboxItemView {
   delivery_id: string;
@@ -298,6 +304,10 @@ export function createTeamApi(http: HttpClient) {
       })),
 
     // ---- runtime ----
+
+    /** 获取团队会话列表 */
+    listSessions: (teamId: string): Promise<{ sessions: TeamSessionView[] }> =>
+      unwrap(http.raw(`/api/teams/${teamId}/sessions`)),
 
     /** 获取团队 runtime（含 leader/participants/messages） */
     getRuntime: (teamId: string, actorAgentId: string, sessionId?: string): Promise<TeamRuntimeResponse> => {

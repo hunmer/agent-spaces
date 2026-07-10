@@ -64,4 +64,3 @@ packages/server/agent-spaces-data/skills/
 
 packages/server/agent-spaces-data/team/*/logs/
 packages/logs/*
-packages/logs/server-2026-07-10.log

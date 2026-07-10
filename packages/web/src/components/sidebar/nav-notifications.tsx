@@ -26,6 +26,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
   const isMobile = useIsMobile();
   const notifications = useNotificationStore((s) => s.notifications);
   const markRead = useNotificationStore((s) => s.markRead);
+  const markAllRead = useNotificationStore((s) => s.markAllRead);
   const unreadCount = notifications.filter((n) => !n.read).length;
   const unreadItems = notifications.filter((n) => !n.read);
   const recent = notifications.slice(0, 10);
@@ -41,11 +42,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
     setDialogOpen(true);
   };
 
-  const handleMarkAllRead = () => {
-    notifications.forEach((n) => {
-      if (!n.read) markRead(workspaceId, n.id);
-    });
-  };
+  const handleMarkAllRead = () => markAllRead(workspaceId);
 
   const bellButton = (
     <Button

@@ -58,6 +58,13 @@ export function markRead(workspaceId: string, notificationId: string): AppNotifi
   return n;
 }
 
+export function markAllRead(workspaceId: string): AppNotification[] {
+  const notifications = readAll(workspaceId);
+  for (const n of notifications) n.read = true;
+  writeAll(workspaceId, notifications);
+  return notifications;
+}
+
 export function clearAll(workspaceId: string): void {
   writeAll(workspaceId, []);
   broadcastToWorkspace(workspaceId, 'notification.cleared', null);

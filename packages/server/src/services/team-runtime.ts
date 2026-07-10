@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type { Team, TeamMembership, TeamMessage, Workspace, BuiltInAgentToolName, MessageAgentContext, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
@@ -1027,6 +1027,28 @@ function maybeCompleteRuntime(teamId: string, sessionId: string, runtime: Stored
     updatedAt: latestLeaderReply.createdAt,
   };
   return updateRuntime(teamId, sessionId, completed);
+}
+
+export function listTeamSessions(input: unknown): TeamServiceResult {
+  if (!input || typeof input !== 'object') return fail('tool input must be an object', 'INVALID_ARGUMENT');
+  const map = input as Record<string, unknown>;
+  const teamId = asString(map.team_id ?? map.teamId);
+  if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
+  if (!loadTeam(teamId)) return fail('team not found', 'TEAM_NOT_FOUND');
+  const dir = teamDataDir(teamId);
+  const sessions = existsSync(dir)
+    ? readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && Boolean(asSessionId(entry.name)))
+      .map((entry) => listRuntimes(teamId, entry.name)[0])
+      .filter((runtime): runtime is StoredTeamRuntime => Boolean(runtime))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .map((runtime) => ({
+        session_id: runtime.sessionId,
+        status: runtime.status,
+        updated_at: runtime.updatedAt,
+      }))
+    : [];
+  return ok('team sessions listed', { sessions });
 }
 
 export function getTeamRuntime(input: unknown): TeamServiceResult {

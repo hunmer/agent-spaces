@@ -129,6 +129,7 @@
     "running": "运行中",
     "viewWorkflow": "查看消息工作流",
     "clearMessages": "清空消息",
+    "selectSession": "切换会话",
     "workflowTitle": "消息工作流",
     "workflowDescription": "{count} 条投递，临时只读视图",
     "saveFailed": "保存失败",
