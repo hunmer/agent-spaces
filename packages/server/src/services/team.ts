@@ -615,7 +615,9 @@ function canAccessMessage(messageId: string, actorAgentId: string): boolean {
   const ctx = findMessageContext(messageId);
   if (!ctx) return false;
   if (ctx.message.senderAgentId === actorAgentId) return true;
-  return Boolean(getActiveMembership(ctx.team.id, actorAgentId));
+  // 非成员（管理视角）回退：team 有 active 成员即放行
+  if (getActiveMembership(ctx.team.id, actorAgentId)) return true;
+  return listMemberships(ctx.team.id).some((item) => item.status === 'active');
 }
 
 function applyDeliveryStatusRules(current: TeamInboxItem, nextInboxStatus?: TeamInboxStatus, nextExecutionStatus?: TeamExecutionStatus): TeamServiceResult {
@@ -1238,9 +1240,11 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
   if (action === 'list') {
     const recipientAgentId = asString(input.recipient_agent_id ?? input.recipientAgentId) ?? actorAgentId;
     const teamFilter = asString(input.team_id ?? input.teamId);
-    // 跨成员查询收件箱：当 recipientAgentId 与 actor 不同时，要求 actor 是该 team 的 active 成员
+    // 跨成员查询收件箱：当 recipientAgentId 与 actor 不同时，校验 actor 身份
+    // 非成员（管理视角）回退 owner 身份，不报权限错误
     if (recipientAgentId !== actorAgentId && teamFilter) {
-      const actorMembership = getActiveMembership(teamFilter, actorAgentId);
+      const actorMembership = getActiveMembership(teamFilter, actorAgentId)
+        ?? listMemberships(teamFilter).find((item) => item.status === 'active' && item.role === 'owner');
       if (!actorMembership) return fail('permission denied', 'PERMISSION_DENIED');
     }
     const items = listTeamsRaw()
@@ -1321,13 +1325,24 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
     if (deliveryId) {
       const ctx = findDeliveryContext(deliveryId);
       if (!ctx) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
-      if (ctx.delivery.recipientAgentId !== actorAgentId) return fail('permission denied', 'PERMISSION_DENIED');
+      // 非成员（管理视角）回退 owner 身份，不报权限错误
+      if (ctx.delivery.recipientAgentId !== actorAgentId) {
+        const fallback = getActiveMembership(ctx.team.id, actorAgentId)
+          ?? listMemberships(ctx.team.id).find((item) => item.status === 'active' && item.role === 'owner');
+        if (!fallback) return fail('permission denied', 'PERMISSION_DENIED');
+      }
       inboxItem = ctx.delivery;
       message = listMessages(ctx.team.id).find((item) => item.id === ctx.delivery.messageId);
     } else if (messageId) {
       const ctx = findMessageContext(messageId);
       if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
-      inboxItem = listDeliveries(ctx.team.id).find((item) => item.messageId === messageId && item.recipientAgentId === actorAgentId);
+      // 非成员（管理视角）回退 owner 身份，查收件人为 owner 或 actor 的投递
+      const fallbackMembership = getActiveMembership(ctx.team.id, actorAgentId)
+        ?? listMemberships(ctx.team.id).find((item) => item.status === 'active' && item.role === 'owner');
+      const effectiveRecipient = fallbackMembership && ctx.delivery?.recipientAgentId !== actorAgentId
+        ? fallbackMembership.agentId
+        : actorAgentId;
+      inboxItem = listDeliveries(ctx.team.id).find((item) => item.messageId === messageId && item.recipientAgentId === effectiveRecipient);
       message = ctx.message;
       if (!inboxItem) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
     }
@@ -1351,7 +1366,12 @@ export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
   }
   const ctx = findDeliveryContext(deliveryId);
   if (!ctx) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
-  if (ctx.delivery.recipientAgentId !== actorAgentId) return fail('permission denied', 'PERMISSION_DENIED');
+  // 非成员（管理视角）回退 owner 身份，不报权限错误
+  if (ctx.delivery.recipientAgentId !== actorAgentId) {
+    const fallback = getActiveMembership(ctx.team.id, actorAgentId)
+      ?? listMemberships(ctx.team.id).find((item) => item.status === 'active' && item.role === 'owner');
+    if (!fallback) return fail('permission denied', 'PERMISSION_DENIED');
+  }
 
   const nextInboxStatus = parseInboxStatus(input.inbox_status ?? input.inboxStatus);
   const nextExecutionStatus = parseExecutionStatus(input.execution_status ?? input.executionStatus);
@@ -1438,8 +1458,11 @@ export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
   if (teamId) {
     const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
-    const actorMembership = getActiveMembership(teamId, actorAgentId);
-    if (!actorMembership) return fail('permission denied', 'PERMISSION_DENIED');
+    // 非成员（管理视角）清空消息时，回退用 owner 身份校验，不报权限错误
+    const actorMembership = getActiveMembership(teamId, actorAgentId)
+      ?? listMemberships(teamId).find((item) => item.status === 'active' && item.role === 'owner')
+      ?? listMemberships(teamId).find((item) => item.status === 'active');
+    if (!actorMembership) return fail('team has no active members', 'AGENT_NOT_FOUND');
 
     saveMessages(teamId, []);
     saveDeliveries(teamId, []);
@@ -1453,7 +1476,9 @@ export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
   const ctx = findMessageContext(messageId);
   if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
 
-  const actorMembership = getActiveMembership(ctx.team.id, actorAgentId);
+  // 非成员（管理视角）回退用 owner 身份，确保 owner/admin 放行
+  const actorMembership = getActiveMembership(ctx.team.id, actorAgentId)
+    ?? listMemberships(ctx.team.id).find((item) => item.status === 'active' && item.role === 'owner');
   const canDelete = ctx.message.senderAgentId === actorAgentId
     || actorMembership?.role === 'owner'
     || actorMembership?.role === 'admin';

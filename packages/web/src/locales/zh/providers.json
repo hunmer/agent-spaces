@@ -32,6 +32,9 @@
     "apiKey": "API 密钥",
     "apiKeyPlaceholder": "sk-...",
     "apiMessageType": "API 消息类型",
-    "apiMessageTypePlaceholder": "选择 API 消息类型..."
+    "apiMessageTypePlaceholder": "选择 API 消息类型...",
+    "testConnection": "测试连接",
+    "testSuccess": "连接成功",
+    "testFailed": "连接失败"
   }
 }

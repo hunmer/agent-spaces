@@ -32,6 +32,9 @@
     "apiKey": "API Key",
     "apiKeyPlaceholder": "sk-...",
     "apiMessageType": "API Message Type",
-    "apiMessageTypePlaceholder": "Select API message type..."
+    "apiMessageTypePlaceholder": "Select API message type...",
+    "testConnection": "Test Connection",
+    "testSuccess": "Connection successful",
+    "testFailed": "Connection failed"
   }
 }

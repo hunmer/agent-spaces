@@ -190,6 +190,48 @@ async function handleResolveAgentIcon(req: Request, res: Response) {
   }
 }
 
+// 测试连接：向 provider 发起轻量级请求验证 apiBase + apiKey 是否可用
+router.post('/providers/test', async (req, res) => {
+  try {
+    const { apiBase, apiKey } = req.body as { apiBase?: string; apiKey?: string };
+    if (!apiBase) {
+      res.status(400).json({ success: false, message: 'apiBase is required' });
+      return;
+    }
+    const base = String(apiBase).replace(/\/+$/, '');
+    // 依次尝试根 /models 与 /v1/models（兼容 OpenAI 风格）
+    const candidates = [`${base}/models`, `${base}/v1/models`];
+    let lastError = 'Connection failed';
+    for (const url of candidates) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
+        const resp = await fetch(url, {
+          method: 'GET',
+          headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        if (resp.ok) {
+          res.json({ success: true, message: `OK (${resp.status})` });
+          return;
+        }
+        // 401/403 说明 key 无效（端点正确），直接返回
+        if (resp.status === 401 || resp.status === 403) {
+          res.json({ success: false, message: `Authentication failed (${resp.status})` });
+          return;
+        }
+        lastError = `HTTP ${resp.status}`;
+      } catch (e: any) {
+        lastError = e?.name === 'AbortError' ? 'Timeout' : (e?.message || String(e));
+      }
+    }
+    res.json({ success: false, message: lastError });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error?.message || 'Failed to test connection' });
+  }
+});
+
 router.post('/providers/agent-icon', handleResolveAgentIcon);
 
 export default router;

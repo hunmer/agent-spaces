@@ -22,6 +22,10 @@ import {
   Trash2,
   Brain,
   ExternalLink,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Plug,
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
 import type { ModelCatalog } from "@/stores/llm";
@@ -309,6 +313,8 @@ function ProviderForm({
 }) {
   const t = useTranslations("providers");
   const ta = useTranslations("agent");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const selectedCatalogProviderId = useMemo(
     () => {
       const byApiBase = findCatalogProviderByApiBase(catalog, draft.apiBase)?.id;
@@ -368,6 +374,43 @@ function ProviderForm({
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">{t("form.apiKey")}</label>
           <Input type="password" value={draft.apiKey || ""} onChange={e => onChange("apiKey", e.target.value)} placeholder={t("form.apiKeyPlaceholder")} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="self-start h-7 text-xs"
+            disabled={testing || !draft.apiBase}
+            onClick={async () => {
+              setTesting(true);
+              setTestResult(null);
+              try {
+                const result = await sdk.llm.testProvider({
+                  apiBase: draft.apiBase || "",
+                  apiKey: draft.apiKey || "",
+                });
+                setTestResult(result);
+              } catch (e: any) {
+                setTestResult({ success: false, message: e?.message || "Request failed" });
+              } finally {
+                setTesting(false);
+              }
+            }}
+          >
+            {testing ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Plug className="size-3.5" />
+            )}
+            {t("form.testConnection")}
+          </Button>
+          {testResult && (
+            <div className={`flex items-center gap-1.5 text-xs ${testResult.success ? "text-emerald-600" : "text-destructive"}`}>
+              {testResult.success ? <CheckCircle2 className="size-3.5" /> : <XCircle className="size-3.5" />}
+              <span className="truncate">{testResult.success ? t("form.testSuccess") : `${t("form.testFailed")}: ${testResult.message}`}</span>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">{t("form.apiMessageType")}</label>

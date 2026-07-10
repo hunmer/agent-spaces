@@ -62,6 +62,9 @@ export function createLlmApi(http: HttpClient) {
     deleteProvider: (id: string): Promise<void> =>
       http.delete(`/api/providers/${id}`),
 
+    testProvider: (data: { apiBase: string; apiKey?: string }): Promise<{ success: boolean; message: string }> =>
+      http.post("/api/providers/test", data),
+
     getAgentIcon: (data: Partial<AgentConfig>): Promise<AgentIconResult | null> =>
       http.post("/api/providers/agent-icon", data),
 
