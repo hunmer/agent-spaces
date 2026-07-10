@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type { Team, TeamMembership, TeamMessage, Workspace, BuiltInAgentToolName, MessageAgentContext, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
-import { writeFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
@@ -96,6 +96,7 @@ type Delivery = {
   recipientAgentId: string;
   senderAgentId: string;
   messageType: string;
+  inboxStatus: 'unread' | 'read' | 'archived';
   createdAt?: string;
 };
 
@@ -124,8 +125,7 @@ function teamDataDir(teamId: string): string {
 function writeTeamRunLog(teamId: string, startedAt: string, runId: string, lines: string[]): void {
   const logsDir = join(teamDataDir(teamId), 'logs');
   ensureDir(logsDir);
-  const time = startedAt.replace(/[:.]/g, '-');
-  writeFileSync(join(logsDir, `${time}-${runId}.txt`), `${lines.join('\n')}\n`, 'utf-8');
+  appendFileSync(join(logsDir, 'team.log'), `===== RUN ${startedAt} ${runId} =====\n${lines.join('\n')}\n\n`, 'utf-8');
 }
 
 function appendTeamRunToolEvent(lines: string[], event: AgentRuntimeEvent): void {
@@ -343,6 +343,7 @@ function buildTeamAgentPrompt(
   history: TeamRuntimeMessage[],
   participants: TeamRuntimeParticipant[] = [],
 ): string {
+  const isOwner = listMemberships(teamId).some((item) => item.status === 'active' && item.agentId === actorAgentId && item.role === 'owner');
   const historyBlock = history.length === 0
     ? 'No prior messages.'
     : history.map((item) => `${item.senderAgentId}: ${item.content}`).join('\n');
@@ -358,6 +359,7 @@ function buildTeamAgentPrompt(
     'Always use these exact ids in team tool calls; never use a recipient agent id as team_id.',
     'If another teammate should continue the work, call `team_message_send` with that teammate\'s agent id instead of only mentioning them in plain text.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
+    ...(isOwner ? ['When the overall team task is finished, call `team_task_complete` before your final reply so the team runtime does not remain running.'] : []),
     '',
     'Current team members (agent id, name, team role):',
     participantBlock,
@@ -402,7 +404,10 @@ function resolveTeamRuntimeTools(
   handoffs: QueuedTeamHandoff[],
 ): { tools?: string[]; functionTools?: ReturnType<typeof createTeamFunctionTools> } {
   const allowedTools = asStringArray(tools);
-  const allowedToolNames = allowedTools as BuiltInAgentToolName[] | undefined;
+  const isOwner = listMemberships(teamId).some((item) => item.status === 'active' && item.agentId === actorAgentId && item.role === 'owner');
+  const allowedToolNames = allowedTools
+    ? [...new Set([...allowedTools, ...(isOwner ? ['team_task_complete'] : [])])] as BuiltInAgentToolName[]
+    : undefined;
   const workspace = buildAdHocWorkspace(workingDir);
   const functionTools = [
     ...createTeamFunctionTools('', allowedToolNames, {
@@ -732,6 +737,7 @@ function broadcastTeamRuntimeEvent(event: string, payload: Record<string, unknow
 }
 
 async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAgentId: string, content: string, runtime: StoredTeamRuntime, history: TeamRuntimeMessage[]): Promise<void> {
+  markRuntimeDeliveryRead(teamId, runtime, targetAgentId);
   const runKey = `${teamId}:${actorAgentId}:${targetAgentId}`;
   activeTeamRuns.get(runKey)?.runtime.stop();
   const token = uuid();
@@ -778,18 +784,37 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
       }, handoffs, (input) => logLines.push('', '[INPUT]', input));
       logLines.push('', '[OUTPUT]', reply.agentContext.output || reply.content);
       if (activeTeamRuns.get(runKey)?.token !== token) return;
+      const parts = partsTracker.buildParts({
+        sessionId: runtime.id,
+        model: reply.model,
+        usage: reply.usage,
+        agentContext: reply.agentContext,
+        success: true,
+      });
+      console.info('[DEBUG-team-context]', {
+        teamId,
+        targetAgentId,
+        replyMessageId,
+        handoffMessageIds: handoffs.map((handoff) => handoff.messageId),
+        partTypes: parts.map((part) => part.type),
+        usage: reply.usage,
+      });
       if (handoffs.length > 0) {
+        for (const handoff of handoffs) {
+          const message = listMessages(teamId).find((item) => item.id === handoff.messageId);
+          const handoffParts: MessagePart[] = [
+            ...parts.filter((part) => part.type !== 'text'),
+            { id: `text-${handoff.messageId}`, type: 'text', text: handoff.content },
+          ];
+          const updated = updateTeamMessage(teamId, handoff.messageId, {
+            metadata: { ...message?.metadata, runtimeId: runtime.id, runtimeStatus: 'completed', parts: handoffParts },
+          });
+          if (updated) broadcastTeamRuntimeEvent('team.message.updated', { teamId, actorAgentId, message: updated });
+        }
         completeMessageDeliveries(teamId, replyMessageId, 'done');
         if (replyMessageId) handleTeamMessageDelete({ actor_agent_id: targetAgentId, message_id: replyMessageId });
         completeRuntimeDelivery(teamId, runtime, targetAgentId, 'done');
       } else {
-        const parts = partsTracker.buildParts({
-          sessionId: runtime.id,
-          model: reply.model,
-          usage: reply.usage,
-          agentContext: reply.agentContext,
-          success: true,
-        });
         if (!parts.some((part) => part.type === 'text')) {
           parts.push({ id: `text-${runtime.id}`, type: 'text', text: reply.content });
         }
@@ -875,6 +900,47 @@ function completeRuntimeDelivery(
     execution_status: executionStatus,
     failure_reason: failureReason,
   });
+}
+
+function markRuntimeDeliveryRead(teamId: string, runtime: StoredTeamRuntime, recipientAgentId: string): void {
+  const delivery = listDeliveries(teamId).find((item) =>
+    item.messageId === runtime.lastMessageId && item.recipientAgentId === recipientAgentId && item.inboxStatus === 'unread',
+  );
+  if (!delivery) return;
+  void handleTeamMessageUpdate({
+    action: 'update_status',
+    actor_agent_id: recipientAgentId,
+    delivery_id: delivery.id,
+    inbox_status: 'read',
+  });
+}
+
+export function handleTeamTaskComplete(input: unknown): TeamServiceResult {
+  if (!input || typeof input !== 'object') return fail('tool input must be an object', 'INVALID_ARGUMENT');
+  const map = input as Record<string, unknown>;
+  const teamId = asString(map.team_id ?? map.teamId);
+  const actorAgentId = asString(map.actor_agent_id ?? map.actorAgentId);
+  if (asString(map.action) !== 'complete' || !teamId || !actorAgentId) {
+    return fail('action=complete, actor_agent_id, team_id are required', 'INVALID_ARGUMENT');
+  }
+  const owner = listMemberships(teamId).find((item) => item.status === 'active' && item.agentId === actorAgentId && item.role === 'owner');
+  if (!owner) return fail('only the active team owner can complete the team task', 'PERMISSION_DENIED');
+  const runtimes = listRuntimes(teamId)
+    .filter((item) => item.leaderAgentId === actorAgentId)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const runtime = runtimes.find((item) => item.status === 'running') ?? runtimes[0];
+  if (!runtime) return fail('team runtime not found', 'RUNTIME_NOT_FOUND');
+  if (runtime.status === 'completed') return ok('team task already completed', { runtime_id: runtime.id, status: runtime.status });
+  if (runtime.status !== 'running') return fail('team runtime is not running', 'INVALID_STATUS_TRANSITION');
+  const completed = updateRuntime(teamId, { ...runtime, status: 'completed', updatedAt: new Date().toISOString() });
+  broadcastTeamRuntimeEvent('team.runtime.updated', {
+    teamId,
+    actorAgentId: completed.actorAgentId,
+    runtimeId: completed.id,
+    leaderAgentId: completed.leaderAgentId,
+    status: completed.status,
+  });
+  return ok('team task completed', { runtime_id: completed.id, status: completed.status });
 }
 
 function completeMessageDeliveries(

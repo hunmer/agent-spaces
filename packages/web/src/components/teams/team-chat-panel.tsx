@@ -82,7 +82,7 @@ function createTeamMessageWorkflow(
       id: `delivery-${delivery.delivery_id}`,
       type: "agent_run",
       label: `${displayName(delivery.recipient_agent_id)}：${(delivery.subject || content).slice(0, 28) || "处理中"}`,
-      position: { x: (row % 2 === 0 ? column : 3 - column) * 320, y: row * 220 },
+      position: { x: (row % 2 === 0 ? column : 3 - column) * 440, y: row * 320 },
       data: {
         agent: recipient
           ? { ...recipient, role: recipient.role || "agent", enabled: true }
@@ -249,6 +249,13 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
       setMessages(data.messages);
+      console.info('[DEBUG-team-context]', data.messages.map((message) => ({
+        id: message.id,
+        senderAgentId: message.senderAgentId,
+        status: message.status,
+        partTypes: message.parts?.map((part) => part.type) ?? [],
+        contextCount: message.parts?.filter((part) => part.type === 'context').length ?? 0,
+      })));
       clearPendingAssistantIfResolved(data.messages);
     } catch (err) {
       setRuntime(null);

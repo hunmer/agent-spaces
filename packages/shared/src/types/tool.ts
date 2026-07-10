@@ -83,6 +83,12 @@ export const BUILT_IN_AGENT_TOOLS = [
     category: 'team',
   },
   {
+    name: 'team_task_complete',
+    label: 'Team Task Complete',
+    description: 'Mark the current team task as completed.',
+    category: 'team',
+  },
+  {
     name: 'ReadTerminalOutput',
     label: 'Read Terminal Output',
     description: 'Read paginated terminal output by session ID. Defaults to the newest 100 lines.',

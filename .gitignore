@@ -60,3 +60,7 @@ packages/server/agent-spaces-data/public/uploads/
 .openviking/data/viking/default/user/default/sessions/
 packages/server/agent-spaces-data/cli_history/
 packages/server/agent-spaces-data/skills/
+
+
+packages/server/agent-spaces-data/team/*/logs/
+packages/logs/*

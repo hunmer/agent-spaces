@@ -13,3 +13,9 @@
 - Allowed `__team__` tool-detail reads without requiring a normal channel.
 - Reduced all three content agents to the only required tool: `team_message_send`.
 - Final targeted regression and server typecheck passed.
+- Started follow-up requested from `docs/team/team-technical-handoff.md`: automatic read acknowledgement plus owner completion tool/prompt.
+- CodeGraph located the shared wake-up boundary (`dispatchTeamReply`) and confirmed delivery/read fields and existing runtime `completed` status.
+- Read the handoff and tool/status implementations; identified shared tool-name registration and logged one harmless PowerShell inspection syntax error.
+- Implemented automatic delivery read acknowledgement, registered `team_task_complete`, injected the owner-only prompt instruction, and added focused assertions/tests.
+- First validation: new owner completion test passed; typecheck found one missing local delivery field; full suite retained the known unrelated owner-transfer assertion failure.
+- Added the missing delivery field, moved the read assertion to the blocked/running phase, and completed final validation: server/shared TypeScript passed, focused tests 2/2 passed, scoped diff check passed.

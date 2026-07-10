@@ -7,7 +7,7 @@ import {
   handleTeamMessageComment,
   handleTeamMessageUpdate,
 } from '../team.js';
-import { handleTeamMessageSendAndRun } from '../team-runtime.js';
+import { handleTeamMessageSendAndRun, handleTeamTaskComplete } from '../team-runtime.js';
 
 const actorField = {
   actor_agent_id: {
@@ -188,6 +188,17 @@ export function createTeamFunctionTools(
       }, ['action', 'actor_agent_id']),
       annotations: { destructive: false, openWorld: false },
       execute: async (input) => handleTeamMessageComment(bindContext(input)),
+    },
+    {
+      name: 'team_task_complete',
+      description: 'Mark the current team task as completed. Only the active team owner can use this tool.',
+      inputSchema: schema({
+        action: { type: 'string', enum: ['complete'] },
+        ...actorField,
+        team_id: { type: 'string' },
+      }, ['action', 'actor_agent_id', 'team_id']),
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => handleTeamTaskComplete(bindContext(input)),
     },
   ];
 

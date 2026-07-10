@@ -334,6 +334,10 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     const running = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
     const runningMessages = (running.data as { messages: Array<{ senderAgentId: string; status: string; parts?: Array<{ type: string }> }> }).messages;
     assert.equal(runningMessages.some((message) => message.senderAgentId === 'topic_agent'), true);
+    const runningDeliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const runningInbound = runningDeliveries.find((item) => item.recipientAgentId === 'topic_agent');
+    assert.equal(runningInbound?.inboxStatus, 'read');
+    assert.equal(typeof runningInbound?.readAt, 'string');
     assert.equal(capturedPrompts.some((prompt) => prompt.includes('Your actor_agent_id: editor_agent')), false);
 
     releaseTopic?.();
@@ -401,6 +405,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(messages[0]?.senderAgentId, 'admin');
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');
     assert.equal(messages[1]?.body, 'continue');
+    const handoffParts = (messages[1]?.metadata as { parts?: Array<{ type: string }> } | undefined)?.parts ?? [];
+    assert.ok(handoffParts.some((part) => part.type === 'context'));
     assert.equal(messages[2]?.senderAgentId, 'editor_agent');
     assert.equal(messages[2]?.body, 'stub-reply');
     const replyParts = (messages[2]?.metadata as { parts?: Array<{ type: string }> } | undefined)?.parts ?? [];
@@ -410,8 +416,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(contextPart?.agentContext?.userPrompt, 'continue');
     assert.ok(replyParts.some((part) => part.type === 'text'));
     const logFiles = readdirSync(join(dataDir, 'team', teamId, 'logs'));
-    assert.equal(logFiles.length, 2);
-    const logs = logFiles.map((file) => readFileSync(join(dataDir, 'team', teamId, 'logs', file), 'utf-8')).join('\n');
+    assert.deepEqual(logFiles, ['team.log']);
+    const logs = readFileSync(join(dataDir, 'team', teamId, 'logs', 'team.log'), 'utf-8');
+    assert.equal(logs.match(/^===== RUN /gm)?.length, 2);
     assert.match(logs, /\[INPUT\]/);
     assert.match(logs, /Your actor_agent_id: topic_agent/);
     assert.match(logs, /\[TOOL CALL\]/);
@@ -430,6 +437,61 @@ test('team runtime custom agent can self-test full reply flow with providerId on
       ],
     );
   } finally {
+    setTeamRuntimeFactoryForTests();
+    closeAgentDb();
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('owner runtime gets a completion tool and can finish the current team task', async () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-owner-complete-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+  let releaseRun: (() => void) | undefined;
+  let markStarted: (() => void) | undefined;
+  const runGate = new Promise<void>((resolve) => { releaseRun = resolve; });
+  const started = new Promise<void>((resolve) => { markStarted = resolve; });
+  let prompt = '';
+  let functionTools: Array<{ name: string; execute: (input: unknown) => Promise<unknown> }> = [];
+  setTeamRuntimeFactoryForTests(() => ({
+    async execute(nextPrompt, _workingDir, options) {
+      prompt = nextPrompt;
+      functionTools = options?.functionTools ?? [];
+      markStarted?.();
+      await runGate;
+      return { success: true, summary: 'done', output: ['done'], artifacts: [] };
+    },
+    stop() {},
+  }));
+
+  try {
+    const owner = createPreset('', { name: 'Owner Agent', tools: ['team_message_send'] });
+    assert.ok(owner);
+    const created = handleTeamManage({ action: 'create', actor_agent_id: owner.id, name: 'Owner Completion Team' });
+    assert.equal(created.success, true);
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+    const sentPromise = postTeamRuntimeMessage({
+      team_id: teamId,
+      actor_agent_id: 'admin',
+      target_agent_id: owner.id,
+      content: 'finish this task',
+    }, true);
+    await started;
+
+    assert.match(prompt, /team_task_complete/);
+    const completionTool = functionTools.find((tool) => tool.name === 'team_task_complete');
+    assert.ok(completionTool);
+    const completed = await completionTool.execute({ action: 'complete' }) as { success: boolean };
+    assert.equal(completed.success, true);
+    const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
+    assert.equal((loaded.data as { runtime: { status: string } }).runtime.status, 'completed');
+
+    releaseRun?.();
+    await sentPromise;
+  } finally {
+    releaseRun?.();
     setTeamRuntimeFactoryForTests();
     closeAgentDb();
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;

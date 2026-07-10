@@ -21,10 +21,10 @@
     "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
     "actorAgentId": "admin",
     "leaderAgentId": "topic_agent",
-    "status": "completed",
-    "updatedAt": "2026-07-10T06:24:46.270Z",
-    "lastMessageId": "eeaf6b8b-8891-45f7-a056-6445f19ba94c",
-    "startedAt": "2026-07-10T06:21:19.644Z"
+    "status": "running",
+    "updatedAt": "2026-07-10T08:09:44.611Z",
+    "lastMessageId": "4bef15f2-391a-4eb0-a71c-82c1b2f29313",
+    "startedAt": "2026-07-10T08:09:44.609Z"
   },
   {
     "id": "e94f4faa-17b5-41d7-99fa-b71919ecfd23",

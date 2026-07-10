@@ -21,3 +21,14 @@
 - Team Chat maps `runtime.id` into `Message.channelId`; generic `ToolStep` then calls the normal channel detail route, whose required channel lookup returns 404 because a team runtime is not a channel.
 - The latest stored run has 12 messages and 15 deliveries; 9 deliveries remain `running`, matching interrupted nested handoffs.
 - Automatic reply deliveries were never completed because finalization only updated the inbound message delivery; completion now covers both inbound and generated reply deliveries.
+
+## Follow-up findings
+
+- Team delivery state uses `TeamInboxItem` fields (`inboxStatus`, `readAt`, `executionStatus`, etc.), while the local `Delivery` type in `team-runtime.ts` is currently narrower.
+- The shared wake-up path is `dispatchTeamReply`; automatic read acknowledgement should happen there so it does not depend on an agent tool call.
+- Runtime status already supports `completed`; the new owner tool should reuse the existing runtime update/completion path instead of introducing a second task state model.
+- `team_message_update` already centralizes valid delivery transitions and timestamps, but automatic wake-up has the exact delivery id and can update the same record directly at the runtime boundary.
+- `createTeamFunctionTools` filters tools through shared `BUILT_IN_AGENT_TOOLS`; a new tool name must be declared there or it will be filtered out.
+- Team tools receive bound `teamId` and `actorAgentId`, so the completion tool needs no model-supplied identifiers and can enforce owner permission server-side.
+- Owner agents may have an explicit tool whitelist, so runtime tool resolution must append `team_task_complete` for active owners; otherwise the prompt could instruct an unavailable tool.
+- Read acknowledgement regression must assert while the agent is still blocked/running, not only after completion, to prove wake-up itself marks the delivery read.
