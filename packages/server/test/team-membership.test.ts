@@ -373,6 +373,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     await editorCompleted;
     const sent = await sentPromise;
     assert.equal(sent.success, true);
+    const runId = (sent.data as { runtime: { id: string } }).runtime.id;
     const usage = queryRecentUsage({ days: 30, page: 1, pageSize: 10 });
     assert.equal(usage.total, 2);
     const dryRun = await teamMessageSendTool.execute({
@@ -418,7 +419,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     const logFiles = readdirSync(join(dataDir, 'team', teamId, 'logs'));
     assert.deepEqual(logFiles, ['team.log']);
     const logs = readFileSync(join(dataDir, 'team', teamId, 'logs', 'team.log'), 'utf-8');
-    assert.equal(logs.match(/^===== RUN /gm)?.length, 2);
+    assert.deepEqual([...logs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [runId, runId]);
     assert.match(logs, /\[INPUT\]/);
     assert.match(logs, /Your actor_agent_id: topic_agent/);
     assert.match(logs, /\[TOOL CALL\]/);
@@ -436,6 +437,17 @@ test('team runtime custom agent can self-test full reply flow with providerId on
         ['editor_agent', 'admin'],
       ],
     );
+    const nextSent = await postTeamRuntimeMessage({
+      team_id: teamId,
+      actor_agent_id: 'admin',
+      content: 'next run',
+      target_agent_id: 'editor_agent',
+      context_length: 0,
+    }, true);
+    const nextRunId = (nextSent.data as { runtime: { id: string } }).runtime.id;
+    assert.notEqual(nextRunId, runId);
+    const nextLogs = readFileSync(join(dataDir, 'team', teamId, 'logs', 'team.log'), 'utf-8');
+    assert.deepEqual([...nextLogs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [runId, runId, nextRunId]);
   } finally {
     setTeamRuntimeFactoryForTests();
     closeAgentDb();

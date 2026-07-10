@@ -12,8 +12,8 @@
     "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
     "actorAgentId": "editor_agent",
     "leaderAgentId": "topic_agent",
-    "status": "running",
-    "updatedAt": "2026-07-10T02:51:37.672Z",
+    "status": "completed",
+    "updatedAt": "2026-07-10T08:13:24.997Z",
     "lastMessageId": "bd600535-8e5a-4509-90c9-7d449126ed11"
   },
   {
@@ -21,9 +21,9 @@
     "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
     "actorAgentId": "admin",
     "leaderAgentId": "topic_agent",
-    "status": "running",
-    "updatedAt": "2026-07-10T08:09:44.611Z",
-    "lastMessageId": "4bef15f2-391a-4eb0-a71c-82c1b2f29313",
+    "status": "completed",
+    "updatedAt": "2026-07-10T08:13:55.082Z",
+    "lastMessageId": "325c43fa-2732-4b33-b2f8-88222951df80",
     "startedAt": "2026-07-10T08:09:44.609Z"
   },
   {

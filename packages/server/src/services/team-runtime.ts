@@ -125,7 +125,7 @@ function teamDataDir(teamId: string): string {
 function writeTeamRunLog(teamId: string, startedAt: string, runId: string, lines: string[]): void {
   const logsDir = join(teamDataDir(teamId), 'logs');
   ensureDir(logsDir);
-  appendFileSync(join(logsDir, 'team.log'), `===== RUN ${startedAt} ${runId} =====\n${lines.join('\n')}\n\n`, 'utf-8');
+  appendFileSync(join(logsDir, 'team.log'), `===== RUN ${runId} ${startedAt} =====\n${lines.join('\n')}\n\n`, 'utf-8');
 }
 
 function appendTeamRunToolEvent(lines: string[], event: AgentRuntimeEvent): void {
@@ -266,7 +266,10 @@ function resolveLeader(teamId: string, actorAgentId: string): string | null {
 
 function ensureRuntime(teamId: string, actorAgentId: string, leaderAgentId: string): StoredTeamRuntime {
   const runtimes = listRuntimes(teamId);
-  const existing = runtimes.find((item) => item.actorAgentId === actorAgentId && item.leaderAgentId === leaderAgentId);
+  const existing = [...runtimes].reverse().find((item) =>
+    item.actorAgentId === actorAgentId
+    && item.leaderAgentId === leaderAgentId
+    && (item.status === 'idle' || item.status === 'running'));
   if (existing) return existing;
   const created: StoredTeamRuntime = {
     id: uuid(),
@@ -791,14 +794,6 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
         agentContext: reply.agentContext,
         success: true,
       });
-      console.info('[DEBUG-team-context]', {
-        teamId,
-        targetAgentId,
-        replyMessageId,
-        handoffMessageIds: handoffs.map((handoff) => handoff.messageId),
-        partTypes: parts.map((part) => part.type),
-        usage: reply.usage,
-      });
       if (handoffs.length > 0) {
         for (const handoff of handoffs) {
           const message = listMessages(teamId).find((item) => item.id === handoff.messageId);
@@ -866,7 +861,7 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
       });
       if (updatedReply) broadcastTeamRuntimeEvent('team.message.updated', { teamId, actorAgentId, message: updatedReply });
   } finally {
-    writeTeamRunLog(teamId, logStartedAt, token, logLines);
+    writeTeamRunLog(teamId, logStartedAt, runtime.id, logLines);
     if (activeTeamRuns.get(runKey)?.token === token) activeTeamRuns.delete(runKey);
   }
   for (const handoff of handoffs) {
