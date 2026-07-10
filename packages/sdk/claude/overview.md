@@ -8,7 +8,7 @@
 
 ## API 模块列表
 
-workspace, agent, channel, issue, task, git, editor, llm, workflow, workflowPlugin, knowledgeBase, worktree, hooks, command, subscription, notification, speech, codeFavorites, prompts, skills, mcps, npmSettings, outputStyles, tools, robotAccounts, auth, data, version, search, agentStore, font, inspector, avatar, agentCommands, chat, miniApp, sqlite
+workspace, agent, channel, issue, chat, **team**, task, git, editor, llm, workflow, workflowPlugin, knowledgeBase, worktree, hooks, command, subscription, notification, speech, codeFavorites, prompts, skills, mcps, npmSettings, outputStyles, tools, robotAccounts, auth, data, version, search, agentStore, font, inspector, avatar, agentCommands, miniApp, sqlite, modelCatalog
 
 ## 使用方式
 

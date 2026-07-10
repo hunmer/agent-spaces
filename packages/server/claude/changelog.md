@@ -2,6 +2,15 @@
 
 > 本文件只记录 Server 模块 AI 上下文的更新历史，最近 5 条倒序排列。
 
+## 2026-07-10 — Team 多 Agent 协作系统
+
+- 新增 Team 协作子系统：`services/team*.ts`（9 文件：team/team-manage/team-membership/team-message/team-inbox/team-runtime/team-internal/team-types）
+- `routes/team.ts` 挂载 3 个 API：`/api/teams`（团队 CRUD/成员/邀请/角色/解散）、`/api/team-inbox`（收件箱查询/删除/状态）、`/api/team-messages`（消息发送/更新/删除/评论/运行时回送）
+- `services/builtin-tools/team-tools.ts`：Agent 可调用的团队协作工具集
+- `services/chat-run.ts` + `routes/chat-run.ts`：聊天运行模块
+- 路由总数 40+ → 42；services 总数 90+ → 99
+- 更新 `CLAUDE.md`（功能描述/约定补 Team/扫描状态）、`claude/public-interfaces.md`（team/chat-run 路由）、`claude/module-responsibilities.md`（Team 子域 + chat-run）
+
 ## 2026-07-06 — Runtime 管理 + Notification Hub + Issue 系统成型
 
 - 新增 `routes/runtime.ts`（discover-cli / install-cli / check-sdk-updates，8 个 RuntimeDescriptor），挂载 `/api/runtime`

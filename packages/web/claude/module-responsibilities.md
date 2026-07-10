@@ -5,6 +5,7 @@
 | 目录 | 职责 |
 |---|---|
 | `chat/` | 聊天界面（消息列表、输入框、Agent 面板） |
+| `teams/` | Team 多 Agent 协作（create-team-dialog / team-card / team-chat-panel / team-inbox-dialog / team-management-page / member-select-panel / team-member-list / team-member-row） |
 | `composer/` | 消息编辑器（TipTap 富文本） |
 | `editor/` | Monaco 代码编辑器、文件树、标签页 |
 | `workflow/` | Workflow 可视化编辑器（ReactFlow 节点） |

@@ -10,14 +10,15 @@
 
 | 子域 | 关键文件 | 职责 |
 |---|---|---|
-| 内置工具 | `builtin-tools/` (15 文件) | Agent 可调用的内置工具（Workflow 编辑器、数据库、Issue、命令、文件等） |
+| 内置工具 | `builtin-tools/` | Agent 可调用内置工具（Workflow 编辑器、数据库、Issue、Team 协作、命令、文件等） |
+| Team 协作 | `team.ts`, `team-manage.ts`, `team-membership.ts`, `team-message.ts`, `team-inbox.ts`, `team-runtime.ts`, `team-internal.ts`, `team-message.ts`, `team-types.ts` | 多 Agent 团队：创建/成员角色/消息广播与直发/收件箱/运行时编排 |
 | 通知中心 | `notification-hub/` (11 文件) | 微信/飞书/机器人通知推送 |
 | 语音识别 | `speech-recognition/` (3 文件) | 腾讯语音等 |
 | 订阅管理 | `subscription/` (5 文件) | AI Code/MiniMax/智谱订阅 |
 | 执行引擎 | `execution-*.ts` (9 文件) | Workflow 节点执行、值访问、回调 |
 | AI 文本 | `ai-text.ts` | LLM 文本生成 |
 | Agent | `agent.ts`, `agent-commands.ts` | Agent 管理/命令 |
-| Chat | `chat.ts` | 聊天会话 |
+| Chat | `chat.ts`, `chat-run.ts` | 聊天会话/聊天运行 |
 | Git | `git-operation-log.ts`, `gitignore.ts` | Git 操作日志 |
 | 插件 | `plugin.ts`, `plugin-runtime-api.ts` | 插件管理/运行时 |
 | 知识库 | `knowledge-base-parser.ts`, `embedding-util.ts`, `database-vector.ts` | 知识库解析 + 向量嵌入 |

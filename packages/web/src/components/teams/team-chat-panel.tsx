@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AgentConfig, Channel, Message } from "@agent-spaces/shared";
+import type { AgentConfig, Channel, ExecutionLog, Message, Workflow } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2, PanelRight, Trash2 } from "lucide-react";
+import { Loader2, PanelRight, Trash2, Workflow as WorkflowIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
 import { MessageNavigator } from "@/components/chat/message-navigator";
@@ -14,11 +14,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AgentEditor } from "@/components/sidebar/agent-editor";
 import { normalizeAgent, type AgentPreset } from "@/components/sidebar/agent-shared";
 import type {
+  TeamInboxItemView,
   TeamRuntimeView,
   TeamRuntimeMessageView,
   TeamRuntimeResponse,
 } from "@agent-spaces/sdk";
 import { WorkspaceWS } from "@/lib/ws";
+import { WorkflowPreview } from "@/components/workflow/workflow-preview";
 
 const TEAM_RUNTIME_WORKSPACE_ID = "__team__";
 const TEAM_USER_ACTOR_ID = "admin";
@@ -56,6 +58,83 @@ function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): M
   };
 }
 
+function createTeamMessageWorkflow(
+  teamId: string,
+  runtimeId: string,
+  deliveries: TeamInboxItemView[],
+  participants: TeamParticipant[],
+): { workflow: Workflow; executionLog: ExecutionLog } {
+  const participantById = new Map(participants.map((participant) => [participant.id, participant]));
+  const workflowId = `team-message-flow-${runtimeId}`;
+  const timestamp = (value: string) => {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? Date.now() : parsed;
+  };
+  const displayName = (agentId: string) => agentId === TEAM_USER_ACTOR_ID
+    ? "用户"
+    : participantById.get(agentId)?.name || agentId;
+  const nodes = deliveries.map((delivery, index) => {
+    const row = Math.floor(index / 4);
+    const column = index % 4;
+    const recipient = participantById.get(delivery.recipient_agent_id);
+    const content = delivery.body || delivery.preview;
+    return {
+      id: `delivery-${delivery.delivery_id}`,
+      type: "agent_run",
+      label: `${displayName(delivery.recipient_agent_id)}：${(delivery.subject || content).slice(0, 28) || "处理中"}`,
+      position: { x: (row % 2 === 0 ? column : 3 - column) * 320, y: row * 220 },
+      data: {
+        agent: recipient
+          ? { ...recipient, role: recipient.role || "agent", enabled: true }
+          : { id: delivery.recipient_agent_id, name: displayName(delivery.recipient_agent_id), role: "agent", enabled: true },
+        prompt: content,
+        permissionMode: "dontAsk",
+      },
+    };
+  });
+  const edges = nodes.slice(1).map((node, index) => ({
+    id: `message-flow-${nodes[index].id}-${node.id}`,
+    source: nodes[index].id,
+    target: node.id,
+    middleLabel: `${displayName(deliveries[index + 1].sender_agent_id)} → ${displayName(deliveries[index + 1].recipient_agent_id)}`,
+  }));
+  const startedAt = deliveries.length > 0 ? timestamp(deliveries[0].sent_at) : Date.now();
+  const status = deliveries.some((delivery) => delivery.execution_status === "failed")
+    ? "error"
+    : deliveries.some((delivery) => ["pending", "running", "in_progress"].includes(delivery.execution_status)) ? "running" : "completed";
+  const workflow: Workflow = {
+    id: workflowId,
+    name: `Team ${teamId} message flow`,
+    folderId: null,
+    nodes,
+    edges,
+    createdAt: startedAt,
+    updatedAt: Date.now(),
+  };
+  return {
+    workflow,
+    executionLog: {
+      id: `${workflowId}-execution`,
+      workflowId,
+      startedAt,
+      finishedAt: status === "running" ? undefined : Date.now(),
+      status,
+      steps: deliveries.map((delivery, index) => ({
+        nodeId: nodes[index].id,
+        nodeLabel: nodes[index].label,
+        startedAt: timestamp(delivery.sent_at),
+        finishedAt: ["pending", "running", "in_progress"].includes(delivery.execution_status)
+          ? undefined
+          : timestamp(delivery.completed_at || delivery.failed_at || delivery.updated_at),
+        status: delivery.execution_status === "failed"
+          ? "error"
+          : ["pending", "running", "in_progress"].includes(delivery.execution_status) ? "running" : "completed",
+        input: { senderAgentId: delivery.sender_agent_id, content: delivery.body || delivery.preview },
+      })),
+    },
+  };
+}
+
 export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onToggleSidebar, teamDescription }: TeamChatPanelProps) {
   const t = useTranslations("teams");
   const agents = useAgentStore((store) => store.agents);
@@ -69,6 +148,9 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [configAgent, setConfigAgent] = useState<{ id: string; agent?: Partial<TeamParticipant> } | null>(null);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+  const [workflowLoading, setWorkflowLoading] = useState(false);
+  const [workflowDeliveries, setWorkflowDeliveries] = useState<TeamInboxItemView[]>([]);
 
   const leader = useMemo(() => {
     if (leaderProfile?.id) return leaderProfile;
@@ -117,6 +199,11 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const participantsById = useMemo(
     () => new Map(participants.map((participant) => [participant.id, participant])),
     [participants],
+  );
+
+  const messageWorkflow = useMemo(
+    () => createTeamMessageWorkflow(teamId, runtime?.id ?? teamId, workflowDeliveries, participants),
+    [participants, runtime?.id, teamId, workflowDeliveries],
   );
 
   const viewMessages = useMemo(() => {
@@ -253,6 +340,30 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     }
   }, [actorAgentId, loadRuntime, teamId]);
 
+  const handleOpenWorkflow = useCallback(async () => {
+    setWorkflowLoading(true);
+    setError("");
+    try {
+      const recipientIds = Array.from(new Set([TEAM_USER_ACTOR_ID, actorAgentId, ...participants.map((participant) => participant.id)]));
+      const responses = await Promise.all(recipientIds.map((recipientAgentId) => sdk.team.listInbox({
+        actor_agent_id: actorAgentId,
+        team_id: teamId,
+        recipient_agent_id: recipientAgentId,
+        // ponytail: 单个收件箱先取最近 100 条；出现超长历史时再补分页。
+        page_size: 100,
+      })));
+      const deliveries = Array.from(new Map(
+        responses.flatMap((response) => response.inbox_items).map((delivery) => [delivery.delivery_id, delivery]),
+      ).values()).sort((a, b) => a.sent_at.localeCompare(b.sent_at));
+      setWorkflowDeliveries(deliveries);
+      setWorkflowOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setWorkflowLoading(false);
+    }
+  }, [actorAgentId, participants, teamId]);
+
   const configStoreAgent = configAgent ? agents.find((item) => item.id === configAgent.id) : undefined;
   const configCustomAgent = configAgent && !configStoreAgent ? configAgent.agent : undefined;
 
@@ -268,6 +379,17 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
         </div>
         <div className="flex items-center gap-1.5">
           {(loading || sending) ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => void handleOpenWorkflow()}
+            disabled={!teamId || workflowLoading}
+            title="查看消息工作流"
+            aria-label="查看消息工作流"
+          >
+            {workflowLoading ? <Loader2 className="size-3.5 animate-spin" /> : <WorkflowIcon className="size-3.5" />}
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -413,6 +535,21 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
           </DialogContent>
         </Dialog>
       ) : null}
+      <Dialog open={workflowOpen} onOpenChange={setWorkflowOpen}>
+        <DialogContent className="flex h-[80vh] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
+          <DialogHeader className="border-b px-5 py-3">
+            <DialogTitle>消息工作流</DialogTitle>
+            <DialogDescription>{workflowDeliveries.length} 条投递，临时只读视图</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1">
+            <WorkflowPreview
+              workflowId={messageWorkflow.workflow.id}
+              workflow={messageWorkflow.workflow}
+              selectedExecutionLog={messageWorkflow.executionLog}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

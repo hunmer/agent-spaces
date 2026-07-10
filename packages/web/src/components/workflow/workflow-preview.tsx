@@ -12,6 +12,7 @@ const noop = () => {};
 
 export function WorkflowPreview({
   workflowId,
+  workflow: providedWorkflow,
   workspaceId,
   issueId,
   selectedExecutionLog,
@@ -19,6 +20,7 @@ export function WorkflowPreview({
   embeddedMode = null,
 }: {
   workflowId: string;
+  workflow?: Workflow;
   workspaceId?: string;
   issueId?: string;
   selectedExecutionLog?: ExecutionLog | null;
@@ -30,6 +32,11 @@ export function WorkflowPreview({
   const [execStatus, setExecStatus] = useState<EngineStatus>('idle');
 
   useEffect(() => {
+    if (providedWorkflow) {
+      setWorkflow(providedWorkflow);
+      return undefined;
+    }
+
     let active = true;
     setWorkflow(null);
     workflowApi
@@ -41,7 +48,7 @@ export function WorkflowPreview({
     return () => {
       active = false;
     };
-  }, [workflowId]);
+  }, [providedWorkflow, workflowId]);
 
   useEffect(() => {
     if (selectedExecutionLog !== undefined) {

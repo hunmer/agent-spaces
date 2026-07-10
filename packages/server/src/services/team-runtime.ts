@@ -1,9 +1,11 @@
 import { v4 as uuid } from 'uuid';
 import type { Team, TeamMembership, TeamMessage, Workspace, BuiltInAgentToolName, MessageAgentContext, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { inspect } from 'node:util';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime, AgentRuntimeKind, AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
-import { getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
+import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 import { listProviders } from '../storage/llm-store.js';
 import { handleTeamMessageDelete, handleTeamMessageSend, handleTeamMessageUpdate, resolveTeamAgentSource, type TeamServiceResult } from './team.js';
 import * as agentService from './agent.js';
@@ -117,6 +119,21 @@ function teamDir(): string {
 
 function teamDataDir(teamId: string): string {
   return join(teamDir(), teamId);
+}
+
+function writeTeamRunLog(teamId: string, startedAt: string, runId: string, lines: string[]): void {
+  const logsDir = join(teamDataDir(teamId), 'logs');
+  ensureDir(logsDir);
+  const time = startedAt.replace(/[:.]/g, '-');
+  writeFileSync(join(logsDir, `${time}-${runId}.txt`), `${lines.join('\n')}\n`, 'utf-8');
+}
+
+function appendTeamRunToolEvent(lines: string[], event: AgentRuntimeEvent): void {
+  if (event.type === 'tool_use') {
+    lines.push('', '[TOOL CALL]', `id: ${event.id}`, `name: ${event.name}`, `input: ${inspect(event.input, { depth: null })}`);
+  } else if (event.type === 'tool_result') {
+    lines.push('', '[TOOL RESULT]', `id: ${event.toolUseId ?? ''}`, inspect(event.result, { depth: null }));
+  }
 }
 
 function teamFilePath(teamId: string): string {
@@ -431,11 +448,12 @@ async function executePresetTeamReply(
   onRuntime?: (runtime: AgentRuntime) => void,
   onEvent?: (event: AgentRuntimeEvent) => void,
   handoffs: QueuedTeamHandoff[] = [],
+  onInput?: (input: string) => void,
 ): Promise<TeamAgentReply> {
   const preset = listPresets('').find((item) => item.id === targetAgentId);
   if (!preset) throw new Error(`agent not found: ${targetAgentId}`);
-  const session = agentService.getOrCreateSessionForConfig('', preset);
-  agentService.updateStatus('', session.id, 'active');
+  const session = agentService.getOrCreateSessionForConfig(TEAM_RUNTIME_WORKSPACE_ID, preset);
+  agentService.updateStatus(TEAM_RUNTIME_WORKSPACE_ID, session.id, 'active');
   const startedAt = Date.now();
   const runtime = runtimeFactory({
     kind: preset.runtimeKind,
@@ -457,6 +475,7 @@ async function executePresetTeamReply(
         includeWorkspacePrompt: false,
         excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
       });
+    onInput?.(fullPrompt);
     const result = await runtime.execute(
       fullPrompt,
       workingDir,
@@ -474,7 +493,7 @@ async function executePresetTeamReply(
         onEvent,
       },
     );
-    agentService.complete('', session.id, result.success ? undefined : result.error || result.summary, {
+    agentService.complete(TEAM_RUNTIME_WORKSPACE_ID, session.id, result.success ? undefined : result.error || result.summary, {
       runtime: preset.runtimeKind,
       model: preset.modelId,
       summary: result.summary,
@@ -482,13 +501,14 @@ async function executePresetTeamReply(
       durationMs: Date.now() - startedAt,
       usage: result.usage,
       costUsd: result.costUsd,
+      forceRecord: true,
     });
     return {
       content: formatAgentReply(result),
       model: preset.modelId,
       usage: result.usage,
       agentContext: {
-        sessionId: result.sessionId ?? '',
+        sessionId: session.id,
         agentConfigId: preset.id,
         name: preset.name,
         role: preset.role,
@@ -502,7 +522,7 @@ async function executePresetTeamReply(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    agentService.updateStatus('', session.id, 'crashed', { error: message });
+    agentService.updateStatus(TEAM_RUNTIME_WORKSPACE_ID, session.id, 'crashed', { error: message });
     throw error;
   }
 }
@@ -515,9 +535,12 @@ async function executeChatTeamReply(
   onRuntime?: (runtime: AgentRuntime) => void,
   onEvent?: (event: AgentRuntimeEvent) => void,
   handoffs: QueuedTeamHandoff[] = [],
+  onInput?: (input: string) => void,
 ): Promise<TeamAgentReply> {
   const agent = chatService.findAgent(targetAgentId);
   if (!agent) throw new Error(`chat agent not found: ${targetAgentId}`);
+  const session = agentService.create(TEAM_RUNTIME_WORKSPACE_ID, agent.role ?? 'assistant', agent.id);
+  const startedAt = Date.now();
   const runtime = runtimeFactory({
     kind: agent.runtimeKind ?? 'langchain',
     provider: agent.modelProvider ?? agent.provider,
@@ -530,6 +553,7 @@ async function executeChatTeamReply(
   const userPrompt = buildTeamAgentPrompt(teamId, targetAgentId, content, history, listParticipants(teamId, ''));
   const workingDir = chatService.getAgentWorkingDir(targetAgentId) || process.cwd();
   const runtimeTools = resolveTeamRuntimeTools(agent.tools, workingDir, teamId, targetAgentId, handoffs);
+  onInput?.(userPrompt);
   const result = await runtime.execute(userPrompt, workingDir, {
     maxTurns: 20,
     tools: runtimeTools.tools,
@@ -543,12 +567,22 @@ async function executeChatTeamReply(
     onEvent,
   });
   const model = agent.modelId ?? agent.model;
+  agentService.complete(TEAM_RUNTIME_WORKSPACE_ID, session.id, result.success ? undefined : result.error || result.summary, {
+    runtime: agent.runtimeKind,
+    model,
+    summary: result.summary,
+    output: result.output,
+    durationMs: Date.now() - startedAt,
+    usage: result.usage,
+    costUsd: result.costUsd,
+    forceRecord: true,
+  });
   return {
     content: formatAgentReply(result),
     model,
     usage: result.usage,
     agentContext: {
-      sessionId: result.sessionId ?? '',
+      sessionId: session.id,
       agentConfigId: agent.id,
       name: agent.name,
       role: agent.role,
@@ -571,8 +605,11 @@ async function executeCustomTeamReply(
   onRuntime?: (runtime: AgentRuntime) => void,
   onEvent?: (event: AgentRuntimeEvent) => void,
   handoffs: QueuedTeamHandoff[] = [],
+  onInput?: (input: string) => void,
 ): Promise<TeamAgentReply> {
   const provider = resolveCustomAgentProvider(agent);
+  const session = agentService.create(TEAM_RUNTIME_WORKSPACE_ID, asString(agent.role) ?? 'assistant', targetAgentId);
+  const startedAt = Date.now();
   const runtime = runtimeFactory({
     kind: (asString(agent.runtimeKind) ?? 'claude-code') as AgentRuntimeKind,
     provider: asString(agent.modelProvider) ?? provider?.modelProvider,
@@ -593,6 +630,7 @@ async function executeCustomTeamReply(
       includeWorkspacePrompt: false,
       excludeNativeClaudeMd: runtimeKind === 'claude-code',
     });
+  onInput?.(fullPrompt);
   const result = await runtime.execute(
     fullPrompt,
     workingDir,
@@ -611,12 +649,22 @@ async function executeCustomTeamReply(
     },
   );
   const model = asString(agent.modelId);
+  agentService.complete(TEAM_RUNTIME_WORKSPACE_ID, session.id, result.success ? undefined : result.error || result.summary, {
+    runtime: runtimeKind,
+    model,
+    summary: result.summary,
+    output: result.output,
+    durationMs: Date.now() - startedAt,
+    usage: result.usage,
+    costUsd: result.costUsd,
+    forceRecord: true,
+  });
   return {
     content: formatAgentReply(result),
     model,
     usage: result.usage,
     agentContext: {
-      sessionId: result.sessionId ?? '',
+      sessionId: session.id,
       agentConfigId: targetAgentId,
       name: asString(agent.name),
       role: asString(agent.role),
@@ -638,6 +686,7 @@ async function executeTeamReply(
   onRuntime?: (runtime: AgentRuntime) => void,
   onEvent?: (event: AgentRuntimeEvent) => void,
   handoffs: QueuedTeamHandoff[] = [],
+  onInput?: (input: string) => void,
 ): Promise<TeamAgentReply> {
   const membership = listMemberships(teamId).find((item) => item.status === 'active' && item.agentId === targetAgentId) as
     | (TeamMembership & { agentStore?: 'agent' | 'chat' | 'custom'; agent?: Record<string, unknown> })
@@ -647,12 +696,12 @@ async function executeTeamReply(
     : resolveTeamAgentSource(targetAgentId);
 
   if (source?.agentStore === 'agent') {
-    return executePresetTeamReply(teamId, targetAgentId, content, history, onRuntime, onEvent, handoffs);
+    return executePresetTeamReply(teamId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput);
   }
   if (source?.agentStore === 'custom' && source.agent && typeof source.agent === 'object') {
-    return executeCustomTeamReply(teamId, targetAgentId, source.agent, content, history, onRuntime, onEvent, handoffs);
+    return executeCustomTeamReply(teamId, targetAgentId, source.agent, content, history, onRuntime, onEvent, handoffs, onInput);
   }
-  return executeChatTeamReply(teamId, targetAgentId, content, history, onRuntime, onEvent, handoffs);
+  return executeChatTeamReply(teamId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput);
 }
 
 async function dispatchQueuedHandoff(
@@ -686,6 +735,8 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
   const runKey = `${teamId}:${actorAgentId}:${targetAgentId}`;
   activeTeamRuns.get(runKey)?.runtime.stop();
   const token = uuid();
+  const logStartedAt = new Date().toISOString();
+  const logLines = [`team: ${teamId}`, `agent: ${targetAgentId}`, `startedAt: ${logStartedAt}`];
   const handoffs: QueuedTeamHandoff[] = [];
   const ownerAgentId = listMemberships(teamId).find((item) => item.status === 'active' && item.role === 'owner')?.agentId;
   const recipientAgentIds = [...new Set([actorAgentId, ownerAgentId].filter((id): id is string => Boolean(id) && id !== targetAgentId))];
@@ -721,7 +772,11 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
   try {
       const reply = await executeTeamReply(teamId, targetAgentId, content, history, (activeRuntime) => {
         activeTeamRuns.set(runKey, { runtime: activeRuntime, token });
-      }, partsTracker.handleEvent, handoffs);
+      }, (event) => {
+        appendTeamRunToolEvent(logLines, event);
+        partsTracker.handleEvent(event);
+      }, handoffs, (input) => logLines.push('', '[INPUT]', input));
+      logLines.push('', '[OUTPUT]', reply.agentContext.output || reply.content);
       if (activeTeamRuns.get(runKey)?.token !== token) return;
       if (handoffs.length > 0) {
         completeMessageDeliveries(teamId, replyMessageId, 'done');
@@ -762,6 +817,7 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
   } catch (error) {
       if (activeTeamRuns.get(runKey)?.token !== token) return;
       const message = error instanceof Error ? error.message : String(error);
+      logLines.push('', '[ERROR]', message);
       const parts = partsTracker.buildParts({ sessionId: runtime.id, success: false, error: message });
       const updatedReply = replyMessageId ? updateTeamMessage(teamId, replyMessageId, {
         subject: '处理失败',
@@ -785,6 +841,7 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
       });
       if (updatedReply) broadcastTeamRuntimeEvent('team.message.updated', { teamId, actorAgentId, message: updatedReply });
   } finally {
+    writeTeamRunLog(teamId, logStartedAt, token, logLines);
     if (activeTeamRuns.get(runKey)?.token === token) activeTeamRuns.delete(runKey);
   }
   for (const handoff of handoffs) {

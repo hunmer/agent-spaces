@@ -50,6 +50,10 @@
 | Data | `/api/data` | `routes/data.ts` |
 | Version | `/api/` | `routes/version.ts` |
 | Chat | `/api/chat` | `routes/chat.ts` |
+| Chat Run | `/api/chat-run` | `routes/chat-run.ts` |
+| Team | `/api/teams`（团队 CRUD/成员/邀请/解散）| `routes/team.ts` |
+| Team Inbox | `/api/team-inbox`（收件箱查询/删除/状态更新）| `routes/team.ts` |
+| Team Messages | `/api/team-messages`（消息发送/更新/删除/评论/运行时回送）| `routes/team.ts` |
 | Upload | `/api/upload`, `/api/upload/avatar` | 内联 |
 | Font | `/api/fonts` | 内联 |
 | User Settings | `/api/user/settings` | 内联 |

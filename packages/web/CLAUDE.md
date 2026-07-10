@@ -1,6 +1,6 @@
 # packages/web (`@agent-spaces/web`)
 
-Next.js 16 前端 SPA，React 19 + Zustand 状态管理。提供聊天、代码编辑器（Monaco + LSP）、Workflow 可视化编辑器（ReactFlow）、Issue 任务跟踪、Mini Apps、用量仪表盘、设置（含 Runtime/模型/Provider 管理）等界面。支持 `NEXT_STATIC_EXPORT=1` 纯静态导出，嵌入 Electron/Flutter 桌面/移动壳。
+Next.js 16 前端 SPA，React 19 + Zustand 状态管理。提供聊天、代码编辑器（Monaco + LSP）、Workflow 可视化编辑器（ReactFlow）、Issue 任务跟踪、Team 多 Agent 协作、Mini Apps、用量仪表盘、设置（含 Runtime/模型/Provider 管理）等界面。支持 `NEXT_STATIC_EXPORT=1` 纯静态导出，嵌入 Electron/Flutter 桌面/移动壳。
 
 ## 约定
 
@@ -24,6 +24,6 @@ Next.js 16 前端 SPA，React 19 + Zustand 状态管理。提供聊天、代码�
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-06
-- **已扫描**: package.json、入口文件、全部 page 路由（25+）、组件目录（30+ 子域）、Store 列表（30+）、settings 各 Tab、locales
+- **更新时间**: 2026-07-10
+- **已扫描**: package.json、入口文件、全部 page 路由（25+，含 teams 页面）、组件目录（26 子域，含 teams/chat/sidebar）、Store 列表（23）、settings 各 Tab、locales（en/zh）
 - **跳过**: node_modules, .next, out, public/monaco

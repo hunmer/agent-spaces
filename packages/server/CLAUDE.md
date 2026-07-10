@@ -1,6 +1,6 @@
 # packages/server (`@agent-spaces/server`)
 
-Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：多 AI Agent 运行时适配（Claude Code/Codex/LangChain/Hermes/Oh-My-Pi/Open Agent SDK）、Runtime 安装与版本管理、Workflow 可视化执行引擎、Issue 任务系统、实时通信（聊天/终端/LSP）、知识库 + 向量嵌入、Git 操作、MCP 工具集成、Notification Hub 通知推送（微信/飞书 Bot）。
+Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：多 AI Agent 运行时适配（Claude Code/Codex/LangChain/Hermes/Oh-My-Pi/Open Agent SDK）、Runtime 安装与版本管理、Workflow 可视化执行引擎、Issue 任务系统、Team 多 Agent 协作（成员/角色/消息/收件箱/运行时编排）、实时通信（聊天/终端/LSP）、知识库 + 向量嵌入、Git 操作、MCP 工具集成、Notification Hub 通知推送（微信/飞书 Bot）。
 
 ## 约定
 
@@ -9,6 +9,7 @@ Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：�
 - AI 运行时适配器在 `src/adapters/`，`claude-code-runtime` 是独立子模块；新增运行时需实现统一接口。
 - Runtime 管理（CLI 发现/SDK 安装）集中在 `routes/runtime.ts`。
 - Issue 系统跨 `services/issue*.ts` + `agents/issue-agent-runner.ts` + `storage/issue-store.ts`。
+- Team 协作系统跨 `services/team*.ts`（9 文件：team/manage/membership/message/inbox/runtime/internal/types）+ `routes/team.ts`（3 挂载点 `/api/teams` `/api/team-inbox` `/api/team-messages`）+ `builtin-tools/team-tools.ts`。
 - WebSocket 处理在 `src/ws/`。
 - 运行时数据目录 `agent-spaces-data/` 勿手动修改。
 - 路由前缀 `/api/`，`/api/inspector/track` 为唯一无认证端点。
@@ -29,6 +30,6 @@ Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：�
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-06
-- **已扫描**: package.json、app.ts、全部路由（40+）、services（含 notification-hub / issue 系列）、storage（20+ store）、adapters（含 claude-code-runtime 子模块）、ws、agents
+- **更新时间**: 2026-07-10
+- **已扫描**: package.json、app.ts、全部路由（42 个）、services（99 文件，含 team 系列/notification-hub/issue）、storage（20+ store）、adapters（含 claude-code-runtime 子模块）、ws、agents
 - **跳过**: node_modules, dist, agent-spaces-data, public

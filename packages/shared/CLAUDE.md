@@ -7,6 +7,7 @@
 - 新增类型在 `src/types/` 创建文件，在 `src/types/index.ts` 导出。
 - 仅导出类型，不引入运行时依赖。
 - Workflow 相关类型已细分（workflow.ts / workflow-execution.ts / workflow-composite.ts / workflow-plugin.ts / workflow-shortcut.ts / workflow-ws.ts / workflow-node-factory.ts / workflow-errors.ts）。
+- Team 协作类型集中在 `src/types/team.ts`（Team / TeamMembership / TeamMessage / TeamInboxItem / TeamRuntime / TeamComment 等 + 角色与状态枚举）。
 
 ## 文件索引
 
@@ -17,5 +18,5 @@
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-06
-- **已扫描**: package.json、src/index.ts、src/types/（27 个类型文件）
+- **更新时间**: 2026-07-10
+- **已扫描**: package.json、src/index.ts、src/types/（30 个类型文件，含 team.ts）

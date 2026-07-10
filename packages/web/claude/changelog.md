@@ -2,6 +2,15 @@
 
 > 本文件只记录 Web 模块 AI 上下文的更新历史，最近 5 条倒序排列。
 
+## 2026-07-10 — Team 协作 + Chat/Sidebar 重构
+
+- 新增 `app/teams/page.tsx` 路由（Team 多 Agent 协作入口）
+- 新增 `components/teams/`（8 文件：create-team-dialog / team-card / team-chat-panel / team-inbox-dialog / team-management-page / member-select-panel / team-member-list / team-member-row）
+- `components/chat/` 大幅重构（61 文件变更，消息列表/输入/Agent 面板）
+- `components/sidebar/` 重构（55 文件变更）
+- locales 新增 `en/teams.json` + `zh/teams.json`，agent/chat/common 等多文件扩充
+- 更新 `CLAUDE.md`（功能描述补 Team/扫描状态）、`claude/public-interfaces.md`（teams 路由）、`claude/module-responsibilities.md`（teams 组件目录）
+
 ## 2026-07-06 — Issue 系统 + Usage Dashboard + Runtime Tab
 
 - 新增 `components/issue/`（10 文件：issue-list / issue-detail / issue-detail-comments / issue-detail-workflow-panel / issue-detail-info-panel / issue-message / create-issue-dialog / comment-navigator / collect-mention-ids / issue-status-colors）

@@ -1,8 +1,8 @@
 # Agent Spaces
 
-多智能体协作编程平台。支持 AI Agent 创建/编排/执行/可视化，Workflow 可视化编辑，代码编辑器 + Git + 知识库管理。pnpm monorepo，Web (Next.js 16) + Server (Express 5) + Electron + Flutter。
+多智能体协作编程平台。支持 AI Agent 创建/编排/执行/可视化，Workflow 可视化编辑，Team 多 Agent 协作，代码编辑器 + Git + 知识库管理。pnpm monorepo，Web (Next.js 16) + Server (Express 5) + Electron + Flutter。
 
-核心能力：多 AI 运行时适配（Claude Code/Codex/LangChain 等）、可视化 Workflow 执行引擎、WebSocket 实时通信、SQLite 存储。
+核心能力：多 AI 运行时适配（Claude Code/Codex/LangChain 等）、可视化 Workflow 执行引擎、Team 多 Agent 团队协作（成员/角色/消息/收件箱/运行时编排）、WebSocket 实时通信、SQLite 存储。
 
 ## 约定
 
@@ -57,8 +57,8 @@ graph TD
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-06
-- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 5 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps）
+- **更新时间**: 2026-07-10
+- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 6 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / **team 协作**）
 - **已覆盖模块**: 9/9（web, server, electron, sdk, shared, templates, dom-inspector-hook, flutter, documents）
 - **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存
-- **下一步建议**: 深挖 `packages/server/src/services/notification-hub/`（微信/飞书 Bot 协议）、`packages/templates/plugins/obsidian`（新插件）
+- **下一步建议**: 深挖 `packages/server/src/services/team-runtime.ts`（Team 运行时编排细节）、`packages/web/src/components/chat/`（聊天面板重构）、`packages/templates/plugins/obsidian`（新插件）

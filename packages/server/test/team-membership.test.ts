@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createPreset } from '../src/services/agent.js';
+import { createPreset, queryRecentUsage } from '../src/services/agent.js';
 import { createAgent as createChatAgent } from '../src/services/chat.js';
 import { createWorkflow } from '../src/services/workflow.js';
 import {
@@ -14,6 +14,7 @@ import {
   resolveTeamAgentSource,
 } from '../src/services/team.js';
 import { createProvider } from '../src/storage/llm-store.js';
+import { closeDb as closeAgentDb } from '../src/storage/agent-store.js';
 import {
   getTeamRuntime,
   postTeamRuntimeMessage,
@@ -368,6 +369,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     await editorCompleted;
     const sent = await sentPromise;
     assert.equal(sent.success, true);
+    const usage = queryRecentUsage({ days: 30, page: 1, pageSize: 10 });
+    assert.equal(usage.total, 2);
     const dryRun = await teamMessageSendTool.execute({
       action: 'send',
       actor_agent_id: 'wrong-agent',
@@ -406,6 +409,15 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(contextPart?.agentContext?.name, 'Editor Agent');
     assert.equal(contextPart?.agentContext?.userPrompt, 'continue');
     assert.ok(replyParts.some((part) => part.type === 'text'));
+    const logFiles = readdirSync(join(dataDir, 'team', teamId, 'logs'));
+    assert.equal(logFiles.length, 2);
+    const logs = logFiles.map((file) => readFileSync(join(dataDir, 'team', teamId, 'logs', file), 'utf-8')).join('\n');
+    assert.match(logs, /\[INPUT\]/);
+    assert.match(logs, /Your actor_agent_id: topic_agent/);
+    assert.match(logs, /\[TOOL CALL\]/);
+    assert.match(logs, /name: Read/);
+    assert.match(logs, /\[OUTPUT\]/);
+    assert.match(logs, /stub-reply/);
     const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
     assert.equal(loaded.success, true);
     assert.deepEqual(
@@ -419,6 +431,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     );
   } finally {
     setTeamRuntimeFactoryForTests();
+    closeAgentDb();
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
     else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
     rmSync(dataDir, { recursive: true, force: true });

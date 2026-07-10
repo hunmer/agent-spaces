@@ -16,6 +16,7 @@
 | `src/app/mini-apps/[id]/page.tsx` | `/mini-apps/:id` | Mini App 详情 |
 | `src/app/mini-apps-preview/[id]/page.tsx` | `/mini-apps-preview/:id` | Mini App 预览 |
 | `src/app/notifications/page.tsx` | `/notifications` | 全局通知中心 |
+| `src/app/teams/page.tsx` | `/teams` | Team 多 Agent 协作（团队管理/成员/聊天/收件箱） |
 | `src/app/settings/page.tsx` | `/settings` | 设置主页 |
 | `src/app/settings/agents/page.tsx` | `/settings/agents` | Agent 配置 |
 | `src/app/settings/providers/page.tsx` | `/settings/providers` | LLM 提供商 |

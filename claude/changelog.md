@@ -2,6 +2,14 @@
 
 > 本文件只记录"AI 上下文索引"的生成/更新历史，最近 5 条倒序排列。
 
+## 2026-07-10 — 增量更新（Team 多 Agent 协作系统）
+
+- **shared**: 新增 `types/team.ts`（Team / TeamMembership / TeamMessage / TeamInboxItem / TeamRuntime / TeamComment + 角色与状态枚举）；类型文件 27 → 30
+- **server**: 新增 Team 协作子系统 `services/team*.ts`（9 文件）+ `routes/team.ts`（3 挂载点 `/api/teams` `/api/team-inbox` `/api/team-messages`）+ `builtin-tools/team-tools.ts`；新增 `services/chat-run.ts` + `routes/chat-run.ts`；路由 40+ → 42，services 90+ → 99
+- **sdk**: 新增 `modules/team.ts`（`createTeamApi`，团队/成员/消息/收件箱/运行时）；模块 39 → 40
+- **web**: 新增 `app/teams/page.tsx` + `components/teams/`（8 文件）；`components/chat/`（61 文件）与 `components/sidebar/`（55 文件）大幅重构；locales 新增 teams.json
+- 更新文件：根 `CLAUDE.md`（功能描述/扫描状态）、`claude/changelog.md`；server `CLAUDE.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；web `CLAUDE.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；sdk `CLAUDE.md` + `claude/overview.md` + `claude/changelog.md`；shared `CLAUDE.md` + `claude/overview.md` + `claude/changelog.md`
+
 ## 2026-07-06 — 增量更新（Runtime 管理 + Issue 系统 + Notification Hub）
 
 - **server**: 新增 `routes/runtime.ts`（CLI 发现 / SDK 安装 / 版本检测，挂载于 `/api/runtime`，定义 8 个 `RuntimeDescriptor`：claude-code/codex/gemini-cli/hermes/oh-my-pi/claude-code-sdk/codex-sdk/open-agent-sdk）
