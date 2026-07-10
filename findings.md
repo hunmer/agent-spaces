@@ -74,3 +74,11 @@
 - Confirmed fixes: generated-result normalization removes reserved `agent-generator`; generated prompts receive shared handoff instructions; created presets enable only `team_message_send`.
 - Confirmed storage fix: Team creation no longer initializes session files, all message/delivery/comment writes require session ids, aggregate reads enumerate UUID session directories, and ID lookups return their owning session.
 - Historical root files are left untouched; the change prevents new root writes and reads migrated session data.
+
+## Generated agents as custom memberships
+
+- User requires smart-generated Agents to bypass global `agent-store` entirely and exist only as embedded custom Agent objects in the Team's `memberships.json`.
+- Existing manually selected Agent ids must continue using the normal global Agent membership path.
+- Root cause is the direct `sdk.agent.createPreset` call in `CreateTeamDialog`; removing it eliminates global Agent persistence.
+- Server `resolveMembershipAgent` already accepts `{ agent_store: "custom", agent }`, so the Team API only needs its SDK/input typing widened.
+- Generated custom Agents still need runtime/provider/model fields. Agent Designer should return complete unsaved configs derived from the configured `agent-generator`, while forcing `runtimeKind: "langchain"` and Team tools.

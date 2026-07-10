@@ -60,7 +60,7 @@ export function createAgentApi(http: HttpClient) {
     suggestTeamMembers: (input: {
       name: string;
       description: string;
-    }): Promise<{ agents: Array<{ name: string; description: string; systemPrompt: string }> }> =>
+    }): Promise<{ agents: AgentConfig[] }> =>
       http.post('/api/agents/presets/generate-team-members', input),
   };
 }

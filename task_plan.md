@@ -40,6 +40,7 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 | Session layout test expected legacy root files | First green run | Update the existing assertion to the migrated session-only layout. |
 | Final line-reference `rg` split its double-quoted pattern | Final bookkeeping | Re-run with a PowerShell single-quoted pattern; no code or verification impact. |
 | `apply_patch` could not express no-final-newline metadata | Test artifact cleanup | Used one scoped mechanical byte write to restore the original tracked JSON exactly. |
+| Web rejected `AgentConfig` as `TeamMembershipAgent` | First custom-membership typecheck | Widen SDK create input to accept either embedded membership data or a complete `AgentConfig`. |
 
 ## Verification
 
@@ -88,3 +89,11 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 - [complete] Add focused failing regressions for filtering/configuration/path placement.
 - [complete] Implement the minimum shared fixes.
 - [complete] Run targeted tests, builds, and scoped cleanup.
+
+## Follow-up: generated agents as custom memberships
+
+- [in_progress] Trace the generated Agent submission payload through Web, SDK, and Team creation.
+- [pending] Add a failing regression proving custom Agent config is persisted only in memberships.
+- [pending] Remove global preset creation and carry generated configs in Team form values.
+- [pending] Extend Team create input for mixed existing/custom members.
+- [pending] Run focused tests, typechecks, lint, and cleanup.

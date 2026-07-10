@@ -193,7 +193,12 @@ export interface CreateTeamInput {
   icon?: string;
   avatar_url?: string;
   visibility: string;
-  initial_members?: Array<{ agent_id: string; role: string }>;
+  initial_members?: Array<{
+    agent_id: string;
+    role: string;
+    agent_store?: TeamMembershipAgentStore;
+    agent?: TeamMembershipAgent | AgentConfig;
+  }>;
 }
 
 export interface UpdateTeamInput {

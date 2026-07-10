@@ -1,4 +1,5 @@
 import type { AgentConfig } from '@agent-spaces/shared';
+import { v4 as uuid } from 'uuid';
 import { AGENT_GENERATOR_PRESET_ID, readAgentTemplate } from '../services/agent.js';
 
 export interface AgentDesign {
@@ -17,7 +18,7 @@ export interface TeamMemberSelectionInput {
 }
 
 export interface TeamMemberSelectionResult {
-  agents: AgentDesign[];
+  agents: AgentConfig[];
 }
 
 interface ModelConfig {
@@ -101,7 +102,8 @@ export async function generateTeamMemberSelection(
   if (!name) throw new Error('team name is required');
 
   const config = resolveModelConfig();
-  if (!config) {
+  const template = readAgentTemplate(AGENT_GENERATOR_PRESET_ID);
+  if (!config || !template) {
     throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before generating team members.`);
   }
 
@@ -114,7 +116,7 @@ export async function generateTeamMemberSelection(
     ].join('\n'),
   );
 
-  return normalizeTeamMemberSelection(parseJsonObject(content));
+  return normalizeTeamMemberSelection(parseJsonObject(content), template);
 }
 
 export async function optimizeAgentPrompt(
@@ -517,6 +519,7 @@ function normalizeDesign(value: unknown): AgentDesign {
 
 export function normalizeTeamMemberSelection(
   value: unknown,
+  template: AgentConfig,
 ): TeamMemberSelectionResult {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Generated team member selection must be a JSON object.');
@@ -528,8 +531,24 @@ export function normalizeTeamMemberSelection(
     .filter((agent) => agent.name.trim().toLowerCase().replace(/[\s_]+/g, '-') !== AGENT_GENERATOR_PRESET_ID)
     .slice(0, 4)
     .map((agent) => ({
-      ...agent,
+      id: uuid(),
+      name: agent.name,
+      role: 'agent',
+      description: agent.description,
+      runtimeKind: 'langchain' as const,
+      modelProvider: template.modelProvider ?? inferProvider(template.apiBase),
+      providerId: template.providerId,
+      modelId: template.modelId,
+      apiBase: template.apiBase,
+      workingDir: '',
+      mcps: { mcpServers: {} },
+      skills: [],
+      tools: ['team_message_send' as const],
       systemPrompt: `${agent.systemPrompt}\n\n${TEAM_AGENT_TOOL_INSTRUCTIONS}`,
+      outputStyle: '',
+      temperature: template.temperature ?? 0.3,
+      maxTokens: template.maxTokens ?? 4096,
+      enabled: true,
     }));
   if (normalized.length === 0) throw new Error('Generated JSON did not include any usable agents.');
   return { agents: normalized };

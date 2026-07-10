@@ -38,3 +38,8 @@
 - Implemented server normalization/tool guidance, frontend tool/candidate filtering, session-only storage writes, aggregate reads, and session-aware ID context lookup; initial green run passed new regressions and exposed one legacy layout assertion.
 - Updated the legacy layout assertion, added inbox deletion coverage, passed 2 Agent Designer tests and 3 focused Team storage tests, passed server TypeScript and targeted Web ESLint with only 3 pre-existing warnings.
 - Removed the single real-data Team artifact created by the test harness and restored `teams.json` byte-for-byte; final scoped diff check and server build passed.
+- Started custom-membership persistence follow-up and restored the existing planning context.
+- Traced submit flow end to end; confirmed existing custom membership support and selected server-generated unsaved Agent configs as the minimum fix.
+- Added a red Agent Designer regression requiring complete unsaved custom Agent configs derived from the generator template.
+- Removed frontend preset creation, carried generated configs through Team form/SDK custom-member input, and added an isolated persistence regression.
+- Custom membership persistence test passed; first Web typecheck exposed and resolved the SDK embedded-agent type mismatch.

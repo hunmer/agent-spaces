@@ -13,7 +13,6 @@ import { MemberSelectPanel } from "@/components/teams/member-select-panel";
 import { getMemberDisplayName } from "@/lib/agent-members";
 import { AvatarUploader } from "@/components/common/avatar-uploader";
 import { sdk } from "@/lib/sdk";
-import { useAgentStore } from "@/stores/agent";
 
 export interface TeamFormValues {
   name: string;
@@ -23,6 +22,7 @@ export interface TeamFormValues {
   avatarUrl: string;
   visibility: "private" | "open";
   members: string[];
+  customAgents: AgentConfig[];
 }
 
 export interface TeamFormDefaults {
@@ -63,6 +63,7 @@ const EMPTY: TeamFormValues = {
   avatarUrl: "",
   visibility: "private",
   members: [],
+  customAgents: [],
 };
 
 interface MemberSelectPanelProps {
@@ -104,6 +105,7 @@ export function CreateTeamDialog({
         avatarUrl: editTarget.avatarUrl ?? "",
         visibility: editTarget.visibility,
         members: [],
+        customAgents: [],
       });
     } else {
       // eslint-disable-next-line no-console
@@ -116,14 +118,18 @@ export function CreateTeamDialog({
         avatarUrl: defaultValues?.avatarUrl ?? "",
         visibility: defaultValues?.visibility ?? "private",
         members: defaultValues?.members ? [...defaultValues.members] : [],
+        customAgents: [],
       });
     }
   }, [open, mode, editTarget, defaultValues]);
 
   const candidates = useMemo(() => {
-    const list: Array<{ agent?: AgentConfig; label: string; id: string }> = agents
-      .filter((a) => a.enabled !== false && a.id !== "agent-generator")
-      .map((a) => ({ agent: a, label: getMemberDisplayName(agents, a.id), id: a.id }));
+    const visibleAgents = [
+      ...agents.filter((a) => a.enabled !== false && a.id !== "agent-generator"),
+      ...values.customAgents,
+    ];
+    const list: Array<{ agent?: AgentConfig; label: string; id: string }> = visibleAgents
+      .map((a) => ({ agent: a, label: getMemberDisplayName(visibleAgents, a.id), id: a.id }));
     // 已选但不在 agents 列表中的（如从工作流导入的 agentConfigId），补为占位候选
     const present = new Set(list.map((c) => c.id));
     for (const id of values.members) {
@@ -134,7 +140,7 @@ export function CreateTeamDialog({
     // eslint-disable-next-line no-console
     console.log("[CreateTeamDialog] candidates", { agentCount: agents.length, memberCount: values.members.length, candidateIds: list.map((c) => c.id) });
     return list;
-  }, [agents, values.members]);
+  }, [agents, values.customAgents, values.members]);
 
   const [memberQuery, setMemberQuery] = useState("");
   const filteredCandidates = useMemo(() => {
@@ -168,13 +174,13 @@ export function CreateTeamDialog({
         name: values.name.trim(),
         description: values.description.trim(),
       });
-      const createdAgents = await Promise.all(
-        result.agents.map((agent) => sdk.agent.createPreset({ ...agent, role: "agent", tools: ["team_message_send"] })),
-      );
-      useAgentStore.setState((state) => ({ agents: [...state.agents, ...createdAgents] }));
       setValues((prev) => ({
         ...prev,
-        members: [...new Set([...prev.members, ...createdAgents.map((agent) => agent.id)])],
+        members: [
+          ...prev.members.filter((id) => !prev.customAgents.some((agent) => agent.id === id)),
+          ...result.agents.map((agent) => agent.id),
+        ],
+        customAgents: result.agents,
       }));
       setMemberQuery("");
     } catch (error) {
@@ -194,6 +200,7 @@ export function CreateTeamDialog({
       avatarUrl: values.avatarUrl,
       visibility: values.visibility,
       members: values.members,
+      customAgents: values.customAgents,
     });
     handleClose(false);
   };

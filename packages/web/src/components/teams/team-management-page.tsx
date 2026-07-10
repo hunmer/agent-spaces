@@ -268,6 +268,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     setError("");
     try {
       if (dialogMode === "create") {
+        const customAgents = new Map(values.customAgents.map((agent) => [agent.id, agent]));
         const data = await sdk.team.create({
           actor_agent_id: selectedActorId,
           name: values.name,
@@ -278,7 +279,12 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           visibility: values.visibility,
           initial_members: values.members
             .filter((id) => id !== selectedActorId)
-            .map((agent_id) => ({ agent_id, role: "member" })),
+            .map((agent_id) => {
+              const agent = customAgents.get(agent_id);
+              return agent
+                ? { agent_id, role: "member", agent_store: "custom" as const, agent }
+                : { agent_id, role: "member" };
+            }),
         });
         await loadTeams(data.team.team_id);
       } else if (selectedTeamId) {
