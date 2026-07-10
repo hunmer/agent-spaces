@@ -78,6 +78,7 @@ type TeamRuntimeMessage = {
 
 type StoredTeamRuntime = TeamRuntime & {
   lastMessageId?: string;
+  startedAt?: string;
 };
 
 type Delivery = {
@@ -194,6 +195,15 @@ function listMemberships(teamId: string): TeamMembership[] {
 
 function listMessages(teamId: string): TeamMessage[] {
   return readJsonFile<TeamMessage[]>(teamMessagesPath(teamId)) ?? [];
+}
+
+function updateTeamMessage(teamId: string, messageId: string, patch: Partial<TeamMessage>): TeamMessage | null {
+  const messages = listMessages(teamId);
+  const current = messages.find((message) => message.id === messageId);
+  if (!current) return null;
+  const updated = { ...current, ...patch };
+  writeJsonFile(teamMessagesPath(teamId), messages.map((message) => message.id === messageId ? updated : message));
+  return updated;
 }
 
 function listDeliveries(teamId: string): Delivery[] {
@@ -561,11 +571,37 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
   const runKey = `${teamId}:${actorAgentId}:${targetAgentId}`;
   activeTeamRuns.get(runKey)?.runtime.stop();
   const token = uuid();
-  const partsTracker = createAgentMessagePartsTracker({
+  const ownerAgentId = listMemberships(teamId).find((item) => item.status === 'active' && item.role === 'owner')?.agentId;
+  const recipientAgentIds = [...new Set([actorAgentId, ownerAgentId].filter((id): id is string => Boolean(id) && id !== targetAgentId))];
+  const pendingResult = handleTeamMessageSend({
+    action: 'send',
+    team_id: teamId,
+    actor_agent_id: targetAgentId,
+    mode: 'direct',
+    subject: 'Thinking',
+    body: 'Thinking',
+    recipient_agent_ids: recipientAgentIds,
+    initial_execution_status: 'running',
+    metadata: { runtimeId: runtime.id, runtimeStatus: 'running', parts: [] },
+  }, { allowExternalRecipients: true });
+  const replyMessageId = (pendingResult.data as { message?: { message_id?: string } } | undefined)?.message?.message_id;
+  let partsTracker: ReturnType<typeof createAgentMessagePartsTracker>;
+  partsTracker = createAgentMessagePartsTracker({
     workspaceId: TEAM_RUNTIME_WORKSPACE_ID,
     channelId: runtime.id,
-    messageId: runtime.id,
+    messageId: replyMessageId ?? runtime.id,
+    onOutput: () => {
+      if (!replyMessageId) return;
+      const parts = partsTracker.buildParts({ sessionId: runtime.id, success: true });
+      const updated = updateTeamMessage(teamId, replyMessageId, {
+        metadata: { runtimeId: runtime.id, runtimeStatus: 'running', parts },
+      });
+      if (updated) broadcastTeamRuntimeEvent('team.message.updated', { teamId, actorAgentId, message: updated });
+    },
   });
+  if (pendingResult.success) {
+    broadcastTeamRuntimeEvent('team.message.created', { teamId, actorAgentId, message: pendingResult.data });
+  }
   try {
       const reply = await executeTeamReply(teamId, targetAgentId, content, history, (activeRuntime) => {
         activeTeamRuns.set(runKey, { runtime: activeRuntime, token });
@@ -575,19 +611,11 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
       if (!parts.some((part) => part.type === 'text')) {
         parts.push({ id: `text-${runtime.id}`, type: 'text', text: reply });
       }
-      const ownerAgentId = listMemberships(teamId).find((item) => item.status === 'active' && item.role === 'owner')?.agentId;
-      const recipientAgentIds = [...new Set([actorAgentId, ownerAgentId].filter((id): id is string => Boolean(id) && id !== targetAgentId))];
-      const result = handleTeamMessageSend({
-        action: 'send',
-        team_id: teamId,
-        actor_agent_id: targetAgentId,
-        mode: 'direct',
+      const updatedReply = replyMessageId ? updateTeamMessage(teamId, replyMessageId, {
         subject: reply.length > 32 ? `${reply.slice(0, 31)}…` : reply,
         body: reply,
-        recipient_agent_ids: recipientAgentIds,
-        initial_execution_status: 'done',
-        metadata: { parts },
-      }, { allowExternalRecipients: true });
+        metadata: { runtimeId: runtime.id, runtimeStatus: 'completed', parts },
+      }) : null;
       const nextRuntime = updateRuntime(teamId, {
         ...runtime,
         status: 'completed',
@@ -601,26 +629,16 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
         leaderAgentId: nextRuntime.leaderAgentId,
         status: nextRuntime.status,
       });
-      if (result.success) {
-        broadcastTeamRuntimeEvent('team.message.created', {
-          teamId,
-          actorAgentId,
-          message: (result.data as { message?: unknown } | undefined)?.message,
-        });
-      }
+      if (updatedReply) broadcastTeamRuntimeEvent('team.message.updated', { teamId, actorAgentId, message: updatedReply });
   } catch (error) {
       if (activeTeamRuns.get(runKey)?.token !== token) return;
       const message = error instanceof Error ? error.message : String(error);
-      const result = handleTeamMessageSend({
-        action: 'send',
-        team_id: teamId,
-        actor_agent_id: targetAgentId,
-        mode: 'direct',
+      const parts = partsTracker.buildParts({ sessionId: runtime.id, success: false, error: message });
+      const updatedReply = replyMessageId ? updateTeamMessage(teamId, replyMessageId, {
         subject: '处理失败',
         body: `处理失败：${message}`,
-        recipient_agent_ids: [actorAgentId],
-        initial_execution_status: 'failed',
-      }, { allowExternalRecipients: true });
+        metadata: { runtimeId: runtime.id, runtimeStatus: 'error', parts },
+      }) : null;
       const nextRuntime = updateRuntime(teamId, {
         ...runtime,
         status: 'error',
@@ -635,13 +653,7 @@ async function dispatchTeamReply(teamId: string, actorAgentId: string, targetAge
         status: nextRuntime.status,
         error: message,
       });
-      if (result.success) {
-        broadcastTeamRuntimeEvent('team.message.created', {
-          teamId,
-          actorAgentId,
-          message: (result.data as { message?: unknown } | undefined)?.message,
-        });
-      }
+      if (updatedReply) broadcastTeamRuntimeEvent('team.message.updated', { teamId, actorAgentId, message: updatedReply });
   } finally {
     if (activeTeamRuns.get(runKey)?.token === token) activeTeamRuns.delete(runKey);
   }
@@ -678,6 +690,9 @@ function completeRuntimeDelivery(
 function collectConversationMessages(teamId: string, actorAgentId: string, leaderAgentId: string, runtime: StoredTeamRuntime): TeamRuntimeMessage[] {
   const messages = listMessages(teamId);
   const deliveries = listDeliveries(teamId);
+  const startedAt = runtime.startedAt
+    ?? messages.find((message) => message.id === runtime.lastMessageId)?.createdAt
+    ?? '';
   const deliveryByMessageId = new Map<string, Delivery[]>();
   for (const delivery of deliveries) {
     const bucket = deliveryByMessageId.get(delivery.messageId) ?? [];
@@ -687,21 +702,15 @@ function collectConversationMessages(teamId: string, actorAgentId: string, leade
 
   return messages
     .filter((message) => {
-      if (message.messageType !== 'direct') return false;
-      const recipients = deliveryByMessageId.get(message.id) ?? [];
-      const isActorToLeader = message.senderAgentId === actorAgentId && recipients.some((item) => item.recipientAgentId === leaderAgentId);
-      const isLeaderToActor = message.senderAgentId === leaderAgentId && recipients.some((item) => item.recipientAgentId === actorAgentId);
-      return isActorToLeader || isLeaderToActor;
+      return message.messageType === 'direct' && message.createdAt >= startedAt;
     })
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((message) => {
       const recipients = deliveryByMessageId.get(message.id) ?? [];
-      const recipientAgentId = message.senderAgentId === actorAgentId ? leaderAgentId : actorAgentId;
+      const recipientAgentId = recipients[0]?.recipientAgentId ?? (message.senderAgentId === actorAgentId ? leaderAgentId : actorAgentId);
       const deliveryId = recipients.find((item) => item.recipientAgentId === recipientAgentId)?.id;
-      const status =
-        runtime.status === 'running' && runtime.lastMessageId === message.id
-          ? 'running'
-          : 'completed';
+      const runtimeStatus = message.metadata?.runtimeStatus;
+      const status = runtimeStatus === 'running' ? 'running' : runtimeStatus === 'error' ? 'error' : 'completed';
       return {
         id: message.id,
         runtimeId: runtime.id,
@@ -722,7 +731,9 @@ function maybeCompleteRuntime(teamId: string, runtime: StoredTeamRuntime, messag
   if (runtime.status !== 'running') return runtime;
   const latestLeaderReply = [...messages]
     .reverse()
-    .find((item) => item.senderAgentId === runtime.leaderAgentId && item.createdAt >= runtime.updatedAt);
+    .find((item) => item.senderAgentId === runtime.leaderAgentId
+      && item.status === 'completed'
+      && listMessages(teamId).find((message) => message.id === item.id)?.metadata?.runtimeId === runtime.id);
   if (!latestLeaderReply) return runtime;
   const completed = {
     ...runtime,
@@ -797,10 +808,12 @@ export function postTeamRuntimeMessage(input: unknown, waitForReply = false): Te
   if (!sendResult.success) return sendResult;
 
   const messageId = (sendResult.data as { message?: { message_id?: string } } | undefined)?.message?.message_id;
+  const startedAt = listMessages(teamId).find((message) => message.id === messageId)?.createdAt ?? new Date().toISOString();
   const runtime = updateRuntime(teamId, {
     ...ensureRuntime(teamId, actorAgentId, targetAgentId),
     status: 'running',
     updatedAt: new Date().toISOString(),
+    startedAt,
     lastMessageId: messageId,
   });
   const leader = resolveLeaderProfile(targetAgentId);

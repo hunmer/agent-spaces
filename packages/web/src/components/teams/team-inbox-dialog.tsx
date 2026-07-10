@@ -60,7 +60,11 @@ export function TeamInboxDialog({
 
   // 打开时默认选中首个有未读的成员，否则选第一个成员
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSelectedAgentId("");
+      return;
+    }
+    if (members.some((member) => member.agent_id === selectedAgentId)) return;
     if (initialAgentId) {
       setSelectedAgentId(initialAgentId);
       return;
@@ -68,7 +72,7 @@ export function TeamInboxDialog({
     const firstUnread = members.find((m) => (m.unread_count ?? 0) > 0);
     const fallback = firstUnread ?? members[0];
     if (fallback) setSelectedAgentId(fallback.agent_id);
-  }, [open, initialAgentId, members]);
+  }, [open, initialAgentId, members, selectedAgentId]);
 
   // 拉取选中成员的 inbox
   const loadInbox = useCallback(async () => {

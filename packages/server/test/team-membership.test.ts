@@ -219,6 +219,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
   const capturedConfigs: Array<Record<string, unknown>> = [];
   const capturedRuns: Array<Record<string, unknown>> = [];
   const capturedPrompts: string[] = [];
+  let releaseTopic: (() => void) | undefined;
+  const topicGate = new Promise<void>((resolve) => { releaseTopic = resolve; });
   let releaseEditor: (() => void) | undefined;
   const editorGate = new Promise<void>((resolve) => { releaseEditor = resolve; });
   setTeamRuntimeFactoryForTests((config) => {
@@ -227,8 +229,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
       async execute(prompt, _workingDir, options) {
         capturedPrompts.push(prompt);
         capturedRuns.push((options ?? {}) as Record<string, unknown>);
-        if (prompt.includes('Your actor_agent_id: editor_agent')) await editorGate;
         options?.onEvent?.({ type: 'tool_use', id: 'read-1', name: 'Read', line: 'Tool: Read path="AGENTS.md"' });
+        if (prompt.includes('Your actor_agent_id: topic_agent')) await topicGate;
+        if (prompt.includes('Your actor_agent_id: editor_agent')) await editorGate;
         return { success: true, summary: 'stub-summary', output: ['<think>hidden</think>stub-reply'], artifacts: [] };
       },
       stop() {},
@@ -302,6 +305,14 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     });
     assert.equal(sent.success, true);
 
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const running = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
+    const runningMessages = (running.data as { messages: Array<{ senderAgentId: string; status: string; parts?: Array<{ type: string }> }> }).messages;
+    assert.equal(runningMessages.at(-1)?.senderAgentId, 'topic_agent');
+    assert.equal(runningMessages.at(-1)?.status, 'running');
+    assert.ok(runningMessages.at(-1)?.parts?.some((part) => part.type === 'chain'));
+
+    releaseTopic?.();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     const messages = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'messages.json'), 'utf-8')) as Array<Record<string, unknown>>;
@@ -378,7 +389,12 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.deepEqual(
       (loaded.data as { messages: Array<{ senderAgentId: string; recipientAgentId: string }> }).messages
         .map((item) => [item.senderAgentId, item.recipientAgentId]),
-      [['admin', 'topic_agent'], ['topic_agent', 'admin']],
+      [
+        ['admin', 'topic_agent'],
+        ['topic_agent', 'admin'],
+        ['topic_agent', 'editor_agent'],
+        ['editor_agent', 'topic_agent'],
+      ],
     );
   } finally {
     setTeamRuntimeFactoryForTests();

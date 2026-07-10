@@ -223,9 +223,11 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       void loadRuntime();
     };
     const offCreated = ws.on("team.message.created", handleEvent);
+    const offMessageUpdated = ws.on("team.message.updated", handleEvent);
     const offUpdated = ws.on("team.runtime.updated", handleEvent);
     return () => {
       offCreated();
+      offMessageUpdated();
       offUpdated();
       ws.disconnect();
     };

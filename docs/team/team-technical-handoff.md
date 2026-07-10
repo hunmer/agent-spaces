@@ -22,7 +22,8 @@
 - team 接口返回 `{ success, code, message, data }` 信封，与 SDK 其他模块不同；解包逻辑收敛在 `sdk.team` 内部（`unwrap`），调用方直接拿到 `data`
 - **`owner/admin` 是 team 内角色，不是平台级身份**（详见第 6 节）；前端管理页 actor 可能是任意 agent，不一定是 team 成员
 - **team 列表查询已移除所有可见性/关键词过滤**，只按 `archived` 区分活跃/归档，管理页展示全部 team
-- **runtime/chat 支持非成员（管理视角）访问**：非成员 actor 自动回退用 team owner 身份读写，不报权限错误
+- **runtime/chat 的人工用户固定为 `admin`**：消息保留 `admin -> owner/member` 的真实方向，owner/member 回复另存为反向消息
+- **agent handoff 必须等待下游 agent 完成**：工具调用不能 fire-and-forget，否则父 LangChain stream 会提前关闭
 
 ## 3. 核心文件入口
 
@@ -184,22 +185,28 @@ team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
 
 无论 actor 是否为成员、team 是否 open，列表都返回全部 team。
 
-### 6.3 runtime/chat 非成员回退机制
+### 6.3 runtime/chat 人工用户与 owner 唤起机制
 
-`getTeamRuntime` / `postTeamRuntimeMessage` 的成员校验已放开：
+`team-chat-panel.tsx` 使用固定人工身份 `admin` 加载和发送 runtime 消息。`admin` 不是 team role，也不是 membership；它表示用户在管理页手动触发。
 
 ```
-传入 actorAgentId
-  ├─ 是 active 成员 → 用自己作为 effectiveActorId
-  └─ 非成员（管理视角）→ 回退用 team owner（无 owner 则首个 active 成员）
+用户手动发送
+  └─ admin -> owner（或用户 @ 的 active member）
+       └─ 唤起目标 agent 执行
+            └─ target agent -> admin（完成回复）
 ```
 
-后续所有读写（runtime 加载、消息发送、广播）都用 `effectiveActorId`，使非成员能查看和参与任意 team 的协作。
+关键约束：
 
-**但 `listParticipants` 用原始 `actorAgentId` 过滤**（排除「自己」）：
+- `postTeamRuntimeMessage` 必须保留传入的 `actorAgentId`，禁止替换成 owner
+- `getTeamRuntime` 必须按同一个 actor 加载会话，否则刷新后会切到 owner 的其它会话
+- 非成员 sender/recipient 的豁免只通过 `handleTeamMessageSend` 的服务端内部 options 开启，HTTP body 不能伪造
+- `deliveries.json` 的人工输入应为 `senderAgentId=admin`、`recipientAgentId=<目标 agent>`
+
+`listParticipants` 仍用请求 actor 过滤：
 
 - 成员视角：actor 在成员列表中 → 正常排除自己，agent bar 不显示自己
-- 非成员视角：actor 不在成员列表 → 等于不过滤，返回全部成员（含 owner）
+- `admin` 视角：不在成员列表 → 返回全部成员（含 owner）
 
 这是为了让管理视角的 agent bar 能展示 owner。**修改 participants 过滤逻辑时务必同时考虑这两个视角。**
 
@@ -294,6 +301,23 @@ team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
 - `agent_store`
 - `agent`
 - `role`
+
+### 8.1 runtime 内的 team 工具上下文
+
+team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
+
+- 覆盖模型传入的 `team_id` / `actor_agent_id`，避免把 recipient agent id 误当成 team id
+- prompt 同时写入当前 `team_id`、当前 `actor_agent_id`
+- prompt 包含全部 active members 的简要信息：agent id、名称、team role
+- agent 完成后，结果至少通知人工发起者；member 完成时同时通知 owner，收件人自动去重
+
+### 8.2 agent handoff 生命周期
+
+`team_message_send` 从一个 agent 唤起下一个 agent 时，走 `handleTeamMessageSendAndRun`：
+
+- agent 工具入口必须 `await dispatchTeamReply`，直到下游 agent 完成后才返回 tool result
+- UI 的 `postTeamRuntimeMessage` 仍立即返回，后台执行 agent，不阻塞 HTTP 请求
+- 禁止恢复 `void (async () => ...)()` 式 handoff；父 LangChain runtime 会先结束并关闭 stream，导致下游 token 写入已关闭 controller
 
 ## 9. 当前关键流程
 
@@ -433,17 +457,42 @@ team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
 
 - 改为**硬删除**，直接从 `memberships.json` 过滤掉成员，不再保留 removed 记录
 
-### 已修复 7：非成员打开 team 报 "sender is not an active team member"
+### 已修复 7：人工用户消息被改成 owner 发送
 
 根因：
 
-- `getTeamRuntime` / `postTeamRuntimeMessage` 强制要求 actor 是 active 成员
-- list 放开过滤后，会打开 actor 非成员的 team，runtime 直接报错
+- `postTeamRuntimeMessage` 把非成员 actor 回退为 owner
+- 随后目标解析排除 sender，导致消息方向变成 `owner -> 其他 member`
 
 修复：
 
-- 非成员 actor 自动回退用 team owner 身份（`effectiveActorId`）读写 runtime
-- `listParticipants` 用原始 `actorAgentId` 过滤，保证管理视角 agent bar 展示全部成员含 owner
+- team chat 人工身份固定为 `admin`
+- runtime 保留原始 actor，消息正确落盘为 `admin -> 目标 agent`
+- owner/member 回复单独落盘为 `目标 agent -> admin`
+
+### 已修复 8：team 工具调用 `TEAM_NOT_FOUND`
+
+- 根因：模型把 recipient agent id 填进 `team_id`
+- 修复：runtime 工具在服务端绑定真实 `team_id` / `actor_agent_id`，prompt 也明确注入这两个值
+
+### 已修复 9：reply 的 `<think>` 污染 inbox
+
+- 根因：MiniMax 的推理文本被 `formatAgentReply` 原样保存到 message/delivery
+- 修复：reply 落盘前剥离 `<think>...</think>`，delivery 的 subject/preview 只取最终回复
+
+### 已修复 10：member 完成后没有通知 owner
+
+- 修复：完成回复收件人合并人工发起者和 active owner，并通过 `Set` 去重
+
+### 已修复 11：agent 不知道当前 team members
+
+- 修复：prompt 加入全部 active members 的 agent id、名称、membership role；role 不再取 AgentConfig 的通用 `agent` 值
+
+### 已修复 12：handoff 报 `Controller is already closed`
+
+- 根因：`team_message_send` fire-and-forget 启动下游 agent，父 LangChain runtime 先结束并关闭 stream
+- 修复：agent 工具入口等待下游 `dispatchTeamReply` 完整结束；UI 发送路径继续异步
+- 回归测试用延迟 gate 验证下游未结束前 tool Promise 不会 resolve
 
 ## 11. 当前已知限制
 
@@ -513,7 +562,18 @@ pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
 
 - list 查询现已**移除所有过滤**，只按 `archived` 区分；正常情况应返回全部 team
 - 若仍为空，检查 `teams.json` 索引和 `{team_id}/info.json` 是否存在
-- runtime/chat 报 "sender is not an active team member" 属历史问题，现已对非成员回退 owner（见第 6.3 节）
+- 人工输入应在 `messages.json` / `deliveries.json` 中显示为 `admin -> 目标 agent`；如果变成 owner 发送，检查是否重新引入了 actor 回退
+
+如果 agent handoff 报 `Controller is already closed`，看：
+
+- `handleTeamMessageSendAndRun` 是否仍等待 `postTeamRuntimeMessage(..., true)`
+- `dispatchTeamReply` 是否返回 Promise，不能 fire-and-forget
+- 日志中父 `langchain:N` 是否在子 `langchain:N+1` 完成前出现 `runtime reset`
+
+如果 inbox 出现 `<think>` 或 team 工具报 `TEAM_NOT_FOUND`，看：
+
+- `formatAgentReply` 是否仍剥离 `<think>...</think>`
+- `createTeamFunctionTools` 是否传入并绑定当前 team/agent context
 
 如果 `sdk.team.*` 报错（如信封解析失败），看：
 
