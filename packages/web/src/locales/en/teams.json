@@ -22,8 +22,8 @@
     "searchAgent": "Search agent",
     "noAgents": "No agents available",
     "smartCreate": "Smart create team",
-    "smartCreating": "Selecting team members...",
-    "smartCreateFailed": "Failed to select team members"
+    "smartCreating": "Creating team agents...",
+    "smartCreateFailed": "Failed to create team agents"
   },
   "visibility": {
     "private": "Private",

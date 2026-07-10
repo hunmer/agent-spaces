@@ -13,6 +13,7 @@ import { MemberSelectPanel } from "@/components/teams/member-select-panel";
 import { getMemberDisplayName } from "@/lib/agent-members";
 import { AvatarUploader } from "@/components/common/avatar-uploader";
 import { sdk } from "@/lib/sdk";
+import { useAgentStore } from "@/stores/agent";
 
 export interface TeamFormValues {
   name: string;
@@ -166,11 +167,15 @@ export function CreateTeamDialog({
       const result = await sdk.agent.suggestTeamMembers({
         name: values.name.trim(),
         description: values.description.trim(),
-        agents: agents
-          .filter((agent) => agent.enabled !== false)
-          .map(({ id, name, role, description }) => ({ id, name, role, description })),
       });
-      setValues((prev) => ({ ...prev, members: [...new Set([...prev.members, ...result.agentIds])] }));
+      const createdAgents = await Promise.all(
+        result.agents.map((agent) => sdk.agent.createPreset({ ...agent, role: "agent" })),
+      );
+      useAgentStore.setState((state) => ({ agents: [...state.agents, ...createdAgents] }));
+      setValues((prev) => ({
+        ...prev,
+        members: [...new Set([...prev.members, ...createdAgents.map((agent) => agent.id)])],
+      }));
       setMemberQuery("");
     } catch (error) {
       setSmartError(error instanceof Error ? error.message : t("form.smartCreateFailed"));
@@ -236,7 +241,7 @@ export function CreateTeamDialog({
                   variant="outline"
                   className="w-full"
                   onClick={() => void handleSmartCreate()}
-                  disabled={loading || smartLoading || !values.name.trim() || !agents.some((agent) => agent.enabled !== false)}
+                  disabled={loading || smartLoading || !values.name.trim()}
                 >
                   {smartLoading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
                   {smartLoading ? t("form.smartCreating") : t("form.smartCreate")}

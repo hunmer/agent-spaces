@@ -22,8 +22,8 @@
     "searchAgent": "搜索 Agent",
     "noAgents": "暂无可用 Agent",
     "smartCreate": "智能创建 Team",
-    "smartCreating": "正在选择团队成员...",
-    "smartCreateFailed": "智能选择团队成员失败"
+    "smartCreating": "正在创建 Team Agent...",
+    "smartCreateFailed": "创建 Team Agent 失败"
   },
   "visibility": {
     "private": "私有",

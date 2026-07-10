@@ -63,4 +63,6 @@ packages/server/agent-spaces-data/skills/
 
 
 packages/server/agent-spaces-data/team/*/logs/
+packages/server/agent-spaces-data/team/*/sessions/
+packages/server/agent-spaces-data/team/*/*/
 packages/logs/*

@@ -14,11 +14,10 @@ export interface PromptOptimizationResult {
 export interface TeamMemberSelectionInput {
   name: string;
   description: string;
-  agents: Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description'>>;
 }
 
 export interface TeamMemberSelectionResult {
-  agentIds: string[];
+  agents: AgentDesign[];
 }
 
 interface ModelConfig {
@@ -54,9 +53,10 @@ How to shape the systemPrompt:
 
 const TEAM_MEMBER_SELECTION_PROMPT = [
   'You are assembling a new collaboration team.',
-  'Select the smallest useful set of available agents for the team title and description.',
-  'Return only a valid JSON object with this exact schema: {"agentIds":["exact-agent-id"]}.',
-  'Use only exact agent ids from the available agents list and do not invent agents.',
+  'Design 2 to 4 complementary agents for the team title and description.',
+  'Return only a valid JSON object with this exact schema: {"agents":[{"name":"short name","description":"one sentence","systemPrompt":"markdown system prompt"}]}.',
+  'Each agent must have a distinct responsibility and a directly usable system prompt.',
+  'Escape all newlines and double quotes inside JSON strings, and do not use triple-backtick code fences.',
   'Do not wrap the JSON in markdown fences or mention system internals.',
 ].join('\n');
 
@@ -89,38 +89,23 @@ export async function generateTeamMemberSelection(
   input: TeamMemberSelectionInput,
 ): Promise<TeamMemberSelectionResult> {
   const name = input.name.trim();
-  const agents = input.agents
-    .filter((agent) => typeof agent?.id === 'string' && agent.id.trim())
-    .map((agent) => ({
-      id: agent.id.trim(),
-      name: typeof agent.name === 'string' ? agent.name : undefined,
-      role: typeof agent.role === 'string' ? agent.role : undefined,
-      description: typeof agent.description === 'string' ? agent.description : undefined,
-    }));
   if (!name) throw new Error('team name is required');
-  if (agents.length === 0) throw new Error('at least one available agent is required');
 
   const config = resolveModelConfig();
   if (!config) {
     throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before generating team members.`);
   }
 
-  const agentBlock = agents
-    .map((agent) => `- ${agent.id} (${agent.name?.trim() || agent.id}${agent.role ? `, role=${agent.role}` : ''})${agent.description ? `: ${agent.description}` : ''}`)
-    .join('\n');
   const content = await requestText(
     config,
     buildTeamMemberSelectionSystemPrompt(config),
     [
       `Team title: ${name}`,
       `Team description: ${input.description.trim() || '(empty)'}`,
-      '',
-      'Available agents (agent id, name, role, description):',
-      agentBlock,
     ].join('\n'),
   );
 
-  return normalizeTeamMemberSelection(parseJsonObject(content), new Set(agents.map((agent) => agent.id)));
+  return normalizeTeamMemberSelection(parseJsonObject(content));
 }
 
 export async function optimizeAgentPrompt(
@@ -397,18 +382,78 @@ function extractError(json: Record<string, unknown>): string | undefined {
   return typeof json.message === 'string' ? json.message : undefined;
 }
 
-function parseJsonObject(text: string): unknown {
+export function parseJsonObject(text: string): unknown {
   const trimmed = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
-    if (fenced) return JSON.parse(fenced);
+  const embedded = findFirstJsonObject(trimmed);
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)```$/i)?.[1]?.trim();
+  const candidates = [...new Set([trimmed, embedded, fenced].filter((value): value is string => Boolean(value)))];
 
-    const candidate = findFirstJsonObject(trimmed);
-    if (candidate) return JSON.parse(candidate);
-    throw new Error('Model did not return valid JSON.');
+  for (const candidate of candidates) {
+    for (const source of [candidate, repairJsonStringLiterals(candidate)]) {
+      try {
+        return JSON.parse(source);
+      } catch {
+        // Try the next representation.
+      }
+    }
   }
+  throw new Error('Model did not return valid JSON.');
+}
+
+function repairJsonStringLiterals(text: string): string {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (!inString) {
+      result += char;
+      if (char === '"') inString = true;
+      continue;
+    }
+    if (escaped) {
+      result += char;
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      const next = text[index + 1];
+      if (next && '"\\/bfnrtu'.includes(next)) {
+        result += char;
+        escaped = true;
+      } else {
+        result += '\\\\';
+      }
+      continue;
+    }
+    if (char === '"') {
+      if (isJsonStringTerminator(text, index + 1)) {
+        result += char;
+        inString = false;
+      } else {
+        result += '\\"';
+      }
+      continue;
+    }
+    if (char === '\n') result += '\\n';
+    else if (char === '\r') result += '\\r';
+    else if (char === '\t') result += '\\t';
+    else if (char.charCodeAt(0) < 0x20) result += `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+    else result += char;
+  }
+  return result;
+}
+
+function isJsonStringTerminator(text: string, start: number): boolean {
+  let index = start;
+  while (/\s/.test(text[index] ?? '')) index += 1;
+  const next = text[index];
+  if (next === undefined || next === ':' || next === ',' || next === '}') return true;
+  if (next !== ']') return false;
+  index += 1;
+  while (/\s/.test(text[index] ?? '')) index += 1;
+  return text[index] === undefined || [',', '}', ']'].includes(text[index]);
 }
 
 function findFirstJsonObject(text: string): string | null {
@@ -439,13 +484,7 @@ function findFirstJsonObject(text: string): string | null {
       if (char === '{') depth += 1;
       if (char === '}') depth -= 1;
       if (depth === 0) {
-        const candidate = text.slice(start, index + 1);
-        try {
-          JSON.parse(candidate);
-          return candidate;
-        } catch {
-          break;
-        }
+        return text.slice(start, index + 1);
       }
     }
   }
@@ -469,17 +508,13 @@ function normalizeDesign(value: unknown): AgentDesign {
 
 export function normalizeTeamMemberSelection(
   value: unknown,
-  availableIds: ReadonlySet<string>,
 ): TeamMemberSelectionResult {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Generated team member selection must be a JSON object.');
   }
-  const agentIds = (value as { agentIds?: unknown }).agentIds;
-  if (!Array.isArray(agentIds)) throw new Error('Generated JSON must include agentIds.');
-
-  const validIds = [...new Set(agentIds.filter((id): id is string => typeof id === 'string' && availableIds.has(id)))];
-  if (validIds.length === 0) throw new Error('Generated JSON did not include any available agent ids.');
-  return { agentIds: validIds };
+  const agents = (value as { agents?: unknown }).agents;
+  if (!Array.isArray(agents) || agents.length === 0) throw new Error('Generated JSON must include agents.');
+  return { agents: agents.slice(0, 4).map(normalizeDesign) };
 }
 
 function inferProvider(apiBase?: string): NonNullable<AgentConfig['modelProvider']> {

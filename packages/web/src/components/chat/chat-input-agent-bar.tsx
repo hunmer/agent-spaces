@@ -87,6 +87,12 @@ export function ChatInputAgentBar({
                   <AgentIcon
                     agentId={agent.id}
                     name={agent.name || agent.role}
+                    avatarUrl={agent.avatarUrl}
+                    icon={agent.icon}
+                    apiBase={agent.apiBase}
+                    modelId={agent.modelId}
+                    providerId={agent.providerId}
+                    modelProvider={agent.modelProvider}
                     className="size-5 rounded-full text-[9px]"
                   />
                   <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>

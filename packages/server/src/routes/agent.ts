@@ -84,13 +84,12 @@ router.post('/presets/generate', async (req: Request<{ id: string }>, res: Respo
 });
 
 router.post('/presets/generate-team-members', async (req: Request, res: Response) => {
-  const { name, description, agents } = req.body as {
+  const { name, description } = req.body as {
     name?: string;
     description?: string;
-    agents?: Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description'>>;
   };
-  if (typeof name !== 'string' || !name.trim() || !Array.isArray(agents) || agents.length === 0) {
-    res.status(400).json({ error: 'name and agents are required' });
+  if (typeof name !== 'string' || !name.trim()) {
+    res.status(400).json({ error: 'name is required' });
     return;
   }
 
@@ -98,7 +97,6 @@ router.post('/presets/generate-team-members', async (req: Request, res: Response
     res.json(await generateTeamMemberSelection({
       name,
       description: typeof description === 'string' ? description : '',
-      agents,
     }));
   } catch (err) {
     console.error('[agent-designer] team member generation failed', err);
