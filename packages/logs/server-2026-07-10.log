@@ -73,3 +73,63 @@
 [2026-07-10T07:16:11.281Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
 [2026-07-10T07:16:11.288Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
 [2026-07-10T07:16:11.477Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T07:18:58.903Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T07:22:58.859Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T07:22:58.862Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T07:22:59.019Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T07:25:36.202Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T07:25:36.218Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T07:26:29.985Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T07:26:29.986Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T07:26:29.991Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T07:26:29.991Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T07:26:30.112Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T07:26:30.113Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T07:26:30.113Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T07:26:30.113Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T07:26:32.197Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T07:26:32.197Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T07:26:32.208Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T07:26:32.208Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T07:26:42.206Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T07:26:42.207Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T07:26:42.207Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T07:26:42.222Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T07:26:42.222Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T07:26:42.223Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T07:29:06.963Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T07:29:06.963Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T07:29:06.968Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T07:29:06.968Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T07:29:07.092Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T07:29:07.092Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T07:29:07.092Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T07:29:07.093Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T07:29:09.184Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T07:29:09.184Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T07:29:09.196Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T07:29:09.196Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T07:29:19.193Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T07:29:19.196Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T07:29:19.197Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T07:29:19.198Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T07:29:19.198Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T07:29:19.199Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T07:29:53.216Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T07:29:53.217Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T07:29:53.222Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T07:29:53.222Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T07:29:53.339Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T07:29:53.339Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T07:29:53.340Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T07:29:53.340Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T07:29:53.734Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T07:29:53.735Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T07:29:54.197Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T07:29:54.199Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T07:30:03.736Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T07:30:03.737Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T07:30:03.737Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T07:30:04.203Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T07:30:04.203Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T07:30:04.203Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
