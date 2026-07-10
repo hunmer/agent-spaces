@@ -87,7 +87,7 @@ router.delete('/:channelId', (req: Request<ChannelParams>, res: Response) => {
 router.get('/:channelId/messages', (req: Request<ChannelParams>, res: Response) => {
   const { id, channelId } = req.params;
   const { limit, before } = req.query;
-  if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
+  if (id !== '__team__' && !getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
   res.json(listMessages(id, channelId!, { limit: limit ? Number(limit) : undefined, before: before as string | undefined }));
 });
 

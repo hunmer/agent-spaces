@@ -230,7 +230,21 @@ test('team runtime custom agent can self-test full reply flow with providerId on
         capturedPrompts.push(prompt);
         capturedRuns.push((options ?? {}) as Record<string, unknown>);
         options?.onEvent?.({ type: 'tool_use', id: 'read-1', name: 'Read', line: 'Tool: Read path="AGENTS.md"' });
-        if (prompt.includes('Your actor_agent_id: topic_agent')) await topicGate;
+        if (prompt.includes('Your actor_agent_id: topic_agent')) {
+          const sendTool = options?.functionTools?.find((tool) => tool.name === 'team_message_send');
+          assert.ok(sendTool);
+          const handoff = await sendTool.execute({
+            action: 'send',
+            actor_agent_id: 'topic_agent',
+            team_id: 'wrong-team-is-overridden',
+            mode: 'direct',
+            recipient_agent_ids: ['editor_agent'],
+            subject: 'continue',
+            body: 'continue',
+          }) as { success: boolean };
+          assert.equal(handoff.success, true);
+          await topicGate;
+        }
         if (prompt.includes('Your actor_agent_id: editor_agent')) await editorGate;
         return { success: true, summary: 'stub-summary', output: ['<think>hidden</think>stub-reply'], artifacts: [] };
       },
@@ -308,9 +322,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     await new Promise((resolve) => setTimeout(resolve, 20));
     const running = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
     const runningMessages = (running.data as { messages: Array<{ senderAgentId: string; status: string; parts?: Array<{ type: string }> }> }).messages;
-    assert.equal(runningMessages.at(-1)?.senderAgentId, 'topic_agent');
-    assert.equal(runningMessages.at(-1)?.status, 'running');
-    assert.ok(runningMessages.at(-1)?.parts?.some((part) => part.type === 'chain'));
+    assert.equal(runningMessages.some((message) => message.senderAgentId === 'topic_agent'), true);
+    assert.equal(capturedPrompts.some((prompt) => prompt.includes('Your actor_agent_id: editor_agent')), false);
 
     releaseTopic?.();
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -341,21 +354,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.match(capturedPrompts[0] ?? '', new RegExp(`Your actor_agent_id: topic_agent`));
     const teamMessageSendTool = runtimeFunctionTools.find((tool) => tool.name === 'team_message_send');
     assert.ok(teamMessageSendTool);
-    let handoffFinished = false;
-    const handoff = teamMessageSendTool.execute({
-      action: 'send',
-      actor_agent_id: 'topic_agent',
-      team_id: teamId,
-      mode: 'direct',
-      recipient_agent_ids: ['editor_agent'],
-      subject: 'continue',
-      body: 'continue',
-    }).then(() => { handoffFinished = true; });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    assert.equal(handoffFinished, false);
+    assert.equal(capturedPrompts.some((prompt) => prompt.includes('Your actor_agent_id: editor_agent')), true);
     releaseEditor?.();
-    await handoff;
-    assert.equal(handoffFinished, true);
+    await new Promise((resolve) => setTimeout(resolve, 20));
     const dryRun = await teamMessageSendTool.execute({
       action: 'send',
       actor_agent_id: 'wrong-agent',
@@ -375,13 +376,15 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     const inbound = deliveries.find((item) => item.recipientAgentId === 'topic_agent');
     assert.equal(inbound?.senderAgentId, 'admin');
     assert.equal(inbound?.executionStatus, 'done');
-    assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === owner.id));
-    assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === 'admin'));
-    assert.equal(messages.length, 2);
+    assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === 'editor_agent'));
+    assert.ok(deliveries.some((item) => item.senderAgentId === 'editor_agent' && item.recipientAgentId === 'admin'));
+    assert.equal(messages.length, 3);
     assert.equal(messages[0]?.senderAgentId, 'admin');
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');
-    assert.equal(messages[1]?.body, 'stub-reply');
-    const replyParts = (messages[1]?.metadata as { parts?: Array<{ type: string }> } | undefined)?.parts ?? [];
+    assert.equal(messages[1]?.body, 'continue');
+    assert.equal(messages[2]?.senderAgentId, 'editor_agent');
+    assert.equal(messages[2]?.body, 'stub-reply');
+    const replyParts = (messages[2]?.metadata as { parts?: Array<{ type: string }> } | undefined)?.parts ?? [];
     assert.ok(replyParts.some((part) => part.type === 'chain'));
     assert.ok(replyParts.some((part) => part.type === 'text'));
     const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });

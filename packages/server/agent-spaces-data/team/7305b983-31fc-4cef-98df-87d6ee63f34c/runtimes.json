@@ -22,8 +22,9 @@
     "actorAgentId": "admin",
     "leaderAgentId": "topic_agent",
     "status": "completed",
-    "updatedAt": "2026-07-10T05:46:05.183Z",
-    "lastMessageId": "cedc5afa-0a7f-463c-82d3-a595f24d9254"
+    "updatedAt": "2026-07-10T06:24:46.270Z",
+    "lastMessageId": "eeaf6b8b-8891-45f7-a056-6445f19ba94c",
+    "startedAt": "2026-07-10T06:21:19.644Z"
   },
   {
     "id": "e94f4faa-17b5-41d7-99fa-b71919ecfd23",
@@ -31,8 +32,9 @@
     "actorAgentId": "topic_agent",
     "leaderAgentId": "editor_agent",
     "status": "completed",
-    "updatedAt": "2026-07-10T05:45:57.628Z",
-    "lastMessageId": "43a7bb8a-5792-4692-8297-7aefa2894948"
+    "updatedAt": "2026-07-10T06:24:40.301Z",
+    "lastMessageId": "464e83cf-9001-4ad8-9089-674eb7844b0d",
+    "startedAt": "2026-07-10T06:21:56.154Z"
   },
   {
     "id": "488a2e91-d0a4-4743-80df-5f8855fb3f12",
@@ -40,8 +42,9 @@
     "actorAgentId": "editor_agent",
     "leaderAgentId": "reviewer_agent",
     "status": "completed",
-    "updatedAt": "2026-07-10T05:45:52.075Z",
-    "lastMessageId": "755b1305-f06a-4bab-a530-eaa434bbf9af"
+    "updatedAt": "2026-07-10T06:25:49.450Z",
+    "lastMessageId": "92aa79e3-8db9-4803-af6a-286932d51fef",
+    "startedAt": "2026-07-10T06:24:45.089Z"
   },
   {
     "id": "7861d0cc-3a6c-4b6c-b8c5-99bc4698e880",
@@ -49,7 +52,18 @@
     "actorAgentId": "reviewer_agent",
     "leaderAgentId": "editor_agent",
     "status": "completed",
-    "updatedAt": "2026-07-10T05:45:47.769Z",
-    "lastMessageId": "be21564a-e7eb-4518-8903-9172e23f077d"
+    "updatedAt": "2026-07-10T06:24:27.465Z",
+    "lastMessageId": "f2cbb73c-8cef-4b86-80aa-2478b1381a3a",
+    "startedAt": "2026-07-10T06:23:39.723Z"
+  },
+  {
+    "id": "2a4d2ee9-cccd-4159-9b90-e135554e24e5",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "reviewer_agent",
+    "leaderAgentId": "topic_agent",
+    "status": "completed",
+    "updatedAt": "2026-07-10T06:25:46.373Z",
+    "startedAt": "2026-07-10T06:25:22.398Z",
+    "lastMessageId": "15ddb5b4-aec1-4a3d-bd32-6118c21e12ff"
   }
 ]

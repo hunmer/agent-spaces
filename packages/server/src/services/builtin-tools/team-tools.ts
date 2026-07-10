@@ -34,7 +34,11 @@ function schema(properties: Record<string, unknown>, required: string[]): Record
 export function createTeamFunctionTools(
   workspaceId: string,
   allowedTools?: BuiltInAgentToolName[],
-  context?: { teamId: string; actorAgentId: string },
+  context?: {
+    teamId: string;
+    actorAgentId: string;
+    handleMessageSend?: (input: unknown) => Promise<unknown> | unknown;
+  },
 ): AgentFunctionTool[] {
   const allowedToolNames = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const bindContext = (input: unknown): unknown => context && input && typeof input === 'object'
@@ -121,7 +125,7 @@ export function createTeamFunctionTools(
         metadata: { type: 'object' },
       }, ['action', 'actor_agent_id', 'team_id', 'mode', 'subject', 'body']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageSendAndRun(bindContext(input)),
+      execute: async (input) => (context?.handleMessageSend ?? handleTeamMessageSendAndRun)(bindContext(input)),
     },
     {
       name: 'team_inbox_query',
