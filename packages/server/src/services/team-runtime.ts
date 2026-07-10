@@ -16,6 +16,7 @@ import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import { prependPersistentAgentContext } from './persistent-agent-context.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { createAgentMessagePartsTracker } from '../agents/agent-message-parts.js';
+import { asSessionId } from './team-internal.js';
 import {
   createCommandFunctionTools,
   createDatabaseFunctionTools,
@@ -926,7 +927,7 @@ export function handleTeamTaskComplete(input: unknown): TeamServiceResult {
   if (!input || typeof input !== 'object') return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const map = input as Record<string, unknown>;
   const teamId = asString(map.team_id ?? map.teamId);
-  const sessionId = asString(map.session_id ?? map.sessionId);
+  const sessionId = asSessionId(map.session_id ?? map.sessionId);
   const actorAgentId = asString(map.actor_agent_id ?? map.actorAgentId);
   if (asString(map.action) !== 'complete' || !teamId || !sessionId || !actorAgentId) {
     return fail('action=complete, actor_agent_id, team_id, session_id are required', 'INVALID_ARGUMENT');
@@ -1034,7 +1035,9 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
   const teamId = asString(map.team_id ?? map.teamId);
   const actorAgentId = asString(map.actor_agent_id ?? map.actorAgentId);
   if (!teamId || !actorAgentId) return fail('team_id and actor_agent_id are required', 'INVALID_ARGUMENT');
-  const sessionId = asString(map.session_id ?? map.sessionId) ?? uuid();
+  const rawSessionId = map.session_id ?? map.sessionId;
+  const sessionId = asSessionId(rawSessionId) ?? uuid();
+  if (rawSessionId !== undefined && !asSessionId(rawSessionId)) return fail('session_id must be a UUID', 'INVALID_ARGUMENT');
 
   const team = loadTeam(teamId);
   if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
@@ -1071,7 +1074,7 @@ export function postTeamRuntimeMessage(input: unknown, waitForReply = false): Te
   if (!input || typeof input !== 'object') return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const map = input as Record<string, unknown>;
   const teamId = asString(map.team_id ?? map.teamId);
-  const sessionId = asString(map.session_id ?? map.sessionId);
+  const sessionId = asSessionId(map.session_id ?? map.sessionId);
   const actorAgentId = asString(map.actor_agent_id ?? map.actorAgentId);
   const content = asString(map.content);
   if (!teamId || !sessionId || !actorAgentId || !content) return fail('team_id, session_id, actor_agent_id, content are required', 'INVALID_ARGUMENT');

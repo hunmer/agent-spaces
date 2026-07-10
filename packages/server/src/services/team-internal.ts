@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { validate as isUuid } from 'uuid';
 import type { AgentConfig } from '@agent-spaces/shared';
 import { listPresets } from './agent.js';
 import { findAgent as findChatAgent } from './chat.js';
@@ -170,6 +171,11 @@ export function isObject(input: unknown): input is JsonMap {
 
 export function asString(input: unknown): string | undefined {
   return typeof input === 'string' && input.trim() ? input.trim() : undefined;
+}
+
+export function asSessionId(input: unknown): string | undefined {
+  const value = asString(input);
+  return value && isUuid(value) ? value : undefined;
 }
 
 export function asBoolean(input: unknown, fallback = false): boolean {

@@ -9,6 +9,7 @@ import type {
 import {
   applyDeliveryStatusRules,
   asBoolean,
+  asSessionId,
   asString,
   canAccessMessage,
   commentView,
@@ -49,7 +50,8 @@ export function handleTeamMessageSend(
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
-  const sessionId = asString(input.session_id ?? input.sessionId);
+  const sessionId = asSessionId(input.session_id ?? input.sessionId);
+  if ((input.session_id ?? input.sessionId) !== undefined && !sessionId) return fail('session_id must be a UUID', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   if (!actorAgentId || !teamId || !action) return fail('action, actor_agent_id, team_id are required', 'INVALID_ARGUMENT');
   if (action !== 'send') return fail('invalid action', 'INVALID_ACTION');
@@ -141,7 +143,8 @@ export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const deliveryId = asString(input.delivery_id ?? input.deliveryId);
   const teamId = asString(input.team_id ?? input.teamId);
-  const sessionId = asString(input.session_id ?? input.sessionId);
+  const sessionId = asSessionId(input.session_id ?? input.sessionId);
+  if ((input.session_id ?? input.sessionId) !== undefined && !sessionId) return fail('session_id must be a UUID', 'INVALID_ARGUMENT');
   if (action !== 'update_status' || !actorAgentId || !deliveryId) {
     return fail('action=update_status, actor_agent_id, delivery_id are required', 'INVALID_ARGUMENT');
   }
@@ -201,7 +204,8 @@ export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
-  const sessionId = asString(input.session_id ?? input.sessionId);
+  const sessionId = asSessionId(input.session_id ?? input.sessionId);
+  if ((input.session_id ?? input.sessionId) !== undefined && !sessionId) return fail('session_id must be a UUID', 'INVALID_ARGUMENT');
   const messageId = asString(input.message_id ?? input.messageId);
   if (!actorAgentId || (!messageId && !teamId)) {
     return fail('actor_agent_id and message_id or team_id are required', 'INVALID_ARGUMENT');
@@ -248,7 +252,8 @@ export function handleTeamMessageComment(input: unknown): TeamServiceResult {
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
-  const sessionId = asString(input.session_id ?? input.sessionId);
+  const sessionId = asSessionId(input.session_id ?? input.sessionId);
+  if ((input.session_id ?? input.sessionId) !== undefined && !sessionId) return fail('session_id must be a UUID', 'INVALID_ARGUMENT');
   if (!action || !actorAgentId) return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
 
   if (action === 'add') {

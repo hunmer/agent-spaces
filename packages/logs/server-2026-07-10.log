@@ -3413,3 +3413,29 @@ Let me prepare the completion notification to admin</think>
 [2026-07-10T10:12:46.205Z] [LOG] [scheduler:__team__] started (interval=600000ms)
 [2026-07-10T10:12:46.206Z] [LOG] [ws] scheduler started for workspace __team__
 [2026-07-10T10:12:46.206Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T10:15:18.035Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T10:15:18.035Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T10:15:18.040Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T10:15:18.040Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T10:15:18.157Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T10:15:18.157Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T10:15:18.157Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T10:15:18.158Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T10:15:19.754Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T10:15:19.755Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T10:15:29.758Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T10:15:29.761Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T10:15:29.762Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T10:15:48.630Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T10:15:48.631Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T10:15:48.635Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T10:15:48.636Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T10:15:48.750Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T10:15:48.750Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T10:15:48.751Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T10:15:48.751Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T10:15:50.199Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T10:15:50.200Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T10:16:00.206Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T10:16:00.207Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T10:16:00.207Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)

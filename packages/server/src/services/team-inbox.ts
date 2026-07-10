@@ -1,6 +1,7 @@
 import type { TeamInboxItem, TeamMessage, TeamServiceResult } from './team-types.js';
 import {
   asBoolean,
+  asSessionId,
   asString,
   fail,
   findDeliveryContext,
@@ -25,7 +26,8 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
-  const sessionId = asString(input.session_id ?? input.sessionId);
+  const sessionId = asSessionId(input.session_id ?? input.sessionId);
+  if ((input.session_id ?? input.sessionId) !== undefined && !sessionId) return fail('session_id must be a UUID', 'INVALID_ARGUMENT');
   if (!action || !actorAgentId) return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
 
   if (action === 'list') {
