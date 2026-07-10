@@ -82,3 +82,10 @@
 - Root cause is the direct `sdk.agent.createPreset` call in `CreateTeamDialog`; removing it eliminates global Agent persistence.
 - Server `resolveMembershipAgent` already accepts `{ agent_store: "custom", agent }`, so the Team API only needs its SDK/input typing widened.
 - Generated custom Agents still need runtime/provider/model fields. Agent Designer should return complete unsaved configs derived from the configured `agent-generator`, while forcing `runtimeKind: "langchain"` and Team tools.
+
+## Truncated provider JSON
+
+- `requestAnthropic` uses `await fetch(...)` followed by `await response.text()`, so parsing begins only after the non-streaming HTTP response body has completed.
+- MiniMax reasoning blocks can consume the same output budget before the final `content[].text` JSON is complete; provider `stop_reason` and usage are currently discarded by `readResponseBody`.
+- The configured `agent-generator` uses MiniMax-M2.7 with `maxTokens: 4096`, which is small for reasoning plus 2-4 complete Markdown system prompts.
+- A completed HTTP response can still contain truncated model output when the provider stops at its token limit; waiting longer cannot repair that response.

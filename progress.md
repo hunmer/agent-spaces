@@ -43,3 +43,7 @@
 - Added a red Agent Designer regression requiring complete unsaved custom Agent configs derived from the generator template.
 - Removed frontend preset creation, carried generated configs through Team form/SDK custom-member input, and added an isolated persistence regression.
 - Custom membership persistence test passed; first Web typecheck exposed and resolved the SDK embedded-agent type mismatch.
+- Resumed after interruption; confirmed custom-membership work is present in the current baseline and started truncated-provider-JSON diagnosis.
+- Confirmed non-streaming completion semantics and the 4096-token generator limit; selected an 8192-token Team-specific budget plus one compact retry.
+- Added a deterministic provider replay regression: first response stops at max tokens with truncated JSON, second response returns compact valid JSON.
+- User requested no further tests. Removed the temporary retry test and directly implemented an 8192-token Team budget, one compact retry, and stop-reason/usage logging.

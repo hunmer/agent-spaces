@@ -92,8 +92,15 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 
 ## Follow-up: generated agents as custom memberships
 
-- [in_progress] Trace the generated Agent submission payload through Web, SDK, and Team creation.
-- [pending] Add a failing regression proving custom Agent config is persisted only in memberships.
-- [pending] Remove global preset creation and carry generated configs in Team form values.
-- [pending] Extend Team create input for mixed existing/custom members.
-- [pending] Run focused tests, typechecks, lint, and cleanup.
+- [complete] Trace the generated Agent submission payload through Web, SDK, and Team creation.
+- [complete] Add a failing regression proving custom Agent config is persisted only in memberships.
+- [complete] Remove global preset creation and carry generated configs in Team form values.
+- [complete] Extend Team create input for mixed existing/custom members.
+- [complete] Run focused tests, typechecks, lint, and cleanup.
+
+## Follow-up: truncated provider JSON
+
+- [complete] Confirm response completion semantics and inspect generator output budget.
+- [complete] Expose provider stop reason/usage in Agent Designer logs.
+- [complete] Implement one compact retry with a larger output budget.
+- [complete] Skip further tests/builds per user instruction.

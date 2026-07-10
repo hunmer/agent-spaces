@@ -107,16 +107,35 @@ export async function generateTeamMemberSelection(
     throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before generating team members.`);
   }
 
-  const content = await requestText(
-    config,
-    buildTeamMemberSelectionSystemPrompt(config),
-    [
-      `Team title: ${name}`,
-      `Team description: ${input.description.trim() || '(empty)'}`,
-    ].join('\n'),
-  );
+  const requestConfig = { ...config, maxTokens: Math.max(config.maxTokens ?? 0, 8192) };
+  const userPrompt = [
+    `Team title: ${name}`,
+    `Team description: ${input.description.trim() || '(empty)'}`,
+  ].join('\n');
+  let lastError: unknown;
 
-  return normalizeTeamMemberSelection(parseJsonObject(content), template);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const compactRetry = attempt === 1;
+    const content = await requestText(
+      requestConfig,
+      compactRetry
+        ? `${TEAM_MEMBER_SELECTION_PROMPT}\nKeep every systemPrompt under 800 characters. Return fresh JSON only.`
+        : buildTeamMemberSelectionSystemPrompt(config),
+      compactRetry ? `${userPrompt}\nThe previous response was invalid or truncated.` : userPrompt,
+    );
+    try {
+      return normalizeTeamMemberSelection(parseJsonObject(content), template);
+    } catch (error) {
+      lastError = error;
+      console.warn('[agent-designer] invalid team member JSON', {
+        attempt: attempt + 1,
+        textLength: content.length,
+        preview: content.slice(0, 500),
+      });
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Model did not return valid JSON.');
 }
 
 export async function optimizeAgentPrompt(
@@ -310,14 +329,17 @@ async function readResponseBody(response: Response): Promise<{ text: string; err
   if (!raw) return { text: '' };
   try {
     const json = JSON.parse(raw) as Record<string, unknown>;
+    const text = isAgentDesignJson(json) ? JSON.stringify(json) : extractText(json);
     console.info('[agent-designer] provider response received', {
       status: response.status,
       keys: Object.keys(json),
+      stopReason: json.stop_reason ?? json.stopReason,
+      usage: json.usage,
+      textLength: text.length,
       preview: raw.slice(0, 800),
     });
-    if (isAgentDesignJson(json)) return { text: JSON.stringify(json) };
     return {
-      text: extractText(json),
+      text,
       error: extractError(json),
     };
   } catch {
