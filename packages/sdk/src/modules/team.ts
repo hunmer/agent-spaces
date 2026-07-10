@@ -87,6 +87,7 @@ export interface TeamRuntimeView {
   actor_agent_id: string;
   leader_agent_id: string;
   updated_at: string;
+  output?: string;
 }
 
 export interface TeamRuntimeMessageView {

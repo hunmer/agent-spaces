@@ -502,13 +502,18 @@ test('owner runtime gets a completion tool and can finish the current team task'
     assert.match(prompt, /team_task_complete/);
     const completionTool = functionTools.find((tool) => tool.name === 'team_task_complete');
     assert.ok(completionTool);
-    const completed = await completionTool.execute({ action: 'complete' }) as { success: boolean };
-    assert.equal(completed.success, true);
+    const completed = await completionTool.execute({ action: 'complete', output: 'final team result' });
+    assert.deepEqual(completed, { success: true, output: 'final team result' });
     const loaded = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
-    assert.equal((loaded.data as { runtime: { status: string } }).runtime.status, 'completed');
+    assert.partialDeepStrictEqual(
+      (loaded.data as { runtime: { status: string; output?: string } }).runtime,
+      { status: 'completed', output: 'final team result' },
+    );
 
     releaseRun?.();
     await sentPromise;
+    const finished = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
+    assert.equal((finished.data as { runtime: { output?: string } }).runtime.output, 'final team result');
   } finally {
     releaseRun?.();
     setTeamRuntimeFactoryForTests();

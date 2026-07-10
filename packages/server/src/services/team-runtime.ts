@@ -89,6 +89,7 @@ type TeamAgentReply = {
 type StoredTeamRuntime = TeamRuntime & {
   lastMessageId?: string;
   startedAt?: string;
+  output?: string;
 };
 
 type Delivery = {
@@ -362,7 +363,7 @@ function buildTeamAgentPrompt(
     'Always use these exact ids in team tool calls; never use a recipient agent id as team_id.',
     'If another teammate should continue the work, call `team_message_send` with that teammate\'s agent id instead of only mentioning them in plain text.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
-    ...(isOwner ? ['When the overall team task is finished, call `team_task_complete` before your final reply so the team runtime does not remain running.'] : []),
+    ...(isOwner ? ['When the overall team task is finished, call `team_task_complete` with the final result in `output` before your final reply so the team runtime does not remain running.'] : []),
     '',
     'Current team members (agent id, name, team role):',
     participantBlock,
@@ -829,6 +830,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
         const nextRuntime = updateRuntime(teamId, sessionId, {
           ...runtime,
           status: 'completed',
+          output: listRuntimes(teamId, sessionId).find((item) => item.sessionId === runtime.sessionId)?.output,
           updatedAt: new Date().toISOString(),
         });
         completeRuntimeDelivery(teamId, sessionId, runtime, targetAgentId, 'done');
@@ -929,8 +931,9 @@ export function handleTeamTaskComplete(input: unknown): TeamServiceResult {
   const teamId = asString(map.team_id ?? map.teamId);
   const sessionId = asSessionId(map.session_id ?? map.sessionId);
   const actorAgentId = asString(map.actor_agent_id ?? map.actorAgentId);
-  if (asString(map.action) !== 'complete' || !teamId || !sessionId || !actorAgentId) {
-    return fail('action=complete, actor_agent_id, team_id, session_id are required', 'INVALID_ARGUMENT');
+  const output = asString(map.output);
+  if (asString(map.action) !== 'complete' || !teamId || !sessionId || !actorAgentId || !output) {
+    return fail('action=complete, actor_agent_id, team_id, session_id, output are required', 'INVALID_ARGUMENT');
   }
   const owner = listMemberships(teamId).find((item) => item.status === 'active' && item.agentId === actorAgentId && item.role === 'owner');
   if (!owner) return fail('only the active team owner can complete the team task', 'PERMISSION_DENIED');
@@ -939,9 +942,12 @@ export function handleTeamTaskComplete(input: unknown): TeamServiceResult {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const runtime = runtimes.find((item) => item.status === 'running') ?? runtimes[0];
   if (!runtime) return fail('team runtime not found', 'RUNTIME_NOT_FOUND');
-  if (runtime.status === 'completed') return ok('team task already completed', { session_id: runtime.sessionId, status: runtime.status });
+  if (runtime.status === 'completed') {
+    const completed = updateRuntime(teamId, sessionId, { ...runtime, output, updatedAt: new Date().toISOString() });
+    return ok('team task already completed', { session_id: completed.sessionId, status: completed.status, output });
+  }
   if (runtime.status !== 'running') return fail('team runtime is not running', 'INVALID_STATUS_TRANSITION');
-  const completed = updateRuntime(teamId, sessionId, { ...runtime, status: 'completed', updatedAt: new Date().toISOString() });
+  const completed = updateRuntime(teamId, sessionId, { ...runtime, status: 'completed', output, updatedAt: new Date().toISOString() });
   broadcastTeamRuntimeEvent('team.runtime.updated', {
     teamId,
     actorAgentId: completed.actorAgentId,
@@ -949,7 +955,7 @@ export function handleTeamTaskComplete(input: unknown): TeamServiceResult {
     leaderAgentId: completed.leaderAgentId,
     status: completed.status,
   });
-  return ok('team task completed', { session_id: completed.sessionId, status: completed.status });
+  return ok('team task completed', { session_id: completed.sessionId, status: completed.status, output });
 }
 
 function completeMessageDeliveries(
@@ -1082,6 +1088,7 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
       actor_agent_id: runtime.actorAgentId,
       leader_agent_id: runtime.leaderAgentId,
       status: runtime.status,
+      output: runtime.output,
       updated_at: runtime.updatedAt,
     },
     leader,
@@ -1125,6 +1132,7 @@ export function postTeamRuntimeMessage(input: unknown, waitForReply = false): Te
   const runtime = updateRuntime(teamId, sessionId, {
     ...ensureRuntime(teamId, sessionId, actorAgentId, targetAgentId),
     status: 'running',
+    output: undefined,
     updatedAt: new Date().toISOString(),
     startedAt,
     lastMessageId: messageId,

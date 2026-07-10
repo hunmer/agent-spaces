@@ -393,6 +393,11 @@ function TeamMessageCard({ message }: { message: Message }) {
             <ArrowUpRight className="size-3.5" />
           </span>
         </span>
+        {summary?.runtime.output ? (
+          <span className="mt-3 block whitespace-pre-wrap rounded-md bg-muted/50 px-3 py-2 text-sm text-foreground">
+            {summary.runtime.output}
+          </span>
+        ) : null}
         <span className="mt-3 grid gap-2 border-t pt-2 sm:grid-cols-2">
           <span>
             <span className="mb-1 block text-xs text-muted-foreground">{tm('runningAgents')}</span>

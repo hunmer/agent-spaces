@@ -197,9 +197,13 @@ export function createTeamFunctionTools(
         action: { type: 'string', enum: ['complete'] },
         ...actorField,
         team_id: { type: 'string' },
-      }, ['action', 'actor_agent_id', 'team_id']),
+        output: { type: 'string', description: 'Final result message for the completed team task.' },
+      }, ['action', 'actor_agent_id', 'team_id', 'output']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamTaskComplete(bindContext(input)),
+      execute: async (input) => {
+        const result = handleTeamTaskComplete(bindContext(input));
+        return result.success ? { success: true, output: (result.data as { output: string }).output } : result;
+      },
     },
   ];
 

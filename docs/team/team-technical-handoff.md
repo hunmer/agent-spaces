@@ -10,7 +10,7 @@
 - team membership：加入、邀请、离开
 - team message/inbox：团队消息、收件箱、评论
 
-前端入口是 team 管理页/弹窗；后端核心都收敛在一个 service 文件里。
+前端入口是 team 管理页/弹窗；后端按 manage / membership / message / inbox / runtime 拆分 service，`team.ts` 仅作为统一导出入口。
 
 ## 2. 关键结论
 
@@ -23,6 +23,8 @@
 - **`owner/admin` 是 team 内角色，不是平台级身份**（详见第 6 节）；前端管理页 actor 可能是任意 agent，不一定是 team 成员
 - **team 列表查询已移除所有可见性/关键词过滤**，只按 `archived` 区分活跃/归档，管理页展示全部 team
 - **runtime/chat 的人工用户固定为 `admin`**：消息保留 `admin -> owner/member` 的真实方向，owner/member 回复另存为反向消息
+- **team 会话以 UUID `session_id` 唯一标识**：runtime、message、inbox、日志和前端消息卡必须透传同一个 ID；不再使用 `runtime_id/runtimeId`
+- team 聊天标题栏可通过 session Select 切换历史会话；频道中的 team 消息卡通过 `metadata.sessionId` 打开对应会话
 - **agent handoff 必须等待下游 agent 完成**：工具调用不能 fire-and-forget，否则父 LangChain stream 会提前关闭
 
 ## 3. 核心文件入口
@@ -30,8 +32,11 @@
 ### 后端
 
 - `packages/server/src/services/team.ts`
-  - team 主服务
-  - 包含 team / membership / message / inbox / comment 全部核心逻辑
+  - team service 统一导出入口
+- `packages/server/src/services/team-runtime.ts`
+  - session 列表、runtime 加载、消息执行和 agent handoff
+- `packages/server/src/ws/html-utils.ts`
+  - 频道 mention 解析与清理；team 消息发送前移除 `@team` span
 - `packages/server/src/routes/team.ts`
   - HTTP 路由装配
 - `packages/server/src/services/builtin-tools/team-tools.ts`
@@ -48,7 +53,11 @@
   - 通过 `sdk.team.*` 调用 team 接口（不再外部拼 URL）
 - `packages/web/src/components/teams/team-chat-panel.tsx`
   - team runtime 聊天面板
-  - 通过 `sdk.team.getRuntime / sendRuntimeMessage / clearMessages / deleteMessage` 调用
+  - 通过 `sdk.team.listSessions / getRuntime / sendRuntimeMessage / clearMessages / deleteMessage` 调用
+  - 右侧 Select 切换当前 `session_id`
+- `packages/web/src/components/chat/message-item.tsx`
+  - 频道 team 消息卡
+  - 从 `message.metadata.sessionId` 定位并打开对应 team 会话
 - `packages/web/src/components/teams/team-member-list.tsx`
   - 成员列表与增删改
   - 通过 `sdk.team.invite / setRole / remove` 调用
@@ -204,7 +213,10 @@ team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
 关键约束：
 
 - `postTeamRuntimeMessage` 必须保留传入的 `actorAgentId`，禁止替换成 owner
-- `getTeamRuntime` 必须按同一个 actor 加载会话，否则刷新后会切到 owner 的其它会话
+- `getTeamRuntime` 必须同时使用同一个 actor 和 `session_id` 加载会话
+- `session_id` 必须是 UUID；服务端会校验，防止非法目录路径
+- `team-chat-panel.tsx` 的 `initialSessionId` 用于消息卡定位；不传时才创建新 UUID
+- session Select 的列表来自 `GET /api/teams/:teamId/sessions`，按 `updated_at` 倒序
 - 非成员 sender/recipient 的豁免只通过 `handleTeamMessageSend` 的服务端内部 options 开启，HTTP body 不能伪造
 - `deliveries.json` 的人工输入应为 `senderAgentId=admin`、`recipientAgentId=<目标 agent>`
 
@@ -246,6 +258,12 @@ team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
   - dissolve team
 - `POST /api/teams/:teamId/messages`
   - send team message
+- `GET /api/teams/:teamId/sessions`
+  - list team sessions
+- `GET /api/teams/:teamId/runtime?session_id=<uuid>`
+  - load one team session
+- `POST /api/teams/:teamId/runtime/messages`
+  - send message in one team session（body 必须带 `session_id`）
 
 收件箱/评论：
 
@@ -274,12 +292,13 @@ team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
 | `sdk.team.invite` | `POST /api/teams/:teamId/invite` |
 | `sdk.team.setRole` | `POST /api/teams/:teamId/set-role` |
 | `sdk.team.remove` | `POST /api/teams/:teamId/remove` |
+| `sdk.team.listSessions` | `GET /api/teams/:teamId/sessions` |
 | `sdk.team.getRuntime` | `GET /api/teams/:teamId/runtime` |
 | `sdk.team.sendRuntimeMessage` | `POST /api/teams/:teamId/runtime/messages` |
 | `sdk.team.clearMessages` | `DELETE /api/teams/:teamId/messages` |
 | `sdk.team.deleteMessage` | `DELETE /api/team-messages/:messageId` |
 
-尚未封装（无前端调用点，用到时补）：`join`、`leave`、`team-inbox` 系列、消息评论系列。
+尚未封装（无前端调用点，用到时补）：`join`、`leave`、消息评论系列。
 
 ## 8. 内置工具
 
@@ -499,6 +518,23 @@ team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
 - 修复：agent 工具入口等待下游 `dispatchTeamReply` 完整结束；UI 发送路径继续异步
 - 回归测试用延迟 gate 验证下游未结束前 tool Promise 不会 resolve
 
+### 已修复 13：不同 team 会话共享消息
+
+- 根因：消息、投递、runtime 和日志都直接写在 `{team_id}` 目录
+- 修复：创建 UUID `session_id`，会话数据写入 `{team_id}/{session_id}/`
+- API、SDK、消息 metadata 和 websocket event 统一使用 `session_id/sessionId`，移除 team 范围的 `runtime_id/runtimeId`
+
+### 已修复 14：team 消息卡打开了错误会话
+
+- 根因：消息卡只传 `teamId`，`TeamChatPanel` 自动生成了新 UUID
+- 修复：频道消息卡保存 `metadata.sessionId`，打开时通过 `initialSessionId` 传给聊天面板
+- 聊天面板右侧 session Select 可切换该 team 已存在的会话
+
+### 已修复 15：发送内容残留 `@team`
+
+- 根因：`stripMentionIds` 只匹配空 mention span，无法清理 `<span ...>@Team</span>`
+- 修复：mention 清理支持 span 内文本；仅移除本次识别出的 team mention，不影响普通 agent mention
+
 ## 11. 当前已知限制
 
 - team 编辑模式现在支持完整成员增删改 UI（invite / set-role / remove），通过 `sdk.team` 调用
@@ -507,12 +543,13 @@ team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
   - 不会直接导入更复杂的 team 成员配置
 - 旧 membership 数据没有独立迁移命令
   - 只是读取时兜底推断
+- 旧的 `{team_id}/messages.json` 等全局会话文件不会自动迁移到某个 session
+  - 新会话只读取 `{team_id}/{session_id}/`，需要保留旧消息时单独做一次性迁移
 - `createTeamFunctionTools(workspaceId, allowedTools?)` 里的 `workspaceId`
   - 仍是历史残留参数
   - handler 已经不再依赖它
-- `sdk.team` 目前未封装 team inbox（`/api/team-inbox`）和消息评论接口
-  - 原因：当前无前端调用点
-  - 后续用到时补到同一模块即可
+- `sdk.team` 目前未封装消息评论接口
+  - 后续有前端调用点时补到同一模块即可
 
 ## 12. 下个 agent 接手建议
 
@@ -547,6 +584,7 @@ pnpm exec tsc --noEmit -p "packages/web/tsconfig.json"
 
 ```powershell
 pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
+pnpm exec tsx --test "packages/server/test/channel-team.test.ts"
 ```
 
 ## 14. 快速排查指南
@@ -567,7 +605,20 @@ pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
 
 - list 查询现已**移除所有过滤**，只按 `archived` 区分；正常情况应返回全部 team
 - 若仍为空，检查 `teams.json` 索引和 `{team_id}/info.json` 是否存在
-- 人工输入应在 `messages.json` / `deliveries.json` 中显示为 `admin -> 目标 agent`；如果变成 owner 发送，检查是否重新引入了 actor 回退
+- 人工输入应在 `{team_id}/{session_id}/messages.json` / `deliveries.json` 中显示为 `admin -> 目标 agent`；如果变成 owner 发送，检查是否重新引入了 actor 回退
+
+如果 session Select 缺少会话或切换后消息不对，看：
+
+- `{team_id}/{session_id}/runtimes.json` 是否存在；sessions 接口只列出有效 UUID 目录及其中的 runtime
+- `sdk.team.listSessions(teamId)` 是否返回目标 UUID
+- `TeamChatPanel` 当前 `sessionId` 是否同时传给 `getRuntime / sendRuntimeMessage / listInbox / clearMessages / deleteMessage`
+- 从频道 team 消息卡打开时，`message.metadata.sessionId` 是否传入 `initialSessionId`
+
+如果发送给 team 的正文仍包含 `@team`，看：
+
+- `handler.ts` 是否先用 `stripMentionIds(content, teamMentionIds)` 生成 `messageContent`
+- `html-utils.ts` 的 mention 正则是否仍允许 span 内包含文本
+- 运行 `packages/server/test/channel-team.test.ts` 确认带文本 mention span 能被清理
 
 如果 agent handoff 报 `Controller is already closed`，看：
 
@@ -588,4 +639,4 @@ pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
 
 ## 15. 一句话总结
 
-这块现在的核心不是 UI，而是：**team 已经是全局模型，membership 已经支持 `agent/chat/custom` 三类成员来源，后续接手时优先围绕 membership 读写和 invite/manage UI 往下做。**
+这块现在的核心是：**team 定义全局共享，membership 支持 `agent/chat/custom`，聊天数据按 UUID `session_id` 隔离；所有 runtime、消息、inbox、消息卡和工具调用必须透传同一个 session。**
