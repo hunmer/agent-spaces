@@ -20,6 +20,9 @@
 - workflow 导入 team 成员时，必须取 `agent_run.data.agentConfigId`，不能取 `agent_run.data.agent.id`
 - **前端调用 team 接口一律走 `sdk.team.*`，禁止在组件里手拼 `/api/teams...` URL**
 - team 接口返回 `{ success, code, message, data }` 信封，与 SDK 其他模块不同；解包逻辑收敛在 `sdk.team` 内部（`unwrap`），调用方直接拿到 `data`
+- **`owner/admin` 是 team 内角色，不是平台级身份**（详见第 6 节）；前端管理页 actor 可能是任意 agent，不一定是 team 成员
+- **team 列表查询已移除所有可见性/关键词过滤**，只按 `archived` 区分活跃/归档，管理页展示全部 team
+- **runtime/chat 支持非成员（管理视角）访问**：非成员 actor 自动回退用 team owner 身份读写，不报权限错误
 
 ## 3. 核心文件入口
 
@@ -148,7 +151,68 @@ team 数据目录：
 - 这是**读取时补语义**，不是批量迁移脚本
 - 如果后续要做数据修复或导出工具，最好单独做迁移
 
-## 6. HTTP 路由
+## 6. owner / admin 概念辨析（易混淆）
+
+> **这是最容易踩坑的点，接手前务必读一遍。**
+
+### 6.1 role 是 team 内角色，不是平台身份
+
+`membership.role` 的取值：
+
+| role | 含义 | 权限 |
+| --- | --- | --- |
+| `owner` | 团队创建者/最高权限 | 全部操作 |
+| `admin` | 团队管理员 | invite / set-role / remove / update |
+| `member` | 普通成员 | 参与 runtime/chat |
+| `observer` | 观察者 | 只读 |
+
+**关键区分：**
+
+- ❌ **不存在「平台级 admin」**：系统中没有全局超管概念。`admin` 只是某个 team 内的角色。
+- ❌ **前端 `selectedActorId` 不是身份声明**：它是管理页顶部选的「当前操作 agent」，可能是任意 agent（包括非任何 team 成员的 `agent-generator`）。它不携带任何权限语义。
+- ✅ **owner 唯一性**：转移 owner 时（`set_role` 新角色为 owner），其它 active owner 自动降级为 admin。
+- ✅ **remove 是硬删除**：`action=remove` 直接从 `memberships.json` 过滤掉成员，**不保留** `status: removed` 记录（已改，见第 10 节）。
+
+### 6.2 list 查询不过滤（管理视角）
+
+team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
+
+- ❌ 不再有 `scope=visible/mine/all`
+- ❌ 不再有 `keyword` / `status_filter` 过滤
+- ✅ 只按 `archived` 参数区分活跃/归档数据源
+- ✅ 不要求 `actor_agent_id`（list action 免 actor 校验）
+
+无论 actor 是否为成员、team 是否 open，列表都返回全部 team。
+
+### 6.3 runtime/chat 非成员回退机制
+
+`getTeamRuntime` / `postTeamRuntimeMessage` 的成员校验已放开：
+
+```
+传入 actorAgentId
+  ├─ 是 active 成员 → 用自己作为 effectiveActorId
+  └─ 非成员（管理视角）→ 回退用 team owner（无 owner 则首个 active 成员）
+```
+
+后续所有读写（runtime 加载、消息发送、广播）都用 `effectiveActorId`，使非成员能查看和参与任意 team 的协作。
+
+**但 `listParticipants` 用原始 `actorAgentId` 过滤**（排除「自己」）：
+
+- 成员视角：actor 在成员列表中 → 正常排除自己，agent bar 不显示自己
+- 非成员视角：actor 不在成员列表 → 等于不过滤，返回全部成员（含 owner）
+
+这是为了让管理视角的 agent bar 能展示 owner。**修改 participants 过滤逻辑时务必同时考虑这两个视角。**
+
+### 6.4 转移 owner 的正确流程
+
+前端 `confirmRemoveOwner`（`team-member-list.tsx`）执行两步：
+
+1. `sdk.team.setRole(teamId, actor, newOwnerId, "owner")` — 新 owner 上位，旧 owner 自动降 admin
+2. `sdk.team.remove(teamId, actor, oldOwnerId)` — 旧 owner 从 members 硬删除
+
+注意：第 2 步之前旧 owner 已是 admin（非唯一 owner），所以 `last owner cannot be removed` 校验不会拦截。
+
+## 7. HTTP 路由
 
 当前 team 路由：
 
@@ -180,7 +244,7 @@ team 数据目录：
 - `POST /api/team-messages/:messageId/comments`
 - `DELETE /api/team-messages/comments/:commentId`
 
-### 6.1 前端调用约定
+### 7.1 前端调用约定
 
 上述路由中，**已被 `sdk.team` 封装的部分，前端必须走 SDK，不允许在组件里手拼 URL**。
 
@@ -205,7 +269,7 @@ team 数据目录：
 
 尚未封装（无前端调用点，用到时补）：`join`、`leave`、`team-inbox` 系列、消息评论系列。
 
-## 7. 内置工具
+## 8. 内置工具
 
 `packages/server/src/services/builtin-tools/team-tools.ts` 当前主要暴露：
 
@@ -231,9 +295,9 @@ team 数据目录：
 - `agent`
 - `role`
 
-## 8. 当前关键流程
+## 9. 当前关键流程
 
-### 8.1 创建 team
+### 9.1 创建 team
 
 入口：
 
@@ -248,7 +312,7 @@ team 数据目录：
 4. 每个成员都走统一的 membership agent 解析逻辑
 5. 写入 `info.json`、`memberships.json`、空消息文件
 
-### 8.2 workflow 导入 team 默认成员
+### 9.2 workflow 导入 team 默认成员
 
 入口：
 
@@ -270,7 +334,7 @@ team 数据目录：
 - `node.data.agent` 里可能是运行时 agent 配置片段
 - 里面的 `id` 可能是 `default` 这类值，不是 preset id
 
-### 8.3 invite member
+### 9.3 invite member
 
 入口：
 
@@ -301,7 +365,7 @@ team 数据目录：
 
 - `AGENT_NOT_FOUND`
 
-### 8.4 join team
+### 9.4 join team
 
 入口：
 
@@ -314,7 +378,7 @@ team 数据目录：
 - private team 只有已在 team 中的成员才能继续走 join
 - join 时会补 `agentStore/agent` 语义
 
-## 9. 最近已修复的问题
+## 10. 最近已修复的问题
 
 ### 已修复 1：workflow 导入时 agent-id 变成 `default`
 
@@ -346,7 +410,42 @@ team 数据目录：
 - membership 增加可选 `agent` 对象
 - `agentStore=custom` 时允许直接写入配置
 
-## 10. 当前已知限制
+### 已修复 5：转移 owner 后列表变空（scope=visible 过滤）
+
+根因：
+
+- list 查询用 `scope=visible` 按 actor 做成员可见性过滤
+- 转移 owner 后旧 owner（actor）非成员 → 全部 team 被过滤掉
+
+修复：
+
+- **list 查询移除所有过滤器**（scope / keyword / status_filter），只按 `archived` 区分数据源
+- list action 免 `actor_agent_id` 校验
+
+### 已修复 6：remove 成员残留 removed 记录
+
+根因：
+
+- `action=remove` 是软删除，标记 `status: removed` 并保留记录
+- 残留记录导致数据不干净
+
+修复：
+
+- 改为**硬删除**，直接从 `memberships.json` 过滤掉成员，不再保留 removed 记录
+
+### 已修复 7：非成员打开 team 报 "sender is not an active team member"
+
+根因：
+
+- `getTeamRuntime` / `postTeamRuntimeMessage` 强制要求 actor 是 active 成员
+- list 放开过滤后，会打开 actor 非成员的 team，runtime 直接报错
+
+修复：
+
+- 非成员 actor 自动回退用 team owner 身份（`effectiveActorId`）读写 runtime
+- `listParticipants` 用原始 `actorAgentId` 过滤，保证管理视角 agent bar 展示全部成员含 owner
+
+## 11. 当前已知限制
 
 - team 编辑模式现在支持完整成员增删改 UI（invite / set-role / remove），通过 `sdk.team` 调用
   - PATCH 本身仍只改 team 基础字段；成员变更走独立 membership 接口
@@ -361,7 +460,7 @@ team 数据目录：
   - 原因：当前无前端调用点
   - 后续用到时补到同一模块即可
 
-## 11. 下个 agent 接手建议
+## 12. 下个 agent 接手建议
 
 如果要继续做成员管理，优先按下面顺序看：
 
@@ -380,7 +479,7 @@ team 数据目录：
 - custom agent 是只允许一次性静态配置，还是后续允许在 team 内编辑
 - workflow 导入后，是否要支持导入 `custom agent` 配置而不只是 preset id
 
-## 12. 快速验收命令
+## 13. 快速验收命令
 
 类型检查：
 
@@ -396,7 +495,7 @@ pnpm exec tsc --noEmit -p "packages/web/tsconfig.json"
 pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
 ```
 
-## 13. 快速排查指南
+## 14. 快速排查指南
 
 如果 team 创建后成员不对，看：
 
@@ -412,10 +511,9 @@ pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
 
 如果 UI 看不到 team，看：
 
-- `sdk.team.list({ actor_agent_id, scope: "visible" })` 的实际返回
-  - 底层请求：`/api/teams?actor_agent_id=...&scope=visible`
-- 当前 actor 是否是 active membership
-- team `visibility` 是否为 `open`
+- list 查询现已**移除所有过滤**，只按 `archived` 区分；正常情况应返回全部 team
+- 若仍为空，检查 `teams.json` 索引和 `{team_id}/info.json` 是否存在
+- runtime/chat 报 "sender is not an active team member" 属历史问题，现已对非成员回退 owner（见第 6.3 节）
 
 如果 `sdk.team.*` 报错（如信封解析失败），看：
 
@@ -423,6 +521,6 @@ pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
 - 服务端 `sendResult` 返回的 `success` 是否为 `true`
 - 接口路径是否与 `packages/server/src/routes/team.ts` 一致
 
-## 14. 一句话总结
+## 15. 一句话总结
 
 这块现在的核心不是 UI，而是：**team 已经是全局模型，membership 已经支持 `agent/chat/custom` 三类成员来源，后续接手时优先围绕 membership 读写和 invite/manage UI 往下做。**

@@ -232,7 +232,8 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
     return searchableTools.filter((tool) => tool.category === activeCategory);
   }, [activeCategory, searchableTools]);
 
-  const selectedFilteredTools = useMemo(() => filteredTools.filter((tool) => selected.has(tool.name)), [filteredTools, selected]);
+  // selected 列表不受右侧过滤（搜索/分类/agent）影响，始终基于全量已选工具渲染
+  const selectedFilteredTools = useMemo(() => [...ALL_TOOLS].filter((tool) => selected.has(tool.name)).sort(compareTools), [selected]);
   const unselectedFilteredTools = useMemo(() => filteredTools.filter((tool) => !selected.has(tool.name)), [filteredTools, selected]);
 
   const boundAgentsFor = useCallback((toolName: string) => {
@@ -319,35 +320,6 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
             <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('search')} className="pl-8" />
           </div>
 
-          {selectable && filteredTools.length > 0 && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {t('enabledCount', { count: filteredTools.filter((t) => selected.has(t.name)).length, total: filteredTools.length })}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-xs"
-                onClick={() => {
-                  const allSelected = filteredTools.every((t) => selected.has(t.name));
-                  const next = new Set<BuiltInAgentToolName>(selected);
-                  if (allSelected) {
-                    filteredTools.forEach((t) => next.delete(t.name));
-                  } else {
-                    filteredTools.forEach((t) => next.add(t.name));
-                  }
-                  if (onSelectedToolsChange) {
-                    onSelectedToolsChange(ALL_TOOLS.map((t) => t.name).filter((n) => next.has(n)));
-                  } else {
-                    setInternalSelected(next);
-                  }
-                }}
-              >
-                {filteredTools.every((t) => selected.has(t.name)) ? t('deselectAll') : t('selectAll')}
-              </Button>
-            </div>
-          )}
-
           <div className="flex-1 min-h-0 grid grid-rows-[1fr_1fr] gap-3">
             {/* Selected tools (top half) */}
             {selectable && (
@@ -403,9 +375,34 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
             {/* Unselected tools (bottom half, or full height when not selectable) */}
             <div className={cn('min-h-0 flex flex-col gap-2', !selectable && 'row-span-2')}>
               {selectable && (
-                <span className="text-xs font-medium text-muted-foreground shrink-0">
-                  {t('available')} <span className="text-foreground">({unselectedFilteredTools.length})</span>
-                </span>
+                <div className="flex items-center justify-between shrink-0">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t('available')} <span className="text-foreground">({unselectedFilteredTools.length})</span>
+                  </span>
+                  {filteredTools.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        const allSelected = filteredTools.every((t) => selected.has(t.name));
+                        const next = new Set<BuiltInAgentToolName>(selected);
+                        if (allSelected) {
+                          filteredTools.forEach((t) => next.delete(t.name));
+                        } else {
+                          filteredTools.forEach((t) => next.add(t.name));
+                        }
+                        if (onSelectedToolsChange) {
+                          onSelectedToolsChange(ALL_TOOLS.map((t) => t.name).filter((n) => next.has(n)));
+                        } else {
+                          setInternalSelected(next);
+                        }
+                      }}
+                    >
+                      {filteredTools.every((t) => selected.has(t.name)) ? t('deselectAll') : t('selectAll')}
+                    </Button>
+                  )}
+                </div>
               )}
               <ScrollArea className="flex-1 min-h-0">
                 {unselectedFilteredTools.length === 0 ? (

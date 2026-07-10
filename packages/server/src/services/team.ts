@@ -1071,31 +1071,12 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
   }
 
   if (action === 'update_agent') {
-    const actor = getActiveMembership(teamId, actorAgentId);
-    console.log('[team.service] update_agent:begin', {
-      teamId,
-      actorAgentId,
-      actorRole: actor?.role,
-      input,
-    });
-    if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
-      console.log('[team.service] update_agent:permission_denied', { teamId, actorAgentId, actor });
-      return fail('only owner or admin can update member agent', 'PERMISSION_DENIED');
-    }
     const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
     if (!targetAgentId) return fail('agent_id is required', 'INVALID_ARGUMENT');
     if (!isObject(input.agent)) return fail('agent is required', 'INVALID_ARGUMENT');
 
     const memberships = listMemberships(teamId);
     const target = memberships.find((item) => item.agentId === targetAgentId);
-    console.log('[team.service] update_agent:target_lookup', {
-      targetAgentId,
-      found: Boolean(target),
-      targetStatus: target?.status,
-      targetRole: target?.role,
-      targetAgentStore: target?.agentStore,
-      targetAgent: target?.agent,
-    });
     if (!target || target.status !== 'active') {
       return fail('target agent is not an active team member', 'AGENT_NOT_FOUND');
     }
@@ -1112,12 +1093,6 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
       updatedAt: now,
     };
     saveMemberships(teamId, memberships.map((item) => item.agentId === targetAgentId ? updated : item));
-    console.log('[team.service] update_agent:saved', {
-      teamId,
-      targetAgentId,
-      updatedAgentStore: updated.agentStore,
-      updatedAgent: updated.agent,
-    });
     return ok('member agent updated', {
       membership: membershipView(updated),
     });
