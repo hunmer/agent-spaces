@@ -237,6 +237,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       return;
     }
     void loadTeamDetail(selectedTeamId);
+    const timer = setInterval(() => void loadTeamDetail(selectedTeamId), 3000);
+    return () => clearInterval(timer);
   }, [loadTeamDetail, selectedActorId, selectedTeamId]);
 
   function openCreateDialog() {

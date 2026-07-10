@@ -135,8 +135,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
           size="sm"
           variant="outline"
           onClick={() => setAddOpen(true)}
-          disabled={busyId === "__add" || !canManage}
-          title={canManage ? undefined : t("detail.noPermission")}
+          disabled={busyId === "__add"}
         >
           {busyId === "__add" ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
         </Button>

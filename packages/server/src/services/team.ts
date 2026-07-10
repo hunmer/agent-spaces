@@ -303,6 +303,20 @@ function getActiveMembership(teamId: string, agentId: string): TeamMembership | 
   return isActiveMembership(membership) ? membership : undefined;
 }
 
+/**
+ * 解析有效成员身份：actor 是 active 成员则用自身，否则回退到 team owner（管理视角）。
+ * 返回的 membership 用于权限校验，保证非成员管理操作也能放行。
+ */
+function resolveEffectiveMembership(teamId: string, agentId: string): TeamMembership | undefined {
+  return getActiveMembership(teamId, agentId)
+    ?? activeMemberships(teamId).find((item) => item.role === 'owner')
+    ?? activeMemberships(teamId)[0];
+}
+
+function isManagerRole(membership: TeamMembership | undefined): boolean {
+  return Boolean(membership && (membership.role === 'owner' || membership.role === 'admin'));
+}
+
 function activeMemberships(teamId: string): TeamMembership[] {
   return listMemberships(teamId).filter((item) => item.status === 'active');
 }
@@ -536,6 +550,7 @@ function resolveRecipients(
   mode: 'direct' | 'broadcast',
   input: JsonMap,
   senderId: string,
+  allowExternalRecipients = false,
 ): TeamServiceResult<{ includedAgentIds: string[]; excludedAgentIds: string[]; warnings: string[] }> {
   const active = activeMemberships(teamId);
   const activeByAgentId = new Map(active.map((item) => [item.agentId, item]));
@@ -556,7 +571,7 @@ function resolveRecipients(
   const included = new Set<string>();
   if (mode === 'direct') {
     for (const agentId of requestedIds) {
-      if (activeByAgentId.has(agentId)) included.add(agentId);
+      if (activeByAgentId.has(agentId) || allowExternalRecipients) included.add(agentId);
     }
   } else {
     if (requestedIds.length === 0 && requestedRoles.size === 0) {
@@ -764,8 +779,8 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
     const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
-    const membership = getActiveMembership(teamId, actorAgentId);
-    if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    const membership = resolveEffectiveMembership(teamId, actorAgentId);
+    if (!isManagerRole(membership)) {
       return fail('only owner or admin can update team', 'PERMISSION_DENIED');
     }
     if (team.status === 'dissolved') return fail('team already dissolved', 'TEAM_DISSOLVED');
@@ -807,8 +822,8 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
     const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
-    const membership = getActiveMembership(teamId, actorAgentId);
-    if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) return fail('only owner or admin can dissolve team', 'PERMISSION_DENIED');
+    const membership = resolveEffectiveMembership(teamId, actorAgentId);
+    if (!isManagerRole(membership)) return fail('only owner or admin can dissolve team', 'PERMISSION_DENIED');
     if (!asBoolean(input.confirm)) return fail('confirm must be true', 'INVALID_ARGUMENT');
     if (team.status === 'dissolved') return fail('team already dissolved', 'TEAM_DISSOLVED');
     if (asBoolean(input.dry_run)) return ok('team dissolve validation passed', { team_id: teamId });
@@ -952,8 +967,8 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
   }
 
   if (action === 'invite') {
-    const inviter = getActiveMembership(teamId, actorAgentId);
-    if (!inviter || (inviter.role !== 'owner' && inviter.role !== 'admin')) {
+    const inviter = resolveEffectiveMembership(teamId, actorAgentId);
+    if (!isManagerRole(inviter)) {
       return fail('only owner or admin can invite members', 'PERMISSION_DENIED');
     }
     if (team.status !== 'active') return fail('team is not active', 'TEAM_DISSOLVED');
@@ -1042,8 +1057,8 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
   }
 
   if (action === 'set_role') {
-    const actor = getActiveMembership(teamId, actorAgentId);
-    if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
+    const actor = resolveEffectiveMembership(teamId, actorAgentId);
+    if (!isManagerRole(actor)) {
       return fail('only owner or admin can change member roles', 'PERMISSION_DENIED');
     }
     const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
@@ -1101,8 +1116,8 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
   }
 
   if (action === 'remove') {
-    const actor = getActiveMembership(teamId, actorAgentId);
-    if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
+    const actor = resolveEffectiveMembership(teamId, actorAgentId);
+    if (!isManagerRole(actor)) {
       return fail('only owner or admin can remove members', 'PERMISSION_DENIED');
     }
     const targetAgentId = asString(input.agent_id ?? input.agentId ?? input.target_agent_id ?? input.targetAgentId);
@@ -1144,7 +1159,10 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
   return fail('invalid action', 'INVALID_ACTION');
 }
 
-export function handleTeamMessageSend(input: unknown): TeamServiceResult {
+export function handleTeamMessageSend(
+  input: unknown,
+  options: { allowExternalSender?: boolean; allowExternalRecipients?: boolean } = {},
+): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
@@ -1155,7 +1173,9 @@ export function handleTeamMessageSend(input: unknown): TeamServiceResult {
   const team = loadTeam(teamId);
   if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
   if (team.status !== 'active') return fail('team is not active', 'TEAM_DISSOLVED');
-  if (!getActiveMembership(teamId, actorAgentId)) return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
+  if (!getActiveMembership(teamId, actorAgentId) && !options.allowExternalSender) {
+    return fail('sender is not an active team member', 'NOT_TEAM_MEMBER');
+  }
 
   const mode = (asString(input.mode) === 'broadcast' ? 'broadcast' : 'direct') as 'direct' | 'broadcast';
   const subject = asString(input.subject);
@@ -1163,7 +1183,7 @@ export function handleTeamMessageSend(input: unknown): TeamServiceResult {
   if (!subject || !body) return fail('subject and body are required', 'INVALID_ARGUMENT');
   const dueAt = asString(input.due_at ?? input.dueAt) ?? null;
   if (dueAt && Number.isNaN(Date.parse(dueAt))) return fail('due_at must be a valid datetime', 'INVALID_ARGUMENT');
-  const recipientsResult = resolveRecipients(teamId, mode, input, actorAgentId);
+  const recipientsResult = resolveRecipients(teamId, mode, input, actorAgentId, options.allowExternalRecipients);
   if (!recipientsResult.success || !recipientsResult.data) return recipientsResult;
   if (asBoolean(input.dry_run)) return ok('message send validation passed', recipientsResult.data);
 
@@ -1339,9 +1359,7 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
       // 非成员（管理视角）回退 owner 身份，查收件人为 owner 或 actor 的投递
       const fallbackMembership = getActiveMembership(ctx.team.id, actorAgentId)
         ?? listMemberships(ctx.team.id).find((item) => item.status === 'active' && item.role === 'owner');
-      const effectiveRecipient = fallbackMembership && ctx.delivery?.recipientAgentId !== actorAgentId
-        ? fallbackMembership.agentId
-        : actorAgentId;
+      const effectiveRecipient = fallbackMembership?.agentId ?? actorAgentId;
       inboxItem = listDeliveries(ctx.team.id).find((item) => item.messageId === messageId && item.recipientAgentId === effectiveRecipient);
       message = ctx.message;
       if (!inboxItem) return fail('delivery not found', 'DELIVERY_NOT_FOUND');

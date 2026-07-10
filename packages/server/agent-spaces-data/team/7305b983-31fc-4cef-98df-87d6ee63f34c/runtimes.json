@@ -8,12 +8,20 @@
     "updatedAt": "2026-07-10T01:47:32.232Z"
   },
   {
-    "id": "c46fd579-86a3-4c91-abd4-bc4ab2317fc8",
+    "id": "7946df71-2896-402e-96df-c63068323356",
     "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
-    "actorAgentId": "topic_agent",
-    "leaderAgentId": "editor_agent",
+    "actorAgentId": "editor_agent",
+    "leaderAgentId": "topic_agent",
     "status": "running",
-    "updatedAt": "2026-07-10T02:47:45.094Z",
-    "lastMessageId": "51402e6d-1b5c-4f30-aa40-cc1c7bcb5551"
+    "updatedAt": "2026-07-10T02:51:37.672Z",
+    "lastMessageId": "bd600535-8e5a-4509-90c9-7d449126ed11"
+  },
+  {
+    "id": "309f435e-5692-40b1-a979-fe3533aaa9c6",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "admin",
+    "leaderAgentId": "topic_agent",
+    "status": "idle",
+    "updatedAt": "2026-07-10T03:47:49.642Z"
   }
 ]

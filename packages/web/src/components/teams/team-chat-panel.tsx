@@ -21,6 +21,7 @@ import type {
 import { WorkspaceWS } from "@/lib/ws";
 
 const TEAM_RUNTIME_WORKSPACE_ID = "__team__";
+const TEAM_USER_ACTOR_ID = "admin";
 
 type TeamChatPanelProps = {
   teamId: string;
@@ -118,11 +119,11 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   );
 
   const viewMessages = useMemo(() => {
-    const rendered = messages.map((item) => toChannelMessage(item, actorAgentId));
+    const rendered = messages.map((item) => toChannelMessage(item, TEAM_USER_ACTOR_ID));
     if (!pendingAssistantSince) return rendered;
 
     const hasRealAssistantMessage = messages.some((item) => (
-      item.senderAgentId !== actorAgentId
+      item.senderAgentId !== TEAM_USER_ACTOR_ID
       && new Date(item.createdAt).getTime() >= new Date(pendingAssistantSince).getTime()
     ));
     if (hasRealAssistantMessage) return rendered;
@@ -137,25 +138,25 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       createdAt: pendingAssistantSince,
     };
     return [...rendered, pendingMessage];
-  }, [actorAgentId, leader?.id, messages, pendingAssistantSince, runtime?.id, runtime?.leader_agent_id]);
+  }, [leader?.id, messages, pendingAssistantSince, runtime?.id, runtime?.leader_agent_id]);
 
   const clearPendingAssistantIfResolved = useCallback((items: TeamRuntimeMessageView[]) => {
     if (!pendingAssistantSince) return;
     const resolved = items.some((item) => (
-      item.senderAgentId !== actorAgentId
+      item.senderAgentId !== TEAM_USER_ACTOR_ID
       && new Date(item.createdAt).getTime() >= new Date(pendingAssistantSince).getTime()
     ));
     if (resolved) {
       setPendingAssistantSince(null);
     }
-  }, [actorAgentId, pendingAssistantSince]);
+  }, [pendingAssistantSince]);
 
   const loadRuntime = useCallback(async () => {
     if (!teamId || !actorAgentId) return;
     setLoading(true);
     setError("");
     try {
-      const data = await sdk.team.getRuntime(teamId, actorAgentId);
+      const data = await sdk.team.getRuntime(teamId, TEAM_USER_ACTOR_ID);
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
@@ -182,7 +183,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setError("");
     try {
       await sdk.team.sendRuntimeMessage(teamId, {
-        actor_agent_id: actorAgentId,
+        actor_agent_id: TEAM_USER_ACTOR_ID,
         content: trimmed,
         target_agent_id: mentions[0],
         context_length: contextLength,
@@ -217,7 +218,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     ws.connect();
     const handleEvent = (payload: unknown) => {
       const data = payload as { teamId?: string; actorAgentId?: string };
-      if (data.teamId !== teamId || data.actorAgentId !== actorAgentId) return;
+      if (data.teamId !== teamId || data.actorAgentId !== TEAM_USER_ACTOR_ID) return;
       void loadRuntime();
     };
     const offCreated = ws.on("team.message.created", handleEvent);

@@ -1,26 +1,26 @@
 [
   {
-    "id": "f90ffb7b-f035-44b6-a096-eae3737048fb",
+    "id": "211e08b0-bbfc-46a9-adb3-e81813bab4ff",
     "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
-    "messageId": "51402e6d-1b5c-4f30-aa40-cc1c7bcb5551",
-    "recipientAgentId": "editor_agent",
-    "senderAgentId": "topic_agent",
-    "subject": "<p><span class=\"mention\" data-t…",
-    "preview": "<p><span class=\"mention\" data-type=\"mention\" data-id=\"topic_agent\" data-label=\"Topic Agent\" data-mention-suggestion-cha…",
+    "messageId": "106df839-9860-4cd4-8163-fa7acce4071c",
+    "recipientAgentId": "topic_agent",
+    "senderAgentId": "admin",
+    "subject": "年轻人的恋爱为什么越来越快餐",
+    "preview": "年轻人的恋爱为什么越来越快餐",
     "messageType": "direct",
     "inboxStatus": "unread",
-    "executionStatus": "running",
+    "executionStatus": "pending",
     "priority": "normal",
     "requiresAck": false,
     "requiresAction": false,
     "dueAt": null,
-    "sentAt": "2026-07-10T02:47:45.092Z",
+    "sentAt": "2026-07-10T03:34:04.007Z",
     "readAt": null,
     "completedAt": null,
     "failedAt": null,
     "failureReason": null,
     "unreadCommentCount": 0,
-    "version": 1,
-    "updatedAt": "2026-07-10T02:47:45.092Z"
+    "version": 3,
+    "updatedAt": "2026-07-10T03:54:10.369Z"
   }
 ]

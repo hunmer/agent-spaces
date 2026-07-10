@@ -15,6 +15,7 @@ import {
 } from '../src/services/team.js';
 import { createProvider } from '../src/storage/llm-store.js';
 import {
+  getTeamRuntime,
   postTeamRuntimeMessage,
   resolveCustomAgentProvider,
   setTeamRuntimeFactoryForTests,
@@ -224,7 +225,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
       async execute(prompt, _workingDir, options) {
         capturedPrompts.push(prompt);
         capturedRuns.push((options ?? {}) as Record<string, unknown>);
-        return { success: true, summary: 'stub-summary', output: ['stub-reply'], artifacts: [] };
+        return { success: true, summary: 'stub-summary', output: ['<think>hidden</think>stub-reply'], artifacts: [] };
       },
       stop() {},
     };
@@ -243,27 +244,29 @@ test('team runtime custom agent can self-test full reply flow with providerId on
 
     createWorkflow({
       name: 'Workflow Runtime Provider',
-      nodes: [{
-        id: 'agent-run-topic',
-        type: 'agent_run',
-        label: 'Topic Agent',
-        position: { x: 0, y: 0 },
-        data: {
-          agentConfigId: 'topic_agent',
-          agent: {
-            id: 'topic_agent',
-            name: 'Topic Agent',
-            runtimeKind: 'claude-code',
-            modelProvider: 'anthropic-messages',
-            providerId: provider.id,
-            modelId: 'MiniMax-M2.7',
-            apiBase: 'https://api.minimaxi.com/anthropic',
-            workingDir: dataDir,
-            tools: ['team_message_send', 'team_inbox_query', 'ListWorkspaceFiles', 'list_workflows'],
-            systemPrompt: 'Be helpful.',
+      nodes: [
+        {
+          id: 'agent-run-topic',
+          type: 'agent_run',
+          label: 'Topic Agent',
+          position: { x: 0, y: 0 },
+          data: {
+            agentConfigId: 'topic_agent',
+            agent: {
+              id: 'topic_agent',
+              name: 'Topic Agent',
+              runtimeKind: 'claude-code',
+              modelProvider: 'anthropic-messages',
+              providerId: provider.id,
+              modelId: 'MiniMax-M2.7',
+              apiBase: 'https://api.minimaxi.com/anthropic',
+              workingDir: dataDir,
+              tools: ['team_message_send', 'team_inbox_query', 'ListWorkspaceFiles', 'list_workflows'],
+              systemPrompt: 'Be helpful.',
+            },
           },
         },
-      }],
+      ],
       edges: [],
     });
 
@@ -278,7 +281,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
 
     const sent = postTeamRuntimeMessage({
       team_id: teamId,
-      actor_agent_id: owner.id,
+      actor_agent_id: 'admin',
       content: 'hello runtime',
       target_agent_id: 'topic_agent',
       context_length: 0,
@@ -307,17 +310,42 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.match(capturedPrompts[0] ?? '', /Available teammates for handoff:/);
     assert.match(capturedPrompts[0] ?? '', /Owner Agent/);
     assert.match(capturedPrompts[0] ?? '', /team_message_send/);
+    assert.match(capturedPrompts[0] ?? '', new RegExp(`Current team_id: ${teamId}`));
+    assert.match(capturedPrompts[0] ?? '', new RegExp(`Your actor_agent_id: topic_agent`));
+    const teamMessageSendTool = runtimeFunctionTools.find((tool) => tool.name === 'team_message_send');
+    assert.ok(teamMessageSendTool);
+    const dryRun = await teamMessageSendTool.execute({
+      action: 'send',
+      actor_agent_id: 'wrong-agent',
+      team_id: 'reviewer_agent',
+      mode: 'broadcast',
+      recipient_agent_ids: [owner.id],
+      subject: 'done',
+      body: 'done',
+      dry_run: true,
+    }) as { success: boolean };
+    assert.equal(dryRun.success, true);
     const listWorkspaceFilesTool = runtimeFunctionTools.find((tool) => tool.name === 'ListWorkspaceFiles');
     assert.ok(listWorkspaceFilesTool);
     const listed = await listWorkspaceFilesTool.execute({ path: '', depth: 1 }) as { files: Array<{ name: string }> };
     assert.ok(Array.isArray(listed.files));
     const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
     const inbound = deliveries.find((item) => item.recipientAgentId === 'topic_agent');
+    assert.equal(inbound?.senderAgentId, 'admin');
     assert.equal(inbound?.executionStatus, 'done');
+    assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === owner.id));
+    assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === 'admin'));
     assert.equal(messages.length, 2);
-    assert.equal(messages[0]?.senderAgentId, owner.id);
+    assert.equal(messages[0]?.senderAgentId, 'admin');
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');
     assert.equal(messages[1]?.body, 'stub-reply');
+    const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
+    assert.equal(loaded.success, true);
+    assert.deepEqual(
+      (loaded.data as { messages: Array<{ senderAgentId: string; recipientAgentId: string }> }).messages
+        .map((item) => [item.senderAgentId, item.recipientAgentId]),
+      [['admin', 'topic_agent'], ['topic_agent', 'admin']],
+    );
   } finally {
     setTeamRuntimeFactoryForTests();
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;

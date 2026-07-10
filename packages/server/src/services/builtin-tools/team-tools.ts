@@ -31,8 +31,15 @@ function schema(properties: Record<string, unknown>, required: string[]): Record
   };
 }
 
-export function createTeamFunctionTools(workspaceId: string, allowedTools?: BuiltInAgentToolName[]): AgentFunctionTool[] {
+export function createTeamFunctionTools(
+  workspaceId: string,
+  allowedTools?: BuiltInAgentToolName[],
+  context?: { teamId: string; actorAgentId: string },
+): AgentFunctionTool[] {
   const allowedToolNames = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  const bindContext = (input: unknown): unknown => context && input && typeof input === 'object'
+    ? { ...input, team_id: context.teamId, actor_agent_id: context.actorAgentId }
+    : input;
 
   const tools: AgentFunctionTool[] = [
     {
@@ -69,7 +76,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         metadata: { type: 'object' },
       }, ['action', 'actor_agent_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamManage(input),
+      execute: async (input) => handleTeamManage(bindContext(input)),
     },
     {
       name: 'team_membership_manage',
@@ -88,7 +95,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         reason: { type: 'string' },
       }, ['action', 'actor_agent_id', 'team_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMembershipManage(input),
+      execute: async (input) => handleTeamMembershipManage(bindContext(input)),
     },
     {
       name: 'team_message_send',
@@ -114,7 +121,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         metadata: { type: 'object' },
       }, ['action', 'actor_agent_id', 'team_id', 'mode', 'subject', 'body']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageSendAndRun(input),
+      execute: async (input) => handleTeamMessageSendAndRun(bindContext(input)),
     },
     {
       name: 'team_inbox_query',
@@ -138,7 +145,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         message_id: { type: 'string' },
       }, ['action', 'actor_agent_id']),
       annotations: { readOnly: true, openWorld: false },
-      execute: async (input) => handleTeamInboxQuery(input),
+      execute: async (input) => handleTeamInboxQuery(bindContext(input)),
     },
     {
       name: 'team_message_update',
@@ -156,7 +163,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         expected_version: { type: 'integer' },
       }, ['action', 'actor_agent_id', 'delivery_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageUpdate(input),
+      execute: async (input) => handleTeamMessageUpdate(bindContext(input)),
     },
     {
       name: 'team_message_comment',
@@ -176,7 +183,7 @@ export function createTeamFunctionTools(workspaceId: string, allowedTools?: Buil
         reason: { type: 'string' },
       }, ['action', 'actor_agent_id']),
       annotations: { destructive: false, openWorld: false },
-      execute: async (input) => handleTeamMessageComment(input),
+      execute: async (input) => handleTeamMessageComment(bindContext(input)),
     },
   ];
 
