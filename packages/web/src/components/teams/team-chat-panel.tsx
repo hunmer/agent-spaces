@@ -49,6 +49,7 @@ function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): M
     channelId: item.runtimeId,
     senderId: isUser ? "user" : item.senderAgentId,
     content: item.content,
+    parts: item.parts,
     type: "text",
     status: item.status === "running" ? "streaming" : item.status === "error" ? "error" : "completed",
     createdAt: item.createdAt,
@@ -316,7 +317,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                     <div key={message.id} id={`msg-${message.id}`}>
                       <MessageItem
                         message={message}
-                        workspaceId=""
+                        workspaceId={TEAM_RUNTIME_WORKSPACE_ID}
                         agent={participantsById.get(message.senderId)}
                         teamId={teamId}
                         actorAgentId={actorAgentId}

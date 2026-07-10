@@ -1,5 +1,5 @@
 import type { HttpClient } from '../client';
-import type { AgentConfig, TeamStatus, TeamVisibility, TeamRole, TeamMembershipAgent, TeamMembershipAgentStore, TeamInboxStatus, TeamPriority, TeamBodyFormat, TeamMessageType, TeamExecutionStatus } from '@agent-spaces/shared';
+import type { AgentConfig, MessagePart, TeamStatus, TeamVisibility, TeamRole, TeamMembershipAgent, TeamMembershipAgentStore, TeamInboxStatus, TeamPriority, TeamBodyFormat, TeamMessageType, TeamExecutionStatus } from '@agent-spaces/shared';
 
 /**
  * Team API 模块
@@ -98,6 +98,7 @@ export interface TeamRuntimeMessageView {
   senderAgentId: string;
   recipientAgentId: string;
   content: string;
+  parts?: MessagePart[];
   createdAt: string;
   status: 'running' | 'completed' | 'error';
 }

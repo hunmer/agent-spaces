@@ -219,12 +219,16 @@ test('team runtime custom agent can self-test full reply flow with providerId on
   const capturedConfigs: Array<Record<string, unknown>> = [];
   const capturedRuns: Array<Record<string, unknown>> = [];
   const capturedPrompts: string[] = [];
+  let releaseEditor: (() => void) | undefined;
+  const editorGate = new Promise<void>((resolve) => { releaseEditor = resolve; });
   setTeamRuntimeFactoryForTests((config) => {
     capturedConfigs.push((config ?? {}) as Record<string, unknown>);
     return {
       async execute(prompt, _workingDir, options) {
         capturedPrompts.push(prompt);
         capturedRuns.push((options ?? {}) as Record<string, unknown>);
+        if (prompt.includes('Your actor_agent_id: editor_agent')) await editorGate;
+        options?.onEvent?.({ type: 'tool_use', id: 'read-1', name: 'Read', line: 'Tool: Read path="AGENTS.md"' });
         return { success: true, summary: 'stub-summary', output: ['<think>hidden</think>stub-reply'], artifacts: [] };
       },
       stop() {},
@@ -266,6 +270,16 @@ test('team runtime custom agent can self-test full reply flow with providerId on
             },
           },
         },
+        {
+          id: 'agent-run-editor',
+          type: 'agent_run',
+          label: 'Editor Agent',
+          position: { x: 100, y: 0 },
+          data: {
+            agentConfigId: 'editor_agent',
+            agent: { id: 'editor_agent', name: 'Editor Agent', workingDir: dataDir },
+          },
+        },
       ],
       edges: [],
     });
@@ -274,7 +288,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
       action: 'create',
       actor_agent_id: owner.id,
       name: 'Runtime Provider Team',
-      initial_members: [{ agent_id: 'topic_agent' }],
+      initial_members: [{ agent_id: 'topic_agent' }, { agent_id: 'editor_agent' }],
     });
     assert.equal(created.success, true);
     const teamId = (created.data as { team: { team_id: string } }).team.team_id;
@@ -316,6 +330,21 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.match(capturedPrompts[0] ?? '', new RegExp(`Your actor_agent_id: topic_agent`));
     const teamMessageSendTool = runtimeFunctionTools.find((tool) => tool.name === 'team_message_send');
     assert.ok(teamMessageSendTool);
+    let handoffFinished = false;
+    const handoff = teamMessageSendTool.execute({
+      action: 'send',
+      actor_agent_id: 'topic_agent',
+      team_id: teamId,
+      mode: 'direct',
+      recipient_agent_ids: ['editor_agent'],
+      subject: 'continue',
+      body: 'continue',
+    }).then(() => { handoffFinished = true; });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(handoffFinished, false);
+    releaseEditor?.();
+    await handoff;
+    assert.equal(handoffFinished, true);
     const dryRun = await teamMessageSendTool.execute({
       action: 'send',
       actor_agent_id: 'wrong-agent',
@@ -341,6 +370,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(messages[0]?.senderAgentId, 'admin');
     assert.equal(messages[1]?.senderAgentId, 'topic_agent');
     assert.equal(messages[1]?.body, 'stub-reply');
+    const replyParts = (messages[1]?.metadata as { parts?: Array<{ type: string }> } | undefined)?.parts ?? [];
+    assert.ok(replyParts.some((part) => part.type === 'chain'));
+    assert.ok(replyParts.some((part) => part.type === 'text'));
     const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
     assert.equal(loaded.success, true);
     assert.deepEqual(

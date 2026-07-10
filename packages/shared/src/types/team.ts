@@ -1,4 +1,5 @@
 import type { AgentConfig } from './workspace';
+import type { MessagePart } from './channel';
 
 export type TeamStatus = 'active' | 'archived' | 'dissolved';
 export type TeamVisibility = 'private' | 'open';
@@ -123,6 +124,7 @@ export interface TeamRuntimeMessage {
   senderAgentId: string;
   recipientAgentId: string;
   content: string;
+  parts?: MessagePart[];
   createdAt: string;
   status: Extract<TeamRuntimeStatus, 'running' | 'completed' | 'error'>;
 }

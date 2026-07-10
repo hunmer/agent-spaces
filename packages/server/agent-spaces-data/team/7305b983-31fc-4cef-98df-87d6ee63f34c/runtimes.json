@@ -21,7 +21,35 @@
     "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
     "actorAgentId": "admin",
     "leaderAgentId": "topic_agent",
-    "status": "idle",
-    "updatedAt": "2026-07-10T03:47:49.642Z"
+    "status": "completed",
+    "updatedAt": "2026-07-10T05:46:05.183Z",
+    "lastMessageId": "cedc5afa-0a7f-463c-82d3-a595f24d9254"
+  },
+  {
+    "id": "e94f4faa-17b5-41d7-99fa-b71919ecfd23",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "topic_agent",
+    "leaderAgentId": "editor_agent",
+    "status": "completed",
+    "updatedAt": "2026-07-10T05:45:57.628Z",
+    "lastMessageId": "43a7bb8a-5792-4692-8297-7aefa2894948"
+  },
+  {
+    "id": "488a2e91-d0a4-4743-80df-5f8855fb3f12",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "editor_agent",
+    "leaderAgentId": "reviewer_agent",
+    "status": "completed",
+    "updatedAt": "2026-07-10T05:45:52.075Z",
+    "lastMessageId": "755b1305-f06a-4bab-a530-eaa434bbf9af"
+  },
+  {
+    "id": "7861d0cc-3a6c-4b6c-b8c5-99bc4698e880",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "reviewer_agent",
+    "leaderAgentId": "editor_agent",
+    "status": "completed",
+    "updatedAt": "2026-07-10T05:45:47.769Z",
+    "lastMessageId": "be21564a-e7eb-4518-8903-9172e23f077d"
   }
 ]
