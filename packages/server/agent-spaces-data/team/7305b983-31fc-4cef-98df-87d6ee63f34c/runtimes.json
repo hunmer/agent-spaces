@@ -75,5 +75,15 @@
     "updatedAt": "2026-07-10T08:40:04.374Z",
     "startedAt": "2026-07-10T08:35:26.355Z",
     "lastMessageId": "9d4fea8a-a33f-4edc-b9b7-e3b7f1c2b18d"
+  },
+  {
+    "id": "4b8e7f04-76cf-4189-afc3-175ca28ecc4d",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "admin",
+    "leaderAgentId": "topic_agent",
+    "status": "completed",
+    "updatedAt": "2026-07-10T09:36:42.903Z",
+    "startedAt": "2026-07-10T09:32:21.698Z",
+    "lastMessageId": "845820ed-9b4a-4be7-9763-11b5acfe52e3"
   }
 ]

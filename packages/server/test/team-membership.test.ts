@@ -321,9 +321,11 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     });
     assert.equal(created.success, true);
     const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+    const sessionId = '11111111-1111-4111-8111-111111111111';
 
     const sentPromise = postTeamRuntimeMessage({
       team_id: teamId,
+      session_id: sessionId,
       actor_agent_id: 'admin',
       content: 'hello runtime',
       target_agent_id: 'topic_agent',
@@ -331,10 +333,10 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     }, true);
 
     await new Promise((resolve) => setTimeout(resolve, 20));
-    const running = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
+    const running = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
     const runningMessages = (running.data as { messages: Array<{ senderAgentId: string; status: string; parts?: Array<{ type: string }> }> }).messages;
     assert.equal(runningMessages.some((message) => message.senderAgentId === 'topic_agent'), true);
-    const runningDeliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const runningDeliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, sessionId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
     const runningInbound = runningDeliveries.find((item) => item.recipientAgentId === 'topic_agent');
     assert.equal(runningInbound?.inboxStatus, 'read');
     assert.equal(typeof runningInbound?.readAt, 'string');
@@ -391,9 +393,10 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.ok(listWorkspaceFilesTool);
     const listed = await listWorkspaceFilesTool.execute({ path: '', depth: 1 }) as { files: Array<{ name: string }> };
     assert.ok(Array.isArray(listed.files));
-    const messages = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'messages.json'), 'utf-8')) as Array<Record<string, unknown>>;
-    const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const messages = JSON.parse(readFileSync(join(dataDir, 'team', teamId, sessionId, 'messages.json'), 'utf-8')) as Array<Record<string, unknown>>;
+    const deliveries = JSON.parse(readFileSync(join(dataDir, 'team', teamId, sessionId, 'deliveries.json'), 'utf-8')) as Array<Record<string, unknown>>;
     const inbound = deliveries.find((item) => item.recipientAgentId === 'topic_agent');
+    assert.ok(inbound, JSON.stringify(deliveries));
     assert.equal(inbound?.senderAgentId, 'admin');
     assert.equal(inbound?.executionStatus, 'done');
     assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === 'editor_agent'));
@@ -416,9 +419,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(contextPart?.agentContext?.name, 'Editor Agent');
     assert.equal(contextPart?.agentContext?.userPrompt, 'continue');
     assert.ok(replyParts.some((part) => part.type === 'text'));
-    const logFiles = readdirSync(join(dataDir, 'team', teamId, 'logs'));
+    const logFiles = readdirSync(join(dataDir, 'team', teamId, sessionId, 'logs'));
     assert.deepEqual(logFiles, ['team.log']);
-    const logs = readFileSync(join(dataDir, 'team', teamId, 'logs', 'team.log'), 'utf-8');
+    const logs = readFileSync(join(dataDir, 'team', teamId, sessionId, 'logs', 'team.log'), 'utf-8');
     assert.deepEqual([...logs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [runId, runId]);
     assert.match(logs, /\[INPUT\]/);
     assert.match(logs, /Your actor_agent_id: topic_agent/);
@@ -426,7 +429,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.match(logs, /name: Read/);
     assert.match(logs, /\[OUTPUT\]/);
     assert.match(logs, /stub-reply/);
-    const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
+    const loaded = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
     assert.equal(loaded.success, true);
     assert.deepEqual(
       (loaded.data as { messages: Array<{ senderAgentId: string; recipientAgentId: string }> }).messages
@@ -439,6 +442,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     );
     const nextSent = await postTeamRuntimeMessage({
       team_id: teamId,
+      session_id: sessionId,
       actor_agent_id: 'admin',
       content: 'next run',
       target_agent_id: 'editor_agent',
@@ -446,7 +450,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     }, true);
     const nextRunId = (nextSent.data as { runtime: { id: string } }).runtime.id;
     assert.notEqual(nextRunId, runId);
-    const nextLogs = readFileSync(join(dataDir, 'team', teamId, 'logs', 'team.log'), 'utf-8');
+    const nextLogs = readFileSync(join(dataDir, 'team', teamId, sessionId, 'logs', 'team.log'), 'utf-8');
     assert.deepEqual([...nextLogs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [runId, runId, nextRunId]);
   } finally {
     setTeamRuntimeFactoryForTests();
@@ -484,8 +488,10 @@ test('owner runtime gets a completion tool and can finish the current team task'
     const created = handleTeamManage({ action: 'create', actor_agent_id: owner.id, name: 'Owner Completion Team' });
     assert.equal(created.success, true);
     const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+    const sessionId = '22222222-2222-4222-8222-222222222222';
     const sentPromise = postTeamRuntimeMessage({
       team_id: teamId,
+      session_id: sessionId,
       actor_agent_id: 'admin',
       target_agent_id: owner.id,
       content: 'finish this task',
@@ -497,7 +503,7 @@ test('owner runtime gets a completion tool and can finish the current team task'
     assert.ok(completionTool);
     const completed = await completionTool.execute({ action: 'complete' }) as { success: boolean };
     assert.equal(completed.success, true);
-    const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
+    const loaded = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
     assert.equal((loaded.data as { runtime: { status: string } }).runtime.status, 'completed');
 
     releaseRun?.();
@@ -505,6 +511,41 @@ test('owner runtime gets a completion tool and can finish the current team task'
   } finally {
     releaseRun?.();
     setTeamRuntimeFactoryForTests();
+    closeAgentDb();
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('team runtime sessions store and load messages independently', () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-session-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const owner = createPreset('', { name: 'Owner Agent' });
+    assert.ok(owner);
+    const created = handleTeamManage({ action: 'create', actor_agent_id: owner.id, name: 'Session Team' });
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+    const firstSessionId = '33333333-3333-4333-8333-333333333333';
+    const secondSessionId = '44444444-4444-4444-8444-444444444444';
+
+    const first = getTeamRuntime({ team_id: teamId, session_id: firstSessionId, actor_agent_id: 'admin' });
+    const second = getTeamRuntime({ team_id: teamId, session_id: secondSessionId, actor_agent_id: 'admin' });
+
+    assert.equal((first.data as { runtime: { session_id: string } }).runtime.session_id, firstSessionId);
+    assert.equal((second.data as { runtime: { session_id: string } }).runtime.session_id, secondSessionId);
+    assert.deepEqual(readdirSync(join(dataDir, 'team', teamId)).sort(), [
+      firstSessionId,
+      secondSessionId,
+      'comments.json',
+      'deliveries.json',
+      'info.json',
+      'memberships.json',
+      'messages.json',
+    ].sort());
+  } finally {
     closeAgentDb();
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
     else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;

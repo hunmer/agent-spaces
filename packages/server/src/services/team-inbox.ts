@@ -25,6 +25,7 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
+  const sessionId = asString(input.session_id ?? input.sessionId);
   if (!action || !actorAgentId) return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
 
   if (action === 'list') {
@@ -35,7 +36,7 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
       if (!resolveEffectiveMembership(teamFilter, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
     }
     const items = listTeamsRaw()
-      .flatMap((team) => listDeliveries(team.id))
+      .flatMap((team) => listDeliveries(team.id, sessionId))
       .filter((item) => item.recipientAgentId === recipientAgentId)
       .filter((item) => {
         return !teamFilter || item.teamId === teamFilter;
@@ -79,7 +80,7 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
     const ensureTeamMessages = (teamId: string) => {
       let map = messagesByTeam.get(teamId);
       if (!map) {
-        map = new Map(listMessages(teamId).map((item) => [item.id, item]));
+        map = new Map(listMessages(teamId, sessionId).map((item) => [item.id, item]));
         messagesByTeam.set(teamId, map);
       }
       return map;
@@ -110,7 +111,7 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
     let inboxItem: TeamInboxItem | undefined;
     let message: TeamMessage | undefined;
     if (deliveryId) {
-      const ctx = findDeliveryContext(deliveryId);
+      const ctx = findDeliveryContext(deliveryId, asString(input.team_id ?? input.teamId), sessionId);
       if (!ctx) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
       // 非成员（管理视角）回退 owner 身份，不报权限错误
       if (ctx.delivery.recipientAgentId !== actorAgentId
@@ -118,14 +119,14 @@ export function handleTeamInboxQuery(input: unknown): TeamServiceResult {
         return fail('permission denied', 'PERMISSION_DENIED');
       }
       inboxItem = ctx.delivery;
-      message = listMessages(ctx.team.id).find((item) => item.id === ctx.delivery.messageId);
+      message = listMessages(ctx.team.id, sessionId).find((item) => item.id === ctx.delivery.messageId);
     } else if (messageId) {
-      const ctx = findMessageContext(messageId);
+      const ctx = findMessageContext(messageId, asString(input.team_id ?? input.teamId), sessionId);
       if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
       // 非成员（管理视角）回退 owner 身份，查收件人为 owner 或 actor 的投递
       const fallbackMembership = resolveEffectiveMembership(ctx.team.id, actorAgentId);
       const effectiveRecipient = fallbackMembership?.agentId ?? actorAgentId;
-      inboxItem = listDeliveries(ctx.team.id).find((item) => item.messageId === messageId && item.recipientAgentId === effectiveRecipient);
+      inboxItem = listDeliveries(ctx.team.id, sessionId).find((item) => item.messageId === messageId && item.recipientAgentId === effectiveRecipient);
       message = ctx.message;
       if (!inboxItem) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
     }

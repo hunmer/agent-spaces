@@ -111,6 +111,7 @@ router.post('/:teamId/messages', (req: Request<{ teamId: string }>, res: Respons
 router.delete('/:teamId/messages', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, handleTeamMessageDelete({
     team_id: req.params.teamId,
+    session_id: req.body?.session_id ?? req.query.session_id,
     actor_agent_id: req.body?.actor_agent_id ?? req.query.actor_agent_id,
   }));
 });
@@ -118,6 +119,7 @@ router.delete('/:teamId/messages', (req: Request<{ teamId: string }>, res: Respo
 router.get('/:teamId/runtime', (req: Request<{ teamId: string }>, res: Response) => {
   sendResult(res, getTeamRuntime({
     team_id: req.params.teamId,
+    session_id: req.query.session_id,
     actor_agent_id: req.query.actor_agent_id,
   }));
 });
@@ -138,6 +140,7 @@ teamInboxRouter.get('/', (req: Request, res: Response) => {
     recipient_agent_id: req.query.recipient_agent_id,
     unread_only: req.query.unread_only === 'true',
     team_id: req.query.team_id,
+    session_id: req.query.session_id,
     sender_agent_id: req.query.sender_agent_id,
     message_type: req.query.message_type,
     priority: req.query.priority,
@@ -178,6 +181,8 @@ export const teamMessageRouter = Router({ mergeParams: true });
 teamMessageRouter.delete('/:messageId', (req: Request<{ messageId: string }>, res: Response) => {
   sendResult(res, handleTeamMessageDelete({
     message_id: req.params.messageId,
+    team_id: req.body?.team_id ?? req.query.team_id,
+    session_id: req.body?.session_id ?? req.query.session_id,
     actor_agent_id: req.body?.actor_agent_id ?? req.query.actor_agent_id,
   }));
 });

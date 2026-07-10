@@ -52,20 +52,24 @@ export function teamMembershipsPath(teamId: string): string {
   return join(teamDataDir(teamId), 'memberships.json');
 }
 
-export function teamMessagesPath(teamId: string): string {
-  return join(teamDataDir(teamId), 'messages.json');
+export function teamSessionDir(teamId: string, sessionId: string): string {
+  return join(teamDataDir(teamId), sessionId);
 }
 
-export function teamDeliveriesPath(teamId: string): string {
-  return join(teamDataDir(teamId), 'deliveries.json');
+export function teamMessagesPath(teamId: string, sessionId?: string): string {
+  return join(sessionId ? teamSessionDir(teamId, sessionId) : teamDataDir(teamId), 'messages.json');
 }
 
-export function teamRuntimesPath(teamId: string): string {
-  return join(teamDataDir(teamId), 'runtimes.json');
+export function teamDeliveriesPath(teamId: string, sessionId?: string): string {
+  return join(sessionId ? teamSessionDir(teamId, sessionId) : teamDataDir(teamId), 'deliveries.json');
 }
 
-export function teamCommentsPath(teamId: string): string {
-  return join(teamDataDir(teamId), 'comments.json');
+export function teamRuntimesPath(teamId: string, sessionId?: string): string {
+  return join(sessionId ? teamSessionDir(teamId, sessionId) : teamDataDir(teamId), 'runtimes.json');
+}
+
+export function teamCommentsPath(teamId: string, sessionId?: string): string {
+  return join(sessionId ? teamSessionDir(teamId, sessionId) : teamDataDir(teamId), 'comments.json');
 }
 
 /** 归档目录：team/archived/{teamId} */
@@ -132,32 +136,32 @@ export function saveMemberships(teamId: string, items: TeamMembership[]): void {
   writeJsonFile(teamMembershipsPath(teamId), items);
 }
 
-export function listMessages(teamId: string): TeamMessage[] {
-  return readJsonFile<TeamMessage[]>(teamMessagesPath(teamId)) ?? [];
+export function listMessages(teamId: string, sessionId?: string): TeamMessage[] {
+  return readJsonFile<TeamMessage[]>(teamMessagesPath(teamId, sessionId)) ?? [];
 }
 
-export function saveMessages(teamId: string, items: TeamMessage[]): void {
-  writeJsonFile(teamMessagesPath(teamId), items);
+export function saveMessages(teamId: string, items: TeamMessage[], sessionId?: string): void {
+  writeJsonFile(teamMessagesPath(teamId, sessionId), items);
 }
 
-export function listDeliveries(teamId: string): TeamInboxItem[] {
-  return readJsonFile<TeamInboxItem[]>(teamDeliveriesPath(teamId)) ?? [];
+export function listDeliveries(teamId: string, sessionId?: string): TeamInboxItem[] {
+  return readJsonFile<TeamInboxItem[]>(teamDeliveriesPath(teamId, sessionId)) ?? [];
 }
 
 export function listRuntimes(teamId: string): Array<{ leaderAgentId?: string; status?: string }> {
   return readJsonFile<Array<{ leaderAgentId?: string; status?: string }>>(teamRuntimesPath(teamId)) ?? [];
 }
 
-export function saveDeliveries(teamId: string, items: TeamInboxItem[]): void {
-  writeJsonFile(teamDeliveriesPath(teamId), items);
+export function saveDeliveries(teamId: string, items: TeamInboxItem[], sessionId?: string): void {
+  writeJsonFile(teamDeliveriesPath(teamId, sessionId), items);
 }
 
-export function listCommentsRaw(teamId: string): TeamMessageComment[] {
-  return readJsonFile<TeamMessageComment[]>(teamCommentsPath(teamId)) ?? [];
+export function listCommentsRaw(teamId: string, sessionId?: string): TeamMessageComment[] {
+  return readJsonFile<TeamMessageComment[]>(teamCommentsPath(teamId, sessionId)) ?? [];
 }
 
-export function saveComments(teamId: string, items: TeamMessageComment[]): void {
-  writeJsonFile(teamCommentsPath(teamId), items);
+export function saveComments(teamId: string, items: TeamMessageComment[], sessionId?: string): void {
+  writeJsonFile(teamCommentsPath(teamId, sessionId), items);
 }
 
 export function isObject(input: unknown): input is JsonMap {
@@ -506,7 +510,13 @@ export function resolveRecipients(
   });
 }
 
-export function findDeliveryContext(deliveryId: string): { team: Team; delivery: TeamInboxItem; deliveries: TeamInboxItem[] } | null {
+export function findDeliveryContext(deliveryId: string, teamId?: string, sessionId?: string): { team: Team; delivery: TeamInboxItem; deliveries: TeamInboxItem[] } | null {
+  if (teamId) {
+    const team = loadTeam(teamId);
+    const deliveries = listDeliveries(teamId, sessionId);
+    const delivery = deliveries.find((item) => item.id === deliveryId);
+    return team && delivery ? { team, delivery, deliveries } : null;
+  }
   for (const team of listTeamsRaw()) {
     const deliveries = listDeliveries(team.id);
     const delivery = deliveries.find((item) => item.id === deliveryId);
@@ -515,7 +525,13 @@ export function findDeliveryContext(deliveryId: string): { team: Team; delivery:
   return null;
 }
 
-export function findMessageContext(messageId: string): { team: Team; message: TeamMessage; messages: TeamMessage[] } | null {
+export function findMessageContext(messageId: string, teamId?: string, sessionId?: string): { team: Team; message: TeamMessage; messages: TeamMessage[] } | null {
+  if (teamId) {
+    const team = loadTeam(teamId);
+    const messages = listMessages(teamId, sessionId);
+    const message = messages.find((item) => item.id === messageId);
+    return team && message ? { team, message, messages } : null;
+  }
   for (const team of listTeamsRaw()) {
     const messages = listMessages(team.id);
     const message = messages.find((item) => item.id === messageId);
@@ -524,7 +540,13 @@ export function findMessageContext(messageId: string): { team: Team; message: Te
   return null;
 }
 
-export function findCommentContext(commentId: string): { team: Team; comment: TeamMessageComment; comments: TeamMessageComment[] } | null {
+export function findCommentContext(commentId: string, teamId?: string, sessionId?: string): { team: Team; comment: TeamMessageComment; comments: TeamMessageComment[] } | null {
+  if (teamId) {
+    const team = loadTeam(teamId);
+    const comments = listCommentsRaw(teamId, sessionId);
+    const comment = comments.find((item) => item.id === commentId);
+    return team && comment ? { team, comment, comments } : null;
+  }
   for (const team of listTeamsRaw()) {
     const comments = listCommentsRaw(team.id);
     const comment = comments.find((item) => item.id === commentId);
@@ -533,8 +555,8 @@ export function findCommentContext(commentId: string): { team: Team; comment: Te
   return null;
 }
 
-export function canAccessMessage(messageId: string, actorAgentId: string): boolean {
-  const ctx = findMessageContext(messageId);
+export function canAccessMessage(messageId: string, actorAgentId: string, teamId?: string, sessionId?: string): boolean {
+  const ctx = findMessageContext(messageId, teamId, sessionId);
   if (!ctx) return false;
   if (ctx.message.senderAgentId === actorAgentId) return true;
   // 非成员（管理视角）回退 owner 身份

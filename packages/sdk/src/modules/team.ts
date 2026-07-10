@@ -78,6 +78,7 @@ export interface TeamDetail {
 
 export interface TeamRuntimeView {
   id: string;
+  session_id: string;
   teamId: string;
   actorAgentId: string;
   leaderAgentId: string;
@@ -300,15 +301,16 @@ export function createTeamApi(http: HttpClient) {
     // ---- runtime ----
 
     /** 获取团队 runtime（含 leader/participants/messages） */
-    getRuntime: (teamId: string, actorAgentId: string): Promise<TeamRuntimeResponse> => {
+    getRuntime: (teamId: string, actorAgentId: string, sessionId?: string): Promise<TeamRuntimeResponse> => {
       const query = new URLSearchParams({ actor_agent_id: actorAgentId });
+      if (sessionId) query.set('session_id', sessionId);
       return unwrap(http.raw(`/api/teams/${teamId}/runtime?${query.toString()}`));
     },
 
     /** 发送 runtime 消息 */
     sendRuntimeMessage: (
       teamId: string,
-      input: { actor_agent_id: string; content: string; target_agent_id?: string; context_length?: number },
+      input: { session_id: string; actor_agent_id: string; content: string; target_agent_id?: string; context_length?: number },
     ): Promise<void> =>
       unwrap(http.raw(`/api/teams/${teamId}/runtime/messages`, {
         method: 'POST',
@@ -319,19 +321,19 @@ export function createTeamApi(http: HttpClient) {
     // ---- 消息 ----
 
     /** 清空团队消息 */
-    clearMessages: (teamId: string, actorAgentId: string): Promise<void> =>
+    clearMessages: (teamId: string, sessionId: string, actorAgentId: string): Promise<void> =>
       unwrap(http.raw(`/api/teams/${teamId}/messages`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor_agent_id: actorAgentId }),
+        body: JSON.stringify({ session_id: sessionId, actor_agent_id: actorAgentId }),
       })),
 
     /** 删除单条团队消息 */
-    deleteMessage: (messageId: string, actorAgentId: string): Promise<void> =>
+    deleteMessage: (teamId: string, sessionId: string, messageId: string, actorAgentId: string): Promise<void> =>
       unwrap(http.raw(`/api/team-messages/${messageId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor_agent_id: actorAgentId }),
+        body: JSON.stringify({ team_id: teamId, session_id: sessionId, actor_agent_id: actorAgentId }),
       })),
 
     // ---- inbox 投递 ----
@@ -340,6 +342,7 @@ export function createTeamApi(http: HttpClient) {
     listInbox: (params: {
       actor_agent_id: string;
       team_id?: string;
+      session_id?: string;
       recipient_agent_id?: string;
       unread_only?: boolean;
       sender_agent_id?: string;
@@ -350,6 +353,7 @@ export function createTeamApi(http: HttpClient) {
       const query = new URLSearchParams();
       query.set('actor_agent_id', params.actor_agent_id);
       if (params.team_id) query.set('team_id', params.team_id);
+      if (params.session_id) query.set('session_id', params.session_id);
       if (params.recipient_agent_id) query.set('recipient_agent_id', params.recipient_agent_id);
       if (params.unread_only) query.set('unread_only', 'true');
       if (params.sender_agent_id) query.set('sender_agent_id', params.sender_agent_id);

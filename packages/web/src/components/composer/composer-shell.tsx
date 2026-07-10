@@ -21,7 +21,6 @@ interface ComposerShellProps {
   hiddenInput?: ReactNode;
   replyLabel?: string;
   onCancelReply?: () => void;
-  teams?: Array<{ id: string; name: string }>;
 }
 
 export function ComposerShell({
@@ -38,7 +37,6 @@ export function ComposerShell({
   hiddenInput,
   replyLabel,
   onCancelReply,
-  teams = [],
 }: ComposerShellProps) {
   const t = useTranslations('composer');
   const [fullscreen, setFullscreen] = useState(false);
@@ -95,15 +93,6 @@ export function ComposerShell({
             >
               <X className="size-3" />
             </button>
-          </div>
-        ) : null}
-        {teams.length > 0 ? (
-          <div className="flex flex-wrap gap-1 border-b px-3 py-2">
-            {teams.map((team) => (
-              <span key={team.id} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                @{team.name}
-              </span>
-            ))}
           </div>
         ) : null}
         <div className="relative px-3 pt-3 pb-2">

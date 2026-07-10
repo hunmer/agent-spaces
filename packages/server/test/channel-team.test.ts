@@ -5,6 +5,12 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createChannel, updateChannel } from '../src/services/channel.js';
 import { saveTeam } from '../src/services/team-internal.js';
+import { stripHtml, stripMentionIds } from '../src/ws/html-utils.js';
+
+test('team mentions are removed before dispatching plain content', () => {
+  const content = '<span data-type="mention" data-id="team:one" data-label="Team One"></span> fix the build';
+  assert.equal(stripHtml(stripMentionIds(content, ['team:one'])), 'fix the build');
+});
 
 test('channel persists only unique active team bindings', () => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;

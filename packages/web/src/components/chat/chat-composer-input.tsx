@@ -119,7 +119,6 @@ interface ChatComposerInputProps {
   enableModelSelector?: boolean;
   implicitActiveAgentId?: string;
   onStateChange?: (state: ChatComposerInputState) => void;
-  teams?: Array<{ id: string; name: string }>;
 }
 
 export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatComposerInputProps>(function ChatComposerInput(
@@ -148,7 +147,6 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   enableModelSelector = true,
     implicitActiveAgentId,
     onStateChange,
-    teams = [],
   },
   ref,
 ) {
@@ -424,7 +422,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       // Restore active agent mention after send for continuous conversation
       const activeMentionId = editorMentions[0];
       const activeAgent = activeMentionId ? agentsRef.current.find((a) => a.id === activeMentionId) : undefined;
-      if (activeAgent) {
+      if (activeAgent && activeAgent.kind !== 'team') {
         const restoreContent: JSONContent = {
           type: "doc",
           content: [{
@@ -739,7 +737,6 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         hiddenInput={enableAttachments ? <input {...getInputProps()} data-chat-file-input="" /> : undefined}
         replyLabel={replyLabel}
         onCancelReply={onCancelReply}
-        teams={teams}
       />
       {attachments.length > 0 ? (
         <Attachments variant="inline" className="mt-2 justify-start">

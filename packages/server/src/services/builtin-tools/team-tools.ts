@@ -36,13 +36,14 @@ export function createTeamFunctionTools(
   allowedTools?: BuiltInAgentToolName[],
   context?: {
     teamId: string;
+    sessionId: string;
     actorAgentId: string;
     handleMessageSend?: (input: unknown) => Promise<unknown> | unknown;
   },
 ): AgentFunctionTool[] {
   const allowedToolNames = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const bindContext = (input: unknown): unknown => context && input && typeof input === 'object'
-    ? { ...input, team_id: context.teamId, actor_agent_id: context.actorAgentId }
+    ? { ...input, team_id: context.teamId, session_id: context.sessionId, actor_agent_id: context.actorAgentId }
     : input;
 
   const tools: AgentFunctionTool[] = [

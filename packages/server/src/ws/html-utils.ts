@@ -20,6 +20,14 @@ export function extractMentionIds(content: string): string[] {
   return [...ids];
 }
 
+export function stripMentionIds(content: string, mentionIds: string[]): string {
+  const ids = new Set(mentionIds);
+  return content.replace(/<span[^>]*data-type=["']mention["'][^>]*><\/span>/gi, (mention) => {
+    const id = mention.match(/\sdata-id=["']([^"']+)["']/i)?.[1];
+    return id && ids.has(decodeHtml(id)) ? '' : mention;
+  });
+}
+
 function decodeHtml(value: string): string {
   return value
     .replace(/&quot;/g, '"')

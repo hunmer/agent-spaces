@@ -49,3 +49,11 @@
 - No Team reply mirroring or new websocket protocol is needed for the requested UI flow.
 - Team mention candidates are ordered before agents so the existing six-item suggestion cap cannot hide bound Teams.
 - `MessageItem` dynamically loads `TeamChatPanel` to avoid a static component cycle because `TeamChatPanel` already renders `MessageItem`.
+
+## Team card runtime summary
+
+- Reuse `sdk.team.getRuntime(teamId, 'admin')`; no new server status endpoint is needed.
+- Team mention cleanup must cover both the dispatched runtime content and the composer post-send restore behavior.
+- Runtime `running` messages are emitted by the executing agent, so running agents come from non-admin `senderAgentId`; fall back to `runtime.leader_agent_id` while running.
+- Completed agents come from non-admin senders of completed runtime messages, excluding agents still running.
+- Server `stripHtml` intentionally converts Mention spans to `@label`; Team mentions must be removed before calling it and before persisting the channel user message.

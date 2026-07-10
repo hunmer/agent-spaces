@@ -295,6 +295,14 @@
   "messageItem": {
     "teamExecution": "Team execution",
     "openTeamChat": "Open team chat",
+    "runningAgents": "Running agents",
+    "completedAgents": "Completed agents",
+    "teamStatus": {
+      "idle": "Idle",
+      "running": "Running",
+      "completed": "Completed",
+      "error": "Failed"
+    },
     "reply": "Reply",
     "copy": "Copy",
     "edit": "Edit",

@@ -10,7 +10,8 @@ import { MemberHoverCard } from "./member-hover-card";
 import type { MentionedAgent } from "./chat-input-utils";
 import { ShinyBadge } from "@/components/ui/shiny-badge";
 import { AddChatAgentDialog } from "./add-chat-agent-dialog";
-import type { ChatAgent } from "@agent-spaces/sdk";
+import type { ChatAgent, TeamView } from "@agent-spaces/sdk";
+import { TeamHoverCard } from "@/components/teams/team-hover-card";
 
 interface ChatInputAgentBarProps {
   agents: MentionedAgent[];
@@ -20,6 +21,8 @@ interface ChatInputAgentBarProps {
   onOpenAddMember: () => void;
   onAgentActivated?: (agent: MentionedAgent) => void;
   onConfigureAgent?: (agentId: string, agent?: MentionedAgent) => void;
+  teams?: TeamView[];
+  activeMentionId?: string;
 }
 
 export function ChatInputAgentBar({
@@ -30,6 +33,8 @@ export function ChatInputAgentBar({
   onOpenAddMember,
   onAgentActivated,
   onConfigureAgent,
+  teams = [],
+  activeMentionId,
 }: ChatInputAgentBarProps) {
   const t = useTranslations("chat");
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
@@ -87,6 +92,38 @@ export function ChatInputAgentBar({
                   <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>
                 </ShinyBadge>
               </MemberHoverCard>
+            );
+          })}
+          {teams.map((team) => {
+            const mention: MentionedAgent = {
+              id: `team:${team.team_id}`,
+              name: team.name,
+              role: 'team',
+              description: team.description,
+              enabled: true,
+              kind: 'team',
+            };
+            const isActive = mention.id === activeMentionId;
+            return (
+              <TeamHoverCard key={team.team_id} team={team}>
+                <ShinyBadge
+                  shiny={isActive}
+                  shinySpeed={3}
+                  onClick={() => onActivateAgent(mention)}
+                  className={cn(
+                    "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
+                    isActive && "bg-primary/10 text-primary border border-primary/30"
+                  )}
+                >
+                  <AgentIcon
+                    name={team.name}
+                    avatarUrl={team.avatarUrl ?? team.avatar_url}
+                    icon={team.icon}
+                    className="size-5 rounded-full text-[9px]"
+                  />
+                  <span className="max-w-[80px] truncate">{team.name}</span>
+                </ShinyBadge>
+              </TeamHoverCard>
             );
           })}
         </div>

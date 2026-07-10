@@ -147,6 +147,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const agents = useAgentStore((store) => store.agents);
   const ensureAgents = useAgentStore((store) => store.ensure);
   const [runtime, setRuntime] = useState<TeamRuntimeView | null>(null);
+  const [sessionId] = useState(() => crypto.randomUUID());
   const [messages, setMessages] = useState<TeamRuntimeMessageView[]>([]);
   const [pendingAssistantSince, setPendingAssistantSince] = useState<string | null>(null);
   const [leaderProfile, setLeaderProfile] = useState<TeamRuntimeResponse["leader"] | null>(null);
@@ -251,7 +252,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setLoading(true);
     setError("");
     try {
-      const data = await sdk.team.getRuntime(teamId, TEAM_USER_ACTOR_ID);
+      const data = await sdk.team.getRuntime(teamId, TEAM_USER_ACTOR_ID, sessionId);
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
@@ -267,7 +268,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     } finally {
       setLoading(false);
     }
-  }, [actorAgentId, clearPendingAssistantIfResolved, teamId]);
+  }, [actorAgentId, clearPendingAssistantIfResolved, sessionId, teamId]);
 
   const handleSend = useCallback(async (content: string, mentions: string[], _attachments?: unknown, _replyToMessageId?: string, contextLength?: number) => {
     const trimmed = content.trim();
@@ -278,6 +279,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     setError("");
     try {
       await sdk.team.sendRuntimeMessage(teamId, {
+        session_id: sessionId,
         actor_agent_id: TEAM_USER_ACTOR_ID,
         content: trimmed,
         target_agent_id: mentions[0],
@@ -290,7 +292,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     } finally {
       setSending(false);
     }
-  }, [actorAgentId, loadRuntime, teamId]);
+  }, [actorAgentId, loadRuntime, sessionId, teamId]);
 
   useEffect(() => {
     void ensureAgents();
@@ -330,22 +332,22 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   const handleDeleteMessage = useCallback(async (message: Message) => {
     setError("");
     try {
-      await sdk.team.deleteMessage(message.id, actorAgentId);
+      await sdk.team.deleteMessage(teamId, sessionId, message.id, actorAgentId);
       await loadRuntime();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [actorAgentId, loadRuntime]);
+  }, [actorAgentId, loadRuntime, sessionId, teamId]);
 
   const handleClearMessages = useCallback(async () => {
     setError("");
     try {
-      await sdk.team.clearMessages(teamId, actorAgentId);
+      await sdk.team.clearMessages(teamId, sessionId, actorAgentId);
       await loadRuntime();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [actorAgentId, loadRuntime, teamId]);
+  }, [actorAgentId, loadRuntime, sessionId, teamId]);
 
   const handleOpenWorkflow = useCallback(async () => {
     setWorkflowLoading(true);
@@ -355,6 +357,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       const responses = await Promise.all(recipientIds.map((recipientAgentId) => sdk.team.listInbox({
         actor_agent_id: actorAgentId,
         team_id: teamId,
+        session_id: sessionId,
         recipient_agent_id: recipientAgentId,
         // ponytail: 单个收件箱先取最近 100 条；出现超长历史时再补分页。
         page_size: 100,
@@ -371,7 +374,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     } finally {
       setWorkflowLoading(false);
     }
-  }, [actorAgentId, participants, teamId]);
+  }, [actorAgentId, participants, sessionId, teamId]);
 
   const configStoreAgent = configAgent ? agents.find((item) => item.id === configAgent.id) : undefined;
   const configCustomAgent = configAgent && !configStoreAgent ? configAgent.agent : undefined;

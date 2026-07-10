@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { AgentConfig, Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2, Square, Users, ArrowUpRight } from 'lucide-react';
+import type { TeamRuntimeResponse } from '@agent-spaces/sdk';
+import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2, Square, Users, ArrowUpRight, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -17,6 +18,8 @@ import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/decorations/text-shimmer';
 import { MovingBorder } from '@/components/ui/border-glide';
 import { copyToClipboard } from '@/lib/utils';
+import { sdk } from '@/lib/sdk';
+import { Badge } from '@/components/ui/badge';
 import dynamic from 'next/dynamic';
 
 const TeamChatPanel = dynamic(() => import('@/components/teams/team-chat-panel').then((module) => module.TeamChatPanel), {
@@ -310,26 +313,94 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
 function TeamMessageCard({ message }: { message: Message }) {
   const tm = useTranslations('chat.messageItem');
   const [open, setOpen] = useState(false);
+  const [summary, setSummary] = useState<TeamRuntimeResponse | null>(null);
   const teamId = message.metadata?.teamId ?? '';
   const teamName = message.metadata?.teamName || teamId;
+  const loadSummary = useCallback(async () => {
+    if (!teamId) return;
+    try {
+      setSummary(await sdk.team.getRuntime(teamId, 'admin'));
+    } catch {
+      setSummary(null);
+    }
+  }, [teamId]);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
+
+  useEffect(() => {
+    if (summary?.runtime.status !== 'running') return;
+    const timer = setInterval(() => { void loadSummary(); }, 3000);
+    return () => clearInterval(timer);
+  }, [loadSummary, summary?.runtime.status]);
+
+  const profileById = new Map((summary?.participants ?? []).map((participant) => [participant.id, participant]));
+  if (summary?.leader) profileById.set(summary.leader.id, summary.leader);
+  const runningIds = [...new Set(
+    (summary?.messages ?? [])
+      .filter((item) => item.status === 'running' && item.senderAgentId !== 'admin')
+      .map((item) => item.senderAgentId),
+  )];
+  if (summary?.runtime.status === 'running' && runningIds.length === 0) runningIds.push(summary.runtime.leader_agent_id);
+  const completedIds = [...new Set(
+    (summary?.messages ?? [])
+      .filter((item) => item.status === 'completed' && item.senderAgentId !== 'admin')
+      .map((item) => item.senderAgentId),
+  )].filter((id) => !runningIds.includes(id));
+  const teamStatus = summary?.runtime.status ?? (message.status === 'error' ? 'error' : 'idle');
+
+  const renderAgents = (ids: string[]) => ids.length > 0 ? ids.map((id) => {
+    const agent = profileById.get(id);
+    return (
+      <span key={id} className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted px-1.5 py-1 text-xs">
+        <AgentIcon
+          agentId={id}
+          name={agent?.name || id}
+          avatarUrl={agent?.avatarUrl}
+          icon={agent?.icon}
+          className="size-4 shrink-0 rounded-full"
+        />
+        <span className="max-w-28 truncate">{agent?.name || id}</span>
+      </span>
+    );
+  }) : <span className="text-xs text-muted-foreground">-</span>;
 
   return (
     <div className="px-3 py-1.5">
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full max-w-xl items-center gap-3 rounded-md border bg-card px-3 py-3 text-left transition-colors hover:bg-muted/50"
+        className="w-full max-w-2xl rounded-md border bg-card px-3 py-3 text-left transition-colors hover:bg-muted/50"
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Users className="size-4" />
+        <span className="flex items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Users className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="truncate text-sm font-medium">{teamName}</span>
+              <Badge variant={teamStatus === 'error' ? 'destructive' : 'outline'} className="gap-1">
+                {teamStatus === 'running' ? <Loader2 className="size-3 animate-spin" /> : null}
+                {tm(`teamStatus.${teamStatus}`)}
+              </Badge>
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{message.content}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            {tm('openTeamChat')}
+            <ArrowUpRight className="size-3.5" />
+          </span>
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{teamName}</span>
-          <span className="block truncate text-xs text-muted-foreground">{tm('teamExecution')} · {message.content}</span>
-        </span>
-        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          {tm('openTeamChat')}
-          <ArrowUpRight className="size-3.5" />
+        <span className="mt-3 grid gap-2 border-t pt-2 sm:grid-cols-2">
+          <span>
+            <span className="mb-1 block text-xs text-muted-foreground">{tm('runningAgents')}</span>
+            <span className="flex flex-wrap gap-1">{renderAgents(runningIds)}</span>
+          </span>
+          <span>
+            <span className="mb-1 block text-xs text-muted-foreground">{tm('completedAgents')}</span>
+            <span className="flex flex-wrap gap-1">{renderAgents(completedIds)}</span>
+          </span>
         </span>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>

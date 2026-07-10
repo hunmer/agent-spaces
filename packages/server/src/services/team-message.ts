@@ -49,6 +49,7 @@ export function handleTeamMessageSend(
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
+  const sessionId = asString(input.session_id ?? input.sessionId);
   const action = asString(input.action);
   if (!actorAgentId || !teamId || !action) return fail('action, actor_agent_id, team_id are required', 'INVALID_ARGUMENT');
   if (action !== 'send') return fail('invalid action', 'INVALID_ACTION');
@@ -91,7 +92,7 @@ export function handleTeamMessageSend(
     recipientCount: recipientsResult.data.includedAgentIds.length,
     metadata: isObject(input.metadata) ? input.metadata : undefined,
   };
-  const deliveries = listDeliveries(teamId);
+  const deliveries = listDeliveries(teamId, sessionId);
   const nextDeliveries = [
     ...deliveries,
     ...recipientsResult.data.includedAgentIds.map((recipientAgentId) => ({
@@ -119,8 +120,8 @@ export function handleTeamMessageSend(
       updatedAt: now,
     })),
   ];
-  saveMessages(teamId, [...listMessages(teamId), message]);
-  saveDeliveries(teamId, nextDeliveries);
+  saveMessages(teamId, [...listMessages(teamId, sessionId), message], sessionId);
+  saveDeliveries(teamId, nextDeliveries, sessionId);
   return ok('message sent', {
     message: messageView(message),
     recipients: {
@@ -139,10 +140,12 @@ export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const deliveryId = asString(input.delivery_id ?? input.deliveryId);
+  const teamId = asString(input.team_id ?? input.teamId);
+  const sessionId = asString(input.session_id ?? input.sessionId);
   if (action !== 'update_status' || !actorAgentId || !deliveryId) {
     return fail('action=update_status, actor_agent_id, delivery_id are required', 'INVALID_ARGUMENT');
   }
-  const ctx = findDeliveryContext(deliveryId);
+  const ctx = findDeliveryContext(deliveryId, teamId, sessionId);
   if (!ctx) return fail('delivery not found', 'DELIVERY_NOT_FOUND');
   // 非成员（管理视角）回退 owner 身份，不报权限错误
   if (ctx.delivery.recipientAgentId !== actorAgentId
@@ -178,7 +181,7 @@ export function handleTeamMessageUpdate(input: unknown): TeamServiceResult {
     version: ctx.delivery.version + 1,
     updatedAt: now,
   };
-  saveDeliveries(ctx.team.id, ctx.deliveries.map((item) => item.id === deliveryId ? updated : item));
+  saveDeliveries(ctx.team.id, ctx.deliveries.map((item) => item.id === deliveryId ? updated : item), sessionId);
   const changedFields = [
     nextInboxStatus && nextInboxStatus !== ctx.delivery.inboxStatus ? 'inbox_status' : null,
     nextExecutionStatus && nextExecutionStatus !== ctx.delivery.executionStatus ? 'execution_status' : null,
@@ -198,6 +201,7 @@ export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
   const teamId = asString(input.team_id ?? input.teamId);
+  const sessionId = asString(input.session_id ?? input.sessionId);
   const messageId = asString(input.message_id ?? input.messageId);
   if (!actorAgentId || (!messageId && !teamId)) {
     return fail('actor_agent_id and message_id or team_id are required', 'INVALID_ARGUMENT');
@@ -209,16 +213,16 @@ export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
     const actorMembership = resolveEffectiveMembership(teamId, actorAgentId);
     if (!actorMembership) return fail('team has no active members', 'AGENT_NOT_FOUND');
 
-    saveMessages(teamId, []);
-    saveDeliveries(teamId, []);
-    saveComments(teamId, []);
+    saveMessages(teamId, [], sessionId);
+    saveDeliveries(teamId, [], sessionId);
+    saveComments(teamId, [], sessionId);
     return ok('messages cleared', {
       team_id: teamId,
     });
   }
 
   if (!messageId) return fail('message_id is required', 'INVALID_ARGUMENT');
-  const ctx = findMessageContext(messageId);
+  const ctx = findMessageContext(messageId, teamId, sessionId);
   if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
 
   const actorMembership = resolveEffectiveMembership(ctx.team.id, actorAgentId);
@@ -227,11 +231,11 @@ export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
   if (!canDelete) return fail('permission denied', 'PERMISSION_DENIED');
 
   const nextMessages = ctx.messages.filter((item) => item.id !== messageId);
-  const nextDeliveries = listDeliveries(ctx.team.id).filter((item) => item.messageId !== messageId);
-  const nextComments = listCommentsRaw(ctx.team.id).filter((item) => item.messageId !== messageId);
-  saveMessages(ctx.team.id, nextMessages);
-  saveDeliveries(ctx.team.id, nextDeliveries);
-  saveComments(ctx.team.id, nextComments);
+  const nextDeliveries = listDeliveries(ctx.team.id, sessionId).filter((item) => item.messageId !== messageId);
+  const nextComments = listCommentsRaw(ctx.team.id, sessionId).filter((item) => item.messageId !== messageId);
+  saveMessages(ctx.team.id, nextMessages, sessionId);
+  saveDeliveries(ctx.team.id, nextDeliveries, sessionId);
+  saveComments(ctx.team.id, nextComments, sessionId);
 
   return ok('message deleted', {
     message_id: messageId,
@@ -243,15 +247,17 @@ export function handleTeamMessageComment(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
+  const teamId = asString(input.team_id ?? input.teamId);
+  const sessionId = asString(input.session_id ?? input.sessionId);
   if (!action || !actorAgentId) return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
 
   if (action === 'add') {
     const messageId = asString(input.message_id ?? input.messageId);
     const content = asString(input.content);
     if (!messageId || !content) return fail('message_id and content are required', 'INVALID_ARGUMENT');
-    const ctx = findMessageContext(messageId);
+    const ctx = findMessageContext(messageId, teamId, sessionId);
     if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
-    if (!canAccessMessage(messageId, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
+    if (!canAccessMessage(messageId, actorAgentId, teamId, sessionId)) return fail('permission denied', 'PERMISSION_DENIED');
     const now = new Date().toISOString();
     const comment: TeamMessageComment = {
       id: uuid(),
@@ -265,24 +271,24 @@ export function handleTeamMessageComment(input: unknown): TeamServiceResult {
       updatedAt: null,
       deletedAt: null,
     };
-    saveComments(ctx.team.id, [...listCommentsRaw(ctx.team.id), comment]);
-    const deliveries = listDeliveries(ctx.team.id).map((item) =>
+    saveComments(ctx.team.id, [...listCommentsRaw(ctx.team.id, sessionId), comment], sessionId);
+    const deliveries = listDeliveries(ctx.team.id, sessionId).map((item) =>
       item.messageId === messageId && item.recipientAgentId !== actorAgentId
         ? { ...item, unreadCommentCount: item.unreadCommentCount + 1, updatedAt: now }
         : item,
     );
-    saveDeliveries(ctx.team.id, deliveries);
+    saveDeliveries(ctx.team.id, deliveries, sessionId);
     return ok('comment added', { comment: commentView(comment) });
   }
 
   if (action === 'list') {
     const messageId = asString(input.message_id ?? input.messageId);
     if (!messageId) return fail('message_id is required', 'INVALID_ARGUMENT');
-    const ctx = findMessageContext(messageId);
+    const ctx = findMessageContext(messageId, teamId, sessionId);
     if (!ctx) return fail('message not found', 'MESSAGE_NOT_FOUND');
-    if (!canAccessMessage(messageId, actorAgentId)) return fail('permission denied', 'PERMISSION_DENIED');
+    if (!canAccessMessage(messageId, actorAgentId, teamId, sessionId)) return fail('permission denied', 'PERMISSION_DENIED');
     const includeDeleted = asBoolean(input.include_deleted ?? input.includeDeleted);
-    const comments = listCommentsRaw(ctx.team.id)
+    const comments = listCommentsRaw(ctx.team.id, sessionId)
       .filter((item) => item.messageId === messageId)
       .filter((item) => includeDeleted || !item.deletedAt)
       .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
@@ -296,7 +302,7 @@ export function handleTeamMessageComment(input: unknown): TeamServiceResult {
   if (action === 'delete') {
     const commentId = asString(input.comment_id ?? input.commentId);
     if (!commentId) return fail('comment_id is required', 'INVALID_ARGUMENT');
-    const ctx = findCommentContext(commentId);
+    const ctx = findCommentContext(commentId, teamId, sessionId);
     if (!ctx) return fail('comment not found', 'COMMENT_NOT_FOUND');
     if (ctx.comment.authorAgentId !== actorAgentId) return fail('only the author can delete comment', 'PERMISSION_DENIED');
     if (ctx.comment.deletedAt) return ok('comment already deleted', {
@@ -312,7 +318,7 @@ export function handleTeamMessageComment(input: unknown): TeamServiceResult {
       deleteReason: asString(input.reason),
       updatedAt: now,
     };
-    saveComments(ctx.team.id, ctx.comments.map((item) => item.id === commentId ? updated : item));
+    saveComments(ctx.team.id, ctx.comments.map((item) => item.id === commentId ? updated : item), sessionId);
     return ok('comment deleted', {
       comment_id: commentId,
       deleted_at: now,

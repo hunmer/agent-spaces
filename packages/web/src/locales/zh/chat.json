@@ -295,6 +295,14 @@
   "messageItem": {
     "teamExecution": "团队执行",
     "openTeamChat": "查看团队聊天",
+    "runningAgents": "执行中的 Agent",
+    "completedAgents": "已执行的 Agent",
+    "teamStatus": {
+      "idle": "空闲",
+      "running": "执行中",
+      "completed": "已完成",
+      "error": "失败"
+    },
     "reply": "回复",
     "copy": "复制",
     "edit": "编辑",

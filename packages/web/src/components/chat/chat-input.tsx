@@ -175,6 +175,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               onActivateAgent={activateAgent}
               onAgentActivated={onAgentActivated}
               onConfigureAgent={onConfigureAgent}
+              teams={teams}
+              activeMentionId={composerState.mentionedAgentIds[0]}
               onOpenAddMember={() => {
                 if (showAddMember) setAddMemberOpen(true);
               }}
@@ -185,7 +187,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             ref={composerRef}
             workspaceId={workspaceId}
             agents={mentionItems}
-            teams={teams.map((team) => ({ id: team.team_id, name: team.name }))}
             placeholder={t("input.placeholder", { channel: channelName })}
             contextLength={contextLength}
             onSubmit={handleSubmit}

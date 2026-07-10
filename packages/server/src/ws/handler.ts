@@ -9,7 +9,7 @@ import { getChannel } from '../services/channel.js';
 import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
 import * as agentService from '../services/agent.js';
 import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureScheduler, makeContext } from './agent-runner.js';
-import { stripHtml, extractMentionIds } from './html-utils.js';
+import { stripHtml, extractMentionIds, stripMentionIds } from './html-utils.js';
 import { listTasks } from '../services/mini-app-tasks.js';
 import { listConfigs } from '../services/mini-apps.js';
 import { handleMiniAppClientResponse } from '../services/mini-app-client-rpc.js';
@@ -101,10 +101,13 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   if (!channelId || (!content && !attachments?.length)) return;
   const channel = getChannel(workspaceId, channelId);
   if (!channel) return;
+  const mentionIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
+  const teamMentionIds = mentionIds.filter((id) => id.startsWith('team:') && channel.teamIds?.includes(id.slice('team:'.length)));
+  const messageContent = stripMentionIds(content, teamMentionIds);
   if (replyToMessageId) {
     const updated = appendMessageReply(workspaceId, channelId, replyToMessageId, {
       senderId: 'user',
-      content,
+      content: messageContent,
       attachments,
     });
     if (!updated) return;
@@ -113,9 +116,9 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     const agentId = updated.senderId !== 'user' ? updated.senderId : undefined;
     if (agentId) {
       const latestReplyId = updated.replies?.at(-1)?.id;
-      void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
+      void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(messageContent), {
         messageId: updated.id,
-        appendUserMessage: stripHtml(content),
+        appendUserMessage: stripHtml(messageContent),
         userAttachments: attachments,
         resumeSessionId: normalizedContextLength > 0 ? updated.metadata?.runtimeSessionId : undefined,
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
@@ -128,7 +131,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   }
   const message = createMessage(workspaceId, channelId, {
     senderId: 'user',
-    content,
+    content: messageContent,
     type: attachments?.length ? 'attachment' : type as any,
     attachments,
   });
@@ -137,19 +140,18 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     scheduleChannelTitleGeneration({
       workspaceId,
       channelId,
-      requirement: stripHtml(content),
+      requirement: stripHtml(messageContent),
       broadcast: (event, payload) => broadcastToWorkspace(workspaceId, event, payload),
     });
   }
 
-  const mentionIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
   const teamIds = mentionIds
     .filter((id) => id.startsWith('team:'))
     .map((id) => id.slice('team:'.length))
     .filter((id) => channel.teamIds?.includes(id));
   const agentIds = mentionIds.filter((id) => !id.startsWith('team:'));
   for (const agentId of agentIds) {
-    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
+    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(messageContent), {
       userAttachments: attachments,
       excludeHistoryMessageIds: [message.id],
       contextLength: normalizedContextLength,
@@ -163,7 +165,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     const card = createMessage(workspaceId, channelId, {
       senderId: `team:${teamId}`,
       senderRole: 'team',
-      content: stripHtml(content) || team.name,
+      content: stripHtml(messageContent) || team.name,
       status: 'completed',
       metadata: { teamId, teamName: team.name },
     });
@@ -171,7 +173,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     const result = postTeamRuntimeMessage({
       team_id: teamId,
       actor_agent_id: 'admin',
-      content: stripHtml(content) || team.name,
+      content: stripHtml(messageContent) || team.name,
       context_length: normalizedContextLength,
     });
     if (!result.success) {

@@ -48,6 +48,9 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 - Channel Team persistence regression: passed.
 - Targeted Web ESLint: passed with 3 pre-existing warnings and no errors.
 - Channel Team scoped diff whitespace check: passed.
+- Team card summary Server/Web TypeScript: passed.
+- Team mention cleanup regressions: 2 passed.
+- Team card targeted ESLint and scoped diff check: passed.
 
 ## Follow-up: read acknowledgement and owner completion
 
@@ -64,3 +67,10 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 - [complete] Expose channel teams in mentions and dispatch team execution.
 - [complete] Render team message cards and open Team Chat in a dialog.
 - [complete] Run focused typechecks/tests and inspect the final diff.
+
+## Follow-up: Team card runtime summary
+
+- [complete] Confirm Team Runtime fields and Team mention cleanup behavior.
+- [complete] Show Team status and running/completed agents in TeamMessageCard.
+- [complete] Stop restoring Team mentions after send and strip Team mention text from dispatched content.
+- [complete] Run focused typecheck, lint, and regression checks.

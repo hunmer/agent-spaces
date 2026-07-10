@@ -2096,3 +2096,1236 @@ If a requested tool like `AddCurrentChannelComme...
 [2026-07-10T09:22:03.583Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
 [2026-07-10T09:22:03.585Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
 [2026-07-10T09:22:03.585Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:31:44.222Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:32:03.593Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:32:21.831Z] [LOG] [langchain:1] starting | cwd=G:\agent_spaces\packages\server provider=openai-chat-completions langchainProvider=openai model=openai:MiniMax-M2.7 baseURL=https://api.minimaxi.com/v1 apiKey=set maxTurns=20 tools=team_message_send,team_task_complete mcpServers=- skills=- sandboxDirs=-
+[2026-07-10T09:32:21.832Z] [LOG] [langchain:1] options | {
+  "maxTurns": 20,
+  "tools": [
+    "team_message_send",
+    "team_task_complete"
+  ],
+  "functionTools": [
+    {
+      "name": "team_message_send",
+      "descriptionChars": 42,
+      "annotations": {
+        "destructive": false,
+        "openWorld": false
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          "actor_agent_id": {
+      ...
+[2026-07-10T09:32:21.833Z] [LOG] [langchain:1] model config | {
+  "apiKey": "set",
+  "api_key": "set",
+  "baseURL": "https://api.minimaxi.com/v1",
+  "baseUrl": "https://api.minimaxi.com/v1",
+  "configuration": {
+    "baseURL": "https://api.minimaxi.com/v1"
+  }
+}
+[2026-07-10T09:32:21.833Z] [LOG] [langchain:1] provider env | OPENAI_API_KEY,OPENAI_BASE_URL
+[2026-07-10T09:32:21.833Z] [LOG] [langchain:1] prompt | chars=997 preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: topic_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComme...
+[2026-07-10T09:32:21.834Z] [LOG] [langchain:1] initializing chat model
+[2026-07-10T09:32:22.135Z] [LOG] [langchain:1] chat model initialized | type=ConfigurableModel
+[2026-07-10T09:32:22.136Z] [LOG] [langchain:1] normalizing MCP servers | requested=-
+[2026-07-10T09:32:22.136Z] [LOG] [langchain:1] normalizing MCP servers | none
+[2026-07-10T09:32:22.136Z] [LOG] [langchain:1] MCP client not created
+[2026-07-10T09:32:22.136Z] [LOG] [langchain:1] creating agent | runtimeTools=2 mcpTools=0 systemPrompt=656chars outputStyle=-
+[2026-07-10T09:32:22.140Z] [LOG] [langchain:1] agent created | type=ReactAgent
+[2026-07-10T09:32:22.140Z] [LOG] [langchain:1] final prompt | chars=997 skillCount=0 outputStyle=- preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: topic_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComme...
+[2026-07-10T09:32:22.141Z] [LOG] [langchain:1] session | id=langchain-1 source=generated
+[2026-07-10T09:32:22.141Z] [LOG] [langchain:1] streaming agent | attempt=1/6 recursionLimit=41 aborted=no
+[2026-07-10T09:32:32.063Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:32:32.191Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:32:35.410Z] [LOG] [langchain:1] stream ai empty | count=1 stalledMs=0 id=069fef262a73a00b466322db42cd6dec step=1 node=model_request
+[2026-07-10T09:32:40.806Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:32:40.949Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:32:47.030Z] [LOG] [langchain:1] stream ai empty | count=20 stalledMs=11620 id=069fef262a73a00b466322db42cd6dec step=1 node=model_request
+[2026-07-10T09:32:56.142Z] [LOG] [langchain:1] tool use | source=function id=team_message_send-1783675976142-imu6gc name=team_message_send descriptionChars=42 input={
+  "action": "send",
+  "actor_agent_id": "topic_agent",
+  "team_id": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+  "mode": "direct",
+  "recipient_agent_ids": [
+    "editor_agent"
+  ],
+  "subject": "选题报告：出了社会之后如何保持学习",
+  "body": "# 选题报告\n\n## 原始需求\n主题：出了社会之后如何保持学习\n目标读者：普通年轻职场人\n风格要求：适合公众号的深度长文\n\n## 切入角度分析\n\n| 角度 | 切入点 | 评分 | 说明 |\n|------|--------|------|------|\n| A | 方法论视角：如何建立持续学习系统 | 7分 | 覆盖面广但偏工具化，缺乏情感共鸣 |\n| B | 心理动机视角：如何克服\"学习倦怠\"和\"学了有什么用\"的困惑 | 8分 | ✅ 直击社会新人核心痛点，情感共鸣强 |\n| C | 实用工具视角：推荐学...
+[2026-07-10T09:32:56.154Z] [LOG] [langchain:1] tool result | source=function id=team_message_send-1783675976142-imu6gc name=team_message_send elapsedMs=12 output={
+  "success": true,
+  "code": "OK",
+  "message": "message sent",
+  "data": {
+    "message": {
+      "id": "1caad872-16b7-4c25-956a-d86475ddaf71",
+      "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+      "senderAgentId": "topic_agent",
+      "messageType": "direct",
+      "subject": "选题报告：出了社会之后如何保持学习",
+      "body": "# 选题报告\n\n## 原始需求\n主题：出了社会之后如何保持学习\n目标读者：普通年轻职场人\n风格要求：适合公众号的深度长文\n\n## 切入角度分析\n\n| 角度 | 切入点 | 评分 | 说明 |\n|------|--------|------|------|\n| A | 方法论视角：如何建立持续学习系统 | 7分 | 覆盖面广但偏...
+[2026-07-10T09:33:02.228Z] [LOG] [langchain:1] stream ai empty | count=1 stalledMs=0 id=069fef488f2ce6bc11b25319782a44d3 step=3 node=model_request
+[2026-07-10T09:33:02.240Z] [LOG] [langchain:1] final state | attempt=1/6 0:human/text=997 > 1:ai/text=691/toolCalls=1 > 2:tool/text=2764 > 3:ai/text=334
+[2026-07-10T09:33:02.240Z] [LOG] [langchain:1] final text | attempt=1/6 chars=1025 preview=<think>
+用户的需求是关于"出了社会之后如何保持学习"这个主题，风格目标是适合公众号的深度长文，普通年轻读者。
+
+让我按照工作流来处理：
+
+1. 收到用户需求 - 已完成
+2. 生成结构化选题报告
+3. 发送给 editor_agent
+
+让我来制定选题报告：
+
+**切入角度分析**：
+- 角度1：方法论视角（如何建立持续学习的系统）- 评分7分
+- 角度2：心理动机视角（如何克服"学习倦怠"和"学了有什么用"的困惑）- 评分8分
+- 角度3：实用工具视角（推荐学习资源、APP、方法论）- 评分6分
+
+推荐角度2，因为针对"出了社会"这个特定场景，年轻读者最大的痛点就是失去学校环境后的学习动力问题。
+
+**大纲**：
+1. 引言：社会人是如何停止学习的
+2. 为什么离开学校后学习变得困难（外部环境变化+内部心理障碍）
+3. 重新定义学习：社会人的"有用"学习法
+4. 实用策略：碎片时间利用、主题式学习、输出倒逼输入
+5. 心态调整：与焦虑和解，允许自己慢慢来
+
+
+6. 结语：学习是一辈子的事
+
+**事实线索**：
+1. 数据：职场人每年平均阅读书籍数量下降趋势（书籍行业报告）
+2...
+[2026-07-10T09:33:02.241Z] [LOG] [langchain:1] usage | attempt=1/6 {
+  "inputTokens": 3685,
+  "outputTokens": 178,
+  "totalTokens": 3863
+}
+[2026-07-10T09:33:02.241Z] [LOG] [langchain:1] done 40410ms | attempts=1 outputLines=1 tokens=3863
+[2026-07-10T09:33:02.241Z] [LOG] [langchain:1] runtime reset
+[2026-07-10T09:33:02.283Z] [LOG] [langchain:2] starting | cwd=G:\agent_spaces\packages\server provider=openai-chat-completions langchainProvider=openai model=openai:MiniMax-M2.7 baseURL=https://api.minimaxi.com/v1 apiKey=set maxTurns=20 tools=team_message_send mcpServers=- skills=- sandboxDirs=-
+[2026-07-10T09:33:02.284Z] [LOG] [langchain:2] options | {
+  "maxTurns": 20,
+  "tools": [
+    "team_message_send"
+  ],
+  "functionTools": [
+    {
+      "name": "team_message_send",
+      "descriptionChars": 42,
+      "annotations": {
+        "destructive": false,
+        "openWorld": false
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          "actor_agent_id": {
+            "type": "string",
+  ...
+[2026-07-10T09:33:02.284Z] [LOG] [langchain:2] model config | {
+  "apiKey": "set",
+  "api_key": "set",
+  "baseURL": "https://api.minimaxi.com/v1",
+  "baseUrl": "https://api.minimaxi.com/v1",
+  "configuration": {
+    "baseURL": "https://api.minimaxi.com/v1"
+  }
+}
+[2026-07-10T09:33:02.285Z] [LOG] [langchain:2] provider env | OPENAI_API_KEY,OPENAI_BASE_URL
+[2026-07-10T09:33:02.285Z] [LOG] [langchain:2] prompt | chars=2180 preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: editor_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComm...
+[2026-07-10T09:33:02.285Z] [LOG] [langchain:2] initializing chat model
+[2026-07-10T09:33:02.286Z] [LOG] [langchain:2] chat model initialized | type=ConfigurableModel
+[2026-07-10T09:33:02.287Z] [LOG] [langchain:2] normalizing MCP servers | requested=-
+[2026-07-10T09:33:02.287Z] [LOG] [langchain:2] normalizing MCP servers | none
+[2026-07-10T09:33:02.287Z] [LOG] [langchain:2] MCP client not created
+[2026-07-10T09:33:02.287Z] [LOG] [langchain:2] creating agent | runtimeTools=1 mcpTools=0 systemPrompt=620chars outputStyle=-
+[2026-07-10T09:33:02.290Z] [LOG] [langchain:2] agent created | type=ReactAgent
+[2026-07-10T09:33:02.290Z] [LOG] [langchain:2] final prompt | chars=2180 skillCount=0 outputStyle=- preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: editor_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComm...
+[2026-07-10T09:33:02.291Z] [LOG] [langchain:2] session | id=langchain-2 source=generated
+[2026-07-10T09:33:02.291Z] [LOG] [langchain:2] streaming agent | attempt=1/6 recursionLimit=41 aborted=no
+[2026-07-10T09:33:03.003Z] [LOG] [langchain:2] stream ai empty | count=1 stalledMs=0 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:03.863Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:33:04.626Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:33:04.906Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:33:05.305Z] [LOG] [langchain:2] stream ai empty | count=1 stalledMs=0 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:06.019Z] [LOG] [langchain:2] stream ai empty | count=20 stalledMs=714 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:06.602Z] [LOG] [langchain:2] stream ai empty | count=40 stalledMs=1297 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:07.184Z] [LOG] [langchain:2] stream ai empty | count=60 stalledMs=1879 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:07.770Z] [LOG] [langchain:2] stream ai empty | count=80 stalledMs=2465 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:08.354Z] [LOG] [langchain:2] stream ai empty | count=100 stalledMs=3049 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:08.946Z] [LOG] [langchain:2] stream ai empty | count=120 stalledMs=3641 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:09.530Z] [LOG] [langchain:2] stream ai empty | count=140 stalledMs=4225 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:10.121Z] [LOG] [langchain:2] stream ai empty | count=160 stalledMs=4816 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:10.709Z] [LOG] [langchain:2] stream ai empty | count=180 stalledMs=5404 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:11.292Z] [LOG] [langchain:2] stream ai empty | count=200 stalledMs=5987 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:11.880Z] [LOG] [langchain:2] stream ai empty | count=220 stalledMs=6575 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:12.494Z] [LOG] [langchain:2] stream ai empty | count=240 stalledMs=7189 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:13.064Z] [LOG] [langchain:2] stream ai empty | count=260 stalledMs=7759 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:13.660Z] [LOG] [langchain:2] stream ai empty | count=280 stalledMs=8355 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:14.231Z] [LOG] [langchain:2] stream ai empty | count=300 stalledMs=8925 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:14.822Z] [LOG] [langchain:2] stream ai empty | count=320 stalledMs=9517 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:15.412Z] [LOG] [langchain:2] stream ai empty | count=340 stalledMs=10107 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:16.006Z] [LOG] [langchain:2] stream ai empty | count=360 stalledMs=10701 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:16.604Z] [LOG] [langchain:2] stream ai empty | count=380 stalledMs=11299 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:17.189Z] [LOG] [langchain:2] stream ai empty | count=400 stalledMs=11884 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:17.778Z] [LOG] [langchain:2] stream ai empty | count=420 stalledMs=12473 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:18.366Z] [LOG] [langchain:2] stream ai empty | count=440 stalledMs=13061 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:18.951Z] [LOG] [langchain:2] stream ai empty | count=460 stalledMs=13646 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:19.570Z] [LOG] [langchain:2] stream ai empty | count=480 stalledMs=14265 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:20.133Z] [LOG] [langchain:2] stream ai empty | count=500 stalledMs=14828 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:20.720Z] [LOG] [langchain:2] stream ai empty | count=520 stalledMs=15415 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:21.310Z] [LOG] [langchain:2] stream ai empty | count=540 stalledMs=16005 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:21.904Z] [LOG] [langchain:2] stream ai empty | count=560 stalledMs=16599 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:22.489Z] [LOG] [langchain:2] stream ai empty | count=580 stalledMs=17184 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:23.110Z] [LOG] [langchain:2] stream ai empty | count=600 stalledMs=17805 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:23.671Z] [LOG] [langchain:2] stream ai empty | count=620 stalledMs=18366 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:24.258Z] [LOG] [langchain:2] stream ai empty | count=640 stalledMs=18953 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:24.848Z] [LOG] [langchain:2] stream ai empty | count=660 stalledMs=19543 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:25.436Z] [LOG] [langchain:2] stream ai empty | count=680 stalledMs=20131 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:26.029Z] [LOG] [langchain:2] stream ai empty | count=700 stalledMs=20724 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:26.615Z] [LOG] [langchain:2] stream ai empty | count=720 stalledMs=21310 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:27.198Z] [LOG] [langchain:2] stream ai empty | count=740 stalledMs=21893 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:27.796Z] [LOG] [langchain:2] stream ai empty | count=760 stalledMs=22491 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:28.385Z] [LOG] [langchain:2] stream ai empty | count=780 stalledMs=23080 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:28.969Z] [LOG] [langchain:2] stream ai empty | count=800 stalledMs=23664 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:29.553Z] [LOG] [langchain:2] stream ai empty | count=820 stalledMs=24248 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:30.139Z] [LOG] [langchain:2] stream ai empty | count=840 stalledMs=24834 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:30.726Z] [LOG] [langchain:2] stream ai empty | count=860 stalledMs=25421 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:31.312Z] [LOG] [langchain:2] stream ai empty | count=880 stalledMs=26007 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:31.905Z] [LOG] [langchain:2] stream ai empty | count=900 stalledMs=26600 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:32.493Z] [LOG] [langchain:2] stream ai empty | count=920 stalledMs=27188 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:33.277Z] [LOG] [langchain:2] stream ai empty | count=940 stalledMs=27972 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:34.084Z] [LOG] [langchain:2] stream ai empty | count=960 stalledMs=28779 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:34.885Z] [LOG] [langchain:2] stream ai empty | count=980 stalledMs=29580 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:35.691Z] [LOG] [langchain:2] stream ai empty | count=1000 stalledMs=30386 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:36.492Z] [LOG] [langchain:2] stream ai empty | count=1020 stalledMs=31187 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:37.294Z] [LOG] [langchain:2] stream ai empty | count=1040 stalledMs=31989 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:38.093Z] [LOG] [langchain:2] stream ai empty | count=1060 stalledMs=32788 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:38.927Z] [LOG] [langchain:2] stream ai empty | count=1080 stalledMs=33622 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:39.589Z] [LOG] [langchain:2] stream ai empty | count=1100 stalledMs=34284 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:40.178Z] [LOG] [langchain:2] stream ai empty | count=1120 stalledMs=34873 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:40.945Z] [LOG] [langchain:2] stream ai empty | count=1140 stalledMs=35640 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:41.751Z] [LOG] [langchain:2] stream ai empty | count=1160 stalledMs=36446 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:42.394Z] [LOG] [langchain:2] stream ai empty | count=1180 stalledMs=37089 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:42.985Z] [LOG] [langchain:2] stream ai empty | count=1200 stalledMs=37680 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:43.733Z] [LOG] [langchain:2] stream ai empty | count=1220 stalledMs=38428 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:44.550Z] [LOG] [langchain:2] stream ai empty | count=1240 stalledMs=39245 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:45.353Z] [LOG] [langchain:2] stream ai empty | count=1260 stalledMs=40048 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:46.161Z] [LOG] [langchain:2] stream ai empty | count=1280 stalledMs=40856 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:46.966Z] [LOG] [langchain:2] stream ai empty | count=1300 stalledMs=41661 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:47.772Z] [LOG] [langchain:2] stream ai empty | count=1320 stalledMs=42467 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:48.601Z] [LOG] [langchain:2] stream ai empty | count=1340 stalledMs=43296 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:49.401Z] [LOG] [langchain:2] stream ai empty | count=1360 stalledMs=44096 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:49.990Z] [LOG] [langchain:2] stream ai empty | count=1380 stalledMs=44685 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:50.588Z] [LOG] [langchain:2] stream ai empty | count=1400 stalledMs=45283 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:51.429Z] [LOG] [langchain:2] stream ai empty | count=1420 stalledMs=46124 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:52.229Z] [LOG] [langchain:2] stream ai empty | count=1440 stalledMs=46924 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:53.526Z] [LOG] [langchain:2] stream ai empty | count=1460 stalledMs=48221 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:54.703Z] [LOG] [langchain:2] stream ai empty | count=1480 stalledMs=49398 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:55.142Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:33:55.284Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:33:55.533Z] [LOG] [langchain:2] stream ai empty | count=1500 stalledMs=50228 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:56.325Z] [LOG] [langchain:2] stream ai empty | count=1520 stalledMs=51020 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:57.136Z] [LOG] [langchain:2] stream ai empty | count=1540 stalledMs=51831 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:57.946Z] [LOG] [langchain:2] stream ai empty | count=1560 stalledMs=52641 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:58.754Z] [LOG] [langchain:2] stream ai empty | count=1580 stalledMs=53449 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:33:59.994Z] [LOG] [langchain:2] stream ai empty | count=1600 stalledMs=54689 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:34:01.037Z] [LOG] [langchain:2] stream ai empty | count=1620 stalledMs=55732 id=069fef4e151daacdcad6fb1ae43dbe5c step=1 node=model_request
+[2026-07-10T09:34:01.573Z] [LOG] [langchain:2] tool use | source=function id=team_message_send-1783676041573-5n17cf name=team_message_send descriptionChars=42 input={
+  "action": "send",
+  "actor_agent_id": "editor_agent",
+  "team_id": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+  "mode": "direct",
+  "recipient_agent_ids": [
+    "reviewer_agent"
+  ],
+  "subject": "稿件提交：《离开学校后，我终于找到了持续学习的理由》",
+  "body": "# 原始需求\n主题：出了社会之后如何保持学习\n目标读者：普通年轻职场人\n风格要求：适合公众号的深度长文\n\n---\n\n# 选题报告\n\n## 切入角度\n**推荐角度B**：围绕\"心理动机重建\"切入，帮助读者解决\"没时间、没动力、不知道学什么、学了感觉没用\"的四大困境。\n\n## 大纲\n1. 引言：那个停止学习的自己\n2. 为什么离开学校后学习变得困难\n3. 重新定义学习：告别\"学生思维\"\n4. 三个让学习自然发生的策略\n5. 与焦虑和解：允许自己\"碎片化成长\"\n6. 结语：...
+[2026-07-10T09:34:01.586Z] [LOG] [langchain:2] tool result | source=function id=team_message_send-1783676041573-5n17cf name=team_message_send elapsedMs=13 output={
+  "success": true,
+  "code": "OK",
+  "message": "message sent",
+  "data": {
+    "message": {
+      "id": "ed2e55c2-da5c-45d5-8731-e82ce292be52",
+      "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+      "senderAgentId": "editor_agent",
+      "messageType": "direct",
+      "subject": "稿件提交：《离开学校后，我终于找到了持续学习的理由》",
+      "body": "# 原始需求\n主题：出了社会之后如何保持学习\n目标读者：普通年轻职场人\n风格要求：适合公众号的深度长文\n\n---\n\n# 选题报告\n\n## 切入角度\n**推荐角度B**：围绕\"心理动机重建\"切入，帮助读者解决\"没时间、没动力、不知道学什么、学了感觉没用\"的四大困境。\n\n## 大纲\n1. 引言：那个...
+[2026-07-10T09:34:02.953Z] [LOG] [langchain:2] stream ai empty | count=1 stalledMs=0 id=069fef89a448a80d3bbdfd087158b829 step=3 node=model_request
+[2026-07-10T09:34:05.937Z] [LOG] [langchain:2] stream ai empty | count=1 stalledMs=0 id=069fef89a448a80d3bbdfd087158b829 step=3 node=model_request
+[2026-07-10T09:34:05.944Z] [LOG] [langchain:2] final state | attempt=1/6 0:human/text=2180 > 1:ai/text=394/toolCalls=1 > 2:tool/text=5932 > 3:ai/text=485
+[2026-07-10T09:34:05.944Z] [LOG] [langchain:2] final text | attempt=1/6 chars=879 preview=<think>用户发送了 topic_agent 的选题报告，要求我作为 editor_agent 撰写公众号文章。
+
+根据工作流要求：
+1. 收到 topic_agent 的选题报告时，严格按原始需求、推荐大纲和事实线索撰写完整文章
+2. 每次完成初稿后，调用 team_message_send，将"原始需求 + 选题报告 + 完整稿件"发送给 reviewer_agent 审阅
+
+现在我需要：
+1. 按照选题报告撰写完整文章
+2. 使用 team_message_send 发送给 reviewer_agent
+
+让我先撰写文章，然后发送。
+
+文章要求：
+- 字数：3000-4000字
+- 风格：深度长文，适合公众号
+- 语气：真诚、有温度，像朋友聊天而非说教
+- 结构：段落短小，多用小标题
+- 结尾：留一个"今天就可以开始"的小行动
+
+我来撰写完整</think>
+
+
+
+
+<think>The message was sent successfully to reviewer_agent. The workflow is complete for now - I need to w...
+[2026-07-10T09:34:05.945Z] [LOG] [langchain:2] usage | attempt=1/6 {
+  "inputTokens": 7069,
+  "outputTokens": 154,
+  "totalTokens": 7223
+}
+[2026-07-10T09:34:05.945Z] [LOG] [langchain:2] done 63662ms | attempts=1 outputLines=1 tokens=7223
+[2026-07-10T09:34:05.945Z] [LOG] [langchain:2] runtime reset
+[2026-07-10T09:34:05.994Z] [LOG] [langchain:3] starting | cwd=G:\agent_spaces\packages\server provider=openai-chat-completions langchainProvider=openai model=openai:MiniMax-M2.7 baseURL=https://api.minimaxi.com/v1 apiKey=set maxTurns=20 tools=team_message_send mcpServers=- skills=- sandboxDirs=-
+[2026-07-10T09:34:05.995Z] [LOG] [langchain:3] options | {
+  "maxTurns": 20,
+  "tools": [
+    "team_message_send"
+  ],
+  "functionTools": [
+    {
+      "name": "team_message_send",
+      "descriptionChars": 42,
+      "annotations": {
+        "destructive": false,
+        "openWorld": false
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          "actor_agent_id": {
+            "type": "string",
+  ...
+[2026-07-10T09:34:05.996Z] [LOG] [langchain:3] model config | {
+  "apiKey": "set",
+  "api_key": "set",
+  "baseURL": "https://api.minimaxi.com/v1",
+  "baseUrl": "https://api.minimaxi.com/v1",
+  "configuration": {
+    "baseURL": "https://api.minimaxi.com/v1"
+  }
+}
+[2026-07-10T09:34:05.996Z] [LOG] [langchain:3] provider env | OPENAI_API_KEY,OPENAI_BASE_URL
+[2026-07-10T09:34:05.996Z] [LOG] [langchain:3] prompt | chars=6440 preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: reviewer_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelCo...
+[2026-07-10T09:34:05.996Z] [LOG] [langchain:3] initializing chat model
+[2026-07-10T09:34:06.109Z] [LOG] [langchain:3] chat model initialized | type=ConfigurableModel
+[2026-07-10T09:34:06.109Z] [LOG] [langchain:3] normalizing MCP servers | requested=-
+[2026-07-10T09:34:06.109Z] [LOG] [langchain:3] normalizing MCP servers | none
+[2026-07-10T09:34:06.110Z] [LOG] [langchain:3] MCP client not created
+[2026-07-10T09:34:06.110Z] [LOG] [langchain:3] creating agent | runtimeTools=1 mcpTools=0 systemPrompt=750chars outputStyle=-
+[2026-07-10T09:34:06.113Z] [LOG] [langchain:3] agent created | type=ReactAgent
+[2026-07-10T09:34:06.113Z] [LOG] [langchain:3] final prompt | chars=6440 skillCount=0 outputStyle=- preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: reviewer_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelCo...
+[2026-07-10T09:34:06.114Z] [LOG] [langchain:3] session | id=langchain-3 source=generated
+[2026-07-10T09:34:06.114Z] [LOG] [langchain:3] streaming agent | attempt=1/6 recursionLimit=41 aborted=no
+[2026-07-10T09:34:07.615Z] [LOG] [langchain:3] stream ai empty | count=1 stalledMs=0 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:10.217Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:34:14.612Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:34:17.031Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:34:19.169Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:34:21.426Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:34:23.015Z] [LOG] [langchain:3] stream ai empty | count=1 stalledMs=0 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:24.067Z] [LOG] [langchain:3] stream ai empty | count=20 stalledMs=1053 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:24.994Z] [LOG] [langchain:3] stream ai empty | count=40 stalledMs=1980 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:25.921Z] [LOG] [langchain:3] stream ai empty | count=60 stalledMs=2907 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:26.845Z] [LOG] [langchain:3] stream ai empty | count=80 stalledMs=3830 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:27.779Z] [LOG] [langchain:3] stream ai empty | count=100 stalledMs=4765 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:29.929Z] [LOG] [langchain:3] stream ai empty | count=120 stalledMs=6915 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:31.089Z] [LOG] [langchain:3] stream ai empty | count=140 stalledMs=8075 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:32.011Z] [LOG] [langchain:3] stream ai empty | count=160 stalledMs=8997 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:32.632Z] [LOG] [langchain:3] stream ai empty | count=180 stalledMs=9618 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:33.230Z] [LOG] [langchain:3] stream ai empty | count=200 stalledMs=10216 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:33.840Z] [LOG] [langchain:3] stream ai empty | count=220 stalledMs=10826 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:36.008Z] [LOG] [langchain:3] stream ai empty | count=240 stalledMs=12994 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:37.774Z] [LOG] [langchain:3] stream ai empty | count=260 stalledMs=14760 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:39.459Z] [LOG] [langchain:3] stream ai empty | count=280 stalledMs=16445 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:40.382Z] [LOG] [langchain:3] stream ai empty | count=300 stalledMs=17368 id=069fef8e7ab8b25ec0bbf6f9dbee339a step=1 node=model_request
+[2026-07-10T09:34:41.029Z] [LOG] [langchain:3] tool use | source=function id=team_message_send-1783676081029-5h94f9 name=team_message_send descriptionChars=42 input={
+  "action": "send",
+  "actor_agent_id": "reviewer_agent",
+  "team_id": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+  "mode": "direct",
+  "recipient_agent_ids": [
+    "editor_agent"
+  ],
+  "subject": "审批报告：需修改",
+  "body": "# 审批报告\n\n## 评分\n- 主题契合度：8/10\n- 大纲遵循度：9/10\n- 事实可靠度：5/10 ⚠️\n- 表达流畅度：8/10\n- 读者价值：9/10\n- 字数合规度：4/10 ⚠️\n- 总分：43/60\n\n## 结论\n需修改\n\n## 修改建议\n\n1. **补充选题报告中的数据（事实可靠度）**\n   - 选题报告提供了5条具体事实线索，但全文未引用任何一条。务必在对应章节中补充数据：知识付费市场规模（1800亿元）、职场人年均阅读不足5本的比例（超60%）、主动输出的知识留存率（75%）、微习惯原理等。\n ...
+[2026-07-10T09:34:41.045Z] [LOG] [langchain:3] tool result | source=function id=team_message_send-1783676081029-5h94f9 name=team_message_send elapsedMs=16 output={
+  "success": true,
+  "code": "OK",
+  "message": "message sent",
+  "data": {
+    "message": {
+      "id": "f2b67f3c-4caa-4c2c-af18-4ad615caa535",
+      "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+      "senderAgentId": "reviewer_agent",
+      "messageType": "direct",
+      "subject": "审批报告：需修改",
+      "body": "# 审批报告\n\n## 评分\n- 主题契合度：8/10\n- 大纲遵循度：9/10\n- 事实可靠度：5/10 ⚠️\n- 表达流畅度：8/10\n- 读者价值：9/10\n- 字数合规度：4/10 ⚠️\n- 总分：43/60\n\n## 结论\n需修改\n\n## 修改建议\n\n1. **补充选题报告中的数据（事实可靠度）**\n   - 选题报告提...
+[2026-07-10T09:34:42.241Z] [LOG] [langchain:3] stream ai empty | count=1 stalledMs=0 id=069fefb16a6fd597a14ef3e433d84b7c step=3 node=model_request
+[2026-07-10T09:34:43.769Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:34:46.788Z] [LOG] [langchain:3] stream ai empty | count=1 stalledMs=0 id=069fefb16a6fd597a14ef3e433d84b7c step=3 node=model_request
+[2026-07-10T09:34:46.793Z] [LOG] [langchain:3] final state | attempt=1/6 0:human/text=6440 > 1:ai/text=2255/toolCalls=1 > 2:tool/text=2185 > 3:ai/text=498
+[2026-07-10T09:34:46.793Z] [LOG] [langchain:3] final text | attempt=1/6 chars=2753 preview=<think>The editor_agent has submitted a complete article for review. Let me carefully review it against the topic brief and outline requirements.
+
+Let me analyze the article:
+
+1. **主题契合度**: The article addresses "出了社会之后如何保持学习" (how to keep learning after leaving school) - the topic matches. The angle focuses on psychological motivation rebuilding as recommended. Score: 8/10
+
+2. **大纲遵循度**: 
+   - Section 1: 引言：那个停止学习的自己 ✓
+   - Section 2: 为什么离开学校后学习变得困难 ✓
+   - Section 3: 重新定义学习：告别"学生思维" ✓
+   - Sect...
+[2026-07-10T09:34:46.794Z] [LOG] [langchain:3] usage | attempt=1/6 {
+  "inputTokens": 5634,
+  "outputTokens": 164,
+  "totalTokens": 5798
+}
+[2026-07-10T09:34:46.794Z] [LOG] [langchain:3] done 40800ms | attempts=1 outputLines=1 tokens=5798
+[2026-07-10T09:34:46.794Z] [LOG] [langchain:3] runtime reset
+[2026-07-10T09:34:46.845Z] [LOG] [langchain:4] starting | cwd=G:\agent_spaces\packages\server provider=openai-chat-completions langchainProvider=openai model=openai:MiniMax-M2.7 baseURL=https://api.minimaxi.com/v1 apiKey=set maxTurns=20 tools=team_message_send mcpServers=- skills=- sandboxDirs=-
+[2026-07-10T09:34:46.846Z] [LOG] [langchain:4] options | {
+  "maxTurns": 20,
+  "tools": [
+    "team_message_send"
+  ],
+  "functionTools": [
+    {
+      "name": "team_message_send",
+      "descriptionChars": 42,
+      "annotations": {
+        "destructive": false,
+        "openWorld": false
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          "actor_agent_id": {
+            "type": "string",
+  ...
+[2026-07-10T09:34:46.847Z] [LOG] [langchain:4] model config | {
+  "apiKey": "set",
+  "api_key": "set",
+  "baseURL": "https://api.minimaxi.com/v1",
+  "baseUrl": "https://api.minimaxi.com/v1",
+  "configuration": {
+    "baseURL": "https://api.minimaxi.com/v1"
+  }
+}
+[2026-07-10T09:34:46.847Z] [LOG] [langchain:4] provider env | OPENAI_API_KEY,OPENAI_BASE_URL
+[2026-07-10T09:34:46.847Z] [LOG] [langchain:4] prompt | chars=7247 preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: editor_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComm...
+[2026-07-10T09:34:46.847Z] [LOG] [langchain:4] initializing chat model
+[2026-07-10T09:34:47.039Z] [LOG] [langchain:4] chat model initialized | type=ConfigurableModel
+[2026-07-10T09:34:47.039Z] [LOG] [langchain:4] normalizing MCP servers | requested=-
+[2026-07-10T09:34:47.039Z] [LOG] [langchain:4] normalizing MCP servers | none
+[2026-07-10T09:34:47.039Z] [LOG] [langchain:4] MCP client not created
+[2026-07-10T09:34:47.040Z] [LOG] [langchain:4] creating agent | runtimeTools=1 mcpTools=0 systemPrompt=620chars outputStyle=-
+[2026-07-10T09:34:47.044Z] [LOG] [langchain:4] agent created | type=ReactAgent
+[2026-07-10T09:34:47.044Z] [LOG] [langchain:4] final prompt | chars=7247 skillCount=0 outputStyle=- preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: editor_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComm...
+[2026-07-10T09:34:47.044Z] [LOG] [langchain:4] session | id=langchain-4 source=generated
+[2026-07-10T09:34:47.044Z] [LOG] [langchain:4] streaming agent | attempt=1/6 recursionLimit=41 aborted=no
+[2026-07-10T09:34:49.456Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:34:56.970Z] [LOG] [langchain:4] stream ai empty | count=1 stalledMs=0 id=069fefb78f888ede5893be628c1670a7 step=1 node=model_request
+[2026-07-10T09:35:07.822Z] [LOG] [langchain:4] stream ai empty | count=20 stalledMs=10852 id=069fefb78f888ede5893be628c1670a7 step=1 node=model_request
+[2026-07-10T09:35:21.841Z] [LOG] [langchain:4] stream ai empty | count=40 stalledMs=24871 id=069fefb78f888ede5893be628c1670a7 step=1 node=model_request
+[2026-07-10T09:35:21.857Z] [LOG] [langchain:4] tool use | source=function id=team_message_send-1783676121857-iw377w name=team_message_send descriptionChars=42 input={
+  "action": "send",
+  "actor_agent_id": "editor_agent",
+  "team_id": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+  "mode": "direct",
+  "recipient_agent_ids": [
+    "reviewer_agent"
+  ],
+  "subject": "《离开学校后，我终于找到了持续学习的理由》修订稿",
+  "body": "# 原始需求\n主题：出了社会之后如何保持学习\n目标读者：普通年轻职场人\n风格要求：适合公众号的深度长文\n\n---\n\n# 选题报告（与初稿一致）\n\n切入角度：心理动机重建，帮助读者解决\"没时间、没动力、不知道学什么、学了感觉没用\"的四大困境。\n\n---\n\n# 完整稿件（修订版）\n\n# 《离开学校后，我终于找到了持续学习的理由》\n\n字数：约 2200 字\n\n摘要：毕业后的学习困境，不是你不够自律，而是学习的目标和动力系统需要重建。这篇文章从心理动机出发，帮你找回学习的内在驱动力。\n\...
+[2026-07-10T09:35:21.883Z] [LOG] [langchain:4] tool result | source=function id=team_message_send-1783676121857-iw377w name=team_message_send elapsedMs=26 output={
+  "success": true,
+  "code": "OK",
+  "message": "message sent",
+  "data": {
+    "message": {
+      "id": "0c90e728-8ff5-4339-ac76-d7a78e764a5a",
+      "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+      "senderAgentId": "editor_agent",
+      "messageType": "direct",
+      "subject": "《离开学校后，我终于找到了持续学习的理由》修订稿",
+      "body": "# 原始需求\n主题：出了社会之后如何保持学习\n目标读者：普通年轻职场人\n风格要求：适合公众号的深度长文\n\n---\n\n# 选题报告（与初稿一致）\n\n切入角度：心理动机重建，帮助读者解决\"没时间、没动力、不知道学什么、学了感觉没用\"的四大困境。\n\n---\n\n# 完整稿件（修订版）\n\n# 《离开学校后，我...
+[2026-07-10T09:35:26.055Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:35:34.276Z] [LOG] [langchain:4] stream ai empty | count=1 stalledMs=0 id=069fefd9b02631095be7076693521efe step=3 node=model_request
+[2026-07-10T09:35:34.287Z] [LOG] [langchain:4] final state | attempt=1/6 0:human/text=7247 > 1:ai/text=1396/toolCalls=1 > 2:tool/text=4614 > 3:ai/text=1535
+[2026-07-10T09:35:34.287Z] [LOG] [langchain:4] final text | attempt=1/6 chars=2931 preview=<think>
+The reviewer_agent has provided feedback on my article. I need to revise the article according to their suggestions:
+
+1. Add data from the topic report (knowledge payment market size 1800 billion yuan, workplace reading statistics 60%, knowledge retention rate 75%, micro-habit principle)
+2. Significantly reduce word count from ~3200 to 1800-2500 words
+3. Add more specific descriptions in Chapter 2 about the disappearance of peer learning atmosphere
+4. Ensure all data has source citations...
+[2026-07-10T09:35:34.288Z] [LOG] [langchain:4] usage | attempt=1/6 {
+  "inputTokens": 8703,
+  "outputTokens": 522,
+  "totalTokens": 9225
+}
+[2026-07-10T09:35:34.288Z] [LOG] [langchain:4] done 47443ms | attempts=1 outputLines=1 tokens=9225
+[2026-07-10T09:35:34.288Z] [LOG] [langchain:4] runtime reset
+[2026-07-10T09:35:34.340Z] [LOG] [langchain:5] starting | cwd=G:\agent_spaces\packages\server provider=openai-chat-completions langchainProvider=openai model=openai:MiniMax-M2.7 baseURL=https://api.minimaxi.com/v1 apiKey=set maxTurns=20 tools=team_message_send mcpServers=- skills=- sandboxDirs=-
+[2026-07-10T09:35:34.340Z] [LOG] [langchain:5] options | {
+  "maxTurns": 20,
+  "tools": [
+    "team_message_send"
+  ],
+  "functionTools": [
+    {
+      "name": "team_message_send",
+      "descriptionChars": 42,
+      "annotations": {
+        "destructive": false,
+        "openWorld": false
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          "actor_agent_id": {
+            "type": "string",
+  ...
+[2026-07-10T09:35:34.341Z] [LOG] [langchain:5] model config | {
+  "apiKey": "set",
+  "api_key": "set",
+  "baseURL": "https://api.minimaxi.com/v1",
+  "baseUrl": "https://api.minimaxi.com/v1",
+  "configuration": {
+    "baseURL": "https://api.minimaxi.com/v1"
+  }
+}
+[2026-07-10T09:35:34.342Z] [LOG] [langchain:5] provider env | OPENAI_API_KEY,OPENAI_BASE_URL
+[2026-07-10T09:35:34.342Z] [LOG] [langchain:5] prompt | chars=10312 preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: reviewer_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelCo...
+[2026-07-10T09:35:34.342Z] [LOG] [langchain:5] initializing chat model
+[2026-07-10T09:35:34.344Z] [LOG] [langchain:5] chat model initialized | type=ConfigurableModel
+[2026-07-10T09:35:34.344Z] [LOG] [langchain:5] normalizing MCP servers | requested=-
+[2026-07-10T09:35:34.344Z] [LOG] [langchain:5] normalizing MCP servers | none
+[2026-07-10T09:35:34.344Z] [LOG] [langchain:5] MCP client not created
+[2026-07-10T09:35:34.344Z] [LOG] [langchain:5] creating agent | runtimeTools=1 mcpTools=0 systemPrompt=750chars outputStyle=-
+[2026-07-10T09:35:34.348Z] [LOG] [langchain:5] agent created | type=ReactAgent
+[2026-07-10T09:35:34.348Z] [LOG] [langchain:5] final prompt | chars=10312 skillCount=0 outputStyle=- preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: reviewer_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelCo...
+[2026-07-10T09:35:34.348Z] [LOG] [langchain:5] session | id=langchain-5 source=generated
+[2026-07-10T09:35:34.348Z] [LOG] [langchain:5] streaming agent | attempt=1/6 recursionLimit=41 aborted=no
+[2026-07-10T09:35:35.678Z] [LOG] [langchain:5] stream ai empty | count=1 stalledMs=0 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:37.207Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:35:42.778Z] [LOG] [langchain:5] stream ai empty | count=1 stalledMs=0 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:43.486Z] [LOG] [langchain:5] stream ai empty | count=20 stalledMs=708 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:44.055Z] [LOG] [langchain:5] stream ai empty | count=40 stalledMs=1277 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:44.663Z] [LOG] [langchain:5] stream ai empty | count=60 stalledMs=1885 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:45.313Z] [LOG] [langchain:5] stream ai empty | count=80 stalledMs=2535 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:45.865Z] [LOG] [langchain:5] stream ai empty | count=100 stalledMs=3087 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:46.464Z] [LOG] [langchain:5] stream ai empty | count=120 stalledMs=3686 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:47.060Z] [LOG] [langchain:5] stream ai empty | count=140 stalledMs=4282 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:47.679Z] [LOG] [langchain:5] stream ai empty | count=160 stalledMs=4901 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:48.285Z] [LOG] [langchain:5] stream ai empty | count=180 stalledMs=5507 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:48.860Z] [LOG] [langchain:5] stream ai empty | count=200 stalledMs=6082 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:49.460Z] [LOG] [langchain:5] stream ai empty | count=220 stalledMs=6682 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:50.078Z] [LOG] [langchain:5] stream ai empty | count=240 stalledMs=7300 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:50.653Z] [LOG] [langchain:5] stream ai empty | count=260 stalledMs=7875 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:51.254Z] [LOG] [langchain:5] stream ai empty | count=280 stalledMs=8476 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:51.896Z] [LOG] [langchain:5] stream ai empty | count=300 stalledMs=9118 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:52.451Z] [LOG] [langchain:5] stream ai empty | count=320 stalledMs=9673 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:53.106Z] [LOG] [langchain:5] stream ai empty | count=340 stalledMs=10328 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:53.687Z] [LOG] [langchain:5] stream ai empty | count=360 stalledMs=10909 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:54.247Z] [LOG] [langchain:5] stream ai empty | count=380 stalledMs=11469 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:54.871Z] [LOG] [langchain:5] stream ai empty | count=400 stalledMs=12093 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:55.452Z] [LOG] [langchain:5] stream ai empty | count=420 stalledMs=12674 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:56.102Z] [LOG] [langchain:5] stream ai empty | count=440 stalledMs=13324 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:56.674Z] [LOG] [langchain:5] stream ai empty | count=460 stalledMs=13896 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:57.275Z] [LOG] [langchain:5] stream ai empty | count=480 stalledMs=14497 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:57.907Z] [LOG] [langchain:5] stream ai empty | count=500 stalledMs=15129 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:35:59.331Z] [LOG] [langchain:5] stream ai empty | count=520 stalledMs=16553 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:00.458Z] [LOG] [langchain:5] stream ai empty | count=540 stalledMs=17680 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:01.573Z] [LOG] [langchain:5] stream ai empty | count=560 stalledMs=18795 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:02.696Z] [LOG] [langchain:5] stream ai empty | count=580 stalledMs=19918 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:03.822Z] [LOG] [langchain:5] stream ai empty | count=600 stalledMs=21044 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:04.941Z] [LOG] [langchain:5] stream ai empty | count=620 stalledMs=22163 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:06.062Z] [LOG] [langchain:5] stream ai empty | count=640 stalledMs=23284 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:07.180Z] [LOG] [langchain:5] stream ai empty | count=660 stalledMs=24402 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:08.165Z] [LOG] [langchain:5] stream ai empty | count=680 stalledMs=25387 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:08.754Z] [LOG] [langchain:5] stream ai empty | count=700 stalledMs=25976 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:09.539Z] [LOG] [langchain:5] stream ai empty | count=720 stalledMs=26761 id=069fefe6c37036221cdf5ac63f5a7b70 step=1 node=model_request
+[2026-07-10T09:36:09.697Z] [LOG] [langchain:5] tool use | source=function id=team_message_send-1783676169697-xdlrvk name=team_message_send descriptionChars=42 input={
+  "action": "send",
+  "actor_agent_id": "reviewer_agent",
+  "team_id": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+  "mode": "direct",
+  "recipient_agent_ids": [
+    "topic_agent"
+  ],
+  "subject": "稿件终审通过",
+  "body": "# 审批报告\n\n## 评分\n- 主题契合度：8/10\n- 大纲遵循度：9/10\n- 事实可靠度：8/10\n- 表达流畅度：8/10\n- 读者价值：9/10\n- 字数合规度：9/10\n- 总分：51/60\n\n## 结论\n通过\n\n## 发布建议\n\n稿件质量良好，事实数据补充完整且来源标注清晰，字数已控制在合规范围内。建议在标题下方添加\"阅读时长约5分钟\"的提示，并考虑在结尾互动问题处增加\"转发给有同样困惑的朋友\"的话术，引导读者传播。\n\n---\n\n# 完整终审稿件\n\n# 《离开学校后，我终于找到了持续学习的理由》...
+[2026-07-10T09:36:09.715Z] [LOG] [langchain:5] tool result | source=function id=team_message_send-1783676169697-xdlrvk name=team_message_send elapsedMs=18 output={
+  "success": true,
+  "code": "OK",
+  "message": "message sent",
+  "data": {
+    "message": {
+      "id": "845820ed-9b4a-4be7-9763-11b5acfe52e3",
+      "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+      "senderAgentId": "reviewer_agent",
+      "messageType": "direct",
+      "subject": "稿件终审通过",
+      "body": "# 审批报告\n\n## 评分\n- 主题契合度：8/10\n- 大纲遵循度：9/10\n- 事实可靠度：8/10\n- 表达流畅度：8/10\n- 读者价值：9/10\n- 字数合规度：9/10\n- 总分：51/60\n\n## 结论\n通过\n\n## 发布建议\n\n稿件质量良好，事实数据补充完整且来源标注清晰，字数已控制在合规范围内。建议在标题下方添加\...
+[2026-07-10T09:36:11.678Z] [LOG] [langchain:5] stream ai empty | count=1 stalledMs=0 id=069ff009a35565dacb228969c0325d32 step=3 node=model_request
+[2026-07-10T09:36:14.899Z] [LOG] [langchain:5] stream ai empty | count=1 stalledMs=0 id=069ff009a35565dacb228969c0325d32 step=3 node=model_request
+[2026-07-10T09:36:14.908Z] [LOG] [langchain:5] final state | attempt=1/6 0:human/text=10312 > 1:ai/text=758/toolCalls=1 > 2:tool/text=4700 > 3:ai/text=679
+[2026-07-10T09:36:14.909Z] [LOG] [langchain:5] final text | attempt=1/6 chars=1437 preview=<think>让我仔细审阅这篇修订后的稿件，按照评分维度进行评估：
+
+1. **主题契合度**：主题是"出了社会之后如何保持学习"，稿件围绕心理动机重建展开，帮助读者解决学习困境。契合度高。
+2. **大纲遵循度**：按照选题报告的6个章节展开，引言、为什么困难、重新定义学习、三个策略、与焦虑和解、结语，都遵循了。
+3. **事实可靠度**：
+   - 超60%的职场人年均阅读不足5本书 ✓
+   - 2023年中国知识付费用户超5亿，市场规模达1800亿元（艾媒咨询数据）✓
+   - 学习金字塔：被动学习5%/10%，主动输出75% ✓
+   - 《微习惯》行为科学研究 ✓
+   全部有来源标注，可靠度高。
+4. **表达流畅度**：段落短小，语气真诚，像朋友聊天，金句频出，流畅度好。
+5. **读者价值**：提供了具体的策略和可执行的小行动，价值高。
+6. **字数合规度**：标注约2200字，在1800-2500字范围内 ✓
+
+所有评分都在6分以上，总分应该超过50分/60分。
+
+让我计算一下：
+
+
+主题契合度8分，大纲遵循度9分，事实可靠度提升到8分，表达流畅度8分，读者价值9...
+[2026-07-10T09:36:14.909Z] [LOG] [langchain:5] usage | attempt=1/6 {
+  "inputTokens": 10319,
+  "outputTokens": 176,
+  "totalTokens": 10495
+}
+[2026-07-10T09:36:14.910Z] [LOG] [langchain:5] done 40570ms | attempts=1 outputLines=1 tokens=10495
+[2026-07-10T09:36:14.910Z] [LOG] [langchain:5] runtime reset
+[2026-07-10T09:36:14.968Z] [LOG] [langchain:6] starting | cwd=G:\agent_spaces\packages\server provider=openai-chat-completions langchainProvider=openai model=openai:MiniMax-M2.7 baseURL=https://api.minimaxi.com/v1 apiKey=set maxTurns=20 tools=team_message_send,team_task_complete mcpServers=- skills=- sandboxDirs=-
+[2026-07-10T09:36:14.968Z] [LOG] [langchain:6] options | {
+  "maxTurns": 20,
+  "tools": [
+    "team_message_send",
+    "team_task_complete"
+  ],
+  "functionTools": [
+    {
+      "name": "team_message_send",
+      "descriptionChars": 42,
+      "annotations": {
+        "destructive": false,
+        "openWorld": false
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          "actor_agent_id": {
+      ...
+[2026-07-10T09:36:14.969Z] [LOG] [langchain:6] model config | {
+  "apiKey": "set",
+  "api_key": "set",
+  "baseURL": "https://api.minimaxi.com/v1",
+  "baseUrl": "https://api.minimaxi.com/v1",
+  "configuration": {
+    "baseURL": "https://api.minimaxi.com/v1"
+  }
+}
+[2026-07-10T09:36:14.970Z] [LOG] [langchain:6] provider env | OPENAI_API_KEY,OPENAI_BASE_URL
+[2026-07-10T09:36:14.970Z] [LOG] [langchain:6] prompt | chars=13599 preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: topic_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComme...
+[2026-07-10T09:36:14.970Z] [LOG] [langchain:6] initializing chat model
+[2026-07-10T09:36:15.218Z] [LOG] [langchain:6] chat model initialized | type=ConfigurableModel
+[2026-07-10T09:36:15.219Z] [LOG] [langchain:6] normalizing MCP servers | requested=-
+[2026-07-10T09:36:15.219Z] [LOG] [langchain:6] normalizing MCP servers | none
+[2026-07-10T09:36:15.219Z] [LOG] [langchain:6] MCP client not created
+[2026-07-10T09:36:15.220Z] [LOG] [langchain:6] creating agent | runtimeTools=2 mcpTools=0 systemPrompt=656chars outputStyle=-
+[2026-07-10T09:36:15.223Z] [LOG] [langchain:6] agent created | type=ReactAgent
+[2026-07-10T09:36:15.223Z] [LOG] [langchain:6] final prompt | chars=13599 skillCount=0 outputStyle=- preview=You are replying inside a team chat.
+Reply to the latest user message directly and concisely.
+Do not mention system internals.
+Current team_id: 7305b983-31fc-4cef-98df-87d6ee63f34c
+Your actor_agent_id: topic_agent
+Always use these exact ids in team tool calls; never use a recipient agent id as team_id.
+If another teammate should continue the work, call `team_message_send` with that teammate's agent id instead of only mentioning them in plain text.
+If a requested tool like `AddCurrentChannelComme...
+[2026-07-10T09:36:15.223Z] [LOG] [langchain:6] session | id=langchain-6 source=generated
+[2026-07-10T09:36:15.223Z] [LOG] [langchain:6] streaming agent | attempt=1/6 recursionLimit=41 aborted=no
+[2026-07-10T09:36:16.854Z] [LOG] [langchain:6] stream ai empty | count=1 stalledMs=0 id=069ff00feb3acb244ea266136e7e38e1 step=1 node=model_request
+[2026-07-10T09:36:18.346Z] [LOG] [langchain:6] stream ai empty | count=1 stalledMs=0 id=069ff00feb3acb244ea266136e7e38e1 step=1 node=model_request
+[2026-07-10T09:36:18.900Z] [LOG] [langchain:6] tool use | source=function id=team_task_complete-1783676178900-1cj1fx name=team_task_complete descriptionChars=86 input={
+  "action": "complete",
+  "actor_agent_id": "topic_agent",
+  "team_id": "7305b983-31fc-4cef-98df-87d6ee63f34c"
+}
+[2026-07-10T09:36:18.911Z] [LOG] [langchain:6] tool result | source=function id=team_task_complete-1783676178900-1cj1fx name=team_task_complete elapsedMs=11 output={
+  "success": true,
+  "code": "OK",
+  "message": "team task already completed",
+  "data": {
+    "runtime_id": "4b8e7f04-76cf-4189-afc3-175ca28ecc4d",
+    "status": "completed"
+  }
+}
+[2026-07-10T09:36:19.707Z] [LOG] [langchain:6] stream ai empty | count=1 stalledMs=0 id=069ff012fb1e2361c42dd0322019d736 step=3 node=model_request
+[2026-07-10T09:36:23.504Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:36:25.708Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:36:26.773Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:36:28.000Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:36:30.152Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:36:39.976Z] [FATAL] uncaughtException: Error: UNKNOWN: unknown error, open 'G:\agent_spaces\packages\server\agent-spaces-data\team\7305b983-31fc-4cef-98df-87d6ee63f34c\messages.json'
+    at writeFileSync (node:fs:2425:20)
+    at writeJsonFile (G:\agent_spaces\packages\server\src\storage\json-store.ts:24:3)
+    at updateTeamMessage (G:\agent_spaces\packages\server\src\services\team-runtime.ts:235:3)
+    at Object.onOutput (G:\agent_spaces\packages\server\src\services\team-runtime.ts:772:23)
+    at Object.handleEvent (G:\agent_spaces\packages\server\src\agents\agent-message-parts.ts:78:13)
+    at <anonymous> (G:\agent_spaces\packages\server\src\services\team-runtime.ts:786:22)
+    at Timeout.flush (G:\agent_spaces\packages\server\src\adapters\langchain-runtime.ts:737:33)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[2026-07-10T09:36:42.883Z] [LOG] [langchain:6] stream ai empty | count=1 stalledMs=0 id=069ff012fb1e2361c42dd0322019d736 step=3 node=model_request
+[2026-07-10T09:36:42.885Z] [LOG] [langchain:6] final state | attempt=1/6 0:human/text=13599 > 1:ai/text=402/toolCalls=1 > 2:tool/text=182 > 3:ai/text=3082
+[2026-07-10T09:36:42.886Z] [LOG] [langchain:6] final text | attempt=1/6 chars=3484 preview=<think>The reviewer_agent has sent an approval notification ("通过") with the final revised manuscript. According to my workflow, when I receive the reviewer's "通过" (approved) notification, I need to:
+
+1. Output a concise completion result to admin, including title, final review conclusion, and the final manuscript
+2. The task ends here
+
+Let me prepare the completion notification to admin</think>
+
+
+
+
+<think>任务已完成，我需要向admin输出简洁的完成</think>
+
+
+
+✅ **任务完成**
+
+**标题**：《离开学校后，我终于找到了持续学习的理由》
+
+**终审结论**：通过（51/...
+[2026-07-10T09:36:42.886Z] [LOG] [langchain:6] usage | attempt=1/6 {
+  "inputTokens": 7924,
+  "outputTokens": 1571,
+  "totalTokens": 9495
+}
+[2026-07-10T09:36:42.886Z] [LOG] [langchain:6] done 27919ms | attempts=1 outputLines=1 tokens=9495
+[2026-07-10T09:36:42.887Z] [LOG] [langchain:6] runtime reset
+[2026-07-10T09:41:44.237Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:41:44.238Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:41:44.244Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:41:44.244Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:41:44.384Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:41:44.385Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:41:44.385Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:41:44.385Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:41:45.197Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:41:45.197Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:41:54.687Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:41:55.210Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:41:55.211Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:41:55.211Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:47:24.437Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:47:24.437Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:47:24.452Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:47:34.441Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:47:34.441Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:47:34.441Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:48:09.214Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:48:09.217Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:48:09.364Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:51:55.218Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:52:09.999Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:52:10.000Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:52:10.005Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:52:10.006Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:52:10.133Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:52:10.133Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:52:10.133Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:52:10.133Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:52:12.191Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:52:12.192Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:52:12.204Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:52:12.205Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:52:22.206Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:52:22.207Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:52:22.207Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:52:22.207Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:52:22.207Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:52:22.207Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:52:30.405Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:52:30.406Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:52:30.411Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:52:30.411Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:52:30.529Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:52:30.529Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:52:30.529Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:52:30.529Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:52:32.201Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:52:32.201Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:52:32.224Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:52:32.224Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:52:42.216Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:52:42.219Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:52:42.220Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:52:42.231Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:52:42.232Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:52:42.233Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:53:02.714Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:53:02.715Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:53:02.719Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:53:02.719Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:53:02.840Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:53:02.841Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:53:02.841Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:53:02.841Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:53:05.189Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:53:05.189Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:53:05.200Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:53:05.201Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:53:15.192Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:53:15.194Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:53:15.195Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:53:15.208Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:53:15.209Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:53:15.209Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:53:40.772Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:53:40.773Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:53:40.778Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:53:40.778Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:53:40.890Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:53:40.890Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:53:40.890Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:53:40.890Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:53:43.188Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:53:43.188Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:53:43.200Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:53:43.200Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:53:53.188Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:53:53.189Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:53:53.189Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:53:53.203Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:53:53.204Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:53:53.204Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:54:37.020Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:54:37.021Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:54:37.025Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:54:37.026Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:54:37.135Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:54:37.136Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:54:37.136Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:54:37.136Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:54:39.200Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:54:39.200Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:54:39.223Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:54:39.223Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:54:48.459Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:54:48.460Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:54:48.465Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:54:48.465Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:54:48.581Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:54:48.581Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:54:48.581Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:54:48.582Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:54:50.200Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:54:50.201Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:54:50.221Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:54:50.221Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:55:00.213Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:55:00.214Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:55:00.214Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:55:00.229Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:55:00.229Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:55:00.229Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:55:24.508Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:55:24.508Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:55:24.513Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:55:24.513Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:55:24.644Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:55:24.644Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:55:24.644Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:55:24.644Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:55:26.197Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:55:26.197Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:55:26.210Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:55:26.211Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:55:36.210Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:55:36.211Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:55:36.211Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:55:36.211Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:55:36.211Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:55:36.211Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:55:54.050Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:55:54.051Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:55:54.055Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:55:54.056Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:55:54.176Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:55:54.176Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:55:54.177Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:55:54.177Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:55:56.194Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:55:56.194Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:55:56.205Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:55:56.206Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:56:06.207Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:56:06.211Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:56:06.212Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:56:06.212Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:56:06.213Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:56:06.213Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:56:19.248Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:56:19.249Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:56:19.254Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:56:19.254Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:56:19.375Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:56:19.375Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:56:19.375Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:56:19.375Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:56:21.205Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:56:21.206Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:56:21.225Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:56:21.225Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:56:31.216Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:56:31.217Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:56:31.217Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:56:31.232Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:56:31.232Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:56:31.233Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:56:55.533Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:56:55.534Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:56:55.539Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:56:55.539Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:56:55.663Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:56:55.663Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:56:55.664Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:56:55.664Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:56:57.192Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:56:57.194Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:56:57.203Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:56:57.204Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:57:07.204Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:57:07.204Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:57:07.205Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:57:07.205Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:57:07.205Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:57:07.205Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:57:52.354Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:58:03.397Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T09:58:03.397Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T09:58:03.402Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T09:58:03.403Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T09:58:03.540Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T09:58:03.540Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:58:03.541Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T09:58:03.541Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T09:58:05.188Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T09:58:05.189Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:58:05.200Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T09:58:05.200Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T09:58:15.202Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T09:58:15.203Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T09:58:15.203Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)
+[2026-07-10T09:58:15.203Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T09:58:15.204Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T09:58:15.204Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T09:59:25.394Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:59:26.622Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:59:26.867Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T09:59:29.358Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T10:00:36.635Z] [LOG] [TriggerService] Execution manager attached
+[2026-07-10T10:00:36.635Z] [LOG] [server] serving web frontend from G:\agent_spaces\packages\server\web
+[2026-07-10T10:00:36.640Z] [LOG] [server] listening on http://127.0.0.1:3100
+[2026-07-10T10:00:36.640Z] [LOG] [server] websocket on ws://127.0.0.1:3100/ws?workspaceId=...
+[2026-07-10T10:00:36.752Z] [LOG] [TriggerService] Starting trigger registration for 36 workflow(s)
+[2026-07-10T10:00:36.753Z] [LOG] [TriggerService] Registering 1 trigger(s) for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T10:00:36.753Z] [LOG] [TriggerService] Skip disabled trigger trigger_1782351394146 for workflow 7a799f6b-d4ce-485d-b28e-6bc28746ac2e
+[2026-07-10T10:00:36.753Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-07-10T10:00:36.758Z] [LOG] [ws] scheduler scheduled for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8 in 10000ms
+[2026-07-10T10:00:36.759Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"f2e02ef7-0b83-4a55-a07b-a46085cf83c8","sessions":[]}
+[2026-07-10T10:00:36.772Z] [LOG] [ws] scheduler scheduled for workspace __team__ in 10000ms
+[2026-07-10T10:00:36.773Z] [LOG] [DEBUG-terminal-dup] server sendTerminalSessions {"workspaceId":"__team__","sessions":[]}
+[2026-07-10T10:00:46.772Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] started (interval=600000ms)
+[2026-07-10T10:00:46.775Z] [LOG] [scheduler:f2e02ef7-0b83-4a55-a07b-a46085cf83c8] auto-processing disabled for this workspace, skip
+[2026-07-10T10:00:46.776Z] [LOG] [ws] scheduler started for workspace f2e02ef7-0b83-4a55-a07b-a46085cf83c8
+[2026-07-10T10:00:46.776Z] [LOG] [scheduler:__team__] started (interval=600000ms)
+[2026-07-10T10:00:46.776Z] [LOG] [ws] scheduler started for workspace __team__
+[2026-07-10T10:00:46.776Z] [LOG] [scheduler:__team__] tick: no unfinished issues (total=0)

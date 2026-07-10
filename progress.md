@@ -26,3 +26,7 @@
 - Rebuilt ignored shared/SDK declarations, then passed Server and Web TypeScript checks.
 - Added and passed `channel-team.test.ts`; targeted ESLint had no errors and scoped diff check passed.
 - Confirmed the existing local Web server responds at http://localhost:3000.
+- Started Team card runtime summary and Team mention cleanup follow-up.
+- Added live Team Runtime status plus running/completed agent summaries to TeamMessageCard.
+- Removed Team mentions before channel persistence/runtime dispatch and stopped restoring Team mentions after send.
+- Passed Server/Web TypeScript, targeted ESLint, two focused tests, scoped diff check, and local HTTP health check.
