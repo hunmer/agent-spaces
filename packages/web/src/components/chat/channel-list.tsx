@@ -121,12 +121,12 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
       .map(type => ({ key: type, label: t(`channel.${type}`), items: sorted.filter(ch => ch.type === type) }));
   }, [t]);
 
-  const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[]; initialMessage?: string }) => {
+  const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[]; teamIds: string[]; initialMessage?: string }) => {
     const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
     if (editingChannel) {
-      await updateChannel(workspaceId, editingChannel.id, { name: data.name, type: data.type, members: memberIds });
+      await updateChannel(workspaceId, editingChannel.id, { name: data.name, type: data.type, members: memberIds, teamIds: data.teamIds });
     } else {
-      await createChannel(workspaceId, data.name, data.type, memberIds, data.initialMessage);
+      await createChannel(workspaceId, data.name, data.type, memberIds, data.initialMessage, data.teamIds);
       if (data.initialMessage && memberIds.length === 1) {
         const agent = agents.find(a => a.id === memberIds[0]);
         const agentName = agent?.name || memberIds[0];

@@ -31,6 +31,9 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 | Full team test still fails owner-transfer `my_role` assertion | Follow-up regression | Pre-existing unrelated failure already documented; run focused new regressions separately. |
 | Full `git diff --check` found trailing spaces in existing server log | Follow-up diff check | Scope final whitespace check to files changed by this task. |
 | Final plan update hunk did not match combined sections | Final bookkeeping | Re-read file tail and apply smaller exact hunks. |
+| Assumed composer mention renderer file path did not exist | Channel Team inspection | Located the shared renderer under `components/composer/create-suggestion-renderer.ts`. |
+| Server/Web saw stale shared and SDK declarations | First channel Team typecheck | Rebuild ignored workspace `dist` outputs before the final typecheck. |
+| Team pseudo mention widened AgentBar runtime type | First channel Team typecheck | Strip the pseudo `kind` field and retain only the supported `langchain` runtime in the ChatAgent adapter. |
 
 ## Verification
 
@@ -41,6 +44,10 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 - Follow-up server/shared TypeScript: passed.
 - Follow-up focused runtime regressions: 2 passed.
 - Follow-up scoped diff whitespace check: passed.
+- Channel Team shared/server/web TypeScript: passed.
+- Channel Team persistence regression: passed.
+- Targeted Web ESLint: passed with 3 pre-existing warnings and no errors.
+- Channel Team scoped diff whitespace check: passed.
 
 ## Follow-up: read acknowledgement and owner completion
 
@@ -48,3 +55,12 @@ Fix duplicate team messages, team tool `channel not found` failures, and writes 
 - [complete] Implement automatic read acknowledgement at the shared wake-up boundary.
 - [complete] Add the minimum owner-only team completion tool and prompt instruction.
 - [complete] Add focused regression checks and run targeted validation.
+
+## Follow-up: channel team integration
+
+- [complete] Trace channel, mention, team execution, and message rendering contracts.
+- [complete] Extract a reusable single/multi Team Selector.
+- [complete] Persist selected teams in channel create/edit flows.
+- [complete] Expose channel teams in mentions and dispatch team execution.
+- [complete] Render team message cards and open Team Chat in a dialog.
+- [complete] Run focused typechecks/tests and inspect the final diff.

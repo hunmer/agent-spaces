@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { AgentConfig, Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2, Square } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2, Square, Users, ArrowUpRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
 import { AgentIcon } from '@/components/common/agent-icon';
@@ -17,6 +17,11 @@ import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/decorations/text-shimmer';
 import { MovingBorder } from '@/components/ui/border-glide';
 import { copyToClipboard } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+const TeamChatPanel = dynamic(() => import('@/components/teams/team-chat-panel').then((module) => module.TeamChatPanel), {
+  ssr: false,
+});
 
 interface MessageItemProps {
   message: Message;
@@ -74,6 +79,10 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
+
+  if (message.metadata?.teamId) {
+    return <TeamMessageCard message={message} />;
+  }
 
   return (
     <div className={`group flex min-w-0 max-w-full gap-2 px-3 py-1.5 items-start ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -294,6 +303,46 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
           </Dialog>
         );
       })()}
+    </div>
+  );
+}
+
+function TeamMessageCard({ message }: { message: Message }) {
+  const tm = useTranslations('chat.messageItem');
+  const [open, setOpen] = useState(false);
+  const teamId = message.metadata?.teamId ?? '';
+  const teamName = message.metadata?.teamName || teamId;
+
+  return (
+    <div className="px-3 py-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex w-full max-w-xl items-center gap-3 rounded-md border bg-card px-3 py-3 text-left transition-colors hover:bg-muted/50"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Users className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{teamName}</span>
+          <span className="block truncate text-xs text-muted-foreground">{tm('teamExecution')} · {message.content}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          {tm('openTeamChat')}
+          <ArrowUpRight className="size-3.5" />
+        </span>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="flex h-[85vh] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
+          <DialogHeader className="border-b px-5 py-3">
+            <DialogTitle>{teamName}</DialogTitle>
+            <DialogDescription>{tm('teamExecution')}</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 p-3">
+            <TeamChatPanel teamId={teamId} actorAgentId="admin" />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

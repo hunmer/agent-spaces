@@ -9,6 +9,8 @@
     "addMember": "Add Member",
     "info": "Channel Info",
     "members": "Members",
+    "teams": "Teams",
+    "noTeams": "No teams available",
     "type": "Type:",
     "channelId": "Channel ID",
     "memberCount": "Member count",
@@ -291,6 +293,8 @@
     "you": "You"
   },
   "messageItem": {
+    "teamExecution": "Team execution",
+    "openTeamChat": "Open team chat",
     "reply": "Reply",
     "copy": "Copy",
     "edit": "Edit",

@@ -5,6 +5,7 @@ import { existsSync, renameSync, rmSync } from 'node:fs';
 import type { Channel, Message } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
 import * as agentService from '../services/agent.js';
+import { loadTeam } from './team-internal.js';
 
 function workspaceDir(workspaceId: string) {
   return join(getDataDir(), 'workspaces', workspaceId);
@@ -28,7 +29,7 @@ export function getChannel(workspaceId: string, channelId: string): Channel | un
 
 export function createChannel(
   workspaceId: string,
-  data: { id?: string; name: string; type: Channel['type']; members?: string[]; issueId?: string; overwrite?: boolean },
+  data: { id?: string; name: string; type: Channel['type']; members?: string[]; teamIds?: string[]; issueId?: string; overwrite?: boolean },
 ): { channel: Channel; created: boolean } {
   const channels = listChannels(workspaceId);
   const requestedId = normalizeRequestedId(data.id);
@@ -50,6 +51,7 @@ export function createChannel(
     type: data.type,
     issueId: data.issueId,
     members: normalizeMembers(workspaceId, data.members),
+    teamIds: normalizeTeamIds(data.teamIds),
     createdAt: new Date().toISOString(),
   };
   channels.push(channel);
@@ -99,7 +101,7 @@ function migrateChannelId(
 export function updateChannel(
   workspaceId: string,
   channelId: string,
-  data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'archived'>>,
+  data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'teamIds' | 'pinnedMentionId' | 'draft' | 'todos' | 'archived'>>,
 ): Channel | null {
   const channels = listChannels(workspaceId);
   const idx = channels.findIndex((c) => c.id === channelId);
@@ -108,6 +110,7 @@ export function updateChannel(
   if (data.type !== undefined) channels[idx].type = data.type;
   if (Object.hasOwn(data, 'issueId')) channels[idx].issueId = data.issueId;
   if (data.members !== undefined) channels[idx].members = normalizeMembers(workspaceId, data.members);
+  if (data.teamIds !== undefined) channels[idx].teamIds = normalizeTeamIds(data.teamIds);
   if (Object.hasOwn(data, 'pinnedMentionId')) channels[idx].pinnedMentionId = data.pinnedMentionId;
   if (Object.hasOwn(data, 'draft')) channels[idx].draft = data.draft;
   if (Object.hasOwn(data, 'todos')) channels[idx].todos = data.todos;
@@ -129,6 +132,12 @@ function normalizeMembers(workspaceId: string, members: string[] = []): string[]
   }
 
   return normalized;
+}
+
+function normalizeTeamIds(teamIds: unknown): string[] {
+  if (!Array.isArray(teamIds)) return [];
+  return [...new Set(teamIds.filter((teamId): teamId is string => typeof teamId === 'string' && Boolean(teamId.trim())))]
+    .filter((teamId) => loadTeam(teamId)?.status === 'active');
 }
 
 export function deleteChannel(workspaceId: string, channelId: string): boolean {

@@ -516,7 +516,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
         defaultInitialMessage={`[use tool: ReadTerminalOutput] 查看并修复终端 id: ${aiFixSessionId} 的问题`}
         onSubmit={async (data) => {
           const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
-          await createChannel(workspaceId, data.name, data.type, memberIds, data.initialMessage);
+          await createChannel(workspaceId, data.name, data.type, memberIds, data.initialMessage, data.teamIds);
           if (data.initialMessage && memberIds.length === 1) {
             const agent = agents.find((a) => a.id === memberIds[0]);
             const agentName = agent?.name || memberIds[0];

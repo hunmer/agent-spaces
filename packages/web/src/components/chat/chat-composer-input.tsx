@@ -119,6 +119,7 @@ interface ChatComposerInputProps {
   enableModelSelector?: boolean;
   implicitActiveAgentId?: string;
   onStateChange?: (state: ChatComposerInputState) => void;
+  teams?: Array<{ id: string; name: string }>;
 }
 
 export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatComposerInputProps>(function ChatComposerInput(
@@ -147,6 +148,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   enableModelSelector = true,
     implicitActiveAgentId,
     onStateChange,
+    teams = [],
   },
   ref,
 ) {
@@ -185,7 +187,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       .filter((agent): agent is MentionedAgent => Boolean(agent));
   }, [agents, effectiveMentionedAgentIds]);
 
-  const activeAgent = mentionedAgents[0];
+  const activeAgent = mentionedAgents.find((item) => item.kind !== 'team');
   const activeMcps = useMemo(() => getMcpLabels(activeAgent?.mcps), [activeAgent?.mcps]);
   const activeSkills = useMemo(() => activeAgent?.skills ?? [], [activeAgent?.skills]);
   const { models, providers, ensure: ensureLLM } = useLLMStore();
@@ -359,7 +361,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
               .map((agent) => ({
                 id: agent.id,
                 label: agent.name || agent.role,
-                description: `${agent.role}${agent.description ? ` ${agent.description}` : ""}`,
+                description: agent.kind === 'team' ? 'Team' : `${agent.role}${agent.description ? ` ${agent.description}` : ""}`,
               }));
           },
           command: ({ editor, range, props }: { editor: Editor; range: Range; props: MentionNodeAttrs }) => {
@@ -737,6 +739,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         hiddenInput={enableAttachments ? <input {...getInputProps()} data-chat-file-input="" /> : undefined}
         replyLabel={replyLabel}
         onCancelReply={onCancelReply}
+        teams={teams}
       />
       {attachments.length > 0 ? (
         <Attachments variant="inline" className="mt-2 justify-start">

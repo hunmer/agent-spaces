@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { MemberPicker } from '@/components/common/member-picker';
 import { getMemberDisplayName } from '@/lib/agent-members';
+import { TeamSelector } from '@/components/teams/team-selector';
 
 import type { AgentConfig, Channel } from '@agent-spaces/shared';
 
@@ -25,7 +26,7 @@ interface ChannelDialogProps {
   agents?: AgentConfig[];
   defaultInitialMessage?: string;
   defaultMembers?: string[];
-  onSubmit: (data: { name: string; type: Channel['type']; members: string[]; initialMessage?: string }) => void;
+  onSubmit: (data: { name: string; type: Channel['type']; members: string[]; teamIds: string[]; initialMessage?: string }) => void;
 }
 
 export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubmit, defaultInitialMessage, defaultMembers }: ChannelDialogProps) {
@@ -34,6 +35,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
   const [name, setName] = useState('');
   const [type, setType] = useState<Channel['type']>('general');
   const [members, setMembers] = useState<string[]>([]);
+  const [teamIds, setTeamIds] = useState<string[]>([]);
   const [initialMessage, setInitialMessage] = useState('');
   const [dialogKey, setDialogKey] = useState(0);
 
@@ -51,11 +53,13 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
         setName(channel.name);
         setType(channel.type);
         setMembers([...channel.members]);
+        setTeamIds([...(channel.teamIds ?? [])]);
         setInitialMessage('');
       } else {
         setName('');
         setType('general');
         setMembers(defaultMembers ?? []);
+        setTeamIds([]);
         setInitialMessage(defaultInitialMessage ?? '');
       }
       setDialogKey((k) => k + 1);
@@ -73,6 +77,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
       name: name.trim(),
       type,
       members,
+      teamIds,
       initialMessage: singleMember && initialMessage.trim() ? initialMessage.trim() : undefined,
     });
     onOpenChange(false);
@@ -106,6 +111,13 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
             label={t('channel.members')}
             searchPlaceholder={t('channel.addMember')}
             emptyText={t('channel.noAgents') || 'No agents found'}
+          />
+          <TeamSelector
+            value={teamIds}
+            multiple
+            onChange={(value) => setTeamIds(value as string[])}
+            label={t('channel.teams')}
+            emptyText={t('channel.noTeams')}
           />
           {singleMember && !channel && (
             <div className="space-y-2">

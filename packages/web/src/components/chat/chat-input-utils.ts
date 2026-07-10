@@ -11,7 +11,7 @@ import type { JSONContent } from "@tiptap/core";
 export type MentionedAgent = Pick<
   AgentConfig,
   "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools" | "avatarUrl" | "icon" | "apiBase" | "modelId" | "providerId" | "modelProvider" | "runtimeKind" | "systemPrompt" | "backgroundUrl" | "boundWorkflowIds" | "boundWorkflowPluginTools" | "suggestions"
->;
+> & { kind?: 'agent' | 'team' };
 
 export function collectMentionIds(node: JSONContent): string[] {
   const ids = new Set<string>();

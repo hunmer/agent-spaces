@@ -9,6 +9,8 @@
     "addMember": "添加成员",
     "info": "频道信息",
     "members": "成员",
+    "teams": "团队",
+    "noTeams": "暂无可用团队",
     "type": "类型：",
     "channelId": "频道 ID",
     "memberCount": "成员数",
@@ -291,6 +293,8 @@
     "you": "你"
   },
   "messageItem": {
+    "teamExecution": "团队执行",
+    "openTeamChat": "查看团队聊天",
     "reply": "回复",
     "copy": "复制",
     "edit": "编辑",

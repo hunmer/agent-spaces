@@ -13,6 +13,7 @@ export interface Channel {
   type: 'general' | 'issue' | 'agent' | 'mini-apps';
   issueId?: string;
   members: string[];
+  teamIds?: string[];
   pinnedMentionId?: string;
   draft?: {
     content: string;
@@ -161,4 +162,6 @@ export interface MessageMetadata {
   duration?: number;
   nodeExecutionId?: string;
   phase?: string;
+  teamId?: string;
+  teamName?: string;
 }

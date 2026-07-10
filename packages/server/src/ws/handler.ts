@@ -4,7 +4,7 @@ import { addConnection, broadcastToWorkspace, getClientId, handleClientNodeRespo
 import type { ClientNodeResponse, InteractionResponse } from '@agent-spaces/shared';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
 import { registerChatHandlers } from './chat-handler.js';
-import { appendMessageReply, createMessage } from '../services/message.js';
+import { appendMessageReply, createMessage, updateMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
 import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
 import * as agentService from '../services/agent.js';
@@ -13,6 +13,8 @@ import { stripHtml, extractMentionIds } from './html-utils.js';
 import { listTasks } from '../services/mini-app-tasks.js';
 import { listConfigs } from '../services/mini-apps.js';
 import { handleMiniAppClientResponse } from '../services/mini-app-client-rpc.js';
+import { postTeamRuntimeMessage } from '../services/team-runtime.js';
+import { loadTeam } from '../services/team-internal.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -140,7 +142,12 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     });
   }
 
-  const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
+  const mentionIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
+  const teamIds = mentionIds
+    .filter((id) => id.startsWith('team:'))
+    .map((id) => id.slice('team:'.length))
+    .filter((id) => channel.teamIds?.includes(id));
+  const agentIds = mentionIds.filter((id) => !id.startsWith('team:'));
   for (const agentId of agentIds) {
     void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
       userAttachments: attachments,
@@ -149,6 +156,31 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
       agentOverride,
       miniAppContext,
     });
+  }
+  for (const teamId of teamIds) {
+    const team = loadTeam(teamId);
+    if (!team) continue;
+    const card = createMessage(workspaceId, channelId, {
+      senderId: `team:${teamId}`,
+      senderRole: 'team',
+      content: stripHtml(content) || team.name,
+      status: 'completed',
+      metadata: { teamId, teamName: team.name },
+    });
+    broadcastToWorkspace(workspaceId, 'channel.message', card);
+    const result = postTeamRuntimeMessage({
+      team_id: teamId,
+      actor_agent_id: 'admin',
+      content: stripHtml(content) || team.name,
+      context_length: normalizedContextLength,
+    });
+    if (!result.success) {
+      const failed = updateMessage(workspaceId, channelId, card.id, {
+        status: 'error',
+        content: result.message,
+      });
+      if (failed) broadcastToWorkspace(workspaceId, 'channel.message.updated', failed);
+    }
   }
 });
 

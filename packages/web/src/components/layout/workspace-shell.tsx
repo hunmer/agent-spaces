@@ -672,7 +672,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           onOpenChange={(open) => { if (!open) setChannelCreateOpen(false); }}
           workspaceId={workspaceId}
           agents={agents}
-          onSubmit={(data) => createChannel(workspaceId, data.name, data.type, data.members, data.initialMessage)}
+          onSubmit={(data) => createChannel(workspaceId, data.name, data.type, data.members, data.initialMessage, data.teamIds)}
         />
         <CreateIssueDialog
           open={issueCreateOpen}
@@ -696,7 +696,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         onOpenChange={(open) => { if (!open) setChannelCreateOpen(false); }}
         workspaceId={workspaceId}
         agents={agents}
-        onSubmit={(data) => createChannel(workspaceId, data.name, data.type, data.members, data.initialMessage)}
+        onSubmit={(data) => createChannel(workspaceId, data.name, data.type, data.members, data.initialMessage, data.teamIds)}
       />
       <CreateIssueDialog
         open={issueCreateOpen}

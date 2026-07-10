@@ -109,11 +109,13 @@ export function ChatInputAgentBar({
 
 function toChatAgent(agent?: MentionedAgent): ChatAgent | undefined {
   if (!agent) return undefined;
+  const { kind: _kind, ...config } = agent;
   return {
-    ...agent,
+    ...config,
     name: agent.name || agent.role || agent.id,
     role: "agent",
     model: agent.modelId || "",
+    runtimeKind: agent.runtimeKind === 'langchain' ? 'langchain' : undefined,
     createdAt: "",
     updatedAt: "",
   };

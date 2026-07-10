@@ -32,3 +32,20 @@
 - Team tools receive bound `teamId` and `actorAgentId`, so the completion tool needs no model-supplied identifiers and can enforce owner permission server-side.
 - Owner agents may have an explicit tool whitelist, so runtime tool resolution must append `team_task_complete` for active owners; otherwise the prompt could instruct an unavailable tool.
 - Read acknowledgement regression must assert while the agent is still blocked/running, not only after completion, to prove wake-up itself marks the delivery read.
+
+## Channel team integration
+
+- CodeGraph is available and indexes all five requested frontend files.
+- Team is global; frontend Team calls must use `sdk.team.*`.
+- `TeamChatPanel` already accepts `teamId` and `actorAgentId`, so the Team message dialog can reuse it directly.
+- Team runtime uses the fixed human sender `admin`; normal channel execution must bridge into `sdk.team.sendRuntimeMessage` or the matching server boundary.
+- Detailed Channel/message contracts are still being traced; implementation will reuse existing APIs and UI primitives.
+- `Channel.members` is normalized against workspace agents, so Team ids need a separate `Channel.teamIds` field.
+- Channel persistence is a small shared path: shared type, SDK create/update, server route/service, Zustand store, and dialog callers.
+- Composer mentions currently return plain ids. Normal chat send should split ids against `channel.teamIds`: agents continue through `runMentionedAgent`, teams go through Team runtime.
+- A Team-triggered channel message needs `MessageMetadata.teamId/teamName` so `MessageItem` can render the Team-only card and dialog.
+- Use mention ids as `team:<teamId>` to avoid collisions with agent ids; persisted `Channel.teamIds` remain raw ids.
+- The server can create a lightweight channel card message immediately, then call existing `postTeamRuntimeMessage` asynchronously with actor `admin`; `TeamChatPanel` supplies live execution/chat state in the dialog.
+- No Team reply mirroring or new websocket protocol is needed for the requested UI flow.
+- Team mention candidates are ordered before agents so the existing six-item suggestion cap cannot hide bound Teams.
+- `MessageItem` dynamically loads `TeamChatPanel` to avoid a static component cycle because `TeamChatPanel` already renders `MessageItem`.

@@ -24,9 +24,9 @@ router.get('/', (req: Request<ChannelParams>, res: Response) => {
 router.post('/', (req: Request<ChannelParams>, res: Response) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const titlePrompt = typeof req.body.titlePrompt === 'string' ? req.body.titlePrompt.trim() : '';
-  const { id, type, members, overwrite } = req.body;
+  const { id, type, members, teamIds, overwrite } = req.body;
   const requestedId = typeof id === 'string' ? id : undefined;
-  const { channel, created } = createChannel(req.params.id, { id: requestedId, name, type: type || 'general', members, overwrite: overwrite === true });
+  const { channel, created } = createChannel(req.params.id, { id: requestedId, name, type: type || 'general', members, teamIds, overwrite: overwrite === true });
   if (created) {
     broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   }
@@ -46,7 +46,7 @@ router.post('/', (req: Request<ChannelParams>, res: Response) => {
 router.put('/:channelId', (req: Request<ChannelParams>, res: Response) => {
   const { id, channelId } = req.params;
   const patch: Parameters<typeof updateChannel>[2] = {};
-  for (const key of ['name', 'type', 'issueId', 'members', 'pinnedMentionId', 'draft', 'todos', 'archived'] as const) {
+  for (const key of ['name', 'type', 'issueId', 'members', 'teamIds', 'pinnedMentionId', 'draft', 'todos', 'archived'] as const) {
     if (Object.hasOwn(req.body, key)) patch[key] = req.body[key];
   }
   const channel = updateChannel(id, channelId!, patch);

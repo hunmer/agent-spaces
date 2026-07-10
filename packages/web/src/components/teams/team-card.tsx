@@ -78,7 +78,7 @@ export function TeamCard({
       }`}
     >
       {/* 右上角 dropdown 触发器 */}
-      <div className="absolute right-2 top-2 z-10">
+      {onEdit || onDelete || onRestore ? <div className="absolute right-2 top-2 z-10">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -124,7 +124,7 @@ export function TeamCard({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </div> : null}
 
       <div className="flex items-start justify-between gap-3 pr-7">
         <div className="flex min-w-0 items-center gap-2.5">

@@ -18,6 +18,7 @@ import {
 import { ChatInputAgentBar } from "./chat-input-agent-bar";
 import { ChatInputInfoBar } from "./chat-input-info-bar";
 import type { MentionedAgent } from "./chat-input-utils";
+import type { TeamView } from "@agent-spaces/sdk";
 
 interface ChatInputProps {
   channelName: string;
@@ -49,6 +50,7 @@ interface ChatInputProps {
   }) => void | Promise<void>;
   showAgentBar?: boolean;
   showAddMember?: boolean;
+  teams?: TeamView[];
 }
 
 export interface ChatInputHandle {
@@ -69,7 +71,7 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
 const DEFAULT_CONTEXT_LENGTH = 20;
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated, onConfigureAgent, onAgentBindingsChange, showAgentBar = true, showAddMember = true },
+  { channelName, channelId, workspaceId, channel, agents, teams = [], messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated, onConfigureAgent, onAgentBindingsChange, showAgentBar = true, showAddMember = true },
   ref,
 ) {
   const t = useTranslations("chat");
@@ -104,6 +106,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       return tb.localeCompare(ta);
     });
   }, [agents, activeAgent?.id, agentLastActive]);
+
+  const mentionItems = useMemo<MentionedAgent[]>(() => [
+    ...teams.map((team) => ({
+      id: `team:${team.team_id}`,
+      name: team.name,
+      role: 'team',
+      description: team.description,
+      enabled: true,
+      kind: 'team' as const,
+    })),
+    ...agents,
+  ], [agents, teams]);
 
   useImperativeHandle(
     ref,
@@ -170,7 +184,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           <ChatComposerInput
             ref={composerRef}
             workspaceId={workspaceId}
-            agents={agents}
+            agents={mentionItems}
+            teams={teams.map((team) => ({ id: team.team_id, name: team.name }))}
             placeholder={t("input.placeholder", { channel: channelName })}
             contextLength={contextLength}
             onSubmit={handleSubmit}

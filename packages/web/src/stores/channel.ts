@@ -21,8 +21,8 @@ interface ChannelStore {
   setCreateDialogOpen: (open: boolean) => void;
 
   loadChannels: (workspaceId: string) => Promise<void>;
-  createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[], titlePrompt?: string) => Promise<void>;
-  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'archived'>>) => Promise<Channel>;
+  createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[], titlePrompt?: string, teamIds?: string[]) => Promise<void>;
+  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'teamIds' | 'pinnedMentionId' | 'draft' | 'todos' | 'archived'>>) => Promise<Channel>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   loadChannelState: (workspaceId: string, channelId: string) => Promise<ChannelState | null>;
@@ -92,7 +92,7 @@ function uniqueMembers(members: string[] | undefined): string[] {
 }
 
 function normalizeChannel(channel: Channel): Channel {
-  return { ...channel, members: uniqueMembers(channel.members) };
+  return { ...channel, members: uniqueMembers(channel.members), teamIds: uniqueMembers(channel.teamIds) };
 }
 
 export const useChannelStore = create<ChannelStore>((set, get) => ({
@@ -112,8 +112,8 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set({ workspaceId, channels, activeChannelId });
   },
 
-  createChannel: async (workspaceId, name, type = 'general', members, titlePrompt) => {
-    const channel = normalizeChannel(await sdk.channel.create(workspaceId, { name, type, members, titlePrompt }));
+  createChannel: async (workspaceId, name, type = 'general', members, titlePrompt, teamIds) => {
+    const channel = normalizeChannel(await sdk.channel.create(workspaceId, { name, type, members, teamIds, titlePrompt }));
     set((s) => {
       const exists = s.channels.some((c) => c.id === channel.id);
       return {
@@ -241,6 +241,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
         ...current,
         ...channel,
         members: Array.isArray(channel.members) ? uniqueMembers(channel.members) : current.members,
+        teamIds: Array.isArray(channel.teamIds) ? uniqueMembers(channel.teamIds) : current.teamIds,
       };
       return { channels: copy };
     });

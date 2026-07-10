@@ -26,6 +26,7 @@ import { sdk } from '@/lib/sdk';
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
+import type { TeamView } from '@agent-spaces/sdk';
 import type { MentionedAgent } from './chat-input-utils';
 
 const channelTypeStatus: Record<Channel['type'], { status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
@@ -118,6 +119,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; label: string } | null>(null);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [channelTeams, setChannelTeams] = useState<TeamView[]>([]);
   const [channelActive, setChannelActive] = useState(false);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
@@ -156,6 +158,20 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
       .map((member) => enabledById.get(member))
       .filter((agent): agent is AgentConfig => Boolean(agent));
   }, [agents, channel]);
+
+  useEffect(() => {
+    if (!channel.teamIds?.length) {
+      setChannelTeams([]);
+      return;
+    }
+    let cancelled = false;
+    sdk.team.list({ actor_agent_id: 'admin', page_size: 100 })
+      .then((result) => {
+        if (!cancelled) setChannelTeams(result.teams.filter((team) => channel.teamIds?.includes(team.team_id)));
+      })
+      .catch(() => { if (!cancelled) setChannelTeams([]); });
+    return () => { cancelled = true; };
+  }, [channel.teamIds]);
 
   useEffect(() => {
     if (currentChannelId) {
@@ -392,7 +408,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
             }}
           />
         ) : null}
-        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} onAgentActivated={onAgentActivated} />
+        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} teams={channelTeams} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} onAgentActivated={onAgentActivated} />
       </div>
 
       {/* 右侧：信息面板 - Drawer */}

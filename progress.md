@@ -19,3 +19,10 @@
 - Implemented automatic delivery read acknowledgement, registered `team_task_complete`, injected the owner-only prompt instruction, and added focused assertions/tests.
 - First validation: new owner completion test passed; typecheck found one missing local delivery field; full suite retained the known unrelated owner-transfer assertion failure.
 - Added the missing delivery field, moved the read assertion to the blocked/running phase, and completed final validation: server/shared TypeScript passed, focused tests 2/2 passed, scoped diff check passed.
+- Started channel Team integration: reusable selector, channel binding, mentions/execution, and Team message dialog.
+- Added `Channel.teamIds` through shared, SDK, server, and web store contracts.
+- Added reusable `TeamSelector`, wired it into channel create/edit, and exposed bound teams in composer mentions.
+- Added Team mention dispatch plus a Team-only channel message card that opens `TeamChatPanel` in a dialog.
+- Rebuilt ignored shared/SDK declarations, then passed Server and Web TypeScript checks.
+- Added and passed `channel-team.test.ts`; targeted ESLint had no errors and scoped diff check passed.
+- Confirmed the existing local Web server responds at http://localhost:3000.

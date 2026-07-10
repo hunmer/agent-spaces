@@ -169,7 +169,7 @@ export interface TeamInboxListResponse {
 // ---- 入参类型 ----
 
 export interface ListTeamsParams {
-  actor_agent_id: string;
+  actor_agent_id?: string;
   scope?: string;
   keyword?: string;
   archived?: boolean;
@@ -206,7 +206,7 @@ export function createTeamApi(http: HttpClient) {
     /** 团队列表 */
     list: (params: ListTeamsParams): Promise<{ teams: TeamView[] }> => {
       const query = new URLSearchParams();
-      query.set('actor_agent_id', params.actor_agent_id);
+      if (params.actor_agent_id) query.set('actor_agent_id', params.actor_agent_id);
       if (params.scope) query.set('scope', params.scope);
       if (params.keyword) query.set('keyword', params.keyword);
       if (params.archived) query.set('archived', 'true');
