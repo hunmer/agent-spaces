@@ -1,0 +1,12 @@
+[
+  {
+    "sessionId": "71ec6ea8-c30e-4319-a53d-980d66bdc515",
+    "teamId": "7305b983-31fc-4cef-98df-87d6ee63f34c",
+    "actorAgentId": "admin",
+    "leaderAgentId": "reviewer_agent",
+    "status": "running",
+    "updatedAt": "2026-07-10T10:39:44.885Z",
+    "startedAt": "2026-07-10T10:37:56.656Z",
+    "lastMessageId": "fa2c45ec-af1b-4c9b-a048-1de5eeaf4877"
+  }
+]

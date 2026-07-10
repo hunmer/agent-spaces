@@ -411,7 +411,7 @@ function TeamMessageCard({ message }: { message: Message }) {
             <DialogDescription>{tm('teamExecution')}</DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 p-3">
-            <TeamChatPanel teamId={teamId} actorAgentId="admin" />
+            <TeamChatPanel teamId={teamId} actorAgentId="admin" initialSessionId={sessionId} />
           </div>
         </DialogContent>
       </Dialog>

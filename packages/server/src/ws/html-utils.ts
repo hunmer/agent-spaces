@@ -22,7 +22,7 @@ export function extractMentionIds(content: string): string[] {
 
 export function stripMentionIds(content: string, mentionIds: string[]): string {
   const ids = new Set(mentionIds);
-  return content.replace(/<span[^>]*data-type=["']mention["'][^>]*><\/span>/gi, (mention) => {
+  return content.replace(/<span[^>]*data-type=["']mention["'][^>]*>[\s\S]*?<\/span>/gi, (mention) => {
     const id = mention.match(/\sdata-id=["']([^"']+)["']/i)?.[1];
     return id && ids.has(decodeHtml(id)) ? '' : mention;
   });

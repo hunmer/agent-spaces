@@ -31,6 +31,7 @@ const TEAM_USER_ACTOR_ID = "admin";
 type TeamChatPanelProps = {
   teamId: string;
   actorAgentId: string;
+  initialSessionId?: string;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   teamDescription?: string;
@@ -147,12 +148,12 @@ function createTeamMessageWorkflow(
   };
 }
 
-export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onToggleSidebar, teamDescription }: TeamChatPanelProps) {
+export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarOpen = true, onToggleSidebar, teamDescription }: TeamChatPanelProps) {
   const t = useTranslations("teams");
   const agents = useAgentStore((store) => store.agents);
   const ensureAgents = useAgentStore((store) => store.ensure);
   const [runtime, setRuntime] = useState<TeamRuntimeView | null>(null);
-  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState(() => initialSessionId || crypto.randomUUID());
   const [sessions, setSessions] = useState<TeamSessionView[]>([]);
   const [messages, setMessages] = useState<TeamRuntimeMessageView[]>([]);
   const [pendingAssistantSince, setPendingAssistantSince] = useState<string | null>(null);
