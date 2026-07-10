@@ -315,15 +315,16 @@ function TeamMessageCard({ message }: { message: Message }) {
   const [open, setOpen] = useState(false);
   const [summary, setSummary] = useState<TeamRuntimeResponse | null>(null);
   const teamId = message.metadata?.teamId ?? '';
+  const sessionId = message.metadata?.sessionId;
   const teamName = message.metadata?.teamName || teamId;
   const loadSummary = useCallback(async () => {
     if (!teamId) return;
     try {
-      setSummary(await sdk.team.getRuntime(teamId, 'admin'));
+      setSummary(await sdk.team.getRuntime(teamId, 'admin', sessionId));
     } catch {
       setSummary(null);
     }
-  }, [teamId]);
+  }, [sessionId, teamId]);
 
   useEffect(() => {
     void loadSummary();

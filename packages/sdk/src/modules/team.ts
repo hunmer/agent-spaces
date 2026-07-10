@@ -77,7 +77,6 @@ export interface TeamDetail {
 }
 
 export interface TeamRuntimeView {
-  id: string;
   session_id: string;
   teamId: string;
   actorAgentId: string;
@@ -92,7 +91,7 @@ export interface TeamRuntimeView {
 
 export interface TeamRuntimeMessageView {
   id: string;
-  runtimeId: string;
+  sessionId: string;
   teamId: string;
   messageId: string;
   deliveryId?: string;

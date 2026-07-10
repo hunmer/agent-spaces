@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { randomUUID } from 'node:crypto';
 import type { WSEvent, ClientEventName, Message, AgentConfig } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace, getClientId, handleClientNodeResponse, handleInteractionResponse, onClientConnected, getConnectionByClientId, sendToClient } from './connection-manager.js';
 import type { ClientNodeResponse, InteractionResponse } from '@agent-spaces/shared';
@@ -162,16 +163,18 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   for (const teamId of teamIds) {
     const team = loadTeam(teamId);
     if (!team) continue;
+    const sessionId = randomUUID();
     const card = createMessage(workspaceId, channelId, {
       senderId: `team:${teamId}`,
       senderRole: 'team',
       content: stripHtml(messageContent) || team.name,
       status: 'completed',
-      metadata: { teamId, teamName: team.name },
+      metadata: { teamId, teamName: team.name, sessionId },
     });
     broadcastToWorkspace(workspaceId, 'channel.message', card);
     const result = postTeamRuntimeMessage({
       team_id: teamId,
+      session_id: sessionId,
       actor_agent_id: 'admin',
       content: stripHtml(messageContent) || team.name,
       context_length: normalizedContextLength,

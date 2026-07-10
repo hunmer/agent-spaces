@@ -14,7 +14,7 @@
 
 ## 2. 关键结论
 
-- team 数据存储在全局目录 `.agent-spaces-data/team/`
+- team 定义存储在全局目录 `.agent-spaces-data/team/`，会话数据按 UUID `session_id` 隔离
 - team API 是全局路由，不再带 `/workspaces/:id/...`
 - team 可包含 3 类成员来源：`agent`、`chat`、`custom`
 - workflow 导入 team 成员时，必须取 `agent_run.data.agentConfigId`，不能取 `agent_run.data.agent.id`
@@ -88,9 +88,12 @@ team 数据目录：
   {team_id}/
     info.json
     memberships.json
-    messages.json
-    deliveries.json
-    comments.json
+    {session_id}/
+      messages.json
+      deliveries.json
+      comments.json
+      runtimes.json
+      logs/team.log
 ```
 
 含义：
@@ -101,12 +104,14 @@ team 数据目录：
   - team 基础信息
 - `{team_id}/memberships.json`
   - 成员关系
-- `{team_id}/messages.json`
+- `{team_id}/{session_id}/messages.json`
   - 发送过的 team 消息
-- `{team_id}/deliveries.json`
+- `{team_id}/{session_id}/deliveries.json`
   - inbox 投递记录
-- `{team_id}/comments.json`
+- `{team_id}/{session_id}/comments.json`
   - 消息评论
+
+`session_id` 是 team 会话唯一 UUID。前端打开 team 聊天时生成并在 runtime、消息、inbox 请求中持续透传；API 和消息字段统一使用 `session_id/sessionId`，不再使用 `runtime_id/runtimeId`。
 
 ## 5. memberships.json 当前结构
 

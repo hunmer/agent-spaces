@@ -55,7 +55,7 @@ function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): M
   const isUser = item.senderAgentId === actorAgentId;
   return {
     id: item.id,
-    channelId: item.runtimeId,
+    channelId: item.sessionId,
     senderId: isUser ? "user" : item.senderAgentId,
     content: item.content,
     parts: item.parts,
@@ -65,20 +65,23 @@ function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): M
   };
 }
 
+type TeamTranslator = (key: string, params?: Record<string, string | number>) => string;
+
 function createTeamMessageWorkflow(
   teamId: string,
-  runtimeId: string,
+  sessionId: string,
   deliveries: TeamInboxItemView[],
   participants: TeamParticipant[],
+  t: TeamTranslator,
 ): { workflow: Workflow; executionLog: ExecutionLog } {
   const participantById = new Map(participants.map((participant) => [participant.id, participant]));
-  const workflowId = `team-message-flow-${runtimeId}`;
+  const workflowId = `team-message-flow-${sessionId}`;
   const timestamp = (value: string) => {
     const parsed = Date.parse(value);
     return Number.isNaN(parsed) ? Date.now() : parsed;
   };
   const displayName = (agentId: string) => agentId === TEAM_USER_ACTOR_ID
-    ? "用户"
+    ? t("chat.user")
     : participantById.get(agentId)?.name || agentId;
   const nodes = deliveries.map((delivery, index) => {
     const row = Math.floor(index / 4);
@@ -88,7 +91,7 @@ function createTeamMessageWorkflow(
     return {
       id: `delivery-${delivery.delivery_id}`,
       type: "agent_run",
-      label: `${displayName(delivery.recipient_agent_id)}：${(delivery.subject || content).slice(0, 28) || "处理中"}`,
+      label: `${displayName(delivery.recipient_agent_id)}：${(delivery.subject || content).slice(0, 28) || t("chat.processing")}`,
       position: { x: (row % 2 === 0 ? column : 3 - column) * 440, y: row * 320 },
       data: {
         agent: recipient
@@ -111,7 +114,7 @@ function createTeamMessageWorkflow(
     : deliveries.some((delivery) => ["pending", "running", "in_progress"].includes(delivery.execution_status)) ? "running" : "completed";
   const workflow: Workflow = {
     id: workflowId,
-    name: `Team ${teamId} message flow`,
+    name: t("chat.workflowName"),
     folderId: null,
     nodes,
     edges,
@@ -176,7 +179,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
 
   const channel = useMemo<Channel>(() => ({
     ...EMPTY_CHANNEL,
-    id: runtime?.id ?? "__team_runtime__",
+    id: runtime?.session_id ?? "__team_runtime__",
     name: leader?.name || t("chat.leaderFallback"),
     members: runtime?.leader_agent_id ? [runtime.leader_agent_id] : [],
     pinnedMentionId: runtime?.leader_agent_id,
@@ -210,8 +213,8 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
   );
 
   const messageWorkflow = useMemo(
-    () => createTeamMessageWorkflow(teamId, runtime?.id ?? teamId, workflowDeliveries, participants),
-    [participants, runtime?.id, teamId, workflowDeliveries],
+    () => createTeamMessageWorkflow(teamId, runtime?.session_id ?? teamId, workflowDeliveries, participants, t),
+    [participants, runtime?.session_id, teamId, workflowDeliveries, t],
   );
 
   const viewMessages = useMemo(() => {
@@ -226,7 +229,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
 
     const pendingMessage: Message = {
       id: "__team_pending_assistant__",
-      channelId: runtime?.id ?? "__team_runtime__",
+      channelId: runtime?.session_id ?? "__team_runtime__",
       senderId: runtime?.leader_agent_id || leader?.id || "assistant",
       content: "",
       type: "text",
@@ -234,7 +237,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       createdAt: pendingAssistantSince,
     };
     return [...rendered, pendingMessage];
-  }, [leader?.id, messages, pendingAssistantSince, runtime?.id, runtime?.leader_agent_id]);
+  }, [leader?.id, messages, pendingAssistantSince, runtime?.leader_agent_id, runtime?.session_id]);
 
   const clearPendingAssistantIfResolved = useCallback((items: TeamRuntimeMessageView[]) => {
     if (!pendingAssistantSince) return;
@@ -388,7 +391,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             {runtime?.status === "running" ? (
               <Badge variant="outline" className="gap-1 border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0 text-xs font-normal text-emerald-600">
                 <Loader2 className="size-3 animate-spin" />
-                running
+                {t("chat.running")}
               </Badge>
             ) : null}
           </h2>
@@ -404,8 +407,8 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             className="size-7"
             onClick={() => void handleOpenWorkflow()}
             disabled={!teamId || workflowLoading}
-            title="查看消息工作流"
-            aria-label="查看消息工作流"
+            title={t("chat.viewWorkflow")}
+            aria-label={t("chat.viewWorkflow")}
           >
             {workflowLoading ? <Loader2 className="size-3.5 animate-spin" /> : <WorkflowIcon className="size-3.5" />}
           </Button>
@@ -415,7 +418,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             className="size-7"
             onClick={handleClearMessages}
             disabled={viewMessages.length === 0 || sending}
-            title="清空消息"
+            title={t("chat.clearMessages")}
           >
             <Trash2 className="size-3.5" />
           </Button>
@@ -501,7 +504,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
               });
               const payload = await response.json() as { success?: boolean; message?: string };
               if (!response.ok || payload.success === false) {
-                throw new Error(payload.message || "save failed");
+                throw new Error(payload.message || t("chat.saveFailed"));
               }
               await loadRuntime();
             }}
@@ -539,7 +542,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
                   });
                   const payload = await response.json() as { success?: boolean; message?: string };
                   if (!response.ok || payload.success === false) {
-                    throw new Error(payload.message || "save failed");
+                    throw new Error(payload.message || t("chat.saveFailed"));
                   }
                   return { ...draft, id: configAgent.id };
                 }}
@@ -557,8 +560,8 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       <Dialog open={workflowOpen} onOpenChange={setWorkflowOpen}>
         <DialogContent className="flex h-[80vh] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
           <DialogHeader className="border-b px-5 py-3">
-            <DialogTitle>消息工作流</DialogTitle>
-            <DialogDescription>{workflowDeliveries.length} 条投递，临时只读视图</DialogDescription>
+            <DialogTitle>{t("chat.workflowTitle")}</DialogTitle>
+            <DialogDescription>{t("chat.workflowDescription", { count: workflowDeliveries.length })}</DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1">
             <WorkflowPreview

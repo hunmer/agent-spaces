@@ -117,7 +117,7 @@ export interface TeamRuntime {
 
 export interface TeamRuntimeMessage {
   id: string;
-  runtimeId: string;
+  sessionId: string;
   teamId: string;
   messageId: string;
   deliveryId?: string;

@@ -164,4 +164,5 @@ export interface MessageMetadata {
   phase?: string;
   teamId?: string;
   teamName?: string;
+  sessionId?: string;
 }

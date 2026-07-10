@@ -125,7 +125,16 @@
     "empty": "No chat messages yet.",
     "hideSidebar": "Hide team info",
     "showSidebar": "Show team info",
-    "configureAgent": "Configure Agent"
+    "configureAgent": "Configure Agent",
+    "running": "Running",
+    "viewWorkflow": "View message workflow",
+    "clearMessages": "Clear messages",
+    "workflowTitle": "Message workflow",
+    "workflowDescription": "{count} deliveries, temporary read-only view",
+    "saveFailed": "Save failed",
+    "user": "User",
+    "processing": "Processing",
+    "workflowName": "Team message flow"
   },
   "empty": {
     "setup": "Select a workspace and an agent first.",

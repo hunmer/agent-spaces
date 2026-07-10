@@ -375,7 +375,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     await editorCompleted;
     const sent = await sentPromise;
     assert.equal(sent.success, true);
-    const runId = (sent.data as { runtime: { id: string } }).runtime.id;
+    const returnedSessionId = (sent.data as { runtime: { session_id: string } }).runtime.session_id;
+    assert.equal(returnedSessionId, sessionId);
     const usage = queryRecentUsage({ days: 30, page: 1, pageSize: 10 });
     assert.equal(usage.total, 2);
     const dryRun = await teamMessageSendTool.execute({
@@ -422,7 +423,7 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     const logFiles = readdirSync(join(dataDir, 'team', teamId, sessionId, 'logs'));
     assert.deepEqual(logFiles, ['team.log']);
     const logs = readFileSync(join(dataDir, 'team', teamId, sessionId, 'logs', 'team.log'), 'utf-8');
-    assert.deepEqual([...logs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [runId, runId]);
+    assert.deepEqual([...logs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [sessionId, sessionId]);
     assert.match(logs, /\[INPUT\]/);
     assert.match(logs, /Your actor_agent_id: topic_agent/);
     assert.match(logs, /\[TOOL CALL\]/);
@@ -448,10 +449,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
       target_agent_id: 'editor_agent',
       context_length: 0,
     }, true);
-    const nextRunId = (nextSent.data as { runtime: { id: string } }).runtime.id;
-    assert.notEqual(nextRunId, runId);
+    assert.equal((nextSent.data as { runtime: { session_id: string } }).runtime.session_id, sessionId);
     const nextLogs = readFileSync(join(dataDir, 'team', teamId, sessionId, 'logs', 'team.log'), 'utf-8');
-    assert.deepEqual([...nextLogs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [runId, runId, nextRunId]);
+    assert.deepEqual([...nextLogs.matchAll(/^===== RUN (\S+) /gm)].map((match) => match[1]), [sessionId, sessionId, sessionId]);
   } finally {
     setTeamRuntimeFactoryForTests();
     closeAgentDb();

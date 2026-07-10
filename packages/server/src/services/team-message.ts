@@ -207,7 +207,7 @@ export function handleTeamMessageDelete(input: unknown): TeamServiceResult {
     return fail('actor_agent_id and message_id or team_id are required', 'INVALID_ARGUMENT');
   }
 
-  if (teamId) {
+  if (teamId && !messageId) {
     const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
     const actorMembership = resolveEffectiveMembership(teamId, actorAgentId);
