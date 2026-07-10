@@ -178,8 +178,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     setError("");
     try {
       const data = await sdk.team.list({
-        actor_agent_id: selectedActorId,
-        scope: "visible",
         page_size: 100,
         include_members_preview: true,
       });
@@ -198,17 +196,12 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     } finally {
       setLoadingTeams(false);
     }
-  }, [selectedActorId, selectedTeamId]);
+  }, [selectedTeamId]);
 
   const loadArchivedTeams = useCallback(async () => {
-    if (!selectedActorId) {
-      setArchivedTeams([]);
-      return;
-    }
     setLoadingArchived(true);
     try {
       const data = await sdk.team.list({
-        actor_agent_id: selectedActorId,
         archived: true,
         page_size: 100,
       });
@@ -218,7 +211,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     } finally {
       setLoadingArchived(false);
     }
-  }, [selectedActorId]);
+  }, []);
 
   const loadTeamDetail = useCallback(async (teamId: string) => {
     try {
@@ -231,10 +224,12 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   }, [selectedActorId]);
 
   useEffect(() => {
-    if (!selectedActorId) return;
     void loadTeams();
+  }, [loadTeams]);
+
+  useEffect(() => {
     void loadArchivedTeams();
-  }, [loadTeams, loadArchivedTeams, selectedActorId]);
+  }, [loadArchivedTeams]);
 
   useEffect(() => {
     if (!selectedActorId || !selectedTeamId) {

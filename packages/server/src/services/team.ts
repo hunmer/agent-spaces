@@ -645,8 +645,9 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const action = asString(input.action);
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId) ?? '';
-  // 归档清理操作不需要 actor
-  if (!action || (action !== 'delete_archive' && action !== 'clear_archives' && !actorAgentId)) {
+  // 归档清理操作、列表查询不需要 actor
+  const noActorRequired = action === 'delete_archive' || action === 'clear_archives' || action === 'list';
+  if (!action || (!noActorRequired && !actorAgentId)) {
     return fail('action and actor_agent_id are required', 'INVALID_ARGUMENT');
   }
 
@@ -715,26 +716,6 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
   if (action === 'list') {
     const archivedOnly = asBoolean(input.archived);
     const allTeams = (archivedOnly ? listArchivedTeamsRaw() : listTeamsRaw())
-      .filter((team) => {
-        // 归档团队不再做成员可见性校验（已解散，仅作历史展示）
-        if (archivedOnly) return true;
-        const scope = asString(input.scope) ?? 'mine';
-        if (scope === 'visible') return canViewTeam(team, actorAgentId);
-        return Boolean(getActiveMembership(team.id, actorAgentId));
-      })
-      .filter((team) => {
-        const statusFilter = new Set(
-          asArray<string>(input.status_filter ?? input.statusFilter)
-            .map((item) => asString(item))
-            .filter((item): item is string => Boolean(item)),
-        );
-        return statusFilter.size === 0 || statusFilter.has(team.status);
-      })
-      .filter((team) => {
-        const keyword = asString(input.keyword)?.toLowerCase();
-        if (!keyword) return true;
-        return team.name.toLowerCase().includes(keyword) || team.description.toLowerCase().includes(keyword);
-      })
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
     const includeMembersPreview = asBoolean(input.include_members_preview ?? input.includeMembersPreview);
     const { size, offset } = parsePage(input);
@@ -1169,12 +1150,12 @@ export function handleTeamMembershipManage(input: unknown): TeamServiceResult {
     }
 
     const now = new Date().toISOString();
-    const updated: TeamMembership = { ...target, status: 'removed', updatedAt: now };
-    saveMemberships(teamId, memberships.map((item) => item.agentId === targetAgentId ? updated : item));
+    // 直接从成员列表中移除，不再保留 removed 记录
+    saveMemberships(teamId, memberships.filter((item) => item.agentId !== targetAgentId));
     updateTeamMemberCount(team);
     return ok('team member removed', {
       membership: {
-        membership_id: updated.id,
+        membership_id: target.id,
         team_id: teamId,
         agent_id: targetAgentId,
         status: 'removed',
