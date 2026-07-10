@@ -251,7 +251,13 @@ test('team runtime custom agent can self-test full reply flow with providerId on
           await editorGate;
           markEditorCompleted?.();
         }
-        return { success: true, summary: 'stub-summary', output: ['<think>hidden</think>stub-reply'], artifacts: [] };
+        return {
+          success: true,
+          summary: 'stub-summary',
+          output: ['<think>hidden</think>stub-reply'],
+          artifacts: [],
+          usage: { inputTokens: 12, outputTokens: 3, totalTokens: 15 },
+        };
       },
       stop() {},
     };
@@ -396,6 +402,9 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(messages[2]?.body, 'stub-reply');
     const replyParts = (messages[2]?.metadata as { parts?: Array<{ type: string }> } | undefined)?.parts ?? [];
     assert.ok(replyParts.some((part) => part.type === 'chain'));
+    const contextPart = replyParts.find((part) => part.type === 'context') as { agentContext?: { name?: string; userPrompt?: string } } | undefined;
+    assert.equal(contextPart?.agentContext?.name, 'Editor Agent');
+    assert.equal(contextPart?.agentContext?.userPrompt, 'continue');
     assert.ok(replyParts.some((part) => part.type === 'text'));
     const loaded = getTeamRuntime({ team_id: teamId, actor_agent_id: 'admin' });
     assert.equal(loaded.success, true);

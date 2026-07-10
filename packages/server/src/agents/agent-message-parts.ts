@@ -1,5 +1,5 @@
 import type { AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
-import type { MessageChain, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
+import type { MessageAgentContext, MessageChain, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import { saveToolDetails, type ToolDetail } from '../services/tool-detail.js';
 import type { PersistentAgentContextSummary } from '../services/persistent-agent-context.js';
 
@@ -13,6 +13,7 @@ export interface AgentMessagePartsTracker {
     workspaceRoot?: string;
     model?: string;
     usage?: MessageTokenUsage;
+    agentContext?: MessageAgentContext;
     persistentContext?: PersistentAgentContextSummary;
     success: boolean;
     error?: string;
@@ -76,12 +77,13 @@ export function createAgentMessagePartsTracker(input: {
       output.push(event.line);
       input.onOutput?.(event.line);
     },
-    buildParts({ sessionId, workspaceRoot, model, usage, persistentContext, success, error }) {
+    buildParts({ sessionId, workspaceRoot, model, usage, agentContext, persistentContext, success, error }) {
       return buildAgentMessageParts({
         sessionId,
         workspaceRoot,
         model,
         usage,
+        agentContext,
         output,
         reasoning,
         toolDetails,
@@ -98,6 +100,7 @@ function buildAgentMessageParts(input: {
   workspaceRoot?: string;
   model?: string;
   usage?: MessageTokenUsage;
+  agentContext?: MessageAgentContext;
   output: string[];
   reasoning?: Array<{ text: string; status?: 'streaming' | 'completed' }>;
   toolDetails?: Map<string, ToolDetail>;
@@ -148,6 +151,7 @@ function buildAgentMessageParts(input: {
       maxTokens: 128_000,
       modelId: input.model,
       usage,
+      agentContext: input.agentContext,
     });
   }
 

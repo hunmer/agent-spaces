@@ -2,6 +2,42 @@
 import { config as loadDotenv } from 'dotenv';
 loadDotenv();
 
+import { createWriteStream, WriteStream } from 'node:fs';
+
+// ---- 日志输出到文件 ----
+const __logDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'logs');
+if (!existsSync(__logDir)) mkdirSync(__logDir, { recursive: true });
+
+const __today = () => new Date().toISOString().slice(0, 10);
+let __logDate = __today();
+let __logStream: WriteStream = createWriteStream(join(__logDir, `server-${__logDate}.log`), { flags: 'a' });
+
+const __writeLog = (level: string, args: unknown[]) => {
+  try {
+    // 跨天滚动文件
+    const today = __today();
+    if (today !== __logDate) {
+      __logDate = today;
+      __logStream.end();
+      __logStream = createWriteStream(join(__logDir, `server-${__logDate}.log`), { flags: 'a' });
+    }
+    const time = new Date().toISOString();
+    const line = args.map(a => typeof a === 'string' ? a : (() => { try { return JSON.stringify(a); } catch { return String(a); } })()).join(' ');
+    __logStream.write(`[${time}] [${level}] ${line}\n`);
+  } catch { /* ignore log errors */ }
+};
+
+const __origLog = console.log.bind(console);
+const __origWarn = console.warn.bind(console);
+const __origError = console.error.bind(console);
+console.log = (...args: unknown[]) => { __writeLog('LOG', args); __origLog(...args); };
+console.warn = (...args: unknown[]) => { __writeLog('WARN', args); __origWarn(...args); };
+console.error = (...args: unknown[]) => { __writeLog('ERROR', args); __origError(...args); };
+
+process.on('uncaughtException', (err) => __writeLog('FATAL', [`uncaughtException:`, err?.stack || err]));
+process.on('unhandledRejection', (reason) => __writeLog('FATAL', [`unhandledRejection:`, reason]));
+// -----------------------
+
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
